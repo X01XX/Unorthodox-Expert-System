@@ -12,7 +12,7 @@ gets a progressively better understanding of what the actions do.  The program s
 improve its understanding.
 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
-I can still muddle through life.
+I can still muddle through life. It is also NOT the goal to take every possible sample.
 
 The goal is a better and better understanding, due to samples gathered by circumstance and intention.
 
