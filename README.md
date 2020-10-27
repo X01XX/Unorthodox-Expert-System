@@ -11,6 +11,7 @@ The program is an expert of its own state.  Various (canned) actions change the 
 gets a progressively better understanding of what the actions do.  The program seeks samples to 
 improve its understanding.
 
-A final, exact, understanding is NOT the goal, just as there is still a lot that I do not understand.
+A final, exact, understanding is NOT the goal, just as there is still a lot that I do not understand, but
+I can still muddle through life.
 
 The goal is a better and better understanding, due to samples gathered by circumstance and intention.
