@@ -13,7 +13,7 @@ improve its understanding.
 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
-64-bit K-Map, it would not be practical to take every sample.
+64-bit state, it would not be practical to take every sample.
 
 The goal is a better and better understanding, due to samples gathered by circumstance and intention.
 
