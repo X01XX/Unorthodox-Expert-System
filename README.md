@@ -16,4 +16,4 @@ I can still muddle through life.
 
 The goal is a better and better understanding, due to samples gathered by circumstance and intention.
 
-Then be able to plan a series of steps to change the current state to a goal state.
+Then be able to plan, and execute, a series of steps to change the current state to a goal state.
