@@ -1,8 +1,8 @@
 # Unorthodox-Expert-System
-An Unorthodox expert system based on a different interpretation of a Karnaugh Map.
+An Unorthodox Expert System based on a different interpretation of a Karnaugh Map.
 
-See the index.html file for general ideas, the code does not follow the index.html exactly.
+See the index.html file for general ideas, the code does not follow it exactly.
 
-When run under Rust, a command help screen will display.  
+Run under Rust, a command help screen will display.  
 
 Simply pressing the Enter key and seeing what happens is all you need to do.
