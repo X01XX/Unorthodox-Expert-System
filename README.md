@@ -11,10 +11,10 @@ The program is an expert of its own state, a series of bits.  Various (canned) a
 gets a progressively better understanding of what the actions do.  The program seeks samples to 
 improve its understanding.
 
-A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
-I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
-64-bit state, it would not be practical to take every sample.
-
 The goal is a better and better understanding, due to samples gathered by circumstance and intention.
 
 Then be able to plan, and execute, a series of steps to change the current state to a goal state.
+
+A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
+I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
+64-bit state, it would not be practical to take every sample.
