@@ -24,7 +24,7 @@ mod need;
 mod regionstore;
 mod resultstore;
 mod rule;
-use rule::SomeRule;
+//use rule::SomeRule;
 mod rulestore;
 mod square;
 mod squarestore;
@@ -77,15 +77,15 @@ fn init_domain(cur: SomeState) -> SomeDomain {
 }
 
 fn main() {
-    tests::run_tests();
-    if let Ok(reg1) = SomeRegion::new_from_string("rxx0101", 1) {
-        if let Ok(reg2) = SomeRegion::new_from_string("r10xx10", 1) {
-            let rulx = SomeRule::region_to_region(&reg1, &reg2);
-            println!("\n{} to\n{} =\nrulx = {}", &reg1, &reg2, &rulx);
-        }
-    }
+//    tests::run_tests();
+//    if let Ok(reg1) = SomeRegion::new_from_string("rxx0101", 1) {
+//        if let Ok(reg2) = SomeRegion::new_from_string("r10xx10", 1) {
+//            let rulx = SomeRule::region_to_region(&reg1, &reg2);
+//            println!("\n{} to\n{} =\nrulx = {}", &reg1, &reg2, &rulx);
+//        }
+//    }
 
-    pause_for_enter("");
+//    pause_for_enter("");
 
     let mut dm1 = init_domain(SomeState::new(SomeBits::new(vec![2 as u8]))); // init state to 1 u8 integer of bits, may be higher
     let num_actions = dm1.num_actions();

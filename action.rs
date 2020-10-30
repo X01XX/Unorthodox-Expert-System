@@ -1272,7 +1272,7 @@ impl SomeAction {
             // external square that is in only one group.
             for stax in states1.iter() {
                 if greg.adjacent_state(&stax) {
-                    let adj_sta = greg.adj_part_state(&stax);
+                    let adj_sta = greg.overlapping_part_state(&stax);
 
                     if self.groups.num_groups_state_in(&adj_sta) == 1 {
                         if states1.contains(&adj_sta) {
@@ -1846,14 +1846,14 @@ impl SomeAction {
 
         match grpx.pn {
             Pn::Unpredictable => {
-                let regx = grpx.region.adj_part(&grpy.region);
+                let regx = grpx.region.overlapping_part(&grpy.region);
                 if regx.is_superset_of(&grpx.region) || regx.is_superset_of(&grpy.region) {
                     return nds;
                 }
                 return self.possible_group_needs(&regx);
             }
             _ => {
-                let reg_ov = grpx.region.adj_part(&grpy.region);
+                let reg_ov = grpx.region.overlapping_part(&grpy.region);
 
                 if reg_ov.is_superset_of(&grpx.region) || reg_ov.is_superset_of(&grpy.region) {
                     return nds;

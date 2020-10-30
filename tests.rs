@@ -12,13 +12,13 @@ use crate::state::SomeState;
 //use std::io::Write;
 use std::process; // bring flush() into scope
 
-pub fn run_tests() {
+pub fn _run_tests() {
     println!("Running Tests");
 
     println!(
         "\nTest1, form a group of two squares, pn=2, invalidate the group with pn=1 samples\n"
     );
-    let rc = test1();
+    let rc = _test1();
     if rc == 0 {
         println!("Test1 OK");
     } else {
@@ -29,7 +29,7 @@ pub fn run_tests() {
     println!(
         "\nTest2, form a group of two squares, pn=U, invalidate the group with pn=1 samples\n"
     );
-    let rc = test2();
+    let rc = _test2();
     if rc == 0 {
         println!("Test2 OK");
     } else {
@@ -49,7 +49,7 @@ pub fn run_tests() {
 //
 // Then group X1X1 should be invalidate and removed.
 // **********************************************************************************
-fn test1() -> usize {
+fn _test1() -> usize {
     let mut dmx = SomeDomain::new(SomeState::new(SomeBits::new_low(1)));
     dmx.add_action(action0);
 
@@ -116,7 +116,7 @@ fn test1() -> usize {
 //
 // Then group X1X1 should be invalidate and removed.
 // **********************************************************************************
-fn test2() -> usize {
+fn _test2() -> usize {
     let mut dmx = SomeDomain::new(SomeState::new(SomeBits::new_low(1)));
     dmx.add_action(action0);
 

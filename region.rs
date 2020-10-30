@@ -354,7 +354,7 @@ impl SomeRegion {
     }
 
     // Given two adjacent regions, return an overlapping region
-    pub fn adj_part(&self, other: &Self) -> Self {
+    pub fn overlapping_part(&self, other: &Self) -> Self {
         assert!(self.adjacent(&other));
 
         let adj_bit = self.diff_bits(&other);
@@ -362,7 +362,7 @@ impl SomeRegion {
         self.intersection(&other).set_to_x(&adj_bit) // a strange use of the intersection logic
     }
 
-    pub fn adj_part_state(&self, other: &SomeState) -> SomeState {
+    pub fn overlapping_part_state(&self, other: &SomeState) -> SomeState {
         assert!(self.adjacent_state(&other));
 
         let adj_bit = self.diff_bits_state(&other);
