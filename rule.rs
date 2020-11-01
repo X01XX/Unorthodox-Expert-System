@@ -274,7 +274,7 @@ impl SomeRule {
     // given region.  Assuming the region given is not a superset
     // this will also change the initial region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
-        println!("restricting result region of {} to {}", &self, &regx);
+        //println!("restricting result region of {} to {}", &self, &regx);
 
         let rslt_reg = self.result_region();
 
@@ -306,7 +306,7 @@ impl SomeRule {
             b10: self.b10.m_and(&zeros),
         };
 
-        println!(" giving {} with intial {}", rc_rul, rc_rul.initial_region());
+        //println!(" giving {} with intial {}", rc_rul, rc_rul.initial_region());
         rc_rul
     }
 

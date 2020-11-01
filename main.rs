@@ -121,9 +121,10 @@ fn main() {
             // Display new Actions and needs
             println!("\nActs: {}", dm1.actions);
             let nds: NeedStore = dm1.get_needs();
-            println!("\nAction needs: {}", nds);
 
             if nds.len() > 0 {
+				println!("\nAction needs: {}", nds);
+
                 //let curst = dm1.cur_state.clone();
                 if satisfy_need(&mut dm1, &nds) {
                     println!("\nActs: {}", dm1.actions);
@@ -131,7 +132,9 @@ fn main() {
                 } else {
                     println!("no need satisfied");
                 }
-            }
+            } else {
+			    println!("\nAction needs: None");
+			}
             continue;
         } // end zero length commands
 

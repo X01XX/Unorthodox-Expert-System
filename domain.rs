@@ -184,15 +184,12 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         let actions = &self.actions;
 
-        println!(
-            "running make one plan from {} to {} recur {}",
-            &from_reg, &goal_reg, recur
-        );
+       // println!("plan from {} to {}",&from_reg, &goal_reg, recur);
 
         // Check for the maximum depth of recursion
         // Recursion can also be ended by not finding a step for a desired change.
         if recur > max_depth {
-            println!("recursion limit exceeded by {}", recur);
+            //println!("recursion limit exceeded by {}", recur);
             return None;
         }
 
@@ -207,20 +204,23 @@ impl SomeDomain {
         // which would cause the rule to fail a valid_intersection test.
         let rule_agg = SomeRule::region_to_region(&from_reg, &goal_reg);
 
-        println!(
-            "find steps for from_reg {} to goal_reg {}, rule {}",
-            &from_reg, &goal_reg, &rule_agg
-        );
+        //println!(
+        //    "find steps for from_reg {} to goal_reg {}, rule {}",
+        //    &from_reg, &goal_reg, &rule_agg
+        //);
 
         // Get steps that include at least one bit of the needed change masks.
         let stpsx = actions.get_steps(&rule_agg);
 
         if stpsx.len() == 0 {
-            println!("No steps found");
+			if recur == 0 {
+				println!("plan from {} to {} not found", &from_reg, &goal_reg);
+		    }
+            //println!("No steps found");
             return None;
         }
 
-        println!("steps found: {}", stpsx);
+        //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
         let mut b01 = SomeMask::new(SomeBits::new_low(from_reg.state1.num_ints()));
@@ -235,9 +235,12 @@ impl SomeDomain {
 
         // Check if the changes found roughly satisfy the needed change
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
-            println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
-            println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+			if recur == 0 {
+				println!("plan from {} to {} not found", &from_reg, &goal_reg);
+		    }
+            //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
 
@@ -268,14 +271,14 @@ impl SomeDomain {
         } // next stpx
 
         // Print step vector
-        println!("stp_cngs:");
-        for vecx in stp_cngs.iter() {
-            let mut strx = String::from("  [");
-            for stpx in vecx.iter() {
-                strx.push_str(&format!("{}, ", stpx));
-            }
-            println!("{}]", strx);
-        }
+        //println!("stp_cngs:");
+       // for vecx in stp_cngs.iter() {
+       //     let mut strx = String::from("  [");
+        //    for stpx in vecx.iter() {
+        //        strx.push_str(&format!("{}, ", stpx));
+        //    }
+        //    println!("{}]", strx);
+       // }
 
         // Look for one step that makes the whole change
         for vecx in stp_cngs.iter() {
@@ -330,7 +333,7 @@ impl SomeDomain {
                 } else {
                     astep = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
                 }
-                println!("    local closest to {} is: {}", &from_reg, astep);
+                //println!("    local closest to {} is: {}", &from_reg, astep);
             }
 
             // A step has been selected
@@ -347,12 +350,12 @@ impl SomeDomain {
         } // next vecx
 
         // Print steps selected
-        let mut strx = String::from("Steps selected for max diff from goal: ");
-        strx.push_str(&format!("{} [", &goal_reg));
-        for stpx in max_diff_goal.iter() {
-            strx.push_str(&format!("{}, ", stpx));
-        }
-        println!("{}]", strx);
+        //let mut strx = String::from("Steps selected for max diff from goal: ");
+       // strx.push_str(&format!("{} [", &goal_reg));
+      //  for stpx in max_diff_goal.iter() {
+       //     strx.push_str(&format!("{}, ", stpx));
+       // }
+        //println!("{}]", strx);
 
         // Pick steps with initial-region closest to from_reg
         let mut min_diff = std::usize::MAX;
@@ -373,7 +376,17 @@ impl SomeDomain {
         let a_step = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
 
         // Plan and return the next steps
-        self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)
+        if let Some(plnx) = self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur) {
+			if recur == 0 {
+				println!("plan from {} to {} found", &from_reg, &goal_reg);
+		    }
+		    Some(plnx)
+		} else {
+			if recur == 0 {
+				println!("plan from {} to {} not found", &from_reg, &goal_reg);
+		    }
+		    None
+		}
     } // end make_one_plan
 
     // Process a possible step for translation of the from-region to the goal-region.
@@ -398,10 +411,10 @@ impl SomeDomain {
         max_depth: usize,
         recur: usize,
     ) -> Option<SomePlan> {
-        println!(
-            "plan_next_steps: from {} to {} step {}",
-            &from_reg, &goal_reg, &astep
-        );
+        //println!(
+        //    "plan_next_steps: from {} to {} step {}",
+        //    &from_reg, &goal_reg, &astep
+        //);
 
         // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
         let mut aplan = SomePlan::new_step(astep.clone());
@@ -411,13 +424,13 @@ impl SomeDomain {
              // no change needed
         } else if aplan.initial_region().intersects(&from_reg) {
             if let Some(planx) = aplan.restrict_initial_region(&from_reg) {
-                println!(
-                    "restrict initial reg of {} to {} giving {}",
-                    &aplan, &from_reg, &planx
-                );
+                //println!(
+                //    "restrict initial reg of {} to {} giving {}",
+                //    &aplan, &from_reg, &planx
+                //);
                 aplan = planx;
             } else {
-                println!("plan_next_steps, failed at 1");
+                // println!("plan_next_steps, failed at 1");
                 return None;
             }
         } else {
@@ -426,22 +439,22 @@ impl SomeDomain {
                 self.make_one_plan(&from_reg, &aplan.initial_region(), max_depth, recur + 1)
             {
                 if let Some(plany) = planx.link(&aplan) {
-                    println!(
-                        "make plan from {} to {} giving {}",
-                        &from_reg,
-                        &aplan.initial_region(),
-                        &plany
-                    );
+                   // println!(
+                   //     "make plan from {} to {} giving {}",
+                   //     &from_reg,
+                   //     &aplan.initial_region(),
+                   //     &plany
+                   // );
                     aplan = plany;
                 } else {
-                    println!(
-                        "plan_next_steps, failed at 3, linking {} to {}",
-                        &aplan, &planx
-                    );
+                   // println!(
+                   //     "plan_next_steps, failed at 3, linking {} to {}",
+                   //     &aplan, &planx
+                   // );
                     return None;
                 }
             } else {
-                println!("plan_next_steps, failed at 4");
+                // println!("plan_next_steps, failed at 4");
                 return None;
             }
         }
@@ -468,11 +481,11 @@ impl SomeDomain {
             if let Some(planz) = aplan.link(&planw) {
                 return Some(planz); // done
             } else {
-                println!("plan_next_steps, failed at 6");
+                // println!("plan_next_steps, failed at 6");
                 return None;
             }
         } else {
-            println!("plan_next_steps, failed at 7");
+            // println!("plan_next_steps, failed at 7");
             return None;
         }
 

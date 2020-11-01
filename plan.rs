@@ -262,10 +262,10 @@ impl SomePlan {
             for stpx in rc_steps.iter() {
                 for tupx in inx_reg.iter() {
                     if tupx.1 == stpx.initial {
-                        println!(
-                            "make_plan initial region {} at {} found twice at {} in {}",
-                            &stpx.initial, &inx, &tupx.0, &rc_steps
-                        );
+                        //println!(
+                        //    "make_plan initial region {} at {} found twice at {} in {}",
+                        //    &stpx.initial, &inx, &tupx.0, &rc_steps
+                        //);
 
                         if tupx.0 > 0 {
                             //println!("first slice is: {:?}", &rc_steps[0..tupx.0]);
@@ -277,7 +277,7 @@ impl SomePlan {
                             for tmpx in inx..rc_steps.len() {
                                 new_steps.push(rc_steps[tmpx].clone());
                             }
-                            println!("new steps is {}", new_steps);
+                            //println!("new steps is {}", new_steps);
                             not_changed = false;
                             break;
                         } else {
@@ -285,7 +285,7 @@ impl SomePlan {
                             for tmpx in inx..rc_steps.len() {
                                 new_steps.push(rc_steps[tmpx].clone());
                             }
-                            println!("new steps is {}", new_steps);
+                            //println!("new steps is {}", new_steps);
                             not_changed = false;
 
                             break;

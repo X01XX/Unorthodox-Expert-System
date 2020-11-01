@@ -69,7 +69,7 @@ impl SomeGroup {
     }
 
     pub fn check_off(&mut self, boff: &SomeMask) {
-        println!("*** group {} checking off bit {}", &self.region, &boff);
+        //println!("*** group {} checking off bit {}", &self.region, &boff);
         self.not_x_check = self.not_x_check.m_and(&boff.m_not());
     }
 

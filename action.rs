@@ -184,30 +184,30 @@ impl SomeAction {
                             let cnb1 = sqr3.can_combine(&sqr1);
                             match cnb1 {
                                 Combinable::False => {
-                                    println!(
-                                        "*** good, sqr {} is not combinable with {}",
-                                        &sqr3.state, &sqr1.state
-                                    );
+                                    //println!(
+                                    //    "*** good, sqr {} is not combinable with {}",
+                                    //    &sqr3.state, &sqr1.state
+                                    //);
                                     // check distance, if 1, invalidate region, else push new region
                                     let dist = sqr1.state.s_xor(&sqr3.state).num_one_bits();
                                     if dist == 1 {
-                                        println!(
-                                            "Act {} InBetween need, inactivating closer_reg {}",
-                                            &self.num, &greg
-                                        );
+                                      //  println!(
+                                      //      "Act {} InBetween need, inactivating closer_reg {}",
+                                      //      &self.num, &greg
+                                      //  );
                                         self.closer_regs.inactivate(greg);
                                     } else {
                                         let even_closer_reg =
                                             SomeRegion::new(&sqr1.state, &sqr3.state);
-                                        println!("Act {} InBetween need, replacing closer_reg {} with {}", &self.num, &greg, &even_closer_reg);
+                                       // println!("Act {} InBetween need, replacing closer_reg {} with {}", &self.num, &greg, &even_closer_reg);
                                         self.closer_regs.push_nosups(even_closer_reg);
                                     }
                                 }
                                 Combinable::True => {
-                                    println!(
-                                        "*** sqr {} is combinable with {}",
-                                        &sqr3.state, &sqr1.state
-                                    );
+                                    //println!(
+                                    //    "*** sqr {} is combinable with {}",
+                                    //    &sqr3.state, &sqr1.state
+                                    //);
                                 }
                                 Combinable::MoreSamplesNeeded => {}
                             } // end match cnb1
@@ -216,30 +216,30 @@ impl SomeAction {
                             let cnb2 = sqr3.can_combine(&sqr2);
                             match cnb2 {
                                 Combinable::False => {
-                                    println!(
-                                        "*** good, sqr {} is not combinable with {}",
-                                        &sqr3.state, &sqr2.state
-                                    );
+                                   // println!(
+                                   //     "*** good, sqr {} is not combinable with {}",
+                                   //     &sqr3.state, &sqr2.state
+                                   // );
                                     // check distance, if 1, invalidate region, else push new region
                                     let dist = sqr2.state.s_xor(&sqr3.state).num_one_bits();
                                     if dist == 1 {
-                                        println!(
-                                            "Act: {} InBetween need, inactivating closer_reg {}",
-                                            &self.num, &greg
-                                        );
+                                   //     println!(
+                                   //         "Act: {} InBetween need, inactivating closer_reg {}",
+                                   //         &self.num, &greg
+                                   //     );
                                         self.closer_regs.inactivate(greg);
                                     } else {
                                         let even_closer_reg =
                                             SomeRegion::new(&sqr2.state, &sqr3.state);
-                                        println!("Act: {} InBetween need, replacing closer_reg {} with {}", &self.num, &greg, &even_closer_reg);
+                                   //     println!("Act: {} InBetween need, replacing closer_reg {} with {}", &self.num, &greg, &even_closer_reg);
                                         self.closer_regs.push_nosups(even_closer_reg);
                                     }
                                 }
                                 Combinable::True => {
-                                    println!(
-                                        "*** sqr {} is combinable with {}",
-                                        &sqr3.state, &sqr2.state
-                                    );
+                                   // println!(
+                                   //     "*** sqr {} is combinable with {}",
+                                   //     &sqr3.state, &sqr2.state
+                                   // );
                                 }
                                 Combinable::MoreSamplesNeeded => {}
                             } // end match cnb2
@@ -580,7 +580,7 @@ impl SomeAction {
     // If a square in-one-group has an adjacent, similar, square, outside
     // of a group, a new group needs to be added, get needs will be rerun.
     pub fn get_needs(&mut self, cur_state: &SomeState, max_region: &SomeRegion) -> NeedStore {
-        println!("Running Action {}::get_needs {}", self.num, cur_state);
+        // println!("Running Action {}::get_needs {}", self.num, cur_state);
         let mut nds = NeedStore::new();
 
         // Check if current state is in any groups
@@ -747,10 +747,10 @@ impl SomeAction {
                                     let cnb1 = sqr3.can_combine(&sqr1);
                                     match cnb1 {
                                         Combinable::False => {
-                                            println!(
-                                                "sqr {} is not combinable with {}",
-                                                &stax, &sqr1.state
-                                            );
+                                          //  println!(
+                                          //      "sqr {} is not combinable with {}",
+                                          //      &stax, &sqr1.state
+                                          //  );
                                             if sqr1.state.s_xor(&sqr3.state).num_one_bits() == 1 {
                                                 regx.inactivate();
                                             } else {
@@ -859,10 +859,10 @@ impl SomeAction {
                                         );
                                     }
                                     Combinable::True => {
-                                        println!(
-                                            "*** sqr {} is combinable with {}",
-                                            &stax, &sqr1.state
-                                        );
+                                      //  println!(
+                                      //      "*** sqr {} is combinable with {}",
+                                      //      &stax, &sqr1.state
+                                      //  );
                                     }
                                     Combinable::MoreSamplesNeeded => {
                                         if sqr3.num_results() > max_rslts {
@@ -884,10 +884,10 @@ impl SomeAction {
                                         );
                                     }
                                     Combinable::True => {
-                                        println!(
-                                            "*** sqr {} is combinable with {}",
-                                            &stax, &sqr2.state
-                                        );
+                                      //  println!(
+                                      //      "*** sqr {} is combinable with {}",
+                                      //      &stax, &sqr2.state
+                                      //  );
                                     }
                                     Combinable::MoreSamplesNeeded => {
                                         if sqr3.num_results() > max_rslts {
@@ -1007,7 +1007,7 @@ impl SomeAction {
             //			}
 
             // Get a vector of one-bit masks
-            println!("grp {} not_x_check {}", &grpx.region, &grpx.not_x_check);
+           // println!("grp {} not_x_check {}", &grpx.region, &grpx.not_x_check);
 
             let check_bits = grpx.not_x_check.split();
 
@@ -1015,21 +1015,21 @@ impl SomeAction {
 
             for bitx in check_bits.iter() {
                 let regb = grpx.region.toggle_bits(bitx);
-                println!("toggle {} with {} returns {}", &grpx.region, bitx, regb);
+               //println!("toggle {} with {} returns {}", &grpx.region, bitx, regb);
                 let sqr_stas = self.squares.stas_in_reg(&regb);
 
                 let reg_both = regb.union(&grpx.region); // one bit so double the "area"
 
-                println!(
-                    "expand_needs, act {}, check reg {} sqrs {} for expansion of group {}",
-                    &self.num, &regb, &sqr_stas, &grpx.region
-                );
+               // println!(
+               //     "expand_needs, act {}, check reg {} sqrs {} for expansion of group {}",
+               //     &self.num, &regb, &sqr_stas, &grpx.region
+               // );
 
                 if sqr_stas.len() > 0 {
                     if self.squares.no_incompatible_pairs(&sqr_stas) {
                         if let Some(pnc) = self.squares.first_pnc_val(&sqr_stas) {
                             if pnc != grpx.pn {
-                                println!("*** pnc {} != grpc.pn {}", &pnc, &grpx.pn);
+                              //  println!("*** pnc {} != grpc.pn {}", &pnc, &grpx.pn);
                                 ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                     act_num: self.num,
                                     group_region: grpx.region.clone(),
@@ -1042,10 +1042,10 @@ impl SomeAction {
                                         ret_nds
                                             .append(&mut self.far_needs(&reg_both, &grpx.region));
                                     } else {
-                                        println!(
-                                            "*** rulesx {} union with grp rules {} is None",
-                                            rulsx, &grpx.rules
-                                        );
+                                       // println!(
+                                        //    "*** rulesx {} union with grp rules {} is None",
+                                       //     rulsx, &grpx.rules
+                                       // );
                                         ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                             act_num: self.num,
                                             group_region: grpx.region.clone(),
@@ -1053,19 +1053,19 @@ impl SomeAction {
                                         });
                                     }
                                 } else {
-                                    println!(
-                                        "*** no rules union for squares {} for pnc {}",
-                                        &sqr_stas, &pnc
-                                    );
+                                   // println!(
+                                   //     "*** no rules union for squares {} for pnc {}",
+                                  //      &sqr_stas, &pnc
+                                  //  );
                                     ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                         act_num: self.num,
                                         group_region: grpx.region.clone(),
                                         mbit: bitx.clone(),
                                     });
-                                    println!(
-                                        "Act {} rules_union fails for {} ?",
-                                        &self.num, &sqr_stas
-                                    );
+                                 //   println!(
+                                 //       "Act {} rules_union fails for {} ?",
+                                 //       &self.num, &sqr_stas
+                                 //   );
                                 }
                             }
                         } else {
@@ -1081,10 +1081,10 @@ impl SomeAction {
                                     } else {
                                         // extra region rules do not form a union with the group rules
                                         // Set non-x_bit off
-                                        println!(
-                                            "*** rulsx {} union grp ruls {} is None",
-                                            &rulsx, &grpx.rules
-                                        );
+                                      //  println!(
+                                       //     "*** rulsx {} union grp ruls {} is None",
+                                      //      &rulsx, &grpx.rules
+                                      //  );
                                         ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                             act_num: self.num,
                                             group_region: grpx.region.clone(),
@@ -1093,10 +1093,10 @@ impl SomeAction {
                                     }
                                 } else {
                                     // squares in extra region cannot form rules
-                                    println!(
-                                        "*** sqrs {} union under pn {} returned None",
-                                        &sqr_stas, &pnx
-                                    );
+                                //    println!(
+                                //        "*** sqrs {} union under pn {} returned None",
+                                 //       &sqr_stas, &pnx
+                                //    );
                                     ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                         act_num: self.num,
                                         group_region: grpx.region.clone(),
@@ -1105,7 +1105,7 @@ impl SomeAction {
                                 }
                             } else if pnx > grpx.pn {
                                 // Set non-x_bit off
-                                println!("*** pnx {} != grpx.pn {}", &pnx, &grpx.pn);
+                        //        println!("*** pnx {} != grpx.pn {}", &pnx, &grpx.pn);
                                 ret_nds.push(SomeNeed::ClearGroupCheckBit {
                                     act_num: self.num,
                                     group_region: grpx.region.clone(),
@@ -1118,7 +1118,7 @@ impl SomeAction {
                         } // end if pnc
                     } else {
                         // incompatible squares found
-                        println!("*** incompatible squares in {}", &sqr_stas);
+                       // println!("*** incompatible squares in {}", &sqr_stas);
                         ret_nds.push(SomeNeed::ClearGroupCheckBit {
                             act_num: self.num,
                             group_region: grpx.region.clone(),
@@ -1250,7 +1250,7 @@ impl SomeAction {
     // Recheck the rating of the current anchor, and other possible anchors,
     // in case the anchor should be changed.
     fn confirm_groups_needs(&mut self, max_region: &SomeRegion) -> NeedStore {
-        println!("confirm_groups_needs");
+        //println!("confirm_groups_needs");
         let mut ret_nds = NeedStore::new();
 
         let regs = self.groups.regions();
@@ -1258,15 +1258,15 @@ impl SomeAction {
         let states1 = self.squares.states_in_1_region(&regs);
 
         let anchors = self.groups.anchors();
-        println!("anchors {}", &anchors);
+        //println!("anchors {}", &anchors);
 
-        println!("Act {}, states in one region {}", self.num, states1);
+        //println!("Act {}, states in one region {}", self.num, states1);
 
         // Find squares in one group for each group, that may be an anchor
         for greg in regs.iter() {
             let mut stsin = greg.states_in(&states1); // The states in greg and no other group
 
-            println!("Act {} Group {} States {}", self.num, greg, stsin);
+           // println!("Act {} Group {} States {}", self.num, greg, stsin);
 
             // Look for states in greg that have not been sampled and are adjacent to an
             // external square that is in only one group.
@@ -1277,7 +1277,7 @@ impl SomeAction {
                     if self.groups.num_groups_state_in(&adj_sta) == 1 {
                         if states1.contains(&adj_sta) {
                         } else {
-                            println!("adding state {} for group {} to state1", &adj_sta, &greg);
+                            //println!("adding state {} for group {} to state1", &adj_sta, &greg);
                             stsin.push(adj_sta);
                         }
                     } // end if self.groups
@@ -1328,10 +1328,10 @@ impl SomeAction {
                 // Process adjacent external states
                 for non_x_bit in non_x_msks.iter() {
                     let sta_adj = SomeState::new(sta1.bts.b_xor(non_x_bit));
-                    println!(
-                        "checking {} adjacent to {} external to {}",
-                        &sta_adj, &sta1, &greg
-                    );
+                    //println!(
+                    //    "checking {} adjacent to {} external to {}",
+                    //    &sta_adj, &sta1, &greg
+                   // );
                     if anchors.contains(&sta_adj) {
                         //println!("{} is an anchor", &sta_adj);
                         cnt += 1000;
@@ -1361,7 +1361,7 @@ impl SomeAction {
                     }
                 }
 
-                println!("group {} anchor {} rating {}", &greg, &cfmx[0], cnt);
+                //println!("group {} anchor {} rating {}", &greg, &cfmx[0], cnt);
 
                 if cnt > max_num {
                     max_num = cnt;
@@ -1387,10 +1387,10 @@ impl SomeAction {
                         }
 
                         if in_flag {
-                            println!(
-                                "group {} anchor {} rating confirmed at {}",
-                                &greg, &anchor, max_num
-                            );
+                           // println!(
+                           //     "group {} anchor {} rating confirmed at {}",
+                           //     &greg, &anchor, max_num
+                          //  );
                             continue;
                         }
                     }
@@ -1411,7 +1411,7 @@ impl SomeAction {
             let anchor_sta = &cfm_max[0];
             if let Some(anchor_sqr) = self.squares.find(anchor_sta) {
                 if anchor_sqr.pnc() {
-                    println!("group {} anchor {} pnc", &greg, &anchor_sta);
+                    // println!("group {} anchor {} pnc", &greg, &anchor_sta);
                 } else {
                     // Get additional samples of the anchor
                     ret_nds.push(SomeNeed::ConfirmGroup {
@@ -1448,7 +1448,7 @@ impl SomeAction {
                         continue;
                     }
 
-                    println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
+                    //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 
                     if let Some(adj_sqr) = self.squares.find(adj_sta) {
                         if adj_sqr.pnc() {
@@ -1491,24 +1491,24 @@ impl SomeAction {
             } // end if let group find
 
             if nds_grp_add.len() > 0 {
-                println!("*** nds_grp_add {}", &nds_grp_add);
+               // println!("*** nds_grp_add {}", &nds_grp_add);
                 ret_nds.append(&mut nds_grp_add);
                 continue; // next greg
             }
 
             if nds_grp.len() > 0 {
-                println!("*** nds_grp {}", &nds_grp);
+              //  println!("*** nds_grp {}", &nds_grp);
                 ret_nds.append(&mut nds_grp);
                 continue; // next greg
             }
 
             if grp_clear_bit.len() > 0 {
-                println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
+              //  println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
                 ret_nds.append(&mut grp_clear_bit);
                 // pass-through to check far square
             }
 
-            println!("grp {} check far", &greg);
+         //   println!("grp {} check far", &greg);
 
             // Process far state, after the anchor and adjaent, external, tests have been made.
             // If its dissimilar to the anchor, the group will be invalidated.
