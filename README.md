@@ -12,7 +12,8 @@ gets a progressively better understanding of what the actions do.  The program s
 improve its understanding.
 
 The goal is a better and better understanding of the effects of the actions, due to samples gathered by circumstance and
-intention. Then be able to plan, and execute, a series of actions to change the current state to a goal state.
+intention. Then be able to plan, and execute, a series of actions to change the current state to a goal state.  The command
+"to r0101" will attempt to change the current state to 0101.
 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
