@@ -37,7 +37,7 @@ pub struct ResultStore {
 impl ResultStore {
     pub fn new(st: SomeState) -> Self {
         let mut ret = Self {
-            astore: VecDeque::<SomeState>::new(),
+            astore: VecDeque::<SomeState>::with_capacity(MAX_RESULTS),
             pn: Pn::One,
             changed: true,
             pnc: false,
@@ -53,12 +53,12 @@ impl ResultStore {
     pub fn push_wrap(&mut self, st: SomeState) -> bool {
         self.changed = false;
 
-        self.astore.push_back(st);
-
         if self.astore.len() >= MAX_RESULTS {
             self.astore.pop_front();
         }
 
+        self.astore.push_back(st);
+        
         self.num_results += 1;
 
         let pnx = self.calc_pn();
