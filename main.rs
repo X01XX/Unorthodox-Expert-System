@@ -10,10 +10,12 @@
 //)]
 
 mod bits;
-use bits::SomeBits;
+//use bits::SomeBits;
+mod bitsstore;
 mod state;
-use state::SomeState;
+//use state::SomeState;
 mod mask;
+mod maskstore;
 mod region;
 use region::SomeRegion;
 mod action;
@@ -65,8 +67,8 @@ fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
     }
 }
 
-fn init_domain(cur: SomeState) -> SomeDomain {
-    let mut dmx = SomeDomain::new(cur);
+fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
+    let mut dmx = SomeDomain::new(num_ints, cur);
     dmx.add_action(action0);
     dmx.add_action(action1);
     dmx.add_action(action2);
@@ -77,17 +79,9 @@ fn init_domain(cur: SomeState) -> SomeDomain {
 }
 
 fn main() {
-//    tests::run_tests();
-//    if let Ok(reg1) = SomeRegion::new_from_string("rxx0101", 1) {
-//        if let Ok(reg2) = SomeRegion::new_from_string("r10xx10", 1) {
-//            let rulx = SomeRule::region_to_region(&reg1, &reg2);
-//            println!("\n{} to\n{} =\nrulx = {}", &reg1, &reg2, &rulx);
-//        }
-//    }
+    //pause_for_enter("");
 
-//    pause_for_enter("");
-
-    let mut dm1 = init_domain(SomeState::new(SomeBits::new(vec![2 as u8]))); // init state to 1 u8 integer of bits, may be higher
+    let mut dm1 = init_domain(1, "s0010"); // init state to 1 u8 integer of bits, may be higher
     let num_actions = dm1.num_actions();
 
     usage();
@@ -123,7 +117,7 @@ fn main() {
             let nds: NeedStore = dm1.get_needs();
 
             if nds.len() > 0 {
-				println!("\nAction needs: {}", nds);
+                println!("\nAction needs: {}", nds);
 
                 //let curst = dm1.cur_state.clone();
                 if satisfy_need(&mut dm1, &nds) {
@@ -133,8 +127,8 @@ fn main() {
                     println!("no need satisfied");
                 }
             } else {
-			    println!("\nAction needs: None");
-			}
+                println!("\nAction needs: None");
+            }
             continue;
         } // end zero length commands
 
@@ -160,6 +154,12 @@ fn main() {
                 println!("\nActs: {}", dm1.get_needs());
                 continue;
             } // end gn command
+
+            if cmd[0] == "tests" {
+                tests::run_tests();
+                continue;
+            }
+
             println!("\nDid not understand command: {}", guess);
             continue;
         } // end one-word commands
@@ -168,7 +168,7 @@ fn main() {
         if cmd.len() == 2 {
             // Change current-state to a region
             if cmd[0] == "to" {
-                let region_r = SomeRegion::new_from_string(&cmd[1], dm1.num_ints);
+                let region_r = dm1.region_from_string(&cmd[1]);
                 match region_r {
                     Ok(goal_region) => {
                         println!(
@@ -288,7 +288,7 @@ fn main() {
                     continue;
                 }
 
-                let state_r = SomeState::new_from_string(&cmd[2], dm1.num_ints);
+                let state_r = dm1.state_from_string(&cmd[2]);
                 match state_r {
                     Ok(a_state) => {
                         println!("Act {} sample State {}", act_num, a_state);
@@ -328,7 +328,7 @@ fn main() {
                     continue;
                 }
 
-                let state_r = SomeState::new_from_string(&cmd[2], dm1.num_ints);
+                let state_r = dm1.state_from_string(&cmd[2]);
                 match state_r {
                     Ok(a_state) => {
                         println!("Act {} sample State {}", act_num, a_state);
@@ -358,7 +358,7 @@ fn main() {
                     continue;
                 }
 
-                if let Ok(aregion) = SomeRegion::new_from_string(&cmd[2], dm1.num_ints) {
+                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
                     println!(
                         "Squares of Act {} in region {} are \n{}\n",
                         &act_num,
@@ -378,7 +378,7 @@ fn main() {
                     continue;
                 }
 
-                if let Ok(aregion) = SomeRegion::new_from_string(&cmd[2], dm1.num_ints) {
+                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
                     let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
                     println!("Squares adj to {} are {}", &aregion, &stas);
                 } else {
@@ -394,7 +394,7 @@ fn main() {
                     continue;
                 }
 
-                if let Ok(aregion) = SomeRegion::new_from_string(&cmd[2], dm1.num_ints) {
+                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
                     let sta_1s = dm1.actions[act_num]
                         .squares
                         .states_in_1_region(&dm1.actions[act_num].groups.regions());
@@ -423,10 +423,10 @@ fn main() {
                     continue;
                 }
 
-                let i_state_rslt = SomeState::new_from_string(&cmd[2], dm1.num_ints);
+                let i_state_rslt = dm1.state_from_string(&cmd[2]);
                 match i_state_rslt {
                     Ok(i_state) => {
-                        let r_state_rslt = SomeState::new_from_string(&cmd[3], dm1.num_ints);
+                        let r_state_rslt = dm1.state_from_string(&cmd[3]);
                         match r_state_rslt {
                             Ok(r_state) => {
                                 println!(
@@ -489,6 +489,7 @@ fn usage() {
     println!("    ss <act num>             - Action to sample the current state.");
     println!("    ss <act num> <state>     - Action to sample state.");
     println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
+    println!("    tests                    - run tests and experimental code in tests.rs");
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
 

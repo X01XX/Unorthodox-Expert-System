@@ -75,7 +75,7 @@ impl PartialEq for Pn {
     }
 }
 
-#[derive(Eq, Clone, Copy)]
+#[derive(Eq, Clone, Copy, Debug)]
 pub enum Pn {
     One,           // Only one result for a state
     Two,           // Two predictable results/order for a state

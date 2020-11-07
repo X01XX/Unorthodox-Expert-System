@@ -22,16 +22,24 @@ pub struct SomeDomain {
 }
 
 impl SomeDomain {
-    pub fn new(cur: SomeState) -> Self {
-        SomeDomain {
-            num_ints: cur.num_ints(),
+    pub fn new(num_ints: usize, start_state: &str) -> Self {
+        let cur = SomeState::new(SomeBits::new(vec![2 as u8])); // placeholder
+
+        let mut ret_dm = SomeDomain {
+            num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
             max_region: SomeRegion::new(&cur, &cur),
+        };
+
+        if let Ok(cur) = ret_dm.state_from_string(&start_state) {
+            ret_dm.max_region = SomeRegion::new(&cur, &cur);
+            ret_dm.cur_state = cur;
         }
+        ret_dm
     }
 
-    pub fn add_action(&mut self, fx: fn(&SomeState) -> SomeState) {
+    pub fn add_action(&mut self, fx: fn(&SomeState, usize) -> SomeState) {
         self.actions.add(SomeAction::new(self.actions.len(), fx)); // Add an action
     }
 
@@ -184,7 +192,7 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         let actions = &self.actions;
 
-       // println!("plan from {} to {}",&from_reg, &goal_reg, recur);
+        // println!("plan from {} to {}",&from_reg, &goal_reg, recur);
 
         // Check for the maximum depth of recursion
         // Recursion can also be ended by not finding a step for a desired change.
@@ -213,9 +221,9 @@ impl SomeDomain {
         let stpsx = actions.get_steps(&rule_agg);
 
         if stpsx.len() == 0 {
-			if recur == 0 {
-				println!("plan from {} to {} not found", &from_reg, &goal_reg);
-		    }
+            if recur == 0 {
+                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            }
             //println!("No steps found");
             return None;
         }
@@ -237,9 +245,9 @@ impl SomeDomain {
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
             //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
-			if recur == 0 {
-				println!("plan from {} to {} not found", &from_reg, &goal_reg);
-		    }
+            if recur == 0 {
+                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            }
             //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
@@ -272,13 +280,13 @@ impl SomeDomain {
 
         // Print step vector
         //println!("stp_cngs:");
-       // for vecx in stp_cngs.iter() {
-       //     let mut strx = String::from("  [");
+        // for vecx in stp_cngs.iter() {
+        //     let mut strx = String::from("  [");
         //    for stpx in vecx.iter() {
         //        strx.push_str(&format!("{}, ", stpx));
         //    }
         //    println!("{}]", strx);
-       // }
+        // }
 
         // Look for one step that makes the whole change
         for vecx in stp_cngs.iter() {
@@ -351,10 +359,10 @@ impl SomeDomain {
 
         // Print steps selected
         //let mut strx = String::from("Steps selected for max diff from goal: ");
-       // strx.push_str(&format!("{} [", &goal_reg));
-      //  for stpx in max_diff_goal.iter() {
-       //     strx.push_str(&format!("{}, ", stpx));
-       // }
+        // strx.push_str(&format!("{} [", &goal_reg));
+        //  for stpx in max_diff_goal.iter() {
+        //     strx.push_str(&format!("{}, ", stpx));
+        // }
         //println!("{}]", strx);
 
         // Pick steps with initial-region closest to from_reg
@@ -376,17 +384,19 @@ impl SomeDomain {
         let a_step = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
 
         // Plan and return the next steps
-        if let Some(plnx) = self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur) {
-			if recur == 0 {
-				println!("plan from {} to {} found", &from_reg, &goal_reg);
-		    }
-		    Some(plnx)
-		} else {
-			if recur == 0 {
-				println!("plan from {} to {} not found", &from_reg, &goal_reg);
-		    }
-		    None
-		}
+        if let Some(plnx) =
+            self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)
+        {
+            if recur == 0 {
+                println!("plan from {} to {} found", &from_reg, &goal_reg);
+            }
+            Some(plnx)
+        } else {
+            if recur == 0 {
+                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            }
+            None
+        }
     } // end make_one_plan
 
     // Process a possible step for translation of the from-region to the goal-region.
@@ -439,18 +449,18 @@ impl SomeDomain {
                 self.make_one_plan(&from_reg, &aplan.initial_region(), max_depth, recur + 1)
             {
                 if let Some(plany) = planx.link(&aplan) {
-                   // println!(
-                   //     "make plan from {} to {} giving {}",
-                   //     &from_reg,
-                   //     &aplan.initial_region(),
-                   //     &plany
-                   // );
+                    // println!(
+                    //     "make plan from {} to {} giving {}",
+                    //     &from_reg,
+                    //     &aplan.initial_region(),
+                    //     &plany
+                    // );
                     aplan = plany;
                 } else {
-                   // println!(
-                   //     "plan_next_steps, failed at 3, linking {} to {}",
-                   //     &aplan, &planx
-                   // );
+                    // println!(
+                    //     "plan_next_steps, failed at 3, linking {} to {}",
+                    //     &aplan, &planx
+                    // );
                     return None;
                 }
             } else {
@@ -491,4 +501,77 @@ impl SomeDomain {
 
         // nothing will get this far
     } // end plan_next_steps
+
+    // Return a State from a string, like "s0101".
+    // Left-most, consecutive, zeros can be omitted.
+    pub fn state_from_string(&self, str: &str) -> Result<SomeState, usize> {
+        let mut bts = SomeBits::new_low(self.num_ints);
+
+        let mut inx = -1;
+
+        for ch in str.chars() {
+            inx += 1;
+
+            if inx == 0 {
+                if ch == 's' {
+                    continue;
+                } else {
+                    return Err(1);
+                }
+            }
+
+            if ch == '0' {
+                bts = bts.shift_left();
+            } else if ch == '1' {
+                bts = bts.push_1();
+            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
+                continue;
+            } else {
+                return Err(2);
+            }
+        } // end for ch
+
+        Ok(SomeState::new(bts))
+    } // end state_from_string
+
+    // Return a Region from a string, like "r01X1".
+    // Left-most, consecutive, zeros can be omitted.
+    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, usize> {
+        let mut bts_high = SomeBits::new_low(self.num_ints);
+        let mut bts_low = SomeBits::new_low(self.num_ints);
+
+        let mut inx = -1;
+
+        for ch in str.chars() {
+            inx += 1;
+
+            if inx == 0 {
+                if ch == 'r' {
+                    continue;
+                } else {
+                    return Err(1);
+                }
+            }
+
+            if ch == '0' {
+                bts_high = bts_high.shift_left();
+                bts_low = bts_low.shift_left();
+            } else if ch == '1' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.push_1();
+            } else if ch == 'x' || ch == 'X' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.shift_left();
+            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
+                continue;
+            } else {
+                return Err(2);
+            }
+        } // end for ch
+
+        Ok(SomeRegion::new(
+            &SomeState::new(bts_high),
+            &SomeState::new(bts_low),
+        ))
+    } // end region_from_string
 }

@@ -55,7 +55,7 @@ impl GroupStore {
             if grpx.active {
                 if grpx.region.is_superset_of_state(&sqrx.state) {
                     if grpx.square_is_ok(&sqrx) == false {
-                        println!("sqr {} invlidate group {}", sqrx, grpx.region);
+                        println!("sqr {} invalidate group {}", sqrx, grpx.region);
                         regs_invalid.push(grpx.region.clone());
                         grpx.inactivate();
                     }
@@ -223,7 +223,7 @@ impl GroupStore {
         None
     }
 
-    // Return a steps that have any change intersection with a given aggregate rule.
+    // Return steps that have any change intersection with a given aggregate rule.
     pub fn get_steps(&self, arule: &SomeRule, act_num: usize) -> StepStore {
         let mut stps = StepStore::new();
 
@@ -236,18 +236,28 @@ impl GroupStore {
             }
 
             match grpx.pn {
-                Pn::Unpredictable => {}
-                _ => {
-                    for rulx in grpx.rules.iter() {
-                        // Find bit changes that are desired
-                        let ones = rulx.b10.m_and(&one_chg);
-                        let zeros = rulx.b01.m_and(&zero_chg);
+                Pn::One => {
+                    // Find bit changes that are desired
+                    let ones = grpx.rules[0].b10.m_and(&one_chg);
+                    let zeros = grpx.rules[0].b01.m_and(&zero_chg);
 
-                        if ones.is_not_low() || zeros.is_not_low() {
-                            stps.push(SomeStep::new(act_num, 1, rulx.clone()));
-                        }
-                    } // end rule iter
-                } // end _ match variant
+                    if ones.is_not_low() || zeros.is_not_low() {
+                        stps.push(SomeStep::new(act_num, grpx.rules[0].clone(), None));
+                    }
+                }
+                Pn::Two => {
+                    let ones = grpx.rules[0].b10.m_and(&one_chg);
+                    let zeros = grpx.rules[0].b01.m_and(&zero_chg);
+
+                    if ones.is_not_low() || zeros.is_not_low() {
+                        stps.push(SomeStep::new(
+                            act_num,
+                            grpx.rules[0].clone(),
+                            Some(grpx.rules[1].clone()),
+                        ));
+                    }
+                } // end match Two
+                Pn::Unpredictable => {}
             } // end match pn
         } // next grpx
 

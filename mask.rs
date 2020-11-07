@@ -96,6 +96,7 @@ impl SomeMask {
     }
 
     // Return a vector of one-bit masks
+    // Should be called like MaskStore { avec: <a mask object>.split() }
     pub fn split(&self) -> Vec<Self> {
         let bitsx = self.bts.split();
 

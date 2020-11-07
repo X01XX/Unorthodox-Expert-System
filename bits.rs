@@ -107,6 +107,7 @@ impl SomeBits {
 
     // Return a vector of bits where each has only
     // one 1 bit isolated from the given Bits struct.
+    // Should be called like BitsStore { avec: <a bits object>.split() }
     pub fn split(&self) -> Vec<Self> {
         let num_bits = self.num_one_bits();
 

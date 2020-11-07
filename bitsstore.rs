@@ -1,11 +1,11 @@
-// Implement a store for masks
+// Implement a store for bits
 
-use crate::mask::SomeMask;
+use crate::bits::SomeBits;
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
 
-impl fmt::Display for MaskStore {
+impl fmt::Display for BitsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut flg = 0;
         let mut rc_str = String::from("[");
@@ -23,33 +23,33 @@ impl fmt::Display for MaskStore {
     }
 }
 
-pub struct MaskStore {
-    pub avec: Vec<SomeMask>,
+pub struct BitsStore {
+    pub avec: Vec<SomeBits>,
 }
 
-impl MaskStore {
+impl BitsStore {
     pub fn _new() -> Self {
         Self {
-            avec: Vec::<SomeMask>::with_capacity(5),
+            avec: Vec::<SomeBits>::with_capacity(5),
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn _len(&self) -> usize {
         self.avec.len()
     }
 
-    pub fn _add(&mut self, val: SomeMask) {
+    pub fn _add(&mut self, val: SomeBits) {
         self.avec.push(val);
     }
 
-    pub fn iter(&self) -> Iter<SomeMask> {
+    pub fn iter(&self) -> Iter<SomeBits> {
         self.avec.iter()
     }
 }
 
-impl Index<usize> for MaskStore {
-    type Output = SomeMask;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeMask {
+impl Index<usize> for BitsStore {
+    type Output = SomeBits;
+    fn index<'a>(&'a self, i: usize) -> &'a SomeBits {
         &self.avec[i]
     }
 }

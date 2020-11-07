@@ -39,38 +39,6 @@ impl SomeState {
         }
     }
 
-    // Return a State from a string, like "s0101".
-    // Left-most, consecutive, zeros can be omitted.
-    pub fn new_from_string(str: &str, num_ints: usize) -> Result<SomeState, usize> {
-        let mut bts = SomeBits::new_low(num_ints);
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 's' {
-                    continue;
-                } else {
-                    return Err(1);
-                }
-            }
-
-            if ch == '0' {
-                bts = bts.shift_left();
-            } else if ch == '1' {
-                bts = bts.push_1();
-            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
-                continue;
-            } else {
-                return Err(2);
-            }
-        } // end for ch
-
-        Ok(SomeState::new(bts))
-    }
-
     // Return true is a given bit is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)

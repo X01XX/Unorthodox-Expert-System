@@ -3,6 +3,7 @@
 //use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+//use crate::group::SomeGroup;
 use std::fmt;
 
 impl fmt::Display for SomeStep {
@@ -13,54 +14,46 @@ impl fmt::Display for SomeStep {
     }
 }
 
-//#[derive(Debug, Clone, Copy)]
 #[derive(Debug)]
 pub struct SomeStep {
     pub initial: SomeRegion,
     pub act_num: usize,
     pub result: SomeRegion,
-    pub hint: usize,
     pub rule: SomeRule,
-    //    pub mark: usize,
+    pub alt_rule: Option<SomeRule>,
 }
-
-//impl Copy for SomeStep {}
-
-//impl Clone for SomeStep {
-//    fn clone(&self) -> Self {
-//        Self {
-//            initial: self.initial,
-//            act_num: self.act_num,
-//            result: self.result,
-//            hint: self.hint,
-//            rule: self.rule,
-//        }
-//    }
-//}
 
 impl SomeStep {
     // Return a new Step struct instance
-    pub fn new(act_num: usize, hint: usize, rule: SomeRule) -> Self {
-        //let msk = rule.b01.m_or(&rule.b10);
+    pub fn new(act_num: usize, rule: SomeRule, alt_rule: Option<SomeRule>) -> Self {
         let initial = rule.initial_region();
         let result = rule.result_region();
         Self {
             initial,
             act_num,
             result,
-            hint,
             rule,
-            //mark: 0,
+            alt_rule,
         }
     }
 
     pub fn clone(&self) -> Self {
-        Self {
-            initial: self.initial.clone(),
-            act_num: self.act_num,
-            result: self.result.clone(),
-            hint: self.hint,
-            rule: self.rule.clone(),
+        if let Some(alt_rule) = &self.alt_rule {
+            Self {
+                initial: self.initial.clone(),
+                act_num: self.act_num,
+                result: self.result.clone(),
+                rule: self.rule.clone(),
+                alt_rule: Some(alt_rule.clone()),
+            }
+        } else {
+            Self {
+                initial: self.initial.clone(),
+                act_num: self.act_num,
+                result: self.result.clone(),
+                rule: self.rule.clone(),
+                alt_rule: None,
+            }
         }
     }
 
@@ -71,12 +64,22 @@ impl SomeStep {
 
         let init_reg = self.initial.intersection(&reg);
 
-        Self {
-            initial: init_reg.clone(),
-            act_num: self.act_num,
-            result: self.rule.result_from_initial(&init_reg),
-            hint: self.hint,
-            rule: self.rule.clone(),
+        if let Some(alt_rule) = &self.alt_rule {
+            Self {
+                initial: init_reg.clone(),
+                act_num: self.act_num,
+                result: self.rule.result_from_initial(&init_reg),
+                rule: self.rule.clone(),
+                alt_rule: Some(alt_rule.clone()),
+            }
+        } else {
+            Self {
+                initial: init_reg.clone(),
+                act_num: self.act_num,
+                result: self.rule.result_from_initial(&init_reg),
+                rule: self.rule.clone(),
+                alt_rule: None,
+            }
         }
     }
 
@@ -87,12 +90,22 @@ impl SomeStep {
 
         let rslt_reg = self.result.intersection(&reg);
 
-        Self {
-            initial: self.rule.initial_from_result(&rslt_reg),
-            act_num: self.act_num,
-            result: rslt_reg,
-            hint: self.hint,
-            rule: self.rule.clone(),
+        if let Some(alt_rule) = &self.alt_rule {
+            Self {
+                initial: self.rule.initial_from_result(&rslt_reg),
+                act_num: self.act_num,
+                result: rslt_reg,
+                rule: self.rule.clone(),
+                alt_rule: Some(alt_rule.clone()),
+            }
+        } else {
+            Self {
+                initial: self.rule.initial_from_result(&rslt_reg),
+                act_num: self.act_num,
+                result: rslt_reg,
+                rule: self.rule.clone(),
+                alt_rule: None,
+            }
         }
     }
 
