@@ -254,15 +254,19 @@ impl RuleStore {
                 // return Some(ars);
             }
 
-            if ars.len() > 0 && ars2.len() == 0 {
+            if ars.len() > 0 && ars2.len() > 0 {
+                return ars.union(&ars2);
+			}
+							
+            if ars.len() > 0 {
                 return Some(ars);
             }
 
-            if ars.len() == 0 && ars2.len() > 0 {
-                return Some(ars);
+            if ars2.len() > 0 {
+                return Some(ars2);
             }
 
-            return ars.union(&ars2);
+            None
         } else {
             panic!("not ready for pn {}!", self.len());
         }
