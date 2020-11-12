@@ -2,7 +2,7 @@
 // which represents the best guess of the expected responses
 // of executing an action.
 //
-use crate::bits::SomeBits;
+//use crate::bits::SomeBits;
 use crate::bitsstore::BitsStore;
 use crate::combinable::Combinable;
 use crate::group::SomeGroup;
@@ -83,7 +83,7 @@ pub struct SomeAction {
     pub num: usize,
     pub groups: GroupStore,
     pub squares: SquareStore,
-    pub to_run: fn(&SomeState, usize) -> SomeState,
+    to_run: fn(&SomeState, usize) -> SomeState,
     pub closer_regs: RegionStore,
 }
 
@@ -106,17 +106,13 @@ impl SomeAction {
         cur: &SomeState,
         ndx: &SomeNeed,
         max_region: &SomeRegion,
+        hv: usize,
     ) -> SomeState {
         println!("take_action_need");
         // Get the result, the sample is cur -> new_state
 
-        // Temporary, for testing
-        let mut num_seen = 0;
-        if let Some(sqrx) = self.squares.find(&cur) {
-            num_seen = sqrx.num_results();
-        }
-
-        let new_state = (self.to_run)(cur, num_seen);
+        let new_state = (self.to_run)(cur, hv);
+        //self.store_sample(&cur, &new_state, &max_region);
 
         // Process each kind of need
         match ndx {
@@ -189,7 +185,8 @@ impl SomeAction {
                 if let Some(sqr1) = self.squares.find(&greg.state1) {
                     if let Some(sqr2) = self.squares.find(&greg.state2) {
                         if let Some(sqr3) = self.squares.find(&sta) {
-                            // TODO process next sample of square in-between
+                            // Process next sample of square in-between for new square and state1 square
+                            // Should be different from state1 square or state2 square
                             let cnb1 = sqr3.can_combine(&sqr1);
                             match cnb1 {
                                 Combinable::False => {
@@ -221,7 +218,8 @@ impl SomeAction {
                                 Combinable::MoreSamplesNeeded => {}
                             } // end match cnb1
 
-                            // TODO cnb2
+                            // Process next sample of square in-between for new square and state2 square
+                            // Should be different from state1 square or state2 square
                             let cnb2 = sqr3.can_combine(&sqr2);
                             match cnb2 {
                                 Combinable::False => {
@@ -282,16 +280,15 @@ impl SomeAction {
         self.store_sample(&init_state, &rslt_state, &max_region);
     }
 
-    pub fn take_action_step(&mut self, cur: &SomeState, max_region: &SomeRegion) -> SomeState {
+    pub fn take_action_step(
+        &mut self,
+        cur: &SomeState,
+        max_region: &SomeRegion,
+        hv: usize,
+    ) -> SomeState {
         //println!("take_action_step");
 
-        // Temporary, for testing
-        let mut num_seen = 0;
-        if let Some(sqrx) = self.squares.find(&cur) {
-            num_seen = sqrx.num_results();
-        }
-
-        let new_state = (self.to_run)(cur, num_seen);
+        let new_state = (self.to_run)(cur, hv);
 
         self.eval_sample_step(cur, &new_state, &max_region);
 
@@ -330,7 +327,7 @@ impl SomeAction {
                     return false;
                 }
                 None => {
-                    println!("No square found for state {}", cur);
+                    //println!("No square found for state {}", cur);
                 }
             }
         }
@@ -340,10 +337,12 @@ impl SomeAction {
 
         // Get num active groups in
         let num_grps_in = self.groups.num_groups_state_in(cur);
-        println!(
-            "sqr {} in {} groups, invalidated {}",
-            cur, num_grps_in, num_grps_invalidated
-        );
+        if num_grps_invalidated > 0 {
+            println!(
+                "sqr {} in {} groups, invalidated {}",
+                cur, num_grps_in, num_grps_invalidated
+            );
+        }
 
         if num_grps_invalidated > 0 || num_grps_in == 0 {
             self.store_sample(cur, new_state, &max_region);
@@ -354,7 +353,7 @@ impl SomeAction {
 
     // Evaluate a sample produced for a need.
     // It is expected that the sample needs to be stored,
-    pub fn store_sample(
+    fn store_sample(
         &mut self,
         cur: &SomeState,
         new_state: &SomeState,
@@ -832,7 +831,7 @@ impl SomeAction {
 
                 let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
-                let mut dif_msk = SomeMask::new(SomeBits::new_low(cur_state.num_ints()));
+                let mut dif_msk = SomeMask::new(cur_state.bts.new_low());
 
                 let mut inx = 0;
                 for mskx in dif_bits.iter() {
@@ -2007,6 +2006,16 @@ impl SomeAction {
 
     pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
         self.groups.new_x_bits(&bitsx);
+    }
+
+    // Return true if a group exists and is active
+    pub fn group_exists_and_active(&self, group_reg: &SomeRegion) -> bool {
+        if let Some(grpx) = self.groups.find(group_reg) {
+            if grpx.active {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Get a random choice of a number of unique numbers (num_results) to a

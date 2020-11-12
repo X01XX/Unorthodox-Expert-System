@@ -1,6 +1,6 @@
 // Region struct for an Unorthodox Expert System
 
-use crate::bits::SomeBits;
+//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::maskstore::MaskStore;
 use crate::state::SomeState;
@@ -76,47 +76,6 @@ impl SomeRegion {
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
         }
         s1
-    }
-
-    // Return a Region from a string, like "r01X1".
-    // Left-most, consecutive, zeros can be omitted.
-    pub fn _new_from_string(str: &str, num_ints: usize) -> Result<Self, usize> {
-        let mut bts_high = SomeBits::new_low(num_ints);
-        let mut bts_low = SomeBits::new_low(num_ints);
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 'r' {
-                    continue;
-                } else {
-                    return Err(1);
-                }
-            }
-
-            if ch == '0' {
-                bts_high = bts_high.shift_left();
-                bts_low = bts_low.shift_left();
-            } else if ch == '1' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.push_1();
-            } else if ch == 'x' || ch == 'X' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.shift_left();
-            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
-                continue;
-            } else {
-                return Err(2);
-            }
-        } // end for ch
-
-        Ok(SomeRegion::new(
-            &SomeState::new(bts_high),
-            &SomeState::new(bts_low),
-        ))
     }
 
     pub fn str_not_x(&self, msk: &SomeMask) -> String {

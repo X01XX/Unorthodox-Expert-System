@@ -29,6 +29,7 @@ mod rule;
 //use rule::SomeRule;
 mod rulestore;
 mod square;
+//use crate::square::SomeSquare;
 mod squarestore;
 mod statestore;
 use need::SomeNeed;
@@ -69,20 +70,20 @@ fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
 
 fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
     let mut dmx = SomeDomain::new(num_ints, cur);
-    dmx.add_action(action0);
-    dmx.add_action(action1);
-    dmx.add_action(action2);
-    dmx.add_action(action3);
-    dmx.add_action(action4);
-    dmx.add_action(action5);
+    dmx.add_action(action0, 0);
+    dmx.add_action(action1, 0);
+    dmx.add_action(action2, 0);
+    dmx.add_action(action3, 0);
+    dmx.add_action(action4, 0);
+    dmx.add_action(action5, 0);
     dmx
 }
 
 fn main() {
-    //pause_for_enter("");
-
-    let mut dm1 = init_domain(1, "s0010"); // init state to 1 u8 integer of bits, may be higher
+    let mut dm1 = init_domain(1, "s0001"); // init state to 1 u8 integer of bits, may be higher
     let num_actions = dm1.num_actions();
+
+    //pause_for_enter("");
 
     usage();
     let mut step = 0;
@@ -166,6 +167,26 @@ fn main() {
 
         // Handle two-word commands
         if cmd.len() == 2 {
+            // Arbitrary change state
+            if cmd[0] == "cs" {
+                let state_r = dm1.state_from_string(&cmd[1]);
+                match state_r {
+                    Ok(a_state) => {
+                        println!("Change state to {}", a_state);
+                        dm1.cur_state = a_state.clone();
+
+                        continue;
+                    }
+                    Err(error) => {
+                        if error == 1 {
+                            println!("\nDid not understand state, should start with s");
+                        } else {
+                            println!("\nDid not understand state, invalid character");
+                        }
+                    }
+                } // end match
+            }
+
             // Change current-state to a region
             if cmd[0] == "to" {
                 let region_r = dm1.region_from_string(&cmd[1]);
@@ -472,6 +493,7 @@ fn usage() {
         "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible.\n"
     );
     println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
+    println!("    cs <state>               - Arbitrary change state.\n");
     println!(
         "    g1 <act num>             - For an Action, print squares that are only that region."
     );

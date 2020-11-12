@@ -22,6 +22,8 @@ impl fmt::Display for ResultStore {
             flg = 1;
         }
 
+        rc_str.push_str(&format!(", num_rslts: {}", self.num_results));
+
         write!(f, "{}", rc_str)
     }
 }
@@ -44,6 +46,7 @@ impl ResultStore {
             num_results: 0,
         };
         ret.push_wrap(st);
+        ret.changed = true;
         ret
     }
 
@@ -58,7 +61,7 @@ impl ResultStore {
         }
 
         self.astore.push_back(st);
-        
+
         self.num_results += 1;
 
         let pnx = self.calc_pn();

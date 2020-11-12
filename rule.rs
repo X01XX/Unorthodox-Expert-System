@@ -270,6 +270,10 @@ impl SomeRule {
         }
     }
 
+    // Return true if the rule does not change anything
+    pub fn no_change(&self) -> bool {
+        self.b01.is_low() && self.b10.is_low()
+    }
     // Restrict the result region to an intersection of the
     // given region.  Assuming the region given is not a superset
     // this will also change the initial region.

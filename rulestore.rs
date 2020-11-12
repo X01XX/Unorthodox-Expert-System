@@ -210,14 +210,14 @@ impl RuleStore {
         self.avec.iter()
     }
 
-    // Return combination of two RuleStores that have passed the
-    // can_combine test.
+    // Return intersection of two RuleStores
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             panic!("rulestore lengths not eq!");
         }
 
         let mut ars = Self::new();
+        let mut ars2 = Self::new();
 
         if self.len() == 1 {
             if self.avec[0]
@@ -239,7 +239,7 @@ impl RuleStore {
             {
                 ars.push(self.avec[0].intersection(&other.avec[0]));
                 ars.push(self.avec[1].intersection(&other.avec[1]));
-                return Some(ars);
+                // return Some(ars);
             }
 
             if self.avec[0]
@@ -249,15 +249,23 @@ impl RuleStore {
                     .intersection(&other.avec[0])
                     .is_valid_intersection()
             {
-                ars.push(self.avec[0].intersection(&other.avec[1]));
-                ars.push(self.avec[1].intersection(&other.avec[0]));
+                ars2.push(self.avec[0].intersection(&other.avec[1]));
+                ars2.push(self.avec[1].intersection(&other.avec[0]));
+                // return Some(ars);
+            }
+
+            if ars.len() > 0 && ars2.len() == 0 {
                 return Some(ars);
             }
+
+            if ars.len() == 0 && ars2.len() > 0 {
+                return Some(ars);
+            }
+
+            return ars.union(&ars2);
         } else {
             panic!("not ready for pn {}!", self.len());
         }
-
-        None
     }
 
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {

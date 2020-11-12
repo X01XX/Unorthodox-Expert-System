@@ -81,14 +81,12 @@ pub struct SomeBits {
 
 impl SomeBits {
     // Return a new bits struct, set to a given vector
-    pub fn new(int_vals: Vec<u8>) -> Self {
+    pub fn _newx(int_vals: Vec<u8>) -> Self {
         SomeBits { ints: int_vals }
     }
 
-    pub fn new_low(num_ints: usize) -> Self {
-        if num_ints < 1 || num_ints > 31 {
-            panic!("num_ints is not within range!");
-        }
+    pub fn new_low(&self) -> Self {
+        let num_ints = self.ints.len();
 
         let mut ints2 = Vec::<u8>::with_capacity(num_ints);
         for _int_inx in 0..num_ints {
@@ -124,7 +122,7 @@ impl SomeBits {
 
                     let abit = tmpint & !tmp2;
 
-                    let mut btsx = SomeBits::new_low(num_ints); // new Bits object, all zeros
+                    let mut btsx = self.new_low(); // new Bits object, all zeros
                     btsx.ints[int_inx] = abit; // update one integer
                     rc_vec.push(btsx); // Save result
 
@@ -145,7 +143,7 @@ impl SomeBits {
 
         let num_ints = self.num_ints();
         let num_bits = num_ints * 8;
-        let lsi = num_ints - 1;
+        let lsi = num_ints - 1; // least significant integer
 
         for bit_num in bit_nums {
             if *bit_num >= num_bits {

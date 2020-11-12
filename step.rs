@@ -20,12 +20,13 @@ pub struct SomeStep {
     pub act_num: usize,
     pub result: SomeRegion,
     pub rule: SomeRule,
-    pub alt_rule: Option<SomeRule>,
+    pub alt_rule: bool,
+    pub group_reg: SomeRegion,
 }
 
 impl SomeStep {
     // Return a new Step struct instance
-    pub fn new(act_num: usize, rule: SomeRule, alt_rule: Option<SomeRule>) -> Self {
+    pub fn new(act_num: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
         let initial = rule.initial_region();
         let result = rule.result_region();
         Self {
@@ -34,26 +35,18 @@ impl SomeStep {
             result,
             rule,
             alt_rule,
+            group_reg,
         }
     }
 
     pub fn clone(&self) -> Self {
-        if let Some(alt_rule) = &self.alt_rule {
-            Self {
-                initial: self.initial.clone(),
-                act_num: self.act_num,
-                result: self.result.clone(),
-                rule: self.rule.clone(),
-                alt_rule: Some(alt_rule.clone()),
-            }
-        } else {
-            Self {
-                initial: self.initial.clone(),
-                act_num: self.act_num,
-                result: self.result.clone(),
-                rule: self.rule.clone(),
-                alt_rule: None,
-            }
+        Self {
+            initial: self.initial.clone(),
+            act_num: self.act_num,
+            result: self.result.clone(),
+            rule: self.rule.clone(),
+            alt_rule: self.alt_rule,
+            group_reg: self.group_reg.clone(),
         }
     }
 
@@ -64,22 +57,13 @@ impl SomeStep {
 
         let init_reg = self.initial.intersection(&reg);
 
-        if let Some(alt_rule) = &self.alt_rule {
-            Self {
-                initial: init_reg.clone(),
-                act_num: self.act_num,
-                result: self.rule.result_from_initial(&init_reg),
-                rule: self.rule.clone(),
-                alt_rule: Some(alt_rule.clone()),
-            }
-        } else {
-            Self {
-                initial: init_reg.clone(),
-                act_num: self.act_num,
-                result: self.rule.result_from_initial(&init_reg),
-                rule: self.rule.clone(),
-                alt_rule: None,
-            }
+        Self {
+            initial: init_reg.clone(),
+            act_num: self.act_num,
+            result: self.rule.result_from_initial(&init_reg),
+            rule: self.rule.clone(),
+            alt_rule: self.alt_rule,
+            group_reg: self.group_reg.clone(),
         }
     }
 
@@ -90,22 +74,13 @@ impl SomeStep {
 
         let rslt_reg = self.result.intersection(&reg);
 
-        if let Some(alt_rule) = &self.alt_rule {
-            Self {
-                initial: self.rule.initial_from_result(&rslt_reg),
-                act_num: self.act_num,
-                result: rslt_reg,
-                rule: self.rule.clone(),
-                alt_rule: Some(alt_rule.clone()),
-            }
-        } else {
-            Self {
-                initial: self.rule.initial_from_result(&rslt_reg),
-                act_num: self.act_num,
-                result: rslt_reg,
-                rule: self.rule.clone(),
-                alt_rule: None,
-            }
+        Self {
+            initial: self.rule.initial_from_result(&rslt_reg),
+            act_num: self.act_num,
+            result: rslt_reg,
+            rule: self.rule.clone(),
+            alt_rule: self.alt_rule,
+            group_reg: self.group_reg.clone(),
         }
     }
 

@@ -215,7 +215,7 @@ impl SomeSquare {
     // Return true if the addition changed the square, either the
     // pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
-        println!("Adding result {} to square {}", st, self.str_terse());
+        //println!("Adding result {} to square {}", st, self.str_terse());
 
         let rc = self.results.push_wrap(st);
 

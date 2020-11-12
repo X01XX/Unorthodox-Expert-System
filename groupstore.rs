@@ -242,7 +242,12 @@ impl GroupStore {
                     let zeros = grpx.rules[0].b01.m_and(&zero_chg);
 
                     if ones.is_not_low() || zeros.is_not_low() {
-                        stps.push(SomeStep::new(act_num, grpx.rules[0].clone(), None));
+                        stps.push(SomeStep::new(
+                            act_num,
+                            grpx.rules[0].clone(),
+                            false,
+                            grpx.region.clone(),
+                        ));
                     }
                 }
                 Pn::Two => {
@@ -253,7 +258,20 @@ impl GroupStore {
                         stps.push(SomeStep::new(
                             act_num,
                             grpx.rules[0].clone(),
-                            Some(grpx.rules[1].clone()),
+                            true,
+                            grpx.region.clone(),
+                        ));
+                    }
+
+                    let ones = grpx.rules[1].b10.m_and(&one_chg);
+                    let zeros = grpx.rules[1].b01.m_and(&zero_chg);
+
+                    if ones.is_not_low() || zeros.is_not_low() {
+                        stps.push(SomeStep::new(
+                            act_num,
+                            grpx.rules[1].clone(),
+                            true,
+                            grpx.region.clone(),
                         ));
                     }
                 } // end match Two

@@ -3,11 +3,14 @@
 //use crate::action::SomeAction;
 use crate::actions::action0;
 //use crate::actionstore::ActionStore;
-//use crate::bits::SomeBits;
+use crate::bits::SomeBits;
 use crate::domain::SomeDomain;
 //use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-//use crate::state::SomeState;
+use crate::state::SomeState;
+//use crate::rule::SomeRule;
+use crate::square::SomeSquare;
+//use crate::rulestore::RuleStore;
 
 //use std::io;
 //use std::io::Write;
@@ -54,6 +57,14 @@ pub fn run_tests() {
         process::exit(rc as i32);
     }
 
+    let rc = test5();
+    if rc == 0 {
+        println!("Test5 OK");
+    } else {
+        println!("Test5 Failed at {}!", rc);
+        process::exit(rc as i32);
+    }
+
     println!("All tests are OK");
 }
 
@@ -68,7 +79,7 @@ pub fn run_tests() {
 // **********************************************************************************
 fn test1() -> usize {
     let mut dmx = SomeDomain::new(1, "s1");
-    dmx.add_action(action0);
+    dmx.add_action(action0, 0);
 
     if let Ok(s5) = dmx.state_from_string("s101") {
         if let Ok(s4) = dmx.state_from_string("s100") {
@@ -135,7 +146,7 @@ fn test1() -> usize {
 // **********************************************************************************
 fn test2() -> usize {
     let mut dmx = SomeDomain::new(1, "s1");
-    dmx.add_action(action0);
+    dmx.add_action(action0, 0);
 
     if let Ok(s5) = dmx.state_from_string("s101") {
         if let Ok(s4) = dmx.state_from_string("s100") {
@@ -199,7 +210,7 @@ fn test2() -> usize {
 // Test subtraction of two regions
 fn test3() -> usize {
     let mut dmx = SomeDomain::new(1, "s1");
-    dmx.add_action(action0);
+    dmx.add_action(action0, 0);
 
     if let Ok(rx1x1) = dmx.region_from_string("rx1x1") {
         if let Ok(r1x0x) = dmx.region_from_string("r1x0x") {
@@ -229,7 +240,7 @@ fn test3() -> usize {
 // Test check if a region is fully surrounded
 fn test4() -> usize {
     let mut dmx = SomeDomain::new(1, "s1");
-    dmx.add_action(action0);
+    dmx.add_action(action0, 0);
 
     let mut regs = RegionStore::new();
 
@@ -270,3 +281,80 @@ fn test4() -> usize {
 
     0
 } // end test4
+
+// Test the successful intersetion of two two-result rulestores
+fn test5() -> usize {
+    let mut dmx = SomeDomain::new(1, "s1");
+    dmx.add_action(action0, 0);
+
+    let sta_5 = SomeState {
+        bts: SomeBits {
+            ints: vec![5 as u8],
+        },
+    };
+    let sta_4 = SomeState {
+        bts: SomeBits {
+            ints: vec![4 as u8],
+        },
+    };
+    let sta_f = SomeState {
+        bts: SomeBits {
+            ints: vec![15 as u8],
+        },
+    };
+    let sta_e = SomeState {
+        bts: SomeBits {
+            ints: vec![14 as u8],
+        },
+    };
+
+    //println!("sta_5 {} sta_4 {} sta_f {} sta_e {}", &sta_5, &sta_4, &sta_f, &sta_e);
+
+    let mut sqr_5 = SomeSquare::new(sta_5.clone(), sta_5.clone());
+    sqr_5.add_result(sta_4.clone());
+
+    let mut sqr_e = SomeSquare::new(sta_e.clone(), sta_e.clone());
+    sqr_e.add_result(sta_f.clone());
+
+    //println!("sqr_5: {}\nsqr_e: {}", &sqr_5, &sqr_e);
+
+    // XX / Xx
+    if let Some(rules_5e) = sqr_e.rules.union(&sqr_5.rules) {
+        //println!("union of sqr_5 rules and sqr_e rules is {}", &rules_5e);
+
+        let sta_8 = SomeState {
+            bts: SomeBits {
+                ints: vec![8 as u8],
+            },
+        };
+        let sta_9 = SomeState {
+            bts: SomeBits {
+                ints: vec![9 as u8],
+            },
+        };
+
+        let mut sqr_8 = SomeSquare::new(sta_8.clone(), sta_9.clone());
+        sqr_8.add_result(sta_8.clone());
+
+        if let Some(rules_58) = sqr_8.rules.union(&sqr_5.rules) {
+            //println!("union of sqr_5 rules and sqr_8 rules is {}", &rules_58);
+
+            if let Some(rules_int) = rules_5e.intersection(&rules_58) {
+                println!("rules_int {}", &rules_int);
+                if let Ok(rx10x) = dmx.region_from_string("rx10x") {
+                    if rx10x == rules_int.initial_region() {
+                        return 0;
+                    }
+                }
+                return 1;
+            } else {
+                println!("rules intersection failed");
+                return 2;
+            }
+        } else {
+            println!("cannot get union of 5 and 8");
+            return 3;
+        }
+    }
+    4
+} // end test5
