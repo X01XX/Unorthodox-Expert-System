@@ -108,7 +108,7 @@ impl SomeAction {
         max_region: &SomeRegion,
         hv: usize,
     ) -> SomeState {
-        println!("take_action_need");
+        //println!("take_action_need");
         // Get the result, the sample is cur -> new_state
 
         let new_state = (self.to_run)(cur, hv);
@@ -276,7 +276,7 @@ impl SomeAction {
         rslt_state: &SomeState,
         max_region: &SomeRegion,
     ) {
-        println!("take_action_arbitrary for state {}", init_state);
+        //println!("take_action_arbitrary for state {}", init_state);
         self.store_sample(&init_state, &rslt_state, &max_region);
     }
 
@@ -1843,10 +1843,10 @@ impl SomeAction {
                     let regx = grpx.region.union(&grpy.region);
 
                     if self.squares.verify_combination(&regx, &rulesx, &grpx.pn) {
-                        println!(
-                            "combination verified for act {} grp {} grp {} region {} rules {}",
-                            self.num, grpx.region, grpy.region, regx, rulesx
-                        );
+                        //println!(
+                        //    "combination verified for act {} grp {} grp {} region {} rules {}",
+                        //    self.num, grpx.region, grpy.region, regx, rulesx
+                        //);
 
                         return self.possible_group_needs(&regx);
                     } else {

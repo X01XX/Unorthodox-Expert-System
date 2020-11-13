@@ -125,6 +125,7 @@ impl SomeDomain {
         //println!("get_hv: hvr {}", hvr);
 
         let mut hvx = 0;
+        if hvr == 0 { return 0 ; }
 
         if let Some(hvx) = self.vec_hash[act_num].get_mut(&self.cur_state) {
             *hvx += 1;
@@ -468,10 +469,10 @@ impl SomeDomain {
         let mut max_diff = 0;
         let mut max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
         for vecx in stp_cngs.iter() {
-            println!("One vecx:\n");
-            for stpx in vecx.iter() {
-                println!("    {}", &stpx);
-            }
+            //println!("One vecx:\n");
+            //for stpx in vecx.iter() {
+            //   println!("    {}", &stpx);
+            //}
             // Select a step
             let mut astep = vecx[0];
 
@@ -514,7 +515,7 @@ impl SomeDomain {
                 } else {
                     astep = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
                 }
-                println!("    local closest to {} is: {}", &from_reg, astep);
+                //println!("    local closest to {} is: {}", &from_reg, astep);
             }
 
             // A step has been selected

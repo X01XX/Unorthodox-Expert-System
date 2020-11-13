@@ -55,7 +55,7 @@ impl GroupStore {
             if grpx.active {
                 if grpx.region.is_superset_of_state(&sqrx.state) {
                     if grpx.square_is_ok(&sqrx) == false {
-                        println!("sqr {} invalidate group {}", sqrx, grpx.region);
+                        println!("sqr {} {} invalidates group {} {}", &sqrx, &sqrx.rules, &grpx.region, &grpx.rules);
                         regs_invalid.push(grpx.region.clone());
                         grpx.inactivate();
                     }
