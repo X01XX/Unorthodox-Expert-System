@@ -71,6 +71,9 @@ fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
 fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
     let mut dmx = SomeDomain::new(num_ints, cur);
     dmx.add_action(action0, 0);
+    // dmx.add_action(action0, 2);
+    // dmx.add_action(action0, 3);
+
     dmx.add_action(action1, 0);
     dmx.add_action(action2, 0);
     dmx.add_action(action3, 0);

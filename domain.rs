@@ -125,7 +125,9 @@ impl SomeDomain {
         //println!("get_hv: hvr {}", hvr);
 
         let mut hvx = 0;
-        if hvr == 0 { return 0 ; }
+        if hvr == 0 {
+            return 0;
+        }
 
         if let Some(hvx) = self.vec_hash[act_num].get_mut(&self.cur_state) {
             *hvx += 1;

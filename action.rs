@@ -721,18 +721,27 @@ impl SomeAction {
     } // end get_needs
 
     // Return in-between needs.
+    //
     // When a group is invalidated by a new sample, something was wrong with that group.
     // Possible replacement groups will be greatly decreased in number if the
     // new sample can be used to find an adjacent, dissimilar pair of squares.
     //
     // For Group(s) invalidated by a new sample, there is at least one
-    // dissimilar square in the group.  If it is farther than 1 bit away,
-    // return a need.
+    // dissimilar square pair in the group.
+    //
+    // If a dissimilar pair is not adjacent, the region formed by the pair
+    // is added to the action closer_regs RegionStore.
     pub fn in_between_needs(&mut self, cur_state: &SomeState) -> NeedStore {
         let mut ret_nds = NeedStore::new();
 
         {
-            // pre-check and clean-up.
+            // Pre-check and clean-up, scan action closer_regs RegionStore.
+            //
+            // If there is an existing square between the region state-squares, that is
+            // incompatible with any one of the squares, inactivate the region.
+            //
+            // If the two incompatible squares are not adjacent, add a new region to
+            // closer_regs, built from the incompatible pair.
             let mut do_again = true;
 
             while do_again {
@@ -746,17 +755,21 @@ impl SomeAction {
 
                     let stas_in = self.squares.stas_in_reg(&regx);
 
+                    // If no more than the two squares that form the region, ignore this region
                     if stas_in.len() == 2 {
                         continue;
                     }
 
                     if let Some(sqr1) = self.squares.find(&regx.state1) {
+                        // Get the squares represented by the states that form the region
                         if let Some(sqr2) = self.squares.find(&regx.state2) {
                             for stax in stas_in.iter() {
+                                // Ignore the states in the StateStore that form the region
                                 if *stax == regx.state1 || *stax == regx.state2 {
                                     continue;
                                 }
 
+                                // Process stax that is inbetween
                                 if let Some(sqr3) = self.squares.find(&stax) {
                                     let cnb1 = sqr3.can_combine(&sqr1);
                                     match cnb1 {
@@ -807,14 +820,17 @@ impl SomeAction {
                     } // end if let sqr1
                 } // next regx closer_reg
 
-                // Apply new regions
+                // Apply new regions, set flag to try again
                 for regx in new_regs.iter() {
-                    do_again = true;
-                    self.closer_regs.push_nosups(regx.clone());
+                    if regx.active {
+                        do_again = true;
+                        self.closer_regs.push_nosups(regx.clone());
+                    }
                 }
             } // end while do-again
-        } // end pre-check and clean-up
+        } // end pre-check and clean-up block
 
+        // Get inbetween needs, scan the action closer_regs RegionStore.
         for regx in self.closer_regs.iter() {
             if regx.active == false {
                 continue;
@@ -825,10 +841,16 @@ impl SomeAction {
             if stas_in.len() == 2 {
                 // No square between region.state1 and region.state2, seek one
 
+                // Get list of one-bit masks representing the bits different of the
+                // two regions states.
                 let dif_bits = MaskStore {
                     avec: regx.x_mask().split(),
                 };
 
+                // Select a random set of single-bit masks, up to one-half of the number of differences.
+                // So if the region states are 10 or 11 bits different, a state 5 bits different from
+                // one of the two states will be sought.  So the number of bit differences should go down
+                // 50% on each cycle.
                 let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
                 let mut dif_msk = SomeMask::new(cur_state.bts.new_low());
@@ -840,12 +862,15 @@ impl SomeAction {
                     }
                     inx += 1;
                 }
-                let mut statex = &regx.state2;
 
+                // Randomly choose which state to use to calculate the target state from
+                let mut statex = &regx.state2;
                 let choice = rand::thread_rng().gen_range(0, 2);
                 if choice == 0 {
                     statex = &regx.state1;
                 }
+
+                // Calculate the target inbetween
                 let seek_state = SomeState::new(statex.bts.b_xor(&dif_msk.bts));
 
                 // Make need for seek_state
@@ -855,12 +880,18 @@ impl SomeAction {
                     in_group: regx.clone(),
                 });
             } else {
+                // At least one square was found inbetween, possibly from a previous
+                // inbetween need being satisfied.
                 let mut max_rslts = 0;
                 let mut max_stas = StateStore::new();
 
                 if let Some(sqr1) = self.squares.find(&regx.state1) {
+                    // Get squares represented by the states that form the region
                     if let Some(sqr2) = self.squares.find(&regx.state2) {
+                        // Find the squares that need more samples to determine combinability
+                        // with a preferebce for squares that already have the most samples.
                         for stax in stas_in.iter() {
+                            // Ignore states in the StateStore that form the region
                             if *stax == regx.state1 || *stax == regx.state2 {
                                 continue;
                             }
@@ -921,10 +952,10 @@ impl SomeAction {
                         } // next stax (for a square in-between)
                     } else {
                         panic!("square not found");
-                    } // end if let sqr2
+                    } // end if let state2
                 } else {
                     panic!("square not found");
-                } // end if let sqr1
+                } // end if let state1
 
                 // Choose sta index
                 if max_stas.len() == 0 {
@@ -1012,25 +1043,12 @@ impl SomeAction {
                 continue;
             }
 
-            //if let Some(_) = grpx.anchor {
-            //    continue;
-            //}
-
-            // Don't compete with the confirm_group_needs routine
-            //            let states1 = grpx.region.states_in(&states_in_1);
-            //            if states1.len() > 0 {
-            //				continue;
-            //			}
-
             // Get a vector of one-bit masks
-            // println!("grp {} not_x_check {}", &grpx.region, &grpx.not_x_check);
-
             let check_bits = MaskStore {
                 avec: grpx.not_x_check.split(),
             };
 
             // Check for expansion, or single-bit adjacent external
-
             for bitx in check_bits.iter() {
                 let regb = grpx.region.toggle_bits(bitx);
                 //println!("toggle {} with {} returns {}", &grpx.region, bitx, regb);
@@ -1576,6 +1594,7 @@ impl SomeAction {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
 
+        // Check every pair of groups
         for inx in 0..self.groups.len() {
             let grpx = &self.groups[inx];
 
@@ -1583,6 +1602,7 @@ impl SomeAction {
                 continue;
             }
 
+            // Pair grpx with every group after it in the GroupStore
             for iny in (inx + 1)..self.groups.len() {
                 let grpy = &self.groups[iny];
 
@@ -1590,29 +1610,29 @@ impl SomeAction {
                     continue;
                 }
 
-                if grpx.pn == grpy.pn {
-                    if grpx.region.is_adjacent(&grpy.region) {
-                        let mut ndx = self.groups_adjacent_needs(&grpx, &grpy);
-                        if ndx.len() > 0 {
-                            nds.append(&mut ndx);
-                        }
-                    } // end if adjacent
-
-                    if grpx.region.intersects(&grpy.region) {
-                        let mut ndx = self.groups_intersection_needs(&grpx, &grpy);
-                        if ndx.len() > 0 {
-                            nds.append(&mut ndx);
-                        }
-                    } // end if groups intersect
-                } // end if groups pn ==
-            } // end for iny
-        } // end for inx
+                if grpx.region.intersects(&grpy.region) {
+                    let mut ndx = self.groups_intersection_needs(&grpx, &grpy);
+                    if ndx.len() > 0 {
+                        nds.append(&mut ndx);
+                    }
+                } else if grpx.region.is_adjacent(&grpy.region) {
+                    if grpx.pn == grpy.pn {
+                        if grpx.region.is_adjacent(&grpy.region) {
+                            let mut ndx = self.groups_adjacent_needs(&grpx, &grpy);
+                            if ndx.len() > 0 {
+                                nds.append(&mut ndx);
+                            }
+                        } // end if adjacent
+                    } // end if pn ==
+                } // end if regions adjacent
+            } // next iny
+        } // next inx
 
         nds
-    } // end overlap_combos
+    } // end group_pair_needs
 
     // Check for needs, for making a given region into a group.
-    // A need may be to take more samples, or the AddGroup need.
+    // A need may be to take more samples, or to add the group.
     fn possible_group_needs(&self, reg_grp: &SomeRegion) -> NeedStore {
         //println!("possible_group_needs");
         let mut nds = NeedStore::new();
@@ -1825,21 +1845,38 @@ impl SomeAction {
         nds
     }
 
+    // Check two intersecting groups for needs.
+    // Possibly combining to groups.
+    // Possibly checking for a contradictatory intersection.
     fn groups_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
         //println!("groups_intersection_needs");
-        let reg_int = grpx.region.intersection(&grpy.region);
 
         if grpx.pn != grpy.pn {
             return self.group_pair_cont_int_needs(&grpx, &grpy);
         }
 
+        // So grpx.pn == grpy.pn
         match grpx.pn {
             Pn::Unpredictable => {
-                return self.possible_group_needs(&reg_int);
+                // The intersection is not contradictory, check if combination is possible
+                let regx = grpx.region.union(&grpy.region);
+
+                let stas_in = self.squares.stas_in_reg(&regx);
+
+                if self.squares.any_pnc(&stas_in) {
+                    let min_pnc = self.squares.min_pnc(&stas_in);
+
+                    if min_pnc == Pn::Unpredictable {
+                        return self.possible_group_needs(&regx);
+                    }
+                }
+
+                return NeedStore::new();
             }
             _ => {
                 // Get rules union, if any
                 if let Some(rulesx) = grpx.rules.union(&grpy.rules) {
+                    // Check all squares in the combined group regions
                     let regx = grpx.region.union(&grpy.region);
 
                     if self.squares.verify_combination(&regx, &rulesx, &grpx.pn) {
@@ -1849,10 +1886,11 @@ impl SomeAction {
                         //);
 
                         return self.possible_group_needs(&regx);
-                    } else {
-                        return self.group_pair_cont_int_needs(&grpx, &grpy);
-                    } // end verify_combination
+                    } // end if verify_combinaton
+
+                    return self.group_pair_cont_int_needs(&grpx, &grpy);
                 } else {
+                    // The groups cannot be combined, check for contradictory intersection
                     return self.group_pair_cont_int_needs(&grpx, &grpy);
                 } // end if rules union is OK
             } // end match variant _
@@ -1909,32 +1947,36 @@ impl SomeAction {
         //println!("group_pair_cont_int_needs");
         let mut nds = NeedStore::new();
 
+        // Calculate the intersection
         let reg_int = grpx.region.intersection(&grpy.region);
 
-        if grpx.pn == grpy.pn {
-            if grpx.pn == Pn::Unpredictable {
-                return nds;
-            }
+        if grpx.pn != grpy.pn {
+            // Pns not equal, the whole region is contradictory
+            nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
+            return nds;
+        }
 
-            let rulsx = grpx.rules.restrict_initial_region(&reg_int);
+        if grpx.pn == Pn::Unpredictable {
+            println!("Pn::Unpredictable in group_pair_cont_int_need ? this should not happen.");
+            return nds;
+        }
 
-            let rulsy = grpy.rules.restrict_initial_region(&reg_int);
+        let rulsx = grpx.rules.restrict_initial_region(&reg_int);
 
-            if rulsx.is_equal(&rulsy) {
-                return nds;
-            } // a valid union of the whole intersection region exists
+        let rulsy = grpy.rules.restrict_initial_region(&reg_int);
 
-            // check if a valid sub-region of the intersection exists
-            if let Some(rulsxy) = rulsx.intersection(&rulsy) {
-                // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
-                let ok_reg = rulsxy.initial_region();
+        if rulsx.is_equal(&rulsy) {
+            return nds;
+        } // A valid union of the whole intersection region exists
 
-                let regy = reg_int.far_reg(&ok_reg); // to avoid subtraction, use the far sub-region
+        // Check if a valid sub-region of the intersection exists
+        if let Some(rulsxy) = rulsx.intersection(&rulsy) {
+            // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
+            let ok_reg = rulsxy.initial_region();
 
-                nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
-            } else {
-                nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
-            }
+            let regy = reg_int.far_reg(&ok_reg); // to avoid subtraction, use the far sub-region
+
+            nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
         } else {
             nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
         }
