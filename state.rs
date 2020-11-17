@@ -78,6 +78,7 @@ impl SomeState {
         }
     }
 
+    // Return the number of integers used to express a SomeState innstance
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }

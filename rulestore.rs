@@ -256,8 +256,8 @@ impl RuleStore {
 
             if ars.len() > 0 && ars2.len() > 0 {
                 return ars.union(&ars2);
-			}
-							
+            }
+
             if ars.len() > 0 {
                 return Some(ars);
             }

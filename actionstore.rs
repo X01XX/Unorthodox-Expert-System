@@ -50,7 +50,7 @@ impl ActionStore {
 
     // Return needs from all actions
     pub fn get_needs(&mut self, cur_sta: &SomeState, max_region: &SomeRegion) -> NeedStore {
-        //println!("actionstore get_needs {} {}", &cur_sta, &max_region);
+        println!("actionstore get_needs");
 
         let mut nds = NeedStore::new();
 

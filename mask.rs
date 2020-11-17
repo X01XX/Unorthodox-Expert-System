@@ -108,6 +108,8 @@ impl SomeMask {
 
         rc_vec
     }
+
+    // Return the number of ints used to express a SomeMask instance
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }

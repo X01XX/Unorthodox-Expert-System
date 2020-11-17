@@ -230,9 +230,6 @@ impl GroupStore {
     pub fn get_steps(&self, arule: &SomeRule, act_num: usize) -> StepStore {
         let mut stps = StepStore::new();
 
-        let zero_chg = arule.b01.clone();
-        let one_chg = arule.b10.clone();
-
         for grpx in &self.avec {
             if grpx.active == false {
                 continue;
@@ -241,8 +238,8 @@ impl GroupStore {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    let ones = grpx.rules[0].b10.m_and(&one_chg);
-                    let zeros = grpx.rules[0].b01.m_and(&zero_chg);
+                    let ones = grpx.rules[0].b10.m_and(&arule.b10);
+                    let zeros = grpx.rules[0].b01.m_and(&arule.b01);
 
                     if ones.is_not_low() || zeros.is_not_low() {
                         stps.push(SomeStep::new(
@@ -254,8 +251,8 @@ impl GroupStore {
                     }
                 }
                 Pn::Two => {
-                    let ones = grpx.rules[0].b10.m_and(&one_chg);
-                    let zeros = grpx.rules[0].b01.m_and(&zero_chg);
+                    let ones = grpx.rules[0].b10.m_and(&arule.b10);
+                    let zeros = grpx.rules[0].b01.m_and(&arule.b01);
 
                     if ones.is_not_low() || zeros.is_not_low() {
                         stps.push(SomeStep::new(
@@ -266,8 +263,8 @@ impl GroupStore {
                         ));
                     }
 
-                    let ones = grpx.rules[1].b10.m_and(&one_chg);
-                    let zeros = grpx.rules[1].b01.m_and(&zero_chg);
+                    let ones = grpx.rules[1].b10.m_and(&arule.b10);
+                    let zeros = grpx.rules[1].b01.m_and(&arule.b01);
 
                     if ones.is_not_low() || zeros.is_not_low() {
                         stps.push(SomeStep::new(

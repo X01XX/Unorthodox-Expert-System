@@ -11,32 +11,51 @@ use crate::state::SomeState;
 pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
     let num = 0;
 
-    if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // 1X0X
-        || cur.is_bit_set(3) == false && cur.is_bit_set(1) // 0X1X
-        || cur.is_bit_set(2) && cur.is_bit_set(0)  {       // X1X1
-		
-		// When the action is created, changing the hv parm (0,1,2), in the
-		// main file will have the effect of changing these groups to have
-		// 1, 2 or 3 results.
-		if hv == 0 {
-		    let new_state = cur.toggle_bits(&[0]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
-            return new_state;
-	    } else if hv == 1 {
-		    let new_state = cur.toggle_bits(&[1]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
-            return new_state;			
-		} else if hv == 2 {
-		    let new_state = cur.toggle_bits(&[2]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
-            return new_state;			
-		}       
-        
+    if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
+        || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
+        || cur.is_bit_set(2) && cur.is_bit_set(0)
+    {
+        // ....X1X1
+
+        let new_state = cur.toggle_bits(&[0]);
+        println!("\nAct {}  {} -> {}", num, cur, new_state);
+        return new_state;
     }
 
-    println!("\nAct {}  {} -> {}", num, cur, cur);
-    cur.clone()
-}
+    // When the action is created, changing the hv parm (0,1,2), in the
+    // main file will have the effect of changing these groups to have
+    // 1, 2 or 3 results.
+
+    if cur.is_bit_set(1) {
+        // ...101x, 1x10, given that the above is not true
+
+        if hv % 2 == 0 {
+            let new_state = cur.toggle_bits(&[1]);
+            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            return new_state;
+        } else {
+            let new_state = cur.toggle_bits(&[2]);
+            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            return new_state;
+        }
+    } else {
+        // ...000x, 0x00, given that the above is not true
+
+        if hv % 3 == 0 {
+            let new_state = cur.toggle_bits(&[1]);
+            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            return new_state;
+        } else if hv % 3 == 1 {
+            let new_state = cur.toggle_bits(&[2]);
+            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            return new_state;
+        } else {
+            let new_state = cur.toggle_bits(&[3]);
+            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            return new_state;
+        }
+    }
+} // end action0
 
 pub fn action1(cur: &SomeState, _hv: usize) -> SomeState {
     let num = 1;

@@ -282,16 +282,16 @@ impl SomeDomain {
             if from_reg.is_subset_of(planz.initial_region()) {
             } else {
                 println!(
-                    "make_one_plan from reg {} does not intersect {}",
+                    "make_plan: from reg {} does not intersect {}",
                     &from_reg, &planz
                 );
             }
 
             if let Some(planx) = planz.short_cuts() {
-                if from_reg.is_subset_of(planz.initial_region()) {
+                if from_reg.is_subset_of(planx.initial_region()) {
                 } else {
                     println!(
-                        "short_cuts from reg {} does not intersect {}",
+                        "make_plan: short_cuts from reg {} does not intersect {}",
                         &from_reg, &planz
                     );
                 }
@@ -299,7 +299,7 @@ impl SomeDomain {
                 if planx.result_region().is_subset_of(&goal_reg) {
                     return Some(planx);
                 } else {
-                    println!("failed at 44");
+                    //println!("failed at 44");
                     return None;
                 }
             }
@@ -307,13 +307,13 @@ impl SomeDomain {
             if planz.result_region().is_subset_of(&goal_reg) {
                 return Some(planz);
             } else {
-                println!("failed at 55");
+                // println!("failed at 55");
                 return None;
             }
         } // end if let planz
 
         None
-    } // end make plan2
+    } // end make plan
 
     // Given a from-region and a goal-region, the calculate the required bit-changes.
     //
@@ -338,18 +338,22 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         let actions = &self.actions;
 
-        // println!("plan from {} to {} recur {}", &from_reg, &goal_reg, recur);
+        //println!(
+        //    "make_one_plan: from {} to {} recur {}",
+        //    &from_reg, &goal_reg, recur
+        //);
 
         // Check for the maximum depth of recursion
         // Recursion can also be ended by not finding a step for a desired change.
         if recur > max_depth {
-            //println!("recursion limit exceeded by {}", recur);
+            // println!("recursion limit exceeded by {}", recur);
             return None;
         }
 
         // Check for mistaken request
         if from_reg.is_subset_of(&goal_reg) {
             panic!("from_reg {} is at goal_reg {}?", &from_reg, &goal_reg);
+            //return Some(SomePlan::new(StepStore::new()));
             //return None;
         }
 
@@ -367,9 +371,9 @@ impl SomeDomain {
         let stpsx = actions.get_steps(&rule_agg);
 
         if stpsx.len() == 0 {
-            if recur == 0 {
-                println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            }
+            //if recur == 0 {
+            //    println!("No steps found for {} to {} not found", &from_reg, &goal_reg);
+            //}
             //println!("No steps found");
             return None;
         }
@@ -389,27 +393,35 @@ impl SomeDomain {
 
         // Check if the changes found roughly satisfy the needed change
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
-            //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            // println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
-            if recur == 0 {
-                println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            }
+            // println!(
+            //    "Not enough steps found for {} to {} not found",
+            //    &from_reg, &goal_reg
+            //);
+
             //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
 
         // Create a vector of step vectors, steps with the same changes are grouped together
-        let mut stp_cngs = Vec::<Vec<&SomeStep>>::with_capacity(stpsx.len());
+        let mut stp_cngs = Vec::<Vec<SomeStep>>::with_capacity(stpsx.len());
 
         for stpx in stpsx.iter() {
             // Check for an existing vector of one or more changes of the same kind
             // If found, push the step onto it.
             let mut add_new_vec = true;
+
+            //            let mut stpy = stpx.clone();
+            //            if stpx.initial.intersects(&from_reg) {
+            //                //stpy = stpx.restrict_initial_region(&stpx.initial.intersection(&from_reg));
+            //                stpy = stpx.restrict_initial_region(&from_reg);
+            //			}
+
             for stp_cng in stp_cngs.iter_mut() {
                 if stpx.rule.b01 == stp_cng[0].rule.b01 && stpx.rule.b10 == stp_cng[0].rule.b10 {
-                    // if stpx.rule.changes_equal(&stp_cng[0].rule) {
+                    stp_cng.push(stpx.clone());
 
-                    stp_cng.push(&stpx);
                     add_new_vec = false;
                     break;
                 }
@@ -417,15 +429,15 @@ impl SomeDomain {
 
             // If no vector of similar step changes found, add one.
             if add_new_vec {
-                stp_cngs.push(vec![&stpx]);
+                stp_cngs.push(vec![stpx.clone()]);
             }
         } // next stpx
 
         // Print step vector
         //println!("stp_cngs:");
-        // for vecx in stp_cngs.iter() {
-        //     let mut strx = String::from("  [");
-        //    for stpx in vecx.iter() {
+        //for vecx in stp_cngs.iter() {
+        //   let mut strx = String::from("  [");
+        //  for stpx in vecx.iter() {
         //        strx.push_str(&format!("{}, ", stpx));
         //    }
         //    println!("{}]", strx);
@@ -434,49 +446,56 @@ impl SomeDomain {
         // Look for one step that makes the whole change, single rule step preferred.
         let mut stp_vec = Vec::<SomeStep>::new();
 
+        let mut sr = false;
+
         for vecx in stp_cngs.iter() {
             for stpx in vecx.iter() {
-                if stpx.initial.intersects(&from_reg) {
-                    let stpy = stpx.restrict_initial_region(&stpx.initial.intersection(&from_reg));
+                if stpx.alt_rule && sr {
+                    continue;
+                }
+
+                if stpx.initial.is_superset_of(&from_reg) {
+                    let stpy = stpx.restrict_initial_region(&from_reg);
                     // closer
 
-                    if stpy.result.intersects(&goal_reg) {
-                        let stpz =
-                            stpy.restrict_result_region(&stpy.result.intersection(&goal_reg));
-                        // closer
+                    if stpy.result.is_subset_of(&goal_reg) {
+                        //let stpz =
+                        //    stpy.restrict_result_region(&stpy.result.intersection(&goal_reg));
 
-                        if stpz.initial.is_subset_of(&from_reg)
-                            && stpz.result.is_subset_of(&goal_reg)
-                        {
-                            if stp_vec.len() == 1 {
-                                if stp_vec[0].alt_rule && stpz.alt_rule == false {
-                                    stp_vec[0] = stpz.clone();
-                                }
+                        if stpy.alt_rule {
+                            stp_vec.push(stpy.clone());
+                        } else {
+                            sr = true;
+                            if stp_vec.len() > 0 {
+                                stp_vec[0] = stpy.clone();
                             } else {
-                                stp_vec.push(stpz.clone());
+                                stp_vec.push(stpy.clone());
                             }
                         }
-                    }
-                } // end if stpx
+                    } // end if step.result
+                } // end if stpx.initial
             } // next stpx
         } // next vecx
 
-        // Run step found
-        if stp_vec.len() == 1 {
+        // Return step found
+        if stp_vec.len() > 0 {
+            //println!("stp_vec: found {}", &stp_vec[0]);
             return Some(SomePlan::new_step(stp_vec[0].clone())); // done in one step, often the end stage of recursion
+        } else {
+            //println!("stp_vec: did not find a step");
         }
 
         // Make list of steps with initial regions farthest from goal, or
         // if there is a group of steps, use the one closest to the from region.
         let mut max_diff = 0;
-        let mut max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
+        let mut max_diff_goal = Vec::<SomeStep>::with_capacity(5);
         for vecx in stp_cngs.iter() {
             //println!("One vecx:\n");
             //for stpx in vecx.iter() {
             //   println!("    {}", &stpx);
             //}
             // Select a step
-            let mut astep = vecx[0];
+            let mut astep = vecx[0].clone();
 
             if vecx.len() > 1 {
                 // Get a vector of steps that have an initial region closest to the from-region
@@ -487,8 +506,7 @@ impl SomeDomain {
                 let mut sr_found = false;
 
                 for stpx in vecx.iter() {
-                    if stpx.alt_rule {
-                    } else {
+                    if stpx.alt_rule == false {
                         sr_found = true;
                     }
                 }
@@ -513,9 +531,10 @@ impl SomeDomain {
 
                 // Get one of the closest to goal steps
                 if min_diff_from.len() == 1 {
-                    astep = min_diff_from[0];
+                    astep = min_diff_from[0].clone();
                 } else {
-                    astep = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
+                    astep =
+                        min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())].clone();
                 }
                 //println!("    local closest to {} is: {}", &from_reg, astep);
             }
@@ -525,7 +544,7 @@ impl SomeDomain {
 
             if tmp_diff > max_diff {
                 max_diff = tmp_diff;
-                max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
+                max_diff_goal = Vec::<SomeStep>::with_capacity(5);
             }
 
             if tmp_diff == max_diff {
@@ -602,47 +621,65 @@ impl SomeDomain {
         //    &from_reg, &goal_reg, &astep
         //);
 
+        let mut bstep = astep.clone();
+
+        if astep.initial.is_superset_of(&from_reg) {
+            bstep = astep.restrict_initial_region(&from_reg);
+        }
+
         // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
-        let mut aplan = SomePlan::new_step(astep.clone());
+        let mut aplan = SomePlan::new_step(bstep.clone());
 
         // Check plan initial_region with from_reg
-        if aplan.initial_region().is_subset_of(&from_reg) { // subset or EQ
-             // no change needed
-        } else if aplan.initial_region().intersects(&from_reg) {
-            if let Some(planx) = aplan.restrict_initial_region(&from_reg) {
-                //println!(
-                //    "restrict initial reg of {} to {} giving {}",
-                //    &aplan, &from_reg, &planx
-                //);
-                aplan = planx;
-            } else {
-                // println!("plan_next_steps, failed at 1");
-                return None;
+        if bstep.initial.is_subset_of(&from_reg) {
+            // subset or EQ
+
+            //let aplan = SomePlan::new_step(astep.restrict_initial_region(&from_reg));
+
+            if aplan.result_region().is_subset_of(&goal_reg) {
+                return Some(aplan);
             }
-        } else {
-            // Get a plan for from-region to step initial-region
+
             if let Some(planx) =
-                self.make_one_plan(&from_reg, &aplan.initial_region(), max_depth, recur + 1)
+                self.make_one_plan(&aplan.result_region(), &goal_reg, max_depth, recur + 1)
             {
-                if let Some(plany) = planx.link(&aplan) {
-                    // println!(
-                    //     "make plan from {} to {} giving {}",
-                    //     &from_reg,
-                    //     &aplan.initial_region(),
-                    //     &plany
-                    // );
-                    aplan = plany;
+                if let Some(plany) = aplan.link(&planx) {
+                    return Some(plany);
                 } else {
-                    // println!(
-                    //     "plan_next_steps, failed at 3, linking {} to {}",
-                    //     &aplan, &planx
-                    // );
+                    //println!("plan_next_steps: failed at 0");
                     return None;
                 }
             } else {
-                // println!("plan_next_steps, failed at 4");
                 return None;
             }
+        }
+
+        // Get a plan for from-region to step initial-region
+        if let Some(planx) =
+            self.make_one_plan(&from_reg, &aplan.initial_region(), max_depth, recur + 1)
+        {
+            if let Some(plany) = planx.link(&aplan) {
+                // println!(
+                //    "make plan from {} to {} giving {}",
+                //    &from_reg,
+                //    &aplan.initial_region(),
+                //    &plany
+                // );
+                aplan = plany;
+            } else {
+                // println!(
+                //     "plan_next_steps, failed at 3, linking {} to {}",
+                //     &aplan, &planx
+                // );
+                return None;
+            }
+        } else {
+            //println!(
+            //    "plan_next_steps, failed at 4 {} to {}",
+            //    &from_reg,
+            //    &aplan.initial_region()
+            //);
+            return None;
         }
 
         // Check if plan done
@@ -650,15 +687,6 @@ impl SomeDomain {
             // subset or EQ
             return Some(aplan); // done
         }
-
-        // Check for a close encounter
-        if aplan.result_region().intersects(&goal_reg) {
-            if let Some(planx) = aplan.restrict_result_region(&goal_reg) {
-                if planx.initial_region().is_subset_of(&from_reg) {
-                    return Some(planx);
-                }
-            }
-        } // Could be an intersect-to-subset change is needed
 
         // Get a plan for plan result-region to goal-region
         if let Some(planw) =

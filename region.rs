@@ -160,6 +160,12 @@ impl SomeRegion {
         SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
     }
 
+    // Return the number of ints used to express a state in a SomeRegion instance
+    //    pub fn num_ints(&self) -> usize {
+    //        self.state1.num_ints()
+    //	}
+
+    // Return the numbeer of X bits in a region
     pub fn num_x(&self) -> usize {
         SomeMask::new(self.state1.bts.b_xor(&self.state2.bts)).num_one_bits()
     }

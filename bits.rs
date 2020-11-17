@@ -341,6 +341,7 @@ impl SomeBits {
         Self { ints: ints2 }
     }
 
+    // Return the number of integers used to express the SomeBits type
     pub fn num_ints(&self) -> usize {
         self.ints.len()
     }
