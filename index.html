@@ -1045,6 +1045,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	<p class="indent2">
         Seek a pair of adjacent, dissimilar, squares, in any invalidated region.
 	</p>
+	<p class="indent2">
+	This discovers a new edge in the solution.  Adjacent regions formed from the squares map out the length of the edge.
+	</p>
         <p class="indent1">
         A newly sampled square, and squares from invalidated regions, can be compared to other squares to form new regions.
         </p>
@@ -1062,6 +1065,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         </p>
       <p class="indent1">
         If an external adjacent square turns out to be similar instead of dissimilar, form a region from the two.
+        </p>
+      <p class="indent1">
+        If there is more than one adjacent, dissimilar, external square, this defines a vertex of the solution,
+	where edges intersect.
         </p>
       <p>
         Overlapping, or adjacent regions may be combined.
@@ -1520,7 +1527,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 11/04/2020</p>
+   <p>Web page Started: 10/20/2010, last changed: 11/18/2020</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
