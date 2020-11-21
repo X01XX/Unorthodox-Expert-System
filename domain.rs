@@ -400,7 +400,7 @@ impl SomeDomain {
             //    &from_reg, &goal_reg
             //);
 
-            //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
 
@@ -446,9 +446,15 @@ impl SomeDomain {
         // Look for one step that makes the whole change, single rule step preferred.
         let mut stp_vec = Vec::<SomeStep>::new();
 
-        let mut sr = false;
-
         for vecx in stp_cngs.iter() {
+            // Set flag if any single result step is in vecx
+            let mut sr = false;
+            for stpx in vecx.iter() {
+                if stpx.alt_rule == false {
+                    sr = true;
+                }
+            }
+
             for stpx in vecx.iter() {
                 if stpx.alt_rule && sr {
                     continue;
