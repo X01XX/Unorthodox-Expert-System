@@ -299,7 +299,7 @@ impl SomeDomain {
                 if planx.result_region().is_subset_of(&goal_reg) {
                     return Some(planx);
                 } else {
-                    //println!("failed at 44");
+                    println!("failed at 44");
                     return None;
                 }
             }
@@ -307,7 +307,7 @@ impl SomeDomain {
             if planz.result_region().is_subset_of(&goal_reg) {
                 return Some(planz);
             } else {
-                // println!("failed at 55");
+                println!("failed at 55");
                 return None;
             }
         } // end if let planz
@@ -336,8 +336,6 @@ impl SomeDomain {
         max_depth: usize,
         recur: usize,
     ) -> Option<SomePlan> {
-        let actions = &self.actions;
-
         //println!(
         //    "make_one_plan: from {} to {} recur {}",
         //    &from_reg, &goal_reg, recur
@@ -346,7 +344,7 @@ impl SomeDomain {
         // Check for the maximum depth of recursion
         // Recursion can also be ended by not finding a step for a desired change.
         if recur > max_depth {
-            // println!("recursion limit exceeded by {}", recur);
+            println!("recursion limit exceeded by {}", recur);
             return None;
         }
 
@@ -362,13 +360,13 @@ impl SomeDomain {
         // which would cause the rule to fail a valid_intersection test.
         let rule_agg = SomeRule::region_to_region(&from_reg, &goal_reg);
 
-        //println!(
+        // println!(
         //    "find steps for from_reg {} to goal_reg {}, rule {}",
-        //    &from_reg, &goal_reg, &rule_agg
-        //);
+        //     &from_reg, &goal_reg, &rule_agg
+        // );
 
         // Get steps that include at least one bit of the needed change masks.
-        let stpsx = actions.get_steps(&rule_agg);
+        let stpsx = self.actions.get_steps(&rule_agg);
 
         if stpsx.len() == 0 {
             //if recur == 0 {
@@ -378,7 +376,7 @@ impl SomeDomain {
             return None;
         }
 
-        //println!("steps found: {}", stpsx);
+        // println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
         let mut b01 = SomeMask::new(from_reg.state1.bts.new_low());
@@ -395,32 +393,23 @@ impl SomeDomain {
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
             // println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
-            // println!(
-            //    "Not enough steps found for {} to {} not found",
-            //    &from_reg, &goal_reg
-            //);
-
             println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
 
+        // println!("{} steps found", stpsx.len());
+
         // Create a vector of step vectors, steps with the same changes are grouped together
-        let mut stp_cngs = Vec::<Vec<SomeStep>>::with_capacity(stpsx.len());
+        let mut stp_cngs = Vec::<Vec<&SomeStep>>::with_capacity(stpsx.len());
 
         for stpx in stpsx.iter() {
             // Check for an existing vector of one or more changes of the same kind
             // If found, push the step onto it.
             let mut add_new_vec = true;
 
-            //            let mut stpy = stpx.clone();
-            //            if stpx.initial.intersects(&from_reg) {
-            //                //stpy = stpx.restrict_initial_region(&stpx.initial.intersection(&from_reg));
-            //                stpy = stpx.restrict_initial_region(&from_reg);
-            //			}
-
             for stp_cng in stp_cngs.iter_mut() {
                 if stpx.rule.b01 == stp_cng[0].rule.b01 && stpx.rule.b10 == stp_cng[0].rule.b10 {
-                    stp_cng.push(stpx.clone());
+                    stp_cng.push(stpx);
 
                     add_new_vec = false;
                     break;
@@ -429,9 +418,11 @@ impl SomeDomain {
 
             // If no vector of similar step changes found, add one.
             if add_new_vec {
-                stp_cngs.push(vec![stpx.clone()]);
+                stp_cngs.push(vec![stpx]);
             }
         } // next stpx
+
+        // println!("{} stp_cngs steps", stp_cngs.len());
 
         // Print step vector
         //println!("stp_cngs:");
@@ -465,17 +456,14 @@ impl SomeDomain {
                     // closer
 
                     if stpy.result.is_subset_of(&goal_reg) {
-                        //let stpz =
-                        //    stpy.restrict_result_region(&stpy.result.intersection(&goal_reg));
-
                         if stpy.alt_rule {
-                            stp_vec.push(stpy.clone());
+                            stp_vec.push(stpy);
                         } else {
                             sr = true;
                             if stp_vec.len() > 0 {
-                                stp_vec[0] = stpy.clone();
+                                stp_vec[0] = stpy;
                             } else {
-                                stp_vec.push(stpy.clone());
+                                stp_vec.push(stpy);
                             }
                         }
                     } // end if step.result
@@ -488,20 +476,20 @@ impl SomeDomain {
             //println!("stp_vec: found {}", &stp_vec[0]);
             return Some(SomePlan::new_step(stp_vec[0].clone())); // done in one step, often the end stage of recursion
         } else {
-            //println!("stp_vec: did not find a step");
+            // println!("stp_vec: did not find a step to make the whole change");
         }
 
         // Make list of steps with initial regions farthest from goal, or
         // if there is a group of steps, use the one closest to the from region.
         let mut max_diff = 0;
-        let mut max_diff_goal = Vec::<SomeStep>::with_capacity(5);
+        let mut max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
         for vecx in stp_cngs.iter() {
             //println!("One vecx:\n");
             //for stpx in vecx.iter() {
             //   println!("    {}", &stpx);
             //}
             // Select a step
-            let mut astep = vecx[0].clone();
+            let mut astep = vecx[0];
 
             if vecx.len() > 1 {
                 // Get a vector of steps that have an initial region closest to the from-region
@@ -537,10 +525,9 @@ impl SomeDomain {
 
                 // Get one of the closest to goal steps
                 if min_diff_from.len() == 1 {
-                    astep = min_diff_from[0].clone();
+                    astep = min_diff_from[0];
                 } else {
-                    astep =
-                        min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())].clone();
+                    astep = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
                 }
                 //println!("    local closest to {} is: {}", &from_reg, astep);
             }
@@ -550,7 +537,7 @@ impl SomeDomain {
 
             if tmp_diff > max_diff {
                 max_diff = tmp_diff;
-                max_diff_goal = Vec::<SomeStep>::with_capacity(5);
+                max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
             }
 
             if tmp_diff == max_diff {
@@ -560,7 +547,7 @@ impl SomeDomain {
 
         // Print steps selected
         //let mut strx = String::from("Steps selected for max diff from goal: ");
-        // strx.push_str(&format!("{} [", &goal_reg));
+        //strx.push_str(&format!("{} [", &goal_reg));
         //  for stpx in max_diff_goal.iter() {
         //     strx.push_str(&format!("{}, ", stpx));
         // }
@@ -583,19 +570,19 @@ impl SomeDomain {
 
         // Randomly pick a step
         let a_step = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
-
+        // println!("step chosen {}", &a_step);
         // Plan and return the next steps
         if let Some(plnx) =
             self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)
         {
-            if recur == 0 {
-                println!("plan from {} to {} found", &from_reg, &goal_reg);
-            }
+            //if recur == 0 {
+            println!("plan from {} to {} found", &from_reg, &goal_reg);
+            //}
             Some(plnx)
         } else {
-            if recur == 0 {
-                println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            }
+            //if recur == 0 {
+            println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            //}
             None
         }
     } // end make_one_plan
@@ -622,37 +609,35 @@ impl SomeDomain {
         max_depth: usize,
         recur: usize,
     ) -> Option<SomePlan> {
-        //println!(
-        //    "plan_next_steps: from {} to {} step {}",
-        //    &from_reg, &goal_reg, &astep
-        //);
-
         let mut bstep = astep.clone();
 
         if astep.initial.is_superset_of(&from_reg) {
             bstep = astep.restrict_initial_region(&from_reg);
         }
 
+        // println!(
+        //     "\nplan_next_steps: from {} to {} step {} recur {}",
+        //     &from_reg, &goal_reg, &bstep, recur
+        // );
+
         // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
         let mut aplan = SomePlan::new_step(bstep.clone());
 
-        // Check plan initial_region with from_reg
-        if bstep.initial.is_subset_of(&from_reg) {
-            // subset or EQ
-
-            //let aplan = SomePlan::new_step(astep.restrict_initial_region(&from_reg));
-
+        // Check plan initial region within from_reg
+        if aplan.initial_region().is_subset_of(&from_reg) {
+            // Check plan result region is within the goal region
             if aplan.result_region().is_subset_of(&goal_reg) {
                 return Some(aplan);
             }
 
+            // Plan result region is not within the goal region, find a path
             if let Some(planx) =
                 self.make_one_plan(&aplan.result_region(), &goal_reg, max_depth, recur + 1)
             {
                 if let Some(plany) = aplan.link(&planx) {
                     return Some(plany);
                 } else {
-                    //println!("plan_next_steps: failed at 0");
+                    // println!("plan_next_steps: failed at 0");
                     return None;
                 }
             } else {
@@ -674,42 +659,38 @@ impl SomeDomain {
                 aplan = plany;
             } else {
                 // println!(
-                //     "plan_next_steps, failed at 3, linking {} to {}",
-                //     &aplan, &planx
-                // );
+                //      "plan_next_steps, failed at 3, linking {} to {}",
+                //      &aplan, &planx
+                //  );
                 return None;
             }
         } else {
-            //println!(
-            //    "plan_next_steps, failed at 4 {} to {}",
+            // println!(
+            //     "plan_next_steps, failed at 4 {} to {}",
             //    &from_reg,
-            //    &aplan.initial_region()
-            //);
+            //     &aplan.initial_region()
+            // );
             return None;
         }
 
-        // Check if plan done
+        // Check if plan result region is with the goal region
         if aplan.result_region().is_subset_of(&goal_reg) {
-            // subset or EQ
-            return Some(aplan); // done
+            return Some(aplan);
         }
 
-        // Get a plan for plan result-region to goal-region
+        // Get a plan for plan result region to goal region
         if let Some(planw) =
             self.make_one_plan(&aplan.result_region(), &goal_reg, max_depth, recur + 1)
         {
             if let Some(planz) = aplan.link(&planw) {
                 return Some(planz); // done
             } else {
-                // println!("plan_next_steps, failed at 6");
+                //println!("plan_next_steps, failed at 6");
                 return None;
             }
-        } else {
-            // println!("plan_next_steps, failed at 7");
-            return None;
         }
 
-        // nothing will get this far
+        return None;
     } // end plan_next_steps
 
     // Return a State from a string, like "s0101".

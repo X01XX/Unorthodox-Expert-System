@@ -322,24 +322,26 @@ impl SomeRule {
     //   "don't care" & "do care" = "don't care"
     //   "don't care" ^ "do care" = "do care"
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = SomeMask::new(from.state1.bts.b_and(&from.state2.bts));
-        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_and(&from.state2.bts.b_not()));
-        let f_xes = SomeMask::new(from.state1.bts.b_xor(&from.state2.bts));
+        let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
+        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
 
-        let t_ones = SomeMask::new(to.state1.bts.b_and(&to.state2.bts));
-        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_and(&to.state2.bts.b_not()));
+        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
+        let t_xes = SomeMask::new(to.state1.bts.b_xor(&to.state2.bts));
 
-        let x1 = f_xes.m_and(&t_ones);
-        let x0 = f_xes.m_and(&t_zeros);
+        let b1xnot = f_ones.m_and(&t_xes).m_not();
+        let b0xnot = f_zeros.m_and(&t_xes).m_not();
 
         // Set the bits desired, the undesired bits end up as zeros
-        let nb00 = f_zeros.m_and(&t_zeros).m_or(&x0);
+        let nb00 = f_zeros.m_and(&t_zeros).m_and(&b0xnot);
 
-        let nb01 = f_zeros.m_and(&t_ones).m_or(&x1);
+        let nb01 = f_zeros.m_and(&t_ones).m_and(&b0xnot);
 
-        let nb11 = f_ones.m_and(&t_ones).m_or(&x1);
+        let nb11 = f_ones.m_and(&t_ones).m_and(&b1xnot);
 
-        let nb10 = f_ones.m_and(&t_zeros).m_or(&x0);
+        let nb10 = f_ones.m_and(&t_zeros).m_and(&b1xnot);
+
+        // println!("from {} to {} = b01: {}  b10: {}", &from, &to, &nb01, &nb10);
 
         Self {
             b00: nb00,
@@ -383,4 +385,28 @@ impl SomeRule {
     //            .m_or(&self.b10)
     //            .m_not()
     //    }
+
+    // Set initial region X bits to one
+    pub fn set_initial_to_ones(&self, msk: &SomeMask) -> Self {
+        let nmsk = msk.m_not();
+
+        Self {
+            b00: self.b00.m_and(&nmsk),
+            b01: self.b01.m_and(&nmsk),
+            b11: self.b11.clone(),
+            b10: self.b10.clone(),
+        }
+    }
+
+    // Set initial region X bits to zero
+    pub fn set_initial_to_zeros(&self, msk: &SomeMask) -> Self {
+        let nmsk = msk.m_not();
+
+        Self {
+            b00: self.b00.clone(),
+            b01: self.b01.clone(),
+            b11: self.b11.m_and(&nmsk),
+            b10: self.b10.m_and(&nmsk),
+        }
+    }
 }

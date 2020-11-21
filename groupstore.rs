@@ -242,11 +242,21 @@ impl GroupStore {
                     let zeros = grpx.rules[0].b01.m_and(&arule.b01);
 
                     if ones.is_not_low() || zeros.is_not_low() {
+                        let mut xrule = grpx.rules[0].clone();
+
+                        if ones.is_not_low() {
+                            xrule = xrule.set_initial_to_ones(&ones);
+                        }
+
+                        if zeros.is_not_low() {
+                            xrule = xrule.set_initial_to_zeros(&zeros);
+                        }
+
                         stps.push(SomeStep::new(
                             act_num,
-                            grpx.rules[0].clone(),
+                            xrule.clone(),
                             false,
-                            grpx.region.clone(),
+                            xrule.initial_region(),
                         ));
                     }
                 }

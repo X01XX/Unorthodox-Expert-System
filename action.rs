@@ -664,20 +664,32 @@ impl SomeAction {
                         continue;
                     }
 
-                    if let Some(_sqrx) = self.squares.find(&greg.state1) {
-                        if let Some(_sqry) = self.squares.find(&greg.state2) {
-                            if let Some(ruls) = self.squares.rules(&greg.state1, &greg.state2) {
+                    if let Some(sqrx) = self.squares.find(&greg.state1) {
+                        if let Some(sqry) = self.squares.find(&greg.state2) {
+                            if sqrx.pn() == Pn::Unpredictable && sqry.pn() == Pn::Unpredictable {
                                 self.groups.push(SomeGroup::new(
                                     &greg.state1,
                                     &greg.state2,
-                                    ruls,
+                                    RuleStore::new(),
                                     self.num,
                                     &max_region,
                                 ));
 
                                 return self.get_needs(cur_state, &max_region);
                             } else {
-                                panic!("expected this to work");
+                                if let Some(ruls) = self.squares.rules(&greg.state1, &greg.state2) {
+                                    self.groups.push(SomeGroup::new(
+                                        &greg.state1,
+                                        &greg.state2,
+                                        ruls,
+                                        self.num,
+                                        &max_region,
+                                    ));
+
+                                    return self.get_needs(cur_state, &max_region);
+                                } else {
+                                    panic!("expected this to work");
+                                }
                             }
                         } else {
                             panic!("should have found square {}", &greg.state1);
