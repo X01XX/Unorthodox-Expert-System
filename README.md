@@ -18,3 +18,5 @@ intention. Then be able to plan, and execute, a series of actions to change the 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
+
+If something new happens, some existing rules may be invalidated, new rules sought.
