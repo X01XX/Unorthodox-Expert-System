@@ -100,15 +100,25 @@ impl SquareStore {
 
                     if regy == *regx {
                         if let Some(sqry) = self.find(sta2) {
-                            if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
-                                if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
+                            if sqry.pn() == Pn::Unpredictable {
+                                let max_pnc = self.max_pn(&stas);
+                                let min_pnc = self.min_pnc(&stas);
+
+                                if max_pnc == min_pnc {
                                     sta_pairs.push(sta1.clone());
                                     sta_pairs.push(sta2.clone());
+                                }
+                            } else {
+                                if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
+                                    if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
+                                        sta_pairs.push(sta1.clone());
+                                        sta_pairs.push(sta2.clone());
+                                    } else {
+                                        continue;
+                                    }
                                 } else {
                                     continue;
                                 }
-                            } else {
-                                continue;
                             }
                         } else {
                             panic!("square not found?");

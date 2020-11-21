@@ -1644,7 +1644,7 @@ impl SomeAction {
     } // end group_pair_needs
 
     // Check for needs, for making a given region into a group.
-    // A need may be to take more samples, or to add the group.
+    // A need may be to take more samples, or just add the group.
     fn possible_group_needs(&self, reg_grp: &SomeRegion) -> NeedStore {
         //println!("possible_group_needs");
         let mut nds = NeedStore::new();
@@ -1916,6 +1916,11 @@ impl SomeAction {
 
         match grpx.pn {
             Pn::Unpredictable => {
+                if grpx.region.x_mask() == grpy.region.x_mask() {
+                    let regx = grpx.region.union(&grpy.region);
+                    return self.possible_group_needs(&regx);
+                }
+
                 let regx = grpx.region.overlapping_part(&grpy.region);
                 if regx.is_superset_of(&grpx.region) || regx.is_superset_of(&grpy.region) {
                     return nds;
@@ -1923,6 +1928,11 @@ impl SomeAction {
                 return self.possible_group_needs(&regx);
             }
             _ => {
+                if grpx.region.x_mask() == grpy.region.x_mask() {
+                    let regx = grpx.region.union(&grpy.region);
+                    return self.possible_group_needs(&regx);
+                }
+
                 let reg_ov = grpx.region.overlapping_part(&grpy.region);
 
                 if reg_ov.is_superset_of(&grpx.region) || reg_ov.is_superset_of(&grpy.region) {
