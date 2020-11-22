@@ -575,14 +575,14 @@ impl SomeDomain {
         if let Some(plnx) =
             self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)
         {
-            //if recur == 0 {
-            println!("plan from {} to {} found", &from_reg, &goal_reg);
-            //}
+            if recur == 0 {
+                println!("plan from {} to {} found", &from_reg, &goal_reg);
+            }
             Some(plnx)
         } else {
-            //if recur == 0 {
-            println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            //}
+            if recur == 0 {
+                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            }
             None
         }
     } // end make_one_plan

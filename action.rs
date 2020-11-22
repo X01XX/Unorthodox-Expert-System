@@ -119,7 +119,7 @@ impl SomeAction {
             SomeNeed::AStateMakeGroup {
                 act_num: _an,
                 targ_state: sta,
-                for_reg: _,
+                for_reg,
                 far,
                 num_x: _,
             } => {
@@ -129,35 +129,49 @@ impl SomeAction {
                 if let Some(sqrx) = self.squares.find(&sta) {
                     if let Some(sqry) = self.squares.find(&far) {
                         if sqrx.can_combine(&sqry) == Combinable::True {
-                            if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
-                                if self.squares.verify_combination(
-                                    &SomeRegion::new(&sqrx.state, &sqry.state),
-                                    &rulsxy,
-                                    &sqrx.pn(),
-                                ) {
-                                    if self.groups.any_superset_of(&rulsxy[0].initial_region())
-                                        == false
-                                    {
-                                        self.groups.push(SomeGroup::new(
-                                            &sqrx.state,
-                                            &sqry.state,
-                                            rulsxy,
-                                            self.num,
-                                            &max_region,
-                                        ));
+                            if sqrx.pn() == Pn::Unpredictable {
+                                if self.groups.any_superset_of(&for_reg) == false {
+                                    self.groups.push(SomeGroup::new(
+                                        &sqrx.state,
+                                        &sqry.state,
+                                        RuleStore::new(),
+                                        self.num,
+                                        &max_region,
+                                    ));
+                                } else {
+                                    println!("Superset found for new group {}", for_reg);
+                                }
+                            } else {
+                                if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
+                                    if self.squares.verify_combination(
+                                        &SomeRegion::new(&sqrx.state, &sqry.state),
+                                        &rulsxy,
+                                        &sqrx.pn(),
+                                    ) {
+                                        if self.groups.any_superset_of(&rulsxy[0].initial_region())
+                                            == false
+                                        {
+                                            self.groups.push(SomeGroup::new(
+                                                &sqrx.state,
+                                                &sqry.state,
+                                                rulsxy,
+                                                self.num,
+                                                &max_region,
+                                            ));
+                                        } else {
+                                            println!(
+                                                "Superset found for new group {}",
+                                                rulsxy.initial_region()
+                                            );
+                                        }
                                     } else {
                                         println!(
-                                            "Superset found for new group {}",
-                                            rulsxy.initial_region()
+                                            "verify_combination = sqr {} sqr {} = false",
+                                            sqrx.state, sqry.state
                                         );
-                                    }
-                                } else {
-                                    println!(
-                                        "verify_combination = sqr {} sqr {} = false",
-                                        sqrx.state, sqry.state
-                                    );
-                                } // end if verify_combination
-                            } // end if union
+                                    } // end if verify_combination
+                                } // end if union
+                            }
                         } else {
                             println!(
                                 "can_combine = sqr {} sqr {} = {}",
