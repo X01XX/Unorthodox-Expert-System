@@ -17,7 +17,7 @@ mod state;
 mod mask;
 mod maskstore;
 mod region;
-use region::SomeRegion;
+//use region::SomeRegion;
 mod action;
 mod actionstore;
 mod group;
@@ -84,7 +84,7 @@ fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
 
 fn main() {
     let mut dm1 = init_domain(1, "s0001"); // init state to 1 u8 integer of bits, may be higher
-    let num_actions = dm1.num_actions();
+                                           //let num_actions = dm1.num_actions();
 
     //pause_for_enter("");
 
@@ -93,12 +93,22 @@ fn main() {
 
     loop {
         step += 1;
+
+        println!("\nActs: {}", dm1.actions);
+        let nds: NeedStore = dm1.get_needs();
+
+        if nds.len() > 0 {
+            println!("\nAction needs: {}", nds);
+        } else {
+            println!("\nAction needs: None");
+        }
+
         println!(
             "\nStep: {} Current State: {}  Max Region: {}",
             &step, &dm1.cur_state, &dm1.max_region
         );
 
-        print!("\nEnter command: ");
+        print!("\nPress Enter to continue: ");
         io::stdout().flush().unwrap();
 
         let mut guess = String::new();
@@ -116,377 +126,358 @@ fn main() {
 
         // Default command, just press Enter
         if cmd.len() == 0 {
-            // Display new Actions and needs
-            println!("\nActs: {}", dm1.actions);
-            let nds: NeedStore = dm1.get_needs();
-
+            // Process needs
             if nds.len() > 0 {
-                println!("\nAction needs: {}", nds);
+                //println!("\nAction needs: {}", nds);
 
                 //let curst = dm1.cur_state.clone();
                 if satisfy_need(&mut dm1, &nds) {
-                    println!("\nActs: {}", dm1.actions);
-                //println!("next_state = {}", &dm1.cur_state);
                 } else {
                     println!("no need satisfied");
                 }
-            } else {
-                println!("\nAction needs: None");
             }
             continue;
-        } // end zero length commands
+        } else {
+            do_command(&mut dm1, &guess);
+        }
+    }
+} // end main
 
-        // Handle one-word commands
-        if cmd.len() == 1 {
-            // Quit with q , exit, quit
-            if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
-                println!("Done");
-                process::exit(0);
-            } else if cmd[0] == "h" || cmd[0] == "help" {
-                usage();
-                continue;
-            }
+// Do a command
+// if done, return true
+// else print an error message and return false
+fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
+    let mut cmd = Vec::<String>::with_capacity(10);
 
-            // Print Action command
-            if cmd[0] == "pa" {
-                println!("\nActs: {}", dm1.actions);
-                continue;
-            } // end pa command
-              // Print Action command
+    for word in guess.split_whitespace() {
+        //println!("word:is {}", word);
+        cmd.push(word.to_ascii_lowercase());
+    }
 
-            if cmd[0] == "gn" {
-                println!("\nActs: {}", dm1.get_needs());
-                continue;
-            } // end gn command
+    // Handle one-word commands
+    if cmd.len() == 1 {
+        // Quit with q , exit, quit
+        if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
+            println!("Done");
+            process::exit(0);
+        }
 
-            if cmd[0] == "tests" {
-                tests::run_tests();
-                continue;
-            }
+        if cmd[0] == "h" || cmd[0] == "help" {
+            usage();
+            return true;
+        }
 
-            println!("\nDid not understand command: {}", guess);
-            continue;
-        } // end one-word commands
+        if cmd[0] == "pa" {
+            println!("\nActs: {}", dm1.actions);
+            return true;
+        }
 
-        // Handle two-word commands
-        if cmd.len() == 2 {
-            // Arbitrary change state
-            if cmd[0] == "cs" {
-                let state_r = dm1.state_from_string(&cmd[1]);
-                match state_r {
-                    Ok(a_state) => {
-                        println!("Change state to {}", a_state);
-                        dm1.cur_state = a_state.clone();
+        if cmd[0] == "gn" {
+            println!("\nActs: {}", dm1.get_needs());
+            return true;
+        }
 
-                        continue;
+        if cmd[0] == "tests" {
+            tests::run_tests();
+            return true;
+        }
+    } // end one-word commands
+
+    // Handle two-word commands
+    if cmd.len() == 2 {
+        // Arbitrary change state
+        if cmd[0] == "cs" {
+            let state_r = dm1.state_from_string(&cmd[1]);
+            match state_r {
+                Ok(a_state) => {
+                    println!("Change state to {}", a_state);
+                    dm1.cur_state = a_state.clone();
+                    return true;
+                }
+                Err(error) => {
+                    if error == 1 {
+                        println!("\nDid not understand state, should start with s");
+                    } else {
+                        println!("\nDid not understand state, invalid character");
                     }
-                    Err(error) => {
-                        if error == 1 {
-                            println!("\nDid not understand state, should start with s");
-                        } else {
-                            println!("\nDid not understand state, invalid character");
-                        }
-                    }
-                } // end match
-            }
+                    return false;
+                }
+            } // end match
+        } // end command cs
 
-            // Change current-state to a region
-            if cmd[0] == "to" {
-                let region_r = dm1.region_from_string(&cmd[1]);
-                match region_r {
-                    Ok(goal_region) => {
+        if cmd[0] == "to" {
+            let region_r = dm1.region_from_string(&cmd[1]);
+            match region_r {
+                Ok(goal_region) => {
+                    println!(
+                        "Change Current_state {} to region {}",
+                        dm1.cur_state, goal_region
+                    );
+                    if goal_region.is_superset_of_state(&dm1.cur_state) {
                         println!(
-                            "Change Current_state {} to region {}",
+                            "current_state {} is already in region {}",
                             dm1.cur_state, goal_region
                         );
-                        if goal_region.is_superset_of_state(&dm1.cur_state) {
-                            println!(
-                                "current_state {} is already in region {}",
-                                dm1.cur_state, goal_region
-                            );
-                        } else {
-                            if let Some(pln) = dm1.make_plan(&goal_region) {
-                                println!("Plan is {}", pln);
+                        return false;
+                    } else {
+                        if let Some(pln) = dm1.make_plan(&goal_region) {
+                            println!("Plan is {}", pln);
 
-                                // Do the plan
-                                dm1.run_plan(&pln);
-                            } else {
-                                println!("No plan found");
-                            }
+                            // Do the plan
+                            dm1.run_plan(&pln);
+                            return true;
+                        } else {
+                            println!("No plan found");
+                            return false;
                         }
                     }
-                    Err(error) => {
-                        if error == 1 {
-                            println!("\nDid not understand region, should start with r");
-                        } else {
-                            println!("\nDid not understand region, invalid character");
-                        }
+                }
+                Err(error) => {
+                    if error == 1 {
+                        println!("\nDid not understand region, should start with r");
+                    } else {
+                        println!("\nDid not understand region, invalid character");
                     }
-                } // end match region_r
-                continue;
-            } // end to command
-
-            // Display InBetween needs for an action
-            if cmd[0] == "ibn" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
+                    return false;
                 }
+            } // end match region_r
+        } //end command to
 
-                let ndx = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
+        if cmd[0] == "ibn" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            let ndx = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
 
-                println!("InBetweenNeeds are {}", &ndx);
-                continue;
-            } // end ibn <act> command
+            println!("InBetweenNeeds are {}", &ndx);
+            return true;
+        }
 
-            // Act sample current state
-            if cmd[0] == "ss" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
+        if cmd[0] == "ss" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+
+            println!("Act {} sample State {}", act_num, dm1.cur_state);
+            dm1.take_action_need(&SomeNeed::StateNotInGroup {
+                act_num: act_num,
+                targ_state: dm1.cur_state.clone(),
+            });
+            return true;
+        }
+
+        if cmd[0] == "pa" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            println!("{}", &dm1.actions[act_num]);
+            return true;
+        }
+
+        if cmd[0] == "g1" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+
+            let sqrs = dm1.actions[act_num]
+                .squares
+                .states_in_1_region(&dm1.actions[act_num].groups.regions());
+
+            println!("Act {} State in one group {}", act_num, &sqrs);
+            return true;
+        }
+
+        if cmd[0] == "ps" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            println!(
+                "Squares in Action {} are \n{}\n",
+                &act_num, &dm1.actions[act_num].squares
+            );
+            return true;
+        }
+    } // end two-word commands
+
+    // Handle three-word commands
+    if cmd.len() == 3 {
+        // Satisfy an InBetween need
+        //        if cmd[0] == "ibn" {
+        //            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+        //            if act_num >= dm1.num_actions() {
+        //                println!("\nInvalid action number");
+        //                return false;
+        //            }
+        //            let state_r = dm1.state_from_string(&cmd[2]);
+        //            match state_r {
+        //                Ok(a_state) => {
+        //                    println!("Act {} sample State {}", act_num, a_state);
+        //                    dm1.cur_state = a_state.clone();
+        //
+        //                    let ndxs = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
+        //
+        //                    println!("InBetweenNeeds are {}", &ndxs);
+        //
+        //                    for ndx in ndxs.iter() {
+        //                        if ndx.target() == SomeRegion::new(&a_state, &a_state) {
+        //                            // run the sample and need
+        //                            dm1.take_action_need(&ndx);
+        //                            break;
+        //                        }
+        //                    }
+        //                    return true;
+        //                }
+        //                Err(error) => {
+        //                    if error == 1 {
+        //                        println!("\nDid not understand state, should start with s");
+        //                    } else {
+        //                        println!("\nDid not understand state, invalid character");
+        //                    }
+        //                    return false;
+        //                }
+        //            } // end match
+        //        }
+
+        if cmd[0] == "ss" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            let state_r = dm1.state_from_string(&cmd[2]);
+            match state_r {
+                Ok(a_state) => {
+                    println!("Act {} sample State {}", act_num, a_state);
+                    dm1.cur_state = a_state.clone();
+                    dm1.take_action_need(&SomeNeed::StateNotInGroup {
+                        act_num: act_num,
+                        targ_state: a_state,
+                    });
+                    return true;
                 }
-
-                println!("Act {} sample State {}", act_num, dm1.cur_state);
-                dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                    act_num: act_num,
-                    targ_state: dm1.cur_state.clone(),
-                });
-                continue;
-            } // end sc command
-
-            // Print Action command
-            if cmd[0] == "pa" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
+                Err(error) => {
+                    if error == 1 {
+                        println!("\nDid not understand state, should start with s");
+                    } else {
+                        println!("\nDid not understand state, invalid character");
+                    }
+                    return false;
                 }
+            } // end match state_r
+        }
 
-                println!("{}", &dm1.actions[act_num]);
-                continue;
-            } // end pa command
+        if cmd[0] == "ps" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+                println!(
+                    "Squares of Act {} in region {} are \n{}\n",
+                    &act_num,
+                    &aregion,
+                    &dm1.actions[act_num].squares.stas_in_reg(&aregion)
+                );
+                return true;
+            }
+            println!("\nDid not understand region");
+            return false;
+        }
 
-            // Act print squares only in one region
-            if cmd[0] == "g1" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
+        if cmd[0] == "aj" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+                let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
+                println!("Squares adj to {} are {}", &aregion, &stas);
+                return true;
+            }
+            println!("\nDid not understand region");
+            return false;
+        }
 
-                let sqrs = dm1.actions[act_num]
+        if cmd[0] == "g1" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+                let sta_1s = dm1.actions[act_num]
                     .squares
                     .states_in_1_region(&dm1.actions[act_num].groups.regions());
-                println!("Act {} State in one group {}", act_num, &sqrs);
-                continue;
-            } // end g1 command
-
-            // Print Squares in action, ps <act num>
-            if cmd[0] == "ps" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
 
                 println!(
-                    "Squares in Action {} are \n{}\n",
-                    &act_num, &dm1.actions[act_num].squares
+                    "Squares in one region, in {} are {}",
+                    &aregion,
+                    aregion.states_in(&sta_1s)
                 );
-                continue;
-            } // end ps command
+                return true;
+            }
+            println!("\nDid not understand region");
+            return false;
+        }
+    } // end 3-word commands
 
-            println!("\nDid not understand command: {}", guess);
-            continue;
-        } // end two-word commands
+    // Handle four-word commands
+    if cmd.len() == 4 {
+        // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
+        if cmd[0] == "ss" {
+            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            let i_state_rslt = dm1.state_from_string(&cmd[2]);
+            match i_state_rslt {
+                Ok(i_state) => {
+                    let r_state_rslt = dm1.state_from_string(&cmd[3]);
+                    match r_state_rslt {
+                        Ok(r_state) => {
+                            println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
 
-        // Handle three-word commands
-        if cmd.len() == 3 {
-            // Satisfy an InBetween need
-            if cmd[0] == "ibn" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
-
-                let state_r = dm1.state_from_string(&cmd[2]);
-                match state_r {
-                    Ok(a_state) => {
-                        println!("Act {} sample State {}", act_num, a_state);
-                        dm1.cur_state = a_state.clone();
-
-                        let ndxs = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
-
-                        println!("InBetweenNeeds are {}", &ndxs);
-
-                        for ndx in ndxs.iter() {
-                            if ndx.target() == SomeRegion::new(&a_state, &a_state) {
-                                // run the sample and need
-                                dm1.take_action_need(&ndx);
-                                break;
+                            dm1.take_action_arbitrary(act_num, &i_state, &r_state);
+                            return true;
+                        }
+                        Err(error) => {
+                            if error == 1 {
+                                println!("\nDid not understand state, should start with s");
+                            } else {
+                                println!("\nDid not understand state, invalid character");
                             }
+                            return false;
                         }
-
-                        continue;
+                    } // end match r_state_rslt
+                }
+                Err(error) => {
+                    if error == 1 {
+                        println!("\nDid not understand state, should start with s");
+                    } else {
+                        println!("\nDid not understand state, invalid character");
                     }
-                    Err(error) => {
-                        if error == 1 {
-                            println!("\nDid not understand state, should start with s");
-                        } else {
-                            println!("\nDid not understand state, invalid character");
-                        }
-                    }
-                } // end match
-
-                continue;
-            } // end ibn <act> <state> command
-
-            // Sample State (ss) with <action num> <state>
-            if cmd[0] == "ss" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
+                    return false;
                 }
+            } // end match i_state_rslt
+        }
+    } // end 4-word commands
 
-                let state_r = dm1.state_from_string(&cmd[2]);
-                match state_r {
-                    Ok(a_state) => {
-                        println!("Act {} sample State {}", act_num, a_state);
-                        dm1.cur_state = a_state.clone();
-                        dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                            act_num: act_num,
-                            targ_state: a_state,
-                        });
-                        continue;
-                    }
-                    Err(error) => {
-                        if error == 1 {
-                            println!("\nDid not understand state, should start with s");
-                        } else {
-                            println!("\nDid not understand state, invalid character");
-                        }
-                    }
-                } // end match state_r
-                continue;
-            } // end ss command
-
-            // Print Squares in region, ps <act num> r<region bits>
-            if cmd[0] == "ps" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
-
-                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                    println!(
-                        "Squares of Act {} in region {} are \n{}\n",
-                        &act_num,
-                        &aregion,
-                        &dm1.actions[act_num].squares.stas_in_reg(&aregion)
-                    );
-                } else {
-                    println!("\nDid not understand region");
-                }
-                continue;
-            } // end ps command
-
-            if cmd[0] == "aj" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
-
-                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                    let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
-                    println!("Squares adj to {} are {}", &aregion, &stas);
-                } else {
-                    println!("\nDid not understand region");
-                }
-                continue;
-            } // end aj command
-
-            if cmd[0] == "g1" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
-
-                if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                    let sta_1s = dm1.actions[act_num]
-                        .squares
-                        .states_in_1_region(&dm1.actions[act_num].groups.regions());
-
-                    println!(
-                        "Squares in one region, in {} are {}",
-                        &aregion,
-                        aregion.states_in(&sta_1s)
-                    );
-                } else {
-                    println!("\nDid not understand region");
-                }
-                continue;
-            } // end g1 command
-            println!("\nDid not understand command: {}", guess);
-            continue;
-        } // end 3-word commands
-
-        // Handle four-word commands
-        if cmd.len() == 4 {
-            // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
-            if cmd[0] == "ss" {
-                let act_num = cmd[1].parse().unwrap_or_else(|_err| num_actions);
-                if act_num >= num_actions {
-                    println!("\nInvalid action number");
-                    continue;
-                }
-
-                let i_state_rslt = dm1.state_from_string(&cmd[2]);
-                match i_state_rslt {
-                    Ok(i_state) => {
-                        let r_state_rslt = dm1.state_from_string(&cmd[3]);
-                        match r_state_rslt {
-                            Ok(r_state) => {
-                                println!(
-                                    "Act {} take sample {} -> {}",
-                                    act_num, &i_state, &r_state
-                                );
-
-                                dm1.take_action_arbitrary(act_num, &i_state, &r_state);
-                                continue;
-                            }
-                            Err(error) => {
-                                if error == 1 {
-                                    println!("\nDid not understand state, should start with s");
-                                } else {
-                                    println!("\nDid not understand state, invalid character");
-                                }
-                            }
-                        } // end match r_state_rslt
-                    }
-                    Err(error) => {
-                        if error == 1 {
-                            println!("\nDid not understand state, should start with s");
-                        } else {
-                            println!("\nDid not understand state, invalid character");
-                        }
-                    }
-                } // end match i_state_rslt
-                continue;
-            } // end ss command
-
-            println!("\nDid not understand command: {}", guess);
-            continue;
-        } // end 4-word commands
-        println!("\nDid not understand command: {}", guess);
-    } // end loop
-} // end main
+    println!("\nDid not understand command: {:?}", cmd);
+    false
+} // end do_command
 
 fn usage() {
     println!("\nCommands:");
