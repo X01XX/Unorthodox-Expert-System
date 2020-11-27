@@ -609,141 +609,154 @@ impl SomeAction {
     // of a group, a new group needs to be added, get needs will be rerun.
     pub fn get_needs(&mut self, cur_state: &SomeState, max_region: &SomeRegion) -> NeedStore {
         // println!("Running Action {}::get_needs {}", self.num, cur_state);
-        let mut nds = NeedStore::new();
 
-        // Check if current state is in any groups
-        let mut in_grp = false;
-        for grpx in self.groups.iter() {
-            if grpx.active && grpx.region.is_superset_of_state(cur_state) {
-                in_grp = true;
-                break;
+        // loop through get_needs until no bookkeeping need is returned.
+        loop {
+            let mut nds = NeedStore::new();
+
+            let mut try_again = false;
+
+            // Check if current state is in any groups
+            let mut in_grp = false;
+            for grpx in self.groups.iter() {
+                if grpx.active && grpx.region.is_superset_of_state(cur_state) {
+                    in_grp = true;
+                    break;
+                }
             }
-        }
 
-        if in_grp == false {
-            nds.push(SomeNeed::StateNotInGroup {
-                act_num: self.num,
-                targ_state: cur_state.clone(),
-            });
-        }
+            if in_grp == false {
+                nds.push(SomeNeed::StateNotInGroup {
+                    act_num: self.num,
+                    targ_state: cur_state.clone(),
+                });
+            }
 
-        let mut ndx = self.in_between_needs(&cur_state);
-        if ndx.len() > 0 {
-            nds.append(&mut ndx);
-        }
+            let mut ndx = self.in_between_needs(&cur_state);
+            if ndx.len() > 0 {
+                nds.append(&mut ndx);
+            }
 
-        // Check for additional samples for group states needs
-        let mut ndx = self.additional_group_state_samples();
-
-        if ndx.len() > 0 {
-            nds.append(&mut ndx);
-        }
-
-        // Check for overlapping regions that may be combined
-
-        let mut ndx = self.group_pair_needs();
-
-        if ndx.len() > 0 {
-            nds.append(&mut ndx);
-        }
-
-        // Check for squares in-one-group needs
-        //if nds.len() == 0 && self.reconfirm
-        if nds.len() == 0 {
-            let mut ndx = self.confirm_groups_needs(&max_region);
+            // Check for additional samples for group states needs
+            let mut ndx = self.additional_group_state_samples();
 
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
             }
-        }
 
-        if nds.len() == 0 {
-            let mut ndx = self.expand_needs();
+            // Check for overlapping regions that may be combined
+
+            let mut ndx = self.group_pair_needs();
 
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
             }
-        }
 
-        // Process a few specific needs related to changing the Action or groups.
-        for ndx in nds.iter_mut() {
-            match ndx {
-                SomeNeed::AddGroup {
-                    act_num: _,
-                    group_region: greg,
-                } => {
-                    // Add a new group
-                    if self.groups.any_superset_of(&greg) {
-                        println!("**** Supersets found for new group {}!", &greg);
-                        continue;
-                    }
+            // Check for squares in-one-group needs
+            //if nds.len() == 0 && self.reconfirm
+            if nds.len() == 0 {
+                let mut ndx = self.confirm_groups_needs(&max_region);
 
-                    if let Some(sqrx) = self.squares.find(&greg.state1) {
-                        if let Some(sqry) = self.squares.find(&greg.state2) {
-                            if sqrx.pn() == Pn::Unpredictable && sqry.pn() == Pn::Unpredictable {
-                                self.groups.push(SomeGroup::new(
-                                    &greg.state1,
-                                    &greg.state2,
-                                    RuleStore::new(),
-                                    self.num,
-                                    &max_region,
-                                ));
+                if ndx.len() > 0 {
+                    nds.append(&mut ndx);
+                }
+            }
 
-                                return self.get_needs(cur_state, &max_region);
-                            } else {
-                                if let Some(ruls) = self.squares.rules(&greg.state1, &greg.state2) {
+            if nds.len() == 0 {
+                let mut ndx = self.expand_needs();
+
+                if ndx.len() > 0 {
+                    nds.append(&mut ndx);
+                }
+            }
+
+            // Process a few specific needs related to changing the Action or groups.
+            for ndx in nds.iter_mut() {
+                match ndx {
+                    SomeNeed::AddGroup {
+                        act_num: _,
+                        group_region: greg,
+                    } => {
+                        try_again = true;
+
+                        // Add a new group
+                        if self.groups.any_superset_of(&greg) {
+                            println!("**** Supersets found for new group {}!", &greg);
+                            continue;
+                        }
+
+                        if let Some(sqrx) = self.squares.find(&greg.state1) {
+                            if let Some(sqry) = self.squares.find(&greg.state2) {
+                                if sqrx.pn() == Pn::Unpredictable && sqry.pn() == Pn::Unpredictable
+                                {
                                     self.groups.push(SomeGroup::new(
                                         &greg.state1,
                                         &greg.state2,
-                                        ruls,
+                                        RuleStore::new(),
                                         self.num,
                                         &max_region,
                                     ));
 
                                     return self.get_needs(cur_state, &max_region);
                                 } else {
-                                    panic!("expected this to work");
+                                    if let Some(ruls) =
+                                        self.squares.rules(&greg.state1, &greg.state2)
+                                    {
+                                        self.groups.push(SomeGroup::new(
+                                            &greg.state1,
+                                            &greg.state2,
+                                            ruls,
+                                            self.num,
+                                            &max_region,
+                                        ));
+
+                                        return self.get_needs(cur_state, &max_region);
+                                    } else {
+                                        panic!("expected this to work");
+                                    }
                                 }
+                            } else {
+                                panic!("should have found square {}", &greg.state1);
                             }
                         } else {
-                            panic!("should have found square {}", &greg.state1);
+                            panic!("should have found square {}", &greg.state2);
                         }
-                    } else {
-                        panic!("should have found square {}", &greg.state2);
                     }
-                }
-                SomeNeed::SetGroupConfirmed {
-                    act_num: _,
-                    group_region: greg,
-                    cstate: sta1,
-                } => {
-                    if let Some(grpx) = self.groups.find_mut(&greg) {
-                        println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
-                        grpx.set_anchor(sta1.clone());
-                    //grpx.confirmed = true;
-                    //grpx.anchor = Some(sta1.clone());
-                    //let far_sta = grpx.region.far_state(&sta1);
-                    //grpx.region = SomeRegion::new(&sta1, &far_sta);
-                    } else {
-                        panic!("group {} not found for SetGroupConfirnmed", greg);
-                    }
-                }
-                SomeNeed::ClearGroupCheckBit {
-                    act_num: _,
-                    group_region: greg,
-                    mbit: mbitx,
-                } => {
-                    if let Some(grpx) = self.groups.find_mut(&greg) {
-                        grpx.check_off(&mbitx);
-                    } else {
-                        println!("did not find group {} ?", &greg);
-                    }
-                }
-                _ => {}
-            } // end match
-        }
+                    SomeNeed::SetGroupConfirmed {
+                        act_num: _,
+                        group_region: greg,
+                        cstate: sta1,
+                    } => {
+                        try_again = true;
 
-        nds
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
+                            grpx.set_anchor(sta1.clone());
+                        } else {
+                            panic!("group {} not found for SetGroupConfirnmed", greg);
+                        }
+                    }
+                    SomeNeed::ClearGroupCheckBit {
+                        act_num: _,
+                        group_region: greg,
+                        mbit: mbitx,
+                    } => {
+                        try_again = true;
+
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            grpx.check_off(&mbitx);
+                        } else {
+                            println!("did not find group {} ?", &greg);
+                        }
+                    }
+                    _ => {}
+                } // end match
+            } // next ndx
+
+            if try_again == false {
+                return nds;
+            }
+        } // end loop
     } // end get_needs
 
     // Return in-between needs.
