@@ -26,7 +26,7 @@ impl fmt::Display for SomeSquare {
 
         rc_str.push_str(&format!(", {}", self.rules));
 
-        rc_str.push(')');
+        rc_str.push(']');
 
         write!(f, "{}", rc_str)
     }

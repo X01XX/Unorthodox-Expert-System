@@ -302,7 +302,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 return false;
             }
             println!(
-                "Squares in Action {} are \n{}\n",
+                "Squares of Action {} are:\n{}\n",
                 &act_num, &dm1.actions[act_num].squares
             );
             return true;
@@ -383,12 +383,29 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 return false;
             }
             if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                println!(
-                    "Squares of Act {} in region {} are \n{}\n",
-                    &act_num,
-                    &aregion,
-                    &dm1.actions[act_num].squares.stas_in_reg(&aregion)
-                );
+                let mut psstr = String::from(format!(
+                    "Squares of Action {} in region {} are:\n",
+                    &act_num, &aregion
+                ));
+                let stas = dm1.actions[act_num].squares.stas_in_reg(&aregion);
+
+                let mut flg = 0;
+
+                for stax in stas.iter() {
+                    if flg == 1 {
+                        psstr.push_str(",\n");
+                    }
+
+                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&stax) {
+                        psstr.push_str(&format!("{}", sqrx));
+                    } else {
+                        println!("Square {} not found??", &stax);
+                    }
+
+                    flg = 1;
+                }
+
+                println!("{}", &psstr);
                 return true;
             }
             println!("\nDid not understand region");
