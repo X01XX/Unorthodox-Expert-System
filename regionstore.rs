@@ -233,71 +233,71 @@ impl RegionStore {
     // Return the empty adjacent parts of the given regions, after
     // subtracting out the associated regions.
     // Ignore an equal region.
-    pub fn empty_adjacent(&self, other: &SomeRegion) -> RegionStore {
-        //println!("running empty_adjacent {} with {}", &self, other);
-
-        let mut ret_regs = RegionStore::new();
-        ret_regs.push(other.clone());
-
-        for regx in self.iter() {
-            if regx.active == false {
-                continue;
-            }
-
-            if *regx == *other {
-                continue;
-            }
-
-            if regx.intersects(other) {
-                if ret_regs.any_intersection_region(other) {
-                    //println!("regx {} intersects {} regs_before {}", &regx, other, &ret_regs);
-                    ret_regs = ret_regs.subtract_region(&regx);
-                    //println!("  regs after: {}", &ret_regs);
-                }
-            } else if regx.is_adjacent(other) {
-                let regy = regx.adj_part(other);
-
-                if ret_regs.any_intersection_region(other) {
-                    //println!("regx {} is adjacent {} with adj_part {} regs_before {}", &regx, other, &regy, &ret_regs);
-                    ret_regs = ret_regs.subtract_region(&regy);
-                    //println!("  regs after: {}", &ret_regs);
-                }
-            }
-        }
-
-        ret_regs
-    }
+    //    pub fn empty_adjacent(&self, other: &SomeRegion) -> RegionStore {
+    //        //println!("running empty_adjacent {} with {}", &self, other);
+    //
+    //        let mut ret_regs = RegionStore::new();
+    //        ret_regs.push(other.clone());
+    //
+    //        for regx in self.iter() {
+    //            if regx.active == false {
+    //                continue;
+    //            }
+    //
+    //            if *regx == *other {
+    //                continue;
+    //            }
+    //
+    //            if regx.intersects(other) {
+    //                if ret_regs.any_intersection_region(other) {
+    //                    //println!("regx {} intersects {} regs_before {}", &regx, other, &ret_regs);
+    //                    ret_regs = ret_regs.subtract_region(&regx);
+    //                    //println!("  regs after: {}", &ret_regs);
+    //                }
+    //            } else if regx.is_adjacent(other) {
+    //                let regy = regx.adj_part(other);
+    //
+    //                if ret_regs.any_intersection_region(other) {
+    //                    //println!("regx {} is adjacent {} with adj_part {} regs_before {}", &regx, other, &regy, &ret_regs);
+    //                    ret_regs = ret_regs.subtract_region(&regy);
+    //                    //println!("  regs after: {}", &ret_regs);
+    //                }
+    //            }
+    //        }
+    //
+    //        ret_regs
+    //    }
 
     // Return the result of subtracting a region from a region store.
-    pub fn subtract_region(&self, other: &SomeRegion) -> Self {
-        let mut ret_regs = RegionStore::new();
-
-        for regx in self.iter() {
-            if regx.intersects(other) {
-                if regx.is_subset_of(other) {
-                } else {
-                    let sub_regs = regx.subtract(other);
-                    for regy in sub_regs.iter() {
-                        ret_regs.push_nosubs(regy.clone());
-                    }
-                }
-            } else {
-                ret_regs.push_nosubs(regx.clone());
-            }
-        }
-
-        ret_regs
-    }
+    //    pub fn subtract_region(&self, other: &SomeRegion) -> Self {
+    //        let mut ret_regs = RegionStore::new();
+    //
+    //        for regx in self.iter() {
+    //            if regx.intersects(other) {
+    //                if regx.is_subset_of(other) {
+    //                } else {
+    //                    let sub_regs = regx.subtract(other);
+    //                    for regy in sub_regs.iter() {
+    //                        ret_regs.push_nosubs(regy.clone());
+    //                    }
+    //                }
+    //            } else {
+    //                ret_regs.push_nosubs(regx.clone());
+    //            }
+    //        }
+    //
+    //        ret_regs
+    //    }
 
     // Return true if a region intersects any region in a region store
-    pub fn any_intersection_region(&self, reg: &SomeRegion) -> bool {
-        for regx in &self.avec {
-            if reg.active && regx.intersects(&reg) {
-                return true;
-            }
-        }
-        false
-    }
+    //    pub fn any_intersection_region(&self, reg: &SomeRegion) -> bool {
+    //        for regx in &self.avec {
+    //            if reg.active && regx.intersects(&reg) {
+    //                return true;
+    //            }
+    //        }
+    //        false
+    //    }
 } // end impl
 
 impl Index<usize> for RegionStore {

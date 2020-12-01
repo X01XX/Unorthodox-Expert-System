@@ -2,7 +2,7 @@
 
 //use crate::bits::SomeBits;
 use crate::mask::SomeMask;
-use crate::maskstore::MaskStore;
+//use crate::maskstore::MaskStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use std::fmt;
@@ -264,20 +264,20 @@ impl SomeRegion {
     }
 
     // Return a region with masked X-bits set to zeros
-    pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-        Self::new(
-            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
-            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
-        )
-    }
+    //    pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
+    //        Self::new(
+    //            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
+    //            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+    //        )
+    //    }
 
     // Return a region with masked X-bits set to ones
-    pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-        Self::new(
-            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
-        )
-    }
+    //    pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
+    //        Self::new(
+    //            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
+    //            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
+    //        )
+    //    }
 
     // Return a region with masked X-bits set to zeros
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
@@ -344,92 +344,92 @@ impl SomeRegion {
 
     // Given a region, and a second region, return the
     // first region - the second
-    pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
-        let mut avec = Vec::<Self>::new();
-
-        if self.intersects(&other) == false {
-            avec.push(self.clone());
-            return avec;
-        }
-
-        let reg_int = self.intersection(&other);
-
-        let x_over_not_xs = MaskStore {
-            avec: self.x_mask().m_and(&reg_int.not_x_mask()).split(),
-        }; // split -> Vec<SomeMask>
-
-        for mskx in x_over_not_xs.iter() {
-            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
-                // reg_int has a 0 bit in that position
-                avec.push(self.set_to_ones(&mskx));
-            } else {
-                // reg_int has a 1 in that bit position
-                avec.push(self.set_to_zeros(&mskx));
-            }
-        }
-
-        avec
-    }
+    //    pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
+    //        let mut avec = Vec::<Self>::new();
+    //
+    //        if self.intersects(&other) == false {
+    //            avec.push(self.clone());
+    //            return avec;
+    //        }
+    //
+    //        let reg_int = self.intersection(&other);
+    //
+    //        let x_over_not_xs = MaskStore {
+    //            avec: self.x_mask().m_and(&reg_int.not_x_mask()).split(),
+    //        }; // split -> Vec<SomeMask>
+    //
+    //        for mskx in x_over_not_xs.iter() {
+    //            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
+    //                // reg_int has a 0 bit in that position
+    //                avec.push(self.set_to_ones(&mskx));
+    //            } else {
+    //                // reg_int has a 1 in that bit position
+    //                avec.push(self.set_to_zeros(&mskx));
+    //            }
+    //        }
+    //
+    //        avec
+    //    }
 
     // Return a mask of zero-bit positions on a region
-    pub fn zeros_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
-    }
+    //    pub fn zeros_mask(&self) -> SomeMask {
+    //        SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
+    //    }
 
     // Return a mask of one-bit positions on a region
-    pub fn ones_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
-    }
+    //    pub fn ones_mask(&self) -> SomeMask {
+    //        SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
+    //    }
 
     // Given a region and a second adjacent region, return the
     // adjacent part of the second region to the first region.
-    pub fn adj_part(&self, other: &SomeRegion) -> SomeRegion {
-        if self.is_adjacent(&other) == false {
-            panic!("regions not adjacent?");
-        }
-
-        let not_x_over_xs = self.not_x_mask().m_and(&other.x_mask()); // -> SomeMask
-
-        let mut ret_reg = other.clone();
-
-        let to_zero_msk = not_x_over_xs.m_and(&self.zeros_mask());
-
-        if to_zero_msk.is_not_low() {
-            ret_reg = ret_reg.set_to_zeros(&to_zero_msk);
-        }
-
-        let to_one_msk = not_x_over_xs.m_and(&self.ones_mask());
-
-        if to_one_msk.is_not_low() {
-            ret_reg = ret_reg.set_to_ones(&to_one_msk);
-        }
-
-        ret_reg
-    }
+    //    pub fn adj_part(&self, other: &SomeRegion) -> SomeRegion {
+    //        if self.is_adjacent(&other) == false {
+    //            panic!("regions not adjacent?");
+    //        }
+    //
+    //        let not_x_over_xs = self.not_x_mask().m_and(&other.x_mask()); // -> SomeMask
+    //
+    //        let mut ret_reg = other.clone();
+    //
+    //        let to_zero_msk = not_x_over_xs.m_and(&self.zeros_mask());
+    //
+    //        if to_zero_msk.is_not_low() {
+    //            ret_reg = ret_reg.set_to_zeros(&to_zero_msk);
+    //        }
+    //
+    //        let to_one_msk = not_x_over_xs.m_and(&self.ones_mask());
+    //
+    //        if to_one_msk.is_not_low() {
+    //            ret_reg = ret_reg.set_to_ones(&to_one_msk);
+    //        }
+    //
+    //        ret_reg
+    //    }
 
     // Given a region, return a vector of adjacent edges
     // Should be called like RegionStore { avec: adj_edges(...) }
-    pub fn _adj_edges(&self, max_reg: &SomeRegion) -> Vec<Self> {
-        let mut avec = Vec::<Self>::new();
-
-        let not_x = self.not_x_mask().m_and(&max_reg.x_mask());
-
-        let not_x_masks = MaskStore {
-            avec: not_x.split(),
-        };
-
-        let ones = self.ones_mask();
-
-        for mskbit in not_x_masks.iter() {
-            if mskbit.m_and(&ones).is_low() {
-                // then is a zero bit
-                avec.push(self.set_to_ones(&mskbit));
-            } else {
-                // is a one bit
-                avec.push(self.set_to_zeros(&mskbit));
-            }
-        }
-
-        avec
-    }
+    //    pub fn adj_edges(&self, max_reg: &SomeRegion) -> Vec<Self> {
+    //        let mut avec = Vec::<Self>::new();
+    //
+    //        let not_x = self.not_x_mask().m_and(&max_reg.x_mask());
+    //
+    //        let not_x_masks = MaskStore {
+    //            avec: not_x.split(),
+    //        };
+    //
+    //        let ones = self.ones_mask();
+    //
+    //        for mskbit in not_x_masks.iter() {
+    //            if mskbit.m_and(&ones).is_low() {
+    //                // then is a zero bit
+    //                avec.push(self.set_to_ones(&mskbit));
+    //            } else {
+    //                // is a one bit
+    //                avec.push(self.set_to_zeros(&mskbit));
+    //            }
+    //        }
+    //
+    //        avec
+    //    }
 }

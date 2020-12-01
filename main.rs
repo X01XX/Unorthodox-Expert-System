@@ -1,36 +1,31 @@
 // Unorthodox Expert System
 
-//#![allow(
+#![allow(
 // dead_code,
 //  unused_variables,
 //  unused_macros,
 //  unused_imports,
 //  unused_assignments,
 //  unused_mut
-//)]
+)]
 
-mod bits;
-//use bits::SomeBits;
-mod bitsstore;
-mod state;
-//use state::SomeState;
-mod mask;
-mod maskstore;
-mod region;
-//use region::SomeRegion;
 mod action;
 mod actionstore;
+mod bits;
+mod bitsstore;
 mod group;
 mod groupstore;
+mod mask;
+mod maskstore;
 mod need;
+mod region;
 mod regionstore;
 mod resultstore;
 mod rule;
-//use rule::SomeRule;
 mod rulestore;
 mod square;
-//use crate::square::SomeSquare;
 mod squarestore;
+mod state;
 mod statestore;
 use need::SomeNeed;
 mod needstore;
@@ -45,7 +40,8 @@ mod pn;
 use domain::SomeDomain;
 mod actions;
 mod tests;
-use actions::{action0, action1, action2, action3, action4, action5};
+
+use crate::actions::{action0, action1, action2, action3, action4, action5};
 
 use std::io;
 use std::io::Write;
@@ -174,11 +170,6 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
 
         if cmd[0] == "gn" {
             println!("\nActs: {}", dm1.get_needs());
-            return true;
-        }
-
-        if cmd[0] == "tests" {
-            tests::run_tests();
             return true;
         }
     } // end one-word commands
@@ -506,10 +497,10 @@ fn usage() {
     println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
     println!("    cs <state>               - Arbitrary change state.\n");
     println!(
-        "    g1 <act num>             - For an Action, print squares that are only that region."
+        "    g1 <act num>             - For an Action, print squares that are only in one region."
     );
     println!(
-        "    g1 <act num> <region>    - For an Action and region, print squares that are only in one region.\n"
+        "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
     );
 
     println!("    gn                       - Get needs\n");
@@ -522,7 +513,6 @@ fn usage() {
     println!("    ss <act num>             - Action to sample the current state.");
     println!("    ss <act num> <state>     - Action to sample state.");
     println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
-    println!("    tests                    - run tests and experimental code in tests.rs");
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
 
