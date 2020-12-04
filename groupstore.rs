@@ -231,7 +231,7 @@ impl GroupStore {
 
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         for grpx in &self.avec {
-            if grpx.region == *val {
+            if grpx.active && grpx.region == *val {
                 return Some(grpx);
             }
         }
@@ -327,7 +327,9 @@ impl GroupStore {
     // Inform each group of new X bits in the max_region
     pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
         for grpx in &mut self.avec {
-            grpx.new_x_bits(&bitsx);
+            if grpx.active {
+                grpx.new_x_bits(&bitsx);
+            }
         }
     }
 }

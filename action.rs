@@ -123,7 +123,7 @@ impl SomeAction {
                 far,
                 num_x: _,
             } => {
-                self.store_sample(&cur, &new_state, &max_region);
+                self.store_sample(&cur, &new_state);
 
                 // Form the rules, make the group
                 if let Some(sqrx) = self.squares.find(&sta) {
@@ -152,12 +152,11 @@ impl SomeAction {
                                         &rulsxy,
                                         &sqrx.pn(),
                                     ) {
-                                        println!("Adding group(2): {}", &rulsxy[0].initial_region());
+                                        println!("Adding group: {}", &rulsxy[0].initial_region());
                                         if self.groups.any_superset_of(&rulsxy[0].initial_region())
                                         {
-                                            println!("groups {}", self.groups);
-                                            println!(
-                                                "Supersets found for new group (2) {} in {}",
+                                            panic!(
+                                                "Supersets found for new group {} in {}",
                                                 rulsxy.initial_region(),
                                                 self.groups
                                                     .supersets_of(&rulsxy[0].initial_region())
@@ -193,6 +192,8 @@ impl SomeAction {
                 } else {
                     println!("cannot find sqr {}", &sta);
                 } // endif sqrx
+
+                self.check_square_new_sample(&cur, &max_region);
             } // end process AStateMakeGroup Need
 
             SomeNeed::InBetween {
@@ -200,7 +201,8 @@ impl SomeAction {
                 targ_state: sta,
                 in_group: greg,
             } => {
-                self.store_sample(&cur, &new_state, &max_region);
+                self.store_sample(&cur, &new_state);
+                self.check_square_new_sample(&cur, &max_region);
 
                 // Form the rules, make the group
                 if let Some(sqr1) = self.squares.find(&greg.state1) {
@@ -283,7 +285,8 @@ impl SomeAction {
             }
             _ => {
                 // default, store sample, if not in a group, make one
-                self.store_sample(&cur, &new_state, &max_region);
+                self.store_sample(&cur, &new_state);
+                self.check_square_new_sample(&cur, &max_region);
             }
         } // end match SomeNeed ndx
 
@@ -298,7 +301,8 @@ impl SomeAction {
         max_region: &SomeRegion,
     ) {
         //println!("take_action_arbitrary for state {}", init_state);
-        self.store_sample(&init_state, &rslt_state, &max_region);
+        self.store_sample(&init_state, &rslt_state);
+        self.check_square_new_sample(&init_state, &max_region);
     }
 
     pub fn take_action_step(
@@ -366,7 +370,8 @@ impl SomeAction {
         }
 
         if num_grps_invalidated > 0 || num_grps_in == 0 {
-            self.store_sample(cur, new_state, &max_region);
+            self.store_sample(cur, new_state);
+            self.check_square_new_sample(cur, &max_region);
         }
 
         true
@@ -374,12 +379,7 @@ impl SomeAction {
 
     // Evaluate a sample produced for a need.
     // It is expected that the sample needs to be stored,
-    fn store_sample(
-        &mut self,
-        cur: &SomeState,
-        new_state: &SomeState,
-        max_region: &SomeRegion,
-    ) -> bool {
+    fn store_sample(&mut self, cur: &SomeState, new_state: &SomeState) -> bool {
         // Get an existing square and update, or create a new square.
         //println!("store_sample");
         let t_sqrx = self.squares.find_mut(cur); // see if square exists
@@ -400,7 +400,7 @@ impl SomeAction {
             }
         }
 
-        self.check_square_new_sample(&cur, &max_region);
+        //self.check_square_new_sample(&cur, &max_region);
 
         true
     }
@@ -618,11 +618,11 @@ impl SomeAction {
         // println!("Running Action {}::get_needs {}", self.num, cur_state);
 
         // loop through get_needs until no bookkeeping need is returned.
+        let mut nds = NeedStore::new();
+
+        let mut try_again = false;
+
         loop {
-            let mut nds = NeedStore::new();
-
-            let mut try_again = false;
-
             // Check if current state is in any groups
             let mut in_grp = false;
             for grpx in self.groups.iter() {
@@ -691,7 +691,7 @@ impl SomeAction {
                         // Add a new group
                         if self.groups.any_superset_of(&greg) {
                             if 1 == 2 / 2 {
-                                println!(
+                                panic!(
                                     "**** Supersets found for new group {} in {}",
                                     &greg,
                                     self.groups.supersets_of(&greg)
@@ -771,6 +771,10 @@ impl SomeAction {
             if try_again == false {
                 return nds;
             }
+
+            nds = NeedStore::new();
+
+            try_again = false;
         } // end loop
     } // end get_needs
 
@@ -1687,7 +1691,7 @@ impl SomeAction {
 
     // Check for needs, for making a given region into a group.
     // A need may be to take more samples, or just add the group.
-    fn possible_group_needs(&self, reg_grp: &SomeRegion) -> NeedStore {
+    fn possible_group_needs(&self, reg_grp: &SomeRegion, from: usize) -> NeedStore {
         //println!("possible_group_needs");
         let mut nds = NeedStore::new();
 
@@ -1756,6 +1760,12 @@ impl SomeAction {
                     if let Some(sqry) = self.squares.find(&poss_pairs[inx2]) {
                         // If both squares are pnc, add the group, done.
                         if sqrx.pnc() && sqry.pnc() {
+                            println!(
+                                "possible_group_needs: add group 1 {} reg_grp {} from {}",
+                                SomeRegion::new(&poss_pairs[inx1], &poss_pairs[inx2]),
+                                &reg_grp,
+                                &from
+                            );
                             nds.push(SomeNeed::AddGroup {
                                 // nds should be empty so far
                                 act_num: self.num,
@@ -1921,7 +1931,7 @@ impl SomeAction {
                     let min_pnc = self.squares.min_pnc(&stas_in);
 
                     if min_pnc == Pn::Unpredictable {
-                        return self.possible_group_needs(&regx);
+                        return self.possible_group_needs(&regx, 1);
                     }
                 }
 
@@ -1939,7 +1949,7 @@ impl SomeAction {
                         //    self.num, grpx.region, grpy.region, regx, rulesx
                         //);
 
-                        return self.possible_group_needs(&regx);
+                        return self.possible_group_needs(&regx, 2);
                     } // end if verify_combinaton
 
                     return self.group_pair_cont_int_needs(&grpx, &grpy);
@@ -1958,28 +1968,31 @@ impl SomeAction {
 
         match grpx.pn {
             Pn::Unpredictable => {
+                // If the regions have the same X-bit pattern, they may be combined
                 if grpx.region.x_mask() == grpy.region.x_mask() {
                     let regx = grpx.region.union(&grpy.region);
-                    return self.possible_group_needs(&regx);
+                    return self.possible_group_needs(&regx, 3);
                 }
 
-                let regx = grpx.region.overlapping_part(&grpy.region);
-                if regx.is_superset_of(&grpx.region) || regx.is_superset_of(&grpy.region) {
-                    return nds;
+                let regz = grpx.region.overlapping_part(&grpy.region);
+
+                if regz.intersects(&grpx.region) && regz.intersects(&grpy.region) {
+                    if self.groups.any_superset_of(&regz) {
+                        return nds;
+                    }
+
+                    //println!("groups_adjacent_needs: {} and {}", &grpx.region, &grpy.region);
+                    return self.possible_group_needs(&regz, 4);
                 }
-                return self.possible_group_needs(&regx);
             }
             _ => {
+                // If the regions have the same X-bit pattern, they may be combined
                 if grpx.region.x_mask() == grpy.region.x_mask() {
                     let regx = grpx.region.union(&grpy.region);
-                    return self.possible_group_needs(&regx);
+                    return self.possible_group_needs(&regx, 5);
                 }
 
                 let reg_ov = grpx.region.overlapping_part(&grpy.region);
-
-                if reg_ov.is_superset_of(&grpx.region) || reg_ov.is_superset_of(&grpy.region) {
-                    return nds;
-                }
 
                 if let Some(rulesx) = grpx
                     .rules
@@ -1998,7 +2011,7 @@ impl SomeAction {
                             self.num, grpx.region, grpy.region, regz, rulesx
                         );
 
-                        return self.possible_group_needs(&regz);
+                        return self.possible_group_needs(&regz, 6);
                     }
                 } // end if let Some
             } // end match pn default
