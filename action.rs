@@ -108,7 +108,7 @@ impl SomeAction {
         max_region: &SomeRegion,
         hv: usize,
     ) -> SomeState {
-        //println!("take_action_need");
+        //println!("take_action_need {}", &ndx);
         // Get the result, the sample is cur -> new_state
 
         let new_state = (self.to_run)(cur, hv);
@@ -139,7 +139,11 @@ impl SomeAction {
                                         &max_region,
                                     ));
                                 } else {
-                                    println!("Superset found for new group {}", for_reg);
+                                    panic!(
+                                        "Supersets found for new group (1) {} in {}",
+                                        for_reg,
+                                        SomeRegion::new(&sqrx.state, &sqry.state)
+                                    );
                                 }
                             } else {
                                 if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
@@ -148,9 +152,17 @@ impl SomeAction {
                                         &rulsxy,
                                         &sqrx.pn(),
                                     ) {
+                                        println!("Adding group(2): {}", &rulsxy[0].initial_region());
                                         if self.groups.any_superset_of(&rulsxy[0].initial_region())
-                                            == false
                                         {
+                                            println!("groups {}", self.groups);
+                                            println!(
+                                                "Supersets found for new group (2) {} in {}",
+                                                rulsxy.initial_region(),
+                                                self.groups
+                                                    .supersets_of(&rulsxy[0].initial_region())
+                                            );
+                                        } else {
                                             self.groups.push(SomeGroup::new(
                                                 &sqrx.state,
                                                 &sqry.state,
@@ -158,11 +170,6 @@ impl SomeAction {
                                                 self.num,
                                                 &max_region,
                                             ));
-                                        } else {
-                                            println!(
-                                                "Superset found for new group {}",
-                                                rulsxy.initial_region()
-                                            );
                                         }
                                     } else {
                                         println!(
@@ -670,6 +677,8 @@ impl SomeAction {
                 }
             }
 
+            //println!("needs: {}", nds);
+
             // Process a few specific needs related to changing the Action or groups.
             for ndx in nds.iter_mut() {
                 match ndx {
@@ -681,7 +690,13 @@ impl SomeAction {
 
                         // Add a new group
                         if self.groups.any_superset_of(&greg) {
-                            println!("**** Supersets found for new group {}!", &greg);
+                            if 1 == 2 / 2 {
+                                println!(
+                                    "**** Supersets found for new group {} in {}",
+                                    &greg,
+                                    self.groups.supersets_of(&greg)
+                                );
+                            }
                             continue;
                         }
 

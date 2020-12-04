@@ -92,6 +92,18 @@ impl GroupStore {
         false
     }
 
+    // Return regions of any group is a superset, or equal, to a region
+    pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
+        let mut rs = RegionStore::new();
+
+        for grpx in &self.avec {
+            if grpx.active && reg.is_subset_of(&grpx.region) {
+                rs.push(grpx.region.clone());
+            }
+        }
+        rs
+    }
+
     // Find and make inactive any subset groups
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;

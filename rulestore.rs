@@ -152,6 +152,11 @@ impl RuleStore {
             return None;
         }
 
+        if self.len() == 0 {
+            //return Some(Self::new());
+            panic!("Unpredictable union not allowed");
+        }
+
         let mut ars = Self::new();
 
         if self.len() == 1 {

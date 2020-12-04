@@ -695,7 +695,7 @@ impl SomeDomain {
 
     // Return a State from a string, like "s0101".
     // Left-most, consecutive, zeros can be omitted.
-    pub fn state_from_string(&self, str: &str) -> Result<SomeState, usize> {
+    pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
         let mut bts = self.cur_state.bts.new_low();
 
         let mut inx = -1;
@@ -707,8 +707,12 @@ impl SomeDomain {
                 if ch == 's' {
                     continue;
                 } else {
-                    return Err(1);
+                    return Err(String::from("initial character should be s"));
                 }
+            }
+
+            if bts.high_bit_set() {
+                return Err(String::from("too long"));
             }
 
             if ch == '0' {
@@ -718,7 +722,7 @@ impl SomeDomain {
             } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
                 continue;
             } else {
-                return Err(2);
+                return Err(String::from("invalid character"));
             }
         } // end for ch
 
@@ -727,7 +731,7 @@ impl SomeDomain {
 
     // Return a Region from a string, like "r01X1".
     // Left-most, consecutive, zeros can be omitted.
-    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, usize> {
+    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
         let mut bts_high = self.cur_state.bts.new_low();
         let mut bts_low = self.cur_state.bts.new_low();
 
@@ -739,9 +743,27 @@ impl SomeDomain {
             if inx == 0 {
                 if ch == 'r' {
                     continue;
+                } else if ch == 's' {
+                    let state_r = self.state_from_string(str);
+                    match state_r {
+                        Ok(a_state) => {
+                            return Ok(SomeRegion::new(&a_state, &a_state));
+                        }
+                        Err(error) => {
+                            return Err(format!("\nDid not understand state, {}", error));
+                        }
+                    } // end match state_r
                 } else {
-                    return Err(1);
+                    return Err(String::from("first character should be r"));
                 }
+            }
+
+            if bts_high.high_bit_set() {
+                return Err(String::from("too long"));
+            }
+
+            if bts_low.high_bit_set() {
+                return Err(String::from("too long"));
             }
 
             if ch == '0' {
@@ -756,7 +778,7 @@ impl SomeDomain {
             } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
                 continue;
             } else {
-                return Err(2);
+                return Err(String::from("invalid character"));
             }
         } // end for ch
 

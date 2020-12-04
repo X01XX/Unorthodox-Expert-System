@@ -720,119 +720,141 @@ impl SomeNeed {
         };
     } // end target
 
-    //    pub fn clone(&self) -> SomeNeed {
-    //        match self {
-    //            SomeNeed::AStateMakeGroup {
-    //                act_num: an,
-    //                targ_state: tstate,
-    //                for_reg: freg,
-    //                far: far_state,
-    //            } => {
-    //                return SomeNeed::AStateMakeGroup {
-    //                           act_num: *an,
-    //                           targ_state: tstate.clone(),
-    //                           for_reg: freg.clone(),
-    //                           far: far_state.clone(),
-    //                           };
-    //            } // end process for AStateMakeGroup
-    //
-    //            SomeNeed::StateNotInGroup {
-    //                act_num: an,
-    //                targ_state: tstate,
-    //            } => {
-    //                return SomeNeed::StateNotInGroup {
-    //                        act_num: *an,
-    //                        targ_state: tstate.clone(),
-    //                        };
-    //            } // end process for StateNotInGroup
-    //
-    //            SomeNeed::ContradictoryIntersection {
-    //                act_num: an,
-    //                goal_reg: greg,
-    //                group1: g1reg,
-    //                group2: g2reg,
-    //            } => {
-    //                return SomeNeed::ContradictoryIntersection {
-    //                          act_num: *an,
-    //                          goal_reg: greg.clone(),
-    //                          group1: g1reg.clone(),
-    //                          group2: g2reg.clone(),
-    //                         };
-    //            } // end process for ContradictoryIntersection
-    //
-    //            SomeNeed::ConfirmGroup {
-    //                act_num: an,
-    //                targ_state: tstate,
-    //                for_group: fgrp,
-    //                anchor: anch,
-    //            } => {
-    //                return SomeNeed::ConfirmGroup {
-    //                           act_num: *an,
-    //                           targ_state: tstate.clone(),
-    //                           for_group: fgrp.clone(),
-    //                           anchor: anch.clone(),
-    //                       };
-    //            } // end process for ConfirmGroup
-    //
-    //            SomeNeed::StateAdditionalSample {
-    //                act_num: an,
-    //                targ_state: tstate,
-    //            } => {
-    //                return SomeNeed::StateAdditionalSample {
-    //                           act_num: *an,
-    //                           targ_state: tstate.clone(),
-    //                       };
-    //            } // end process for StateAdditionalSample
-    //
-    //            // Previously handled, but not removed from list
-    //            SomeNeed::AddGroup {
-    //                act_num: an,
-    //                group_region: greg,
-    //            } => {
-    //                return SomeNeed::AddGroup {
-    //                           act_num: *an,
-    //                           group_region: greg.clone(),
-    //                       };
-    //            }
-    //
-    //            // Previously handled, but not removed from list
-    //            SomeNeed::SetGroupConfirmed {
-    //                act_num: an,
-    //                group_region: greg,
-    //                cstate: cst,
-    //            } => {
-    //                return SomeNeed::SetGroupConfirmed {
-    //                           act_num: *an,
-    //                           group_region: greg.clone(),
-    //                           cstate: cst.clone(),
-    //                       };
-    //            }
-    //
-    //            // Previously handled, but not removed from list
-    //            SomeNeed::AStateExpandGroup {
-    //                act_num: an,
-    //                targ_state: tstate,
-    //                base_group: bgrp,
-    //            } => {
-    //                return SomeNeed::AStateExpandGroup {
-    //                           act_num: *an,
-    //                           targ_state: tstate.clone(),
-    //                           base_group: bgrp.clone(),
-    //                      };
-    //            }
-    //
-    //            // Previously handled, but not removed from list
-    //            SomeNeed::ClearGroupCheckBit {
-    //                act_num: an,
-    //                group_region: greg,
-    //                mbit: abit,
-    //            } => {
-    //                return SomeNeed::ClearGroupCheckBit {
-    //                           act_num: *an,
-    //                           group_region: greg.clone(),
-    //                           mbit: abit.clone(),
-    //                       };
-    //            }
-    //        } // end match ndx
-    //    } // end clone
+    pub fn clone(&self) -> SomeNeed {
+        match self {
+            SomeNeed::AStateMakeGroup {
+                act_num: an,
+                targ_state: tstate,
+                for_reg: freg,
+                far: far_state,
+                num_x: nx,
+            } => {
+                return SomeNeed::AStateMakeGroup {
+                    act_num: *an,
+                    targ_state: tstate.clone(),
+                    for_reg: freg.clone(),
+                    far: far_state.clone(),
+                    num_x: *nx,
+                };
+            } // end process for AStateMakeGroup
+
+            SomeNeed::StateNotInGroup {
+                act_num: an,
+                targ_state: tstate,
+            } => {
+                return SomeNeed::StateNotInGroup {
+                    act_num: *an,
+                    targ_state: tstate.clone(),
+                };
+            } // end process for StateNotInGroup
+
+            SomeNeed::ContradictoryIntersection {
+                act_num: an,
+                goal_reg: greg,
+                group1: g1reg,
+                group2: g2reg,
+                ruls1: r1,
+                ruls2: r2,
+            } => {
+                return SomeNeed::ContradictoryIntersection {
+                    act_num: *an,
+                    goal_reg: greg.clone(),
+                    group1: g1reg.clone(),
+                    group2: g2reg.clone(),
+                    ruls1: r1.clone(),
+                    ruls2: r2.clone(),
+                };
+            } // end process for ContradictoryIntersection
+
+            SomeNeed::ConfirmGroup {
+                act_num: an,
+                targ_state: tstate,
+                for_group: fgrp,
+                anchor: anch,
+            } => {
+                return SomeNeed::ConfirmGroup {
+                    act_num: *an,
+                    targ_state: tstate.clone(),
+                    for_group: fgrp.clone(),
+                    anchor: anch.clone(),
+                };
+            } // end process for ConfirmGroup
+
+            SomeNeed::StateAdditionalSample {
+                act_num: an,
+                targ_state: tstate,
+                far: fx,
+                grp_reg: gx,
+            } => {
+                return SomeNeed::StateAdditionalSample {
+                    act_num: *an,
+                    targ_state: tstate.clone(),
+                    far: fx.clone(),
+                    grp_reg: gx.clone(),
+                };
+            } // end process for StateAdditionalSample
+
+            // Previously handled, but not removed from list
+            SomeNeed::AddGroup {
+                act_num: an,
+                group_region: greg,
+            } => {
+                return SomeNeed::AddGroup {
+                    act_num: *an,
+                    group_region: greg.clone(),
+                };
+            }
+
+            // Previously handled, but not removed from list
+            SomeNeed::SetGroupConfirmed {
+                act_num: an,
+                group_region: greg,
+                cstate: cst,
+            } => {
+                return SomeNeed::SetGroupConfirmed {
+                    act_num: *an,
+                    group_region: greg.clone(),
+                    cstate: cst.clone(),
+                };
+            }
+
+            // Previously handled, but not removed from list
+            SomeNeed::AStateExpandGroup {
+                act_num: an,
+                targ_state: tstate,
+                base_group: bgrp,
+            } => {
+                return SomeNeed::AStateExpandGroup {
+                    act_num: *an,
+                    targ_state: tstate.clone(),
+                    base_group: bgrp.clone(),
+                };
+            }
+
+            // Previously handled, but not removed from list
+            SomeNeed::ClearGroupCheckBit {
+                act_num: an,
+                group_region: greg,
+                mbit: abit,
+            } => {
+                return SomeNeed::ClearGroupCheckBit {
+                    act_num: *an,
+                    group_region: greg.clone(),
+                    mbit: abit.clone(),
+                };
+            }
+
+            SomeNeed::InBetween {
+                act_num: an,
+                targ_state: sta,
+                in_group: greg,
+            } => {
+                return SomeNeed::InBetween {
+                    act_num: *an,
+                    targ_state: sta.clone(),
+                    in_group: greg.clone(),
+                };
+            }
+        } // end match ndx
+    } // end clone
 }

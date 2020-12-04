@@ -186,11 +186,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                     return true;
                 }
                 Err(error) => {
-                    if error == 1 {
-                        println!("\nDid not understand state, should start with s");
-                    } else {
-                        println!("\nDid not understand state, invalid character");
-                    }
+                    println!("\nDid not understand state, {}", error);
                     return false;
                 }
             } // end match
@@ -224,11 +220,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                     }
                 }
                 Err(error) => {
-                    if error == 1 {
-                        println!("\nDid not understand region, should start with r");
-                    } else {
-                        println!("\nDid not understand region, invalid character");
-                    }
+                    println!("\nDid not understand region, {}", error);
                     return false;
                 }
             } // end match region_r
@@ -357,11 +349,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                     return true;
                 }
                 Err(error) => {
-                    if error == 1 {
-                        println!("\nDid not understand state, should start with s");
-                    } else {
-                        println!("\nDid not understand state, invalid character");
-                    }
+                    println!("\nDid not understand state, {}", error);
                     return false;
                 }
             } // end match state_r
@@ -462,21 +450,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                             return true;
                         }
                         Err(error) => {
-                            if error == 1 {
-                                println!("\nDid not understand state, should start with s");
-                            } else {
-                                println!("\nDid not understand state, invalid character");
-                            }
+                            println!("\nDid not understand state, {}", error);
                             return false;
                         }
                     } // end match r_state_rslt
                 }
                 Err(error) => {
-                    if error == 1 {
-                        println!("\nDid not understand state, should start with s");
-                    } else {
-                        println!("\nDid not understand state, invalid character");
-                    }
+                    println!("\nDid not understand state, {}", error);
                     return false;
                 }
             } // end match i_state_rslt

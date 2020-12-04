@@ -345,4 +345,11 @@ impl SomeBits {
     pub fn num_ints(&self) -> usize {
         self.ints.len()
     }
+
+    pub fn high_bit_set(&self) -> bool {
+        if self.ints[0] & INT_HIGH_BIT == 0 {
+            return false;
+        }
+        return true;
+    }
 }
