@@ -41,10 +41,6 @@ impl StateStore {
         self.avec.push(val);
     }
 
-    //    pub fn set_inx(&mut self, inx: usize, astate: SomeState) {
-    //        self.avec[inx] = astate;
-    //    }
-
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()
     }

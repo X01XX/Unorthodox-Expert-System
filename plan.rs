@@ -36,9 +36,7 @@ impl SomePlan {
             for inx in 1..stpt.len() {
                 let stpx = &stpt[inx];
 
-                // Use interesects instead of equals, due to X->0 and X->1 bits,
-                // where restricting the result region does not change the X.
-                // if stpy.result.intersects(&stpx.initial) == false
+                // Use of the link function changes intersecting conections into eq conections
                 if last_step.result != stpx.initial {
                     panic!(
                         "for steps {}, result {} does not equal {}",
@@ -229,83 +227,49 @@ impl SomePlan {
     }
 
     // Return a new plan if short-cuts found
+    // A short cut is found by finding the same initial region for
+    // two steps.
     pub fn short_cuts(&self) -> Option<SomePlan> {
-        let mut not_changed = false;
+        // Most plans will be checked and None will be returned
+        let inx_vec = self.steps.same_intitial();
 
-        let mut rc_steps = self.steps.clone();
+        if inx_vec.len() == 0 {
+            return None;
+        }
 
+        // Create first shortcut from self
+        let mut rc_steps = StepStore::new();
+
+        let mut x = 0;
+        for _stpx in self.steps.iter() {
+            if x < inx_vec[0] || x >= inx_vec[1] {
+                rc_steps.push(self.steps[x].clone());
+            }
+            x = x + 1;
+        }
+
+        // Create more shortcuts from rc_steps if needed
         loop {
-            if not_changed {
-                if rc_steps.len() < self.len() {
-                    println!("make_plan reg final steps are: {}", &rc_steps);
-                    return Some(SomePlan { steps: rc_steps });
-                } else {
-                    return None;
-                }
+            let inx_vec = rc_steps.same_intitial();
+
+            // If no shortcut, return a plan with the current rc_steps
+            if inx_vec.len() == 0 {
+                return Some(SomePlan::new(rc_steps));
             }
 
-            not_changed = true;
+            // Create the next shortcut
+            let mut rcx_steps = StepStore::new();
 
-            let mut inx_reg = Vec::<(usize, SomeRegion)>::new();
-
-            // If a state appears twice, the intervening steps can be skipped.
-            //
-            // The result region of each step intersects the initial region of
-            // the next step, except for the initial region of the first
-            // step and the result region of the last step.
-            //
-
-            let mut inx = 0;
-
-            let mut new_steps = StepStore::new();
-
-            for stpx in rc_steps.iter() {
-                for tupx in inx_reg.iter() {
-                    if tupx.1 == stpx.initial {
-                        //println!(
-                        //    "make_plan initial region {} at {} found twice at {} in {}",
-                        //    &stpx.initial, &inx, &tupx.0, &rc_steps
-                        //);
-
-                        if tupx.0 > 0 {
-                            //println!("first slice is: {:?}", &rc_steps[0..tupx.0]);
-                            for tmpx in 0..tupx.0 {
-                                new_steps.push(rc_steps[tmpx].clone());
-                            }
-
-                            //println!("second slice is: {:?}", &rc_steps[inx..rc_steps.len()]);
-                            for tmpx in inx..rc_steps.len() {
-                                new_steps.push(rc_steps[tmpx].clone());
-                            }
-                            //println!("new steps is {}", new_steps);
-                            not_changed = false;
-                            break;
-                        } else {
-                            //println!("second slice is: {:?}", &rc_steps[inx..rc_steps.len()]);
-                            for tmpx in inx..rc_steps.len() {
-                                new_steps.push(rc_steps[tmpx].clone());
-                            }
-                            //println!("new steps is {}", new_steps);
-                            not_changed = false;
-
-                            break;
-                        }
-                    }
+            let mut x = 0;
+            for _stpx in rc_steps.iter() {
+                if x < inx_vec[0] || x >= inx_vec[1] {
+                    rcx_steps.push(rc_steps[x].clone());
                 }
-
-                if not_changed == false {
-                    break;
-                }
-
-                inx_reg.push((inx, stpx.initial.clone()));
-
-                inx += 1;
-            } // next stpx
-
-            if new_steps.len() > 0 {
-                rc_steps = new_steps;
-                //not_changed = false;
+                x = x + 1;
             }
-        } // end loop
+
+            // Prepare to run loop again
+            rc_steps = rcx_steps;
+        }
     } // end fn short_cuts
 }

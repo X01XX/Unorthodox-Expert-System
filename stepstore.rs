@@ -81,13 +81,13 @@ impl StepStore {
         self.avec.iter()
     }
 
-    pub fn clone(&self) -> Self {
-        let mut rcstp = Self::new();
-        for stpx in self.avec.iter() {
-            rcstp.push(stpx.clone());
-        }
-        rcstp
-    }
+    //    pub fn clone(&self) -> Self {
+    //        let mut rcstp = Self::new();
+    //        for stpx in self.avec.iter() {
+    //            rcstp.push(stpx.clone());
+    //        }
+    //        rcstp
+    //    }
 
     //    pub fn reverse(&self) -> Self {
     //		let mut rc_steps = StepStore { avec:  Vec::<SomeStep>::with_capacity(self.len()) };
@@ -101,6 +101,27 @@ impl StepStore {
 
     pub fn reverse(&mut self) {
         self.avec.reverse();
+    }
+
+    // Return a vector with indices of two steps with the same initial region
+    // else return an empty vector.
+    pub fn same_intitial(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::new();
+
+        let mut x = 0;
+        for stpx in self.avec.iter() {
+            for y in (x + 1)..self.len() {
+                if stpx.initial == self.avec[y].initial {
+                    ret_vec.push(x);
+                    ret_vec.push(y);
+                    return ret_vec;
+                }
+            }
+
+            x = x + 1;
+        }
+
+        ret_vec
     }
 } // end impl StepStore
 

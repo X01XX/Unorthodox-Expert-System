@@ -334,26 +334,23 @@ impl SomeAction {
         new_state: &SomeState,
         max_region: &SomeRegion,
     ) -> bool {
-        // If square exists, update it
-        // Use a block to hide mutable borrow from later code
-        {
-            let t_sqrx = self.squares.find_mut(cur); // see if square exists
+        // If square exists, update it, check square, return
+        let t_sqrx = self.squares.find_mut(cur); // see if square exists
 
-            match t_sqrx {
-                Some(sqrx) => {
-                    // println!("about to add result to sqr {}", cur.str());
-                    sqrx.add_result(new_state.clone());
+        match t_sqrx {
+            Some(sqrx) => {
+                // println!("about to add result to sqr {}", cur.str());
+                sqrx.add_result(new_state.clone());
 
-                    if sqrx.changed() {
-                        self.check_square_new_sample(cur, &max_region);
-                        return true;
-                    }
-
-                    return false;
+                if sqrx.changed() {
+                    self.check_square_new_sample(cur, &max_region);
+                    return true;
                 }
-                None => {
-                    //println!("No square found for state {}", cur);
-                }
+
+                return false;
+            }
+            None => {
+                //println!("No square found for state {}", cur);
             }
         }
 
@@ -686,7 +683,7 @@ impl SomeAction {
                         act_num: _,
                         group_region: greg,
                     } => {
-                        try_again = true;
+                        //try_again = true;
 
                         // Add a new group
                         if self.groups.any_superset_of(&greg) {
@@ -711,8 +708,8 @@ impl SomeAction {
                                         self.num,
                                         &max_region,
                                     ));
-
-                                    return self.get_needs(cur_state, &max_region);
+                                    try_again = true;
+                                //return self.get_needs(cur_state, &max_region);
                                 } else {
                                     if let Some(ruls) =
                                         self.squares.rules(&greg.state1, &greg.state2)
@@ -724,8 +721,8 @@ impl SomeAction {
                                             self.num,
                                             &max_region,
                                         ));
-
-                                        return self.get_needs(cur_state, &max_region);
+                                        try_again = true;
+                                    //return self.get_needs(cur_state, &max_region);
                                     } else {
                                         panic!("expected this to work");
                                     }
