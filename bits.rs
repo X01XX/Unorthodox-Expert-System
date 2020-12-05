@@ -134,7 +134,7 @@ impl SomeBits {
     }
 
     // Return a Bits struct with specified bit(s) changed
-    pub fn toggle_bits(&self, bit_nums: &[usize]) -> Self {
+    pub fn toggle_bits(&self, bit_nums: Vec::<usize>) -> Self {
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
         for intx in self.ints.iter() {
@@ -142,18 +142,18 @@ impl SomeBits {
         }
 
         let num_ints = self.num_ints();
-        let num_bits = num_ints * 8;
+        let num_bits = num_ints * 8 as usize;
         let lsi = num_ints - 1; // least significant integer
 
         for bit_num in bit_nums {
-            if *bit_num >= num_bits {
+            if bit_num >= num_bits {
                 panic!("bit num too large");
             }
 
             let bit_pos = bit_num % NUM_BITS_PER_INT;
             let int_num = lsi - (bit_num / NUM_BITS_PER_INT);
 
-            ary2[int_num] = self.ints[int_num] ^ ALL_BIT_MASKS[bit_pos];
+            ary2[int_num] = ary2[int_num] ^ ALL_BIT_MASKS[bit_pos];
         }
         Self { ints: ary2 }
     }

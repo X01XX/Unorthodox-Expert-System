@@ -41,7 +41,7 @@ use domain::SomeDomain;
 mod actions;
 mod tests;
 
-use crate::actions::{action0, action1, action2, action3, action4, action5};
+use crate::actions::{action0, action1, action2, action3, action4, action5, action6};
 
 use std::io;
 use std::io::Write;
@@ -75,6 +75,7 @@ fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
     dmx.add_action(action3, 0);
     dmx.add_action(action4, 0);
     dmx.add_action(action5, 0);
+    dmx.add_action(action6, 0);
     dmx
 }
 

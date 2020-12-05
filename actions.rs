@@ -17,7 +17,7 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
     {
         // ....X1X1
 
-        let new_state = cur.toggle_bits(&[0]);
+        let new_state = cur.toggle_bits(vec![0]);
         println!("\nAct {}  {} -> {}", num, cur, new_state);
         return new_state;
     }
@@ -30,11 +30,11 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
         // ...101x, 1x10, given that the above is not true
 
         if hv % 2 == 0 {
-            let new_state = cur.toggle_bits(&[1]);
+            let new_state = cur.toggle_bits(vec![1]);
             println!("\nAct {}  {} -> {}", num, cur, new_state);
             return new_state;
         } else {
-            let new_state = cur.toggle_bits(&[2]);
+            let new_state = cur.toggle_bits(vec![2]);
             println!("\nAct {}  {} -> {}", num, cur, new_state);
             return new_state;
         }
@@ -42,15 +42,15 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
         // ...000x, 0x00, given that the above is not true
 
         if hv % 3 == 0 {
-            let new_state = cur.toggle_bits(&[1]);
+            let new_state = cur.toggle_bits(vec![1]);
             println!("\nAct {}  {} -> {}", num, cur, new_state);
             return new_state;
         } else if hv % 3 == 1 {
-            let new_state = cur.toggle_bits(&[2]);
+            let new_state = cur.toggle_bits(vec![2]);
             println!("\nAct {}  {} -> {}", num, cur, new_state);
             return new_state;
         } else {
-            let new_state = cur.toggle_bits(&[3]);
+            let new_state = cur.toggle_bits(vec![3]);
             println!("\nAct {}  {} -> {}", num, cur, new_state);
             return new_state;
         }
@@ -59,35 +59,42 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
 
 pub fn action1(cur: &SomeState, _hv: usize) -> SomeState {
     let num = 1;
-    let new_state = cur.toggle_bits(&[num]);
+    let new_state = cur.toggle_bits(vec![num]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
 
 pub fn action2(cur: &SomeState, _hv: usize) -> SomeState {
     let num = 2;
-    let new_state = cur.toggle_bits(&[num]);
+    let new_state = cur.toggle_bits(vec![num]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
 
 pub fn action3(cur: &SomeState, _hv: usize) -> SomeState {
     let num = 3;
-    let new_state = cur.toggle_bits(&[num]);
+    let new_state = cur.toggle_bits(vec![num]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
 
 pub fn action4(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 4;
-    let new_state = cur.toggle_bits(&[num]);
+    let new_state = cur.toggle_bits(vec![num]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
 
 pub fn action5(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 5;
-    let new_state = cur.toggle_bits(&[num]);
+    let new_state = cur.toggle_bits(vec![num]);
+    println!("\nAct {}  {} -> {}", num, cur, new_state);
+    return new_state;
+}
+
+pub fn action6(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let num = 6;
+    let new_state = cur.toggle_bits(vec![2,3]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
