@@ -65,8 +65,8 @@ fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
     }
 }
 
-fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
-    let mut dmx = SomeDomain::new(num_ints, cur);
+fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
+    let mut dmx = SomeDomain::new(num_ints, cur, opt);
     // dmx.add_action(action0, 0);
     // dmx.add_action(action0, 2);
     dmx.add_action(action0, 6);
@@ -92,10 +92,9 @@ fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
 //}
 
 fn main() {
-    let mut dm1 = init_domain(1, "s0001"); // init state to 1 u8 integer of bits, may be higher
-                                           //let num_actions = dm1.num_actions();
-
-    //pause_for_enter("");
+    // Initialize a domain, with number of u8 integers, initial state, optimal region.
+    // The numbe of u8 integers can be higher.
+    let mut dm1 = init_domain(1, "s0001", "r101X");
 
     usage();
     let mut step = 0;
@@ -109,7 +108,6 @@ fn main() {
         let nds = dm1.get_needs();
         //println!("parallel needs: {}", &nds);
 
-
         // **** end new code
 
         println!("\nActs: {}", dm1.actions);
@@ -121,9 +119,15 @@ fn main() {
             println!("\nAction needs: None");
         }
 
+        let mut in_opt = "Not in";
+
+        if dm1.optimal.is_superset_of_state(&dm1.cur_state) {
+            in_opt = "in";
+        }
+
         println!(
-            "\nStep: {} Current State: {}  Max Region: {}",
-            &step, &dm1.cur_state, &dm1.max_region
+            "\nStep: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
+            &step, &dm1.cur_state, &dm1.max_region, &in_opt, &dm1.optimal
         );
 
         print!("\nPress Enter to continue: ");
@@ -152,6 +156,19 @@ fn main() {
                 if satisfy_need(&mut dm1, &nds) {
                 } else {
                     println!("no need satisfied");
+                }
+            } else {
+                // If no needs, change the state to an optimal state if needed
+                if dm1.optimal.is_superset_of_state(&dm1.cur_state) {
+                } else {
+                    if let Some(pln) = dm1.make_plan(&dm1.optimal) {
+                        println!("Changing state to optimal, Plan is {}", pln);
+
+                        // Do the plan
+                        dm1.run_plan(&pln);
+                    } else {
+                        println!("No plan found to change to the optimal state");
+                    }
                 }
             }
             continue;

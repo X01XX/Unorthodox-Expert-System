@@ -55,8 +55,7 @@ impl ActionStore {
 
     // Get needs for all actions
     pub fn get_needs(&mut self, cur: &SomeState, max_x: &SomeMask) -> NeedStore {
-		
-		// Run a get_needs thread for each action
+        // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut()

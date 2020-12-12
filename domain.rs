@@ -21,26 +21,29 @@ pub struct SomeDomain {
     pub actions: ActionStore,
     pub cur_state: SomeState,
     pub max_region: SomeRegion,
+    pub optimal: SomeRegion,
     vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
     vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
                          // chosen randomlt at first sample, incremented after each subsequent sample.
 }
 
 impl SomeDomain {
-    pub fn new(num_ints: usize, start_state: &str) -> Self {
-        //let cur = SomeState::new(SomeBits::new(vec![2 as u8; num_ints])); // placeholder
-        let cur = SomeState {
+    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
+        // Set up temp state
+        // The number of integers is carried forward by various oprations
+
+        let tmp_cur = SomeState {
             bts: SomeBits {
                 ints: vec![2 as u8; num_ints],
             },
         };
 
-        // Set up a domain instance with the correct value for num_ints
-        let mut ret_dm = SomeDomain {
+        let tmp_dm = SomeDomain {
             num_ints,
             actions: ActionStore::new(),
-            cur_state: cur.clone(),
-            max_region: SomeRegion::new(&cur, &cur),
+            cur_state: tmp_cur.clone(),
+            max_region: SomeRegion::new(&tmp_cur, &tmp_cur),
+            optimal: SomeRegion::new(&tmp_cur, &tmp_cur),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -48,14 +51,24 @@ impl SomeDomain {
         // Convert the state string into a state type instance.
         // Some code will refer to <domain>.num_ints, or get the value
         // from an existing SomeBits instance vector length.
-        if let Ok(cur) = ret_dm.state_from_string(&start_state) {
-            ret_dm.max_region = SomeRegion::new(&cur, &cur);
-            ret_dm.cur_state = cur;
+        if let Ok(cur) = tmp_dm.state_from_string(&start_state) {
+            if let Ok(opt) = tmp_dm.region_from_string(&optimal) {
+                // Set up a domain instance with the correct value for num_ints
+                return SomeDomain {
+                    num_ints,
+                    actions: ActionStore::new(),
+                    cur_state: cur.clone(),
+                    max_region: SomeRegion::new(&cur, &cur),
+                    optimal: opt,
+                    vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
+                    vec_hvr: Vec::<usize>::new(),
+                };
+            } else {
+                panic!("Bad optimal region");
+            }
         } else {
             panic!("Bad state string");
         }
-
-        ret_dm
     }
 
     pub fn add_action(&mut self, fx: fn(&SomeState, usize) -> SomeState, hv_range: usize) {
