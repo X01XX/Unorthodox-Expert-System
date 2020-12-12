@@ -64,9 +64,21 @@ impl SomeDomain {
         self.vec_hvr.push(hv_range);
     }
 
-    pub fn get_needs(&mut self) -> NeedStore {
+    pub fn _get_needs2(&mut self) -> NeedStore {
         //println!("domain get_needs");
-        self.actions.get_needs(&self.cur_state, &self.max_region)
+        self.actions
+            .get_needs(&self.cur_state, &self.max_region.x_mask())
+    }
+
+    //   pub fn get_needs2(&mut self, act_num: usize) -> NeedStore {
+    //       //println!("domain get_needs2");
+    //       self.actions[act_num]
+    //           .get_needs(&self.cur_state, &self.max_region.x_mask())
+    //   }
+
+    pub fn get_needs(&mut self) -> NeedStore {
+        self.actions
+            .get_needs(&self.cur_state, &self.max_region.x_mask())
     }
 
     pub fn num_actions(&self) -> usize {
@@ -80,15 +92,19 @@ impl SomeDomain {
         r_state: &SomeState,
     ) {
         // may break hv info
-        self.actions[act_num].take_action_arbitrary(i_state, r_state, &self.max_region);
+        self.actions[act_num].take_action_arbitrary(i_state, r_state, &self.max_region.x_mask());
         self.set_cur_state(r_state.clone());
     }
 
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
         let act_num = ndx.act_num();
         let hv = self.get_hv(act_num);
-        let astate =
-            self.actions[act_num].take_action_need(&self.cur_state, ndx, &self.max_region, hv);
+        let astate = self.actions[act_num].take_action_need(
+            &self.cur_state,
+            ndx,
+            &self.max_region.x_mask(),
+            hv,
+        );
         self.set_cur_state(astate);
     }
 
@@ -158,7 +174,7 @@ impl SomeDomain {
 
                 let astate = self.actions[stpx.act_num].take_action_step(
                     &self.cur_state,
-                    &self.max_region,
+                    &self.max_region.x_mask(),
                     hv,
                 );
 
@@ -190,7 +206,7 @@ impl SomeDomain {
 
                             let astate = self.actions[stpx.act_num].take_action_step(
                                 &self.cur_state,
-                                &self.max_region,
+                                &self.max_region.x_mask(),
                                 hv,
                             );
 
@@ -213,7 +229,7 @@ impl SomeDomain {
 
                                     let astate = self.actions[stpx.act_num].take_action_step(
                                         &self.cur_state,
-                                        &self.max_region,
+                                        &self.max_region.x_mask(),
                                         hv,
                                     );
 

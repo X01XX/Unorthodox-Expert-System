@@ -4,13 +4,16 @@ use crate::action::SomeAction;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-use crate::region::SomeRegion;
+//use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
+
+//use std::thread;
+//use std::sync::mpsc;
 
 impl fmt::Display for ActionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -30,8 +33,10 @@ impl fmt::Display for ActionStore {
 }
 
 pub struct ActionStore {
-    avec: Vec<SomeAction>,
+    pub avec: Vec<SomeAction>,
 }
+
+use rayon::prelude::*;
 
 impl ActionStore {
     pub fn new() -> Self {
@@ -48,15 +53,35 @@ impl ActionStore {
         self.avec.push(val);
     }
 
+    // Get needs for all actions
+    pub fn get_needs(&mut self, cur: &SomeState, max_x: &SomeMask) -> NeedStore {
+		
+		// Run a get_needs thread for each action
+        let mut vecx: Vec<NeedStore> = self
+            .avec
+            .par_iter_mut()
+            .map(|actx| actx.get_needs(cur, max_x))
+            .collect::<Vec<NeedStore>>();
+
+        // Aggregate the results into one NeedStore
+        let mut nds_agg = NeedStore::new();
+
+        for mut nst in vecx.iter_mut() {
+            nds_agg.append(&mut nst);
+        }
+
+        nds_agg
+    }
+
     // Return needs from all actions
-    pub fn get_needs(&mut self, cur_sta: &SomeState, max_region: &SomeRegion) -> NeedStore {
+    pub fn _get_needs2(&mut self, cur_sta: &SomeState, max_x: &SomeMask) -> NeedStore {
         //println!("actionstore get_needs");
 
         let mut nds = NeedStore::new();
 
         //println!("num actions {}", self.avec.len());
         for actx in &mut self.avec {
-            nds.append(&mut actx.get_needs(cur_sta, &max_region));
+            nds.append(&mut actx.get_needs(cur_sta, &max_x));
         }
 
         // If no other needs, check that all states ever reached are

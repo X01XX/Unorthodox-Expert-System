@@ -105,14 +105,14 @@ impl SomeAction {
         &mut self,
         cur: &SomeState,
         ndx: &SomeNeed,
-        max_region: &SomeRegion,
+        max_x: &SomeMask,
         hv: usize,
     ) -> SomeState {
         //println!("take_action_need {}", &ndx);
         // Get the result, the sample is cur -> new_state
 
         let new_state = (self.to_run)(cur, hv);
-        //self.store_sample(&cur, &new_state, &max_region);
+        //self.store_sample(&cur, &new_state, &max_x);
 
         // Process each kind of need
         match ndx {
@@ -136,7 +136,7 @@ impl SomeAction {
                                         &sqry.state,
                                         RuleStore::new(),
                                         self.num,
-                                        &max_region,
+                                        &max_x,
                                     ));
                                 } else {
                                     panic!(
@@ -167,7 +167,7 @@ impl SomeAction {
                                                 &sqry.state,
                                                 rulsxy,
                                                 self.num,
-                                                &max_region,
+                                                &max_x,
                                             ));
                                         }
                                     } else {
@@ -193,7 +193,7 @@ impl SomeAction {
                     println!("cannot find sqr {}", &sta);
                 } // endif sqrx
 
-                self.check_square_new_sample(&cur, &max_region);
+                self.check_square_new_sample(&cur, &max_x);
             } // end process AStateMakeGroup Need
 
             SomeNeed::InBetween {
@@ -202,7 +202,7 @@ impl SomeAction {
                 in_group: greg,
             } => {
                 self.store_sample(&cur, &new_state);
-                self.check_square_new_sample(&cur, &max_region);
+                self.check_square_new_sample(&cur, &max_x);
 
                 // Form the rules, make the group
                 if let Some(sqr1) = self.squares.find(&greg.state1) {
@@ -286,7 +286,7 @@ impl SomeAction {
             _ => {
                 // default, store sample, if not in a group, make one
                 self.store_sample(&cur, &new_state);
-                self.check_square_new_sample(&cur, &max_region);
+                self.check_square_new_sample(&cur, &max_x);
             }
         } // end match SomeNeed ndx
 
@@ -298,24 +298,19 @@ impl SomeAction {
         &mut self,
         init_state: &SomeState,
         rslt_state: &SomeState,
-        max_region: &SomeRegion,
+        max_x: &SomeMask,
     ) {
         //println!("take_action_arbitrary for state {}", init_state);
         self.store_sample(&init_state, &rslt_state);
-        self.check_square_new_sample(&init_state, &max_region);
+        self.check_square_new_sample(&init_state, &max_x);
     }
 
-    pub fn take_action_step(
-        &mut self,
-        cur: &SomeState,
-        max_region: &SomeRegion,
-        hv: usize,
-    ) -> SomeState {
+    pub fn take_action_step(&mut self, cur: &SomeState, max_x: &SomeMask, hv: usize) -> SomeState {
         //println!("take_action_step");
 
         let new_state = (self.to_run)(cur, hv);
 
-        self.eval_sample_step(cur, &new_state, &max_region);
+        self.eval_sample_step(cur, &new_state, &max_x);
 
         new_state
     }
@@ -332,7 +327,7 @@ impl SomeAction {
         &mut self,
         cur: &SomeState,
         new_state: &SomeState,
-        max_region: &SomeRegion,
+        max_x: &SomeMask,
     ) -> bool {
         // If square exists, update it, check square, return
         let t_sqrx = self.squares.find_mut(cur); // see if square exists
@@ -343,7 +338,7 @@ impl SomeAction {
                 sqrx.add_result(new_state.clone());
 
                 if sqrx.changed() {
-                    self.check_square_new_sample(cur, &max_region);
+                    self.check_square_new_sample(cur, &max_x);
                     return true;
                 }
 
@@ -368,7 +363,7 @@ impl SomeAction {
 
         if num_grps_invalidated > 0 || num_grps_in == 0 {
             self.store_sample(cur, new_state);
-            self.check_square_new_sample(cur, &max_region);
+            self.check_square_new_sample(cur, &max_x);
         }
 
         true
@@ -397,7 +392,7 @@ impl SomeAction {
             }
         }
 
-        //self.check_square_new_sample(&cur, &max_region);
+        //self.check_square_new_sample(&cur, &max_x);
 
         true
     }
@@ -407,7 +402,7 @@ impl SomeAction {
     // Add a group for the square if the square is in no valid group.
     // If any groups were invalidated, check other squares
     // that are in no groups.
-    fn check_square_new_sample(&mut self, key: &SomeState, max_region: &SomeRegion) -> bool {
+    fn check_square_new_sample(&mut self, key: &SomeState, max_x: &SomeMask) -> bool {
         //println!("check_square_new_sample");
 
         // Get number of groups invalidated, which may orphan some squares.
@@ -465,7 +460,7 @@ impl SomeAction {
         // Create a group for square if needed
         if regs_invalid.len() == 0 {
             if self.groups.num_groups_state_in(&key) == 0 {
-                self.create_groups_given_sample(&key, &max_region);
+                self.create_groups_given_sample(&key, &max_x);
             }
         } else {
             // Check squares that may not be in a group
@@ -486,7 +481,7 @@ impl SomeAction {
             for keyx in keys.iter() {
                 // A later square may be in a group created by an earlier square
                 if self.groups.num_groups_state_in(&keyx) == 0 {
-                    self.create_groups_given_sample(&keyx, &max_region);
+                    self.create_groups_given_sample(&keyx, &max_x);
                 }
             }
         }
@@ -524,7 +519,7 @@ impl SomeAction {
     // Check groups due to a new sample
     // Create a group with the square, if needed.
     // Return the number of groups invalidated
-    fn create_groups_given_sample(&mut self, key: &SomeState, max_region: &SomeRegion) {
+    fn create_groups_given_sample(&mut self, key: &SomeState, max_x: &SomeMask) {
         //let mut num_grps_invalidated = 0;
 
         // Square should exist
@@ -559,7 +554,7 @@ impl SomeAction {
                                         &regx.state2,
                                         RuleStore::new(),
                                         self.num,
-                                        &max_region,
+                                        &max_x,
                                     )) {
                                     } else {
                                         panic!("groups add should have worked!");
@@ -575,7 +570,7 @@ impl SomeAction {
                                             &regx.state2,
                                             ruls,
                                             self.num,
-                                            &max_region,
+                                            &max_x,
                                         )) {
                                         } else {
                                             panic!("groups add should have worked!");
@@ -593,7 +588,7 @@ impl SomeAction {
                             &sqrx.state,
                             sqrx.rules.clone(),
                             self.num,
-                            &max_region,
+                            &max_x,
                         )) {
                             //self.reconfirm = true;
                         }
@@ -607,12 +602,20 @@ impl SomeAction {
         //num_grps_invalidated
     }
 
+    //    pub fn get_needs2(&mut self, cur_state: SomeState, max_x: SomeMask) -> NeedStore {
+    //	    self.get_needs(&cur_state, &max_x)
+    //	}
+
+    //    pub fn get_needs2(self, _cur_state: &SomeState, _max_x: &SomeMask) -> NeedStore {
+    //		NeedStore::new()
+    //	}
+
     // Get needs for an Action, to improve understanding of the reaction pattern(s).
     // When most needs are satisfied, needs for group confirmation are generated.
     // If a square in-one-group has an adjacent, similar, square, outside
     // of a group, a new group needs to be added, get needs will be rerun.
-    pub fn get_needs(&mut self, cur_state: &SomeState, max_region: &SomeRegion) -> NeedStore {
-        // println!("Running Action {}::get_needs {}", self.num, cur_state);
+    pub fn get_needs(&mut self, cur_state: &SomeState, max_x: &SomeMask) -> NeedStore {
+        //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
         // loop through get_needs until no bookkeeping need is returned.
         let mut nds = NeedStore::new();
@@ -659,7 +662,7 @@ impl SomeAction {
             // Check for squares in-one-group needs
             //if nds.len() == 0 && self.reconfirm
             if nds.len() == 0 {
-                let mut ndx = self.confirm_groups_needs(&max_region);
+                let mut ndx = self.confirm_groups_needs(&max_x);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -706,10 +709,10 @@ impl SomeAction {
                                         &greg.state2,
                                         RuleStore::new(),
                                         self.num,
-                                        &max_region,
+                                        &max_x,
                                     ));
                                     try_again = true;
-                                //return self.get_needs(cur_state, &max_region);
+                                //return self.get_needs(cur_state, &max_x);
                                 } else {
                                     if let Some(ruls) =
                                         self.squares.rules(&greg.state1, &greg.state2)
@@ -719,10 +722,10 @@ impl SomeAction {
                                             &greg.state2,
                                             ruls,
                                             self.num,
-                                            &max_region,
+                                            &max_x,
                                         ));
                                         try_again = true;
-                                    //return self.get_needs(cur_state, &max_region);
+                                    //return self.get_needs(cur_state, &max_x);
                                     } else {
                                         panic!("expected this to work");
                                     }
@@ -766,6 +769,7 @@ impl SomeAction {
             } // next ndx
 
             if try_again == false {
+				//println!("  Returning Action {}::get_needs {}", self.num, cur_state);
                 return nds;
             }
 
@@ -1340,7 +1344,7 @@ impl SomeAction {
     //
     // Recheck the rating of the current anchor, and other possible anchors,
     // in case the anchor should be changed.
-    fn confirm_groups_needs(&mut self, max_region: &SomeRegion) -> NeedStore {
+    fn confirm_groups_needs(&mut self, max_x: &SomeMask) -> NeedStore {
         //println!("confirm_groups_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -1391,7 +1395,7 @@ impl SomeAction {
             // Get the bit masks on non-X bit-positions in greg, not counting
             // bit positions that have never been X for all groups in all actions.
             let non_x_msks = BitsStore {
-                avec: greg.not_x_mask().m_and(&max_region.x_mask()).bts.split(),
+                avec: greg.not_x_mask().m_and(&max_x).bts.split(),
             };
 
             // For each state, sta1, only in the group region, greg:

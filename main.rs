@@ -26,6 +26,7 @@ mod rulestore;
 mod square;
 mod squarestore;
 mod state;
+//use crate::state::SomeState;
 mod statestore;
 use need::SomeNeed;
 mod needstore;
@@ -78,6 +79,17 @@ fn init_domain(num_ints: usize, cur: &str) -> SomeDomain {
     dmx.add_action(action6, 0);
     dmx
 }
+//use std::thread;
+//use std::sync::mpsc::{self, Receiver, Sender};
+//use std::sync::{Arc, Mutex};
+//use crate::action::SomeAction;
+
+//use std::rc::Rc;
+
+//fn test1(num: usize, cur_state: &SomeState) -> usize{
+//	println!("a num: {} cur {}", num, cur_state);
+//	num * 3
+//}
 
 fn main() {
     let mut dm1 = init_domain(1, "s0001"); // init state to 1 u8 integer of bits, may be higher
@@ -91,8 +103,17 @@ fn main() {
     loop {
         step += 1;
 
+        // **** new code
+
+        // Get needs, using a thread for each action
+        let nds = dm1.get_needs();
+        //println!("parallel needs: {}", &nds);
+
+
+        // **** end new code
+
         println!("\nActs: {}", dm1.actions);
-        let nds: NeedStore = dm1.get_needs();
+        //let nds: NeedStore = dm1.get_needs();
 
         if nds.len() > 0 {
             println!("\nAction needs: {}", nds);
