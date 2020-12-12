@@ -553,10 +553,12 @@ fn usage() {
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
 
-    println!("\n    An action number is an integer, zero or greater, where such an action exists.");
+    println!(
+        "\n    An action number is an integer, zero or greater, where such an action exists.\n"
+    );
     println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.");
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
-    println!("\n    A region, or state, may contain separators of '_', '-', ',', '.' and/or '/',");
+    println!("\n    A region, or state, may contain the separator '_', which will be ignored.\n");
     println!("    leading consecutive zeros may be omitted ('r' is the same as 'r0', 's' is the same as 's0').");
 
     println!("\n    q | exit | quit          - Quit program.");

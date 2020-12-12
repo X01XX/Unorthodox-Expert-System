@@ -748,7 +748,7 @@ impl SomeDomain {
                 bts = bts.shift_left();
             } else if ch == '1' {
                 bts = bts.push_1();
-            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
+            } else if ch == '_' {
                 continue;
             } else {
                 return Err(String::from("invalid character"));
@@ -804,7 +804,7 @@ impl SomeDomain {
             } else if ch == 'x' || ch == 'X' {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.shift_left();
-            } else if ch == '_' || ch == '-' || ch == ',' || ch == '.' || ch == '/' {
+            } else if ch == '_' {
                 continue;
             } else {
                 return Err(String::from("invalid character"));
