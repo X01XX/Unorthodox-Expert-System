@@ -19,4 +19,7 @@ A final, exact, understanding is NOT the goal, just as there is a lot that I do 
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
 
-If something new happens, some existing rules may be invalidated, new rules sought.
+Assume a device with a state made of a number of bits, actions that can change the bits, and a definition of a number of states that qualify as optimal.
+After some testing of actions, the device can develop rules which can then be used to put the device into an optimal state.
+If something happens to change the state of the device to a non-optimal state, the device can again run rules to put it into an optimal state.
+If a rule does not work as expected, it can be deleted and new rules can be developed.
