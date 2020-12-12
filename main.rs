@@ -215,6 +215,23 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
 
     // Handle two-word commands
     if cmd.len() == 2 {
+        if cmd[0] == "co" {
+            let region_r = dm1.region_from_string(&cmd[1]);
+            match region_r {
+                Ok(goal_region) => {
+                    println!(
+                        "Change Optimal regionfrom {} to {}",
+                        dm1.optimal, goal_region
+                    );
+                    dm1.optimal = goal_region;
+                }
+                Err(error) => {
+                    println!("\nDid not understand region, {}", error);
+                    return false;
+                }
+            } // end match region_r
+        } //end command co
+
         // Arbitrary change state
         if cmd[0] == "cs" {
             let state_r = dm1.state_from_string(&cmd[1]);
@@ -514,6 +531,7 @@ fn usage() {
         "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible.\n"
     );
     println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
+    println!("    co <region>             - Change the optimal region to the given region\n.");
     println!("    cs <state>               - Arbitrary change state.\n");
     println!(
         "    g1 <act num>             - For an Action, print squares that are only in one region."
