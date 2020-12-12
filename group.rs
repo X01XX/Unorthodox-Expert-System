@@ -38,14 +38,11 @@ impl SomeGroup {
         sta2: &SomeState,
         ruls: RuleStore,
         act_num: usize,
-        max_region: &SomeRegion,
+        max_x: &SomeMask,
     ) -> Self {
         //        println!(
-        //            "adding group {}, not_x_check {}",
-        //            SomeRegion::new(&sta1, &sta2),
-        //            max_region
-        //                .x_mask()
-        //                .m_and(&SomeRegion::new(&sta1, &sta2).not_x_mask())
+        //            "adding group {}",
+        //            SomeRegion::new(&sta1, &sta2)
         //        );
         let mut pnx = Pn::One;
         if ruls.len() == 0 {
@@ -62,9 +59,7 @@ impl SomeGroup {
             act_num,
             confirmed: false,
             anchor: None,
-            not_x_check: max_region
-                .x_mask()
-                .m_and(&SomeRegion::new(&sta1, &sta2).not_x_mask()),
+            not_x_check: max_x.m_and(&SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not())),
         }
     }
 

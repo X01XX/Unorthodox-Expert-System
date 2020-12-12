@@ -85,6 +85,10 @@ impl SomeBits {
         SomeBits { ints: int_vals }
     }
 
+    pub fn len(&self) -> usize {
+        self.ints.len()
+    }
+
     pub fn new_low(&self) -> Self {
         let num_ints = self.ints.len();
 
@@ -95,13 +99,13 @@ impl SomeBits {
         Self { ints: ints2 }
     }
 
-    pub fn clone(&self) -> Self {
-        let mut v1 = Vec::<u8>::with_capacity(self.ints.len());
-        for num in self.ints.iter() {
-            v1.push(*num);
-        }
-        SomeBits { ints: v1 }
-    }
+    //    pub fn clone(&self) -> Self {
+    //        let mut v1 = Vec::<u8>::with_capacity(self.ints.len());
+    //        for num in self.ints.iter() {
+    //            v1.push(*num);
+    //        }
+    //        SomeBits { ints: v1 }
+    //    }
 
     // Return a vector of bits where each has only
     // one 1 bit isolated from the given Bits struct.
@@ -134,7 +138,7 @@ impl SomeBits {
     }
 
     // Return a Bits struct with specified bit(s) changed
-    pub fn toggle_bits(&self, bit_nums: Vec::<usize>) -> Self {
+    pub fn toggle_bits(&self, bit_nums: Vec<usize>) -> Self {
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
         for intx in self.ints.iter() {
@@ -213,6 +217,14 @@ impl SomeBits {
             ary2.push(self.ints[int_inx] ^ other.ints[int_inx]);
         }
         Self { ints: ary2 }
+    }
+
+    pub fn clone(&self) -> Self {
+        let mut v1 = Vec::<u8>::with_capacity(self.len());
+        for num in self.ints.iter() {
+            v1.push(*num);
+        }
+        Self { ints: v1 }
     }
 
     // Return true if the Bits struct value is low, that is all zeros

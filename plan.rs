@@ -258,7 +258,8 @@ impl SomePlan {
             }
 
             // Create the next shortcut
-            let mut rcx_steps = StepStore::new_with_capacity(rc_steps.len() + inx_vec[0] - inx_vec[1]);
+            let mut rcx_steps =
+                StepStore::new_with_capacity(rc_steps.len() + inx_vec[0] - inx_vec[1]);
 
             let mut x = 0;
             for _stpx in rc_steps.iter() {

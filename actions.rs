@@ -94,7 +94,7 @@ pub fn action5(cur: &SomeState, _num_seen: usize) -> SomeState {
 
 pub fn action6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 6;
-    let new_state = cur.toggle_bits(vec![2,3]);
+    let new_state = cur.toggle_bits(vec![2, 3]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
     return new_state;
 }

@@ -72,7 +72,7 @@ impl SomeState {
     //        Self::new(self.bts.b_not())
     //    }
 
-    pub fn toggle_bits(&self, nums: Vec::<usize>) -> Self {
+    pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {
         SomeState {
             bts: self.bts.toggle_bits(nums),
         }
