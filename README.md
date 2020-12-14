@@ -23,3 +23,5 @@ Assume a device with a state made of a number of bits, actions that can change t
 After some testing of actions, the device can develop rules which can then be used to put the device into an optimal state.
 If something happens to change the state of the device to a non-optimal state, the device can again run rules to put it into an optimal state.
 If a rule does not work as expected, it can be deleted and new rules can be developed.
+
+At a higher level, maybe something gets "bored", so the optimum state changes.  At some level are we following food -> shelter -> rest -> food ?
