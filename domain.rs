@@ -24,7 +24,7 @@ pub struct SomeDomain {
     pub optimal: SomeRegion,
     vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
     vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
-                         // chosen randomlt at first sample, incremented after each subsequent sample.
+                         // chosen randomly at first sample, incremented after each subsequent sample.
 }
 
 impl SomeDomain {
@@ -599,7 +599,7 @@ impl SomeDomain {
 
         // Randomly pick a step
         let a_step = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
-        // println!("step chosen {}", &a_step);
+        //println!("Step chosen {}", &a_step);
         // Plan and return the next steps
         if let Some(plnx) =
             self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)

@@ -51,19 +51,19 @@ extern crate rand;
 use rand::Rng;
 
 // Push an item into a random position in a vector
-fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
-    if avec.len() > 1 {
-        let inx = rand::thread_rng().gen_range(0, avec.len() + 1); // last in range is exclusive, (0,1) will always return 0.
-                                                                   //println!("random inx {} len {}", inx, avec.len());
-        if inx == avec.len() {
-            avec.push(num);
-        } else {
-            avec.insert(inx, num);
-        }
-    } else {
-        avec.push(num);
-    }
-}
+//fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
+//    if avec.len() > 1 {
+//        let inx = rand::thread_rng().gen_range(0, avec.len() + 1); // last in range is exclusive, (0,1) will always return 0.
+//                                                                   //println!("random inx {} len {}", inx, avec.len());
+//        if inx == avec.len() {
+//            avec.push(num);
+//        } else {
+//            avec.insert(inx, num);
+//        }
+//    } else {
+//        avec.push(num);
+//    }
+//}
 
 fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
     let mut dmx = SomeDomain::new(num_ints, cur, opt);
@@ -580,11 +580,62 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
     // lowest number first/highest.
     let mut pri_vec = Vec::<Vec<usize>>::with_capacity(8);
 
-    // Scan needs to assign priority
+    // Scan for needs that are satisfied by the current state, put need indicies into a vector.
+    // Sort by priority.
+    let mut found = false;
+    let mut inx = 0;
+    for ndx in nds.iter() {
+        if ndx.satisfied_by(&dmx.cur_state) {
+            found = true;
 
-    // For the AStateMakeGroup need, get the max num_x realized for a need that can be planned
-    let mut a_state_make_group_max_x = 0;
+            if let Some(pri) = ndx.priority() {
+                while pri_vec.len() <= pri {
+                    pri_vec.push(Vec::<usize>::new());
+                }
 
+                pri_vec[pri].push(inx);
+            }
+        }
+        inx += 1;
+    }
+
+    // If one or more needs found that the current state satisfies, run one
+    if found {
+        // Print needs that can be achieved.
+        println!(
+            "{}",
+            &String::from("\nSelected Action needs that can be done: ")
+        );
+
+        // print each need and plan
+        for avec in pri_vec.iter() {
+            if avec.len() > 0 {
+                for itmx in avec.iter() {
+                    println!("{} satisfied by current state", &nds[*itmx]);
+                }
+                println!("-----");
+                break;
+            }
+        }
+
+        for avec in pri_vec.iter() {
+            if avec.len() > 0 {
+                let mut itmx = 0;
+
+                if avec.len() > 1 {
+                    itmx = rand::thread_rng().gen_range(0, avec.len());
+                }
+
+                let ndx = &nds[avec[itmx]];
+                println!("Need chosen: {}  satisfied by the current state\n", &ndx);
+                dmx.take_action_need(ndx);
+                return true;
+            }
+        } // next avec
+    }
+
+    // Scan for needs, put need indicies into a vector.
+    // Sort by priority.
     let mut inx = 0;
     for ndx in nds.iter() {
         if let Some(pri) = ndx.priority() {
@@ -592,66 +643,27 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
                 pri_vec.push(Vec::<usize>::new());
             }
 
-            // Get max num_x for AStateMakeGroup needs
-            match ndx {
-                SomeNeed::AStateMakeGroup {
-                    act_num: _,
-                    targ_state: _,
-                    for_reg: _,
-                    far: _,
-                    num_x: nx,
-                } => {
-                    if let Some(_) = dmx.make_plan(&ndx.target()) {
-                        if *nx > a_state_make_group_max_x {
-                            a_state_make_group_max_x = *nx;
-                        }
-                    }
-                }
-                _ => {}
-            }
-
-            vec_rand_push(&mut pri_vec[pri], inx);
+            pri_vec[pri].push(inx);
         } // else the need is a adinistrative need that has already been delt with, so skip it.
         inx += 1;
     } // end scan of needs to assign priority
 
-    // A vector of need-index and plan, for needs that can be met.
+    // A vector of need-index and plan, for needs that can be met with a plan.
     let mut inx_plan = Vec::<(usize, SomePlan)>::new();
 
     // Scan needs to see what can be achieved with a plan
     for avec in pri_vec.iter() {
-        // needs in sequence from zero on up.
+        if avec.len() == 0 {
+            continue;
+        }
+
         for nd_inx in avec.iter() {
-            // for each need at the current priority
-
             let ndx = &nds[*nd_inx];
-
-            if inx_plan.len() > 2 {
-                break;
-            }
-
-            //println!("\nCheck a need {}", ndx);
-
-            // Use only max num_x for AStateMakeGroup needs
-            match ndx {
-                SomeNeed::AStateMakeGroup {
-                    act_num: _,
-                    targ_state: _,
-                    for_reg: _,
-                    far: _,
-                    num_x: nx,
-                } => {
-                    if *nx < a_state_make_group_max_x {
-                        continue;
-                    }
-                }
-                _ => {}
-            }
 
             if let Some(plx) = dmx.make_plan(&ndx.target()) {
                 inx_plan.push((*nd_inx, plx));
             }
-        } // next ndx in avec
+        }
 
         // If at least one need of the current priority has been
         // found to be doable, do not check later priority needs
@@ -666,19 +678,102 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
         &String::from("\nSelected Action needs that can be done: ")
     );
 
-    for itmx in &inx_plan {
-        let pln = &itmx.1;
-        println!("    {} {}", nds[itmx.0], pln);
+    // Print each need and plan
+    for itmx in inx_plan.iter() {
+        println!("{} {}", &nds[itmx.0], &itmx.1);
     }
     println!("-----");
 
+    // Selection for needs that can be planned
+    // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
+    let mut inx_plan2 = Vec::<usize>::new();
+
+    let nd0 = &nds[inx_plan[0].0];
+
+    match nd0 {
+        SomeNeed::AStateMakeGroup {
+            act_num: _,
+            targ_state: _,
+            for_reg: _,
+            far: _,
+            num_x: _,
+        } => {
+            // Get max x group num
+            let mut a_state_make_group_max_x = 0;
+            for itmx in &inx_plan {
+                let ndx = &nds[itmx.0];
+
+                match ndx {
+                    SomeNeed::AStateMakeGroup {
+                        act_num: _,
+                        targ_state: _,
+                        for_reg: _,
+                        far: _,
+                        num_x: nx,
+                    } => {
+                        if *nx > a_state_make_group_max_x {
+                            a_state_make_group_max_x = *nx;
+                        }
+                    }
+                    _ => {}
+                } // end match ndx
+            } // next itmx
+
+            let mut inx: usize = 0;
+            for itmx in &inx_plan {
+                let ndx = &nds[itmx.0];
+
+                match ndx {
+                    SomeNeed::AStateMakeGroup {
+                        act_num: _,
+                        targ_state: _,
+                        for_reg: _,
+                        far: _,
+                        num_x: nx,
+                    } => {
+                        if *nx == a_state_make_group_max_x {
+                            inx_plan2.push(inx);
+                        }
+                    }
+                    _ => {}
+                } // end match ndx
+
+                inx += 1;
+            }
+        } // end match AStateMakeGroup
+        _ => {
+            // Get needs with shortest plan
+            let mut min_plan_len = 99999999;
+            for itmx in &inx_plan {
+                let plnx = &itmx.1;
+                if plnx.len() < min_plan_len {
+                    min_plan_len = plnx.len();
+                }
+            }
+
+            // Push index to shortest plan needs
+            let mut inx: usize = 0;
+            for itmx in &inx_plan {
+                let plnx = &itmx.1;
+                if plnx.len() == min_plan_len {
+                    inx_plan2.push(inx);
+                }
+
+                inx += 1;
+            }
+        } // End match all other needs
+    } // End match nd0
+
     // Return if no plans.  Includes plans of zero length for the current state.
-    if inx_plan.len() == 0 {
+    if inx_plan2.len() == 0 {
         return false;
     }
 
     // Take a random choice
-    let itmx = &inx_plan[rand::thread_rng().gen_range(0, inx_plan.len())];
+    let inx2 = rand::thread_rng().gen_range(0, inx_plan2.len());
+
+    let itmx = &inx_plan[inx_plan2[inx2]];
+    //let itmx = &inx_plan2[rand::thread_rng().gen_range(0, inx_plan.len())];
     //    pause_for_enter("6");
 
     let ndx = &nds[itmx.0]; // get need using tuple index
