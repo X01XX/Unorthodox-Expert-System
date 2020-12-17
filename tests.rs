@@ -21,7 +21,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn test1() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
         if let Ok(s5) = dmx.state_from_string("s101") {
@@ -84,7 +84,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn test2() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
         if let Ok(s5) = dmx.state_from_string("s101") {
@@ -217,7 +217,7 @@ mod tests {
     // Test the successful intersection of two two-result rulestores
     #[test]
     fn test3() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
         let sta_5 = SomeState {

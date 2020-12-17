@@ -40,15 +40,15 @@ impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut astr = String::new();
 
-        let num_bits = self.num_ints() * 8;
-
-        for inx in (0..num_bits).rev() {
-            if self.is_bit_set(inx) {
-                astr.push('1');
-            } else {
-                astr.push('0');
-            }
-        }
+        let mut fil = 0;
+        for intx in self.ints.iter() {
+			if fil == 1 {
+				astr.push('_');
+			}
+			astr.push_str(&format!("{:08b}", intx)); // increase 08 if the integer size increases
+			
+			fil = 1;
+		}
         write!(f, "{}", astr)
     }
 }
