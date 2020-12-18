@@ -40,7 +40,9 @@ mod domain;
 mod pn;
 use domain::SomeDomain;
 mod actions;
+mod domainstore;
 mod tests;
+use domainstore::DomainStore;
 
 use crate::actions::{action0, action1, action2, action3, action4, action5, action6};
 
@@ -65,8 +67,8 @@ use rand::Rng;
 //    }
 //}
 
-fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
-    let mut dmx = SomeDomain::new(num_ints, cur, opt);
+fn init_domain(num: usize, num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
+    let mut dmx = SomeDomain::new(num, num_ints, cur, opt);
     // dmx.add_action(action0, 0);
     // dmx.add_action(action0, 2);
     dmx.add_action(action0, 6);
@@ -92,9 +94,14 @@ fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
 //}
 
 fn main() {
+    // Start a DomainStore, add a Domain
+    let mut dmsx = DomainStore::new();
+
     // Initialize a domain, with number of u8 integers, initial state, optimal region.
-    // The numbe of u8 integers can be higher.
-    let mut dm1 = init_domain(1, "s0001", "r101X");
+    // The number of u8 integers can be higher.
+    let dm1 = init_domain(0, 1, "s0001", "r101X");
+
+    dmsx.push(dm1);
 
     usage();
     let mut step = 0;
@@ -102,80 +109,78 @@ fn main() {
     loop {
         step += 1;
 
-        // **** new code
+        for mut dmx in dmsx.iter_mut() {
+            // Get needs, using a thread for each action
+            let nds = dmx.get_needs();
+            //println!("parallel needs: {}", &nds);
 
-        // Get needs, using a thread for each action
-        let nds = dm1.get_needs();
-        //println!("parallel needs: {}", &nds);
+            println!("\nActs: {}", dmx.actions);
+            //let nds: NeedStore = dmx.get_needs();
 
-        // **** end new code
-
-        println!("\nActs: {}", dm1.actions);
-        //let nds: NeedStore = dm1.get_needs();
-
-        if nds.len() > 0 {
-            println!("\nAction needs: {}", nds);
-        } else {
-            println!("\nAction needs: None");
-        }
-
-        let mut in_opt = "Not in";
-
-        if dm1.optimal.is_superset_of_state(&dm1.cur_state) {
-            in_opt = "in";
-        }
-
-        println!(
-            "\nStep: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-            &step, &dm1.cur_state, &dm1.max_region, &in_opt, &dm1.optimal
-        );
-
-        print!("\nPress Enter to continue: ");
-        io::stdout().flush().unwrap();
-
-        let mut guess = String::new();
-        io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read line");
-        //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
-
-        let mut cmd = Vec::<String>::with_capacity(10);
-
-        for word in guess.split_whitespace() {
-            //println!("word: {} is {}", word_count, word);
-            cmd.push(word.to_ascii_lowercase());
-        }
-
-        // Default command, just press Enter
-        if cmd.len() == 0 {
-            // Process needs
             if nds.len() > 0 {
-                //println!("\nAction needs: {}", nds);
-
-                //let curst = dm1.cur_state.clone();
-                if satisfy_need(&mut dm1, &nds) {
-                } else {
-                    println!("no need satisfied");
-                }
+                println!("\nAction needs: {}", nds);
             } else {
-                // If no needs, change the state to an optimal state if needed
-                if dm1.optimal.is_superset_of_state(&dm1.cur_state) {
-                } else {
-                    if let Some(pln) = dm1.make_plan(&dm1.optimal) {
-                        println!("Changing state to optimal, Plan is {}", pln);
+                println!("\nAction needs: None");
+            }
 
-                        // Do the plan
-                        dm1.run_plan(&pln);
+            let mut in_opt = "Not in";
+
+            if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+                in_opt = "in";
+            }
+
+            println!(
+                "\nStep: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
+                &step, &dmx.cur_state, &dmx.max_region, &in_opt, &dmx.optimal
+            );
+
+            print!("\nPress Enter to continue: ");
+            io::stdout().flush().unwrap();
+
+            let mut guess = String::new();
+            io::stdin()
+                .read_line(&mut guess)
+                .expect("Failed to read line");
+            //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
+
+            let mut cmd = Vec::<String>::with_capacity(10);
+
+            for word in guess.split_whitespace() {
+                //println!("word: {} is {}", word_count, word);
+                cmd.push(word.to_ascii_lowercase());
+            }
+
+            // Default command, just press Enter
+            if cmd.len() == 0 {
+                // Process needs
+                if nds.len() > 0 {
+                    //println!("\nAction needs: {}", nds);
+
+                    //let curst = dmx.cur_state.clone();
+                    if satisfy_need(&mut dmx, &nds) {
                     } else {
-                        println!("No plan found to change to the optimal state");
+                        println!("no need satisfied");
+                    }
+                } else {
+                    // If no needs, change the state to an optimal state if needed
+                    if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+                    } else {
+                        if let Some(pln) = dmx.make_plan(&dmx.optimal) {
+                            println!("Changing state to optimal, Plan is {}", pln);
+
+                            // Do the plan
+                            dmx.run_plan(&pln);
+                        } else {
+                            println!("No plan found to change to the optimal state");
+                        }
                     }
                 }
+                continue;
+            } else {
+                do_command(&mut dmx, &guess);
             }
-            continue;
-        } else {
-            do_command(&mut dm1, &guess);
-        }
-    }
+        } // next dmx
+    } // end loop
 } // end main
 
 // Do a command

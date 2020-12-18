@@ -13,10 +13,28 @@ use crate::stepstore::StepStore;
 
 use std::collections::HashMap;
 
+use std::fmt;
 extern crate rand;
 use rand::Rng;
 
+impl fmt::Display for SomeDomain {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut rc_str = String::from("D(ID: ");
+
+        rc_str.push_str(&self.num.to_string());
+
+        rc_str.push_str(&format!(", Murrent State: {}", &self.cur_state));
+        rc_str.push_str(&format!(", Maximum Region: {}", &self.max_region));
+        rc_str.push_str(&format!(", Optimal Region: {}", &self.optimal));
+
+        rc_str.push_str(")");
+
+        write!(f, "{}", rc_str)
+    }
+}
+
 pub struct SomeDomain {
+    pub num: usize,
     pub num_ints: usize,
     pub actions: ActionStore,
     pub cur_state: SomeState,
@@ -28,7 +46,7 @@ pub struct SomeDomain {
 }
 
 impl SomeDomain {
-    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
+    pub fn new(num: usize, num_ints: usize, start_state: &str, optimal: &str) -> Self {
         // Set up temp state
         // The number of integers is carried forward by various oprations
 
@@ -39,6 +57,7 @@ impl SomeDomain {
         };
 
         let tmp_dm = SomeDomain {
+            num,
             num_ints,
             actions: ActionStore::new(),
             cur_state: tmp_cur.clone(),
@@ -55,6 +74,7 @@ impl SomeDomain {
             if let Ok(opt) = tmp_dm.region_from_string(&optimal) {
                 // Set up a domain instance with the correct value for num_ints
                 return SomeDomain {
+                    num,
                     num_ints,
                     actions: ActionStore::new(),
                     cur_state: cur.clone(),

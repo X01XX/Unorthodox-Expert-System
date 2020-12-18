@@ -42,13 +42,13 @@ impl fmt::Display for SomeBits {
 
         let mut fil = 0;
         for intx in self.ints.iter() {
-			if fil == 1 {
-				astr.push('_');
-			}
-			astr.push_str(&format!("{:08b}", intx)); // increase 08 if the integer size increases
-			
-			fil = 1;
-		}
+            if fil == 1 {
+                astr.push('_');
+            }
+            astr.push_str(&format!("{:08b}", intx)); // increase 08 if the integer size increases
+
+            fil = 1;
+        }
         write!(f, "{}", astr)
     }
 }
