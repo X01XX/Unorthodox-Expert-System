@@ -88,9 +88,9 @@ pub struct SomeAction {
 }
 
 impl SomeAction {
-    pub fn new(num: usize, fx: fn(&SomeState, usize) -> SomeState) -> Self {
+    pub fn new(fx: fn(&SomeState, usize) -> SomeState) -> Self {
         SomeAction {
-            num,
+            num: 0,  // May be changed when added to an ActionStore, to reflect the index into a vector
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             to_run: fx,

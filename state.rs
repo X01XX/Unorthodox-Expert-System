@@ -87,3 +87,41 @@ impl SomeState {
         self.bts.num_one_bits()
     }
 }
+
+// Return a State from a string, like "s0101".
+// Left-most, consecutive, zeros can be omitted.
+pub fn state_from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
+    let mut bts = SomeBits {
+        ints: vec![0 as u8; num_ints],
+    };
+
+    let mut inx = -1;
+
+    for ch in str.chars() {
+        inx += 1;
+
+        if inx == 0 {
+            if ch == 's' {
+                continue;
+            } else {
+                return Err(String::from("initial character should be s"));
+            }
+        }
+
+        if bts.high_bit_set() {
+            return Err(String::from("too long"));
+        }
+
+        if ch == '0' {
+            bts = bts.shift_left();
+        } else if ch == '1' {
+            bts = bts.push_1();
+        } else if ch == '_' {
+            continue;
+        } else {
+            return Err(String::from("invalid character"));
+        }
+    } // end for ch
+
+    Ok(SomeState::new(bts))
+} // end state_from_string

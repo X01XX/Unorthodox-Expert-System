@@ -1,13 +1,13 @@
 use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
-use crate::bits::SomeBits;
+//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
-use crate::region::SomeRegion;
+use crate::region::{region_from_string, SomeRegion};
 use crate::rule::SomeRule;
-use crate::state::SomeState;
+use crate::state::{state_from_string, SomeState};
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
@@ -46,35 +46,14 @@ pub struct SomeDomain {
 }
 
 impl SomeDomain {
-    pub fn new(num: usize, num_ints: usize, start_state: &str, optimal: &str) -> Self {
-        // Set up temp state
-        // The number of integers is carried forward by various oprations
-
-        let tmp_cur = SomeState {
-            bts: SomeBits {
-                ints: vec![2 as u8; num_ints],
-            },
-        };
-
-        let tmp_dm = SomeDomain {
-            num,
-            num_ints,
-            actions: ActionStore::new(),
-            cur_state: tmp_cur.clone(),
-            max_region: SomeRegion::new(&tmp_cur, &tmp_cur),
-            optimal: SomeRegion::new(&tmp_cur, &tmp_cur),
-            vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
-            vec_hvr: Vec::<usize>::new(),
-        };
+    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
 
         // Convert the state string into a state type instance.
-        // Some code will refer to <domain>.num_ints, or get the value
-        // from an existing SomeBits instance vector length.
-        if let Ok(cur) = tmp_dm.state_from_string(&start_state) {
-            if let Ok(opt) = tmp_dm.region_from_string(&optimal) {
+        if let Ok(cur) = state_from_string(num_ints, &start_state) {
+            if let Ok(opt) = region_from_string(num_ints, &optimal) {
                 // Set up a domain instance with the correct value for num_ints
                 return SomeDomain {
-                    num,
+                    num: 0,  // may be changed when added to a DomainStore, to reflect the index into a vector
                     num_ints,
                     actions: ActionStore::new(),
                     cur_state: cur.clone(),
@@ -92,22 +71,10 @@ impl SomeDomain {
     }
 
     pub fn add_action(&mut self, fx: fn(&SomeState, usize) -> SomeState, hv_range: usize) {
-        self.actions.add(SomeAction::new(self.actions.len(), fx)); // Add an action
+        self.actions.push(SomeAction::new(fx)); // Add an action
         self.vec_hash.push(HashMap::new());
         self.vec_hvr.push(hv_range);
     }
-
-    pub fn _get_needs2(&mut self) -> NeedStore {
-        //println!("domain get_needs");
-        self.actions
-            .get_needs(&self.cur_state, &self.max_region.x_mask())
-    }
-
-    //   pub fn get_needs2(&mut self, act_num: usize) -> NeedStore {
-    //       //println!("domain get_needs2");
-    //       self.actions[act_num]
-    //           .get_needs(&self.cur_state, &self.max_region.x_mask())
-    //   }
 
     pub fn get_needs(&mut self) -> NeedStore {
         self.actions
@@ -741,99 +708,4 @@ impl SomeDomain {
 
         return None;
     } // end plan_next_steps
-
-    // Return a State from a string, like "s0101".
-    // Left-most, consecutive, zeros can be omitted.
-    pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-        let mut bts = self.cur_state.bts.new_low();
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 's' {
-                    continue;
-                } else {
-                    return Err(String::from("initial character should be s"));
-                }
-            }
-
-            if bts.high_bit_set() {
-                return Err(String::from("too long"));
-            }
-
-            if ch == '0' {
-                bts = bts.shift_left();
-            } else if ch == '1' {
-                bts = bts.push_1();
-            } else if ch == '_' {
-                continue;
-            } else {
-                return Err(String::from("invalid character"));
-            }
-        } // end for ch
-
-        Ok(SomeState::new(bts))
-    } // end state_from_string
-
-    // Return a Region from a string, like "r01X1".
-    // Left-most, consecutive, zeros can be omitted.
-    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
-        let mut bts_high = self.cur_state.bts.new_low();
-        let mut bts_low = self.cur_state.bts.new_low();
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 'r' {
-                    continue;
-                } else if ch == 's' {
-                    let state_r = self.state_from_string(str);
-                    match state_r {
-                        Ok(a_state) => {
-                            return Ok(SomeRegion::new(&a_state, &a_state));
-                        }
-                        Err(error) => {
-                            return Err(format!("\nDid not understand state, {}", error));
-                        }
-                    } // end match state_r
-                } else {
-                    return Err(String::from("first character should be r"));
-                }
-            }
-
-            if bts_high.high_bit_set() {
-                return Err(String::from("too long"));
-            }
-
-            if bts_low.high_bit_set() {
-                return Err(String::from("too long"));
-            }
-
-            if ch == '0' {
-                bts_high = bts_high.shift_left();
-                bts_low = bts_low.shift_left();
-            } else if ch == '1' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.push_1();
-            } else if ch == 'x' || ch == 'X' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.shift_left();
-            } else if ch == '_' {
-                continue;
-            } else {
-                return Err(String::from("invalid character"));
-            }
-        } // end for ch
-
-        Ok(SomeRegion::new(
-            &SomeState::new(bts_high),
-            &SomeState::new(bts_low),
-        ))
-    } // end region_from_string
-}
+} // end impl SomeDomain

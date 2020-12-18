@@ -39,7 +39,8 @@ impl DomainStore {
         self.avec.len()
     }
 
-    pub fn push(&mut self, val: SomeDomain) {
+    pub fn push(&mut self, mut val: SomeDomain) {
+        val.num = self.avec.len();
         self.avec.push(val);
     }
 

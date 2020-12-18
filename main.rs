@@ -19,6 +19,7 @@ mod mask;
 mod maskstore;
 mod need;
 mod region;
+use crate::region::region_from_string;
 mod regionstore;
 mod resultstore;
 mod rule;
@@ -26,7 +27,7 @@ mod rulestore;
 mod square;
 mod squarestore;
 mod state;
-//use crate::state::SomeState;
+use crate::state::state_from_string;
 mod statestore;
 use need::SomeNeed;
 mod needstore;
@@ -67,10 +68,9 @@ use rand::Rng;
 //    }
 //}
 
-fn init_domain(num: usize, num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
-    let mut dmx = SomeDomain::new(num, num_ints, cur, opt);
-    // dmx.add_action(action0, 0);
-    // dmx.add_action(action0, 2);
+fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
+    let mut dmx = SomeDomain::new(num_ints, cur, opt);
+
     dmx.add_action(action0, 6);
 
     dmx.add_action(action1, 0);
@@ -99,7 +99,7 @@ fn main() {
 
     // Initialize a domain, with number of u8 integers, initial state, optimal region.
     // The number of u8 integers can be higher.
-    let dm1 = init_domain(0, 1, "s0001", "r101X");
+    let dm1 = init_domain(1, "s0001", "r101X");
 
     dmsx.push(dm1);
 
@@ -221,7 +221,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
     // Handle two-word commands
     if cmd.len() == 2 {
         if cmd[0] == "co" {
-            let region_r = dm1.region_from_string(&cmd[1]);
+            let region_r = region_from_string(dm1.num_ints, &cmd[1]);
             match region_r {
                 Ok(goal_region) => {
                     println!(
@@ -239,7 +239,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
 
         // Arbitrary change state
         if cmd[0] == "cs" {
-            let state_r = dm1.state_from_string(&cmd[1]);
+            let state_r = state_from_string(dm1.num_ints, &cmd[1]);
             match state_r {
                 Ok(a_state) => {
                     println!("Change state to {}", a_state);
@@ -254,7 +254,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         } // end command cs
 
         if cmd[0] == "to" {
-            let region_r = dm1.region_from_string(&cmd[1]);
+            let region_r = region_from_string(dm1.num_ints, &cmd[1]);
             match region_r {
                 Ok(goal_region) => {
                     println!(
@@ -362,7 +362,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         //                println!("\nInvalid action number");
         //                return false;
         //            }
-        //            let state_r = dm1.state_from_string(&cmd[2]);
+        //            let state_r = state_from_string(&cmd[2]);
         //            match state_r {
         //                Ok(a_state) => {
         //                    println!("Act {} sample State {}", act_num, a_state);
@@ -398,7 +398,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            let state_r = dm1.state_from_string(&cmd[2]);
+            let state_r = state_from_string(dm1.num_ints, &cmd[2]);
             match state_r {
                 Ok(a_state) => {
                     println!("Act {} sample State {}", act_num, a_state);
@@ -422,7 +422,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
                 let mut psstr = String::from(format!(
                     "Squares of Action {} in region {} are:\n",
                     &act_num, &aregion
@@ -458,7 +458,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
                 let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
                 println!("Squares adj to {} are {}", &aregion, &stas);
                 return true;
@@ -473,7 +473,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
                 let sta_1s = dm1.actions[act_num]
                     .squares
                     .states_in_1_region(&dm1.actions[act_num].groups.regions());
@@ -499,10 +499,10 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            let i_state_rslt = dm1.state_from_string(&cmd[2]);
+            let i_state_rslt = state_from_string(dm1.num_ints, &cmd[2]);
             match i_state_rslt {
                 Ok(i_state) => {
-                    let r_state_rslt = dm1.state_from_string(&cmd[3]);
+                    let r_state_rslt = state_from_string(dm1.num_ints, &cmd[3]);
                     match r_state_rslt {
                         Ok(r_state) => {
                             println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);

@@ -7,8 +7,9 @@ mod tests {
     use crate::actions::action0;
     use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
+    use crate::region::region_from_string;
     use crate::square::SomeSquare;
-    use crate::state::SomeState;
+    use crate::state::{state_from_string, SomeState};
 
     // Form a group, X1X1 from two squares that have alternating (pn=Two) results.
     //
@@ -21,15 +22,15 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn test1() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(0, 1, "s1", "r1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
-        if let Ok(s5) = dmx.state_from_string("s101") {
-            if let Ok(s4) = dmx.state_from_string("s100") {
-                if let Ok(sf) = dmx.state_from_string("s1111") {
-                    if let Ok(se) = dmx.state_from_string("s1110") {
-                        if let Ok(s7) = dmx.state_from_string("s111") {
-                            if let Ok(rx1x1) = dmx.region_from_string("rx1x1") {
+        if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
+            if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
+                if let Ok(sf) = state_from_string(dmx.num_ints, "s1111") {
+                    if let Ok(se) = state_from_string(dmx.num_ints, "s1110") {
+                        if let Ok(s7) = state_from_string(dmx.num_ints, "s111") {
+                            if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
                                 //println!(
                                 //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
                                 //    s5, s4, sf, se, rx1x1
@@ -84,15 +85,15 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn test2() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(0, 1, "s1", "r1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
-        if let Ok(s5) = dmx.state_from_string("s101") {
-            if let Ok(s4) = dmx.state_from_string("s100") {
-                if let Ok(sf) = dmx.state_from_string("s1111") {
-                    if let Ok(se) = dmx.state_from_string("s1110") {
-                        if let Ok(s7) = dmx.state_from_string("s111") {
-                            if let Ok(rx1x1) = dmx.region_from_string("rx1x1") {
+        if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
+            if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
+                if let Ok(sf) = state_from_string(dmx.num_ints, "s1111") {
+                    if let Ok(se) = state_from_string(dmx.num_ints, "s1110") {
+                        if let Ok(s7) = state_from_string(dmx.num_ints, "s111") {
+                            if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
                                 //println!(
                                 //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
                                 //    s5, s4, sf, se, rx1x1
@@ -145,8 +146,8 @@ mod tests {
     //    let mut dmx = SomeDomain::new(1, "s1");
     //    dmx.add_action(action0, 0);
     //
-    //    if let Ok(rx1x1) = dmx.region_from_string("rx1x1") {
-    //        if let Ok(r1x0x) = dmx.region_from_string("r1x0x") {
+    //    if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
+    //        if let Ok(r1x0x) = region_from_string(dmx.num_ints, "r1x0x") {
     //            let subs = RegionStore {
     //                avec: rx1x1.subtract(&r1x0x),
     //            }; // subtract -> Vec<SomeRegion>
@@ -178,28 +179,28 @@ mod tests {
     //
     //    let mut regs = RegionStore::new();
     //
-    //    if let Ok(r00x1) = dmx.region_from_string("r00x1") {
+    //    if let Ok(r00x1) = region_from_string(dmx.num_ints, "r00x1") {
     //        // adjacent to rx1x1
     //        regs.push(r00x1);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r1x1x) = dmx.region_from_string("r1x1x") {
+    //    if let Ok(r1x1x) = region_from_string(dmx.num_ints, "r1x1x") {
     //       // intersects rx1x1
     //        regs.push(r1x1x);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r0010) = dmx.region_from_string("r0010") {
+    //    if let Ok(r0010) = region_from_string(dmx.num_ints, "r0010") {
     //        // not adjacent to rx1x1
     //        regs.push(r0010);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(rx1x1) = dmx.region_from_string("rx1x1") {
+    //    if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
     //        regs.push(rx1x1.clone());
     //        let empty_adjacent: RegionStore = regs.empty_adjacent(&rx1x1);
     //
@@ -217,7 +218,7 @@ mod tests {
     // Test the successful intersection of two two-result rulestores
     #[test]
     fn test3() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(0, 1, "s1", "r1");
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(action0, 0);
 
         let sta_5 = SomeState {
@@ -274,7 +275,7 @@ mod tests {
 
                 if let Some(rules_int) = rules_5e.intersection(&rules_58) {
                     //println!("rules_int {}", &rules_int);
-                    if let Ok(rx10x) = dmx.region_from_string("rx10x") {
+                    if let Ok(rx10x) = region_from_string(dmx.num_ints, "rx10x") {
                         if rx10x == rules_int.initial_region() {
                             return Ok(());
                         }

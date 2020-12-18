@@ -49,7 +49,8 @@ impl ActionStore {
         self.avec.len()
     }
 
-    pub fn add(&mut self, val: SomeAction) {
+    pub fn push(&mut self, mut val: SomeAction) {
+        val.num = self.avec.len();
         self.avec.push(val);
     }
 
