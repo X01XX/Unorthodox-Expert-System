@@ -45,7 +45,10 @@ mod domainstore;
 mod tests;
 use domainstore::DomainStore;
 
-use crate::actions::{action0, action1, action2, action3, action4, action5, action6};
+use crate::actions::{
+    dom0_act0, dom0_act1, dom0_act2, dom0_act3, dom0_act4, dom0_act5, dom0_act6, dom1_act0,
+    dom1_act1, dom1_act2, dom1_act3,
+};
 
 use std::io;
 use std::io::Write;
@@ -68,19 +71,6 @@ use rand::Rng;
 //    }
 //}
 
-fn init_domain(num_ints: usize, cur: &str, opt: &str) -> SomeDomain {
-    let mut dmx = SomeDomain::new(num_ints, cur, opt);
-
-    dmx.add_action(action0, 6);
-
-    dmx.add_action(action1, 0);
-    dmx.add_action(action2, 0);
-    dmx.add_action(action3, 0);
-    dmx.add_action(action4, 0);
-    dmx.add_action(action5, 0);
-    dmx.add_action(action6, 0);
-    dmx
-}
 //use std::thread;
 //use std::sync::mpsc::{self, Receiver, Sender};
 //use std::sync::{Arc, Mutex};
@@ -99,9 +89,25 @@ fn main() {
 
     // Initialize a domain, with number of u8 integers, initial state, optimal region.
     // The number of u8 integers can be higher.
-    let dm1 = init_domain(1, "s0001", "r101X");
 
-    dmsx.push(dm1);
+    let mut dm0 = SomeDomain::new(1, "s0001", "r101X");
+    dm0.add_action(dom0_act0, 6);
+    dm0.add_action(dom0_act1, 0);
+    dm0.add_action(dom0_act2, 0);
+    dm0.add_action(dom0_act3, 0);
+    dm0.add_action(dom0_act4, 0);
+    dm0.add_action(dom0_act5, 0);
+    dm0.add_action(dom0_act6, 0);
+
+    dmsx.push(dm0);
+
+    let mut dm1 = SomeDomain::new(1, "s0001", "r101X");
+    dm1.add_action(dom1_act0, 6);
+    dm1.add_action(dom1_act1, 0);
+    dm1.add_action(dom1_act2, 0);
+    dm1.add_action(dom1_act3, 0);
+
+    //dmsx.push(dm1);
 
     usage();
     let mut step = 0;
@@ -109,13 +115,29 @@ fn main() {
     loop {
         step += 1;
 
-        for mut dmx in dmsx.iter_mut() {
+        let mut nds = NeedStore::new();
+
+        // Get needs for all domains
+        for dmy in dmsx.iter_mut() {
             // Get needs, using a thread for each action
-            let nds = dmx.get_needs();
+            let mut ndx = dmy.get_needs();
             //println!("parallel needs: {}", &nds);
 
-            println!("\nActs: {}", dmx.actions);
+            nds.append(&mut ndx);
+
             //let nds: NeedStore = dmx.get_needs();
+        } // next dmy
+
+        //println!("\nAll needs: {}", nds);
+
+        let dom_num = 0;
+
+        for dmx in dmsx.iter_mut() {
+            if dmx.num != dom_num {
+                continue;
+            }
+
+            println!("\nActs: {}", dmx.actions);
 
             if nds.len() > 0 {
                 println!("\nAction needs: {}", nds);
@@ -157,7 +179,7 @@ fn main() {
                     //println!("\nAction needs: {}", nds);
 
                     //let curst = dmx.cur_state.clone();
-                    if satisfy_need(&mut dmx, &nds) {
+                    if satisfy_need(dmx, &nds) {
                     } else {
                         println!("no need satisfied");
                     }
@@ -177,9 +199,9 @@ fn main() {
                 }
                 continue;
             } else {
-                do_command(&mut dmx, &guess);
+                do_command(dmx, &guess);
             }
-        } // next dmx
+        } // end iter_mut
     } // end loop
 } // end main
 
@@ -308,6 +330,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
 
             println!("Act {} sample State {}", act_num, dm1.cur_state);
             dm1.take_action_need(&SomeNeed::StateNotInGroup {
+                dom_num: dm1.num,
                 act_num: act_num,
                 targ_state: dm1.cur_state.clone(),
             });
@@ -404,6 +427,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
                     println!("Act {} sample State {}", act_num, a_state);
                     dm1.cur_state = a_state.clone();
                     dm1.take_action_need(&SomeNeed::StateNotInGroup {
+                        dom_num: dm1.num,
                         act_num: act_num,
                         targ_state: a_state,
                     });
@@ -697,6 +721,7 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
 
     match nd0 {
         SomeNeed::AStateMakeGroup {
+            dom_num: _,
             act_num: _,
             targ_state: _,
             for_reg: _,
@@ -710,6 +735,7 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
 
                 match ndx {
                     SomeNeed::AStateMakeGroup {
+                        dom_num: _,
                         act_num: _,
                         targ_state: _,
                         for_reg: _,
@@ -730,6 +756,7 @@ fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
 
                 match ndx {
                     SomeNeed::AStateMakeGroup {
+                        dom_num: _,
                         act_num: _,
                         targ_state: _,
                         for_reg: _,

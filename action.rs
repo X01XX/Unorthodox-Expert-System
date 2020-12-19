@@ -90,7 +90,7 @@ pub struct SomeAction {
 impl SomeAction {
     pub fn new(fx: fn(&SomeState, usize) -> SomeState) -> Self {
         SomeAction {
-            num: 0,  // May be changed when added to an ActionStore, to reflect the index into a vector
+            num: 0, // May be changed when added to an ActionStore, to reflect the index into a vector
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             to_run: fx,
@@ -117,7 +117,8 @@ impl SomeAction {
         // Process each kind of need
         match ndx {
             SomeNeed::AStateMakeGroup {
-                act_num: _an,
+                dom_num: _,
+                act_num: _,
                 targ_state: sta,
                 for_reg,
                 far,
@@ -197,6 +198,7 @@ impl SomeAction {
             } // end process AStateMakeGroup Need
 
             SomeNeed::InBetween {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 in_group: greg,
@@ -634,6 +636,7 @@ impl SomeAction {
 
             if in_grp == false {
                 nds.push(SomeNeed::StateNotInGroup {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: cur_state.clone(),
                 });
@@ -934,6 +937,7 @@ impl SomeAction {
 
                 // Make need for seek_state
                 ret_nds.push(SomeNeed::InBetween {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: seek_state,
                     in_group: regx.clone(),
@@ -1030,6 +1034,7 @@ impl SomeAction {
                 let seek_sta = max_stas[inx].clone();
 
                 ret_nds.push(SomeNeed::InBetween {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: seek_sta,
                     in_group: regx.clone(),
@@ -1057,6 +1062,7 @@ impl SomeAction {
                     }
                     if sqrx.pnc() == false {
                         ret_nds.push(SomeNeed::StateAdditionalSample {
+                            dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: sqrx.state.clone(),
                             grp_reg: grpx.region.clone(),
@@ -1075,6 +1081,7 @@ impl SomeAction {
                 }
                 if sqrx.pnc() == false {
                     ret_nds.push(SomeNeed::StateAdditionalSample {
+                        dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
                         targ_state: sqrx.state.clone(),
                         grp_reg: grpx.region.clone(),
@@ -1226,6 +1233,7 @@ impl SomeAction {
 
                     let state1x = reg_both.far_state(&grpx.region.state1);
                     ret_nds.push(SomeNeed::AStateExpandGroup {
+                        dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
                         targ_state: state1x,
                         base_group: grpx.region.clone(),
@@ -1233,6 +1241,7 @@ impl SomeAction {
 
                     let state2x = reg_both.far_state(&grpx.region.state2);
                     ret_nds.push(SomeNeed::AStateExpandGroup {
+                        dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
                         targ_state: state2x,
                         base_group: grpx.region.clone(),
@@ -1274,12 +1283,14 @@ impl SomeAction {
                 } else {
                     if sqr1x.num_results() > sqr2x.num_results() {
                         ret_nds.push(SomeNeed::AStateExpandGroup {
+                            dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: state1_far,
                             base_group: greg.clone(),
                         });
                     } else {
                         ret_nds.push(SomeNeed::AStateExpandGroup {
+                            dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: state2_far,
                             base_group: greg.clone(),
@@ -1295,6 +1306,7 @@ impl SomeAction {
                     });
                 } else {
                     ret_nds.push(SomeNeed::AStateExpandGroup {
+                        dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
                         targ_state: state1_far,
                         base_group: greg.clone(),
@@ -1312,6 +1324,7 @@ impl SomeAction {
                     });
                 } else {
                     ret_nds.push(SomeNeed::AStateExpandGroup {
+                        dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
                         targ_state: state2_far,
                         base_group: greg.clone(),
@@ -1320,11 +1333,13 @@ impl SomeAction {
             } else {
                 // Neither far squares found
                 ret_nds.push(SomeNeed::AStateExpandGroup {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: state1_far,
                     base_group: greg.clone(),
                 });
                 ret_nds.push(SomeNeed::AStateExpandGroup {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: state2_far,
                     base_group: greg.clone(),
@@ -1512,6 +1527,7 @@ impl SomeAction {
                 } else {
                     // Get additional samples of the anchor
                     ret_nds.push(SomeNeed::ConfirmGroup {
+                        dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
                         targ_state: anchor_sta.clone(),
@@ -1522,6 +1538,7 @@ impl SomeAction {
             } else {
                 // Get the first sample of the anchor
                 ret_nds.push(SomeNeed::ConfirmGroup {
+                    dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
                     targ_state: anchor_sta.clone(),
@@ -1568,6 +1585,7 @@ impl SomeAction {
                             }
                         } else {
                             nds_grp.push(SomeNeed::ConfirmGroup {
+                                dom_num: 0, // will be set in domain code
                                 act_num: self.num,
                                 anchor: anchor_sta.clone(),
                                 targ_state: adj_sta.clone(),
@@ -1576,6 +1594,7 @@ impl SomeAction {
                         }
                     } else {
                         nds_grp.push(SomeNeed::ConfirmGroup {
+                            dom_num: 0, // will be set in domain code
                             act_num: self.num,
                             anchor: anchor_sta.clone(),
                             targ_state: adj_sta.clone(),
@@ -1626,6 +1645,7 @@ impl SomeAction {
                     } else {
                         // Get additional samples of the far state
                         ret_nds.push(SomeNeed::ConfirmGroup {
+                            dom_num: 0, // will be set in domain code
                             act_num: self.num,
                             anchor: anchor_sta.clone(),
                             targ_state: sta_far.clone(),
@@ -1636,6 +1656,7 @@ impl SomeAction {
                 None => {
                     // Get the first sample of the far state
                     ret_nds.push(SomeNeed::ConfirmGroup {
+                        dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
                         targ_state: sta_far.clone(),
@@ -1646,7 +1667,7 @@ impl SomeAction {
         } // next greg
 
         ret_nds
-    } // end confirm_groups
+    } // end confirm_groups_needs
 
     // Check overlapping intersection for combinations
     fn group_pair_needs(&self) -> NeedStore {
@@ -1707,6 +1728,7 @@ impl SomeAction {
 
             nds.push(SomeNeed::AStateMakeGroup {
                 // nds should be empty so far
+                dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 targ_state: sta1.clone(),
                 for_reg: reg_grp.clone(),
@@ -1715,6 +1737,7 @@ impl SomeAction {
             });
 
             nds.push(SomeNeed::AStateMakeGroup {
+                dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 targ_state: sta1,
                 for_reg: reg_grp.clone(),
@@ -1805,6 +1828,7 @@ impl SomeAction {
                     } else {
                         nds.push(SomeNeed::AStateMakeGroup {
                             // nds should be empty so far
+                            dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: sta_pair[0].clone(),
                             for_reg: reg_grp.clone(),
@@ -1821,6 +1845,7 @@ impl SomeAction {
                     } else {
                         nds.push(SomeNeed::AStateMakeGroup {
                             // nds should be empty so far
+                            dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: sta_pair[1].clone(),
                             for_reg: reg_grp.clone(),
@@ -1875,6 +1900,7 @@ impl SomeAction {
             if sqrx.pnc() {
             } else {
                 nds.push(SomeNeed::AStateMakeGroup {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: sta2.clone(),
                     for_reg: reg_grp.clone(),
@@ -1890,6 +1916,7 @@ impl SomeAction {
             if sqry.pnc() {
             } else {
                 nds.push(SomeNeed::AStateMakeGroup {
+                    dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: sta2.clone(),
                     for_reg: reg_grp.clone(),
@@ -1900,6 +1927,7 @@ impl SomeAction {
         } else {
             // far sta not found in squarestore
             nds.push(SomeNeed::AStateMakeGroup {
+                dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 targ_state: sta2.clone(),
                 for_reg: reg_grp.clone(),
@@ -2078,6 +2106,7 @@ impl SomeAction {
 
         if stas_in.len() == 0 {
             return SomeNeed::ContradictoryIntersection {
+                dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 goal_reg: regx.clone(),
                 group1: grpx.region.clone(),
@@ -2109,6 +2138,7 @@ impl SomeAction {
         }
 
         SomeNeed::ContradictoryIntersection {
+            dom_num: 0, // set this in domain get_needs
             act_num: self.num,
             goal_reg: SomeRegion::new(&stas_check[0], &stas_check[0]),
             group1: grpx.region.clone(),

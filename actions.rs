@@ -8,9 +8,9 @@ use crate::state::SomeState;
 // The number of bits is set by the line of code that creates
 // the first current state, with 1, or more, u8 integers.
 
-pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
-    let num = 0;
+// Domain 0 actions
 
+pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
     if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
         || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
@@ -18,7 +18,7 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
         // ....X1X1
 
         let new_state = cur.toggle_bits(vec![0]);
-        println!("\nAct {}  {} -> {}", num, cur, new_state);
+        println!("\nDom 0 Act 0 {} -> {}", cur, new_state);
         return new_state;
     }
 
@@ -31,11 +31,11 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
 
         if hv % 2 == 0 {
             let new_state = cur.toggle_bits(vec![1]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            println!("\nDom 0 Act 0  {} -> {}", cur, new_state);
             return new_state;
         } else {
             let new_state = cur.toggle_bits(vec![2]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            println!("\nDom 0 Act 0  {} -> {}", cur, new_state);
             return new_state;
         }
     } else {
@@ -43,58 +43,79 @@ pub fn action0(cur: &SomeState, hv: usize) -> SomeState {
 
         if hv % 3 == 0 {
             let new_state = cur.toggle_bits(vec![1]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            println!("\nDom 0 Act 0  {} -> {}", cur, new_state);
             return new_state;
         } else if hv % 3 == 1 {
             let new_state = cur.toggle_bits(vec![2]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            println!("\nDom 0 Act 0  {} -> {}", cur, new_state);
             return new_state;
         } else {
             let new_state = cur.toggle_bits(vec![3]);
-            println!("\nAct {}  {} -> {}", num, cur, new_state);
+            println!("\nDom 0 Act 0  {} -> {}", cur, new_state);
             return new_state;
         }
     }
 } // end action0
 
-pub fn action1(cur: &SomeState, _hv: usize) -> SomeState {
-    let num = 1;
-    let new_state = cur.toggle_bits(vec![num]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+pub fn dom0_act1(cur: &SomeState, _hv: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![1]);
+    println!("\nDom 0 Act 1  {} -> {}", cur, new_state);
     return new_state;
 }
 
-pub fn action2(cur: &SomeState, _hv: usize) -> SomeState {
-    let num = 2;
-    let new_state = cur.toggle_bits(vec![num]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+pub fn dom0_act2(cur: &SomeState, _hv: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![2]);
+    println!("\nDom 0 Act 2  {} -> {}", cur, new_state);
     return new_state;
 }
 
-pub fn action3(cur: &SomeState, _hv: usize) -> SomeState {
-    let num = 3;
-    let new_state = cur.toggle_bits(vec![num]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+pub fn dom0_act3(cur: &SomeState, _hv: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![3]);
+    println!("\nDom 0 Act 3  {} -> {}", cur, new_state);
     return new_state;
 }
 
-pub fn action4(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let num = 4;
-    let new_state = cur.toggle_bits(vec![num]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+pub fn dom0_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![4]);
+    println!("\nDom 0 Act 4  {} -> {}", cur, new_state);
     return new_state;
 }
 
-pub fn action5(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let num = 5;
-    let new_state = cur.toggle_bits(vec![num]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![5]);
+    println!("\nDom 0 Act 5  {} -> {}", cur, new_state);
     return new_state;
 }
 
-pub fn action6(cur: &SomeState, _num_seen: usize) -> SomeState {
+pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 6;
     let new_state = cur.toggle_bits(vec![2, 3]);
     println!("\nAct {}  {} -> {}", num, cur, new_state);
+    return new_state;
+}
+
+// Domain 1 actions
+
+pub fn dom1_act0(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![1]);
+    println!("\nDom 1 Act 0  {} -> {}", cur, new_state);
+    return new_state;
+}
+
+pub fn dom1_act1(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![2]);
+    println!("\nDom 1 Act 1  {} -> {}", cur, new_state);
+    return new_state;
+}
+
+pub fn dom1_act2(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![3]);
+    println!("\nDom 1 Act 2  {} -> {}", cur, new_state);
+    return new_state;
+}
+
+pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![4]);
+    println!("\nDom 1 Act 3  {} -> {}", cur, new_state);
     return new_state;
 }

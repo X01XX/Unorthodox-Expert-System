@@ -47,13 +47,12 @@ pub struct SomeDomain {
 
 impl SomeDomain {
     pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
-
         // Convert the state string into a state type instance.
         if let Ok(cur) = state_from_string(num_ints, &start_state) {
             if let Ok(opt) = region_from_string(num_ints, &optimal) {
                 // Set up a domain instance with the correct value for num_ints
                 return SomeDomain {
-                    num: 0,  // may be changed when added to a DomainStore, to reflect the index into a vector
+                    num: 0, // may be changed when added to a DomainStore, to reflect the index into a vector
                     num_ints,
                     actions: ActionStore::new(),
                     cur_state: cur.clone(),
@@ -77,8 +76,15 @@ impl SomeDomain {
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
-        self.actions
-            .get_needs(&self.cur_state, &self.max_region.x_mask())
+        let mut nst = self
+            .actions
+            .get_needs(&self.cur_state, &self.max_region.x_mask());
+
+        for ndx in nst.iter_mut() {
+            ndx.set_dom(self.num);
+        }
+
+        nst
     }
 
     pub fn num_actions(&self) -> usize {

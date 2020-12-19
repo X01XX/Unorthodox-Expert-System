@@ -11,20 +11,26 @@ impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let rc_str = match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 for_reg: freg,
                 far,
                 num_x: nx,
             } => format!(
-                "N(Act: {} Sample State {}, far from {}, to make group {} nx: {})",
-                an, sta, far, freg, nx
+                "N(Dom {} Act {} Sample State {}, far from {}, to make group {} nx: {})",
+                dm, an, sta, far, freg, nx
             ),
             SomeNeed::StateNotInGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
-            } => format!("N(Act: {} Sample State {}, Not in a group)", an, sta,),
+            } => format!(
+                "N(Dom {} Act {} Sample State {}, Not in a group)",
+                dm, an, sta,
+            ),
             SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
                 act_num: an,
                 goal_reg: g_reg,
                 group1: grp1,
@@ -32,10 +38,11 @@ impl fmt::Display for SomeNeed {
                 group2: grp2,
                 ruls2,
             } => format!(
-                "N(Act: {} Sample Region {} intersection of {} {} and {} {}",
-                an, &g_reg, &grp1, &ruls1, &grp2, &ruls2
+                "N(Dom {} Act {} Sample Region {} intersection of {} {} and {} {}",
+                dm, an, &g_reg, &grp1, &ruls1, &grp2, &ruls2
             ),
             SomeNeed::ConfirmGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 for_group: greg,
@@ -44,30 +51,31 @@ impl fmt::Display for SomeNeed {
                 if greg.is_superset_of_state(&sta) {
                     if sta == anc_sta {
                         format!(
-                            "N(Act: {} Sample anchor State {}, to confirm group {})",
-                            an, anc_sta, greg,
+                            "N(Dom {} Act {} Sample anchor State {}, to confirm group {})",
+                            dm, an, anc_sta, greg,
                         )
                     } else {
                         format!(
-                            "N(Act: {} Sample State {}, far from {} to confirm group {})",
-                            an, sta, anc_sta, greg,
+                            "N(Dom {} Act {} Sample State {}, far from {} to confirm group {})",
+                            dm, an, sta, anc_sta, greg,
                         )
                     }
                 } else {
                     format!(
-                        "N(Act: {} Sample State {}, adj to {} to confirm group {})",
-                        an, sta, anc_sta, greg,
+                        "N(Dom {} Act {} Sample State {}, adj to {} to confirm group {})",
+                        dm, an, sta, anc_sta, greg,
                     )
                 }
             }
             SomeNeed::StateAdditionalSample {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 grp_reg: greg,
                 far: farx,
             } => format!(
-                "N(Act: {} Get additional sample of state {} for group {} far {})",
-                an, &sta, &greg, &farx
+                "N(Dom {} Act {} Get additional sample of state {} for group {} far {})",
+                dm, an, &sta, &greg, &farx
             ),
             SomeNeed::AddGroup {
                 act_num: an,
@@ -79,12 +87,13 @@ impl fmt::Display for SomeNeed {
                 cstate: sta1,
             } => format!("N(Act: {} set group {} confirmed by {})", an, greg, sta1,),
             SomeNeed::AStateExpandGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 base_group: greg,
             } => format!(
-                "N(Act: {} Sample State {}, to expand group {})",
-                an, sta, greg,
+                "N(Dom {} Act {} Sample State {}, to expand group {})",
+                dm, an, sta, greg,
             ),
             SomeNeed::ClearGroupCheckBit {
                 act_num: an,
@@ -92,12 +101,13 @@ impl fmt::Display for SomeNeed {
                 mbit: mbitx,
             } => format!("N(Act: {} group {} clear check bit {})", an, greg, mbitx,),
             SomeNeed::InBetween {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 in_group: greg,
             } => format!(
-                "N(Act: {} Sample State {}, between {} and {})",
-                an, &sta, &greg.state1, &greg.state2
+                "N(Dom {} Act {} Sample State {}, between {} and {})",
+                dm, an, &sta, &greg.state1, &greg.state2
             ),
         }; // end match
 
@@ -108,6 +118,7 @@ impl fmt::Display for SomeNeed {
 #[derive(Debug)]
 pub enum SomeNeed {
     AStateMakeGroup {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         for_reg: SomeRegion,
@@ -115,10 +126,12 @@ pub enum SomeNeed {
         num_x: usize,
     },
     StateNotInGroup {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
     },
     ContradictoryIntersection {
+        dom_num: usize,
         act_num: usize,
         goal_reg: SomeRegion,
         group1: SomeRegion,
@@ -127,12 +140,14 @@ pub enum SomeNeed {
         ruls2: RuleStore,
     },
     ConfirmGroup {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         for_group: SomeRegion,
         anchor: SomeState,
     },
     StateAdditionalSample {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         grp_reg: SomeRegion,
@@ -148,6 +163,7 @@ pub enum SomeNeed {
         cstate: SomeState,
     },
     AStateExpandGroup {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         base_group: SomeRegion,
@@ -158,6 +174,7 @@ pub enum SomeNeed {
         mbit: SomeMask,
     },
     InBetween {
+        dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         in_group: SomeRegion,
@@ -168,6 +185,7 @@ impl PartialEq for SomeNeed {
     fn eq(&self, other: &Self) -> bool {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 for_reg: _,
@@ -175,33 +193,37 @@ impl PartialEq for SomeNeed {
                 num_x: _,
             } => match other {
                 SomeNeed::AStateMakeGroup {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                     for_reg: _,
                     far: _,
                     num_x: _,
                 } => {
-                    if an == anx && sta == stax {
+                    if dm == dmx && an == anx && sta == stax {
                         return true;
                     }
                 }
                 _ => {}
             },
             SomeNeed::StateNotInGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
             } => match other {
                 SomeNeed::StateNotInGroup {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                 } => {
-                    if an == anx && sta == stax {
+                    if dm == dmx && an == anx && sta == stax {
                         return true;
                     }
                 }
                 _ => {}
             },
             SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
                 act_num: an,
                 goal_reg: g_reg,
                 group1: _,
@@ -210,6 +232,7 @@ impl PartialEq for SomeNeed {
                 ruls2: _,
             } => match other {
                 SomeNeed::ContradictoryIntersection {
+                    dom_num: dmx,
                     act_num: anx,
                     goal_reg: g_regx,
                     group1: _,
@@ -217,43 +240,47 @@ impl PartialEq for SomeNeed {
                     group2: _,
                     ruls2: _,
                 } => {
-                    if an == anx && *g_reg == *g_regx {
+                    if dm == dmx && an == anx && *g_reg == *g_regx {
                         return true;
                     }
                 }
                 _ => {}
             },
             SomeNeed::ConfirmGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 for_group: _,
                 anchor: anc_sta,
             } => match other {
                 SomeNeed::ConfirmGroup {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                     for_group: _,
                     anchor: anc_stax,
                 } => {
-                    if an == anx && sta == stax && anc_sta == anc_stax {
+                    if dm == dmx && an == anx && sta == stax && anc_sta == anc_stax {
                         return true;
                     }
                 }
                 _ => {}
             },
             SomeNeed::StateAdditionalSample {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 grp_reg: _,
                 far: _,
             } => match other {
                 SomeNeed::StateAdditionalSample {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                     grp_reg: _,
                     far: _,
                 } => {
-                    if an == anx && sta == stax {
+                    if dm == dmx && an == anx && sta == stax {
                         return true;
                     }
                 }
@@ -290,16 +317,18 @@ impl PartialEq for SomeNeed {
                 _ => {}
             },
             SomeNeed::AStateExpandGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 base_group: greg,
             } => match other {
                 SomeNeed::AStateExpandGroup {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                     base_group: gregx,
                 } => {
-                    if an == anx && greg == gregx && sta == stax {
+                    if dm == dmx && an == anx && greg == gregx && sta == stax {
                         return true;
                     }
                 }
@@ -322,16 +351,18 @@ impl PartialEq for SomeNeed {
                 _ => {}
             },
             SomeNeed::InBetween {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 in_group: greg,
             } => match other {
                 SomeNeed::InBetween {
+                    dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
                     in_group: gregx,
                 } => {
-                    if an == anx && greg == gregx && sta == stax {
+                    if dm == dmx && an == anx && greg == gregx && sta == stax {
                         return true;
                     }
                 }
@@ -350,6 +381,7 @@ impl SomeNeed {
     pub fn priority(&self) -> Option<usize> {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
                 for_reg: _,
@@ -360,6 +392,7 @@ impl SomeNeed {
             } // end process for AStateMakeGroup
 
             SomeNeed::StateNotInGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
             } => {
@@ -367,6 +400,7 @@ impl SomeNeed {
             } // end process for StateNotInGroup
 
             SomeNeed::ContradictoryIntersection {
+                dom_num: _,
                 act_num: _,
                 goal_reg: _,
                 group1: _,
@@ -378,6 +412,7 @@ impl SomeNeed {
             } // end process for ContradictoryIntersection
 
             SomeNeed::ConfirmGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
                 for_group: _,
@@ -387,6 +422,7 @@ impl SomeNeed {
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
                 grp_reg: _,
@@ -413,6 +449,7 @@ impl SomeNeed {
             }
 
             SomeNeed::AStateExpandGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
                 base_group: _,
@@ -429,6 +466,7 @@ impl SomeNeed {
                 return None;
             }
             SomeNeed::InBetween {
+                dom_num: _,
                 act_num: _,
                 targ_state: _,
                 in_group: _,
@@ -442,6 +480,7 @@ impl SomeNeed {
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 for_reg: _,
@@ -455,6 +494,7 @@ impl SomeNeed {
             } // end process a AStateMakeGroup need
 
             SomeNeed::StateNotInGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
             } => {
@@ -465,6 +505,7 @@ impl SomeNeed {
             } // end process a StateNotInGroup need
 
             SomeNeed::ContradictoryIntersection {
+                dom_num: _,
                 act_num: _,
                 goal_reg: g_reg,
                 group1: _,
@@ -478,19 +519,8 @@ impl SomeNeed {
                 return false;
             } // end process ContradictoryIntersection
 
-            SomeNeed::ConfirmGroup {
-                act_num: _,
-                targ_state: sta,
-                for_group: _,
-                anchor: _,
-            } => {
-                if cur_state == sta {
-                    return true;
-                }
-                return false;
-            } // end process a ConfirmGroup need
-
             SomeNeed::StateAdditionalSample {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 grp_reg: _,
@@ -502,22 +532,8 @@ impl SomeNeed {
                 return false;
             } // end process a StateAdditionalSample need
 
-            SomeNeed::AddGroup {
-                act_num: _,
-                group_region: _,
-            } => {
-                return false;
-            }
-
-            SomeNeed::SetGroupConfirmed {
-                act_num: _,
-                group_region: _,
-                cstate: _,
-            } => {
-                return false;
-            }
-
             SomeNeed::AStateExpandGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 base_group: _,
@@ -528,15 +544,8 @@ impl SomeNeed {
                 return false;
             }
 
-            SomeNeed::ClearGroupCheckBit {
-                act_num: _,
-                group_region: _,
-                mbit: _,
-            } => {
-                return false;
-            }
-
             SomeNeed::InBetween {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 in_group: _,
@@ -546,6 +555,21 @@ impl SomeNeed {
                 }
                 return false;
             }
+
+            SomeNeed::ConfirmGroup {
+                dom_num: _,
+                act_num: _,
+                targ_state: sta,
+                for_group: _,
+                anchor: _,
+            } => {
+                if cur_state == sta {
+                    return true;
+                }
+                return false;
+            } // end process a ConfirmGroup need
+
+            _ => panic!("satisfied_by should not be called on this need"),
         } //end match self
     } // end satisfied_by
 
@@ -553,6 +577,7 @@ impl SomeNeed {
     pub fn act_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
                 for_reg: _,
@@ -563,6 +588,7 @@ impl SomeNeed {
             } // end process a AStateMakeGroup need
 
             SomeNeed::StateNotInGroup {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
             } => {
@@ -570,6 +596,7 @@ impl SomeNeed {
             } // end process a StateNotInGroup need
 
             SomeNeed::ContradictoryIntersection {
+                dom_num: _,
                 act_num: an,
                 goal_reg: _,
                 group1: _,
@@ -581,6 +608,7 @@ impl SomeNeed {
             } // end process ContradictoryIntersection
 
             SomeNeed::ConfirmGroup {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
                 for_group: _,
@@ -590,6 +618,7 @@ impl SomeNeed {
             } // end process a ConfirmGroup need
 
             SomeNeed::StateAdditionalSample {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
                 grp_reg: _,
@@ -614,6 +643,7 @@ impl SomeNeed {
             }
 
             SomeNeed::AStateExpandGroup {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
                 base_group: _,
@@ -630,6 +660,7 @@ impl SomeNeed {
             }
 
             SomeNeed::InBetween {
+                dom_num: _,
                 act_num: an,
                 targ_state: _,
                 in_group: _,
@@ -639,10 +670,76 @@ impl SomeNeed {
         } //end match self
     } // end act_num
 
+    // Return need dom_num
+    pub fn _dom_num(&self) -> usize {
+        match self {
+            SomeNeed::AStateMakeGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_reg: _,
+                far: _,
+                num_x: _,
+            } => {
+                return *dm;
+            } // end process a AStateMakeGroup need
+
+            SomeNeed::StateNotInGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+            } => {
+                return *dm;
+            } // end process a StateNotInGroup need
+
+            SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+                group1: _,
+                ruls1: _,
+                group2: _,
+                ruls2: _,
+            } => {
+                return *dm;
+            } // end process ContradictoryIntersection
+
+            SomeNeed::StateAdditionalSample {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                grp_reg: _,
+                far: _,
+            } => {
+                return *dm;
+            } // end process a StateAdditionalSample need
+
+            SomeNeed::AStateExpandGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                base_group: _,
+            } => {
+                return *dm;
+            }
+
+            SomeNeed::InBetween {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                in_group: _,
+            } => {
+                return *dm;
+            }
+            _ => panic!("dom_num should not be called for this need"),
+        } //end match self
+    } // end dom_num
+
     // Return a region for a need target
     pub fn target(&self) -> SomeRegion {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 for_reg: _,
@@ -652,12 +749,14 @@ impl SomeNeed {
                 return SomeRegion::new(&sta, &sta);
             }
             SomeNeed::StateNotInGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
             SomeNeed::ContradictoryIntersection {
+                dom_num: _,
                 act_num: _,
                 goal_reg: g_reg,
                 group1: _,
@@ -667,15 +766,8 @@ impl SomeNeed {
             } => {
                 return g_reg.clone();
             }
-            SomeNeed::ConfirmGroup {
-                act_num: _,
-                targ_state: sta,
-                for_group: _,
-                anchor: _,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            }
             SomeNeed::StateAdditionalSample {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 grp_reg: _,
@@ -683,46 +775,41 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
-            SomeNeed::AddGroup {
-                act_num: _,
-                group_region: _,
-            } => {
-                panic!("This need has no target");
-            }
-            SomeNeed::SetGroupConfirmed {
-                act_num: _,
-                group_region: _,
-                cstate: _,
-            } => {
-                panic!("This need has no target");
-            }
             SomeNeed::AStateExpandGroup {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 base_group: _,
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
-            SomeNeed::ClearGroupCheckBit {
-                act_num: _,
-                group_region: _,
-                mbit: _,
-            } => {
-                panic!("This need has no target");
-            }
             SomeNeed::InBetween {
+                dom_num: _,
                 act_num: _,
                 targ_state: sta,
                 in_group: _,
             } => {
                 return SomeRegion::new(&sta, &sta);
-            } // Add new needs here
+            }
+
+            SomeNeed::ConfirmGroup {
+                dom_num: _,
+                act_num: _,
+                targ_state: sta,
+                for_group: _,
+                anchor: _,
+            } => {
+                return SomeRegion::new(&sta, &sta);
+            } // end process a ConfirmGroup need
+
+            _ => panic!("target should not be called for this need"),
         };
     } // end target
 
     pub fn clone(&self) -> SomeNeed {
         match self {
             SomeNeed::AStateMakeGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: tstate,
                 for_reg: freg,
@@ -730,6 +817,7 @@ impl SomeNeed {
                 num_x: nx,
             } => {
                 return SomeNeed::AStateMakeGroup {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: tstate.clone(),
                     for_reg: freg.clone(),
@@ -739,16 +827,19 @@ impl SomeNeed {
             } // end process for AStateMakeGroup
 
             SomeNeed::StateNotInGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: tstate,
             } => {
                 return SomeNeed::StateNotInGroup {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: tstate.clone(),
                 };
             } // end process for StateNotInGroup
 
             SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
                 act_num: an,
                 goal_reg: greg,
                 group1: g1reg,
@@ -757,6 +848,7 @@ impl SomeNeed {
                 ruls2: r2,
             } => {
                 return SomeNeed::ContradictoryIntersection {
+                    dom_num: *dm,
                     act_num: *an,
                     goal_reg: greg.clone(),
                     group1: g1reg.clone(),
@@ -767,12 +859,14 @@ impl SomeNeed {
             } // end process for ContradictoryIntersection
 
             SomeNeed::ConfirmGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: tstate,
                 for_group: fgrp,
                 anchor: anch,
             } => {
                 return SomeNeed::ConfirmGroup {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: tstate.clone(),
                     for_group: fgrp.clone(),
@@ -781,12 +875,14 @@ impl SomeNeed {
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
+                dom_num: dm,
                 act_num: an,
                 targ_state: tstate,
                 far: fx,
                 grp_reg: gx,
             } => {
                 return SomeNeed::StateAdditionalSample {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: tstate.clone(),
                     far: fx.clone(),
@@ -820,11 +916,13 @@ impl SomeNeed {
 
             // Previously handled, but not removed from list
             SomeNeed::AStateExpandGroup {
+                dom_num: dm,
                 act_num: an,
                 targ_state: tstate,
                 base_group: bgrp,
             } => {
                 return SomeNeed::AStateExpandGroup {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: tstate.clone(),
                     base_group: bgrp.clone(),
@@ -845,11 +943,13 @@ impl SomeNeed {
             }
 
             SomeNeed::InBetween {
+                dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 in_group: greg,
             } => {
                 return SomeNeed::InBetween {
+                    dom_num: *dm,
                     act_num: *an,
                     targ_state: sta.clone(),
                     in_group: greg.clone(),
@@ -857,4 +957,74 @@ impl SomeNeed {
             }
         } // end match ndx
     } // end clone
+
+    // Set the Domain num for a need
+    pub fn set_dom(&mut self, num: usize) {
+        match self {
+            SomeNeed::AStateMakeGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_reg: _,
+                far: _,
+                num_x: _,
+            } => *dm = num,
+            SomeNeed::StateNotInGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+                group1: _,
+                ruls1: _,
+                group2: _,
+                ruls2: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::StateAdditionalSample {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                grp_reg: _,
+                far: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::AStateExpandGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                base_group: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::InBetween {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                in_group: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::ConfirmGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => {
+                *dm = num;
+            }
+            _ => {
+                println!("need ??: {}", self);
+                panic!("set_dm should not be called for this need");
+            }
+        };
+    } // end set_dom
 }

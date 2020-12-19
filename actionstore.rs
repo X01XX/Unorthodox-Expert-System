@@ -101,6 +101,7 @@ impl ActionStore {
 
                     for stax in stas.iter() {
                         nds.push(SomeNeed::StateNotInGroup {
+                            dom_num: 0, // set this in domain get_needs
                             act_num: actx.num,
                             targ_state: stax.clone(),
                         });

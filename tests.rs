@@ -4,7 +4,7 @@
 #[cfg(test)]
 mod tests {
 
-    use crate::actions::action0;
+    use crate::actions::dom0_act0;
     use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
     use crate::region::region_from_string;
@@ -23,7 +23,7 @@ mod tests {
     #[test]
     fn test1() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(action0, 0);
+        dmx.add_action(dom0_act0, 0);
 
         if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
             if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test2() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(action0, 0);
+        dmx.add_action(dom0_act0, 0);
 
         if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
             if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test3() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(action0, 0);
+        dmx.add_action(dom0_act0, 0);
 
         let sta_5 = SomeState {
             bts: SomeBits {
