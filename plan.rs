@@ -273,4 +273,15 @@ impl SomePlan {
             rc_steps = rcx_steps;
         }
     } // end fn short_cuts
+
+    // Return a clone of a plan
+    pub fn clone(&self) -> Self {
+        let mut rc_steps = StepStore::new_with_capacity(self.len());
+
+        for stp1 in self.steps.iter() {
+            rc_steps.push(stp1.clone());
+        }
+
+        return SomePlan::new(rc_steps);
+    }
 }

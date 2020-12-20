@@ -671,7 +671,7 @@ impl SomeNeed {
     } // end act_num
 
     // Return need dom_num
-    pub fn _dom_num(&self) -> usize {
+    pub fn dom_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
                 dom_num: dm,
@@ -722,7 +722,15 @@ impl SomeNeed {
             } => {
                 return *dm;
             }
-
+            SomeNeed::ConfirmGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => {
+                return *dm;
+            } // end process a ConfirmGroup need
             SomeNeed::InBetween {
                 dom_num: dm,
                 act_num: _,

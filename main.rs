@@ -35,6 +35,7 @@ use crate::needstore::NeedStore;
 mod plan;
 mod step;
 mod stepstore;
+//use crate::stepstore::StepStore;
 use plan::SomePlan;
 mod combinable;
 mod domain;
@@ -85,7 +86,7 @@ use rand::Rng;
 
 fn main() {
     // Start a DomainStore, add a Domain
-    let mut dmsx = DomainStore::new();
+    let mut dmxs = DomainStore::new();
 
     // Initialize a domain, with number of u8 integers, initial state, optimal region.
     // The number of u8 integers can be higher.
@@ -99,7 +100,7 @@ fn main() {
     dm0.add_action(dom0_act5, 0);
     dm0.add_action(dom0_act6, 0);
 
-    dmsx.push(dm0);
+    dmxs.push(dm0);
 
     let mut dm1 = SomeDomain::new(1, "s0001", "r101X");
     dm1.add_action(dom1_act0, 6);
@@ -107,115 +108,141 @@ fn main() {
     dm1.add_action(dom1_act2, 0);
     dm1.add_action(dom1_act3, 0);
 
-    //dmsx.push(dm1);
+    dmxs.push(dm1);
 
     usage();
     let mut step = 0;
 
+    let mut dom_num = 0;
+
     loop {
         step += 1;
 
-        let mut nds = NeedStore::new();
+        // Get the needs of all Domains / Actions
+        let nds = dmxs.get_needs();
 
-        // Get needs for all domains
-        for dmy in dmsx.iter_mut() {
-            // Get needs, using a thread for each action
-            let mut ndx = dmy.get_needs();
-            //println!("parallel needs: {}", &nds);
+        // println!("\nAll needs: {}", nds);
 
-            nds.append(&mut ndx);
+        // TODO select a need, from all Domain needs
 
-            //let nds: NeedStore = dmx.get_needs();
-        } // next dmy
+        // TODO Set dom_num from the selected need
 
-        //println!("\nAll needs: {}", nds);
+        // TODO satisfy_need
 
-        let dom_num = 0;
+        let mut dmx = &mut dmxs[dom_num];
 
-        for dmx in dmsx.iter_mut() {
-            if dmx.num != dom_num {
-                continue;
-            }
+        println!("\nActs: {}", dmx.actions);
 
-            println!("\nActs: {}", dmx.actions);
+        if nds.len() > 0 {
+            println!("\nAction needs: {}", nds);
+        } else {
+            println!("\nAction needs: None");
+        }
 
+        let mut in_opt = "Not in";
+
+        if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+            in_opt = "in";
+        }
+
+        println!(
+            "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
+            &step, dom_num, &dmx.cur_state, &dmx.max_region, &in_opt, &dmx.optimal
+        );
+
+        print!("\nPress Enter to continue: ");
+        io::stdout().flush().unwrap();
+
+        let mut guess = String::new();
+        io::stdin()
+            .read_line(&mut guess)
+            .expect("Failed to read line");
+        //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
+
+        let mut cmd = Vec::<String>::with_capacity(10);
+
+        for word in guess.split_whitespace() {
+            //println!("word: {} is {}", word_count, word);
+            cmd.push(word.to_ascii_lowercase());
+        }
+
+        // Default command, just press Enter
+        if cmd.len() == 0 {
+            // Process needs
             if nds.len() > 0 {
-                println!("\nAction needs: {}", nds);
-            } else {
-                println!("\nAction needs: None");
-            }
+                //println!("\nAction needs: {}", nds);
 
-            let mut in_opt = "Not in";
+                // TODO select highest priority needs that can be done
+                if let Some(ndspln) = dmxs.choose_need(&nds) {
+                    let pln = &ndspln.1;
+                    let ndx = &nds[ndspln.0];
+                    dom_num = ndx.dom_num();
 
-            if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
-                in_opt = "in";
-            }
+                    println!("need {}, plan {}", &ndx, &pln);
 
-            println!(
-                "\nStep: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-                &step, &dmx.cur_state, &dmx.max_region, &in_opt, &dmx.optimal
-            );
+                    //println!("need {}, plan {}", &nds[ndspln.0], ndspln.1);
 
-            print!("\nPress Enter to continue: ");
-            io::stdout().flush().unwrap();
-
-            let mut guess = String::new();
-            io::stdin()
-                .read_line(&mut guess)
-                .expect("Failed to read line");
-            //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
-
-            let mut cmd = Vec::<String>::with_capacity(10);
-
-            for word in guess.split_whitespace() {
-                //println!("word: {} is {}", word_count, word);
-                cmd.push(word.to_ascii_lowercase());
-            }
-
-            // Default command, just press Enter
-            if cmd.len() == 0 {
-                // Process needs
-                if nds.len() > 0 {
-                    //println!("\nAction needs: {}", nds);
-
-                    //let curst = dmx.cur_state.clone();
-                    if satisfy_need(dmx, &nds) {
+                    if pln.len() > 0 {
+                        println!("doing dmx.run_plan");
+                        dmxs.run_plan(dom_num, &pln);
                     } else {
-                        println!("no need satisfied");
+                        println!("NOT doing dmx.run_plan");
                     }
-                } else {
-                    // If no needs, change the state to an optimal state if needed
-                    if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
-                    } else {
-                        if let Some(pln) = dmx.make_plan(&dmx.optimal) {
-                            println!("Changing state to optimal, Plan is {}", pln);
 
-                            // Do the plan
-                            dmx.run_plan(&pln);
-                        } else {
-                            println!("No plan found to change to the optimal state");
-                        }
+                    if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                        println!("doing dmx.take_action_need");
+                        dmxs.take_action_need(dom_num, &ndx);
+                    } else {
+                        println!("NOT doing dmx.take_action_need");
                     }
                 }
-                continue;
+            //let curst = dmx.cur_state.clone();
+            //                if satisfy_need(&mut dmx, &nds) {
+            //                 } else {
+            //                    println!("no need satisfied");
+            //                 }
             } else {
-                do_command(dmx, &guess);
+                // If no needs, change the state to an optimal state if needed
+                if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+                } else {
+                    if let Some(pln) = dmx.make_plan(&dmx.optimal) {
+                        println!("Changing state to optimal, Plan is {}", pln);
+
+                        // Do the plan
+                        dmx.run_plan(&pln);
+                    } else {
+                        println!("No plan found to change to the optimal state");
+                    }
+                }
             }
-        } // end iter_mut
+            continue;
+        } else {
+            if cmd.len() == 2 {
+                if cmd[0] == "cd" {
+                    let d_num = cmd[1].parse().unwrap_or_else(|err| {
+                        println!("Invalid Domain Number: {}", err);
+                        999
+                    });
+                    if d_num == 999 {
+                        continue;
+                    }
+                    if d_num >= dmxs.num_domains() {
+                        println!("\nInvalid Domain number");
+                    } else {
+                        dom_num = d_num;
+                    }
+                    continue;
+                }
+            }
+            do_command(&mut dmx, &cmd);
+        }
     } // end loop
 } // end main
 
 // Do a command
 // if done, return true
 // else print an error message and return false
-fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
-    let mut cmd = Vec::<String>::with_capacity(10);
-
-    for word in guess.split_whitespace() {
-        //println!("word:is {}", word);
-        cmd.push(word.to_ascii_lowercase());
-    }
-
+fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     // Handle one-word commands
     if cmd.len() == 1 {
         // Quit with q , exit, quit
@@ -310,7 +337,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         } //end command to
 
         if cmd[0] == "ibn" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -322,7 +355,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "ss" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -338,7 +377,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "pa" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -348,7 +393,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "g1" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -363,7 +414,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "ps" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -380,7 +437,7 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
     if cmd.len() == 3 {
         // Satisfy an InBetween need
         //        if cmd[0] == "ibn" {
-        //            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+        //            let act_num = cmd[1].parse().unwrap_or_else(|err| println!("Problem parsing Action number: {}", err));
         //            if act_num >= dm1.num_actions() {
         //                println!("\nInvalid action number");
         //                return false;
@@ -416,7 +473,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         //        }
 
         if cmd[0] == "ss" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -441,7 +504,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "ps" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -477,7 +546,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "aj" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -492,7 +567,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
         }
 
         if cmd[0] == "g1" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -518,7 +599,13 @@ fn do_command(dm1: &mut SomeDomain, guess: &String) -> bool {
     if cmd.len() == 4 {
         // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
         if cmd[0] == "ss" {
-            let act_num = cmd[1].parse().unwrap_or_else(|_err| dm1.num_actions());
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
             if act_num >= dm1.num_actions() {
                 println!("\nInvalid action number");
                 return false;
@@ -560,7 +647,10 @@ fn usage() {
         "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible.\n"
     );
     println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
-    println!("    co <region>             - Change the optimal region to the given region\n.");
+    println!(
+        "    cd <dom num>             - Change the displayed Domain to the given Domain number.\n"
+    );
+    println!("    co <region>             - Change the optimal region to the given region.\n");
     println!("    cs <state>               - Arbitrary change state.\n");
     println!(
         "    g1 <act num>             - For an Action, print squares that are only in one region."
@@ -601,7 +691,7 @@ fn usage() {
 // Else, scan needs to see what need can be satisfied by a plan, sort by priority, limit to three.
 //
 // Return the new state, or None, in Option.
-fn satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
+fn _satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
     // Store tuples of NeedStore-index and plan, for needs that can be acheived
     // by matching the current state (empty plan) or by having a plan calculated.
 

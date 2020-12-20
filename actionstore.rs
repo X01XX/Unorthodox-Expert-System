@@ -14,6 +14,7 @@ use std::ops::{Index, IndexMut};
 
 //use std::thread;
 //use std::sync::mpsc;
+use rayon::prelude::*;
 
 impl fmt::Display for ActionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,8 +36,6 @@ impl fmt::Display for ActionStore {
 pub struct ActionStore {
     pub avec: Vec<SomeAction>,
 }
-
-use rayon::prelude::*;
 
 impl ActionStore {
     pub fn new() -> Self {
