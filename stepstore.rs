@@ -29,6 +29,7 @@ impl fmt::Display for StepStore {
     }
 }
 
+#[derive(Debug)]
 pub struct StepStore {
     avec: Vec<SomeStep>,
 }

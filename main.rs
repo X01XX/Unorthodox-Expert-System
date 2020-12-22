@@ -31,12 +31,12 @@ use crate::state::state_from_string;
 mod statestore;
 use need::SomeNeed;
 mod needstore;
-use crate::needstore::NeedStore;
+//use crate::needstore::NeedStore;
 mod plan;
 mod step;
 mod stepstore;
 //use crate::stepstore::StepStore;
-use plan::SomePlan;
+//use plan::SomePlan;
 mod combinable;
 mod domain;
 mod pn;
@@ -55,7 +55,7 @@ use std::io;
 use std::io::Write;
 use std::process; // bring flush() into scope
 extern crate rand;
-use rand::Rng;
+//use rand::Rng;
 
 // Push an item into a random position in a vector
 //fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
@@ -121,17 +121,9 @@ fn main() {
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
 
-        // println!("\nAll needs: {}", nds);
-
-        // TODO select a need, from all Domain needs
-
-        // TODO Set dom_num from the selected need
-
-        // TODO satisfy_need
-
         let mut dmx = &mut dmxs[dom_num];
 
-        println!("\nActs: {}", dmx.actions);
+        println!("\nDom: {} Acts: {}", dom_num, dmx.actions);
 
         if nds.len() > 0 {
             println!("\nAction needs: {}", nds);
@@ -183,24 +175,19 @@ fn main() {
                     //println!("need {}, plan {}", &nds[ndspln.0], ndspln.1);
 
                     if pln.len() > 0 {
-                        println!("doing dmx.run_plan");
+                        //println!("doing dmx.run_plan");
                         dmxs.run_plan(dom_num, &pln);
                     } else {
-                        println!("NOT doing dmx.run_plan");
+                        //println!("NOT doing dmx.run_plan");
                     }
 
                     if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                        println!("doing dmx.take_action_need");
+                        // println!("doing dmx.take_action_need");
                         dmxs.take_action_need(dom_num, &ndx);
                     } else {
-                        println!("NOT doing dmx.take_action_need");
+                        // println!("NOT doing dmx.take_action_need");
                     }
                 }
-            //let curst = dmx.cur_state.clone();
-            //                if satisfy_need(&mut dmx, &nds) {
-            //                 } else {
-            //                    println!("no need satisfied");
-            //                 }
             } else {
                 // If no needs, change the state to an optimal state if needed
                 if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
@@ -435,43 +422,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
 
     // Handle three-word commands
     if cmd.len() == 3 {
-        // Satisfy an InBetween need
-        //        if cmd[0] == "ibn" {
-        //            let act_num = cmd[1].parse().unwrap_or_else(|err| println!("Problem parsing Action number: {}", err));
-        //            if act_num >= dm1.num_actions() {
-        //                println!("\nInvalid action number");
-        //                return false;
-        //            }
-        //            let state_r = state_from_string(&cmd[2]);
-        //            match state_r {
-        //                Ok(a_state) => {
-        //                    println!("Act {} sample State {}", act_num, a_state);
-        //                    dm1.cur_state = a_state.clone();
-        //
-        //                    let ndxs = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
-        //
-        //                    println!("InBetweenNeeds are {}", &ndxs);
-        //
-        //                    for ndx in ndxs.iter() {
-        //                        if ndx.target() == SomeRegion::new(&a_state, &a_state) {
-        //                            // run the sample and need
-        //                            dm1.take_action_need(&ndx);
-        //                            break;
-        //                        }
-        //                    }
-        //                    return true;
-        //                }
-        //                Err(error) => {
-        //                    if error == 1 {
-        //                        println!("\nDid not understand state, should start with s");
-        //                    } else {
-        //                        println!("\nDid not understand state, invalid character");
-        //                    }
-        //                    return false;
-        //                }
-        //            } // end match
-        //        }
-
         if cmd[0] == "ss" {
             let act_num = cmd[1].parse().unwrap_or_else(|err| {
                 println!("Problem parsing Action number: {}", err);
@@ -682,239 +632,6 @@ fn usage() {
 
     println!("\n    q | exit | quit          - Quit program.");
 }
-
-// Check need list to see if a need can be satisfied.
-//
-// Scan needs to see what need can be satisfied by the current state, sort by priority, limit to three.
-// In the beginning, this avoids numerous dead-ends in trying to find a plan.
-//
-// Else, scan needs to see what need can be satisfied by a plan, sort by priority, limit to three.
-//
-// Return the new state, or None, in Option.
-fn _satisfy_need(dmx: &mut SomeDomain, nds: &NeedStore) -> bool {
-    // Store tuples of NeedStore-index and plan, for needs that can be acheived
-    // by matching the current state (empty plan) or by having a plan calculated.
-
-    // A vector of vectors, for needs to be processed in order of priority,
-    // lowest number first/highest.
-    let mut pri_vec = Vec::<Vec<usize>>::with_capacity(8);
-
-    // Scan for needs that are satisfied by the current state, put need indicies into a vector.
-    // Sort by priority.
-    let mut found = false;
-    let mut inx = 0;
-    for ndx in nds.iter() {
-        if ndx.satisfied_by(&dmx.cur_state) {
-            found = true;
-
-            if let Some(pri) = ndx.priority() {
-                while pri_vec.len() <= pri {
-                    pri_vec.push(Vec::<usize>::new());
-                }
-
-                pri_vec[pri].push(inx);
-            }
-        }
-        inx += 1;
-    }
-
-    // If one or more needs found that the current state satisfies, run one
-    if found {
-        // Print needs that can be achieved.
-        println!(
-            "{}",
-            &String::from("\nSelected Action needs that can be done: ")
-        );
-
-        // print each need and plan
-        for avec in pri_vec.iter() {
-            if avec.len() > 0 {
-                for itmx in avec.iter() {
-                    println!("{} satisfied by current state", &nds[*itmx]);
-                }
-                println!("-----");
-                break;
-            }
-        }
-
-        for avec in pri_vec.iter() {
-            if avec.len() > 0 {
-                let mut itmx = 0;
-
-                if avec.len() > 1 {
-                    itmx = rand::thread_rng().gen_range(0, avec.len());
-                }
-
-                let ndx = &nds[avec[itmx]];
-                println!("Need chosen: {}  satisfied by the current state\n", &ndx);
-                dmx.take_action_need(ndx);
-                return true;
-            }
-        } // next avec
-    }
-
-    // Scan for needs, put need indicies into a vector.
-    // Sort by priority.
-    let mut inx = 0;
-    for ndx in nds.iter() {
-        if let Some(pri) = ndx.priority() {
-            while pri_vec.len() <= pri {
-                pri_vec.push(Vec::<usize>::new());
-            }
-
-            pri_vec[pri].push(inx);
-        } // else the need is a adinistrative need that has already been delt with, so skip it.
-        inx += 1;
-    } // end scan of needs to assign priority
-
-    // A vector of need-index and plan, for needs that can be met with a plan.
-    let mut inx_plan = Vec::<(usize, SomePlan)>::new();
-
-    // Scan needs to see what can be achieved with a plan
-    for avec in pri_vec.iter() {
-        if avec.len() == 0 {
-            continue;
-        }
-
-        for nd_inx in avec.iter() {
-            let ndx = &nds[*nd_inx];
-
-            if let Some(plx) = dmx.make_plan(&ndx.target()) {
-                inx_plan.push((*nd_inx, plx));
-            }
-        }
-
-        // If at least one need of the current priority has been
-        // found to be doable, do not check later priority needs
-        if inx_plan.len() > 0 {
-            break;
-        }
-    } // next avec in pri_vec
-
-    // Print needs that can be achieved.
-    println!(
-        "{}",
-        &String::from("\nSelected Action needs that can be done: ")
-    );
-
-    // Print each need and plan
-    for itmx in inx_plan.iter() {
-        println!("{} {}", &nds[itmx.0], &itmx.1);
-    }
-    println!("-----");
-
-    // Selection for needs that can be planned
-    // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
-    let mut inx_plan2 = Vec::<usize>::new();
-
-    let nd0 = &nds[inx_plan[0].0];
-
-    match nd0 {
-        SomeNeed::AStateMakeGroup {
-            dom_num: _,
-            act_num: _,
-            targ_state: _,
-            for_reg: _,
-            far: _,
-            num_x: _,
-        } => {
-            // Get max x group num
-            let mut a_state_make_group_max_x = 0;
-            for itmx in &inx_plan {
-                let ndx = &nds[itmx.0];
-
-                match ndx {
-                    SomeNeed::AStateMakeGroup {
-                        dom_num: _,
-                        act_num: _,
-                        targ_state: _,
-                        for_reg: _,
-                        far: _,
-                        num_x: nx,
-                    } => {
-                        if *nx > a_state_make_group_max_x {
-                            a_state_make_group_max_x = *nx;
-                        }
-                    }
-                    _ => {}
-                } // end match ndx
-            } // next itmx
-
-            let mut inx: usize = 0;
-            for itmx in &inx_plan {
-                let ndx = &nds[itmx.0];
-
-                match ndx {
-                    SomeNeed::AStateMakeGroup {
-                        dom_num: _,
-                        act_num: _,
-                        targ_state: _,
-                        for_reg: _,
-                        far: _,
-                        num_x: nx,
-                    } => {
-                        if *nx == a_state_make_group_max_x {
-                            inx_plan2.push(inx);
-                        }
-                    }
-                    _ => {}
-                } // end match ndx
-
-                inx += 1;
-            }
-        } // end match AStateMakeGroup
-        _ => {
-            // Get needs with shortest plan
-            let mut min_plan_len = 99999999;
-            for itmx in &inx_plan {
-                let plnx = &itmx.1;
-                if plnx.len() < min_plan_len {
-                    min_plan_len = plnx.len();
-                }
-            }
-
-            // Push index to shortest plan needs
-            let mut inx: usize = 0;
-            for itmx in &inx_plan {
-                let plnx = &itmx.1;
-                if plnx.len() == min_plan_len {
-                    inx_plan2.push(inx);
-                }
-
-                inx += 1;
-            }
-        } // End match all other needs
-    } // End match nd0
-
-    // Return if no plans.  Includes plans of zero length for the current state.
-    if inx_plan2.len() == 0 {
-        return false;
-    }
-
-    // Take a random choice
-    let inx2 = rand::thread_rng().gen_range(0, inx_plan2.len());
-
-    let itmx = &inx_plan[inx_plan2[inx2]];
-    //let itmx = &inx_plan2[rand::thread_rng().gen_range(0, inx_plan.len())];
-    //    pause_for_enter("6");
-
-    let ndx = &nds[itmx.0]; // get need using tuple index
-
-    let pln = &itmx.1;
-
-    println!("Need chosen: {} {}\n", ndx, &pln);
-
-    if pln.len() > 0 {
-        dmx.run_plan(&pln);
-    }
-
-    if ndx.satisfied_by(&dmx.cur_state) {
-        dmx.take_action_need(&ndx);
-        return true;
-    }
-
-    false
-} // end satisfy_need
 
 // Pause for input of 'c'. i.e stop consecutive Enter
 pub fn pause_for_input(loc: &str) {

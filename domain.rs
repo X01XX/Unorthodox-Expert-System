@@ -284,6 +284,13 @@ impl SomeDomain {
         } // next stpx
     } // end run_plan
 
+    //    pub fn make_plan2(&self, goal_reg: &SomeRegion) -> SomePlan {
+    //		if let Some(plx) = self.make_plan(goal_reg) {
+    //			return plx;
+    //		}
+    //		return SomePlan::new(StepStore::new());
+    //	}
+
     // Make a plan from a region to another region
     // Since there are some random choices, it may be useful to try
     // running make_one_plan more than once.

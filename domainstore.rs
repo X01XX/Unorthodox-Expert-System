@@ -5,8 +5,9 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::state::SomeState;
-use crate::stepstore::StepStore;
+//use crate::stepstore::StepStore;
 
+//use std::thread;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 extern crate rand;
@@ -118,59 +119,61 @@ impl DomainStore {
 
         // Scan for needs that are satisfied by the current state, put need indicies into a vector.
         // Sort by priority.
-        let mut found = false;
-        let mut inx = 0;
-        for ndx in nds.iter() {
-            let dmx = &self.avec[ndx.dom_num()];
-            if ndx.satisfied_by(&dmx.cur_state) {
-                found = true;
-
-                if let Some(pri) = ndx.priority() {
-                    while pri_vec.len() <= pri {
-                        pri_vec.push(Vec::<usize>::new());
-                    }
-
-                    pri_vec[pri].push(inx);
-                }
-            }
-            inx += 1;
-        }
-
-        // If one or more needs found that the current state satisfies, run one
-        if found {
-            // Print needs that can be achieved.
-            println!(
-                "{}",
-                &String::from("\nSelected Action needs that can be done: ")
-            );
-
-            // print each need and plan
-            for avec in pri_vec.iter() {
-                if avec.len() > 0 {
-                    for itmx in avec.iter() {
-                        println!("{} satisfied by current state", &nds[*itmx]);
-                    }
-                    println!("-----");
-                    break;
-                }
-            }
-
-            for avec in pri_vec.iter() {
-                if avec.len() > 0 {
-                    let mut itmx = 0;
-
-                    if avec.len() > 1 {
-                        itmx = rand::thread_rng().gen_range(0, avec.len());
-                    }
-
-                    let ndx = &nds[avec[itmx]];
-                    println!("Need chosen: {}  satisfied by the current state\n", &ndx);
-                    //dmx.take_action_need(ndx);
-                    //return true;
-                    return Some((avec[itmx], SomePlan::new(StepStore::new())));
-                }
-            } // next avec
-        }
+        //        let mut found = false;
+        //        let mut inx = 0;
+        //        for ndx in nds.iter() {
+        //            let dmx = &self.avec[ndx.dom_num()];
+        //            if ndx.satisfied_by(&dmx.cur_state) {
+        //                found = true;
+        //
+        //                if let Some(pri) = ndx.priority() {
+        //                    while pri_vec.len() <= pri {
+        //                        pri_vec.push(Vec::<usize>::new());
+        //                    }
+        //
+        //                    pri_vec[pri].push(inx);
+        //                }
+        //            }
+        //            inx += 1;
+        //        }
+        //
+        //        if found { found = false; }
+        //
+        //        // If one or more needs found that the current state satisfies, run one
+        //        if found {
+        //            // Print needs that can be achieved.
+        //            println!(
+        //                "{}",
+        //                &String::from("\nSelected Action needs that can be done: ")
+        //            );
+        //
+        //            // print each need and plan
+        //            for avec in pri_vec.iter() {
+        //                if avec.len() > 0 {
+        //                    for itmx in avec.iter() {
+        //                        println!("{} satisfied by current state", &nds[*itmx]);
+        //                    }
+        //                    println!("-----");
+        //                    break;
+        //                }
+        //            }
+        //
+        //            for avec in pri_vec.iter() {
+        //                if avec.len() > 0 {
+        //                    let mut itmx = 0;
+        //
+        //                    if avec.len() > 1 {
+        //                        itmx = rand::thread_rng().gen_range(0, avec.len());
+        //                    }
+        //
+        //                    let ndx = &nds[avec[itmx]];
+        //                    println!("Need chosen: {}  satisfied by the current state\n", &ndx);
+        //                    //dmx.take_action_need(ndx);
+        //                    //return true;
+        //                    return Some((avec[itmx], SomePlan::new(StepStore::new())));
+        //                }
+        //            } // next avec
+        //        } // end if found
 
         // Scan for needs, put need indicies into a vector.
         // Sort by priority.
@@ -187,7 +190,7 @@ impl DomainStore {
         } // end scan of needs to assign priority
 
         // A vector of need-index and plan, for needs that can be met with a plan.
-        let mut inx_plan = Vec::<(usize, SomePlan)>::new();
+        let mut inx_plan = Vec::<InxPlan>::new();
 
         // Scan needs to see what can be achieved with a plan
         for avec in pri_vec.iter() {
@@ -195,18 +198,68 @@ impl DomainStore {
                 continue;
             }
 
-            for nd_inx in avec.iter() {
+            //println!(" ***** number needs to plan for is {}", avec.len());
+            if avec.len() == 1 {
+                let nd_inx = &avec[0];
                 let ndx = &nds[*nd_inx];
 
                 let dmx = &self.avec[ndx.dom_num()];
-                if let Some(plx) = dmx.make_plan(&ndx.target()) {
-                    inx_plan.push((*nd_inx, plx));
-                }
-            }
+
+                inx_plan.push(InxPlan {
+                    inx: *nd_inx,
+                    pln: dmx.make_plan(&ndx.target()),
+                });
+            } else {
+                // Parallel make_plans for needs
+                // It likes to collect a structure, in this case InxPlan,
+                // instead on a more complex tuple or array
+                let vecx: Vec<InxPlan> = avec
+                    .par_iter()
+                    .map(|nd_inx| InxPlan {
+                        inx: *nd_inx,
+                        pln: self.avec[nds[*nd_inx].dom_num()]
+                            .make_plan(&nds[*nd_inx].target().clone()),
+                    })
+                    .collect::<Vec<InxPlan>>();
+
+                // Print index and Option(SomePlan)
+                //                for nst in vecx.iter() {
+                //                    match &nst.pln {
+                //                        Some(plnx) => {
+                //                            println!("par Need: {} pln: {}", &nds[nst.inx], plnx);
+                //                        }
+                //                        None => {
+                //                            println!("par Need: {} pln: None", &nds[nst.inx]);
+                //                        }
+                //                    }
+                //                }
+
+                inx_plan = vecx;
+
+                // Non parallel make plan
+                //                for nd_inx in avec.iter() {
+                //                    let ndx = &nds[*nd_inx];
+
+                //                    let dmx = &self.avec[ndx.dom_num()];
+                //                    inx_plan.push(InxPlan {
+                //                        inx: *nd_inx,
+                //                        pln: dmx.make_plan(&ndx.target()),
+                //                    });
+                //                }
+            } // endif avec.len()
 
             // If at least one need of the current priority has been
             // found to be doable, do not check later priority needs
-            if inx_plan.len() > 0 {
+            let mut is_done = false;
+            for itemx in inx_plan.iter() {
+                match itemx.pln {
+                    Some(_) => {
+                        is_done = true;
+                    }
+                    None => {}
+                }
+            }
+            if is_done {
                 break;
             }
         } // next avec in pri_vec
@@ -218,16 +271,27 @@ impl DomainStore {
         );
 
         // Print each need and plan
+        let mut can_do = Vec::<usize>::new();
+        let mut inx = 0;
         for itmx in inx_plan.iter() {
-            println!("{} {}", &nds[itmx.0], &itmx.1);
-        }
+            match &itmx.pln {
+                Some(plnx) => {
+                    println!("need {} pln {}", &nds[itmx.inx], &plnx);
+                    can_do.push(inx);
+                }
+                None => {}
+            }
+            inx += 1;
+        } // next itmx
         println!("-----");
+        //println!("can_do: {:?}", &can_do);
 
         // Selection for needs that can be planned
         // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
         let mut inx_plan2 = Vec::<usize>::new();
 
-        let nd0 = &nds[inx_plan[0].0];
+        let nd0 = &nds[inx_plan[can_do[0]].inx];
+        //println!("nd0 {}", nd0);
 
         match nd0 {
             SomeNeed::AStateMakeGroup {
@@ -240,8 +304,10 @@ impl DomainStore {
             } => {
                 // Get max x group num
                 let mut a_state_make_group_max_x = 0;
-                for itmx in &inx_plan {
-                    let ndx = &nds[itmx.0];
+                for cd in &can_do {
+                    let itmx = &inx_plan[*cd];
+
+                    let ndx = &nds[itmx.inx];
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
@@ -261,8 +327,10 @@ impl DomainStore {
                 } // next itmx
 
                 let mut inx: usize = 0;
-                for itmx in &inx_plan {
-                    let ndx = &nds[itmx.0];
+                for cd in &can_do {
+                    let itmx = &inx_plan[*cd];
+
+                    let ndx = &nds[itmx.inx];
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
@@ -286,19 +354,30 @@ impl DomainStore {
             _ => {
                 // Get needs with shortest plan
                 let mut min_plan_len = 99999999;
-                for itmx in &inx_plan {
-                    let plnx = &itmx.1;
-                    if plnx.len() < min_plan_len {
-                        min_plan_len = plnx.len();
+                for cd in &can_do {
+                    let itmx = &inx_plan[*cd];
+                    match &itmx.pln {
+                        Some(plnx) => {
+                            if plnx.len() < min_plan_len {
+                                min_plan_len = plnx.len();
+                            }
+                        }
+                        None => {}
                     }
                 }
 
                 // Push index to shortest plan needs
-                let mut inx: usize = 0;
-                for itmx in &inx_plan {
-                    let plnx = &itmx.1;
-                    if plnx.len() == min_plan_len {
-                        inx_plan2.push(inx);
+                //let mut inx: usize = 0;
+                let mut inx = 0;
+                for cd in &can_do {
+                    let itmx = &inx_plan[*cd];
+                    match &itmx.pln {
+                        Some(plnx) => {
+                            if plnx.len() == min_plan_len {
+                                inx_plan2.push(inx);
+                            }
+                        }
+                        None => {}
                     }
 
                     inx += 1;
@@ -311,20 +390,27 @@ impl DomainStore {
             return None;
         }
 
+        //println!("inx_plan2: {:?}", inx_plan2);
+
         // Take a random choice
         let inx2 = rand::thread_rng().gen_range(0, inx_plan2.len());
+        //println!("inx2 = {}  inx_plan2 = {}", &inx2, &inx_plan2[inx2]);
 
-        let itmx = &inx_plan[inx_plan2[inx2]];
-        //let itmx = &inx_plan2[rand::thread_rng().gen_range(0, inx_plan.len())];
-        //    pause_for_enter("6");
+        let itmx = &inx_plan[can_do[inx2]];
+        //println!("itmx.inx = {}", &itmx.inx);
 
-        let ndx = &nds[itmx.0]; // get need using tuple index
+        let ndx = &nds[itmx.inx]; // get need using tuple index
+                                  //println!("need {}", &ndx);
 
-        let pln = &itmx.1;
-
-        println!("Need chosen: {} {}\n", ndx, &pln);
-
-        return Some((itmx.0, itmx.1.clone()));
+        match &itmx.pln {
+            Some(pln) => {
+                println!("Need chosen: {} {}\n", ndx, &pln);
+                return Some((itmx.inx, pln.clone()));
+            }
+            None => {
+                panic!("should be a plan in Option");
+            }
+        }
     } // end choose_need
 } // end impl DomainStore
 
@@ -339,4 +425,9 @@ impl IndexMut<usize> for DomainStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
         &mut self.avec[i]
     }
+}
+
+struct InxPlan {
+    inx: usize,
+    pln: Option<SomePlan>,
 }

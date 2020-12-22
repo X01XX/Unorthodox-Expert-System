@@ -24,6 +24,7 @@ impl fmt::Display for SomePlan {
     }
 }
 
+#[derive(Debug)]
 pub struct SomePlan {
     pub steps: StepStore, // Do some steps
 }
