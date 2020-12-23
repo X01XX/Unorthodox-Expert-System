@@ -7,7 +7,9 @@ mod tests {
     use crate::actions::dom0_act0;
     use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
+    use crate::mask::mask_from_string;
     use crate::region::region_from_string;
+    use crate::rule::region_to_region;
     use crate::square::SomeSquare;
     use crate::state::{state_from_string, SomeState};
 
@@ -289,4 +291,26 @@ mod tests {
         }
         Err(String::from("failed, at end"))
     } // end test3
+
+    #[test]
+    fn test4() -> Result<(), String> {
+        if let Ok(reg1) = region_from_string(1, "r00x11x") {
+            if let Ok(reg2) = region_from_string(1, "r010101") {
+                if let Ok(b01) = mask_from_string(1, "m00010001") {
+                    if let Ok(b10) = mask_from_string(1, "m00001010") {
+                        let ragg = region_to_region(&reg1, &reg2);
+
+                        if b10 != ragg.b10 {
+                            return Err(String::from("b10 NEQ rule.b10"));
+                        }
+
+                        if b01 != ragg.b01 {
+                            return Err(String::from("b01 NEQ rule.b01"));
+                        }
+                    }
+                }
+            }
+        }
+        return Ok(());
+    } // end test4
 } // end mod tests

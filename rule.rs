@@ -314,43 +314,6 @@ impl SomeRule {
         rc_rul
     }
 
-    // Create an rule that represents a change from one region to equal, or subset, another.
-    // X->X, 1->X and 0->X bit positions will have zero in all rule bit positions, signfying "don't care".
-    // Such an all-zeros column would cause the is_valid_intersection function to return false.
-    // For later operations with a second rule:
-    //   "don't care" + "do care" = "do care" (a column with one or two bits set)
-    //   "don't care" & "do care" = "don't care"
-    //   "don't care" ^ "do care" = "do care"
-    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
-        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
-
-        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
-        let t_xes = SomeMask::new(to.state1.bts.b_xor(&to.state2.bts));
-
-        let b1xnot = f_ones.m_and(&t_xes).m_not();
-        let b0xnot = f_zeros.m_and(&t_xes).m_not();
-
-        // Set the bits desired, the undesired bits end up as zeros
-        let nb00 = f_zeros.m_and(&t_zeros).m_and(&b0xnot);
-
-        let nb01 = f_zeros.m_and(&t_ones).m_and(&b0xnot);
-
-        let nb11 = f_ones.m_and(&t_ones).m_and(&b1xnot);
-
-        let nb10 = f_ones.m_and(&t_zeros).m_and(&b1xnot);
-
-        // println!("from {} to {} = b01: {}  b10: {}", &from, &to, &nb01, &nb10);
-
-        Self {
-            b00: nb00,
-            b01: nb01,
-            b11: nb11,
-            b10: nb10,
-        }
-    }
-
     // Return true if the change masks of two rules are equal
     //    pub fn changes_equal(&self, other: &Self) -> bool {
     //        if self.b01 == other.b01 && self.b10 == other.b10 {
@@ -408,5 +371,42 @@ impl SomeRule {
             b11: self.b11.m_and(&nmsk),
             b10: self.b10.m_and(&nmsk),
         }
+    }
+} // end SomeRule
+
+// Create an rule that represents a change from one region to equal, or subset, another.
+// X->X, 1->X and 0->X bit positions will have zero in all rule bit positions, signfying "don't care".
+// Such an all-zeros column would cause the is_valid_intersection function to return false.
+// For later operations with a second rule:
+//   "don't care" + "do care" = "do care" (a column with one or two bits set)
+//   "don't care" & "do care" = "don't care"
+//   "don't care" ^ "do care" = "do care"
+pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+    let f_ones = SomeMask::new(from.state1.bts.b_and(&from.state2.bts));
+    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_and(&from.state2.bts.b_not()));
+    let f_xes = SomeMask::new(from.state1.bts.b_xor(&from.state2.bts));
+
+    let t_ones = SomeMask::new(to.state1.bts.b_and(&to.state2.bts));
+    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_and(&to.state2.bts.b_not()));
+
+    let bx1 = f_xes.m_and(&t_ones);
+    let bx0 = f_xes.m_and(&t_zeros);
+
+    // Set the bits desired, the undesired bits end up as zeros
+    let nb00 = f_zeros.m_and(&t_zeros).m_or(&bx0);
+
+    let nb01 = f_zeros.m_and(&t_ones).m_or(&bx1);
+
+    let nb11 = f_ones.m_and(&t_ones).m_or(&bx1);
+
+    let nb10 = f_ones.m_and(&t_zeros).m_or(&bx0);
+
+    // println!("from {} to {} = b01: {}  b10: {}", &from, &to, &nb01, &nb10);
+
+    SomeRule {
+        b00: nb00,
+        b01: nb01,
+        b11: nb11,
+        b10: nb10,
     }
 }

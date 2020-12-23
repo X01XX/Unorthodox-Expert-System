@@ -212,8 +212,8 @@ impl DomainStore {
             } else {
                 // Parallel make_plans for needs
                 // It likes to collect a structure, in this case InxPlan,
-                // instead on a more complex tuple or array
-                let vecx: Vec<InxPlan> = avec
+                // instead of a tuple or array
+                inx_plan = avec
                     .par_iter()
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
@@ -233,8 +233,6 @@ impl DomainStore {
                 //                        }
                 //                    }
                 //                }
-
-                inx_plan = vecx;
 
                 // Non parallel make plan
                 //                for nd_inx in avec.iter() {
@@ -289,6 +287,10 @@ impl DomainStore {
         // Selection for needs that can be planned
         // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
         let mut inx_plan2 = Vec::<usize>::new();
+
+        if can_do.len() == 0 {
+            return None;
+        }
 
         let nd0 = &nds[inx_plan[can_do[0]].inx];
         //println!("nd0 {}", nd0);
@@ -353,7 +355,7 @@ impl DomainStore {
             } // end match AStateMakeGroup
             _ => {
                 // Get needs with shortest plan
-                let mut min_plan_len = 99999999;
+                let mut min_plan_len = std::usize::MAX;
                 for cd in &can_do {
                     let itmx = &inx_plan[*cd];
                     match &itmx.pln {
@@ -427,7 +429,11 @@ impl IndexMut<usize> for DomainStore {
     }
 }
 
+// This struct is needed for parallel processing to make plans,
+// in the choose_need method.  A need is chosen that a plan
+// can be calculated for.
+// A Vec<T> is needed but a tuple, or array, does not qualify as a "T".
 struct InxPlan {
-    inx: usize,
-    pln: Option<SomePlan>,
+    inx: usize,            // Index to a need in a NeedStore.
+    pln: Option<SomePlan>, // Plan to satisfy need (may be empty if the current state satisfies the need), or None.
 }

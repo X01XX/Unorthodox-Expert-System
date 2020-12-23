@@ -6,7 +6,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::{region_from_string, SomeRegion};
-use crate::rule::SomeRule;
+use crate::rule::region_to_region;
 use crate::state::{state_from_string, SomeState};
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -365,15 +365,16 @@ impl SomeDomain {
         max_depth: usize,
         recur: usize,
     ) -> Option<SomePlan> {
-        //println!(
-        //    "make_one_plan: from {} to {} recur {}",
-        //    &from_reg, &goal_reg, recur
-        //);
+        println!(
+            "make_one_plan: from {} to {} recur {}",
+            &from_reg, &goal_reg, recur
+        );
 
         // Check for the maximum depth of recursion
         // Recursion can also be ended by not finding a step for a desired change.
         if recur > max_depth {
             println!("recursion limit exceeded by {}", recur);
+            //panic!("Done");
             return None;
         }
 
@@ -387,7 +388,7 @@ impl SomeDomain {
         // Create an aggregate rule to represent the changes needed
         // 1->X and 0->X bits are a column of zero bits in the rule,
         // which would cause the rule to fail a valid_intersection test.
-        let rule_agg = SomeRule::region_to_region(&from_reg, &goal_reg);
+        let rule_agg = region_to_region(&from_reg, &goal_reg);
 
         // println!(
         //    "find steps for from_reg {} to goal_reg {}, rule {}",
@@ -420,7 +421,7 @@ impl SomeDomain {
 
         // Check if the changes found roughly satisfy the needed change
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
-            // println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
             println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;

@@ -23,6 +23,7 @@ use crate::region::region_from_string;
 mod regionstore;
 mod resultstore;
 mod rule;
+//use crate::rule::SomeRule;
 mod rulestore;
 mod square;
 mod squarestore;
@@ -85,6 +86,16 @@ extern crate rand;
 //}
 
 fn main() {
+    // for tests.rs
+    let mx = mask::mask_from_string(1, "m1");
+
+    match mx {
+        Ok(_) => {}
+        Err(err) => {
+            panic!("mask from string not OK {}", &err);
+        }
+    };
+
     // Start a DomainStore, add a Domain
     let mut dmxs = DomainStore::new();
 
