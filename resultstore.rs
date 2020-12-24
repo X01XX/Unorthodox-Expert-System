@@ -28,6 +28,7 @@ impl fmt::Display for ResultStore {
     }
 }
 
+#[derive(Debug)]
 pub struct ResultStore {
     astore: VecDeque<SomeState>,
     pub pn: Pn, // Pattern number, 1, 2, 3 (unpredicatble), trips change indicatore when changed.

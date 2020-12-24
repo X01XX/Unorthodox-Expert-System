@@ -32,6 +32,7 @@ impl fmt::Display for SomeSquare {
     }
 }
 
+#[derive(Debug)]
 pub struct SomeSquare {
     pub state: SomeState, // State that an action was taken on.
     results: ResultStore, // Circular list of results.

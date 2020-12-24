@@ -6,6 +6,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::{region_from_string, SomeRegion};
+//use crate::regionstore::RegionStore;
 use crate::rule::region_to_region;
 use crate::state::{state_from_string, SomeState};
 use crate::step::SomeStep;
@@ -305,9 +306,8 @@ impl SomeDomain {
         // Try to find a plan
         let from_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
 
-        let max_depth = self.num_actions() * 2;
-
-        if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, max_depth, 0) {
+        let mut reg_hist = Vec::<(SomeRegion, SomeRegion)>::new();
+        if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, &mut reg_hist) {
             if from_reg.is_subset_of(planz.initial_region()) {
             } else {
                 println!(
@@ -334,11 +334,14 @@ impl SomeDomain {
             }
 
             if planz.result_region().is_subset_of(&goal_reg) {
+                println!("plan from {} to {} found", &from_reg, &goal_reg);
                 return Some(planz);
             } else {
                 println!("failed at 55");
                 return None;
             }
+        } else {
+            println!("plan from {} to {} not found", &from_reg, &goal_reg);
         } // end if let planz
 
         None
@@ -362,25 +365,38 @@ impl SomeDomain {
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
-        max_depth: usize,
-        recur: usize,
+        reg_hist: &mut Vec<(SomeRegion, SomeRegion)>,
     ) -> Option<SomePlan> {
-        println!(
-            "make_one_plan: from {} to {} recur {}",
-            &from_reg, &goal_reg, recur
-        );
+        //println!(
+        //    "make_one_plan: from {} to {} recur {}",
+        //    &from_reg, &goal_reg, reg_hist.len()
+        // );
 
-        // Check for the maximum depth of recursion
-        // Recursion can also be ended by not finding a step for a desired change.
-        if recur > max_depth {
-            println!("recursion limit exceeded by {}", recur);
+        for tpl in reg_hist.iter() {
+            if tpl.0 == *from_reg && tpl.1 == *goal_reg {
+                println!(
+                    "from reg {} and goal reg {} already in reg_hist, recur {}",
+                    &from_reg,
+                    &goal_reg,
+                    reg_hist.len()
+                );
+                //panic!("Done");
+                return None;
+            }
+        }
+
+        reg_hist.push((from_reg.clone(), goal_reg.clone()));
+        if reg_hist.len() > (self.num_actions() * 2) {
+            println!("recursion limit exceeded by {}", reg_hist.len());
             //panic!("Done");
             return None;
         }
 
         // Check for mistaken request
         if from_reg.is_subset_of(&goal_reg) {
-            panic!("from_reg {} is at goal_reg {}?", &from_reg, &goal_reg);
+            println!("zero len plan returned");
+            return Some(SomePlan::new(StepStore::new()));
+            //panic!("from_reg {} is at goal_reg {}?", &from_reg, &goal_reg);
             //return Some(SomePlan::new(StepStore::new()));
             //return None;
         }
@@ -406,7 +422,7 @@ impl SomeDomain {
             return None;
         }
 
-        // println!("steps found: {}", stpsx);
+        //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
         let mut b01 = SomeMask::new(from_reg.state1.bts.new_low());
@@ -421,9 +437,9 @@ impl SomeDomain {
 
         // Check if the changes found roughly satisfy the needed change
         if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
-            println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
-            println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
             return None;
         }
 
@@ -506,7 +522,7 @@ impl SomeDomain {
             //println!("stp_vec: found {}", &stp_vec[0]);
             return Some(SomePlan::new_step(stp_vec[0].clone())); // done in one step, often the end stage of recursion
         } else {
-            // println!("stp_vec: did not find a step to make the whole change");
+            //println!("stp_vec: did not find a step to make the whole change");
         }
 
         // Make list of steps with initial regions farthest from goal, or
@@ -601,18 +617,17 @@ impl SomeDomain {
         // Randomly pick a step
         let a_step = min_diff_from[rand::thread_rng().gen_range(0, min_diff_from.len())];
         //println!("Step chosen {}", &a_step);
+
         // Plan and return the next steps
-        if let Some(plnx) =
-            self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), max_depth, recur)
-        {
-            if recur == 0 {
-                println!("plan from {} to {} found", &from_reg, &goal_reg);
-            }
+        if let Some(plnx) = self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), reg_hist) {
+            //if reg_hist.len() == 0 {
+            //    println!("plan from {} to {} found", &from_reg, &goal_reg);
+            //}
             Some(plnx)
         } else {
-            if recur == 0 {
-                println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            }
+            //if reg_hist.len() == 0 {
+            //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            // }
             None
         }
     } // end make_one_plan
@@ -636,8 +651,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         astep: SomeStep,
-        max_depth: usize,
-        recur: usize,
+        reg_hist: &mut Vec<(SomeRegion, SomeRegion)>,
     ) -> Option<SomePlan> {
         let mut bstep = astep.clone();
 
@@ -646,9 +660,9 @@ impl SomeDomain {
         }
 
         // println!(
-        //     "\nplan_next_steps: from {} to {} step {} recur {}",
-        //     &from_reg, &goal_reg, &bstep, recur
-        // );
+        //      "\nplan_next_steps: from {} to {} step {} recur {}",
+        //      &from_reg, &goal_reg, &bstep, recur
+        //  );
 
         // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
         let mut aplan = SomePlan::new_step(bstep.clone());
@@ -661,9 +675,7 @@ impl SomeDomain {
             }
 
             // Plan result region is not within the goal region, find a path
-            if let Some(planx) =
-                self.make_one_plan(&aplan.result_region(), &goal_reg, max_depth, recur + 1)
-            {
+            if let Some(planx) = self.make_one_plan(&aplan.result_region(), &goal_reg, reg_hist) {
                 if let Some(plany) = aplan.link(&planx) {
                     return Some(plany);
                 } else {
@@ -676,9 +688,7 @@ impl SomeDomain {
         }
 
         // Get a plan for from-region to step initial-region
-        if let Some(planx) =
-            self.make_one_plan(&from_reg, &aplan.initial_region(), max_depth, recur + 1)
-        {
+        if let Some(planx) = self.make_one_plan(&from_reg, &aplan.initial_region(), reg_hist) {
             if let Some(plany) = planx.link(&aplan) {
                 // println!(
                 //    "make plan from {} to {} giving {}",
@@ -709,9 +719,7 @@ impl SomeDomain {
         }
 
         // Get a plan for plan result region to goal region
-        if let Some(planw) =
-            self.make_one_plan(&aplan.result_region(), &goal_reg, max_depth, recur + 1)
-        {
+        if let Some(planw) = self.make_one_plan(&aplan.result_region(), &goal_reg, reg_hist) {
             if let Some(planz) = aplan.link(&planw) {
                 return Some(planz); // done
             } else {

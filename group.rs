@@ -21,6 +21,7 @@ impl fmt::Display for SomeGroup {
     }
 }
 
+#[derive(Debug)]
 pub struct SomeGroup {
     pub region: SomeRegion, // Region the group covers, and the states sampled that are joined
     pub pn: Pn,             // Pattern Number enum One, Two or Unpredictable

@@ -22,6 +22,7 @@ impl fmt::Display for StateStore {
     }
 }
 
+#[derive(Debug)]
 pub struct StateStore {
     avec: Vec<SomeState>,
 }

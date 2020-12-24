@@ -23,7 +23,7 @@ mod tests {
     // Then group X1X1 should be invalidated and removed.
     // **********************************************************************************
     #[test]
-    fn test1() -> Result<(), String> {
+    fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(dom0_act0, 0);
 
@@ -86,7 +86,7 @@ mod tests {
     // Then group X1X1 should be invalidate and removed.
     // **********************************************************************************
     #[test]
-    fn test2() -> Result<(), String> {
+    fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(dom0_act0, 0);
 
@@ -217,9 +217,9 @@ mod tests {
     //    process::exit(0);
     //} // end test4
 
-    // Test the successful intersection of two two-result rulestores
+    // Test the successful union of two two-result rulestores
     #[test]
-    fn test3() -> Result<(), String> {
+    fn pn_2_rules_union() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
         dmx.add_action(dom0_act0, 0);
 
@@ -293,11 +293,11 @@ mod tests {
     } // end test3
 
     #[test]
-    fn test4() -> Result<(), String> {
+    fn region_to_region_test() -> Result<(), String> {
         if let Ok(reg1) = region_from_string(1, "r00x11x") {
             if let Ok(reg2) = region_from_string(1, "r010101") {
                 if let Ok(b01) = mask_from_string(1, "m00010001") {
-                    if let Ok(b10) = mask_from_string(1, "m00001010") {
+                    if let Ok(b10) = crate::mask::mask_from_string(1, "m00001010") {
                         let ragg = region_to_region(&reg1, &reg2);
 
                         if b10 != ragg.b10 {

@@ -29,6 +29,7 @@ impl fmt::Display for RegionStore {
     }
 }
 
+#[derive(Debug)]
 pub struct RegionStore {
     pub avec: Vec<SomeRegion>,
 }
@@ -166,9 +167,9 @@ impl RegionStore {
     // Return true if a region is in the RegionStore
     //    pub fn contains(&self, regx: &SomeRegion) -> bool {
     //        for regy in &self.avec {
-    //            if regy.active && regy == regx {
-    //                return true;
-    //            }
+    //             if regy.active && regy == regx {
+    //                 return true;
+    //             }
     //        }
     //        false
     //    }

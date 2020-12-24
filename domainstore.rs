@@ -190,7 +190,7 @@ impl DomainStore {
         } // end scan of needs to assign priority
 
         // A vector of need-index and plan, for needs that can be met with a plan.
-        let mut inx_plan = Vec::<InxPlan>::new();
+        let mut ndsinx_plan = Vec::<InxPlan>::new();
 
         // Scan needs to see what can be achieved with a plan
         for avec in pri_vec.iter() {
@@ -205,7 +205,7 @@ impl DomainStore {
 
                 let dmx = &self.avec[ndx.dom_num()];
 
-                inx_plan.push(InxPlan {
+                ndsinx_plan.push(InxPlan {
                     inx: *nd_inx,
                     pln: dmx.make_plan(&ndx.target()),
                 });
@@ -213,7 +213,7 @@ impl DomainStore {
                 // Parallel make_plans for needs
                 // It likes to collect a structure, in this case InxPlan,
                 // instead of a tuple or array
-                inx_plan = avec
+                ndsinx_plan = avec
                     .par_iter()
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
@@ -239,7 +239,7 @@ impl DomainStore {
                 //                    let ndx = &nds[*nd_inx];
 
                 //                    let dmx = &self.avec[ndx.dom_num()];
-                //                    inx_plan.push(InxPlan {
+                //                    ndsinx_plan.push(InxPlan {
                 //                        inx: *nd_inx,
                 //                        pln: dmx.make_plan(&ndx.target()),
                 //                    });
@@ -249,7 +249,7 @@ impl DomainStore {
             // If at least one need of the current priority has been
             // found to be doable, do not check later priority needs
             let mut is_done = false;
-            for itemx in inx_plan.iter() {
+            for itemx in ndsinx_plan.iter() {
                 match itemx.pln {
                     Some(_) => {
                         is_done = true;
@@ -269,9 +269,9 @@ impl DomainStore {
         );
 
         // Print each need and plan
-        let mut can_do = Vec::<usize>::new();
+        let mut can_do = Vec::<usize>::new(); // store indicies to inx_plan vector
         let mut inx = 0;
-        for itmx in inx_plan.iter() {
+        for itmx in ndsinx_plan.iter() {
             match &itmx.pln {
                 Some(plnx) => {
                     println!("need {} pln {}", &nds[itmx.inx], &plnx);
@@ -286,16 +286,28 @@ impl DomainStore {
 
         // Selection for needs that can be planned
         // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
-        let mut inx_plan2 = Vec::<usize>::new();
+        let mut can_do2 = Vec::<usize>::new();
 
         if can_do.len() == 0 {
-            return None;
+            return None; // No needs can be done
         }
 
-        let nd0 = &nds[inx_plan[can_do[0]].inx];
+        // Get the first need, in a group of needs with the same priority/type
+        let nd0 = &nds[ndsinx_plan[can_do[0]].inx];
         //println!("nd0 {}", nd0);
 
+        // Make further selections of needs that can be met,
+        // after previously selecting for the highest priority.
+        //
+        // If the needs are AStateMakeGroup,
+        //   Find the largest number-X group that will be created,
+        //   Select all needs that create a group that large.
+        //
+        // Otherwise
+        //   Find the shortest plan length.
+        //   Select needs with the shortest plans.
         match nd0 {
+            // Get the largest number-X group created
             SomeNeed::AStateMakeGroup {
                 dom_num: _,
                 act_num: _,
@@ -307,7 +319,7 @@ impl DomainStore {
                 // Get max x group num
                 let mut a_state_make_group_max_x = 0;
                 for cd in &can_do {
-                    let itmx = &inx_plan[*cd];
+                    let itmx = &ndsinx_plan[*cd];
 
                     let ndx = &nds[itmx.inx];
 
@@ -328,9 +340,10 @@ impl DomainStore {
                     } // end match ndx
                 } // next itmx
 
+                // Save indicies for the max-X group created needs
                 let mut inx: usize = 0;
                 for cd in &can_do {
-                    let itmx = &inx_plan[*cd];
+                    let itmx = &ndsinx_plan[*cd];
 
                     let ndx = &nds[itmx.inx];
 
@@ -344,7 +357,7 @@ impl DomainStore {
                             num_x: nx,
                         } => {
                             if *nx == a_state_make_group_max_x {
-                                inx_plan2.push(inx);
+                                can_do2.push(inx);
                             }
                         }
                         _ => {}
@@ -354,10 +367,10 @@ impl DomainStore {
                 }
             } // end match AStateMakeGroup
             _ => {
-                // Get needs with shortest plan
+                // Find the shortest plan length
                 let mut min_plan_len = std::usize::MAX;
                 for cd in &can_do {
-                    let itmx = &inx_plan[*cd];
+                    let itmx = &ndsinx_plan[*cd];
                     match &itmx.pln {
                         Some(plnx) => {
                             if plnx.len() < min_plan_len {
@@ -369,14 +382,13 @@ impl DomainStore {
                 }
 
                 // Push index to shortest plan needs
-                //let mut inx: usize = 0;
                 let mut inx = 0;
                 for cd in &can_do {
-                    let itmx = &inx_plan[*cd];
+                    let itmx = &ndsinx_plan[*cd];
                     match &itmx.pln {
                         Some(plnx) => {
                             if plnx.len() == min_plan_len {
-                                inx_plan2.push(inx);
+                                can_do2.push(inx);
                             }
                         }
                         None => {}
@@ -388,17 +400,17 @@ impl DomainStore {
         } // End match nd0
 
         // Return if no plans.  Includes plans of zero length for the current state.
-        if inx_plan2.len() == 0 {
-            return None;
+        if can_do2.len() == 0 {
+            panic!("at least one doable need/plan should have been selected!");
         }
 
-        //println!("inx_plan2: {:?}", inx_plan2);
+        //println!("can_do2: {:?}", can_do2);
 
         // Take a random choice
-        let inx2 = rand::thread_rng().gen_range(0, inx_plan2.len());
-        //println!("inx2 = {}  inx_plan2 = {}", &inx2, &inx_plan2[inx2]);
+        let inx2 = rand::thread_rng().gen_range(0, can_do2.len());
+        //println!("inx2 = {}  can_do2 = {}", &inx2, &can_do2[inx2]);
 
-        let itmx = &inx_plan[can_do[inx2]];
+        let itmx = &ndsinx_plan[can_do[inx2]];
         //println!("itmx.inx = {}", &itmx.inx);
 
         let ndx = &nds[itmx.inx]; // get need using tuple index

@@ -23,6 +23,7 @@ impl fmt::Display for BitsStore {
     }
 }
 
+#[derive(Debug)]
 pub struct BitsStore {
     pub avec: Vec<SomeBits>,
 }

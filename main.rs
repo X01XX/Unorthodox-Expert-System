@@ -23,7 +23,6 @@ use crate::region::region_from_string;
 mod regionstore;
 mod resultstore;
 mod rule;
-//use crate::rule::SomeRule;
 mod rulestore;
 mod square;
 mod squarestore;
@@ -31,16 +30,13 @@ mod state;
 use crate::state::state_from_string;
 mod statestore;
 use need::SomeNeed;
-mod needstore;
-//use crate::needstore::NeedStore;
-mod plan;
-mod step;
-mod stepstore;
-//use crate::stepstore::StepStore;
-//use plan::SomePlan;
 mod combinable;
 mod domain;
+mod needstore;
+mod plan;
 mod pn;
+mod step;
+mod stepstore;
 use domain::SomeDomain;
 mod actions;
 mod domainstore;
@@ -54,39 +50,11 @@ use crate::actions::{
 
 use std::io;
 use std::io::Write;
-use std::process; // bring flush() into scope
+use std::process;
 extern crate rand;
-//use rand::Rng;
-
-// Push an item into a random position in a vector
-//fn vec_rand_push<T>(avec: &mut Vec<T>, num: T) {
-//    if avec.len() > 1 {
-//        let inx = rand::thread_rng().gen_range(0, avec.len() + 1); // last in range is exclusive, (0,1) will always return 0.
-//                                                                   //println!("random inx {} len {}", inx, avec.len());
-//        if inx == avec.len() {
-//            avec.push(num);
-//        } else {
-//            avec.insert(inx, num);
-//        }
-//    } else {
-//        avec.push(num);
-//    }
-//}
-
-//use std::thread;
-//use std::sync::mpsc::{self, Receiver, Sender};
-//use std::sync::{Arc, Mutex};
-//use crate::action::SomeAction;
-
-//use std::rc::Rc;
-
-//fn test1(num: usize, cur_state: &SomeState) -> usize{
-//	println!("a num: {} cur {}", num, cur_state);
-//	num * 3
-//}
 
 fn main() {
-    // for tests.rs
+    // for tests.rs to make the compiler happy
     let mx = mask::mask_from_string(1, "m1");
 
     match mx {
@@ -182,8 +150,6 @@ fn main() {
                     dom_num = ndx.dom_num();
 
                     println!("need {}, plan {}", &ndx, &pln);
-
-                    //println!("need {}, plan {}", &nds[ndspln.0], ndspln.1);
 
                     if pln.len() > 0 {
                         //println!("doing dmx.run_plan");

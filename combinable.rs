@@ -14,6 +14,7 @@ impl fmt::Display for Combinable {
     }
 }
 
+#[derive(Debug)]
 pub enum Combinable {
     True,
     False,
