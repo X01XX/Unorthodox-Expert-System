@@ -62,19 +62,13 @@ impl SquareStore {
     // Return rules after combining two squares, identified by their states.
     // May return an empty RuleStore, if the union is invalid
     pub fn rules(&self, sta1: &SomeState, sta2: &SomeState) -> Option<RuleStore> {
-        if let Some(sqr1) = self.ahash.get(sta1) {
-            if let Some(sqr2) = self.ahash.get(sta2) {
-                return sqr1.rules.union(&sqr2.rules);
-            } else {
-                panic!("sta2 {} not found", sta2);
-            }
-        } else {
-            panic!("sta1 {} not found!", sta1);
-        }
+        let sqr1 = self.ahash.get(sta1).unwrap();
+        let sqr2 = self.ahash.get(sta2).unwrap();
+        return sqr1.rules.union(&sqr2.rules);
     }
 
     // Add a square that is not currently in the store.
-    pub fn add(&mut self, sqrx: SomeSquare) {
+    pub fn insert(&mut self, sqrx: SomeSquare) {
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 
@@ -92,42 +86,36 @@ impl SquareStore {
         for inx1 in 0..lenx {
             let sta1 = &stas[inx1];
 
-            if let Some(sqrx) = self.find(sta1) {
-                for inx2 in (inx1 + 1)..lenx {
-                    let sta2 = &stas[inx2];
+            let sqrx = self.find(sta1).unwrap();
+            for inx2 in (inx1 + 1)..lenx {
+                let sta2 = &stas[inx2];
 
-                    let regy = SomeRegion::new(sta1, sta2);
+                let regy = SomeRegion::new(sta1, sta2);
 
-                    if regy == *regx {
-                        if let Some(sqry) = self.find(sta2) {
-                            if sqry.pn() == Pn::Unpredictable {
-                                let max_pnc = self.max_pn(&stas);
-                                let min_pnc = self.min_pnc(&stas);
+                if regy == *regx {
+                    let sqry = self.find(sta2).unwrap();
+                    if sqry.pn() == Pn::Unpredictable {
+                        let max_pnc = self.max_pn(&stas);
+                        let min_pnc = self.min_pnc(&stas);
 
-                                if max_pnc == min_pnc {
-                                    sta_pairs.push(sta1.clone());
-                                    sta_pairs.push(sta2.clone());
-                                }
+                        if max_pnc == min_pnc {
+                            sta_pairs.push(sta1.clone());
+                            sta_pairs.push(sta2.clone());
+                        }
+                    } else {
+                        if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
+                            if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
+                                sta_pairs.push(sta1.clone());
+                                sta_pairs.push(sta2.clone());
                             } else {
-                                if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
-                                    if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
-                                        sta_pairs.push(sta1.clone());
-                                        sta_pairs.push(sta2.clone());
-                                    } else {
-                                        continue;
-                                    }
-                                } else {
-                                    continue;
-                                }
+                                continue;
                             }
                         } else {
-                            panic!("square not found?");
-                        } // endif find sqry
+                            continue;
+                        }
                     }
-                } // next inx2, sta2
-            } else {
-                panic!("square not found?");
-            } // end if find sqrx
+                }
+            } // next inx2, sta2
         } // next inx1, sta1
 
         if sta_pairs.len() == 0 {
@@ -191,16 +179,13 @@ impl SquareStore {
         } // end itoration
 
         for regx in rsx.iter() {
-            if let Some(sqry) = self.find(&regx.state2) {
-                println!(
-                    "\nSquare {} can combine with\nSquare {}\ngiving {}\n",
-                    sqrx.str_terse(),
-                    sqry.str_terse(),
-                    regx,
-                );
-            } else {
-                panic!("state not found?");
-            }
+            let sqry = self.find(&regx.state2).unwrap();
+            println!(
+                "\nSquare {} can combine with\nSquare {}\ngiving {}\n",
+                sqrx.str_terse(),
+                sqry.str_terse(),
+                regx,
+            );
         }
 
         //println!("regions for new groups {}", rsx.str());
@@ -384,23 +369,17 @@ impl SquareStore {
         for inx1 in 0..keys.len() {
             let key1 = &keys[inx1];
 
-            if let Some(sqr1) = self.find(&key1) {
-                for inx2 in (inx1 + 1)..keys.len() {
-                    let key2 = &keys[inx2];
+            let sqr1 = self.find(&key1).unwrap();
+            for inx2 in (inx1 + 1)..keys.len() {
+                let key2 = &keys[inx2];
 
-                    if let Some(sqr2) = self.find(&key2) {
-                        match sqr1.can_combine(&sqr2) {
-                            Combinable::False => {
-                                return false;
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        panic!("Square-2 {} not found?", &key2);
+                let sqr2 = self.find(&key2).unwrap();
+                match sqr1.can_combine(&sqr2) {
+                    Combinable::False => {
+                        return false;
                     }
+                    _ => {}
                 }
-            } else {
-                panic!("Square-1 {} not found?", &key1);
             }
         }
         true
@@ -414,12 +393,9 @@ impl SquareStore {
         let mut max_pn = Pn::One;
 
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pn() > max_pn {
-                    max_pn = sqrx.pn();
-                }
-            } else {
-                panic!("Square {} not found?", &keyx);
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pn() > max_pn {
+                max_pn = sqrx.pn();
             }
         }
 
@@ -435,15 +411,12 @@ impl SquareStore {
         let mut not_found = true;
 
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pnc() {
-                    not_found = false;
-                    if sqrx.pn() > max_pn {
-                        max_pn = sqrx.pn();
-                    }
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pnc() {
+                not_found = false;
+                if sqrx.pn() > max_pn {
+                    max_pn = sqrx.pn();
                 }
-            } else {
-                panic!("Square {} not found?", &keyx);
             }
         }
 
@@ -463,15 +436,12 @@ impl SquareStore {
         let mut not_found = true;
 
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pnc() {
-                    not_found = false;
-                    if sqrx.pn() < min_pnc {
-                        min_pnc = sqrx.pn();
-                    }
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pnc() {
+                not_found = false;
+                if sqrx.pn() < min_pnc {
+                    min_pnc = sqrx.pn();
                 }
-            } else {
-                panic!("Square {} not found?", &keyx);
             }
         }
 
@@ -485,12 +455,9 @@ impl SquareStore {
     // identified by a list of their keys.
     pub fn first_pnc_val(&self, keys: &StateStore) -> Option<Pn> {
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pnc() {
-                    return Some(sqrx.pn());
-                }
-            } else {
-                panic!("Square {} not found?", &keyx);
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pnc() {
+                return Some(sqrx.pn());
             }
         }
 
@@ -501,12 +468,9 @@ impl SquareStore {
     // a square that has pnc set to true.
     pub fn any_pnc(&self, keys: &StateStore) -> bool {
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pnc() {
-                    return true;
-                }
-            } else {
-                panic!("Square {} not found?", &keyx);
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pnc() {
+                return true;
             }
         }
 
@@ -517,20 +481,17 @@ impl SquareStore {
         let mut rcrs = RuleStore::new();
 
         for keyx in keys.iter() {
-            if let Some(sqrx) = self.find(&keyx) {
-                if sqrx.pn() == pn {
-                    if rcrs.len() == 0 {
-                        rcrs = sqrx.rules.clone();
+            let sqrx = self.find(&keyx).unwrap();
+            if sqrx.pn() == pn {
+                if rcrs.len() == 0 {
+                    rcrs = sqrx.rules.clone();
+                } else {
+                    if let Some(rctmp) = rcrs.union(&sqrx.rules) {
+                        rcrs = rctmp;
                     } else {
-                        if let Some(rctmp) = rcrs.union(&sqrx.rules) {
-                            rcrs = rctmp;
-                        } else {
-                            return None;
-                        }
+                        return None;
                     }
                 }
-            } else {
-                panic!("Square {} not found?", &keyx);
             }
         }
 

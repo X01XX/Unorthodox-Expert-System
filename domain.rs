@@ -49,25 +49,19 @@ pub struct SomeDomain {
 impl SomeDomain {
     pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
         // Convert the state string into a state type instance.
-        if let Ok(cur) = state_from_string(num_ints, &start_state) {
-            if let Ok(opt) = region_from_string(num_ints, &optimal) {
-                // Set up a domain instance with the correct value for num_ints
-                return SomeDomain {
-                    num: 0, // may be changed when added to a DomainStore, to reflect the index into a vector
-                    num_ints,
-                    actions: ActionStore::new(),
-                    cur_state: cur.clone(),
-                    max_region: SomeRegion::new(&cur, &cur),
-                    optimal: opt,
-                    vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
-                    vec_hvr: Vec::<usize>::new(),
-                };
-            } else {
-                panic!("Bad optimal region");
-            }
-        } else {
-            panic!("Bad state string");
-        }
+        let cur = state_from_string(num_ints, &start_state).unwrap();
+        let opt = region_from_string(num_ints, &optimal).unwrap();
+        // Set up a domain instance with the correct value for num_ints
+        return SomeDomain {
+            num: 0, // may be changed when added to a DomainStore, to reflect the index into a vector
+            num_ints,
+            actions: ActionStore::new(),
+            cur_state: cur.clone(),
+            max_region: SomeRegion::new(&cur, &cur),
+            optimal: opt,
+            vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
+            vec_hvr: Vec::<usize>::new(),
+        };
     }
 
     pub fn add_action(&mut self, fx: fn(&SomeState, usize) -> SomeState, hv_range: usize) {
@@ -284,13 +278,6 @@ impl SomeDomain {
             }
         } // next stpx
     } // end run_plan
-
-    //    pub fn make_plan2(&self, goal_reg: &SomeRegion) -> SomePlan {
-    //		if let Some(plx) = self.make_plan(goal_reg) {
-    //			return plx;
-    //		}
-    //		return SomePlan::new(StepStore::new());
-    //	}
 
     // Make a plan from a region to another region
     // Since there are some random choices, it may be useful to try
@@ -659,10 +646,10 @@ impl SomeDomain {
             bstep = astep.restrict_initial_region(&from_reg);
         }
 
-        // println!(
-        //      "\nplan_next_steps: from {} to {} step {} recur {}",
-        //      &from_reg, &goal_reg, &bstep, recur
-        //  );
+        //println!(
+        //    "\nplan_next_steps: from {} to {} step {} recur {}",
+        //     &from_reg, &goal_reg, &bstep, reg_hist.len()
+        // );
 
         // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
         let mut aplan = SomePlan::new_step(bstep.clone());
