@@ -25,7 +25,7 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action();
+        dmx.add_action(0);
 
         let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
 
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action();
+        dmx.add_action(0);
 
         let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
 
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn pn_2_rules_union() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action();
+        dmx.add_action(0);
 
         let sta_5 = SomeState {
             bts: SomeBits {

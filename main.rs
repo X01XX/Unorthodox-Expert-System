@@ -202,11 +202,28 @@ fn main() {
                         dom_num = d_num;
                     }
                     continue;
+                } else if cmd[0] == "ld" {
+                    // TODO read from file in cmd[1]
+                    let serialized = String::from("test");
+                    let deserialized_r = serde_yaml::from_str(&serialized);
+
+                    match deserialized_r {
+                        Ok(deserialized) => {
+                            dmxs = deserialized;
+                            println!("Data loaded");
+                        }
+                        Err(error) => {
+                            println!("err {}", error);
+                        }
+                    }
                 } else if cmd[0] == "sd" {
                     let serialized_r = serde_yaml::to_string(&mut dmxs);
                     match serialized_r {
-                        Ok(serialized) => {
-                            println!("Serialized: {}", serialized);
+                        Ok(_serialized) => {
+                            // TODO write to file in cmd[1]
+
+                            println!("Data stored");
+
                             continue;
                         }
                         Err(error) => {

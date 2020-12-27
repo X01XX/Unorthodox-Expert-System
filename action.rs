@@ -84,7 +84,6 @@ pub struct SomeAction {
     pub num: usize,
     pub groups: GroupStore,
     pub squares: SquareStore,
-    //    to_run: fn(&SomeState, usize) -> SomeState,
     pub closer_regs: RegionStore,
 }
 
@@ -94,7 +93,6 @@ impl SomeAction {
             num: 0, // May be changed when added to an ActionStore, to reflect the index into a vector
             groups: GroupStore::new(),
             squares: SquareStore::new(),
-            // to_run: fx,
             closer_regs: RegionStore::new(),
         }
     }
