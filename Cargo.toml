@@ -10,5 +10,5 @@ edition = "2018"
 rand = "0.7.3"
 rayon = "1.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_yaml = "0.8"
 

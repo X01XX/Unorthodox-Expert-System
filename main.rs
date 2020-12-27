@@ -43,11 +43,6 @@ mod domainstore;
 mod tests;
 use domainstore::DomainStore;
 
-//use crate::actions::{
-//    dom0_act0, dom0_act1, dom0_act2, dom0_act3, dom0_act4, dom0_act5, dom0_act6, dom1_act0,
-//    dom1_act1, dom1_act2, dom1_act3,
-//};
-
 use std::io;
 use std::io::Write;
 use std::process;
@@ -71,21 +66,21 @@ fn main() {
     // The number of u8 integers can be higher.
 
     let mut dm0 = SomeDomain::new(1, "s0001", "r101X");
-    dm0.add_action();
-    dm0.add_action();
-    dm0.add_action();
-    dm0.add_action();
-    dm0.add_action();
-    dm0.add_action();
-    dm0.add_action();
+    dm0.add_action(6);
+    dm0.add_action(0);
+    dm0.add_action(0);
+    dm0.add_action(0);
+    dm0.add_action(0);
+    dm0.add_action(0);
+    dm0.add_action(0);
 
     dmxs.push(dm0);
 
     let mut dm1 = SomeDomain::new(1, "s0001", "r101X");
-    dm1.add_action();
-    dm1.add_action();
-    dm1.add_action();
-    dm1.add_action();
+    dm1.add_action(0);
+    dm1.add_action(0);
+    dm1.add_action(0);
+    dm1.add_action(0);
 
     dmxs.push(dm1);
 
@@ -100,9 +95,9 @@ fn main() {
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
 
-        let mut dmx = &mut dmxs[dom_num];
+        //let mut dmx = &mut dmxs[dom_num];
 
-        println!("\nDom: {} Acts: {}", dom_num, dmx.actions);
+        println!("\nDom: {} Acts: {}", dom_num, &dmxs[dom_num].actions);
 
         if nds.len() > 0 {
             println!("\nAction needs: {}", nds);
@@ -112,13 +107,21 @@ fn main() {
 
         let mut in_opt = "Not in";
 
-        if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+        if dmxs[dom_num]
+            .optimal
+            .is_superset_of_state(&dmxs[dom_num].cur_state)
+        {
             in_opt = "in";
         }
 
         println!(
             "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-            &step, dom_num, &dmx.cur_state, &dmx.max_region, &in_opt, &dmx.optimal
+            &step,
+            dom_num,
+            &dmxs[dom_num].cur_state,
+            &dmxs[dom_num].max_region,
+            &in_opt,
+            &dmxs[dom_num].optimal
         );
 
         print!("\nPress Enter to continue: ");
@@ -167,13 +170,16 @@ fn main() {
                 }
             } else {
                 // If no needs, change the state to an optimal state if needed
-                if dmx.optimal.is_superset_of_state(&dmx.cur_state) {
+                if dmxs[dom_num]
+                    .optimal
+                    .is_superset_of_state(&dmxs[dom_num].cur_state)
+                {
                 } else {
-                    if let Some(pln) = dmx.make_plan(&dmx.optimal) {
+                    if let Some(pln) = dmxs[dom_num].make_plan(&dmxs[dom_num].optimal) {
                         println!("Changing state to optimal, Plan is {}", pln);
 
                         // Do the plan
-                        dmx.run_plan(&pln);
+                        dmxs[dom_num].run_plan(&pln);
                     } else {
                         println!("No plan found to change to the optimal state");
                     }
@@ -196,9 +202,20 @@ fn main() {
                         dom_num = d_num;
                     }
                     continue;
-                }
+                } else if cmd[0] == "sd" {
+                    let serialized_r = serde_yaml::to_string(&mut dmxs);
+                    match serialized_r {
+                        Ok(serialized) => {
+                            println!("Serialized: {}", serialized);
+                            continue;
+                        }
+                        Err(error) => {
+                            println!("err {}", error);
+                        }
+                    } // end match
+                } // end command sd
             }
-            do_command(&mut dmx, &cmd);
+            do_command(&mut dmxs[dom_num], &cmd);
         }
     } // end loop
 } // end main

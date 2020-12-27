@@ -1,13 +1,11 @@
 use crate::action::SomeAction;
+use crate::actions::take_action;
 use crate::actionstore::ActionStore;
-//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::{region_from_string, SomeRegion};
-//use crate::regionstore::RegionStore;
-use crate::actions::take_action;
 use crate::rule::region_to_region;
 use crate::state::{state_from_string, SomeState};
 use crate::step::SomeStep;
@@ -67,18 +65,14 @@ impl SomeDomain {
         };
     }
 
-    pub fn add_action(&mut self) {
+    pub fn add_action(&mut self, hv: usize) {
         let mut actx = SomeAction::new();
         actx.num = self.actions.len();
         self.actions.push(actx); // Add an action
 
+        // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
         self.vec_hash.push(HashMap::new());
-
-        if self.num == 0 && self.actions.len() == 1 {
-            self.vec_hvr.push(6);
-        } else {
-            self.vec_hvr.push(0);
-        }
+        self.vec_hvr.push(hv);
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
@@ -103,7 +97,7 @@ impl SomeDomain {
         i_state: &SomeState,
         r_state: &SomeState,
     ) {
-        // may break hv info
+        // may break hv info, so do not mix with take_action_need
         self.actions[act_num].take_action_arbitrary(i_state, r_state, &self.max_region.x_mask());
         self.set_cur_state(r_state.clone());
     }
