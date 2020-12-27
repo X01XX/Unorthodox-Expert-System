@@ -12,6 +12,7 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 extern crate rand;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 //use std::slice::{Iter}; //, IterMut};
 
@@ -35,6 +36,7 @@ impl fmt::Display for DomainStore {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
 }
@@ -68,7 +70,7 @@ impl DomainStore {
     pub fn get_needs(&mut self) -> NeedStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
-            .par_iter_mut()
+            .par_iter_mut() // .par_iter for prallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
             .collect::<Vec<NeedStore>>();
 
@@ -214,7 +216,7 @@ impl DomainStore {
                 // It likes to collect a structure, in this case InxPlan,
                 // instead of a tuple or array
                 ndsinx_plan = avec
-                    .par_iter()
+                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
                         pln: self.avec[nds[*nd_inx].dom_num()]

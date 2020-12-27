@@ -1,5 +1,6 @@
 // Implement a Pattern Number,
 
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -75,7 +76,7 @@ impl PartialEq for Pn {
     }
 }
 
-#[derive(Eq, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Eq, Clone, Copy, Debug)]
 pub enum Pn {
     One,           // Only one result for a state
     Two,           // Two predictable results/order for a state

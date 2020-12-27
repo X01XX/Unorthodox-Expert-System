@@ -6,10 +6,10 @@ use crate::mask::SomeMask;
 use crate::bits::SomeBits;
 use crate::state::{state_from_string, SomeState};
 use crate::statestore::StateStore;
-
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeRegion {
     pub state1: SomeState,
     pub state2: SomeState,

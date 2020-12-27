@@ -1,10 +1,11 @@
 // State struct for an Unorthodox Expert System
 
 use crate::bits::SomeBits;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeState {
     pub bts: SomeBits,
 }

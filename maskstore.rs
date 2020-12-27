@@ -38,7 +38,7 @@ impl MaskStore {
         self.avec.len()
     }
 
-    pub fn _add(&mut self, val: SomeMask) {
+    pub fn _push(&mut self, val: SomeMask) {
         self.avec.push(val);
     }
 

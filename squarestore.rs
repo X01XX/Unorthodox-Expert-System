@@ -9,6 +9,7 @@ use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -28,6 +29,8 @@ impl fmt::Display for SquareStore {
         write!(f, "{}", rc_str)
     }
 }
+
+#[derive(Serialize, Deserialize)]
 pub struct SquareStore {
     ahash: HashMap<SomeState, SomeSquare>,
 }

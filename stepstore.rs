@@ -82,13 +82,13 @@ impl StepStore {
         self.avec.iter()
     }
 
-    //    pub fn clone(&self) -> Self {
-    //        let mut rcstp = Self::new();
-    //        for stpx in self.avec.iter() {
-    //            rcstp.push(stpx.clone());
-    //        }
-    //        rcstp
-    //    }
+    pub fn clone(&self) -> Self {
+        let mut rcstp = Self::new_with_capacity(self.len());
+        for stpx in self.avec.iter() {
+            rcstp.push(stpx.clone());
+        }
+        rcstp
+    }
 
     //    pub fn reverse(&self) -> Self {
     //		let mut rc_steps = StepStore { avec:  Vec::<SomeStep>::with_capacity(self.len()) };

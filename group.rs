@@ -11,6 +11,7 @@ use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 //use crate::statestore::StateStore;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl fmt::Display for SomeGroup {
@@ -21,7 +22,7 @@ impl fmt::Display for SomeGroup {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeGroup {
     pub region: SomeRegion, // Region the group covers, and the states sampled that are joined
     pub pn: Pn,             // Pattern Number enum One, Two or Unpredictable

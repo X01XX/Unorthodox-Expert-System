@@ -1,6 +1,7 @@
 // Mask struct for an Unorthodox Expert System
 
 use crate::bits::SomeBits;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl PartialEq for SomeMask {
@@ -10,7 +11,7 @@ impl PartialEq for SomeMask {
 }
 impl Eq for SomeMask {}
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeMask {
     pub bts: SomeBits,
 }
@@ -64,7 +65,7 @@ impl SomeMask {
     }
 
     pub fn is_not_low(&self) -> bool {
-        !self.is_low()
+        self.bts.is_not_low()
     }
 
     // Return true if the mask is high, that is all ones

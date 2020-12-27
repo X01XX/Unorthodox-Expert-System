@@ -39,7 +39,7 @@ impl BitsStore {
         self.avec.len()
     }
 
-    pub fn _add(&mut self, val: SomeBits) {
+    pub fn _push(&mut self, val: SomeBits) {
         self.avec.push(val);
     }
 

@@ -12,6 +12,7 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter; // IterMut
@@ -35,6 +36,7 @@ impl fmt::Display for GroupStore {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct GroupStore {
     avec: Vec<SomeGroup>,
 }

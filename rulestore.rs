@@ -4,11 +4,12 @@ use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 //use crate::state::SomeState;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
 }

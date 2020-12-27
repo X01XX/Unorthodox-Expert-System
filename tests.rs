@@ -4,7 +4,7 @@
 #[cfg(test)]
 mod tests {
 
-    use crate::actions::dom0_act0;
+    //    use crate::actions::dom0_act0;
     use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
     use crate::mask::mask_from_string;
@@ -25,59 +25,58 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(dom0_act0, 0);
+        dmx.add_action();
 
-        if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
-            if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
-                if let Ok(sf) = state_from_string(dmx.num_ints, "s1111") {
-                    if let Ok(se) = state_from_string(dmx.num_ints, "s1110") {
-                        if let Ok(s7) = state_from_string(dmx.num_ints, "s111") {
-                            if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
-                                //println!(
-                                //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
-                                //    s5, s4, sf, se, rx1x1
-                                //);
-                                dmx.take_action_arbitrary(0, &s5, &s5);
-                                dmx.take_action_arbitrary(0, &s5, &s4);
-                                dmx.take_action_arbitrary(0, &sf, &se);
-                                dmx.take_action_arbitrary(0, &sf, &sf);
-                                if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                                    dmx.take_action_arbitrary(0, &s7, &s7);
+        let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
 
-                                    if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                                        dmx.take_action_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
+        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
 
-                                        if let Some(_) = dmx.actions[0].groups.find(&rx1x1) {
-                                            //println!("\nActs: {}", &dmx.actions[0]);
-                                            //println!(" {}", dmx.actions[0].squares);
-                                            return Err(String::from(
-                                                "failed, rx1x1 should have been deleted",
-                                            ));
-                                        } else {
-                                            // println!("\nActs: {}", &dmx.actions[0]);
-                                            // println!("       Sqrs: ({})", dmx.actions[0].squares);
-                                            return Ok(());
-                                        }
-                                    } else {
-                                        //println!("\nActs: {}", &dmx.actions[0]);
-                                        //println!("       Sqrs: ({})", dmx.actions[0].squares);
-                                        //println!("Group deleted too soon!");
-                                        return Err(String::from("failed, rx1x1 deleted too soon"));
-                                    }
-                                } else {
-                                    //  println!("\nActs: {}", &dmx.actions[0]);
-                                    return Err(String::from(
-                                        "failed, group rx1x1 was not formed by two squares",
-                                    ));
-                                }
-                            }
-                        }
-                    }
+        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
+
+        let se = state_from_string(dmx.num_ints, "s1110").unwrap();
+
+        let s7 = state_from_string(dmx.num_ints, "s111").unwrap();
+
+        let rx1x1 = region_from_string(dmx.num_ints, "rx1x1").unwrap();
+
+        //println!(
+        //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
+        //    s5, s4, sf, se, rx1x1
+        //);
+
+        dmx.take_action_arbitrary(0, &s5, &s5);
+        dmx.take_action_arbitrary(0, &s5, &s4);
+        dmx.take_action_arbitrary(0, &sf, &se);
+        dmx.take_action_arbitrary(0, &sf, &sf);
+
+        if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
+            dmx.take_action_arbitrary(0, &s7, &s7);
+
+            if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
+                dmx.take_action_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
+
+                if let Some(_) = dmx.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dmx.actions[0]);
+                    //println!(" {}", dmx.actions[0].squares);
+                    return Err(String::from("failed, rx1x1 should have been deleted"));
+                } else {
+                    // println!("\nActs: {}", &dmx.actions[0]);
+                    // println!("       Sqrs: ({})", dmx.actions[0].squares);
+                    return Ok(());
                 }
+            } else {
+                //println!("\nActs: {}", &dmx.actions[0]);
+                //println!("       Sqrs: ({})", dmx.actions[0].squares);
+                //println!("Group deleted too soon!");
+                return Err(String::from("failed, rx1x1 deleted too soon"));
             }
+        } else {
+            //  println!("\nActs: {}", &dmx.actions[0]);
+            return Err(String::from(
+                "failed, group rx1x1 was not formed by two squares",
+            ));
         }
-        Err(String::from("failed, at end"))
-    } // end test1
+    } // end group_pn_2_union_then_invalidation
 
     // Form a group, X1X1 from two squares that have unpredictable results.
     //
@@ -88,59 +87,58 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(dom0_act0, 0);
+        dmx.add_action();
 
-        if let Ok(s5) = state_from_string(dmx.num_ints, "s101") {
-            if let Ok(s4) = state_from_string(dmx.num_ints, "s100") {
-                if let Ok(sf) = state_from_string(dmx.num_ints, "s1111") {
-                    if let Ok(se) = state_from_string(dmx.num_ints, "s1110") {
-                        if let Ok(s7) = state_from_string(dmx.num_ints, "s111") {
-                            if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
-                                //println!(
-                                //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
-                                //    s5, s4, sf, se, rx1x1
-                                //);
-                                dmx.take_action_arbitrary(0, &s5, &s5);
-                                dmx.take_action_arbitrary(0, &s5, &s4);
-                                dmx.take_action_arbitrary(0, &s5, &se);
+        let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
 
-                                dmx.take_action_arbitrary(0, &sf, &se);
-                                dmx.take_action_arbitrary(0, &sf, &sf);
-                                dmx.take_action_arbitrary(0, &sf, &s4);
+        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
 
-                                if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                                    //println!("\nActs: {}", &dmx.actions[0]);
-                                    dmx.take_action_arbitrary(0, &s7, &s7);
-                                    dmx.take_action_arbitrary(0, &s7, &s7);
+        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
 
-                                    if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                                        dmx.take_action_arbitrary(0, &s7, &s7); // cause pnc = true
-                                        if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                                            //println!("\nActs: {}", &dmx.actions[0]);
-                                            //println!(" {}", dmx.actions[0].squares);
-                                            return Err(String::from("Two samples for s7 failed to invalidate group xx1x1"));
-                                        } else {
-                                            return Ok(());
-                                        }
-                                    } else {
-                                        // println!("\nActs: {}", &dmx.actions[0]);
-                                        // println!("       Sqrs: ({})", dmx.actions[0].squares);
-                                        return Err(String::from("Group deleted too soon"));
-                                    }
-                                } else {
-                                    //  println!("\nActs: {}", &dmx.actions[0]);
-                                    return Err(String::from(
-                                        "group rx1x1 was not formed by two squares!",
-                                    ));
-                                }
-                            }
-                        }
-                    }
+        let se = state_from_string(dmx.num_ints, "s1110").unwrap();
+
+        let s7 = state_from_string(dmx.num_ints, "s111").unwrap();
+
+        let rx1x1 = region_from_string(dmx.num_ints, "rx1x1").unwrap();
+
+        //println!(
+        //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
+        //    s5, s4, sf, se, rx1x1
+        //);
+        dmx.take_action_arbitrary(0, &s5, &s5);
+        dmx.take_action_arbitrary(0, &s5, &s4);
+        dmx.take_action_arbitrary(0, &s5, &se);
+
+        dmx.take_action_arbitrary(0, &sf, &se);
+        dmx.take_action_arbitrary(0, &sf, &sf);
+        dmx.take_action_arbitrary(0, &sf, &s4);
+
+        if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
+            //println!("\nActs: {}", &dmx.actions[0]);
+            dmx.take_action_arbitrary(0, &s7, &s7);
+            dmx.take_action_arbitrary(0, &s7, &s7);
+
+            if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
+                dmx.take_action_arbitrary(0, &s7, &s7); // cause pnc = true
+                if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dmx.actions[0]);
+                    //println!(" {}", dmx.actions[0].squares);
+                    return Err(String::from(
+                        "Two samples for s7 failed to invalidate group xx1x1",
+                    ));
+                } else {
+                    return Ok(());
                 }
+            } else {
+                // println!("\nActs: {}", &dmx.actions[0]);
+                // println!("       Sqrs: ({})", dmx.actions[0].squares);
+                return Err(String::from("Group deleted too soon"));
             }
+        } else {
+            //  println!("\nActs: {}", &dmx.actions[0]);
+            return Err(String::from("group rx1x1 was not formed by two squares!"));
         }
-        Err(String::from("failed, at end"))
-    } // end test2
+    } // end group_pn_u_union_then_invalidation
 
     // Test subtraction of two regions
     //#[test]
@@ -221,7 +219,7 @@ mod tests {
     #[test]
     fn pn_2_rules_union() -> Result<(), String> {
         let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(dom0_act0, 0);
+        dmx.add_action();
 
         let sta_5 = SomeState {
             bts: SomeBits {
@@ -290,27 +288,28 @@ mod tests {
             }
         }
         Err(String::from("failed, at end"))
-    } // end test3
+    } // end pn_2_rules_union
 
     #[test]
     fn region_to_region_test() -> Result<(), String> {
-        if let Ok(reg1) = region_from_string(1, "r00x11x") {
-            if let Ok(reg2) = region_from_string(1, "r010101") {
-                if let Ok(b01) = mask_from_string(1, "m00010001") {
-                    if let Ok(b10) = crate::mask::mask_from_string(1, "m00001010") {
-                        let ragg = region_to_region(&reg1, &reg2);
+        let reg1 = region_from_string(1, "r00x11x").unwrap();
 
-                        if b10 != ragg.b10 {
-                            return Err(String::from("b10 NEQ rule.b10"));
-                        }
+        let reg2 = region_from_string(1, "r010101").unwrap();
 
-                        if b01 != ragg.b01 {
-                            return Err(String::from("b01 NEQ rule.b01"));
-                        }
-                    }
-                }
-            }
+        let b01 = mask_from_string(1, "m00010001").unwrap();
+
+        let b10 = crate::mask::mask_from_string(1, "m00001010").unwrap();
+
+        let ragg = region_to_region(&reg1, &reg2);
+
+        if b10 != ragg.b10 {
+            return Err(String::from("b10 NEQ rule.b10"));
         }
+
+        if b01 != ragg.b01 {
+            return Err(String::from("b01 NEQ rule.b01"));
+        }
+
         return Ok(());
-    } // end test4
+    } // end region_to_region_test
 } // end mod tests

@@ -13,6 +13,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl fmt::Display for SomeSquare {
@@ -32,7 +33,7 @@ impl fmt::Display for SomeSquare {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeSquare {
     pub state: SomeState, // State that an action was taken on.
     results: ResultStore, // Circular list of results.

@@ -24,6 +24,7 @@ use crate::stepstore::StepStore;
 use std::fmt;
 extern crate rand;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -78,21 +79,22 @@ impl fmt::Display for SomeAction {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SomeAction {
     pub num: usize,
     pub groups: GroupStore,
     pub squares: SquareStore,
-    to_run: fn(&SomeState, usize) -> SomeState,
+    //    to_run: fn(&SomeState, usize) -> SomeState,
     pub closer_regs: RegionStore,
 }
 
 impl SomeAction {
-    pub fn new(fx: fn(&SomeState, usize) -> SomeState) -> Self {
+    pub fn new() -> Self {
         SomeAction {
             num: 0, // May be changed when added to an ActionStore, to reflect the index into a vector
             groups: GroupStore::new(),
             squares: SquareStore::new(),
-            to_run: fx,
+            // to_run: fx,
             closer_regs: RegionStore::new(),
         }
     }
@@ -105,12 +107,12 @@ impl SomeAction {
         cur: &SomeState,
         ndx: &SomeNeed,
         max_x: &SomeMask,
-        hv: usize,
-    ) -> SomeState {
+        new_state: &SomeState,
+    ) {
         //println!("take_action_need {}", &ndx);
         // Get the result, the sample is cur -> new_state
 
-        let new_state = (self.to_run)(cur, hv);
+        //let new_state = (self.to_run)(cur, hv);
         //self.store_sample(&cur, &new_state, &max_x);
 
         // Process each kind of need
@@ -275,7 +277,7 @@ impl SomeAction {
             }
         } // end match SomeNeed ndx
 
-        new_state
+        //new_state
     }
 
     // Add a sample by user command
@@ -290,14 +292,14 @@ impl SomeAction {
         self.check_square_new_sample(&init_state, &max_x);
     }
 
-    pub fn take_action_step(&mut self, cur: &SomeState, max_x: &SomeMask, hv: usize) -> SomeState {
+    pub fn take_action_step(&mut self, cur: &SomeState, max_x: &SomeMask, new_state: &SomeState) {
         //println!("take_action_step");
 
-        let new_state = (self.to_run)(cur, hv);
+        //let new_state = (self.to_run)(cur, hv);
 
         self.eval_sample_step(cur, &new_state, &max_x);
 
-        new_state
+        // new_state
     }
 
     // Evaluate a sample produced by a step in a plan.

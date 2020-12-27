@@ -3,6 +3,7 @@
 use crate::region::SomeRegion;
 use crate::state::SomeState;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index; // IndexMut
 use std::slice::{Iter, IterMut};
@@ -29,7 +30,7 @@ impl fmt::Display for RegionStore {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RegionStore {
     pub avec: Vec<SomeRegion>,
 }

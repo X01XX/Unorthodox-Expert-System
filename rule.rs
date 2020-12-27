@@ -3,6 +3,7 @@
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl PartialEq for SomeRule {
@@ -28,7 +29,7 @@ impl PartialEq for SomeRule {
 }
 impl Eq for SomeRule {}
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeRule {
     pub b00: SomeMask,
     pub b01: SomeMask,

@@ -8,6 +8,42 @@ use crate::state::SomeState;
 // The number of bits is set by the line of code that creates
 // the first current state, with 1, or more, u8 integers.
 
+pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: usize) -> SomeState {
+    if dom_num == 0 {
+        if act_num == 0 {
+            return dom0_act0(cur_state, hv);
+        } else if act_num == 1 {
+            return dom0_act1(cur_state, hv);
+        } else if act_num == 2 {
+            return dom0_act2(cur_state, hv);
+        } else if act_num == 3 {
+            return dom0_act3(cur_state, hv);
+        } else if act_num == 4 {
+            return dom0_act4(cur_state, hv);
+        } else if act_num == 5 {
+            return dom0_act5(cur_state, hv);
+        } else if act_num == 6 {
+            return dom0_act6(cur_state, hv);
+        } else {
+            panic!("Dom: 0, Uknown Action number {}", act_num);
+        }
+    } else if dom_num == 1 {
+        if act_num == 0 {
+            return dom1_act0(cur_state, hv);
+        } else if act_num == 1 {
+            return dom1_act1(cur_state, hv);
+        } else if act_num == 2 {
+            return dom1_act2(cur_state, hv);
+        } else if act_num == 3 {
+            return dom1_act3(cur_state, hv);
+        } else {
+            panic!("Dom: 1, Uknown Action number {}", act_num);
+        }
+    } else {
+        panic!("Unknown Domain number {}", dom_num);
+    }
+}
+
 // Domain 0 actions
 
 pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
@@ -90,7 +126,7 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
 pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 6;
     let new_state = cur.toggle_bits(vec![2, 3]);
-    println!("\nAct {}  {} -> {}", num, cur, new_state);
+    println!("\nDom 0 Act {}  {} -> {}", num, cur, new_state);
     return new_state;
 }
 

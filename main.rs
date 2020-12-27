@@ -43,10 +43,10 @@ mod domainstore;
 mod tests;
 use domainstore::DomainStore;
 
-use crate::actions::{
-    dom0_act0, dom0_act1, dom0_act2, dom0_act3, dom0_act4, dom0_act5, dom0_act6, dom1_act0,
-    dom1_act1, dom1_act2, dom1_act3,
-};
+//use crate::actions::{
+//    dom0_act0, dom0_act1, dom0_act2, dom0_act3, dom0_act4, dom0_act5, dom0_act6, dom1_act0,
+//    dom1_act1, dom1_act2, dom1_act3,
+//};
 
 use std::io;
 use std::io::Write;
@@ -71,21 +71,21 @@ fn main() {
     // The number of u8 integers can be higher.
 
     let mut dm0 = SomeDomain::new(1, "s0001", "r101X");
-    dm0.add_action(dom0_act0, 6);
-    dm0.add_action(dom0_act1, 0);
-    dm0.add_action(dom0_act2, 0);
-    dm0.add_action(dom0_act3, 0);
-    dm0.add_action(dom0_act4, 0);
-    dm0.add_action(dom0_act5, 0);
-    dm0.add_action(dom0_act6, 0);
+    dm0.add_action();
+    dm0.add_action();
+    dm0.add_action();
+    dm0.add_action();
+    dm0.add_action();
+    dm0.add_action();
+    dm0.add_action();
 
     dmxs.push(dm0);
 
     let mut dm1 = SomeDomain::new(1, "s0001", "r101X");
-    dm1.add_action(dom1_act0, 6);
-    dm1.add_action(dom1_act1, 0);
-    dm1.add_action(dom1_act2, 0);
-    dm1.add_action(dom1_act3, 0);
+    dm1.add_action();
+    dm1.add_action();
+    dm1.add_action();
+    dm1.add_action();
 
     dmxs.push(dm1);
 

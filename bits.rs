@@ -26,12 +26,13 @@
 // then search for all "u8" references in the *.rs files.
 const NUM_BITS_PER_INT: usize = 8;
 
-const INT_ALL_BITS_MASK: u8 = !(0 as u8);
+const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
-const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128]; // bits 0-N
+const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128]; // masks to isolate bits 0-N
 
 const INT_HIGH_BIT: u8 = 128;
 
+use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -53,6 +54,7 @@ impl fmt::Display for SomeBits {
     }
 }
 
+// Hash to support SomeState hash.
 impl Hash for SomeBits {
     fn hash<H: Hasher>(&self, _state: &mut H) {
         let mut hasher = DefaultHasher::new();
@@ -74,17 +76,12 @@ impl PartialEq for SomeBits {
 
 impl Eq for SomeBits {}
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SomeBits {
     pub ints: Vec<u8>, // an array may be better, but less flexible with the current Rust version
 }
 
 impl SomeBits {
-    // Return a new bits struct, set to a given vector
-    pub fn _newx(int_vals: Vec<u8>) -> Self {
-        SomeBits { ints: int_vals }
-    }
-
     pub fn len(&self) -> usize {
         self.ints.len()
     }
@@ -98,14 +95,6 @@ impl SomeBits {
         }
         Self { ints: ints2 }
     }
-
-    //    pub fn clone(&self) -> Self {
-    //        let mut v1 = Vec::<u8>::with_capacity(self.ints.len());
-    //        for num in self.ints.iter() {
-    //            v1.push(*num);
-    //        }
-    //        SomeBits { ints: v1 }
-    //    }
 
     // Return a vector of bits where each has only
     // one 1 bit isolated from the given Bits struct.
@@ -238,14 +227,14 @@ impl SomeBits {
     }
 
     // Return true if a Bits struct has at least one bit set to one
-    //    pub fn is_not_low(&self) -> bool {
-    //        for int_inx in 0..NUM_INTS {
-    //            if self.ints[int_inx] > 0 {
-    //                return true;
-    //            }
-    //        }
-    //        false
-    //    }
+    pub fn is_not_low(&self) -> bool {
+        for int_inx in 0..self.num_ints() {
+            if self.ints[int_inx] > 0 {
+                return true;
+            }
+        }
+        false
+    }
 
     // Return true if the Bits struct value is high, that is all ones
     pub fn is_high(&self) -> bool {

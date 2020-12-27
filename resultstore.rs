@@ -5,6 +5,7 @@ use crate::state::SomeState;
 
 const MAX_RESULTS: usize = 4;
 
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
 
@@ -28,7 +29,7 @@ impl fmt::Display for ResultStore {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     astore: VecDeque<SomeState>,
     pub pn: Pn, // Pattern number, 1, 2, 3 (unpredicatble), trips change indicatore when changed.

@@ -7,6 +7,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::{region_from_string, SomeRegion};
 //use crate::regionstore::RegionStore;
+use crate::actions::take_action;
 use crate::rule::region_to_region;
 use crate::state::{state_from_string, SomeState};
 use crate::step::SomeStep;
@@ -17,6 +18,7 @@ use std::collections::HashMap;
 use std::fmt;
 extern crate rand;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -34,6 +36,7 @@ impl fmt::Display for SomeDomain {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
     pub num: usize,
     pub num_ints: usize,
@@ -64,10 +67,18 @@ impl SomeDomain {
         };
     }
 
-    pub fn add_action(&mut self, fx: fn(&SomeState, usize) -> SomeState, hv_range: usize) {
-        self.actions.push(SomeAction::new(fx)); // Add an action
+    pub fn add_action(&mut self) {
+        let mut actx = SomeAction::new();
+        actx.num = self.actions.len();
+        self.actions.push(actx); // Add an action
+
         self.vec_hash.push(HashMap::new());
-        self.vec_hvr.push(hv_range);
+
+        if self.num == 0 && self.actions.len() == 1 {
+            self.vec_hvr.push(6);
+        } else {
+            self.vec_hvr.push(0);
+        }
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
@@ -99,12 +110,14 @@ impl SomeDomain {
 
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
         let act_num = ndx.act_num();
+
         let hv = self.get_hv(act_num);
-        let astate = self.actions[act_num].take_action_need(
+        let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
+        self.actions[act_num].take_action_need(
             &self.cur_state,
             ndx,
             &self.max_region.x_mask(),
-            hv,
+            &astate,
         );
         self.set_cur_state(astate);
     }
@@ -172,11 +185,11 @@ impl SomeDomain {
         for stpx in pln.iter() {
             if stpx.initial.is_superset_of_state(&self.cur_state) {
                 let hv = self.get_hv(stpx.act_num);
-
-                let astate = self.actions[stpx.act_num].take_action_step(
+                let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
+                self.actions[stpx.act_num].take_action_step(
                     &self.cur_state,
                     &self.max_region.x_mask(),
-                    hv,
+                    &astate,
                 );
 
                 let prev_state = self.cur_state.clone();
@@ -204,11 +217,11 @@ impl SomeDomain {
                             println!("alt rule, retry same state");
                             // If no-change, try again once, if OK continue with plan
                             let hv = self.get_hv(stpx.act_num);
-
-                            let astate = self.actions[stpx.act_num].take_action_step(
+                            let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
+                            self.actions[stpx.act_num].take_action_step(
                                 &self.cur_state,
                                 &self.max_region.x_mask(),
-                                hv,
+                                &astate,
                             );
 
                             self.set_cur_state(astate);
@@ -227,11 +240,12 @@ impl SomeDomain {
                                 if stpx.initial.is_superset_of_state(&self.cur_state) {
                                     // Try step again
                                     let hv = self.get_hv(stpx.act_num);
-
-                                    let astate = self.actions[stpx.act_num].take_action_step(
+                                    let astate =
+                                        take_action(self.num, stpx.act_num, &self.cur_state, hv);
+                                    self.actions[stpx.act_num].take_action_step(
                                         &self.cur_state,
                                         &self.max_region.x_mask(),
-                                        hv,
+                                        &astate,
                                     );
 
                                     self.set_cur_state(astate);
