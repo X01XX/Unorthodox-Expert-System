@@ -301,44 +301,48 @@ impl SomeDomain {
         // Try to find a plan
         let from_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
 
-        let mut reg_hist = Vec::<(SomeRegion, SomeRegion)>::new();
-        if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, &mut reg_hist) {
-            if from_reg.is_subset_of(planz.initial_region()) {
-            } else {
-                println!(
-                    "make_plan: from reg {} does not intersect {}",
-                    &from_reg, &planz
-                );
-            }
-
-            if let Some(planx) = planz.short_cuts() {
-                if from_reg.is_subset_of(planx.initial_region()) {
+        // Try make_one_plan up to two times, to allow for some random choices
+        for _ in 0..2 {
+            let mut reg_hist = Vec::<(SomeRegion, SomeRegion)>::new();
+            if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, &mut reg_hist) {
+                if from_reg.is_subset_of(planz.initial_region()) {
                 } else {
                     println!(
-                        "make_plan: short_cuts from reg {} does not intersect {}",
+                        "make_plan: from reg {} does not intersect {}",
                         &from_reg, &planz
                     );
+                    continue;
                 }
 
-                if planx.result_region().is_subset_of(&goal_reg) {
-                    return Some(planx);
+                if let Some(planx) = planz.short_cuts() {
+                    if from_reg.is_subset_of(planx.initial_region()) {
+                    } else {
+                        println!(
+                            "make_plan: short_cuts from reg {} does not intersect {}",
+                            &from_reg, &planz
+                        );
+                        continue;
+                    }
+
+                    if planx.result_region().is_subset_of(&goal_reg) {
+                        return Some(planx);
+                    } else {
+                        println!("failed at 44");
+                        continue;
+                    }
+                }
+
+                if planz.result_region().is_subset_of(&goal_reg) {
+                    println!("plan from {} to {} found", &from_reg, &goal_reg);
+                    return Some(planz);
                 } else {
-                    println!("failed at 44");
-                    return None;
+                    println!("failed at 55");
+                    continue;
                 }
-            }
-
-            if planz.result_region().is_subset_of(&goal_reg) {
-                println!("plan from {} to {} found", &from_reg, &goal_reg);
-                return Some(planz);
             } else {
-                println!("failed at 55");
-                return None;
-            }
-        } else {
-            println!("plan from {} to {} not found", &from_reg, &goal_reg);
-        } // end if let planz
-
+                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+            } // end if let planz
+        } // end loop
         None
     } // end make plan
 

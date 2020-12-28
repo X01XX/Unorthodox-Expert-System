@@ -44,9 +44,12 @@ mod tests;
 use domainstore::DomainStore;
 
 use std::io;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process;
 extern crate rand;
+use std::fs::File;
+//use std::io::prelude::*;
+use std::path::Path;
 
 fn main() {
     // for tests.rs to make the compiler happy
@@ -204,31 +207,61 @@ fn main() {
                     continue;
                 } else if cmd[0] == "ld" {
                     // TODO read from file in cmd[1]
-                    let serialized = String::from("test");
-                    let deserialized_r = serde_yaml::from_str(&serialized);
+                    //let serialized_r = fs::read_to_string(filename)
 
-                    match deserialized_r {
-                        Ok(deserialized) => {
-                            dmxs = deserialized;
-                            println!("Data loaded");
+                    let path = Path::new(&cmd[1]);
+                    let display = path.display();
+
+                    // Open a file, returns `io::Result<File>`
+                    match File::open(&path) {
+                        Err(why) => {
+                            println!("couldn't read {}: {}", display, why);
                         }
-                        Err(error) => {
-                            println!("err {}", error);
+                        Ok(mut afile) => {
+                            let mut serialized = String::new();
+                            match afile.read_to_string(&mut serialized) {
+                                Err(why) => {
+                                    println!("couldn't read {}: {}", display, why);
+                                }
+                                Ok(_) => {
+                                    let deserialized_r = serde_yaml::from_str(&serialized);
+                                    match deserialized_r {
+                                        Err(why) => {
+                                            println!("couldn't deserialize {}: {}", display, why);
+                                        }
+                                        Ok(new_dmxs) => {
+                                            dmxs = new_dmxs;
+                                            println!("Data loaded");
+                                        }
+                                    } // end match deserialized_r
+                                }
+                            }
                         }
-                    }
+                    } // end match open file
+
+                    continue;
                 } else if cmd[0] == "sd" {
                     let serialized_r = serde_yaml::to_string(&mut dmxs);
                     match serialized_r {
-                        Ok(_serialized) => {
-                            // TODO write to file in cmd[1]
+                        Ok(serialized) => {
+                            let path = Path::new(&cmd[1]);
+                            let display = path.display();
 
-                            println!("Data stored");
-
+                            // Open a file in write-only mode, returns `io::Result<File>`
+                            match File::create(&path) {
+                                Err(why) => {
+                                    println!("couldn't create {}: {}", display, why);
+                                }
+                                Ok(mut file) => match file.write_all(serialized.as_bytes()) {
+                                    Err(why) => println!("couldn't write to {}: {}", display, why),
+                                    Ok(_) => println!("Data stored to {}", display),
+                                },
+                            }; // end match file
                             continue;
                         }
                         Err(error) => {
                             println!("err {}", error);
-                        }
+                        } // end match serialized_r
                     } // end match
                 } // end command sd
             }
@@ -640,6 +673,9 @@ fn usage() {
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored.\n");
     println!("    leading consecutive zeros may be omitted ('r' is the same as 'r0', 's' is the same as 's0').");
+
+    println!("\n    ld <path>                - Load data from a file");
+    println!("\n    sd <path>                - Store data to a file\n");
 
     println!("\n    q | exit | quit          - Quit program.");
 }
