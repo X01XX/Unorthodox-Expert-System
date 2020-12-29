@@ -378,7 +378,7 @@ impl Eq for SomeNeed {}
 
 impl SomeNeed {
     // Return a priority number for a need
-    pub fn priority(&self) -> Option<usize> {
+    pub fn priority(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
                 dom_num: _,
@@ -388,7 +388,7 @@ impl SomeNeed {
                 far: _,
                 num_x: _,
             } => {
-                return Some(2);
+                return 2;
             } // end process for AStateMakeGroup
 
             SomeNeed::StateNotInGroup {
@@ -396,7 +396,7 @@ impl SomeNeed {
                 act_num: _,
                 targ_state: _,
             } => {
-                return Some(3);
+                return 3;
             } // end process for StateNotInGroup
 
             SomeNeed::ContradictoryIntersection {
@@ -408,7 +408,7 @@ impl SomeNeed {
                 group2: _,
                 ruls2: _,
             } => {
-                return Some(1);
+                return 1;
             } // end process for ContradictoryIntersection
 
             SomeNeed::ConfirmGroup {
@@ -418,7 +418,7 @@ impl SomeNeed {
                 for_group: _,
                 anchor: _,
             } => {
-                return Some(6);
+                return 6;
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
@@ -428,25 +428,8 @@ impl SomeNeed {
                 grp_reg: _,
                 far: _,
             } => {
-                return Some(4);
+                return 4;
             } // end process for StateAdditionalSample
-
-            // Previously handled, but not removed from list
-            SomeNeed::AddGroup {
-                act_num: _,
-                group_region: _,
-            } => {
-                return None;
-            }
-
-            // Previously handled, but not removed from list
-            SomeNeed::SetGroupConfirmed {
-                act_num: _,
-                group_region: _,
-                cstate: _,
-            } => {
-                return None;
-            }
 
             SomeNeed::AStateExpandGroup {
                 dom_num: _,
@@ -454,24 +437,20 @@ impl SomeNeed {
                 targ_state: _,
                 base_group: _,
             } => {
-                return Some(5);
+                return 5;
             }
 
-            // Previously handled, but not removed from list
-            SomeNeed::ClearGroupCheckBit {
-                act_num: _,
-                group_region: _,
-                mbit: _,
-            } => {
-                return None;
-            }
             SomeNeed::InBetween {
                 dom_num: _,
                 act_num: _,
                 targ_state: _,
                 in_group: _,
             } => {
-                return Some(0);
+                return 0;
+            }
+
+            _ => {
+                panic!("priority: Need not in match!");
             }
         } // end match ndx
     } // end priority
@@ -569,7 +548,7 @@ impl SomeNeed {
                 return false;
             } // end process a ConfirmGroup need
 
-            _ => panic!("satisfied_by should not be called on this need"),
+            _ => panic!("satisfied_by: should not be called on this need"),
         } //end match self
     } // end satisfied_by
 

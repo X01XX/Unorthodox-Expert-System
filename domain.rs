@@ -327,7 +327,7 @@ impl SomeDomain {
                     if planx.result_region().is_subset_of(&goal_reg) {
                         return Some(planx);
                     } else {
-                        println!("failed at 44");
+                        println!("Short cut failed to match the goal region");
                         continue;
                     }
                 }
@@ -336,7 +336,7 @@ impl SomeDomain {
                     println!("plan from {} to {} found", &from_reg, &goal_reg);
                     return Some(planz);
                 } else {
-                    println!("failed at 55");
+                    println!("Plan failed to match the goal region");
                     continue;
                 }
             } else {
@@ -371,8 +371,8 @@ impl SomeDomain {
         //    &from_reg, &goal_reg, reg_hist.len()
         // );
 
-        for tpl in reg_hist.iter() {
-            if tpl.0 == *from_reg && tpl.1 == *goal_reg {
+        for (fromx, tox) in reg_hist.iter() {
+            if *fromx == *from_reg && *tox == *goal_reg {
                 println!(
                     "from reg {} and goal reg {} already in reg_hist, recur {}",
                     &from_reg,

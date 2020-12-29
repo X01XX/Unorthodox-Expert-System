@@ -377,8 +377,6 @@ impl SomeAction {
             }
         }
 
-        //self.check_square_new_sample(&cur, &max_x);
-
         true
     }
 
@@ -580,14 +578,6 @@ impl SomeAction {
         }
         //num_grps_invalidated
     }
-
-    //    pub fn get_needs2(&mut self, cur_state: SomeState, max_x: SomeMask) -> NeedStore {
-    //	    self.get_needs(&cur_state, &max_x)
-    //	}
-
-    //    pub fn get_needs2(self, _cur_state: &SomeState, _max_x: &SomeMask) -> NeedStore {
-    //		NeedStore::new()
-    //	}
 
     // Get needs for an Action, to improve understanding of the reaction pattern(s).
     // When most needs are satisfied, needs for group confirmation are generated.
@@ -1800,10 +1790,7 @@ impl SomeAction {
 
         assert!(max_samples > 0);
 
-        let sta_pair = &sta_pairs[rand::thread_rng().gen_range(0, sta_pairs.len())];
-
-        let sta1 = &sta_pair.0;
-        let sta2 = &sta_pair.1;
+        let (sta1, sta2) = &sta_pairs[rand::thread_rng().gen_range(0, sta_pairs.len())];
 
         let sqrx = self.squares.find(&sta1).unwrap();
         if sqrx.pnc() {

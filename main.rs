@@ -149,10 +149,8 @@ fn main() {
             if nds.len() > 0 {
                 //println!("\nAction needs: {}", nds);
 
-                // TODO select highest priority needs that can be done
-                if let Some(ndspln) = dmxs.choose_need(&nds) {
-                    let pln = &ndspln.1;
-                    let ndx = &nds[ndspln.0];
+                if let Some((inx, pln)) = dmxs.choose_need(&nds) {
+                    let ndx = &nds[inx];
                     dom_num = ndx.dom_num();
 
                     println!("need {}, plan {}", &ndx, &pln);

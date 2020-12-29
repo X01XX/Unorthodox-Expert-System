@@ -119,75 +119,17 @@ impl DomainStore {
         // lowest number first/highest.
         let mut pri_vec = Vec::<Vec<usize>>::with_capacity(8);
 
-        // Scan for needs that are satisfied by the current state, put need indicies into a vector.
-        // Sort by priority.
-        //        let mut found = false;
-        //        let mut inx = 0;
-        //        for ndx in nds.iter() {
-        //            let dmx = &self.avec[ndx.dom_num()];
-        //            if ndx.satisfied_by(&dmx.cur_state) {
-        //                found = true;
-        //
-        //                if let Some(pri) = ndx.priority() {
-        //                    while pri_vec.len() <= pri {
-        //                        pri_vec.push(Vec::<usize>::new());
-        //                    }
-        //
-        //                    pri_vec[pri].push(inx);
-        //                }
-        //            }
-        //            inx += 1;
-        //        }
-        //
-        //        if found { found = false; }
-        //
-        //        // If one or more needs found that the current state satisfies, run one
-        //        if found {
-        //            // Print needs that can be achieved.
-        //            println!(
-        //                "{}",
-        //                &String::from("\nSelected Action needs that can be done: ")
-        //            );
-        //
-        //            // print each need and plan
-        //            for avec in pri_vec.iter() {
-        //                if avec.len() > 0 {
-        //                    for itmx in avec.iter() {
-        //                        println!("{} satisfied by current state", &nds[*itmx]);
-        //                    }
-        //                    println!("-----");
-        //                    break;
-        //                }
-        //            }
-        //
-        //            for avec in pri_vec.iter() {
-        //                if avec.len() > 0 {
-        //                    let mut itmx = 0;
-        //
-        //                    if avec.len() > 1 {
-        //                        itmx = rand::thread_rng().gen_range(0, avec.len());
-        //                    }
-        //
-        //                    let ndx = &nds[avec[itmx]];
-        //                    println!("Need chosen: {}  satisfied by the current state\n", &ndx);
-        //                    //dmx.take_action_need(ndx);
-        //                    //return true;
-        //                    return Some((avec[itmx], SomePlan::new(StepStore::new())));
-        //                }
-        //            } // next avec
-        //        } // end if found
-
         // Scan for needs, put need indicies into a vector.
         // Sort by priority.
         let mut inx = 0;
         for ndx in nds.iter() {
-            if let Some(pri) = ndx.priority() {
-                while pri_vec.len() <= pri {
-                    pri_vec.push(Vec::<usize>::new());
-                }
+            let pri = ndx.priority();
+            while pri_vec.len() <= pri {
+                pri_vec.push(Vec::<usize>::new());
+            }
 
-                pri_vec[pri].push(inx);
-            } // else the need is a adinistrative need that has already been delt with, so skip it.
+            pri_vec[pri].push(inx);
+
             inx += 1;
         } // end scan of needs to assign priority
 
