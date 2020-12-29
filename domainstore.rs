@@ -39,12 +39,14 @@ impl fmt::Display for DomainStore {
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
+    pub step: usize,
 }
 
 impl DomainStore {
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeDomain>::with_capacity(5),
+            step: 0,
         }
     }
 

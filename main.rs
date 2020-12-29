@@ -88,12 +88,12 @@ fn main() {
     dmxs.push(dm1);
 
     usage();
-    let mut step = 0;
+    //let mut step = 0;
 
     let mut dom_num = 0;
 
     loop {
-        step += 1;
+        dmxs.step += 1;
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
@@ -119,7 +119,7 @@ fn main() {
 
         println!(
             "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-            &step,
+            &dmxs.step,
             dom_num,
             &dmxs[dom_num].cur_state,
             &dmxs[dom_num].max_region,
@@ -204,63 +204,29 @@ fn main() {
                     }
                     continue;
                 } else if cmd[0] == "ld" {
-                    // TODO read from file in cmd[1]
-                    //let serialized_r = fs::read_to_string(filename)
-
-                    let path = Path::new(&cmd[1]);
-                    let display = path.display();
-
-                    // Open a file, returns `io::Result<File>`
-                    match File::open(&path) {
+                    match load_data(&cmd[1]) {
                         Err(why) => {
-                            println!("couldn't read {}: {}", display, why);
+                            println!("couldn't read {}: {}", &cmd[1], why);
                         }
-                        Ok(mut afile) => {
-                            let mut serialized = String::new();
-                            match afile.read_to_string(&mut serialized) {
-                                Err(why) => {
-                                    println!("couldn't read {}: {}", display, why);
-                                }
-                                Ok(_) => {
-                                    let deserialized_r = serde_yaml::from_str(&serialized);
-                                    match deserialized_r {
-                                        Err(why) => {
-                                            println!("couldn't deserialize {}: {}", display, why);
-                                        }
-                                        Ok(new_dmxs) => {
-                                            dmxs = new_dmxs;
-                                            println!("Data loaded");
-                                        }
-                                    } // end match deserialized_r
-                                }
-                            }
+                        Ok(new_dmxs) => {
+                            print!("Data loaded");
+                            dmxs = new_dmxs;
+                            dmxs.step -= 1;
                         }
-                    } // end match open file
+                    } // end match load_data
 
                     continue;
                 } else if cmd[0] == "sd" {
-                    let serialized_r = serde_yaml::to_string(&mut dmxs);
-                    match serialized_r {
-                        Ok(serialized) => {
-                            let path = Path::new(&cmd[1]);
-                            let display = path.display();
-
-                            // Open a file in write-only mode, returns `io::Result<File>`
-                            match File::create(&path) {
-                                Err(why) => {
-                                    println!("couldn't create {}: {}", display, why);
-                                }
-                                Ok(mut file) => match file.write_all(serialized.as_bytes()) {
-                                    Err(why) => println!("couldn't write to {}: {}", display, why),
-                                    Ok(_) => println!("Data stored to {}", display),
-                                },
-                            }; // end match file
-                            continue;
+                    match store_data(&dmxs, &cmd[1]) {
+                        Err(why) => {
+                            println!("couldn't write {}: {}", &cmd[1], why);
                         }
-                        Err(error) => {
-                            println!("err {}", error);
-                        } // end match serialized_r
-                    } // end match
+                        Ok(_) => {
+                            print!("Data written");
+                        }
+                    }
+
+                    continue;
                 } // end command sd
             }
             do_command(&mut dmxs[dom_num], &cmd);
@@ -704,3 +670,54 @@ pub fn pause_for_enter(loc: &str) {
         .read_line(&mut guess)
         .expect("Falied to read line");
 }
+
+fn load_data(path_str: &String) -> Result<DomainStore, String> {
+    let path = Path::new(path_str);
+    let display = path.display();
+
+    // Open a file, returns `io::Result<File>`
+    match File::open(&path) {
+        Err(why) => {
+            return Err(format!("couldn't read {}: {}", display, why));
+        }
+        Ok(mut afile) => {
+            let mut serialized = String::new();
+            match afile.read_to_string(&mut serialized) {
+                Err(why) => {
+                    return Err(format!("couldn't read {}: {}", display, why));
+                }
+                Ok(_) => {
+                    let deserialized_r = serde_yaml::from_str(&serialized);
+                    match deserialized_r {
+                        Err(why) => {
+                            return Err(format!("couldn't deserialize {}: {}", display, why));
+                        }
+                        Ok(new_dmxs) => {
+                            return Ok(new_dmxs);
+                        }
+                    } // end match deserialized_r
+                }
+            }
+        }
+    } // end match open file
+}
+
+fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<(), String> {
+    let serialized_r = serde_yaml::to_string(&dmxs);
+    match serialized_r {
+        Ok(serialized) => {
+            let path = Path::new(&path_str);
+            let display = path.display();
+
+            // Open a file in write-only mode, returns `io::Result<File>`
+            match File::create(&path) {
+                Err(why) => Err(format!("couldn't create {}: {}", display, why)),
+                Ok(mut file) => match file.write_all(serialized.as_bytes()) {
+                    Err(why) => Err(format!("couldn't write to {}: {}", display, why)),
+                    Ok(_) => Ok(()),
+                },
+            }
+        }
+        Err(error) => Err(format!("{}", error)),
+    } // end match serialized_r
+} // end store_data
