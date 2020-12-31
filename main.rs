@@ -79,7 +79,7 @@ fn main() {
 
     dmxs.push(dm0);
 
-    let mut dm1 = SomeDomain::new(1, "s0001", "r101X");
+    let mut dm1 = SomeDomain::new(2, "s0000_0000_0100_0000", "r10_1X00_0000");
     dm1.add_action(0);
     dm1.add_action(0);
     dm1.add_action(0);

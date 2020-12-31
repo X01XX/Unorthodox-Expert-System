@@ -50,7 +50,11 @@ impl SomeRegion {
         let num_ints = self.state1.num_ints();
         let num_bits = num_ints * 8;
 
+        let mut inx = 0;
         for valb in (0..num_bits).rev() {
+            if inx > 0 && inx % 8 == 0 {
+                s1.push('_');
+            }
             let b0 = self.state1.is_bit_set(valb);
             let b1 = self.state2.is_bit_set(valb);
 
@@ -67,6 +71,7 @@ impl SomeRegion {
                     s1.push('0');
                 }
             }
+            inx += 1;
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
         }
         s1

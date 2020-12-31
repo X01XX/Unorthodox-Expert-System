@@ -133,25 +133,25 @@ pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
 // Domain 1 actions
 
 pub fn dom1_act0(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.toggle_bits(vec![0]);
+    let new_state = cur.toggle_bits(vec![6]);
     println!("\nDom 1 Act 0  {} -> {}", cur, new_state);
     return new_state;
 }
 
 pub fn dom1_act1(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.toggle_bits(vec![1]);
+    let new_state = cur.toggle_bits(vec![7]);
     println!("\nDom 1 Act 1  {} -> {}", cur, new_state);
     return new_state;
 }
 
 pub fn dom1_act2(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.toggle_bits(vec![2]);
+    let new_state = cur.toggle_bits(vec![8]);
     println!("\nDom 1 Act 2  {} -> {}", cur, new_state);
     return new_state;
 }
 
 pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.toggle_bits(vec![3]);
+    let new_state = cur.toggle_bits(vec![9]);
     println!("\nDom 1 Act 3  {} -> {}", cur, new_state);
     return new_state;
 }
