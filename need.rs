@@ -793,7 +793,79 @@ impl SomeNeed {
         };
     } // end target
 
-    pub fn clone(&self) -> SomeNeed {
+    // Set the Domain num for a need
+    pub fn set_dom(&mut self, num: usize) {
+        match self {
+            SomeNeed::AStateMakeGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_reg: _,
+                far: _,
+                num_x: _,
+            } => *dm = num,
+            SomeNeed::StateNotInGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::ContradictoryIntersection {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+                group1: _,
+                ruls1: _,
+                group2: _,
+                ruls2: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::StateAdditionalSample {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                grp_reg: _,
+                far: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::AStateExpandGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                base_group: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::InBetween {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                in_group: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::ConfirmGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => {
+                *dm = num;
+            }
+            _ => {
+                println!("need ??: {}", self);
+                panic!("set_dm should not be called for this need");
+            }
+        };
+    } // end set_dom
+}
+
+impl Clone for SomeNeed {
+    fn clone(&self) -> SomeNeed {
         match self {
             SomeNeed::AStateMakeGroup {
                 dom_num: dm,
@@ -944,74 +1016,4 @@ impl SomeNeed {
             }
         } // end match ndx
     } // end clone
-
-    // Set the Domain num for a need
-    pub fn set_dom(&mut self, num: usize) {
-        match self {
-            SomeNeed::AStateMakeGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => *dm = num,
-            SomeNeed::StateNotInGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-            } => {
-                *dm = num;
-            }
-            SomeNeed::ContradictoryIntersection {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                *dm = num;
-            }
-            SomeNeed::StateAdditionalSample {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
-            } => {
-                *dm = num;
-            }
-            SomeNeed::AStateExpandGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                base_group: _,
-            } => {
-                *dm = num;
-            }
-            SomeNeed::InBetween {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                in_group: _,
-            } => {
-                *dm = num;
-            }
-            SomeNeed::ConfirmGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
-            } => {
-                *dm = num;
-            }
-            _ => {
-                println!("need ??: {}", self);
-                panic!("set_dm should not be called for this need");
-            }
-        };
-    } // end set_dom
 }

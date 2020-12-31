@@ -28,12 +28,6 @@ impl SomeMask {
         Self { bts: val }
     }
 
-    pub fn clone(&self) -> Self {
-        Self {
-            bts: self.bts.clone(),
-        }
-    }
-
     // Return true if two masks are equal
     pub fn is_eq(&self, other: &Self) -> bool {
         self.bts == other.bts
@@ -153,3 +147,11 @@ pub fn mask_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> 
 
     Ok(SomeMask::new(bts))
 } // end mask_from_string
+
+impl Clone for SomeMask {
+    fn clone(&self) -> Self {
+        Self {
+            bts: self.bts.clone(),
+        }
+    }
+}

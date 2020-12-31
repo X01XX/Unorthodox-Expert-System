@@ -105,15 +105,6 @@ impl SomeRule {
         }
     }
 
-    pub fn clone(&self) -> Self {
-        Self {
-            b00: self.b00.clone(),
-            b01: self.b01.clone(),
-            b11: self.b11.clone(),
-            b10: self.b10.clone(),
-        }
-    }
-
     // Return true if a rule is a subset of another
     pub fn is_subset_of(&self, other: &Self) -> bool {
         let tmprul = self.intersection(other);
@@ -409,5 +400,16 @@ pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         b01: nb01,
         b11: nb11,
         b10: nb10,
+    }
+}
+
+impl Clone for SomeRule {
+    fn clone(&self) -> Self {
+        Self {
+            b00: self.b00.clone(),
+            b01: self.b01.clone(),
+            b11: self.b11.clone(),
+            b10: self.b10.clone(),
+        }
     }
 }

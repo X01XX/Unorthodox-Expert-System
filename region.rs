@@ -44,14 +44,6 @@ impl SomeRegion {
         }
     }
 
-    pub fn clone(&self) -> Self {
-        Self {
-            state1: self.state1.clone(),
-            state2: self.state2.clone(),
-            active: true,
-        }
-    }
-
     // Print the bits of the Region without any prefix
     pub fn str_terse(&self) -> String {
         let mut s1 = String::new();
@@ -498,3 +490,13 @@ pub fn region_from_string(num_ints: usize, str: &str) -> Result<SomeRegion, Stri
         &SomeState::new(bts_low),
     ))
 } // end region_from_string
+
+impl Clone for SomeRegion {
+    fn clone(&self) -> Self {
+        Self {
+            state1: self.state1.clone(),
+            state2: self.state2.clone(),
+            active: true,
+        }
+    }
+}

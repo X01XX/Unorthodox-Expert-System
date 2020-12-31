@@ -39,15 +39,6 @@ impl RuleStore {
         }
     }
 
-    pub fn clone(&self) -> Self {
-        let mut rcrs = RuleStore::new();
-
-        for rulx in self.iter() {
-            rcrs.push(rulx.clone());
-        }
-        rcrs
-    }
-
     // Return the length of a RuleStore
     pub fn len(&self) -> usize {
         self.avec.len()
@@ -379,5 +370,16 @@ impl Index<usize> for RuleStore {
     type Output = SomeRule;
     fn index<'a>(&'a self, i: usize) -> &'a SomeRule {
         &self.avec[i]
+    }
+}
+
+impl Clone for RuleStore {
+    fn clone(&self) -> Self {
+        let mut rcrs = RuleStore::new();
+
+        for rulx in self.iter() {
+            rcrs.push(rulx.clone());
+        }
+        rcrs
     }
 }

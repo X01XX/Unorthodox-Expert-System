@@ -208,14 +208,6 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    pub fn clone(&self) -> Self {
-        let mut v1 = Vec::<u8>::with_capacity(self.len());
-        for num in self.ints.iter() {
-            v1.push(*num);
-        }
-        Self { ints: v1 }
-    }
-
     // Return true if the Bits struct value is low, that is all zeros
     pub fn is_low(&self) -> bool {
         for int_inx in 0..self.num_ints() {
@@ -352,5 +344,15 @@ impl SomeBits {
             return false;
         }
         return true;
+    }
+}
+
+impl Clone for SomeBits {
+    fn clone(&self) -> Self {
+        let mut v1 = Vec::<u8>::with_capacity(self.len());
+        for num in self.ints.iter() {
+            v1.push(*num);
+        }
+        Self { ints: v1 }
     }
 }

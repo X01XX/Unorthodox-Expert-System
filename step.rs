@@ -39,17 +39,6 @@ impl SomeStep {
         }
     }
 
-    pub fn clone(&self) -> Self {
-        Self {
-            initial: self.initial.clone(),
-            act_num: self.act_num,
-            result: self.result.clone(),
-            rule: self.rule.clone(),
-            alt_rule: self.alt_rule,
-            group_reg: self.group_reg.clone(),
-        }
-    }
-
     // Return a new step, by taking a given step and restricting the initial region
     // Keep the rule the same, so steps with the same rules can be identified.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
@@ -103,4 +92,17 @@ impl SomeStep {
     //        rcstr.push(' ');
     //        rcstr
     //    }
+}
+
+impl Clone for SomeStep {
+    fn clone(&self) -> Self {
+        Self {
+            initial: self.initial.clone(),
+            act_num: self.act_num,
+            result: self.result.clone(),
+            rule: self.rule.clone(),
+            alt_rule: self.alt_rule,
+            group_reg: self.group_reg.clone(),
+        }
+    }
 }

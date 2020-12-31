@@ -83,12 +83,6 @@ impl SomePlan {
     //        rc_str
     //    }
 
-    pub fn clone(&self) -> Self {
-        Self {
-            steps: self.steps.clone(),
-        }
-    }
-
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
     }
@@ -274,4 +268,12 @@ impl SomePlan {
             rc_steps = rcx_steps;
         }
     } // end fn short_cuts
+}
+
+impl Clone for SomePlan {
+    fn clone(&self) -> Self {
+        Self {
+            steps: self.steps.clone(),
+        }
+    }
 }
