@@ -729,4 +729,28 @@ impl SomeDomain {
 
         return None;
     } // end plan_next_steps
+
+    // Position to the optimal region
+    pub fn to_optimal(&mut self) -> bool {
+        self.to_region(&self.optimal.clone())
+    }
+
+    // Change the current state to be within a given region
+    pub fn to_region(&mut self, goal_region: &SomeRegion) -> bool {
+        if goal_region.is_superset_of_state(&self.cur_state) {
+            return true;
+        }
+
+        if let Some(pln) = self.make_plan(&goal_region) {
+            // Do the plan
+            self.run_plan(&pln);
+            if goal_region.is_superset_of_state(&self.cur_state) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    } // end to_region
 } // end impl SomeDomain

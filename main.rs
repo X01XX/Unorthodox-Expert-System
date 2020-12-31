@@ -176,13 +176,10 @@ fn main() {
                     .is_superset_of_state(&dmxs[dom_num].cur_state)
                 {
                 } else {
-                    if let Some(pln) = dmxs[dom_num].make_plan(&dmxs[dom_num].optimal) {
-                        println!("Changing state to optimal, Plan is {}", pln);
-
-                        // Do the plan
-                        dmxs[dom_num].run_plan(&pln);
+                    if dmxs[dom_num].to_optimal() {
+                        println!("Change to region succeded");
                     } else {
-                        println!("No plan found to change to the optimal state");
+                        println!("Change to region failed");
                     }
                 }
             }
@@ -312,15 +309,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         );
                         return false;
                     } else {
-                        if let Some(pln) = dm1.make_plan(&goal_region) {
-                            println!("Plan is {}", pln);
-
-                            // Do the plan
-                            dm1.run_plan(&pln);
-                            return true;
+                        if dm1.to_region(&goal_region) {
+                            println!("Change to region succeded");
                         } else {
-                            println!("No plan found");
-                            return false;
+                            println!("Change to region failed");
                         }
                     }
                 }
