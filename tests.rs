@@ -310,6 +310,22 @@ mod tests {
             return Err(String::from("b01 NEQ rule.b01"));
         }
 
-        return Ok(());
+        Ok(())
     } // end region_to_region_test
+
+    #[test]
+    fn shift_left() -> Result<(), String> {
+        let bts1 = SomeBits {
+            ints: vec![0 as u8, 129 as u8],
+        };
+        let bts2 = bts1.shift_left();
+        let bts3 = SomeBits {
+            ints: vec![1 as u8, 2 as u8],
+        };
+
+        if bts2 != bts3 {
+            return Err(String::from("bts2 NEQ bts3"));
+        }
+        Ok(())
+    }
 } // end mod tests

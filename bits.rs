@@ -317,11 +317,11 @@ impl SomeBits {
         let mut carry: u8 = 0;
 
         for int_inx in (0..self.ints.len()).rev() {
-            ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
-
             if (self.ints[int_inx] & INT_HIGH_BIT) > 0 {
+                ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
                 carry = 1;
             } else {
+                ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
                 carry = 0;
             }
         }
