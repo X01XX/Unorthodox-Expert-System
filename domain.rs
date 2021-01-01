@@ -36,12 +36,13 @@ impl fmt::Display for SomeDomain {
 
 #[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
-    pub num: usize,
-    pub num_ints: usize,
-    pub actions: ActionStore,
-    pub cur_state: SomeState,
-    pub max_region: SomeRegion,
-    pub optimal: SomeRegion,
+    pub num: usize,             // Domain number.  Index into vec for DomainStore.
+    pub num_ints: usize,        // Number integers making up a bits struct.
+    pub actions: ActionStore,   // Actions the Domain can take
+    pub cur_state: SomeState,   // Current State.
+    pub max_region: SomeRegion, // Region formed by the union of all Current States experienced.
+    pub optimal: SomeRegion, // An optimal region that is sought if there ar eno needs.  This may be changed.
+    pub prev_state: SomeState, // A copy of the current state, to detect if it has changed between Domain activities.
     vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
     vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
                          // chosen randomly at first sample, incremented after each subsequent sample.
@@ -60,6 +61,7 @@ impl SomeDomain {
             cur_state: cur.clone(),
             max_region: SomeRegion::new(&cur, &cur),
             optimal: opt,
+            prev_state: cur.clone(),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -103,6 +105,8 @@ impl SomeDomain {
     }
 
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
+        self.check_async();
+
         let act_num = ndx.act_num();
 
         let hv = self.get_hv(act_num);
@@ -117,6 +121,8 @@ impl SomeDomain {
     }
 
     fn set_cur_state(&mut self, new_state: SomeState) {
+        self.prev_state = new_state.clone();
+
         self.cur_state = new_state;
 
         if self.max_region.is_superset_of_state(&self.cur_state) {
@@ -132,10 +138,20 @@ impl SomeDomain {
         }
     }
 
-    // Run a plan, return a state, which may not be the desired result.
+    pub fn check_async(&mut self) {
+        if self.cur_state != self.prev_state {
+            println!(
+                "Asynchronous change from {} to {}",
+                &self.prev_state, &self.cur_state
+            );
+            self.prev_state = self.cur_state.clone();
+        }
+    }
 
-    // Run the plan, the resulting state is stored in the domain.
+    // Run a plan
     pub fn run_plan(&mut self, pln: &SomePlan) {
+        self.check_async();
+
         self.run_plan2(pln, 0) // return run_plan2, which uses a recursion count limit
     }
 
@@ -731,9 +747,9 @@ impl SomeDomain {
     } // end plan_next_steps
 
     // Position to the optimal region
-    pub fn to_optimal(&mut self) -> bool {
-        self.to_region(&self.optimal.clone())
-    }
+    //    pub fn to_optimal(&mut self) -> bool {
+    //        self.to_region(&self.optimal.clone())
+    //    }
 
     // Change the current state to be within a given region
     pub fn to_region(&mut self, goal_region: &SomeRegion) -> bool {

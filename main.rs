@@ -170,13 +170,15 @@ fn main() {
                     }
                 }
             } else {
+                dmxs[dom_num].check_async();
                 // If no needs, change the state to an optimal state if needed
                 if dmxs[dom_num]
                     .optimal
                     .is_superset_of_state(&dmxs[dom_num].cur_state)
                 {
                 } else {
-                    if dmxs[dom_num].to_optimal() {
+                    let optimal = dmxs[dom_num].optimal.clone();
+                    if dmxs[dom_num].to_region(&optimal) {
                         println!("Change to region succeded");
                     } else {
                         println!("Change to region failed");

@@ -81,10 +81,11 @@ impl fmt::Display for SomeAction {
 
 #[derive(Serialize, Deserialize)]
 pub struct SomeAction {
-    pub num: usize,
-    pub groups: GroupStore,
-    pub squares: SquareStore,
-    pub closer_regs: RegionStore,
+    pub num: usize,           // Action number, index into vector of ActionStore.
+    pub groups: GroupStore,   // Groups of compatible-change squares
+    pub squares: SquareStore, // Squares, or State->results
+    pub closer_regs: RegionStore, // Regions where closer, and closer, dissimilar squares are sought,
+                                  // until two adjacent, dissimilar squares are found.
 }
 
 impl SomeAction {
