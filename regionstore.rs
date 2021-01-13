@@ -6,27 +6,11 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index; // IndexMut
-use std::slice::{Iter, IterMut};
+use std::slice::Iter; // , IterMut};
 
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::from("[");
-
-        for regx in &self.avec {
-            if regx.active == false {
-                continue;
-            }
-
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &regx));
-            flg = 1;
-        }
-        rc_str.push(']');
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -54,9 +38,9 @@ impl RegionStore {
         self.avec.iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<SomeRegion> {
-        self.avec.iter_mut()
-    }
+    //    pub fn iter_mut(&mut self) -> IterMut<SomeRegion> {
+    //        self.avec.iter_mut()
+    //    }
 
     // Return true if any region is a superset, or equal, to a region
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
@@ -300,7 +284,38 @@ impl RegionStore {
     //        }
     //        false
     //    }
-} // end impl
+
+    pub fn formatted_string_length(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.avec.len() > 0 {
+            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            if self.avec.len() > 1 {
+                rc_len += (self.avec.len() - 1) * 2;
+            }
+        }
+
+        rc_len
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::with_capacity(self.formatted_string_length());
+        rc_str.push('[');
+
+        for stax in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &stax));
+            flg = 1;
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
+} // end impl RegionStore
 
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;

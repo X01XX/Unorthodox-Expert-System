@@ -2,15 +2,15 @@
 
 use crate::group::SomeGroup;
 use crate::mask::SomeMask;
-use crate::pn::Pn;
+//use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::rule::SomeRule;
+//use crate::rule::SomeRule;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::step::SomeStep;
-use crate::stepstore::StepStore;
+//use crate::step::SomeStep;
+//use crate::stepstore::StepStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -27,7 +27,7 @@ impl fmt::Display for GroupStore {
                 if flg == 1 {
                     rc_str.push_str(",\n              ");
                 }
-                rc_str.push_str(&format!("{}", &grpx));
+                rc_str.push_str(&format!("{}", &grpx.formatted_string()));
                 flg = 1;
             }
         }
@@ -38,7 +38,7 @@ impl fmt::Display for GroupStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupStore {
-    avec: Vec<SomeGroup>,
+    pub avec: Vec<SomeGroup>,
 }
 
 impl GroupStore {
@@ -238,92 +238,6 @@ impl GroupStore {
             }
         }
         None
-    }
-
-    // Return steps that have any change intersection with a given aggregate rule.
-    pub fn get_steps(&self, arule: &SomeRule, act_num: usize) -> StepStore {
-        let mut stps = StepStore::new();
-
-        for grpx in &self.avec {
-            if grpx.active == false {
-                continue;
-            }
-
-            match grpx.pn {
-                Pn::One => {
-                    // Find bit changes that are desired
-                    let ones = grpx.rules[0].b10.m_and(&arule.b10);
-                    let zeros = grpx.rules[0].b01.m_and(&arule.b01);
-
-                    if ones.is_not_low() || zeros.is_not_low() {
-                        let mut xrule = grpx.rules[0].clone();
-
-                        if ones.is_not_low() {
-                            xrule = xrule.set_initial_to_ones(&ones);
-                        }
-
-                        if zeros.is_not_low() {
-                            xrule = xrule.set_initial_to_zeros(&zeros);
-                        }
-
-                        stps.push(SomeStep::new(
-                            act_num,
-                            xrule.clone(),
-                            false,
-                            xrule.initial_region(),
-                        ));
-                    }
-                }
-                Pn::Two => {
-                    let ones = grpx.rules[0].b10.m_and(&arule.b10);
-                    let zeros = grpx.rules[0].b01.m_and(&arule.b01);
-
-                    if ones.is_not_low() || zeros.is_not_low() {
-                        let mut xrule = grpx.rules[0].clone();
-
-                        if ones.is_not_low() {
-                            xrule = xrule.set_initial_to_ones(&ones);
-                        }
-
-                        if zeros.is_not_low() {
-                            xrule = xrule.set_initial_to_zeros(&zeros);
-                        }
-
-                        stps.push(SomeStep::new(
-                            act_num,
-                            xrule.clone(),
-                            true,
-                            xrule.initial_region(),
-                        ));
-                    }
-
-                    let ones = grpx.rules[1].b10.m_and(&arule.b10);
-                    let zeros = grpx.rules[1].b01.m_and(&arule.b01);
-
-                    if ones.is_not_low() || zeros.is_not_low() {
-                        let mut xrule = grpx.rules[1].clone();
-
-                        if ones.is_not_low() {
-                            xrule = xrule.set_initial_to_ones(&ones);
-                        }
-
-                        if zeros.is_not_low() {
-                            xrule = xrule.set_initial_to_zeros(&zeros);
-                        }
-
-                        stps.push(SomeStep::new(
-                            act_num,
-                            xrule.clone(),
-                            true,
-                            xrule.initial_region(),
-                        ));
-                    }
-                } // end match Two
-                Pn::Unpredictable => {}
-            } // end match pn
-        } // next grpx
-
-        stps
     }
 
     // Inform each group of new X bits in the max_region

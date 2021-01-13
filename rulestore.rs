@@ -1,8 +1,8 @@
 // Implement a store for one or two rules
 
+use crate::maskstore::MaskStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-//use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -11,25 +11,35 @@ use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RuleStore {
-    avec: Vec<SomeRule>,
+    pub avec: Vec<SomeRule>,
 }
 impl fmt::Display for RuleStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::from("[");
-
-        for strx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &strx));
-            flg = 1;
-        }
-        rc_str.push_str("]");
-
-        write!(f, "R{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
+
+impl PartialEq for RuleStore {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        if self.len() == 1 {
+            return self.avec[0] == other.avec[0];
+        }
+
+        if self.len() == 2 {
+            if self.avec[0] == other.avec[0] && self.avec[0] == other.avec[0] {
+                return true;
+            }
+            return self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0];
+        }
+
+        panic!("Unsupported RuleStore length {}", self.len());
+    }
+}
+impl Eq for RuleStore {}
 
 impl RuleStore {
     // Return a new RuleStore
@@ -139,6 +149,11 @@ impl RuleStore {
     // Return the union of two RuleStores.
     // May return an empty RuleStore, if the union is invalid.
     //
+    // The rules will be from two squares, the possible combinations
+    // for each bit position are:
+    // 0->0, 0->1 and 0->0, 0->1 = 0->0, 0->1, since 0->X is disallowed.
+    // 1->1, 1->0 and 1->1, 1->0 = 1->1, 1->0, since 1->X is disallowed
+    // 0->0, 0->1 and 1->1, 1->0 = X->X, X->x or X->0, X->1, both have the same aggregate result, take the first valid combination.
     pub fn union(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             return None;
@@ -161,33 +176,45 @@ impl RuleStore {
                 return None;
             }
         } else if self.len() == 2 {
+            let mut cng_pats = MaskStore::new_with_capacity(4);
+            cng_pats.push(self.avec[0].change_mask());
+            cng_pats.push(self.avec[1].change_mask());
+            cng_pats.push(other.avec[0].change_mask());
+            cng_pats.push(other.avec[1].change_mask());
+
+            let mut ars1 = Self::new();
+
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() {
+            if rulx.is_valid_union() && cng_pats.contains(&rulx.change_mask()) {
                 let ruly = self.avec[1].union(&other.avec[1]);
 
-                if ruly.is_valid_union() {
+                if ruly.is_valid_union() && cng_pats.contains(&ruly.change_mask()) {
                     if rulx.initial_region() == ruly.initial_region() {
-                        ars.push(rulx);
-                        ars.push(ruly);
-                        return Some(ars);
+                        ars1.push(rulx);
+                        ars1.push(ruly);
+                        return Some(ars1);
                     }
                 }
             }
+
+            let mut ars2 = Self::new();
 
             let rulx = self.avec[0].union(&other.avec[1]);
 
-            if rulx.is_valid_union() {
+            if rulx.is_valid_union() && cng_pats.contains(&rulx.change_mask()) {
                 let ruly = self.avec[1].union(&other.avec[0]);
 
-                if ruly.is_valid_union() {
+                if ruly.is_valid_union() && cng_pats.contains(&ruly.change_mask()) {
                     if rulx.initial_region() == ruly.initial_region() {
-                        ars.push(rulx);
-                        ars.push(ruly);
-                        return Some(ars);
+                        ars2.push(rulx);
+                        ars2.push(ruly);
+                        return Some(ars2);
                     }
                 }
             }
+
+            return None;
         } // end if
 
         None
@@ -364,7 +391,37 @@ impl RuleStore {
         }
         false
     }
-}
+
+    pub fn formatted_string_length(&self) -> usize {
+        let mut rc_len = 3;
+
+        if self.avec.len() > 0 {
+            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            if self.avec.len() > 1 {
+                rc_len += (self.avec.len() - 1) * 2;
+            }
+        }
+
+        rc_len
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::with_capacity(self.formatted_string_length());
+
+        rc_str.push_str("R[");
+        for strx in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &strx));
+            flg = 1;
+        }
+        rc_str.push_str("]");
+
+        rc_str
+    }
+} // end impl RuleStore
 
 impl Index<usize> for RuleStore {
     type Output = SomeRule;

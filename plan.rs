@@ -16,11 +16,7 @@ use std::fmt;
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::from("P");
-
-        rc_str.push_str(&format!("{}", &self.steps));
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", &self.steps.formatted_string("P"))
     }
 }
 
@@ -268,7 +264,7 @@ impl SomePlan {
             rc_steps = rcx_steps;
         }
     } // end fn short_cuts
-}
+} // end impl SomePlan
 
 impl Clone for SomePlan {
     fn clone(&self) -> Self {

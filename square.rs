@@ -2,10 +2,6 @@
 // which represents a state in a K-Map and one or more result states
 // from excuting an action.
 
-// use std::collections::hash_map::DefaultHasher;
-//use std::hash::{Hash, Hasher};
-
-//use crate::bits::SomeBits;
 use crate::combinable::Combinable;
 use crate::pn::Pn;
 use crate::resultstore::ResultStore;
@@ -35,9 +31,9 @@ impl fmt::Display for SomeSquare {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeSquare {
-    pub state: SomeState, // State that an action was taken on.
-    results: ResultStore, // Circular list of results.
-    pub rules: RuleStore, // Rules, 0, 1 or 2 rules depending on pn
+    pub state: SomeState,     // State that an action was taken on.
+    pub results: ResultStore, // Circular list of results.
+    pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
 }
 
 impl SomeSquare {
@@ -71,7 +67,7 @@ impl SomeSquare {
     //    }
 
     pub fn str_terse(&self) -> String {
-        format!("S{}", self.state.bts)
+        self.state.bts.formatted_string('S')
     }
 
     // Can two squares be combined?
@@ -114,15 +110,20 @@ impl SomeSquare {
                     Pn::Two => {
                         // self.pn == One, other.pn == Two
                         // If the pn==One square has GT one sample, the squares cannot be combined.
-                        if self.num_results() > 1 {
+                        if self.len_results() > 1 {
                             return Combinable::False;
                         }
 
-                        // If the pn==One square rule is a subset of the
+                        // If the pn==One square rule is combinable with one of the
                         // pn==Two square rules, more samples are needed.
-                        if self.rules.is_subset_of(&other.rules) {
+                        if self.rules[0].union(&other.rules[0]).is_valid_union() {
                             return Combinable::MoreSamplesNeeded;
                         }
+
+                        if self.rules[0].union(&other.rules[1]).is_valid_union() {
+                            return Combinable::MoreSamplesNeeded;
+                        }
+
                         // else
                         return Combinable::False;
                     }
@@ -144,16 +145,21 @@ impl SomeSquare {
                     Pn::One => {
                         // self.pn == Two, other.pn == One
                         // If the pn==One square is has GT 1 sample, the squares cannot be combined.
-                        if other.num_results() > 1 {
+                        if other.len_results() > 1 {
                             return Combinable::False;
                         }
 
                         // If the pn==one square has one sample, and
-                        // its rule is a subset of the pn==Two square rules,
+                        // its rule is combinable with one of the pn==Two square rules,
                         // more samples are needed.
-                        if other.rules.is_subset_of(&self.rules) {
+                        if other.rules[0].union(&self.rules[0]).is_valid_union() {
                             return Combinable::MoreSamplesNeeded;
                         }
+
+                        if other.rules[0].union(&self.rules[1]).is_valid_union() {
+                            return Combinable::MoreSamplesNeeded;
+                        }
+
                         // else
                         return Combinable::False;
                     }
@@ -247,11 +253,45 @@ impl SomeSquare {
         rc
     }
 
-    pub fn num_results(&self) -> usize {
-        self.results.num_results
-    }
-
     pub fn len_results(&self) -> usize {
         self.results.len()
     }
-}
+
+    pub fn last_result(&self) -> SomeState {
+        self.results.last_result()
+    }
+
+    pub fn second_last_result(&self) -> SomeState {
+        self.results.second_last_result()
+    }
+
+    pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
+        self.state.is_adjacent(&other.state)
+    }
+
+    pub fn distance(&self, other: &SomeSquare) -> usize {
+        self.state.distance(&other.state)
+    }
+
+    // Given a 2-rule RuleStore, and a square within it,
+    // return the expected next result for the square
+    pub fn next_result(&self, ruls: &RuleStore) -> SomeState {
+        assert!(ruls.avec.len() == 2);
+
+        assert!(ruls[0].initial_region().is_superset_of_state(&self.state));
+
+        if self.len_results() > 1 {
+            return self.second_last_result();
+        }
+
+        let result = self.last_result();
+
+        let rulx = SomeRule::new(&self.state, &result);
+
+        if rulx.is_subset_of(&ruls.avec[0]) {
+            return ruls.avec[1].result_from_initial_state(&self.state);
+        }
+
+        ruls.avec[0].result_from_initial_state(&self.state)
+    }
+} // end impl SomeSquare

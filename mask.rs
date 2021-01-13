@@ -18,7 +18,7 @@ pub struct SomeMask {
 
 impl fmt::Display for SomeMask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "m{}", self.bts)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -108,11 +108,19 @@ impl SomeMask {
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }
-}
+
+    pub fn formatted_string_length(&self) -> usize {
+        self.bts.formatted_string_length()
+    }
+
+    pub fn formatted_string(&self) -> String {
+        self.bts.formatted_string('m')
+    }
+} // end SomeMask
 
 // Return a Mask from a string, like "m0101".
 // Left-most, consecutive, zeros can be omitted.
-pub fn mask_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
+pub fn _mask_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
     let mut bts = SomeBits {
         ints: vec![0 as u8; num_ints],
     };

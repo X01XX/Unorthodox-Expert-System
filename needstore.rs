@@ -37,6 +37,12 @@ impl NeedStore {
         }
     }
 
+    pub fn new_with_capacity(num: usize) -> Self {
+        Self {
+            avec: Vec::<SomeNeed>::with_capacity(num),
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.avec.len()
     }

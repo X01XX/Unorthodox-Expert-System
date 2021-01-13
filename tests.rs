@@ -4,14 +4,21 @@
 #[cfg(test)]
 mod tests {
 
-    //    use crate::actions::dom0_act0;
     use crate::bits::SomeBits;
+    use crate::bitsstore::BitsStore;
     use crate::domain::SomeDomain;
-    use crate::mask::mask_from_string;
+    use crate::mask::SomeMask;
+    use crate::maskstore::MaskStore;
     use crate::region::region_from_string;
-    use crate::rule::region_to_region;
+    use crate::regionstore::RegionStore;
+    use crate::resultstore::ResultStore;
+    use crate::rule::{region_to_region, SomeRule};
+    use crate::rulestore::RuleStore;
     use crate::square::SomeSquare;
     use crate::state::{state_from_string, SomeState};
+    use crate::statestore::StateStore;
+    use crate::step::SomeStep;
+    use crate::stepstore::StepStore;
 
     // Form a group, X1X1 from two squares that have alternating (pn=Two) results.
     //
@@ -117,14 +124,15 @@ mod tests {
             //println!("\nActs: {}", &dmx.actions[0]);
             dmx.take_action_arbitrary(0, &s7, &s7);
             dmx.take_action_arbitrary(0, &s7, &s7);
+            dmx.take_action_arbitrary(0, &s7, &s7);
 
             if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                dmx.take_action_arbitrary(0, &s7, &s7); // cause pnc = true
+                dmx.take_action_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
                 if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dmx.actions[0]);
-                    //println!(" {}", dmx.actions[0].squares);
+                    println!("\nActs: {}", &dmx.actions[0]);
+                    println!(" {}", dmx.actions[0].squares);
                     return Err(String::from(
-                        "Two samples for s7 failed to invalidate group xx1x1",
+                        "Four samples for s7 failed to invalidate group xx1x1",
                     ));
                 } else {
                     return Ok(());
@@ -296,9 +304,17 @@ mod tests {
 
         let reg2 = region_from_string(1, "r010101").unwrap();
 
-        let b01 = mask_from_string(1, "m00010001").unwrap();
+        let b01 = SomeMask {
+            bts: SomeBits {
+                ints: vec![17 as u8],
+            },
+        };
 
-        let b10 = crate::mask::mask_from_string(1, "m00001010").unwrap();
+        let b10 = SomeMask {
+            bts: SomeBits {
+                ints: vec![10 as u8],
+            },
+        };
 
         let ragg = region_to_region(&reg1, &reg2);
 
@@ -328,4 +344,641 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn bits_string_length() -> Result<(), String> {
+        let bts1 = SomeBits {
+            ints: vec![129 as u8],
+        };
+
+        let n1 = bts1.formatted_string_length();
+        let rs = bts1.formatted_string('b');
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeBits string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let bts2 = SomeBits {
+            ints: vec![129 as u8, 18 as u8],
+        };
+
+        let n1 = bts2.formatted_string_length();
+        let rs = bts2.formatted_string('b');
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of two int SomeBits string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let mut btst = BitsStore { avec: vec![] };
+
+        let n1 = btst.formatted_string_length();
+        let rs = btst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty BitsStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        btst = BitsStore {
+            avec: vec![SomeBits {
+                ints: vec![12 as u8],
+            }],
+        };
+        let n1 = btst.formatted_string_length();
+        let rs = btst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of BitsStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        btst = BitsStore {
+            avec: vec![
+                SomeBits {
+                    ints: vec![12 as u8],
+                },
+                SomeBits {
+                    ints: vec![11 as u8],
+                },
+            ],
+        };
+        let n1 = btst.formatted_string_length();
+        let rs = btst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of BitsStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn state_string_length() -> Result<(), String> {
+        let sta1 = SomeState {
+            bts: SomeBits {
+                ints: vec![129 as u8],
+            },
+        };
+
+        let n1 = sta1.formatted_string_length();
+        let rs = sta1.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeState string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let sta2 = SomeState {
+            bts: SomeBits {
+                ints: vec![129 as u8, 18 as u8],
+            },
+        };
+
+        let n1 = sta2.formatted_string_length();
+        let rs = sta2.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of two int SomeState string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let mut stst = StateStore::new();
+
+        let n1 = stst.formatted_string_length();
+        let rs = stst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty StateStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        stst.push(SomeState {
+            bts: SomeBits {
+                ints: vec![12 as u8],
+            },
+        });
+        let n1 = stst.formatted_string_length();
+        let rs = stst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of StateStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        stst.push(SomeState {
+            bts: SomeBits {
+                ints: vec![1 as u8],
+            },
+        });
+        let n1 = stst.formatted_string_length();
+        let rs = stst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of StateStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn mask_string_length() -> Result<(), String> {
+        let msk1 = SomeMask {
+            bts: SomeBits {
+                ints: vec![129 as u8],
+            },
+        };
+
+        let n1 = msk1.formatted_string_length();
+        let rs = msk1.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeMask string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let msk2 = SomeMask {
+            bts: SomeBits {
+                ints: vec![129 as u8, 18 as u8],
+            },
+        };
+
+        let n1 = msk2.formatted_string_length();
+        let rs = msk2.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of two int SomeMask string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let mut mkst = MaskStore { avec: vec![] };
+
+        let n1 = mkst.formatted_string_length();
+        let rs = mkst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty MaskStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        mkst = MaskStore {
+            avec: vec![SomeMask {
+                bts: SomeBits {
+                    ints: vec![12 as u8],
+                },
+            }],
+        };
+        let n1 = mkst.formatted_string_length();
+        let rs = mkst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of MaskStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        mkst = MaskStore {
+            avec: vec![
+                SomeMask {
+                    bts: SomeBits {
+                        ints: vec![12 as u8],
+                    },
+                },
+                SomeMask {
+                    bts: SomeBits {
+                        ints: vec![12 as u8],
+                    },
+                },
+            ],
+        };
+        let n1 = mkst.formatted_string_length();
+        let rs = mkst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of StateStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn region_string_length() -> Result<(), String> {
+        let reg1 = region_from_string(1, "rx1x1").unwrap();
+
+        let n1 = reg1.formatted_string_length();
+        let rs = reg1.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeRegion string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let reg2 = region_from_string(2, "rx1x1").unwrap();
+
+        let n1 = reg2.formatted_string_length();
+        let rs = reg2.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeRegion string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let mut regt = RegionStore { avec: vec![] };
+
+        let n1 = regt.formatted_string_length();
+        let rs = regt.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty RegionStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        regt = RegionStore {
+            avec: vec![region_from_string(2, "rx1x1").unwrap()],
+        };
+        let n1 = regt.formatted_string_length();
+        let rs = regt.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of RegionStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        regt = RegionStore {
+            avec: vec![
+                region_from_string(2, "rx1x1").unwrap(),
+                region_from_string(2, "rx1x1").unwrap(),
+            ],
+        };
+        let n1 = regt.formatted_string_length();
+        let rs = regt.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of RegionStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn step_string_length() -> Result<(), String> {
+        let stp1 = SomeStep {
+            act_num: 0,
+            initial: region_from_string(1, "r1011").unwrap(),
+            result: region_from_string(1, "r1010").unwrap(),
+            group_reg: region_from_string(1, "rx0x1").unwrap(),
+            rule: SomeRule::new(
+                &SomeState {
+                    bts: SomeBits {
+                        ints: vec![11 as u8],
+                    },
+                },
+                &SomeState {
+                    bts: SomeBits {
+                        ints: vec![10 as u8],
+                    },
+                },
+            ),
+            alt_rule: false,
+        };
+
+        let n1 = stp1.formatted_string_length();
+        let rs = stp1.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeStep string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let stp2 = SomeStep {
+            act_num: 0,
+            initial: region_from_string(2, "r1011").unwrap(),
+            result: region_from_string(2, "r1010").unwrap(),
+            group_reg: region_from_string(2, "rx0x1").unwrap(),
+            rule: SomeRule::new(
+                &SomeState {
+                    bts: SomeBits {
+                        ints: vec![0 as u8, 11 as u8],
+                    },
+                },
+                &SomeState {
+                    bts: SomeBits {
+                        ints: vec![0 as u8, 10 as u8],
+                    },
+                },
+            ),
+            alt_rule: false,
+        };
+
+        let n1 = stp2.formatted_string_length();
+        let rs = stp2.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of two int SomeStep string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let stpt = StepStore { avec: vec![] };
+
+        let n1 = stpt.formatted_string_length();
+        let rs = stpt.formatted_string("");
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty StepStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let stpt = StepStore {
+            avec: vec![stp2.clone()],
+        };
+        let n1 = stpt.formatted_string_length();
+        let rs = stpt.formatted_string("");
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of StepStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let stpt = StepStore {
+            avec: vec![stp2.clone(), stp2.clone()],
+        };
+        let n1 = stpt.formatted_string_length();
+        let rs = stpt.formatted_string("");
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of StepStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn rule_string_length() -> Result<(), String> {
+        let rul1 = SomeRule::new(
+            &SomeState {
+                bts: SomeBits {
+                    ints: vec![0 as u8],
+                },
+            },
+            &SomeState {
+                bts: SomeBits {
+                    ints: vec![1 as u8],
+                },
+            },
+        );
+
+        let n1 = rul1.formatted_string_length();
+        let rs = rul1.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeRule string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let rul2 = SomeRule::new(
+            &SomeState {
+                bts: SomeBits {
+                    ints: vec![0 as u8, 1 as u8],
+                },
+            },
+            &SomeState {
+                bts: SomeBits {
+                    ints: vec![2 as u8, 3 as u8],
+                },
+            },
+        );
+
+        let n1 = rul2.formatted_string_length();
+        let rs = rul2.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of two int SomeRule string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let rult = RuleStore { avec: vec![] };
+
+        let n1 = rult.formatted_string_length();
+        let rs = rult.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of empty RuleStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let rult = RuleStore {
+            avec: vec![rul2.clone()],
+        };
+        let n1 = rult.formatted_string_length();
+        let rs = rult.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of RuleStore len 1 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        let rult = RuleStore {
+            avec: vec![rul2.clone(), rul2.clone()],
+        };
+        let n1 = rult.formatted_string_length();
+        let rs = rult.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of RuleStore len 2 string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn resultstore_string_length() -> Result<(), String> {
+        let rsltst = ResultStore::new(SomeState {
+            bts: SomeBits {
+                ints: vec![0 as u8, 1 as u8],
+            },
+        });
+        let n1 = rsltst.formatted_string_length();
+        let rs = rsltst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int ResultStore string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Given a square and a two-rule RuleStore,
+    /// return the expected next result for the square.
+    #[test]
+    fn predict_next_result() -> Result<(), String> {
+        let s5 = state_from_string(1, "s101").unwrap();
+
+        let s4 = state_from_string(1, "s100").unwrap();
+
+        let sf = state_from_string(1, "s1111").unwrap();
+
+        let se = state_from_string(1, "s1110").unwrap();
+
+        // Build 2-result square 1
+        let mut sqr1 = SomeSquare::new(s5.clone(), s5.clone());
+        sqr1.add_result(s4.clone());
+
+        // Build 2-result square 2
+        let mut sqr2 = SomeSquare::new(sf.clone(), se.clone());
+        sqr2.add_result(sf.clone());
+
+        // Build rules from sqr1 and sqr2
+        let ruls = sqr1.rules.union(&sqr2.rules).unwrap();
+
+        // Get the next result, really the previous-to-last result, of square 1 (fastest)
+        let next_result = sqr1.next_result(&ruls);
+
+        if next_result != s5 {
+            return Err(format!(
+                "ruls: {} sqr: {} next rslt: {}",
+                &ruls, &sqr1, &next_result
+            ));
+        }
+
+        // Build 1-result square 3
+        let sqr3 = SomeSquare::new(s5.clone(), s5.clone());
+
+        // Get next result of square 3 using the last(and only) result and the given rules.
+        let next_result = sqr3.next_result(&ruls);
+
+        if next_result != s4 {
+            return Err(format!(
+                "ruls: {} sqr: {} next rslt: {}",
+                &ruls, &sqr3, &next_result
+            ));
+        }
+
+        // Build 1-result square 4
+        let sqr4 = SomeSquare::new(s5.clone(), s4.clone());
+
+        // Get next result of square 4 using the last(and only) result and the given rules.
+        let next_result = sqr4.next_result(&ruls);
+
+        if next_result != s5 {
+            return Err(format!(
+                "ruls: {} sqr: {} next rslt: {}",
+                &ruls, &sqr3, &next_result
+            ));
+        }
+
+        Ok(())
+    }
+
+    // Check two-result squares combination does not infer two changes
+    // but one or the other.
+    #[test]
+    fn two_result_rules_union() -> Result<(), String> {
+        let mut dmx = SomeDomain::new(1, "s1", "r1");
+        dmx.add_action(0);
+
+        let s0 = state_from_string(dmx.num_ints, "s0").unwrap();
+        let s2 = state_from_string(dmx.num_ints, "s10").unwrap();
+        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
+
+        dmx.take_action_arbitrary(0, &s0, &s2);
+        dmx.take_action_arbitrary(0, &s0, &s4);
+        dmx.take_action_arbitrary(0, &s0, &s2);
+        dmx.take_action_arbitrary(0, &s0, &s4);
+
+        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
+        let sb = state_from_string(dmx.num_ints, "s1011").unwrap();
+        let sd = state_from_string(dmx.num_ints, "s1101").unwrap();
+
+        dmx.take_action_arbitrary(0, &sf, &sb);
+        dmx.take_action_arbitrary(0, &sf, &sd);
+        dmx.take_action_arbitrary(0, &sf, &sb);
+        dmx.take_action_arbitrary(0, &sf, &sd);
+
+        //println!("act: 0 actions: {}", &dmx.actions);
+
+        //println!("sqrs: \n{}", &dmx.actions[0].squares);
+
+        let rx10x = region_from_string(dmx.num_ints, "rx10x").unwrap();
+        let rx01x = region_from_string(dmx.num_ints, "rx01x").unwrap();
+        let rulx = region_to_region(&rx10x, &rx01x);
+
+        println!("r-2-r rule: {}", &rulx);
+
+        let stps = dmx.actions.get_steps(&rulx);
+
+        if stps.len() != 2 {
+            return Err(format!("Number steps NEQ 2 {}", stps));
+        }
+
+        Ok(())
+    } // end two_result_region_rules
 } // end mod tests

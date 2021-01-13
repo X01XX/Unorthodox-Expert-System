@@ -24,7 +24,7 @@
 
 // The integer size could be increased, but some of these values must change,
 // then search for all "u8" references in the *.rs files.
-const NUM_BITS_PER_INT: usize = 8;
+pub const NUM_BITS_PER_INT: usize = 8;
 
 const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
@@ -39,18 +39,7 @@ use std::hash::{Hash, Hasher};
 
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut astr = String::new();
-
-        let mut fil = 0;
-        for intx in self.ints.iter() {
-            if fil == 1 {
-                astr.push('_');
-            }
-            astr.push_str(&format!("{:08b}", intx)); // increase 08 if the integer size increases
-
-            fil = 1;
-        }
-        write!(f, "{}", astr)
+        write!(f, "{}", self.formatted_string('b'))
     }
 }
 
@@ -82,6 +71,10 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
+    pub fn _new(some_ints: Vec<u8>) -> Self {
+        Self { ints: some_ints }
+    }
+
     pub fn len(&self) -> usize {
         self.ints.len()
     }
@@ -267,6 +260,11 @@ impl SomeBits {
         cnt
     }
 
+    // Return the number of bits that are different
+    pub fn distance(&self, other: &SomeBits) -> usize {
+        self.b_xor(&other).num_one_bits()
+    }
+
     // Return true if only one bit set
     pub fn just_one_bit(&self) -> bool {
         let mut cnt = 0;
@@ -345,7 +343,28 @@ impl SomeBits {
         }
         return true;
     }
-}
+
+    pub fn formatted_string_length(&self) -> usize {
+        (NUM_BITS_PER_INT * self.ints.len()) + self.ints.len()
+    }
+
+    pub fn formatted_string(&self, prefix: char) -> String {
+        let mut astr = String::with_capacity(self.formatted_string_length());
+        astr.push(prefix);
+
+        let mut fil = 0;
+        for intx in self.ints.iter() {
+            if fil == 1 {
+                astr.push('_');
+            }
+            astr.push_str(&format!("{:08b}", intx)); // increase 08 if the integer size increases
+
+            fil = 1;
+        }
+
+        astr
+    }
+} // end impl SomeBits
 
 impl Clone for SomeBits {
     fn clone(&self) -> Self {

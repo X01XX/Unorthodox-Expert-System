@@ -1,16 +1,12 @@
 // Step struct for an Unorthodox Expert System
 
-//use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-//use crate::group::SomeGroup;
 use std::fmt;
 
 impl fmt::Display for SomeStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = self.str2();
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -73,25 +69,24 @@ impl SomeStep {
         }
     }
 
-    // Return a string representing a step
-    fn str2(&self) -> String {
-        let mut rcstr = String::from("[");
-        rcstr.push_str(&format!("{}", self.initial));
-        rcstr.push_str(&format!(" -{}> ", self.act_num));
-        rcstr.push_str(&self.result.str_not_x(&self.rule.b01.m_or(&self.rule.b10)));
-        rcstr.push_str("]");
-        rcstr
+    pub fn formatted_string_length(&self) -> usize {
+        8 + (2 * self.initial.formatted_string_length())
     }
 
-    // Return a terse string representing a step
-    //    pub fn str_terse(&self) -> String {
-    //        let mut rcstr = String::from(" ");
-    //        rcstr.push_str(&format!("{}", self.initial));
-    //        rcstr.push_str(&format!(" -{}> ", self.act_num));
-    //        rcstr.push_str(&self.result.str_not_x(&self.rule.b01.m_or(&self.rule.b10)));
-    //        rcstr.push(' ');
-    //        rcstr
-    //    }
+    // Return a string representing a step
+    pub fn formatted_string(&self) -> String {
+        let mut rcstr = String::with_capacity(self.formatted_string_length());
+        rcstr.push('[');
+        rcstr.push_str(&format!("{}", self.initial));
+        rcstr.push_str(&format!(" -{:02}> ", self.act_num));
+        rcstr.push_str(
+            &self
+                .result
+                .formatted_string_not_x(&self.rule.b01.m_or(&self.rule.b10)),
+        );
+        rcstr.push(']');
+        rcstr
+    }
 }
 
 impl Clone for SomeStep {

@@ -1,9 +1,8 @@
 // Region struct for an Unorthodox Expert System
+// Can serve as a store for any two states.
 
-//use crate::bits::SomeBits;
+use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
-//use crate::maskstore::MaskStore;
-use crate::bits::SomeBits;
 use crate::state::{state_from_string, SomeState};
 use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
@@ -13,14 +12,12 @@ use std::fmt;
 pub struct SomeRegion {
     pub state1: SomeState,
     pub state2: SomeState,
-    pub active: bool,
+    pub active: bool, // To use Vecs better, inactivated regions should be ignored and may be overwritten.
 }
 
 impl fmt::Display for SomeRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s1 = self.str_terse();
-
-        write!(f, "r{}", s1)
+        write!(f, "{}", self.formatted_string())
     }
 }
 impl PartialEq for SomeRegion {
@@ -44,15 +41,20 @@ impl SomeRegion {
         }
     }
 
+    pub fn formatted_string_length(&self) -> usize {
+        (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints()
+    }
+
     // Print the bits of the Region without any prefix
-    pub fn str_terse(&self) -> String {
-        let mut s1 = String::new();
+    pub fn formatted_string(&self) -> String {
+        let mut s1 = String::with_capacity(self.formatted_string_length());
+        s1.push('r');
         let num_ints = self.state1.num_ints();
-        let num_bits = num_ints * 8;
+        let num_bits = num_ints * NUM_BITS_PER_INT;
 
         let mut inx = 0;
         for valb in (0..num_bits).rev() {
-            if inx > 0 && inx % 8 == 0 {
+            if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
                 s1.push('_');
             }
             let b0 = self.state1.is_bit_set(valb);
@@ -77,13 +79,22 @@ impl SomeRegion {
         s1
     }
 
-    pub fn str_not_x(&self, msk: &SomeMask) -> String {
-        let mut s1 = String::new();
-
+    // Return a string for a region,
+    // bit positions that toggle are signified by a lower case x.
+    pub fn formatted_string_not_x(&self, msk: &SomeMask) -> String {
+        let mut s1 = String::with_capacity(
+            (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints(),
+        );
+        s1.push('r');
         let num_ints = self.state1.num_ints();
-        let num_bits = num_ints * 8;
+        let num_bits = num_ints * NUM_BITS_PER_INT;
 
+        let mut inx = 0;
         for valb in (0..num_bits).rev() {
+            if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
+                s1.push('_');
+            }
+
             let b0 = self.state1.is_bit_set(valb);
             let b1 = self.state2.is_bit_set(valb);
 
@@ -108,8 +119,9 @@ impl SomeRegion {
                     s1.push('0');
                 }
             }
+            inx += 1;
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
-        }
+        } // next valb
         s1
     }
 
@@ -120,17 +132,17 @@ impl SomeRegion {
 
     // Return true if two regions are adjacent
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        self.diff_bits(&other).just_one_bit()
+        self.diff_mask(&other).just_one_bit()
     }
 
     // Return true if a region is adjacent to a state
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
-        self.diff_bits_state(&other).just_one_bit()
+        self.diff_mask_state(&other).just_one_bit()
     }
 
     // Return true if two regions intersect
     pub fn intersects(&self, other: &Self) -> bool {
-        self.diff_bits(&other).is_low()
+        self.diff_mask(&other).is_low()
     }
 
     // Return the intersection of two regions
@@ -164,9 +176,9 @@ impl SomeRegion {
     //        self.state1.num_ints()
     //	}
 
-    // Return the numbeer of X bits in a region
+    // Return the number of X bits in a region
     pub fn num_x(&self) -> usize {
-        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts)).num_one_bits()
+        self.state1.distance(&self.state2)
     }
 
     // Return mask of not x bits
@@ -286,7 +298,7 @@ impl SomeRegion {
         )
     }
 
-    pub fn diff_bits_state(&self, sta1: &SomeState) -> SomeMask {
+    pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         SomeMask::new(
             self.state1
                 .bts
@@ -295,14 +307,14 @@ impl SomeRegion {
         )
     }
 
-    pub fn diff_bits(&self, reg1: &SomeRegion) -> SomeMask {
-        self.diff_bits_state(&reg1.state1)
-            .m_and(&self.diff_bits_state(&reg1.state2))
+    pub fn diff_mask(&self, reg1: &SomeRegion) -> SomeMask {
+        self.diff_mask_state(&reg1.state1)
+            .m_and(&self.diff_mask_state(&reg1.state2))
     }
 
-    pub fn num_diff_bits(&self, reg1: &SomeRegion) -> usize {
-        self.diff_bits_state(&reg1.state1)
-            .m_and(&self.diff_bits_state(&reg1.state2))
+    pub fn distance(&self, reg1: &SomeRegion) -> usize {
+        self.diff_mask_state(&reg1.state1)
+            .m_and(&self.diff_mask_state(&reg1.state2))
             .num_one_bits()
     }
 
@@ -323,7 +335,7 @@ impl SomeRegion {
     pub fn overlapping_part(&self, other: &Self) -> Self {
         assert!(self.is_adjacent(&other));
 
-        let adj_bit = self.diff_bits(&other);
+        let adj_bit = self.diff_mask(&other);
 
         self.intersection(&other).set_to_x(&adj_bit) // a strange use of the intersection logic
     }
@@ -331,7 +343,7 @@ impl SomeRegion {
     pub fn overlapping_part_state(&self, other: &SomeState) -> SomeState {
         assert!(self.is_adjacent_state(&other));
 
-        let adj_bit = self.diff_bits_state(&other);
+        let adj_bit = self.diff_mask_state(&other);
 
         SomeState::new(other.bts.b_xor(&adj_bit.bts))
     }

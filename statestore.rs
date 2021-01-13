@@ -8,17 +8,7 @@ use std::fmt;
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::from("[");
-
-        for stax in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &stax));
-            flg = 1;
-        }
-        write!(f, "{}]", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -30,7 +20,13 @@ pub struct StateStore {
 impl StateStore {
     pub fn new() -> Self {
         Self {
-            avec: Vec::<SomeState>::with_capacity(4),
+            avec: Vec::<SomeState>::new(),
+        }
+    }
+
+    pub fn new_with_capacity(num: usize) -> Self {
+        Self {
+            avec: Vec::<SomeState>::with_capacity(num),
         }
     }
 
@@ -54,7 +50,38 @@ impl StateStore {
         }
         false
     }
-}
+
+    pub fn formatted_string_length(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.avec.len() > 0 {
+            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            if self.avec.len() > 1 {
+                rc_len += (self.avec.len() - 1) * 2;
+            }
+        }
+
+        rc_len
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::with_capacity(self.formatted_string_length());
+        rc_str.push('[');
+
+        for stax in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &stax));
+            flg = 1;
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
+} // end impl StateStore
 
 impl Index<usize> for StateStore {
     type Output = SomeState;

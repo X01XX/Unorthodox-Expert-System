@@ -25,7 +25,7 @@ impl Eq for SomeState {}
 
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "s{}", self.bts)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -84,10 +84,24 @@ impl SomeState {
         self.bts.num_ints()
     }
 
-    pub fn num_one_bits(&self) -> usize {
-        self.bts.num_one_bits()
+    // Return true if two squares are adjacent, that is there is exactly one bit difference.
+    pub fn is_adjacent(&self, other: &SomeState) -> bool {
+        self.s_xor(&other).bts.just_one_bit()
     }
-}
+
+    // Return the number of one bits that are different between two states
+    pub fn distance(&self, other: &SomeState) -> usize {
+        self.bts.distance(&other.bts)
+    }
+
+    pub fn formatted_string_length(&self) -> usize {
+        self.bts.formatted_string_length()
+    }
+
+    pub fn formatted_string(&self) -> String {
+        self.bts.formatted_string('s')
+    }
+} // end impl SomeState
 
 // Return a State from a string, like "s0101".
 // Left-most, consecutive, zeros can be omitted.

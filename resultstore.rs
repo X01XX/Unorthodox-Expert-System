@@ -11,31 +11,17 @@ use std::fmt;
 
 impl fmt::Display for ResultStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::new();
-
-        for i in 0..self.astore.len() {
-            let rsltx = self.astore[i].clone();
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &rsltx));
-            flg = 1;
-        }
-
-        rc_str.push_str(&format!(", num_rslts: {}", self.num_results));
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
-    astore: VecDeque<SomeState>,
+    pub astore: VecDeque<SomeState>,
     pub pn: Pn, // Pattern number, 1, 2, 3 (unpredicatble), trips change indicatore when changed.
     pub changed: bool, // First sample, pn or pnc has changed
-    pub pnc: bool, // Pattern Number Confirmed, i.e num results stored has reached 4
-    pub num_results: usize, // Total number of results
+    pub pnc: bool, // Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS
+                //    pub num_results: usize, // Total number of results
 }
 
 impl ResultStore {
@@ -45,11 +31,15 @@ impl ResultStore {
             pn: Pn::One,
             changed: true,
             pnc: false,
-            num_results: 0,
+            //num_results: 0,
         };
         ret.push_wrap(st);
         ret.changed = true;
         ret
+    }
+
+    pub fn len(&self) -> usize {
+        self.astore.len()
     }
 
     // Add a result to a circular buffer
@@ -64,7 +54,7 @@ impl ResultStore {
 
         self.astore.push_back(st);
 
-        self.num_results += 1;
+        //self.num_results += 1;
 
         let pnx = self.calc_pn();
 
@@ -77,27 +67,20 @@ impl ResultStore {
 
         // calc, or recalc, pnc
         if self.pnc == false {
-            if self.pn == Pn::One || self.pn == Pn::Unpredictable {
-                if self.astore.len() >= 3 {
-                    self.changed = true;
-                    self.pnc = true;
-                }
-            } else if self.pn == Pn::Two {
-                if self.astore.len() >= 4 {
-                    self.changed = true;
-                    self.pnc = true;
-                }
+            if self.astore.len() == MAX_RESULTS {
+                self.changed = true;
+                self.pnc = true;
             }
         }
 
         // For pn =1, a second sample proves its not pn = 2
         // so it could invalidate a pn=2 group
-        if self.pn == Pn::One && self.num_results == 2 {
+        if self.pn == Pn::One && self.len() == 2 {
             self.changed = true;
         }
 
         // First sample is always a change
-        if self.num_results == 1 {
+        if self.len() == 1 {
             self.changed = true;
         }
 
@@ -112,8 +95,12 @@ impl ResultStore {
         &self.astore[1]
     }
 
-    pub fn len(&self) -> usize {
-        self.astore.len()
+    pub fn last_result(&self) -> SomeState {
+        self.astore[self.astore.len() - 1].clone()
+    }
+
+    pub fn second_last_result(&self) -> SomeState {
+        self.astore[self.astore.len() - 2].clone()
     }
 
     // Calculate the Pattern Number
@@ -161,4 +148,38 @@ impl ResultStore {
         //println!("calc_pn returning pn Unp");
         Pn::Unpredictable
     }
-}
+
+    pub fn formatted_string_length(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.astore.len() > 0 {
+            rc_len += self.astore.len() * self.astore[0].formatted_string_length();
+            if self.astore.len() > 1 {
+                rc_len += (self.astore.len() - 1) * 2;
+            }
+        }
+
+        //rc_len += format!("{}", self.num_results).len();
+
+        rc_len
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::with_capacity(self.formatted_string_length());
+        rc_str.push('[');
+
+        for i in 0..self.astore.len() {
+            let rsltx = self.astore[i].clone();
+            if flg == 1 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &rsltx));
+            flg = 1;
+        }
+
+        rc_str.push_str(&format!("]"));
+
+        rc_str
+    }
+} // end impl ResultStore

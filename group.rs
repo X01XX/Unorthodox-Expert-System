@@ -16,9 +16,7 @@ use std::fmt;
 
 impl fmt::Display for SomeGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = self.str2();
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -75,9 +73,9 @@ impl SomeGroup {
         return !self.not_x_check.m_and(&bmsk).is_low();
     }
 
-    pub fn str2(&self) -> String {
+    pub fn formatted_string(&self) -> String {
         let mut rc_str = String::from("G(");
-        rc_str.push_str(&format!("{}", self.region.str_terse()));
+        rc_str.push_str(&format!("{}", self.region.formatted_string()));
 
         //        rc_str.push_str(&format!(
         //            " 1: {} 2: {}",
@@ -117,12 +115,12 @@ impl SomeGroup {
         rc_str
     }
 
-    pub fn str_terse(&self) -> String {
-        format!("G{}", self.region.str_terse())
+    pub fn str_region(&self) -> String {
+        format!("{}", self.region.formatted_string())
     }
 
     pub fn inactivate(&mut self) -> bool {
-        println!("Deleting group {}", self.str_terse());
+        println!("Deleting group {}", self.str_region());
         self.active = false;
         true
     }
@@ -132,31 +130,38 @@ impl SomeGroup {
         match self.pn {
             Pn::One => match sqrx.pn() {
                 Pn::One => {
+                    //println!("square_is_ok at One One");
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 _ => {
+                    //println!("square_is_ok at One Other");
                     return false;
                 }
             },
             Pn::Two => match sqrx.pn() {
                 Pn::One => {
-                    if sqrx.num_results() > 1 {
+                    //println!("square_is_ok at Two One");
+                    if sqrx.len_results() > 1 {
                         return false;
                     }
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 Pn::Two => {
+                    //println!("square_is_ok at Two Two");
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 _ => {
+                    //println!("square_is_ok at Two Other");
                     return false;
                 }
             },
             Pn::Unpredictable => match sqrx.pn() {
                 Pn::Unpredictable => {
+                    //println!("square_is_ok at U U");
                     return true;
                 }
                 _ => {
+                    //println!("square_is_ok at U Other");
                     if sqrx.pnc() {
                         return false;
                     } else {

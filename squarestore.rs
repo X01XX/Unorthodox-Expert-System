@@ -32,7 +32,7 @@ impl fmt::Display for SquareStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct SquareStore {
-    ahash: HashMap<SomeState, SomeSquare>,
+    pub ahash: HashMap<SomeState, SomeSquare>,
 }
 
 impl SquareStore {
@@ -64,11 +64,12 @@ impl SquareStore {
 
     // Return rules after combining two squares, identified by their states.
     // May return an empty RuleStore, if the union is invalid
-    pub fn rules(&self, sta1: &SomeState, sta2: &SomeState) -> Option<RuleStore> {
-        let sqr1 = self.ahash.get(sta1).unwrap();
-        let sqr2 = self.ahash.get(sta2).unwrap();
-        return sqr1.rules.union(&sqr2.rules);
-    }
+    //    pub fn _rules(&self, sta1: &SomeState, sta2: &SomeState) -> Option<RuleStore> {
+    //        let sqr1 = self.ahash.get(sta1).unwrap();
+    //        let sqr2 = self.ahash.get(sta2).unwrap();
+    //
+    //        return sqr1.rules.union(&sqr2.rules);
+    //    }
 
     // Add a square that is not currently in the store.
     pub fn insert(&mut self, sqrx: SomeSquare) {
@@ -79,186 +80,119 @@ impl SquareStore {
     // create the region.
     //
     // Return a StateStore with zero, or more, consecutive state pairs.
-    pub fn possible_pairs_to_region(&self, regx: &SomeRegion) -> Option<StateStore> {
-        let mut sta_pairs = StateStore::new();
-
-        let stas = self.stas_in_reg(regx);
-
-        let lenx = stas.len();
-
-        for inx1 in 0..lenx {
-            let sta1 = &stas[inx1];
-
-            let sqrx = self.find(sta1).unwrap();
-            for inx2 in (inx1 + 1)..lenx {
-                let sta2 = &stas[inx2];
-
-                let regy = SomeRegion::new(sta1, sta2);
-
-                if regy == *regx {
-                    let sqry = self.find(sta2).unwrap();
-                    if sqry.pn() == Pn::Unpredictable {
-                        let max_pnc = self.max_pn(&stas);
-                        let min_pnc = self.min_pnc(&stas);
-
-                        if max_pnc == min_pnc {
-                            sta_pairs.push(sta1.clone());
-                            sta_pairs.push(sta2.clone());
-                        }
-                    } else {
-                        if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
-                            if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
-                                sta_pairs.push(sta1.clone());
-                                sta_pairs.push(sta2.clone());
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
-                }
-            } // next inx2, sta2
-        } // next inx1, sta1
-
-        if sta_pairs.len() == 0 {
-            return None;
-        }
-
-        Some(sta_pairs)
-    }
-
-    // Find squares whose rules can be combined with a given squares rules.
-    // Check if any included squares invalidate a combination.
-    // Remove subset combinations.
-    // Return the regions resulting from successful combinations.
-    pub fn possible_group_regions(&self, sqrx: &SomeSquare) -> RegionStore {
-        let mut rsx = RegionStore::new();
-
-        for (key, sqry) in &self.ahash {
-            if *key == sqrx.state {
-                continue;
-            }
-
-            if sqrx.pn() != sqry.pn() {
-                continue;
-            }
-
-            let regx = SomeRegion::new(&sqrx.state, &sqry.state);
-
-            match sqrx.pn() {
-                Pn::Unpredictable => {
-                    if self.verify_combination(&regx, &RuleStore::new(), &sqrx.pn()) {
-                        rsx.push_nosubs(regx);
-                    }
-                }
-                _ => {
-                    if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
-                        if self.verify_combination(&regx, &rules_cmb, &sqrx.pn()) {
-                            //println!(
-                            //    "Square {} can combine with {} giving {} {}",
-                            //    sqrx.str_terse(),
-                            //    sqry.str_terse(),
-                            //    regx,
-                            //    rules_cmb
-                            //);
-                            rsx.push_nosubs(regx);
-                        } else {
-                            //println!(
-                            //    "Square {} cannot combine with {} due to other, included, squares",
-                            //    sqrx.str_terse(),
-                            //    sqry.str_terse()
-                            //);
-                        }
-                    } else {
-                        //println!(
-                        //    "Square {} cannot combine with {}",
-                        //    sqrx.str_terse(),
-                        //    sqry.str_terse()
-                        //);
-                    }
-                }
-            } // end match
-        } // end itoration
-
-        for regx in rsx.iter() {
-            let sqry = self.find(&regx.state2).unwrap();
-            println!(
-                "\nSquare {} can combine with\nSquare {}\ngiving {}\n",
-                sqrx.str_terse(),
-                sqry.str_terse(),
-                regx,
-            );
-        }
-
-        //println!("regions for new groups {}", rsx.str());
-        rsx
-    }
+    //    pub fn _possible_pairs_to_region(&self, regx: &SomeRegion) -> Option<StateStore> {
+    //        let mut sta_pairs = StateStore::new();
+    //
+    //        let stas = self.stas_in_reg(regx);
+    //
+    //        let lenx = stas.len();
+    //
+    //        for inx1 in 0..lenx {
+    //            let sta1 = &stas[inx1];
+    //
+    //            let sqrx = self.find(sta1).unwrap();
+    //            for inx2 in (inx1 + 1)..lenx {
+    //                let sta2 = &stas[inx2];
+    //
+    //                let regy = SomeRegion::new(sta1, sta2);
+    //
+    //                if regy == *regx {
+    //                    let sqry = self.find(sta2).unwrap();
+    //                    if sqry.pn() == Pn::Unpredictable {
+    //                        let max_pnc = self.max_pn(&stas);
+    //                        let min_pnc = self.min_pnc(&stas);
+    //
+    //                        if max_pnc == min_pnc {
+    //                            sta_pairs.push(sta1.clone());
+    //                            sta_pairs.push(sta2.clone());
+    //                        }
+    //                    } else {
+    //                        if let Some(rules_cmb) = sqrx.rules.union(&sqry.rules) {
+    //                            if self.verify_combination(&regy, &rules_cmb, &sqrx.pn()) {
+    //                                sta_pairs.push(sta1.clone());
+    //                                sta_pairs.push(sta2.clone());
+    //                            } else {
+    //                                continue;
+    //                            }
+    //                        } else {
+    //                            continue;
+    //                        }
+    //                    }
+    //                }
+    //            } // next inx2, sta2
+    //        } // next inx1, sta1
+    //
+    //        if sta_pairs.len() == 0 {
+    //            return None;
+    //        }
+    //
+    //        Some(sta_pairs)
+    //    }
 
     // Verify if the squares in a region are compatible with rules
     // in  a RuleStore, made from two pn equal squares.
     //
     // If called for an Unpredictable region, the RuleStore will be empty.
-    pub fn verify_combination(&self, regx: &SomeRegion, ruls: &RuleStore, pn: &Pn) -> bool {
-        for (key, sqry) in &self.ahash {
-            if regx.is_superset_of_state(&sqry.state) == false {
-                continue;
-            }
-
-            if *key == regx.state1 || *key == regx.state2 {
-                continue;
-            }
-
-            match pn {
-                Pn::One => match sqry.pn() {
-                    Pn::One => {
-                        if sqry.rules.is_subset_of(ruls) == false {
-                            return false;
-                        }
-                    }
-                    Pn::Two => {
-                        return false;
-                    }
-                    Pn::Unpredictable => {
-                        return false;
-                    }
-                },
-                Pn::Two => match sqry.pn() {
-                    Pn::One => {
-                        if sqry.pnc() || sqry.num_results() > 1 {
-                            return false;
-                        }
-                        if sqry.rules.is_subset_of(ruls) == false {
-                            return false;
-                        }
-                    }
-                    Pn::Two => {
-                        if sqry.rules.is_subset_of(ruls) == false {
-                            return false;
-                        }
-                    }
-                    Pn::Unpredictable => {
-                        return false;
-                    }
-                },
-                Pn::Unpredictable => match sqry.pn() {
-                    Pn::One => {
-                        if sqry.pnc() {
-                            return false;
-                        }
-                    }
-                    Pn::Two => {
-                        if sqry.pnc() {
-                            return false;
-                        }
-                    }
-                    Pn::Unpredictable => {}
-                },
-            }
-        } // next sqry
-
-        true
-    }
+    //    pub fn verify_combination(&self, regx: &SomeRegion, ruls: &RuleStore, pn: &Pn) -> bool {
+    //        for (key, sqry) in &self.ahash {
+    //            if regx.is_superset_of_state(&sqry.state) == false {
+    //                continue;
+    //            }
+    //
+    //            if *key == regx.state1 || *key == regx.state2 {
+    //                continue;
+    //            }
+    //
+    //            match pn {
+    //                Pn::One => match sqry.pn() {
+    //                    Pn::One => {
+    //                        if sqry.rules.is_subset_of(ruls) == false {
+    //                            return false;
+    //                        }
+    //                    }
+    //                    Pn::Two => {
+    //                        return false;
+    //                    }
+    //                    Pn::Unpredictable => {
+    //                        return false;
+    //                    }
+    //                },
+    //                Pn::Two => match sqry.pn() {
+    //                    Pn::One => {
+    //                        if sqry.pnc() || sqry.len_results() > 1 {
+    //                            return false;
+    //                        }
+    //                        if sqry.rules.is_subset_of(ruls) == false {
+    //                            return false;
+    //                        }
+    //                    }
+    //                    Pn::Two => {
+    //                        if sqry.rules.is_subset_of(ruls) == false {
+    //                            return false;
+    //                        }
+    //                    }
+    //                    Pn::Unpredictable => {
+    //                        return false;
+    //                    }
+    //                },
+    //                Pn::Unpredictable => match sqry.pn() {
+    //                    Pn::One => {
+    //                        if sqry.pnc() {
+    //                            return false;
+    //                        }
+    //                    }
+    //                    Pn::Two => {
+    //                        if sqry.pnc() {
+    //                            return false;
+    //                        }
+    //                    }
+    //                    Pn::Unpredictable => {}
+    //                },
+    //            }
+    //        } // next sqry
+    //
+    //        true
+    //    }
 
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         // TODO threads here?
@@ -291,7 +225,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, _sqry) in &self.ahash {
-            if regx.diff_bits_state(&key).num_one_bits() == 1 {
+            if regx.is_adjacent_state(&key) {
                 states.push(key.clone());
             }
         }
@@ -407,28 +341,28 @@ impl SquareStore {
 
     // Return the maximum pnc pn value of a set of squares,
     // identified by a list of their keys.
-    pub fn max_pnc(&self, keys: &StateStore) -> Pn {
-        assert!(keys.len() > 0);
-
-        let mut max_pn = Pn::One;
-        let mut not_found = true;
-
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pnc() {
-                not_found = false;
-                if sqrx.pn() > max_pn {
-                    max_pn = sqrx.pn();
-                }
-            }
-        }
-
-        if not_found {
-            panic!("No pnc square found in list!");
-        }
-
-        max_pn
-    } // end max_pnc
+    //    pub fn max_pnc(&self, keys: &StateStore) -> Pn {
+    //        assert!(keys.len() > 0);
+    //
+    //        let mut max_pn = Pn::One;
+    //        let mut not_found = true;
+    //
+    //        for keyx in keys.iter() {
+    //            let sqrx = self.find(&keyx).unwrap();
+    //            if sqrx.pnc() {
+    //                not_found = false;
+    //                if sqrx.pn() > max_pn {
+    //                    max_pn = sqrx.pn();
+    //                }
+    //            }
+    //        }
+    //
+    //        if not_found {
+    //            panic!("No pnc square found in list!");
+    //        }
+    //
+    //        max_pn
+    //    } // end max_pnc
 
     // Return the minimum Pn value of a set pnc squares,
     // identified by a list of their keys.
@@ -456,16 +390,15 @@ impl SquareStore {
 
     // Return first Pn of any square that has pnc set to true,
     // identified by a list of their keys.
-    pub fn first_pnc_val(&self, keys: &StateStore) -> Option<Pn> {
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pnc() {
-                return Some(sqrx.pn());
-            }
-        }
-
-        None
-    }
+    //    pub fn first_pnc_val(&self, keys: &StateStore) -> Option<Pn> {
+    //        for keyx in keys.iter() {
+    //            let sqrx = self.find(&keyx).unwrap();
+    //            if sqrx.pnc() {
+    //                return Some(sqrx.pn());
+    //            }
+    //        }
+    //        None
+    //    }
 
     // Return true if any key value in a StateStore corresponds with
     // a square that has pnc set to true.
@@ -480,7 +413,7 @@ impl SquareStore {
         false
     }
 
-    pub fn rules_union(&self, keys: &StateStore, pn: Pn) -> Option<RuleStore> {
+    pub fn _rules_union(&self, keys: &StateStore, pn: Pn) -> Option<RuleStore> {
         let mut rcrs = RuleStore::new();
 
         for keyx in keys.iter() {
@@ -502,5 +435,39 @@ impl SquareStore {
             return None;
         }
         Some(rcrs)
+    }
+
+    // Given a set of states (square keys), and a Pn value,
+    //
+    // Return a StateStore containing the first pair of states, representing
+    // squares with the given Pn value, found to encompas the region.
+    //
+    // Otherwise, return an empty StateSore.
+    pub fn encompassing_pair(&self, stas: &StateStore, regx: &SomeRegion, pn: &Pn) -> StateStore {
+        // Initialize the StateStore
+        let mut store = StateStore::new_with_capacity(2);
+
+        // Initialize a store of states with Pn values EQ the given Pn.
+        let mut pns_eq = Vec::<&SomeState>::with_capacity(stas.len());
+
+        // Load the vector of Pn values
+        for stax in stas.iter() {
+            let sqrx = self.find(&stax).unwrap();
+            if sqrx.pn() == *pn {
+                pns_eq.push(&stax);
+            }
+        }
+
+        // Check each possible combination of two states
+        for inx in 0..pns_eq.len() {
+            for iny in inx..pns_eq.len() {
+                if SomeRegion::new(&pns_eq[inx], &pns_eq[iny]) == *regx {
+                    store.push(pns_eq[inx].clone());
+                    store.push(pns_eq[iny].clone());
+                    return store;
+                }
+            }
+        }
+        store
     }
 }

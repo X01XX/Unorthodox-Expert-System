@@ -1,4 +1,5 @@
-// Implement a Bool-like enum that allows for the additional more-samples-needed state
+// Implement a Bool-like enum signifying the ability for two squares to be combined.
+// Allows True, False, and two additional states
 
 use std::fmt;
 

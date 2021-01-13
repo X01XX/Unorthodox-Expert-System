@@ -48,20 +48,9 @@ use std::io::{Read, Write};
 use std::process;
 extern crate rand;
 use std::fs::File;
-//use std::io::prelude::*;
 use std::path::Path;
 
 fn main() {
-    // for tests.rs to make the compiler happy
-    let mx = mask::mask_from_string(1, "m1");
-
-    match mx {
-        Ok(_) => {}
-        Err(err) => {
-            panic!("mask from string not OK {}", &err);
-        }
-    };
-
     // Start a DomainStore, add a Domain
     let mut dmxs = DomainStore::new();
 
@@ -88,7 +77,6 @@ fn main() {
     dmxs.push(dm1);
 
     usage();
-    //let mut step = 0;
 
     let mut dom_num = 0;
 
@@ -313,8 +301,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                     } else {
                         if dm1.to_region(&goal_region) {
                             println!("Change to region succeded");
+                            return true;
                         } else {
                             println!("Change to region failed");
+                            return false;
                         }
                     }
                 }

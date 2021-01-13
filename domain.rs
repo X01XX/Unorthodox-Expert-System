@@ -573,7 +573,7 @@ impl SomeDomain {
                         }
                     }
 
-                    let tmp_diff = stpx.initial.num_diff_bits(&from_reg);
+                    let tmp_diff = stpx.initial.distance(&from_reg);
 
                     if tmp_diff < local_min {
                         local_min = tmp_diff;
@@ -594,7 +594,7 @@ impl SomeDomain {
             }
 
             // A step has been selected
-            let tmp_diff = astep.initial.num_diff_bits(&goal_reg);
+            let tmp_diff = astep.initial.distance(&goal_reg);
 
             if tmp_diff > max_diff {
                 max_diff = tmp_diff;
@@ -618,7 +618,7 @@ impl SomeDomain {
         let mut min_diff = std::usize::MAX;
         let mut min_diff_from = Vec::<&SomeStep>::with_capacity(5);
         for stpx in max_diff_goal.iter() {
-            let tmp_diff = stpx.initial.num_diff_bits(&from_reg);
+            let tmp_diff = stpx.initial.distance(&from_reg);
 
             if tmp_diff < min_diff {
                 min_diff = tmp_diff;

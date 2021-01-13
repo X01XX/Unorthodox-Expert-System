@@ -7,19 +7,7 @@ use std::slice::Iter;
 
 impl fmt::Display for MaskStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::from("[");
-
-        for mskx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &mskx));
-            flg = 1;
-        }
-        rc_str.push(']');
-
-        write!(f, "{}", rc_str)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -30,7 +18,13 @@ pub struct MaskStore {
 impl MaskStore {
     pub fn _new() -> Self {
         Self {
-            avec: Vec::<SomeMask>::with_capacity(5),
+            avec: Vec::<SomeMask>::new(),
+        }
+    }
+
+    pub fn new_with_capacity(num: usize) -> Self {
+        Self {
+            avec: Vec::<SomeMask>::with_capacity(num),
         }
     }
 
@@ -38,12 +32,51 @@ impl MaskStore {
         self.avec.len()
     }
 
-    pub fn _push(&mut self, val: SomeMask) {
+    pub fn contains(&self, amask: &SomeMask) -> bool {
+        for mskx in self.avec.iter() {
+            if mskx == amask {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn push(&mut self, val: SomeMask) {
         self.avec.push(val);
     }
 
     pub fn iter(&self) -> Iter<SomeMask> {
         self.avec.iter()
+    }
+
+    pub fn formatted_string_length(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.avec.len() > 0 {
+            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            if self.avec.len() > 1 {
+                rc_len += (self.avec.len() - 1) * 2;
+            }
+        }
+
+        rc_len
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::with_capacity(self.formatted_string_length());
+        rc_str.push('[');
+
+        for stax in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &stax));
+            flg = 1;
+        }
+
+        rc_str.push(']');
+
+        rc_str
     }
 }
 

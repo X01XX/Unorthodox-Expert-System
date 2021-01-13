@@ -1,5 +1,6 @@
 // Rule struct for an Unorthodox Expert System
 
+use crate::bits::NUM_BITS_PER_INT;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -39,58 +40,7 @@ pub struct SomeRule {
 
 impl fmt::Display for SomeRule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut strrc = String::new();
-
-        let mut agg = false;
-
-        let num_ints = self.b00.num_ints();
-        let num_bits = num_ints * 8;
-
-        for i in (0..num_bits).rev() {
-            let b00: bool = self.b00.is_bit_set(i);
-            let b01: bool = self.b01.is_bit_set(i);
-            let b11: bool = self.b11.is_bit_set(i);
-            let b10: bool = self.b10.is_bit_set(i);
-
-            if i != (num_bits - 1) {
-                strrc.push('/');
-            }
-
-            if b00 && b01 == false && b11 && b10 == false {
-                strrc.push_str("XX");
-            } else if b00 && b01 == false && b11 == false && b10 {
-                strrc.push_str("X0");
-            } else if b00 == false && b01 && b11 && b10 == false {
-                strrc.push_str("X1");
-            } else if b00 == false && b01 && b11 == false && b10 {
-                strrc.push_str("Xx");
-            } else if b00 && b01 == false && b11 == false && b10 == false {
-                strrc.push_str("00");
-            } else if b00 == false && b01 == false && b11 && b10 == false {
-                strrc.push_str("11");
-            } else if b00 == false && b01 == false && b11 == false && b10 {
-                strrc.push_str("10");
-            } else if b00 == false && b01 && b11 == false && b10 == false {
-                strrc.push_str("01");
-            } else if b00 && b01 && b11 == false && b10 == false {
-                strrc.push_str("0X");
-                agg = true;
-            } else if b00 == false && b01 == false && b11 && b10 {
-                strrc.push_str("1X");
-                agg = true;
-            } else if b00 == false && b01 == false && b11 == false && b10 == false {
-                // Return a new Square instance
-                strrc.push_str("dc");
-            } else {
-                strrc.push_str("**");
-            }
-        } // next i
-
-        if agg {
-            strrc.push_str("(agg)");
-        }
-
-        write!(f, "r{}", strrc)
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -103,6 +53,11 @@ impl SomeRule {
             b11: SomeMask::new(sta1.bts.b_and(&sta2.bts)),
             b10: SomeMask::new(sta1.bts.b_and(&sta2.bts.b_not())),
         }
+    }
+
+    // Return a mask of changes b01 or b10
+    pub fn change_mask(&self) -> SomeMask {
+        self.b01.m_or(&self.b10)
     }
 
     // Return true if a rule is a subset of another
@@ -226,6 +181,21 @@ impl SomeRule {
         }
 
         self.restrict_initial_region(reg).result_region()
+    }
+
+    // Return the result region after applying an initial region to a rule
+    pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
+        if self.initial_region().is_superset_of_state(&sta) == false {
+            panic!(
+                "result_from_initial_state: given state is not a subset of the ruls initial region"
+            );
+        }
+
+        let mut toggle = self.b01.bts.b_and(&sta.bts.b_not());
+        toggle = toggle.b_or(&self.b10.bts.b_and(&sta.bts));
+        SomeState {
+            bts: sta.bts.b_xor(&toggle),
+        }
     }
 
     // Return the initial region after applying a result region to a rule
@@ -363,6 +333,65 @@ impl SomeRule {
             b11: self.b11.m_and(&nmsk),
             b10: self.b10.m_and(&nmsk),
         }
+    }
+
+    pub fn formatted_string_length(&self) -> usize {
+        (NUM_BITS_PER_INT * self.b00.bts.len() * 3) - 1
+    }
+
+    pub fn formatted_string(&self) -> String {
+        let mut strrc = String::with_capacity(self.formatted_string_length());
+
+        let mut agg = false;
+
+        let num_ints = self.b00.num_ints();
+        let num_bits = num_ints * 8;
+
+        for i in (0..num_bits).rev() {
+            let b00: bool = self.b00.is_bit_set(i);
+            let b01: bool = self.b01.is_bit_set(i);
+            let b11: bool = self.b11.is_bit_set(i);
+            let b10: bool = self.b10.is_bit_set(i);
+
+            if i != (num_bits - 1) {
+                strrc.push('/');
+            }
+
+            if b00 && b01 == false && b11 && b10 == false {
+                strrc.push_str("XX");
+            } else if b00 && b01 == false && b11 == false && b10 {
+                strrc.push_str("X0");
+            } else if b00 == false && b01 && b11 && b10 == false {
+                strrc.push_str("X1");
+            } else if b00 == false && b01 && b11 == false && b10 {
+                strrc.push_str("Xx");
+            } else if b00 && b01 == false && b11 == false && b10 == false {
+                strrc.push_str("00");
+            } else if b00 == false && b01 == false && b11 && b10 == false {
+                strrc.push_str("11");
+            } else if b00 == false && b01 == false && b11 == false && b10 {
+                strrc.push_str("10");
+            } else if b00 == false && b01 && b11 == false && b10 == false {
+                strrc.push_str("01");
+            } else if b00 && b01 && b11 == false && b10 == false {
+                strrc.push_str("0X");
+                agg = true;
+            } else if b00 == false && b01 == false && b11 && b10 {
+                strrc.push_str("1X");
+                agg = true;
+            } else if b00 == false && b01 == false && b11 == false && b10 == false {
+                // Return a new Square instance
+                strrc.push_str("dc");
+            } else {
+                strrc.push_str("**");
+            }
+        } // next i
+
+        if agg {
+            strrc.push_str("(agg)");
+        }
+
+        strrc
     }
 } // end SomeRule
 
