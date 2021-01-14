@@ -1,6 +1,6 @@
 // Mask struct for an Unorthodox Expert System
 
-use crate::bits::SomeBits;
+use crate::bits::{bits_new_low, SomeBits};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -121,9 +121,7 @@ impl SomeMask {
 // Return a Mask from a string, like "m0101".
 // Left-most, consecutive, zeros can be omitted.
 pub fn _mask_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
-    let mut bts = SomeBits {
-        ints: vec![0 as u8; num_ints],
-    };
+    let mut bts = bits_new_low(num_ints);
 
     let mut inx = -1;
 

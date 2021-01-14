@@ -1,19 +1,15 @@
 // Bits structure for an Unorthodox Expert System
 //
-// A vector of one or more unsigned 8-bit integers.
+// A vector of one or more unsigned integers.
 //
-// The Domain creation, with a starting state, by running something like:
+// Make a Domain, a number of integers for the bits type, with a starting state and optimal region
+// given as a string, like:
 //
-//   let mut dm1 = init_domain(SomeState::new(SomeBits::new(vec![2 as u8])));
-//    or
-//   let mut dm1 = init_domain(SomeState::new(SomeBits::new(vec![0 as u8, 2 as u8])));
+//   let mut dm1 = init_domain(SomeState::new(1, "s0001", "r101X");
 //
-// initializes the domain cur_state with a given number of u8 ints.
+// Initializes the domain cur_state with a given number of integers.
 //
 // Later SomeBits operations use the same number of ints.
-//
-// Arrays might be better, but do not yet allow initialization with a variable
-// for the length.
 //
 // Some conventions:
 //
@@ -21,14 +17,18 @@
 //
 //   Counting bits starts at the right-most bit of the right-most int,
 //   and proceeds to the left, as in standard integer bit-position reckoning.
-
-// The integer size could be increased, but some of these values must change,
-// then search for all "u8" references in the *.rs files.
+//
+// The integer type/size could be increased, search for and change "u8" references in this file.
+// Change the constants, below, as needed.
+//
 pub const NUM_BITS_PER_INT: usize = 8;
 
 const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
-const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128]; // masks to isolate bits 0-N
+// Masks to isolate bits.
+// Isolate bit 0 with: integer & ALL_BIT_MASKS[0]
+// Isolate bit 5 with: integer & ALL_BIT_MASKS[5];
+const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128]; // masks, powers of 2, to isolate bits.
 
 const INT_HIGH_BIT: u8 = 128;
 
@@ -54,6 +54,7 @@ impl Hash for SomeBits {
 
 impl PartialEq for SomeBits {
     fn eq(&self, other: &Self) -> bool {
+        assert!(self.len() == other.len());
         for int_inx in 0..self.num_ints() {
             if self.ints[int_inx] != other.ints[int_inx] {
                 return false;
@@ -71,22 +72,8 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
-    pub fn _new(some_ints: Vec<u8>) -> Self {
-        Self { ints: some_ints }
-    }
-
     pub fn len(&self) -> usize {
         self.ints.len()
-    }
-
-    pub fn new_low(&self) -> Self {
-        let num_ints = self.ints.len();
-
-        let mut ints2 = Vec::<u8>::with_capacity(num_ints);
-        for _int_inx in 0..num_ints {
-            ints2.push(0 as u8);
-        }
-        Self { ints: ints2 }
     }
 
     // Return a vector of bits where each has only
@@ -108,7 +95,7 @@ impl SomeBits {
 
                     let abit = tmpint & !tmp2;
 
-                    let mut btsx = self.new_low(); // new Bits object, all zeros
+                    let mut btsx = bits_new_low(self.num_ints()); // new Bits object, all zeros
                     btsx.ints[int_inx] = abit; // update one integer
                     rc_vec.push(btsx); // Save result
 
@@ -147,7 +134,7 @@ impl SomeBits {
     // Return true if a bit is one at a given position
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
         let num_ints = self.num_ints();
-        let num_bits = num_ints * 8;
+        let num_bits = num_ints * NUM_BITS_PER_INT;
         let lsi = num_ints - 1;
 
         if bit_num >= num_bits {
@@ -173,6 +160,8 @@ impl SomeBits {
 
     // Bitwise AND of two Bits structs
     pub fn b_and(&self, other: &Self) -> Self {
+        assert!(self.len() == other.len());
+
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
         for int_inx in 0..self.num_ints() {
@@ -183,6 +172,8 @@ impl SomeBits {
 
     // Bitwise OR of two Bits structs
     pub fn b_or(&self, other: &Self) -> Self {
+        assert!(self.len() == other.len());
+
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
         for int_inx in 0..self.num_ints() {
@@ -193,6 +184,8 @@ impl SomeBits {
 
     // Bitwise XOR of two Bits structs
     pub fn b_xor(&self, other: &Self) -> Self {
+        assert!(self.len() == other.len());
+
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
         for int_inx in 0..self.num_ints() {
@@ -233,6 +226,8 @@ impl SomeBits {
 
     // Return true is a Bits struct is a ones-subset of another
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        assert!(self.len() == other.len());
+
         let btmp = self.b_and(&other);
         self == &btmp
     }
@@ -262,6 +257,8 @@ impl SomeBits {
 
     // Return the number of bits that are different
     pub fn distance(&self, other: &SomeBits) -> usize {
+        assert!(self.len() == other.len());
+
         self.b_xor(&other).num_one_bits()
     }
 
@@ -365,6 +362,23 @@ impl SomeBits {
         astr
     }
 } // end impl SomeBits
+
+pub fn bits_new_vec(avec: &Vec<usize>) -> SomeBits {
+    let mut bvec = Vec::<u8>::with_capacity(avec.len());
+
+    for numx in avec {
+        bvec.push(*numx as u8);
+    }
+    SomeBits { ints: bvec }
+}
+
+pub fn bits_new_low(num_ints: usize) -> SomeBits {
+    let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
+    for _ in 0..num_ints {
+        ints_vec.push(0);
+    }
+    bits_new_vec(&ints_vec)
+}
 
 impl Clone for SomeBits {
     fn clone(&self) -> Self {

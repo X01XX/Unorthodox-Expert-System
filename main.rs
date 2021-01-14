@@ -54,8 +54,7 @@ fn main() {
     // Start a DomainStore, add a Domain
     let mut dmxs = DomainStore::new();
 
-    // Initialize a domain, with number of u8 integers, initial state, optimal region.
-    // The number of u8 integers can be higher.
+    // Initialize a domain, with number of integers, initial state, optimal region.
 
     let mut dm0 = SomeDomain::new(1, "s0001", "r101X");
     dm0.add_action(6);

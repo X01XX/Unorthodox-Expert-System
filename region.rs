@@ -1,7 +1,7 @@
 // Region struct for an Unorthodox Expert System
 // Can serve as a store for any two states.
 
-use crate::bits::{SomeBits, NUM_BITS_PER_INT};
+use crate::bits::{bits_new_low, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::state::{state_from_string, SomeState};
 use crate::statestore::StateStore;
@@ -469,12 +469,9 @@ impl SomeRegion {
 // Return a Region from a string, like "r01X1".
 // Left-most, consecutive, zeros can be omitted.
 pub fn region_from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
-    let mut bts_high = SomeBits {
-        ints: vec![0 as u8; num_ints],
-    };
-    let mut bts_low = SomeBits {
-        ints: vec![0 as u8; num_ints],
-    };
+    let mut bts_high = bits_new_low(num_ints);
+
+    let mut bts_low = bits_new_low(num_ints);
 
     let mut inx = -1;
 

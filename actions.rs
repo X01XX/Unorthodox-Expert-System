@@ -6,7 +6,7 @@
 use crate::state::SomeState;
 
 // The number of bits is set by the line of code that creates
-// the first current state, with 1, or more, u8 integers.
+// the first current state, with 1, or more, integers.
 
 pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: usize) -> SomeState {
     if dom_num == 0 {

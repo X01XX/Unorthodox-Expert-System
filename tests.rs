@@ -3,8 +3,6 @@
 
 #[cfg(test)]
 mod tests {
-
-    use crate::bits::SomeBits;
     use crate::bitsstore::BitsStore;
     use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
@@ -31,54 +29,49 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.add_action(0);
 
-        let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
+        let s5 = state_from_string(dm1.num_ints, "s101").unwrap();
 
-        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
+        let s4 = state_from_string(dm1.num_ints, "s100").unwrap();
 
-        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
+        let sf = state_from_string(dm1.num_ints, "s1111").unwrap();
 
-        let se = state_from_string(dmx.num_ints, "s1110").unwrap();
+        let se = state_from_string(dm1.num_ints, "s1110").unwrap();
 
-        let s7 = state_from_string(dmx.num_ints, "s111").unwrap();
+        let s7 = state_from_string(dm1.num_ints, "s111").unwrap();
 
-        let rx1x1 = region_from_string(dmx.num_ints, "rx1x1").unwrap();
+        let rx1x1 = region_from_string(dm1.num_ints, "rx1x1").unwrap();
 
-        //println!(
-        //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
-        //    s5, s4, sf, se, rx1x1
-        //);
+        dm1.take_action_arbitrary(0, &s5, &s5);
+        dm1.take_action_arbitrary(0, &s5, &s4);
+        dm1.take_action_arbitrary(0, &sf, &se);
+        dm1.take_action_arbitrary(0, &sf, &sf);
 
-        dmx.take_action_arbitrary(0, &s5, &s5);
-        dmx.take_action_arbitrary(0, &s5, &s4);
-        dmx.take_action_arbitrary(0, &sf, &se);
-        dmx.take_action_arbitrary(0, &sf, &sf);
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+            dm1.take_action_arbitrary(0, &s7, &s7);
 
-        if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-            dmx.take_action_arbitrary(0, &s7, &s7);
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+                dm1.take_action_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
 
-            if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                dmx.take_action_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
-
-                if let Some(_) = dmx.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dmx.actions[0]);
-                    //println!(" {}", dmx.actions[0].squares);
+                if let Some(_) = dm1.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dm1.actions[0]);
+                    //println!(" {}", dm1.actions[0].squares);
                     return Err(String::from("failed, rx1x1 should have been deleted"));
                 } else {
-                    // println!("\nActs: {}", &dmx.actions[0]);
-                    // println!("       Sqrs: ({})", dmx.actions[0].squares);
+                    // println!("\nActs: {}", &dm1.actions[0]);
+                    // println!("       Sqrs: ({})", dm1.actions[0].squares);
                     return Ok(());
                 }
             } else {
-                //println!("\nActs: {}", &dmx.actions[0]);
-                //println!("       Sqrs: ({})", dmx.actions[0].squares);
+                //println!("\nActs: {}", &dm1.actions[0]);
+                //println!("       Sqrs: ({})", dm1.actions[0].squares);
                 //println!("Group deleted too soon!");
                 return Err(String::from("failed, rx1x1 deleted too soon"));
             }
         } else {
-            //  println!("\nActs: {}", &dmx.actions[0]);
+            //  println!("\nActs: {}", &dm1.actions[0]);
             return Err(String::from(
                 "failed, group rx1x1 was not formed by two squares",
             ));
@@ -93,44 +86,44 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.add_action(0);
 
-        let s5 = state_from_string(dmx.num_ints, "s101").unwrap();
+        let s5 = state_from_string(dm1.num_ints, "s101").unwrap();
 
-        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
+        let s4 = state_from_string(dm1.num_ints, "s100").unwrap();
 
-        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
+        let sf = state_from_string(dm1.num_ints, "s1111").unwrap();
 
-        let se = state_from_string(dmx.num_ints, "s1110").unwrap();
+        let se = state_from_string(dm1.num_ints, "s1110").unwrap();
 
-        let s7 = state_from_string(dmx.num_ints, "s111").unwrap();
+        let s7 = state_from_string(dm1.num_ints, "s111").unwrap();
 
-        let rx1x1 = region_from_string(dmx.num_ints, "rx1x1").unwrap();
+        let rx1x1 = region_from_string(dm1.num_ints, "rx1x1").unwrap();
 
         //println!(
         //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
         //    s5, s4, sf, se, rx1x1
         //);
-        dmx.take_action_arbitrary(0, &s5, &s5);
-        dmx.take_action_arbitrary(0, &s5, &s4);
-        dmx.take_action_arbitrary(0, &s5, &se);
+        dm1.take_action_arbitrary(0, &s5, &s5);
+        dm1.take_action_arbitrary(0, &s5, &s4);
+        dm1.take_action_arbitrary(0, &s5, &se);
 
-        dmx.take_action_arbitrary(0, &sf, &se);
-        dmx.take_action_arbitrary(0, &sf, &sf);
-        dmx.take_action_arbitrary(0, &sf, &s4);
+        dm1.take_action_arbitrary(0, &sf, &se);
+        dm1.take_action_arbitrary(0, &sf, &sf);
+        dm1.take_action_arbitrary(0, &sf, &s4);
 
-        if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-            //println!("\nActs: {}", &dmx.actions[0]);
-            dmx.take_action_arbitrary(0, &s7, &s7);
-            dmx.take_action_arbitrary(0, &s7, &s7);
-            dmx.take_action_arbitrary(0, &s7, &s7);
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+            //println!("\nActs: {}", &dm1.actions[0]);
+            dm1.take_action_arbitrary(0, &s7, &s7);
+            dm1.take_action_arbitrary(0, &s7, &s7);
+            dm1.take_action_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                dmx.take_action_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
-                if let Some(_regx) = dmx.actions[0].groups.find(&rx1x1) {
-                    println!("\nActs: {}", &dmx.actions[0]);
-                    println!(" {}", dmx.actions[0].squares);
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+                dm1.take_action_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
+                if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+                    println!("\nActs: {}", &dm1.actions[0]);
+                    println!(" {}", dm1.actions[0].squares);
                     return Err(String::from(
                         "Four samples for s7 failed to invalidate group xx1x1",
                     ));
@@ -138,12 +131,12 @@ mod tests {
                     return Ok(());
                 }
             } else {
-                // println!("\nActs: {}", &dmx.actions[0]);
-                // println!("       Sqrs: ({})", dmx.actions[0].squares);
+                // println!("\nActs: {}", &dm1.actions[0]);
+                // println!("       Sqrs: ({})", dm1.actions[0].squares);
                 return Err(String::from("Group deleted too soon"));
             }
         } else {
-            //  println!("\nActs: {}", &dmx.actions[0]);
+            //  println!("\nActs: {}", &dm1.actions[0]);
             return Err(String::from("group rx1x1 was not formed by two squares!"));
         }
     } // end group_pn_u_union_then_invalidation
@@ -151,11 +144,11 @@ mod tests {
     // Test subtraction of two regions
     //#[test]
     //fn test3() {
-    //    let mut dmx = SomeDomain::new(1, "s1");
-    //    dmx.add_action(action0, 0);
+    //    let mut dm1 = SomeDomain::new(1, "s1");
+    //    dm1.add_action(action0, 0);
     //
-    //    if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
-    //        if let Ok(r1x0x) = region_from_string(dmx.num_ints, "r1x0x") {
+    //    if let Ok(rx1x1) = region_from_string(dm1.num_ints, "rx1x1") {
+    //        if let Ok(r1x0x) = region_from_string(dm1.num_ints, "r1x0x") {
     //            let subs = RegionStore {
     //                avec: rx1x1.subtract(&r1x0x),
     //            }; // subtract -> Vec<SomeRegion>
@@ -182,33 +175,33 @@ mod tests {
     // Test check if a region is fully surrounded by adjacent groups
     //#[test]
     //fn test4() {
-    //    let mut dmx = SomeDomain::new(1, "s1");
-    //    dmx.add_action(action0, 0);
+    //    let mut dm1 = SomeDomain::new(1, "s1");
+    //    dm1.add_action(action0, 0);
     //
     //    let mut regs = RegionStore::new();
     //
-    //    if let Ok(r00x1) = region_from_string(dmx.num_ints, "r00x1") {
+    //    if let Ok(r00x1) = region_from_string(dm1.num_ints, "r00x1") {
     //        // adjacent to rx1x1
     //        regs.push(r00x1);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r1x1x) = region_from_string(dmx.num_ints, "r1x1x") {
+    //    if let Ok(r1x1x) = region_from_string(dm1.num_ints, "r1x1x") {
     //       // intersects rx1x1
     //        regs.push(r1x1x);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r0010) = region_from_string(dmx.num_ints, "r0010") {
+    //    if let Ok(r0010) = region_from_string(dm1.num_ints, "r0010") {
     //        // not adjacent to rx1x1
     //        regs.push(r0010);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(rx1x1) = region_from_string(dmx.num_ints, "rx1x1") {
+    //    if let Ok(rx1x1) = region_from_string(dm1.num_ints, "rx1x1") {
     //        regs.push(rx1x1.clone());
     //        let empty_adjacent: RegionStore = regs.empty_adjacent(&rx1x1);
     //
@@ -226,28 +219,19 @@ mod tests {
     // Test the successful union of two two-result rulestores
     #[test]
     fn pn_2_rules_union() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(0);
+        let dm1 = SomeDomain::new(1, "s1", "r1");
 
         let sta_5 = SomeState {
-            bts: SomeBits {
-                ints: vec![5 as u8],
-            },
+            bts: dm1._bits_new(vec![5]),
         };
         let sta_4 = SomeState {
-            bts: SomeBits {
-                ints: vec![4 as u8],
-            },
+            bts: dm1._bits_new(vec![4]),
         };
         let sta_f = SomeState {
-            bts: SomeBits {
-                ints: vec![15 as u8],
-            },
+            bts: dm1._bits_new(vec![15]),
         };
         let sta_e = SomeState {
-            bts: SomeBits {
-                ints: vec![14 as u8],
-            },
+            bts: dm1._bits_new(vec![14]),
         };
 
         // println!("sta_5 {} sta_4 {} sta_f {} sta_e {}", &sta_5, &sta_4, &sta_f, &sta_e);
@@ -265,14 +249,10 @@ mod tests {
             //println!("union of sqr_5 rules and sqr_e rules is {}", &rules_5e);
 
             let sta_8 = SomeState {
-                bts: SomeBits {
-                    ints: vec![8 as u8],
-                },
+                bts: dm1._bits_new(vec![8]),
             };
             let sta_9 = SomeState {
-                bts: SomeBits {
-                    ints: vec![9 as u8],
-                },
+                bts: dm1._bits_new(vec![9]),
             };
 
             let mut sqr_8 = SomeSquare::new(sta_8.clone(), sta_9.clone());
@@ -283,7 +263,7 @@ mod tests {
 
                 if let Some(rules_int) = rules_5e.intersection(&rules_58) {
                     //println!("rules_int {}", &rules_int);
-                    if let Ok(rx10x) = region_from_string(dmx.num_ints, "rx10x") {
+                    if let Ok(rx10x) = region_from_string(dm1.num_ints, "rx10x") {
                         if rx10x == rules_int.initial_region() {
                             return Ok(());
                         }
@@ -300,20 +280,18 @@ mod tests {
 
     #[test]
     fn region_to_region_test() -> Result<(), String> {
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
         let reg1 = region_from_string(1, "r00x11x").unwrap();
 
         let reg2 = region_from_string(1, "r010101").unwrap();
 
         let b01 = SomeMask {
-            bts: SomeBits {
-                ints: vec![17 as u8],
-            },
+            bts: dm1._bits_new(vec![17]),
         };
 
         let b10 = SomeMask {
-            bts: SomeBits {
-                ints: vec![10 as u8],
-            },
+            bts: dm1._bits_new(vec![10]),
         };
 
         let ragg = region_to_region(&reg1, &reg2);
@@ -331,13 +309,12 @@ mod tests {
 
     #[test]
     fn shift_left() -> Result<(), String> {
-        let bts1 = SomeBits {
-            ints: vec![0 as u8, 129 as u8],
-        };
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
+        let bts1 = dm2._bits_new(vec![0, 129]);
+
         let bts2 = bts1.shift_left();
-        let bts3 = SomeBits {
-            ints: vec![1 as u8, 2 as u8],
-        };
+        let bts3 = dm2._bits_new(vec![1, 2]);
 
         if bts2 != bts3 {
             return Err(String::from("bts2 NEQ bts3"));
@@ -347,9 +324,9 @@ mod tests {
 
     #[test]
     fn bits_string_length() -> Result<(), String> {
-        let bts1 = SomeBits {
-            ints: vec![129 as u8],
-        };
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
+        let bts1 = dm1._bits_new(vec![129]);
 
         let n1 = bts1.formatted_string_length();
         let rs = bts1.formatted_string('b');
@@ -361,9 +338,9 @@ mod tests {
             ));
         }
 
-        let bts2 = SomeBits {
-            ints: vec![129 as u8, 18 as u8],
-        };
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
+        let bts2 = dm2._bits_new(vec![129, 18]);
 
         let n1 = bts2.formatted_string_length();
         let rs = bts2.formatted_string('b');
@@ -388,9 +365,7 @@ mod tests {
         }
 
         btst = BitsStore {
-            avec: vec![SomeBits {
-                ints: vec![12 as u8],
-            }],
+            avec: vec![dm1._bits_new(vec![12])],
         };
         let n1 = btst.formatted_string_length();
         let rs = btst.formatted_string();
@@ -403,14 +378,7 @@ mod tests {
         }
 
         btst = BitsStore {
-            avec: vec![
-                SomeBits {
-                    ints: vec![12 as u8],
-                },
-                SomeBits {
-                    ints: vec![11 as u8],
-                },
-            ],
+            avec: vec![dm1._bits_new(vec![12]), dm1._bits_new(vec![11])],
         };
         let n1 = btst.formatted_string_length();
         let rs = btst.formatted_string();
@@ -427,10 +395,10 @@ mod tests {
 
     #[test]
     fn state_string_length() -> Result<(), String> {
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
         let sta1 = SomeState {
-            bts: SomeBits {
-                ints: vec![129 as u8],
-            },
+            bts: dm1._bits_new(vec![129]),
         };
 
         let n1 = sta1.formatted_string_length();
@@ -443,10 +411,10 @@ mod tests {
             ));
         }
 
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
         let sta2 = SomeState {
-            bts: SomeBits {
-                ints: vec![129 as u8, 18 as u8],
-            },
+            bts: dm2._bits_new(vec![129, 18]),
         };
 
         let n1 = sta2.formatted_string_length();
@@ -472,9 +440,7 @@ mod tests {
         }
 
         stst.push(SomeState {
-            bts: SomeBits {
-                ints: vec![12 as u8],
-            },
+            bts: dm1._bits_new(vec![12]),
         });
         let n1 = stst.formatted_string_length();
         let rs = stst.formatted_string();
@@ -487,9 +453,7 @@ mod tests {
         }
 
         stst.push(SomeState {
-            bts: SomeBits {
-                ints: vec![1 as u8],
-            },
+            bts: dm1._bits_new(vec![1]),
         });
         let n1 = stst.formatted_string_length();
         let rs = stst.formatted_string();
@@ -500,16 +464,15 @@ mod tests {
                 n1, n2, rs
             ));
         }
-
         Ok(())
     }
 
     #[test]
     fn mask_string_length() -> Result<(), String> {
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
         let msk1 = SomeMask {
-            bts: SomeBits {
-                ints: vec![129 as u8],
-            },
+            bts: dm1._bits_new(vec![129]),
         };
 
         let n1 = msk1.formatted_string_length();
@@ -522,10 +485,9 @@ mod tests {
             ));
         }
 
+        let dm2 = SomeDomain::new(2, "s1", "r1");
         let msk2 = SomeMask {
-            bts: SomeBits {
-                ints: vec![129 as u8, 18 as u8],
-            },
+            bts: dm2._bits_new(vec![129, 18]),
         };
 
         let n1 = msk2.formatted_string_length();
@@ -552,9 +514,7 @@ mod tests {
 
         mkst = MaskStore {
             avec: vec![SomeMask {
-                bts: SomeBits {
-                    ints: vec![12 as u8],
-                },
+                bts: dm1._bits_new(vec![12]),
             }],
         };
         let n1 = mkst.formatted_string_length();
@@ -570,14 +530,10 @@ mod tests {
         mkst = MaskStore {
             avec: vec![
                 SomeMask {
-                    bts: SomeBits {
-                        ints: vec![12 as u8],
-                    },
+                    bts: dm1._bits_new(vec![12]),
                 },
                 SomeMask {
-                    bts: SomeBits {
-                        ints: vec![12 as u8],
-                    },
+                    bts: dm1._bits_new(vec![12]),
                 },
             ],
         };
@@ -666,6 +622,8 @@ mod tests {
 
     #[test]
     fn step_string_length() -> Result<(), String> {
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
         let stp1 = SomeStep {
             act_num: 0,
             initial: region_from_string(1, "r1011").unwrap(),
@@ -673,14 +631,10 @@ mod tests {
             group_reg: region_from_string(1, "rx0x1").unwrap(),
             rule: SomeRule::new(
                 &SomeState {
-                    bts: SomeBits {
-                        ints: vec![11 as u8],
-                    },
+                    bts: dm1._bits_new(vec![11]),
                 },
                 &SomeState {
-                    bts: SomeBits {
-                        ints: vec![10 as u8],
-                    },
+                    bts: dm1._bits_new(vec![10]),
                 },
             ),
             alt_rule: false,
@@ -696,6 +650,8 @@ mod tests {
             ));
         }
 
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
         let stp2 = SomeStep {
             act_num: 0,
             initial: region_from_string(2, "r1011").unwrap(),
@@ -703,14 +659,10 @@ mod tests {
             group_reg: region_from_string(2, "rx0x1").unwrap(),
             rule: SomeRule::new(
                 &SomeState {
-                    bts: SomeBits {
-                        ints: vec![0 as u8, 11 as u8],
-                    },
+                    bts: dm2._bits_new(vec![0, 11]),
                 },
                 &SomeState {
-                    bts: SomeBits {
-                        ints: vec![0 as u8, 10 as u8],
-                    },
+                    bts: dm2._bits_new(vec![0, 10]),
                 },
             ),
             alt_rule: false,
@@ -769,16 +721,14 @@ mod tests {
 
     #[test]
     fn rule_string_length() -> Result<(), String> {
+        let dm1 = SomeDomain::new(1, "s1", "r1");
+
         let rul1 = SomeRule::new(
             &SomeState {
-                bts: SomeBits {
-                    ints: vec![0 as u8],
-                },
+                bts: dm1._bits_new(vec![0]),
             },
             &SomeState {
-                bts: SomeBits {
-                    ints: vec![1 as u8],
-                },
+                bts: dm1._bits_new(vec![1]),
             },
         );
 
@@ -792,16 +742,14 @@ mod tests {
             ));
         }
 
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
         let rul2 = SomeRule::new(
             &SomeState {
-                bts: SomeBits {
-                    ints: vec![0 as u8, 1 as u8],
-                },
+                bts: dm2._bits_new(vec![0, 1]),
             },
             &SomeState {
-                bts: SomeBits {
-                    ints: vec![2 as u8, 3 as u8],
-                },
+                bts: dm2._bits_new(vec![2, 3]),
             },
         );
 
@@ -858,10 +806,10 @@ mod tests {
 
     #[test]
     fn resultstore_string_length() -> Result<(), String> {
+        let dm2 = SomeDomain::new(2, "s1", "r1");
+
         let rsltst = ResultStore::new(SomeState {
-            bts: SomeBits {
-                ints: vec![0 as u8, 1 as u8],
-            },
+            bts: dm2._bits_new(vec![0, 1]),
         });
         let n1 = rsltst.formatted_string_length();
         let rs = rsltst.formatted_string();
@@ -942,38 +890,38 @@ mod tests {
     // but one or the other.
     #[test]
     fn two_result_rules_union() -> Result<(), String> {
-        let mut dmx = SomeDomain::new(1, "s1", "r1");
-        dmx.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.add_action(0);
 
-        let s0 = state_from_string(dmx.num_ints, "s0").unwrap();
-        let s2 = state_from_string(dmx.num_ints, "s10").unwrap();
-        let s4 = state_from_string(dmx.num_ints, "s100").unwrap();
+        let s0 = state_from_string(dm1.num_ints, "s0").unwrap();
+        let s2 = state_from_string(dm1.num_ints, "s10").unwrap();
+        let s4 = state_from_string(dm1.num_ints, "s100").unwrap();
 
-        dmx.take_action_arbitrary(0, &s0, &s2);
-        dmx.take_action_arbitrary(0, &s0, &s4);
-        dmx.take_action_arbitrary(0, &s0, &s2);
-        dmx.take_action_arbitrary(0, &s0, &s4);
+        dm1.take_action_arbitrary(0, &s0, &s2);
+        dm1.take_action_arbitrary(0, &s0, &s4);
+        dm1.take_action_arbitrary(0, &s0, &s2);
+        dm1.take_action_arbitrary(0, &s0, &s4);
 
-        let sf = state_from_string(dmx.num_ints, "s1111").unwrap();
-        let sb = state_from_string(dmx.num_ints, "s1011").unwrap();
-        let sd = state_from_string(dmx.num_ints, "s1101").unwrap();
+        let sf = state_from_string(dm1.num_ints, "s1111").unwrap();
+        let sb = state_from_string(dm1.num_ints, "s1011").unwrap();
+        let sd = state_from_string(dm1.num_ints, "s1101").unwrap();
 
-        dmx.take_action_arbitrary(0, &sf, &sb);
-        dmx.take_action_arbitrary(0, &sf, &sd);
-        dmx.take_action_arbitrary(0, &sf, &sb);
-        dmx.take_action_arbitrary(0, &sf, &sd);
+        dm1.take_action_arbitrary(0, &sf, &sb);
+        dm1.take_action_arbitrary(0, &sf, &sd);
+        dm1.take_action_arbitrary(0, &sf, &sb);
+        dm1.take_action_arbitrary(0, &sf, &sd);
 
-        //println!("act: 0 actions: {}", &dmx.actions);
+        //println!("act: 0 actions: {}", &dm1.actions);
 
-        //println!("sqrs: \n{}", &dmx.actions[0].squares);
+        //println!("sqrs: \n{}", &dm1.actions[0].squares);
 
-        let rx10x = region_from_string(dmx.num_ints, "rx10x").unwrap();
-        let rx01x = region_from_string(dmx.num_ints, "rx01x").unwrap();
+        let rx10x = region_from_string(dm1.num_ints, "rx10x").unwrap();
+        let rx01x = region_from_string(dm1.num_ints, "rx01x").unwrap();
         let rulx = region_to_region(&rx10x, &rx01x);
 
         println!("r-2-r rule: {}", &rulx);
 
-        let stps = dmx.actions.get_steps(&rulx);
+        let stps = dm1.actions.get_steps(&rulx);
 
         if stps.len() != 2 {
             return Err(format!("Number steps NEQ 2 {}", stps));

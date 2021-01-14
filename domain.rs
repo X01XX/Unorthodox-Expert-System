@@ -1,6 +1,7 @@
 use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
+use crate::bits::{bits_new_low, bits_new_vec, SomeBits};
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -68,13 +69,18 @@ impl SomeDomain {
     }
 
     pub fn add_action(&mut self, hv: usize) {
-        let mut actx = SomeAction::new();
+        let mut actx = SomeAction::new(self.num_ints);
         actx.num = self.actions.len();
         self.actions.push(actx); // Add an action
 
         // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
         self.vec_hash.push(HashMap::new());
         self.vec_hvr.push(hv);
+    }
+
+    pub fn _bits_new(&self, avec: Vec<usize>) -> SomeBits {
+        assert!(avec.len() == self.num_ints);
+        bits_new_vec(&avec)
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
@@ -100,7 +106,7 @@ impl SomeDomain {
         r_state: &SomeState,
     ) {
         // may break hv info, so do not mix with take_action_need
-        self.actions[act_num].take_action_arbitrary(i_state, r_state, &self.max_region.x_mask());
+        self.actions[act_num].take_action_arbitrary(i_state, r_state);
         self.set_cur_state(r_state.clone());
     }
 
@@ -111,12 +117,7 @@ impl SomeDomain {
 
         let hv = self.get_hv(act_num);
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
-        self.actions[act_num].take_action_need(
-            &self.cur_state,
-            ndx,
-            &self.max_region.x_mask(),
-            &astate,
-        );
+        self.actions[act_num].take_action_need(&self.cur_state, ndx, &astate);
         self.set_cur_state(astate);
     }
 
@@ -196,11 +197,7 @@ impl SomeDomain {
             if stpx.initial.is_superset_of_state(&self.cur_state) {
                 let hv = self.get_hv(stpx.act_num);
                 let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
-                self.actions[stpx.act_num].take_action_step(
-                    &self.cur_state,
-                    &self.max_region.x_mask(),
-                    &astate,
-                );
+                self.actions[stpx.act_num].take_action_step(&self.cur_state, &astate);
 
                 let prev_state = self.cur_state.clone();
 
@@ -228,11 +225,7 @@ impl SomeDomain {
                             // If no-change, try again once, if OK continue with plan
                             let hv = self.get_hv(stpx.act_num);
                             let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
-                            self.actions[stpx.act_num].take_action_step(
-                                &self.cur_state,
-                                &self.max_region.x_mask(),
-                                &astate,
-                            );
+                            self.actions[stpx.act_num].take_action_step(&self.cur_state, &astate);
 
                             self.set_cur_state(astate);
 
@@ -252,11 +245,8 @@ impl SomeDomain {
                                     let hv = self.get_hv(stpx.act_num);
                                     let astate =
                                         take_action(self.num, stpx.act_num, &self.cur_state, hv);
-                                    self.actions[stpx.act_num].take_action_step(
-                                        &self.cur_state,
-                                        &self.max_region.x_mask(),
-                                        &astate,
-                                    );
+                                    self.actions[stpx.act_num]
+                                        .take_action_step(&self.cur_state, &astate);
 
                                     self.set_cur_state(astate);
 
@@ -440,7 +430,7 @@ impl SomeDomain {
         //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
-        let mut b01 = SomeMask::new(from_reg.state1.bts.new_low());
+        let mut b01 = SomeMask::new(bits_new_low(self.num_ints));
         let mut b10 = b01.clone();
 
         // Get union of changes for each step

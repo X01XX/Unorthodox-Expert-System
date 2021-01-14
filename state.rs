@@ -1,6 +1,6 @@
 // State struct for an Unorthodox Expert System
 
-use crate::bits::SomeBits;
+use crate::bits::{bits_new_low, SomeBits};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -106,9 +106,7 @@ impl SomeState {
 // Return a State from a string, like "s0101".
 // Left-most, consecutive, zeros can be omitted.
 pub fn state_from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
-    let mut bts = SomeBits {
-        ints: vec![0 as u8; num_ints],
-    };
+    let mut bts = bits_new_low(num_ints);
 
     let mut inx = -1;
 
