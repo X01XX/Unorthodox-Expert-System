@@ -1146,88 +1146,20 @@ impl SomeAction {
             for bitx in check_bits.iter() {
                 let reg_exp = grpx.region.toggle_bits(bitx);
 
-                let sqr_stas = self.squares.stas_in_reg(&reg_exp);
+                // At least two squares should be in the group, so in the expanded region
+                //let sqr_stas = self.squares.stas_in_reg(&reg_exp);
 
                 let reg_both = reg_exp.union(&grpx.region); // one bit so double the "area"
 
+                let mut ndsx = self.possible_group_needs(&reg_both, 55);
+
                 // println!(
-                //     "expand_needs, act {}, check reg {} sqrs {} for expansion of group {}",
-                //     &self.num, &regb, &sqr_stas, &grpx.region
+                //     "expand_needs, act {}, check reg {} needs {} for expansion of group {}",
+                //     &self.num, &reg_both, &ndsx, &grpx.region
                 // );
 
-                if sqr_stas.len() == 0 {
-                    // no squares found in expansion region, seek a sample in the region
-                    // Get samples of a far square
-
-                    ret_nds.append(&mut self.far_needs(&reg_both));
-
-                    continue;
-                }
-
-                // One or more squares found in the expansion region
-
-                let sqr_stas2 = self.squares.stas_in_reg(&reg_both);
-
-                // See if a pair of squares encompasses the region
-                let pair_stas = self
-                    .squares
-                    .encompassing_pair(&sqr_stas2, &reg_both, &grpx.pn);
-                if pair_stas.len() == 0 {
-                    ret_nds.append(&mut self.far_needs(&reg_both));
-                    continue;
-                }
-
-                let sqrx = self.squares.find(&pair_stas[0]).unwrap();
-                let sqry = self.squares.find(&pair_stas[1]).unwrap();
-
-                if sqrx.pn() != sqry.pn() {
-                    if sqrx.pnc() && sqry.pnc() {
-                        ret_nds.push(SomeNeed::ClearGroupCheckBit {
-                            //                        act_num: self.num,
-                            group_region: grpx.region.clone(),
-                            mbit: bitx.clone(),
-                        });
-                        continue;
-                    }
-
-                    if sqrx.pnc() == false {
-                        ret_nds.push(SomeNeed::StateAdditionalSample {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqrx.state.clone(),
-                            grp_reg: reg_both.clone(),
-                            far: sqry.state.clone(),
-                        });
-                        continue;
-                    }
-
-                    if sqry.pnc() == false {
-                        ret_nds.push(SomeNeed::StateAdditionalSample {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqry.state.clone(),
-                            grp_reg: reg_both.clone(),
-                            far: sqrx.state.clone(),
-                        });
-                        continue;
-                    }
-                } // end if pn != pn
-
-                let cmbl = self.can_combine(&sqrx, &sqry);
-
-                if cmbl == Combinable::True {
-                    ret_nds.push(SomeNeed::AddGroup {
-                        act_num: self.num,
-                        group_region: SomeRegion::new(&pair_stas[0], &pair_stas[1]),
-                    });
-                } else if cmbl == Combinable::False {
-                    ret_nds.push(SomeNeed::ClearGroupCheckBit {
-                        //                        act_num: self.num,
-                        group_region: grpx.region.clone(),
-                        mbit: bitx.clone(),
-                    });
-                } else {
-                    panic!("Handle combinable return {}", cmbl);
+                if ndsx.len() > 0 {
+                    ret_nds.append(&mut ndsx);
                 }
             } // next bitx
         } // next grpx
@@ -1235,108 +1167,44 @@ impl SomeAction {
         ret_nds
     }
 
-    // Given a region look for pairs of squares in the region with a
-    // maximum total results length.
+    // Given a region look for far needs
     //
     // Return needs for first or more samples to reach pn EQ.
-    //
-    // Return an AddGroup Need if both squares are pn EQ.
-    fn far_needs(&self, aregion: &SomeRegion) -> NeedStore {
+    fn far_needs(&self, aregion: &SomeRegion, stas_in_reg: &StateStore) -> NeedStore {
         //println!("far_needs");
         let mut ret_nds = NeedStore::new();
 
-        let stas_in_reg = self.squares.stas_in_reg(&aregion);
+        //let stas_in_reg = self.squares.stas_in_reg(&aregion);
 
-        let mut sta_max_rating = 0;
-        let mut stas_max: (SomeState, Vec<Pn>, SomeState, Vec<Pn>) = (
-            aregion.state1.clone(),
-            vec![],
-            aregion.state2.clone(),
-            vec![],
-        );
+        assert!(stas_in_reg.len() > 0);
 
+        // Get states representing squares with the highest number of results
+        let mut max_results = 0;
+        let mut stas_max_results = StateStore::new();
         for stax in stas_in_reg.iter() {
             let sqrx = self.squares.find(&stax).unwrap();
-            let mut rating = sqrx.len_results();
 
-            let sta_far = aregion.far_state(&stax);
+            if sqrx.len_results() > max_results {
+                max_results = sqrx.len_results();
+                stas_max_results = StateStore::new();
+            }
 
-            if let Some(sqry) = self.squares.find(&sta_far) {
-                rating += sqry.len_results();
-
-                if rating > sta_max_rating {
-                    sta_max_rating = rating;
-                    stas_max = (
-                        stax.clone(),
-                        vec![sqrx.pn()],
-                        sta_far.clone(),
-                        vec![sqrx.pn()],
-                    );
-                }
-            } else {
-                if rating > sta_max_rating {
-                    sta_max_rating = rating;
-                    stas_max = (stax.clone(), vec![sqrx.pn()], sta_far.clone(), vec![]);
-                }
+            if sqrx.len_results() == max_results {
+                stas_max_results.push(stax.clone());
             }
         } // next stax
 
-        if stas_max.1.len() == 0 {
-            ret_nds.push(SomeNeed::AStateMakeGroup {
-                dom_num: 0, // set this in domain get_needs
-                act_num: self.num,
-                targ_state: stas_max.0.clone(),
-                for_reg: aregion.clone(),
-                far: stas_max.2.clone(),
-                num_x: aregion.num_x(),
-            });
+        for stax in stas_max_results.iter() {
+            let sta_far = aregion.far_state(&stax);
 
             ret_nds.push(SomeNeed::AStateMakeGroup {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
-                targ_state: stas_max.2.clone(),
+                targ_state: sta_far.clone(),
                 for_reg: aregion.clone(),
-                far: stas_max.0.clone(),
+                far: stax.clone(),
                 num_x: aregion.num_x(),
             });
-
-            return ret_nds;
-        } else if stas_max.3.len() == 0 {
-            ret_nds.push(SomeNeed::AStateMakeGroup {
-                dom_num: 0, // set this in domain get_needs
-                act_num: self.num,
-                targ_state: stas_max.2.clone(),
-                for_reg: aregion.clone(),
-                far: stas_max.0.clone(),
-                num_x: aregion.num_x(),
-            });
-
-            return ret_nds;
-        } else {
-            if stas_max.1[0] == stas_max.3[0] {
-                //                ret_nds.push(SomeNeed::AddGroup {
-                //                    act_num: self.num,
-                //                    group_region: SomeRegion::new(&stas_max.0, &stas_max.2),
-                //                });
-            } else if stas_max.1[0] < stas_max.3[0] {
-                ret_nds.push(SomeNeed::AStateMakeGroup {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    targ_state: stas_max.0.clone(),
-                    for_reg: aregion.clone(),
-                    far: stas_max.2.clone(),
-                    num_x: aregion.num_x(),
-                });
-            } else {
-                ret_nds.push(SomeNeed::AStateMakeGroup {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    targ_state: stas_max.2.clone(),
-                    for_reg: aregion.clone(),
-                    far: stas_max.0.clone(),
-                    num_x: aregion.num_x(),
-                });
-            }
         }
 
         ret_nds
@@ -1693,7 +1561,7 @@ impl SomeAction {
 
     // Check for needs, for making a given region into a group.
     // A need may be to take more samples, or just add the group.
-    fn possible_group_needs(&self, reg_grp: &SomeRegion, _rom: usize) -> NeedStore {
+    fn possible_group_needs(&self, reg_grp: &SomeRegion, _from: usize) -> NeedStore {
         //println!("possible_group_needs from {}", from);
         let mut nds = NeedStore::new();
 
@@ -1744,61 +1612,66 @@ impl SomeAction {
             return nds;
         }
 
-        // See if a pair of squares encompasses the region
+        // See if a pair of squares defines the region
         let max_pn = self.squares.max_pn(&stas_in_reg);
-        let pair_stas = self
-            .squares
-            .encompassing_pair(&stas_in_reg, &reg_grp, &max_pn);
+        let pair_stas = reg_grp.defining_pairs(&stas_in_reg);
 
         if pair_stas.len() == 0 {
-            return self.far_needs(&reg_grp);
+            return self.far_needs(&reg_grp, &stas_in_reg);
         }
 
-        let sqrx = self.squares.find(&pair_stas[0]).unwrap();
-        let sqry = self.squares.find(&pair_stas[1]).unwrap();
+        let mut inx = 0;
+        while inx < pair_stas.len() {
+            let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
+            let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-        if sqrx.pn() != sqry.pn() {
-            if sqrx.pnc() && sqry.pnc() {
+            if sqrx.pn() < max_pn {
+                if sqrx.pnc() {
+                    return NeedStore::new();
+                } else {
+                    nds.push(SomeNeed::StateAdditionalSample {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: sqrx.state.clone(),
+                        grp_reg: reg_grp.clone(),
+                        far: sqry.state.clone(),
+                    });
+                }
+                inx += 2;
+                continue;
+            }
+
+            if sqry.pn() < max_pn {
+                if sqry.pnc() {
+                    return NeedStore::new();
+                } else {
+                    nds.push(SomeNeed::StateAdditionalSample {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: sqry.state.clone(),
+                        grp_reg: reg_grp.clone(),
+                        far: sqrx.state.clone(),
+                    });
+                }
+                inx += 2;
+                continue;
+            }
+
+            let cmbl = self.can_combine(&sqrx, &sqry);
+
+            if cmbl == Combinable::True {
+                nds = NeedStore::new();
+                nds.push(SomeNeed::AddGroup {
+                    // nds should be empty so far
+                    act_num: self.num,
+                    group_region: SomeRegion::new(&pair_stas[0], &pair_stas[1]),
+                });
                 return nds;
+            } else if cmbl == Combinable::False {
+                return NeedStore::new();
             }
-
-            if sqrx.pnc() == false {
-                nds.push(SomeNeed::StateAdditionalSample {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    targ_state: sqrx.state.clone(),
-                    grp_reg: reg_grp.clone(),
-                    far: sqry.state.clone(),
-                });
-            }
-
-            if sqry.pnc() == false {
-                nds.push(SomeNeed::StateAdditionalSample {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    targ_state: sqry.state.clone(),
-                    grp_reg: reg_grp.clone(),
-                    far: sqrx.state.clone(),
-                });
-            }
-
-            return nds;
-        }
-
-        let cmbl = self.can_combine(&sqrx, &sqry);
-
-        if cmbl == Combinable::True {
-            nds.push(SomeNeed::AddGroup {
-                // nds should be empty so far
-                act_num: self.num,
-                group_region: SomeRegion::new(&pair_stas[0], &pair_stas[1]),
-            });
-            return nds;
-        } else if cmbl == Combinable::False {
-        } else {
-            panic!("Handle combinable return {}", cmbl);
-        }
-
+            inx += 2;
+        } // next inx
         nds
     } // end possible_group_needs
 
@@ -1835,10 +1708,12 @@ impl SomeAction {
                 let rulsx = grpx.rules.restrict_initial_region(&reg_int);
                 let rulsy = grpy.rules.restrict_initial_region(&reg_int);
 
+                // If contradictory, return needs to resolve
                 if rulsx != rulsy {
                     return self.group_pair_cont_int_needs(&grpx, &grpy);
                 }
 
+                // Rules are the same, see if the two groups can be combined
                 let reg_both = grpx.region.union(&grpy.region);
                 let sqr_stas = self.squares.stas_in_reg(&reg_both);
 
@@ -1846,28 +1721,8 @@ impl SomeAction {
                     return NeedStore::new_with_capacity(1);
                 }
 
-                // See if a pair of squares encompasses the region
-                let pair_stas = self
-                    .squares
-                    .encompassing_pair(&sqr_stas, &reg_both, &grpx.pn);
-                if pair_stas.len() == 0 {
-                    return self.far_needs(&reg_both);
-                }
-
-                let sqrx = self.squares.find(&pair_stas[0]).unwrap();
-                let sqry = self.squares.find(&pair_stas[1]).unwrap();
-
-                let cmbl = self.can_combine(&sqrx, &sqry);
-
-                if cmbl == Combinable::True {
-                    return self
-                        .possible_group_needs(&SomeRegion::new(&pair_stas[0], &pair_stas[1]), 2);
-                } else if cmbl == Combinable::False {
-                    // The groups cannot be combined, check for contradictory intersection
-                    return self.group_pair_cont_int_needs(&grpx, &grpy);
-                } else {
-                    panic!("Handle combinable return {}", cmbl);
-                }
+                return self.possible_group_needs(&reg_both, 2);
+                //                }
             } // end match variant _
         } // end match pn
     } // end groups_intersection_needs

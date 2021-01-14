@@ -443,6 +443,27 @@ impl SomeRegion {
     //
     //        avec
     //    }
+    // Given a set of states (square keys), and a Pn value,
+    //
+    // Return a StateStore containing  pairs of states,
+    // found to encompas the region.
+    //
+    // Otherwise, return an empty StateSore.
+    pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
+        // Initialize the StateStore
+        let mut store = StateStore::new_with_capacity(2);
+
+        // Check each possible combination of two states
+        for inx in 0..stas.len() {
+            for iny in inx..stas.len() {
+                if SomeRegion::new(&stas[inx], &stas[iny]) == *self {
+                    store.push(stas[inx].clone());
+                    store.push(stas[iny].clone());
+                }
+            }
+        }
+        store
+    }
 }
 
 // Return a Region from a string, like "r01X1".
