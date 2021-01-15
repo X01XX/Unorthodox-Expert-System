@@ -109,6 +109,13 @@ impl GroupStore {
     // Find and make inactive any subset groups
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
+
+        for grpx in &mut self.avec {
+            if grpx.active && grpx.region.is_superset_of(&reg) {
+                println!("Active Superset of {} found in {}", &reg, &grpx.region);
+            }
+        }
+
         for grpx in &mut self.avec {
             if grpx.active && grpx.region.is_subset_of(&reg) {
                 grpx.inactivate();

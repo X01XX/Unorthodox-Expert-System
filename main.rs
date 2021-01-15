@@ -47,6 +47,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::process;
 extern crate rand;
+use rand::Rng;
 use std::fs::File;
 use std::path::Path;
 
@@ -56,7 +57,11 @@ fn init() -> DomainStore {
 
     // Initialize a domain, with number of integers, initial state, optimal region.
 
-    let mut dm0 = SomeDomain::new(1, "s0001", "r101X");
+    // Generate a random staring state
+    let inx = rand::thread_rng().gen_range(0, 2u8.pow(6));
+    let inx_str = &format!("s{:b}", inx);
+
+    let mut dm0 = SomeDomain::new(1, inx_str, "r101X");
     dm0.add_action(6);
     dm0.add_action(0);
     dm0.add_action(0);
@@ -67,7 +72,12 @@ fn init() -> DomainStore {
 
     dmxs.push(dm0);
 
-    let mut dm1 = SomeDomain::new(2, "s0000_0000_0100_0000", "r10_1X00_0000");
+    // Generate a random staring state
+    let mut inx = rand::thread_rng().gen_range(0, 2u16.pow(4));
+    inx = inx << 6;
+    let inx_str = &format!("s{:b}", inx);
+
+    let mut dm1 = SomeDomain::new(2, inx_str, "r10_1X00_0000");
     dm1.add_action(0);
     dm1.add_action(0);
     dm1.add_action(0);
