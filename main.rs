@@ -50,8 +50,8 @@ extern crate rand;
 use std::fs::File;
 use std::path::Path;
 
-fn main() {
-    // Start a DomainStore, add a Domain
+fn init() -> DomainStore {
+    // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
     // Initialize a domain, with number of integers, initial state, optimal region.
@@ -74,10 +74,18 @@ fn main() {
     dm1.add_action(0);
 
     dmxs.push(dm1);
+    dmxs
+}
+
+fn main() {
+    // Start a DomainStore, add a Domain
+
+    let mut dmxs = init();
 
     usage();
 
     let mut dom_num = 0;
+    let mut run = 0;
 
     loop {
         dmxs.step += 1;
@@ -114,20 +122,33 @@ fn main() {
             &dmxs[dom_num].optimal
         );
 
-        print!("\nPress Enter to continue: ");
-        io::stdout().flush().unwrap();
-
-        let mut guess = String::new();
-        io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read line");
-        //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
+        if nds.len() == 0 {
+            if run > 0 {
+                run -= 1;
+                if run > 0 {
+                    dmxs = init();
+                }
+            }
+        }
 
         let mut cmd = Vec::<String>::with_capacity(10);
 
-        for word in guess.split_whitespace() {
-            //println!("word: {} is {}", word_count, word);
-            cmd.push(word.to_ascii_lowercase());
+        if run > 0 {
+        } else {
+            print!("\nPress Enter to continue: ");
+            io::stdout().flush().unwrap();
+
+            let mut guess = String::new();
+            io::stdin()
+                .read_line(&mut guess)
+                .expect("Failed to read line");
+
+            //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
+
+            for word in guess.split_whitespace() {
+                //println!("word: {} is {}", word_count, word);
+                cmd.push(word.to_ascii_lowercase());
+            }
         }
 
         // Default command, just press Enter
@@ -174,8 +195,20 @@ fn main() {
             }
             continue;
         } else {
-            if cmd.len() == 2 {
-                if cmd[0] == "cd" {
+            if cmd.len() == 1 {
+                if cmd[0] == "run" {
+                    run = 1;
+                    dmxs = init();
+                    continue;
+                }
+            } else if cmd.len() == 2 {
+                if cmd[0] == "run" {
+                    let r_num = cmd[1].parse().unwrap_or_else(|err| {
+                        println!("Invalid Run Number: {}", err);
+                        0
+                    });
+                    run = r_num;
+                } else if cmd[0] == "cd" {
                     let d_num = cmd[1].parse().unwrap_or_else(|err| {
                         println!("Invalid Domain Number: {}", err);
                         999
@@ -623,6 +656,9 @@ fn usage() {
 
     println!("\n    ld <path>                - Load data from a file");
     println!("\n    sd <path>                - Store data to a file\n");
+
+    println!("    run                      - Run until no needs left.");
+    println!("    run <number times>       - Run number of times. To elicit panics\n");
 
     println!("\n    q | exit | quit          - Quit program.");
 }

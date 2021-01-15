@@ -3,13 +3,13 @@
 // A vector of one or more unsigned integers.
 //
 // Make a Domain, a number of integers for the bits type, with a starting state and optimal region
-// given as a string, like:
+// given as strings, like:
 //
-//   let mut dm1 = init_domain(SomeState::new(1, "s0001", "r101X");
+//   let mut dm1 = init_domain(SomeState::new(1, "s0001", "r101X"));
 //
 // Initializes the domain cur_state with a given number of integers.
 //
-// Later SomeBits operations use the same number of ints.
+// Later bits operations will use the same number of integers as used by the operand(s).
 //
 // Some conventions:
 //
@@ -25,12 +25,12 @@ pub const NUM_BITS_PER_INT: usize = 8;
 
 const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
-// Masks to isolate bits.
+// Masks, powers of 2, to isolate bits.
 // Isolate bit 0 with: integer & ALL_BIT_MASKS[0]
 // Isolate bit 5 with: integer & ALL_BIT_MASKS[5];
-const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128]; // masks, powers of 2, to isolate bits.
+const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128];
 
-const INT_HIGH_BIT: u8 = 128;
+const INT_HIGH_BIT: u8 = 1 << (NUM_BITS_PER_INT - 1);
 
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
@@ -68,7 +68,7 @@ impl Eq for SomeBits {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeBits {
-    pub ints: Vec<u8>, // an array may be better, but less flexible with the current Rust version
+    pub ints: Vec<u8>,
 }
 
 impl SomeBits {
@@ -90,13 +90,16 @@ impl SomeBits {
             if self.ints[int_inx] > 0 {
                 let mut tmpint = self.ints[int_inx];
 
+                // Make new SomeBits instance for each bit in the integer
                 while tmpint > 0 {
                     let tmp2 = tmpint - 1;
 
                     let abit = tmpint & !tmp2;
 
-                    let mut btsx = bits_new_low(self.num_ints()); // new Bits object, all zeros
+                    let mut btsx = bits_new_low(num_ints); // new Bits object, all zeros
+
                     btsx.ints[int_inx] = abit; // update one integer
+
                     rc_vec.push(btsx); // Save result
 
                     tmpint = tmpint & tmp2;
@@ -108,11 +111,7 @@ impl SomeBits {
 
     // Return a Bits struct with specified bit(s) changed
     pub fn toggle_bits(&self, bit_nums: Vec<usize>) -> Self {
-        let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
-
-        for intx in self.ints.iter() {
-            ary2.push(*intx);
-        }
+        let mut ary2 = self.ints.clone();
 
         let num_ints = self.num_ints();
         let num_bits = num_ints * 8 as usize;
@@ -155,6 +154,7 @@ impl SomeBits {
         for intx in self.ints.iter() {
             ary2.push(!intx);
         }
+
         Self { ints: ary2 }
     }
 
@@ -287,27 +287,24 @@ impl SomeBits {
 
     // Push 1 to the LSBit
     pub fn push_1(&self) -> Self {
-        let mut ints2 = Vec::<u8>::with_capacity(self.ints.len());
-
-        let tmp = self.shift_left();
-
         let num_ints = self.num_ints();
-        let lsi = num_ints - 1;
+
+        let mut ints2 = Vec::<u8>::with_capacity(num_ints);
+
+        let tmp = self.shift_left(); // Shift all bits left, LSB bit becomes zero.
 
         for int_inx in 0..num_ints {
             ints2.push(tmp.ints[int_inx]);
         }
-        ints2[lsi] += 1;
+
+        ints2[num_ints - 1] += 1;
 
         Self { ints: ints2 }
     }
 
     // Shift bits left by 1 bit
     pub fn shift_left(&self) -> Self {
-        let mut ints2 = Vec::<u8>::with_capacity(self.ints.len());
-        for _int_inx in (0..self.ints.len()).rev() {
-            ints2.push(0 as u8);
-        }
+        let mut ints2 = vec![0 as u8; self.num_ints()];
 
         let mut carry: u8 = 0;
 

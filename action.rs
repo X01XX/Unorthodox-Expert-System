@@ -730,7 +730,9 @@ impl SomeAction {
                         let sqrx = self.squares.find(&greg.state1).unwrap();
                         let sqry = self.squares.find(&greg.state2).unwrap();
 
-                        if sqrx.pn() == Pn::Unpredictable && sqry.pn() == Pn::Unpredictable {
+                        assert!(sqrx.pn() == sqry.pn());
+
+                        if sqrx.pn() == Pn::Unpredictable {
                             self.groups.push(SomeGroup::new(
                                 &greg.state1,
                                 &greg.state2,
@@ -1459,7 +1461,7 @@ impl SomeAction {
             if grp_clear_bit.len() > 0 {
                 //  println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
                 ret_nds.append(&mut grp_clear_bit);
-                // pass-through to check far square
+                continue;
             }
 
             //   println!("grp {} check far", &greg);
@@ -1652,7 +1654,7 @@ impl SomeAction {
                 nds.push(SomeNeed::AddGroup {
                     // nds should be empty so far
                     act_num: self.num,
-                    group_region: SomeRegion::new(&pair_stas[0], &pair_stas[1]),
+                    group_region: SomeRegion::new(&sqrx.state, &sqry.state),
                 });
                 return nds;
             } else if cmbl == Combinable::False {
