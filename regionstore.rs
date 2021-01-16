@@ -151,12 +151,12 @@ impl RegionStore {
 
     // Return true if a region is in the RegionStore
     //    pub fn contains(&self, regx: &SomeRegion) -> bool {
-    //        for regy in &self.avec {
-    //             if regy.active && regy == regx {
-    //                 return true;
-    //             }
-    //        }
-    //        false
+    //         for regy in &self.avec {
+    //              if regy.active && regy == regx {
+    //                  return true;
+    //              }
+    //         }
+    //         false
     //    }
 
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {

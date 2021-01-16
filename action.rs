@@ -2,7 +2,7 @@
 // which represents the best guess of the expected responses
 // of executing an action, based on the current state.
 //
-use crate::bits::bits_new_low;
+use crate::bits::SomeBits;
 use crate::bitsstore::BitsStore;
 use crate::combinable::Combinable;
 use crate::group::SomeGroup;
@@ -99,7 +99,7 @@ impl SomeAction {
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             closer_regs: RegionStore::new(),
-            x_mask: SomeMask::new(bits_new_low(num_ints)),
+            x_mask: SomeMask::new(SomeBits::bits_new_low(num_ints)),
         }
     }
 
@@ -233,11 +233,11 @@ impl SomeAction {
 
                             println!("Adding group: {}", &rulsxy[0].initial_region());
                             if self.groups.any_superset_of(&rulsxy[0].initial_region()) {
-                                panic!(
-                                    "Supersets found for new group {} in {}",
-                                    rulsxy.initial_region(),
-                                    self.groups.supersets_of(&rulsxy[0].initial_region())
-                                );
+                                //println!(
+                                //    "Supersets found for new group {} in {}",
+                                //    rulsxy.initial_region(),
+                                //    self.groups.supersets_of(&rulsxy[0].initial_region())
+                                //);
                             } else {
                                 self.groups.push(SomeGroup::new(
                                     &sqrx.state,
@@ -715,17 +715,19 @@ impl SomeAction {
                     } => {
                         // Add a new group
                         if self.groups.any_superset_of(&greg) {
-                            if 1 == 2 / 2 {
-                                panic!(
-                                    "**** Supersets found for new group {} in {}",
-                                    &greg,
-                                    self.groups.supersets_of(&greg)
-                                );
-                            }
+                            println!(
+                                "**** Supersets found for new group {} in {}",
+                                &greg,
+                                self.groups.supersets_of(&greg)
+                            );
+
                             continue;
                         }
 
-                        println!("AddGroup using {} and {}", &greg.state1, &greg.state2);
+                        println!(
+                            "AddGroup {} using {} and {}",
+                            &greg, &greg.state1, &greg.state2
+                        );
 
                         let sqrx = self.squares.find(&greg.state1).unwrap();
                         let sqry = self.squares.find(&greg.state2).unwrap();
@@ -944,7 +946,7 @@ impl SomeAction {
                 let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
                 //let mut dif_msk = SomeMask::new(cur_state.bts.new_low());
-                let mut dif_msk = SomeMask::new(bits_new_low(cur_state.num_ints()));
+                let mut dif_msk = SomeMask::new(SomeBits::bits_new_low(cur_state.num_ints()));
 
                 let mut inx = 0;
                 for mskx in dif_bits.iter() {
