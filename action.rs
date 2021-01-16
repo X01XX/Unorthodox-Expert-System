@@ -103,44 +103,51 @@ impl SomeAction {
         }
     }
 
-    // Return Combinable enum if two squares can be combined
+    // Return Combinable enum for any two squares
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Combinable {
+        // Check the two squares
+        let cmbx = sqrx.can_combine(&sqry);
+        if cmbx == Combinable::False {
+            return cmbx;
+        }
+
+        // Get square keys for all squares in the region formed by the
+        // two given squares.
         let stas = self
             .squares
             .stas_in_reg(&SomeRegion::new(&sqrx.state, &sqry.state));
 
-        //println!("***** can_combine sqr {} and sqr {} stas {}", &sqrx.state, &sqry.state, &stas);
-        //println!("**** act squares: {}", self.squares);
-
-        // No squares inbetween
+        // If there are no squares inbetween, done.
         if stas.len() == 2 {
-            return sqrx.can_combine(&sqry);
+            return cmbx;
         }
 
-        // Get squares represented by states, put squares-to-combine first
+        // Two squares that are compatible could have squares between
+        // them that prevent them from being combined.
+
+        // Get the reference Pn value
+        let mut pnx = sqrx.pn();
+        if cmbx == Combinable::MoreSamplesNeeded {
+            if sqry.pn() > sqrx.pn() {
+                pnx = sqry.pn();
+            }
+        }
+
+        // Get square references from the states in the region.
         let mut sqrs_ref = Vec::<&SomeSquare>::with_capacity(stas.len());
-        sqrs_ref.push(&sqrx);
-        sqrs_ref.push(&sqry);
 
         for stax in stas.iter() {
-            if *stax == sqrx.state || *stax == sqry.state {
-                continue;
-            }
             sqrs_ref.push(self.squares.find(&stax).unwrap());
         }
 
-        // Check for greater pn, or different pn and square is pnc
+        // Check for greater pn, or different pn in pnc square.
         for sqrz in &sqrs_ref {
-            if sqrz.pn() > sqrx.pn() {
-                return Combinable::False;
-            }
-
-            if sqrz.pnc() && sqrz.pn() != sqrx.pn() {
-                return Combinable::False;
+            if sqrz.pn() != pnx {
+                if sqrz.pn() > pnx || sqrz.pnc() {
+                    return Combinable::False;
+                }
             }
         }
-
-        // Check for different pnc
 
         // Check for incompatible square pairs
         let mut inx = 1;
@@ -153,42 +160,9 @@ impl SomeAction {
             inx += 1;
         }
 
-        sqrx.can_combine(&sqry)
+        cmbx
     }
 
-    // Return Combinable enum if two squares can be combined
-    pub fn sqrs_rules_union(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> RuleStore {
-        if sqrx.pn() != sqry.pn() {
-            panic!("pn {} NEQ {}", sqrx.pn(), sqry.pn());
-        }
-
-        if self.can_combine(&sqrx, &sqry) != Combinable::True {
-            panic!("not combinable");
-        }
-
-        let stas = self
-            .squares
-            .stas_in_reg(&SomeRegion::new(&sqrx.state, &sqry.state));
-
-        // No squares inbetween
-        if stas.len() == 2 {
-            return sqrx.rules.union(&sqry.rules).unwrap();
-        }
-
-        // Get squares represented by states, put squares-to-combine first
-        let mut sqrs_ref = Vec::<&SomeSquare>::with_capacity(stas.len());
-        sqrs_ref.push(&sqrx);
-        sqrs_ref.push(&sqry);
-
-        for stax in stas.iter() {
-            if *stax == sqrx.state || *stax == sqry.state {
-                continue;
-            }
-            sqrs_ref.push(self.squares.find(&stax).unwrap());
-        }
-
-        sqrx.rules.union(&sqry.rules).unwrap()
-    }
     // Significant effort is used to generate needs, so take in the
     // state that will satisfy the need, and the need itself for clues in
     // processing the result.
@@ -229,7 +203,7 @@ impl SomeAction {
                                 );
                             }
                         } else {
-                            let rulsxy = self.sqrs_rules_union(&sqrx, &sqry);
+                            let rulsxy = sqrx.rules.union(&sqry.rules).unwrap();
 
                             println!("Adding group: {}", &rulsxy[0].initial_region());
                             if self.groups.any_superset_of(&rulsxy[0].initial_region()) {
@@ -242,7 +216,7 @@ impl SomeAction {
                                 self.groups.push(SomeGroup::new(
                                     &sqrx.state,
                                     &sqry.state,
-                                    self.sqrs_rules_union(&sqrx, &sqry),
+                                    rulsxy,
                                     self.num,
                                     &self.x_mask,
                                 ));
@@ -601,7 +575,7 @@ impl SomeAction {
                                         if self.groups.push(SomeGroup::new(
                                             &regx.state1,
                                             &regx.state2,
-                                            self.sqrs_rules_union(&sqr_1, &sqr_2),
+                                            sqr_1.rules.union(&sqr_2.rules).unwrap(),
                                             self.num,
                                             &self.x_mask,
                                         )) {
@@ -747,7 +721,7 @@ impl SomeAction {
                             self.groups.push(SomeGroup::new(
                                 &greg.state1,
                                 &greg.state2,
-                                self.sqrs_rules_union(&sqrx, &sqry),
+                                sqrx.rules.union(&sqry.rules).unwrap(),
                                 self.num,
                                 &max_x,
                             ));

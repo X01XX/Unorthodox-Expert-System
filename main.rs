@@ -19,7 +19,7 @@ mod mask;
 mod maskstore;
 mod need;
 mod region;
-use crate::region::region_from_string;
+use crate::region::SomeRegion;
 mod regionstore;
 mod resultstore;
 mod rule;
@@ -27,7 +27,7 @@ mod rulestore;
 mod square;
 mod squarestore;
 mod state;
-use crate::state::state_from_string;
+use crate::state::SomeState;
 mod statestore;
 use need::SomeNeed;
 mod combinable;
@@ -73,9 +73,8 @@ fn init() -> DomainStore {
     dmxs.push(dm0);
 
     // Generate a random staring state
-    let mut inx = rand::thread_rng().gen_range(0, 2u16.pow(4));
-    inx = inx << 6;
-    let inx_str = &format!("s{:b}", inx);
+    let inx = rand::thread_rng().gen_range(0, 2u8.pow(4));
+    let inx_str = &format!("s{:b}000000", inx);
 
     let mut dm1 = SomeDomain::new(2, inx_str, "r10_1X00_0000");
     dm1.add_action(0);
@@ -294,7 +293,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     // Handle two-word commands
     if cmd.len() == 2 {
         if cmd[0] == "co" {
-            let region_r = region_from_string(dm1.num_ints, &cmd[1]);
+            let region_r = SomeRegion::from_string(dm1.num_ints, &cmd[1]);
             match region_r {
                 Ok(goal_region) => {
                     println!(
@@ -312,7 +311,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
 
         // Arbitrary change state
         if cmd[0] == "cs" {
-            let state_r = state_from_string(dm1.num_ints, &cmd[1]);
+            let state_r = SomeState::from_string(dm1.num_ints, &cmd[1]);
             match state_r {
                 Ok(a_state) => {
                     println!("Change state to {}", a_state);
@@ -327,7 +326,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
         } // end command cs
 
         if cmd[0] == "to" {
-            let region_r = region_from_string(dm1.num_ints, &cmd[1]);
+            let region_r = SomeRegion::from_string(dm1.num_ints, &cmd[1]);
             match region_r {
                 Ok(goal_region) => {
                     println!(
@@ -468,7 +467,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            let state_r = state_from_string(dm1.num_ints, &cmd[2]);
+            let state_r = SomeState::from_string(dm1.num_ints, &cmd[2]);
             match state_r {
                 Ok(a_state) => {
                     println!("Act {} sample State {}", act_num, a_state);
@@ -499,7 +498,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
+            if let Ok(aregion) = SomeRegion::from_string(dm1.num_ints, &cmd[2]) {
                 let mut psstr = String::from(format!(
                     "Squares of Action {} in region {} are:\n",
                     &act_num, &aregion
@@ -541,7 +540,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
+            if let Ok(aregion) = SomeRegion::from_string(dm1.num_ints, &cmd[2]) {
                 let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
                 println!("Squares adj to {} are {}", &aregion, &stas);
                 return true;
@@ -562,7 +561,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            if let Ok(aregion) = region_from_string(dm1.num_ints, &cmd[2]) {
+            if let Ok(aregion) = SomeRegion::from_string(dm1.num_ints, &cmd[2]) {
                 let sta_1s = dm1.actions[act_num]
                     .squares
                     .states_in_1_region(&dm1.actions[act_num].groups.regions());
@@ -594,10 +593,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            let i_state_rslt = state_from_string(dm1.num_ints, &cmd[2]);
+            let i_state_rslt = SomeState::from_string(dm1.num_ints, &cmd[2]);
             match i_state_rslt {
                 Ok(i_state) => {
-                    let r_state_rslt = state_from_string(dm1.num_ints, &cmd[3]);
+                    let r_state_rslt = SomeState::from_string(dm1.num_ints, &cmd[3]);
                     match r_state_rslt {
                         Ok(r_state) => {
                             println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
