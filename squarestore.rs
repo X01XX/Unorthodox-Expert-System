@@ -4,7 +4,6 @@ use crate::combinable::Combinable;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
@@ -61,15 +60,6 @@ impl SquareStore {
     pub fn find(&self, val: &SomeState) -> Option<&SomeSquare> {
         self.ahash.get(val)
     }
-
-    // Return rules after combining two squares, identified by their states.
-    // May return an empty RuleStore, if the union is invalid
-    //    pub fn _rules(&self, sta1: &SomeState, sta2: &SomeState) -> Option<RuleStore> {
-    //        let sqr1 = self.ahash.get(sta1).unwrap();
-    //        let sqr2 = self.ahash.get(sta2).unwrap();
-    //
-    //        return sqr1.rules.union(&sqr2.rules);
-    //    }
 
     // Add a square that is not currently in the store.
     pub fn insert(&mut self, sqrx: SomeSquare) {
@@ -133,49 +123,6 @@ impl SquareStore {
 
     // Given a list of square states, compare every pair of
     // squares and return the aggregate Combinable state.
-    //    pub fn can_combine(&self, keys: &StateStore) -> Combinable {
-    //        assert!(keys.len() > 0);
-    //
-    //        let mut msn_flg = false;
-    //
-    //        if keys.len() == 1 {
-    //            return Combinable::True;
-    //        }
-    //
-    //        for inx1 in 0..keys.len() {
-    //            let key1 = keys[inx1];
-    //
-    //            if let Some(sqr1) = self.find(&key1) {
-    //                for inx2 in (inx1 + 1)..keys.len() {
-    //                    let key2 = keys[inx2];
-    //
-    //                    if let Some(sqr2) = self.find(&key2) {
-    //                        match sqr1.can_combine(&sqr2) {
-    //                            Combinable::False => {
-    //                                return Combinable::False;
-    //                            }
-    //                            Combinable::MoreSamplesNeeded => {
-    //                                msn_flg = true;
-    //                            }
-    //                            Combinable::True => {}
-    //                        }
-    //                    } else {
-    //                        panic!("Square-2 {} not found?", &key2);
-    //                    }
-    //                }
-    //            } else {
-    //                panic!("Square-1 {} not found?", &key1);
-    //            }
-    //        }
-    //
-    //        if msn_flg {
-    //            return Combinable::MoreSamplesNeeded;
-    //        }
-    //        Combinable::True
-    //    }
-
-    // Given a list of square states, compare every pair of
-    // squares and return the aggregate Combinable state.
     pub fn no_incompatible_pairs(&self, keys: &StateStore) -> bool {
         assert!(keys.len() > 0);
 
@@ -219,31 +166,6 @@ impl SquareStore {
         max_pn
     } // end max_pn
 
-    // Return the maximum pnc pn value of a set of squares,
-    // identified by a list of their keys.
-    //    pub fn max_pnc(&self, keys: &StateStore) -> Pn {
-    //        assert!(keys.len() > 0);
-    //
-    //        let mut max_pn = Pn::One;
-    //        let mut not_found = true;
-    //
-    //        for keyx in keys.iter() {
-    //            let sqrx = self.find(&keyx).unwrap();
-    //            if sqrx.pnc() {
-    //                not_found = false;
-    //                if sqrx.pn() > max_pn {
-    //                    max_pn = sqrx.pn();
-    //                }
-    //            }
-    //        }
-    //
-    //        if not_found {
-    //            panic!("No pnc square found in list!");
-    //        }
-    //
-    //        max_pn
-    //    } // end max_pnc
-
     // Return the minimum Pn value of a set pnc squares,
     // identified by a list of their keys.
     pub fn min_pnc(&self, keys: &StateStore) -> Pn {
@@ -268,18 +190,6 @@ impl SquareStore {
         min_pnc
     } // end min_pnc
 
-    // Return first Pn of any square that has pnc set to true,
-    // identified by a list of their keys.
-    //    pub fn first_pnc_val(&self, keys: &StateStore) -> Option<Pn> {
-    //        for keyx in keys.iter() {
-    //            let sqrx = self.find(&keyx).unwrap();
-    //            if sqrx.pnc() {
-    //                return Some(sqrx.pn());
-    //            }
-    //        }
-    //        None
-    //    }
-
     // Return true if any key value in a StateStore corresponds with
     // a square that has pnc set to true.
     pub fn any_pnc(&self, keys: &StateStore) -> bool {
@@ -292,62 +202,4 @@ impl SquareStore {
 
         false
     }
-
-    pub fn _rules_union(&self, keys: &StateStore, pn: Pn) -> Option<RuleStore> {
-        let mut rcrs = RuleStore::new();
-
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pn() == pn {
-                if rcrs.len() == 0 {
-                    rcrs = sqrx.rules.clone();
-                } else {
-                    if let Some(rctmp) = rcrs.union(&sqrx.rules) {
-                        rcrs = rctmp;
-                    } else {
-                        return None;
-                    }
-                }
-            }
-        }
-
-        if rcrs.len() == 0 {
-            return None;
-        }
-        Some(rcrs)
-    }
-
-    // Given a set of states (square keys), and a Pn value,
-    //
-    // Return a StateStore containing the first pair of states, representing
-    // squares with the given Pn value, found to encompas the region.
-    //
-    // Otherwise, return an empty StateSore.
-    //    pub fn encompassing_pair(&self, stas: &StateStore, regx: &SomeRegion, pn: &Pn) -> StateStore {
-    //        // Initialize the StateStore
-    //        let mut store = StateStore::new_with_capacity(2);
-    //
-    //        // Initialize a store of states with Pn values EQ the given Pn.
-    //        let mut pns_eq = Vec::<&SomeState>::with_capacity(stas.len());
-    //
-    //        // Load the vector of Pn values
-    //        for stax in stas.iter() {
-    //            let sqrx = self.find(&stax).unwrap();
-    //            if sqrx.pn() == *pn {
-    //                pns_eq.push(&stax);
-    //            }
-    //        }
-    //
-    //        // Check each possible combination of two states
-    //        for inx in 0..pns_eq.len() {
-    //            for iny in inx..pns_eq.len() {
-    //                if SomeRegion::new(&pns_eq[inx], &pns_eq[iny]) == *regx {
-    //                    store.push(pns_eq[inx].clone());
-    //                    store.push(pns_eq[iny].clone());
-    //                    return store;
-    //                }
-    //            }
-    //        }
-    //        store
-    //    }
 } // end impl SquareStore

@@ -103,13 +103,17 @@ impl SomeAction {
         }
     }
 
-    // Return Combinable enum for any two squares
+    // Return Combinable enum for any two squares with the same Pn value
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Combinable {
+        assert!(sqrx.pn() == sqry.pn());
+
         // Check the two squares
         let cmbx = sqrx.can_combine(&sqry);
         if cmbx == Combinable::False {
             return cmbx;
         }
+
+        // Return the Combinable value, unless a square inbetween is incompatible.
 
         // Get square keys for all squares in the region formed by the
         // two given squares.
@@ -122,42 +126,29 @@ impl SomeAction {
             return cmbx;
         }
 
-        // Two squares that are compatible could have squares between
-        // them that prevent them from being combined.
+        // Check squares between
 
-        // Get the reference Pn value
-        let mut pnx = sqrx.pn();
-        if cmbx == Combinable::MoreSamplesNeeded {
-            if sqry.pn() > sqrx.pn() {
-                pnx = sqry.pn();
-            }
-        }
-
-        // Get square references from the states in the region.
+        // Get square references from the states between sqrx and sqry.
         let mut sqrs_ref = Vec::<&SomeSquare>::with_capacity(stas.len());
 
         for stax in stas.iter() {
-            sqrs_ref.push(self.squares.find(&stax).unwrap());
-        }
-
-        // Check for greater pn, or different pn in pnc square.
-        for sqrz in &sqrs_ref {
-            if sqrz.pn() != pnx {
-                if sqrz.pn() > pnx || sqrz.pnc() {
-                    return Combinable::False;
-                }
+            if *stax == sqrx.state || *stax == sqry.state {
+            } else {
+                sqrs_ref.push(self.squares.find(&stax).unwrap());
             }
         }
 
-        // Check for incompatible square pairs
-        let mut inx = 1;
+        // Check each square for compatibility to the two defining squares.
+        //
+        // Two squares, with one sample each, could have rules that are mutually incompatible,
+        // but both rules could be valid subsets of a Pn == Two pair of squares.
         for sqrz in &sqrs_ref {
-            for iny in inx..sqrs_ref.len() {
-                if sqrz.can_combine(&sqrs_ref[iny]) == Combinable::False {
-                    return Combinable::False;
-                }
+            if sqrz.can_combine(&sqrx) == Combinable::False {
+                return Combinable::False;
             }
-            inx += 1;
+            if sqrz.can_combine(&sqry) == Combinable::False {
+                return Combinable::False;
+            }
         }
 
         cmbx
@@ -435,6 +426,11 @@ impl SomeAction {
                 }
 
                 let sqry = self.squares.find(&stax).unwrap();
+
+                if sqry.pn() != sqrx.pn() {
+                    continue;
+                }
+
                 if self.can_combine(&sqrx, &sqry) == Combinable::False {
                     let num_dif = key.distance(&stax);
 
@@ -1591,39 +1587,41 @@ impl SomeAction {
             let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
             let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-            if sqrx.pn() < max_pn {
-                if sqrx.pnc() {
-                    return NeedStore::new();
-                } else {
-                    nds.push(SomeNeed::StateAdditionalSample {
-                        dom_num: 0, // set this in domain get_needs
-                        act_num: self.num,
-                        targ_state: sqrx.state.clone(),
-                        grp_reg: reg_grp.clone(),
-                        far: sqry.state.clone(),
-                    });
-                }
-                inx += 2;
-                continue;
-            }
-
-            if sqry.pn() < max_pn {
-                if sqry.pnc() {
-                    return NeedStore::new();
-                } else {
-                    nds.push(SomeNeed::StateAdditionalSample {
-                        dom_num: 0, // set this in domain get_needs
-                        act_num: self.num,
-                        targ_state: sqry.state.clone(),
-                        grp_reg: reg_grp.clone(),
-                        far: sqrx.state.clone(),
-                    });
-                }
-                inx += 2;
-                continue;
-            }
-
             let cmbl = self.can_combine(&sqrx, &sqry);
+
+            if cmbl == Combinable::MoreSamplesNeeded {
+                if sqrx.pn() < max_pn {
+                    if sqrx.pnc() {
+                        return NeedStore::new();
+                    } else {
+                        nds.push(SomeNeed::StateAdditionalSample {
+                            dom_num: 0, // set this in domain get_needs
+                            act_num: self.num,
+                            targ_state: sqrx.state.clone(),
+                            grp_reg: reg_grp.clone(),
+                            far: sqry.state.clone(),
+                        });
+                    }
+                    inx += 2;
+                    continue;
+                }
+
+                if sqry.pn() < max_pn {
+                    if sqry.pnc() {
+                        return NeedStore::new();
+                    } else {
+                        nds.push(SomeNeed::StateAdditionalSample {
+                            dom_num: 0, // set this in domain get_needs
+                            act_num: self.num,
+                            targ_state: sqry.state.clone(),
+                            grp_reg: reg_grp.clone(),
+                            far: sqrx.state.clone(),
+                        });
+                    }
+                    inx += 2;
+                    continue;
+                }
+            }
 
             if cmbl == Combinable::True {
                 nds = NeedStore::new();
