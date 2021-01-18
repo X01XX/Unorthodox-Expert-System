@@ -143,6 +143,12 @@ impl SomeAction {
         // Two squares, with one sample each, could have rules that are mutually incompatible,
         // but both rules could be valid subsets of a Pn == Two pair of squares.
         for sqrz in &sqrs_ref {
+            if sqrz.pn() > sqrx.pn() {
+                return Combinable::False;
+            }
+            if sqrz.pnc() && sqrz.pn() != sqrx.pn() {
+                return Combinable::False;
+            }
             if sqrz.can_combine(&sqrx) == Combinable::False {
                 return Combinable::False;
             }
@@ -176,7 +182,8 @@ impl SomeAction {
                 // Form the rules, make the group
                 let sqrx = self.squares.find(&sta).unwrap();
                 if let Some(sqry) = self.squares.find(&far) {
-                    if self.can_combine(&sqrx, &sqry) == Combinable::True {
+                    if sqrx.pn() == sqry.pn() && self.can_combine(&sqrx, &sqry) == Combinable::True
+                    {
                         if sqrx.pn() == Pn::Unpredictable {
                             if self.groups.any_superset_of(&for_reg) == false {
                                 self.groups.push(SomeGroup::new(
@@ -234,7 +241,7 @@ impl SomeAction {
                 // Process next sample of square in-between for new square and state1 square.
                 // Should be different from state1 square or state2 square.
                 // It may be different from both state1 and state2.
-                let cnb1 = self.can_combine(&sqr3, &sqr1);
+                let cnb1 = sqr3.can_combine(&sqr1);
                 match cnb1 {
                     Combinable::False => {
                         //println!(
@@ -267,7 +274,7 @@ impl SomeAction {
 
                 // Process next sample of square in-between for new square and state2 square
                 // Should be different from state1 square or state2 square
-                let cnb2 = self.can_combine(&sqr3, &sqr2);
+                let cnb2 = sqr3.can_combine(&sqr2);
                 match cnb2 {
                     Combinable::False => {
                         // println!(
@@ -552,47 +559,38 @@ impl SomeAction {
                         for regx in rsx.iter() {
                             if self.groups.any_superset_of(regx) == false {
                                 if sqrx.pn() == Pn::Unpredictable {
-                                    if self.groups.push(SomeGroup::new(
+                                    self.groups.push(SomeGroup::new(
                                         &regx.state1,
                                         &regx.state2,
                                         RuleStore::new(),
                                         self.num,
                                         &self.x_mask,
-                                    )) {
-                                    } else {
-                                        panic!("groups add should have worked!");
-                                    }
+                                    ));
                                 } else {
                                     let sqr_1 = self.squares.find(&regx.state1).unwrap();
                                     let sqr_2 = self.squares.find(&regx.state2).unwrap();
 
                                     //println!("Squares with states {}, {} produce ruls {}", &regx.state1.str(), &regx.state2.str(), ruls.str());
-                                    if self.can_combine(&sqr_1, &sqr_2) == Combinable::True {
-                                        if self.groups.push(SomeGroup::new(
-                                            &regx.state1,
-                                            &regx.state2,
-                                            sqr_1.rules.union(&sqr_2.rules).unwrap(),
-                                            self.num,
-                                            &self.x_mask,
-                                        )) {
-                                        } else {
-                                            panic!("groups add should have worked!");
-                                        }
-                                    }
+
+                                    self.groups.push(SomeGroup::new(
+                                        &regx.state1,
+                                        &regx.state2,
+                                        sqr_1.rules.union(&sqr_2.rules).unwrap(),
+                                        self.num,
+                                        &self.x_mask,
+                                    ));
                                 }
                             }
                         } // end for regx
                     } else {
                         // Make a single-square group
-                        if self.groups.push(SomeGroup::new(
+                        self.groups.push(SomeGroup::new(
                             &sqrx.state,
                             &sqrx.state,
                             sqrx.rules.clone(),
                             self.num,
                             &self.x_mask,
-                        )) {
-                            //self.reconfirm = true;
-                        }
+                        ));
                     }
                 }
             }
@@ -841,7 +839,7 @@ impl SomeAction {
 
                     // Process stax that is inbetween
                     let sqr3 = self.squares.find(&stax).unwrap();
-                    let cnb1 = self.can_combine(&sqr3, &sqr1);
+                    let cnb1 = sqr3.can_combine(&sqr1);
                     match cnb1 {
                         Combinable::False => {
                             //  println!(
@@ -858,7 +856,7 @@ impl SomeAction {
                         _ => {}
                     } // end match cnb1
 
-                    let cnb2 = self.can_combine(&sqr3, &sqr2);
+                    let cnb2 = sqr3.can_combine(&sqr2);
                     match cnb2 {
                         Combinable::False => {
                             //println!(
@@ -961,7 +959,7 @@ impl SomeAction {
                     }
 
                     let sqr3 = self.squares.find(&stax).unwrap();
-                    let cnb1 = self.can_combine(&sqr3, &sqr1);
+                    let cnb1 = sqr3.can_combine(&sqr1);
                     match cnb1 {
                         Combinable::False => {
                             println!(
@@ -986,7 +984,7 @@ impl SomeAction {
                         }
                     } // end match cnb1
 
-                    let cnb2 = self.can_combine(&sqr3, &sqr2);
+                    let cnb2 = sqr3.can_combine(&sqr2);
                     match cnb2 {
                         Combinable::False => {
                             println!(
@@ -1385,7 +1383,8 @@ impl SomeAction {
                 if let Some(adj_sqr) = self.squares.find(adj_sta) {
                     if adj_sqr.pnc() {
                         let anchor_sqr = self.squares.find(anchor_sta).unwrap();
-                        if self.can_combine(&anchor_sqr, &adj_sqr) == Combinable::True {
+
+                        if anchor_sqr.can_combine(&adj_sqr) == Combinable::True {
                             nds_grp_add.push(SomeNeed::AddGroup {
                                 act_num: self.num,
                                 group_region: SomeRegion::new(&anchor_sta, &adj_sta),
@@ -1587,6 +1586,11 @@ impl SomeAction {
             let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
             let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
+            if sqrx.pn() != sqry.pn() {
+                inx += 2;
+                continue;
+            }
+
             let cmbl = self.can_combine(&sqrx, &sqry);
 
             if cmbl == Combinable::MoreSamplesNeeded {
@@ -1626,7 +1630,6 @@ impl SomeAction {
             if cmbl == Combinable::True {
                 nds = NeedStore::new();
                 nds.push(SomeNeed::AddGroup {
-                    // nds should be empty so far
                     act_num: self.num,
                     group_region: SomeRegion::new(&sqrx.state, &sqry.state),
                 });
@@ -1660,12 +1663,11 @@ impl SomeAction {
                 if self.squares.any_pnc(&stas_in) {
                     let min_pnc = self.squares.min_pnc(&stas_in);
 
-                    if min_pnc == Pn::Unpredictable {
-                        return self.possible_group_needs(&regx, 1);
+                    if min_pnc < Pn::Unpredictable {
+                        return NeedStore::new();
                     }
                 }
-
-                return NeedStore::new();
+                return self.possible_group_needs(&regx, 1);
             }
             _ => {
                 let reg_int = grpx.region.intersection(&grpy.region);
@@ -1679,11 +1681,6 @@ impl SomeAction {
 
                 // Rules are the same, see if the two groups can be combined
                 let reg_both = grpx.region.union(&grpy.region);
-                let sqr_stas = self.squares.stas_in_reg(&reg_both);
-
-                if self.squares.no_incompatible_pairs(&sqr_stas) == false {
-                    return NeedStore::new_with_capacity(1);
-                }
 
                 return self.possible_group_needs(&reg_both, 2);
                 //                }
