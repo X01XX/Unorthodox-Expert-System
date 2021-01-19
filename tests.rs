@@ -29,7 +29,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
         let s5 = SomeState::from_string(dm1.num_ints, "s101").unwrap();
@@ -86,7 +86,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
         let s5 = SomeState::from_string(dm1.num_ints, "s101").unwrap();
@@ -219,7 +219,7 @@ mod tests {
     // Test the successful union of two two-result rulestores
     #[test]
     fn pn_2_rules_union() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let sta_5 = SomeState {
             bts: dm1._bits_new(vec![5]),
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn region_to_region_test() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let reg1 = SomeRegion::from_string(1, "r00x11x").unwrap();
 
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn shift_left() -> Result<(), String> {
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let bts1 = dm2._bits_new(vec![0, 129]);
 
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn bits_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let bts1 = dm1._bits_new(vec![129]);
 
@@ -338,7 +338,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let bts2 = dm2._bits_new(vec![129, 18]);
 
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn state_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let sta1 = SomeState {
             bts: dm1._bits_new(vec![129]),
@@ -411,7 +411,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let sta2 = SomeState {
             bts: dm2._bits_new(vec![129, 18]),
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn mask_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let msk1 = SomeMask {
             bts: dm1._bits_new(vec![129]),
@@ -485,7 +485,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
         let msk2 = SomeMask {
             bts: dm2._bits_new(vec![129, 18]),
         };
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn step_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let stp1 = SomeStep {
             act_num: 0,
@@ -650,7 +650,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let stp2 = SomeStep {
             act_num: 0,
@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn rule_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
+        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
 
         let rul1 = SomeRule::new(
             &SomeState {
@@ -742,7 +742,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let rul2 = SomeRule::new(
             &SomeState {
@@ -806,7 +806,7 @@ mod tests {
 
     #[test]
     fn resultstore_string_length() -> Result<(), String> {
-        let dm2 = SomeDomain::new(2, "s1", "r1");
+        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
 
         let rsltst = ResultStore::new(SomeState {
             bts: dm2._bits_new(vec![0, 1]),
@@ -890,7 +890,7 @@ mod tests {
     // but one or the other.
     #[test]
     fn two_result_rules_union() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
         let s0 = SomeState::from_string(dm1.num_ints, "s0").unwrap();
