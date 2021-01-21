@@ -1,7 +1,7 @@
 // Implement a store for states
 
 use crate::state::SomeState;
-use std::ops::Index; // IndexMut
+use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;

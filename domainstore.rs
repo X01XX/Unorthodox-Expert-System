@@ -50,14 +50,29 @@ impl DomainStore {
         }
     }
 
-    pub fn _len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.avec.len()
     }
 
-    pub fn push(&mut self, mut val: SomeDomain) {
-        val.num = self.avec.len();
-        self.avec.push(val);
+    pub fn add_domain(&mut self, num_ints: usize, start_state: &str, optimal_region: &str) {
+        self.avec.push(SomeDomain::new(
+            num_ints,
+            start_state,
+            optimal_region,
+            self.avec.len(),
+        ));
     }
+
+    // Add an action to the last added domain.
+    pub fn add_action(&mut self, ran_num: usize) {
+        let last = self.len() - 1;
+        self.avec[last].add_action(ran_num);
+    }
+
+    //    pub fn push(&mut self, mut val: SomeDomain) {
+    //        val.num = self.avec.len();
+    //        self.avec.push(val);
+    //    }
 
     //    pub fn iter(&self) -> Iter<SomeDomain> {
     //        self.avec.iter()

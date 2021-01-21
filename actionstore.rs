@@ -54,12 +54,12 @@ impl ActionStore {
     }
 
     // Get needs for all actions
-    pub fn get_needs(&mut self, cur: &SomeState, max_x: &SomeMask) -> NeedStore {
+    pub fn get_needs(&mut self, cur: &SomeState) -> NeedStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, max_x))
+            .map(|actx| actx.get_needs(cur))
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore

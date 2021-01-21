@@ -31,7 +31,6 @@ impl ResultStore {
             pn: Pn::One,
             changed: true,
             pnc: false,
-            //num_results: 0,
         };
         ret.push_wrap(st);
         ret.changed = true;
@@ -53,8 +52,6 @@ impl ResultStore {
         }
 
         self.astore.push_back(st);
-
-        //self.num_results += 1;
 
         let pnx = self.calc_pn();
 
@@ -144,7 +141,6 @@ impl ResultStore {
             return Pn::Two;
         }
 
-        // pn != 2
         //println!("calc_pn returning pn Unp");
         Pn::Unpredictable
     }

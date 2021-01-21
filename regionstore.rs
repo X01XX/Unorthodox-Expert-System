@@ -5,8 +5,8 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::Index; // IndexMut
-use std::slice::Iter; // , IterMut};
+use std::ops::Index;
+use std::slice::Iter;
 
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -37,10 +37,6 @@ impl RegionStore {
     pub fn iter(&self) -> Iter<SomeRegion> {
         self.avec.iter()
     }
-
-    //    pub fn iter_mut(&mut self) -> IterMut<SomeRegion> {
-    //        self.avec.iter_mut()
-    //    }
 
     // Return true if any region is a superset, or equal, to a region
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {

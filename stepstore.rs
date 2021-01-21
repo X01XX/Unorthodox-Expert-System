@@ -8,7 +8,7 @@
 use crate::step::SomeStep;
 
 use std::fmt;
-use std::ops::Index; // IndexMut
+use std::ops::Index;
 use std::slice::Iter;
 
 impl fmt::Display for StepStore {
@@ -46,25 +46,6 @@ impl StepStore {
     pub fn append(&mut self, mut val: StepStore) {
         self.avec.append(&mut val.avec); // empties val.avec
     }
-
-    //    pub fn str_terse(&self) -> String {
-    //        let mut start = true;
-    //        let mut rc_str = String::new();
-    //
-    //        for stpx in &self.avec {
-    //            if start {
-    //                rc_str.push_str(&format!("{}", &stpx.initial));
-    //                rc_str.push_str(&format!(" -{}-> ", stpx.act_num));
-    //                rc_str.push_str(&format!("{}", &stpx.result));
-    //                start = false;
-    //            } else {
-    //                rc_str.push_str(&format!(" -{}-> ", stpx.act_num));
-    //                rc_str.push_str(&format!("{}", stpx.result));
-    //            }
-    //        }
-    //
-    //        rc_str
-    //    }
 
     pub fn iter(&self) -> Iter<SomeStep> {
         self.avec.iter()

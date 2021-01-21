@@ -1,17 +1,10 @@
 // Mask struct for an Unorthodox Expert System
 
-use crate::bits::{bits_new_low, SomeBits};
+use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-impl PartialEq for SomeMask {
-    fn eq(&self, other: &Self) -> bool {
-        self.bts == other.bts
-    }
-}
-impl Eq for SomeMask {}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeMask {
     pub bts: SomeBits,
 }
@@ -26,11 +19,6 @@ impl SomeMask {
     // Return a new Mask struct instance
     pub fn new(val: SomeBits) -> Self {
         Self { bts: val }
-    }
-
-    // Return true if two masks are equal
-    pub fn is_eq(&self, other: &Self) -> bool {
-        self.bts == other.bts
     }
 
     // Return the xor or two maks
@@ -117,42 +105,6 @@ impl SomeMask {
         self.bts.formatted_string('m')
     }
 } // end SomeMask
-
-// Return a Mask from a string, like "m0101".
-// Left-most, consecutive, zeros can be omitted.
-pub fn _mask_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
-    let mut bts = bits_new_low(num_ints);
-
-    let mut inx = -1;
-
-    for ch in str.chars() {
-        inx += 1;
-
-        if inx == 0 {
-            if ch == 'm' {
-                continue;
-            } else {
-                return Err(String::from("initial character should be m"));
-            }
-        }
-
-        if bts.high_bit_set() {
-            return Err(String::from("too long"));
-        }
-
-        if ch == '0' {
-            bts = bts.shift_left();
-        } else if ch == '1' {
-            bts = bts.push_1();
-        } else if ch == '_' {
-            continue;
-        } else {
-            return Err(String::from("invalid character"));
-        }
-    } // end for ch
-
-    Ok(SomeMask::new(bts))
-} // end mask_from_string
 
 impl Clone for SomeMask {
     fn clone(&self) -> Self {

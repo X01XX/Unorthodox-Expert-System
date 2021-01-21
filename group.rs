@@ -2,7 +2,6 @@
 // which represents a group of two or more Squares, that are
 // mutually compatible.
 
-//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
@@ -10,7 +9,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-//use crate::statestore::StateStore;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

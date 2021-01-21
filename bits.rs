@@ -2,14 +2,7 @@
 //
 // A vector of one or more unsigned integers.
 //
-// Make a Domain, a number of integers for the bits type, with a starting state and optimal region
-// given as strings, like:
-//
-//   let mut dm1 = init_domain(SomeState::new(1, "s0001", "r101X"));
-//
-// Initializes the domain cur_state with a given number of integers.
-//
-// Later bits operations will use the same number of integers as used by the operand(s).
+// Bits operations will use the same number of integers as used by the operand(s).
 //
 // Some conventions:
 //
@@ -33,9 +26,8 @@ const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128];
 const INT_HIGH_BIT: u8 = 1 << (NUM_BITS_PER_INT - 1);
 
 use serde::{Deserialize, Serialize};
-use std::collections::hash_map::DefaultHasher;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -43,35 +35,29 @@ impl fmt::Display for SomeBits {
     }
 }
 
-// Hash to support SomeState hash.
-impl Hash for SomeBits {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        let mut hasher = DefaultHasher::new();
-        Hash::hash_slice(&self.ints, &mut hasher);
-        hasher.finish();
-    }
-}
-
-impl PartialEq for SomeBits {
-    fn eq(&self, other: &Self) -> bool {
-        assert!(self.len() == other.len());
-        for int_inx in 0..self.num_ints() {
-            if self.ints[int_inx] != other.ints[int_inx] {
-                return false;
-            }
-        }
-        true
-    }
-}
-
-impl Eq for SomeBits {}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeBits {
     pub ints: Vec<u8>,
 }
 
 impl SomeBits {
+    pub fn bits_new_vec(avec: &Vec<usize>) -> SomeBits {
+        let mut bvec = Vec::<u8>::with_capacity(avec.len());
+
+        for numx in avec {
+            bvec.push(*numx as u8);
+        }
+        SomeBits { ints: bvec }
+    }
+
+    pub fn bits_new_low(num_ints: usize) -> SomeBits {
+        let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
+        for _ in 0..num_ints {
+            ints_vec.push(0);
+        }
+        SomeBits::bits_new_vec(&ints_vec)
+    }
+
     pub fn len(&self) -> usize {
         self.ints.len()
     }
@@ -96,7 +82,7 @@ impl SomeBits {
 
                     let abit = tmpint & !tmp2;
 
-                    let mut btsx = bits_new_low(num_ints); // new Bits object, all zeros
+                    let mut btsx = SomeBits::bits_new_low(num_ints); // new Bits object, all zeros
 
                     btsx.ints[int_inx] = abit; // update one integer
 
@@ -114,7 +100,7 @@ impl SomeBits {
         let mut ary2 = self.ints.clone();
 
         let num_ints = self.num_ints();
-        let num_bits = num_ints * 8 as usize;
+        let num_bits = num_ints * NUM_BITS_PER_INT as usize;
         let lsi = num_ints - 1; // least significant integer
 
         for bit_num in bit_nums {
@@ -226,15 +212,12 @@ impl SomeBits {
 
     // Return true is a Bits struct is a ones-subset of another
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        assert!(self.len() == other.len());
-
-        let btmp = self.b_and(&other);
-        self == &btmp
+        *self == self.b_and(&other)
     }
 
     // Return true if a Bits struct is a ones-superset of another
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        other.is_subset_of(&self)
+        *other == self.b_and(&other)
     }
 
     // Return the number of one bits
@@ -257,8 +240,6 @@ impl SomeBits {
 
     // Return the number of bits that are different
     pub fn distance(&self, other: &SomeBits) -> usize {
-        assert!(self.len() == other.len());
-
         self.b_xor(&other).num_one_bits()
     }
 
@@ -285,24 +266,18 @@ impl SomeBits {
         cnt == 1
     }
 
-    // Push 1 to the LSBit
+    // Return a copy of self, shifted 1 to the left, and 1 added.
     pub fn push_1(&self) -> Self {
         let num_ints = self.num_ints();
 
-        let mut ints2 = Vec::<u8>::with_capacity(num_ints);
+        let mut tmp = self.shift_left(); // Shift all bits left, LSB bit becomes zero.
 
-        let tmp = self.shift_left(); // Shift all bits left, LSB bit becomes zero.
-
-        for int_inx in 0..num_ints {
-            ints2.push(tmp.ints[int_inx]);
-        }
-
-        ints2[num_ints - 1] += 1;
-
-        Self { ints: ints2 }
+        tmp.ints[num_ints - 1] += 1;
+        tmp
     }
 
-    // Shift bits left by 1 bit
+    // Return a copy, shifted left by 1 bit
+    // Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {
         let mut ints2 = vec![0 as u8; self.num_ints()];
 
@@ -359,23 +334,6 @@ impl SomeBits {
         astr
     }
 } // end impl SomeBits
-
-pub fn bits_new_vec(avec: &Vec<usize>) -> SomeBits {
-    let mut bvec = Vec::<u8>::with_capacity(avec.len());
-
-    for numx in avec {
-        bvec.push(*numx as u8);
-    }
-    SomeBits { ints: bvec }
-}
-
-pub fn bits_new_low(num_ints: usize) -> SomeBits {
-    let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
-    for _ in 0..num_ints {
-        ints_vec.push(0);
-    }
-    bits_new_vec(&ints_vec)
-}
 
 impl Clone for SomeBits {
     fn clone(&self) -> Self {

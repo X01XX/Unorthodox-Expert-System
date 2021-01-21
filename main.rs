@@ -58,31 +58,28 @@ fn init() -> DomainStore {
     // Initialize a domain, with number of integers, initial state, optimal region.
 
     // Generate a random staring state
-    let inx = rand::thread_rng().gen_range(0, 2u8.pow(6));
+    let inx = rand::thread_rng().gen_range(0, 2_u8.pow(6));
     let inx_str = &format!("s{:b}", inx);
 
-    let mut dm0 = SomeDomain::new(1, inx_str, "r101X");
-    dm0.add_action(6);
-    dm0.add_action(0);
-    dm0.add_action(0);
-    dm0.add_action(0);
-    dm0.add_action(0);
-    dm0.add_action(0);
-    dm0.add_action(0);
-
-    dmxs.push(dm0);
+    dmxs.add_domain(1, inx_str, "r101X");
+    dmxs.add_action(6);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
 
     // Generate a random staring state
-    let inx = rand::thread_rng().gen_range(0, 2u8.pow(4));
+    let inx = rand::thread_rng().gen_range(0, 2_u8.pow(4));
     let inx_str = &format!("s{:b}000000", inx);
 
-    let mut dm1 = SomeDomain::new(2, inx_str, "r10_1X00_0000");
-    dm1.add_action(0);
-    dm1.add_action(0);
-    dm1.add_action(0);
-    dm1.add_action(0);
+    dmxs.add_domain(2, inx_str, "r10_1X00_0000");
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
+    dmxs.add_action(0);
 
-    dmxs.push(dm1);
     dmxs
 }
 
@@ -196,7 +193,7 @@ fn main() {
                 } else {
                     let optimal = dmxs[dom_num].optimal.clone();
                     if dmxs[dom_num].to_region(&optimal) {
-                        println!("Change to region succeded");
+                        println!("Change to region succeeded");
                     } else {
                         println!("Change to region failed");
                     }
@@ -341,7 +338,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         return false;
                     } else {
                         if dm1.to_region(&goal_region) {
-                            println!("Change to region succeded");
+                            println!("Change to region succeeded");
                             return true;
                         } else {
                             println!("Change to region failed");
@@ -368,9 +365,17 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            let ndx = &dm1.actions[act_num].in_between_needs(&dm1.cur_state);
 
-            println!("InBetweenNeeds are {}", &ndx);
+            let ndx = &dm1.actions[act_num].seek_edge_needs1();
+
+            if ndx.len() > 0 {
+                println!("Seek Edge Needs are {}", &ndx);
+                return true;
+            }
+
+            let ndx = &dm1.actions[act_num].seek_edge_needs2(&dm1.cur_state);
+
+            println!("Seek Edge Needs are {}", &ndx);
             return true;
         }
 

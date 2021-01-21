@@ -1,9 +1,9 @@
 // Region struct for an Unorthodox Expert System
 // Can serve as a store for any two states.
 
-use crate::bits::{bits_new_low, NUM_BITS_PER_INT};
+use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
-use crate::state::{state_from_string, SomeState};
+use crate::state::SomeState;
 use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -464,67 +464,67 @@ impl SomeRegion {
         }
         store
     }
-}
 
-// Return a Region from a string, like "r01X1".
-// Left-most, consecutive, zeros can be omitted.
-pub fn region_from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
-    let mut bts_high = bits_new_low(num_ints);
+    // Return a Region from a string, like "r01X1".
+    // Left-most, consecutive, zeros can be omitted.
+    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
+        let mut bts_high = SomeBits::bits_new_low(num_ints);
 
-    let mut bts_low = bits_new_low(num_ints);
+        let mut bts_low = SomeBits::bits_new_low(num_ints);
 
-    let mut inx = -1;
+        let mut inx = -1;
 
-    for ch in str.chars() {
-        inx += 1;
+        for ch in str.chars() {
+            inx += 1;
 
-        if inx == 0 {
-            if ch == 'r' {
-                continue;
-            } else if ch == 's' {
-                let state_r = state_from_string(num_ints, str);
-                match state_r {
-                    Ok(a_state) => {
-                        return Ok(SomeRegion::new(&a_state, &a_state));
-                    }
-                    Err(error) => {
-                        return Err(format!("\nDid not understand state, {}", error));
-                    }
-                } // end match state_r
-            } else {
-                return Err(String::from("first character should be r"));
+            if inx == 0 {
+                if ch == 'r' {
+                    continue;
+                } else if ch == 's' {
+                    let state_r = SomeState::from_string(num_ints, str);
+                    match state_r {
+                        Ok(a_state) => {
+                            return Ok(SomeRegion::new(&a_state, &a_state));
+                        }
+                        Err(error) => {
+                            return Err(format!("\nDid not understand state, {}", error));
+                        }
+                    } // end match state_r
+                } else {
+                    return Err(String::from("first character should be r"));
+                }
             }
-        }
 
-        if bts_high.high_bit_set() {
-            return Err(String::from("too long"));
-        }
+            if bts_high.high_bit_set() {
+                return Err(String::from("too long"));
+            }
 
-        if bts_low.high_bit_set() {
-            return Err(String::from("too long"));
-        }
+            if bts_low.high_bit_set() {
+                return Err(String::from("too long"));
+            }
 
-        if ch == '0' {
-            bts_high = bts_high.shift_left();
-            bts_low = bts_low.shift_left();
-        } else if ch == '1' {
-            bts_high = bts_high.push_1();
-            bts_low = bts_low.push_1();
-        } else if ch == 'x' || ch == 'X' {
-            bts_high = bts_high.push_1();
-            bts_low = bts_low.shift_left();
-        } else if ch == '_' {
-            continue;
-        } else {
-            return Err(String::from("invalid character"));
-        }
-    } // end for ch
+            if ch == '0' {
+                bts_high = bts_high.shift_left();
+                bts_low = bts_low.shift_left();
+            } else if ch == '1' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.push_1();
+            } else if ch == 'x' || ch == 'X' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.shift_left();
+            } else if ch == '_' {
+                continue;
+            } else {
+                return Err(String::from("invalid character"));
+            }
+        } // end for ch
 
-    Ok(SomeRegion::new(
-        &SomeState::new(bts_high),
-        &SomeState::new(bts_low),
-    ))
-} // end region_from_string
+        Ok(SomeRegion::new(
+            &SomeState::new(bts_high),
+            &SomeState::new(bts_low),
+        ))
+    } // end region_from_string
+} // end impl SomeRegion
 
 impl Clone for SomeRegion {
     fn clone(&self) -> Self {

@@ -39,6 +39,7 @@ impl PartialEq for RuleStore {
         panic!("Unsupported RuleStore length {}", self.len());
     }
 }
+
 impl Eq for RuleStore {}
 
 impl RuleStore {
@@ -63,17 +64,6 @@ impl RuleStore {
         self.avec.push(val);
     }
 
-    //    pub fn copy(&self) -> Self {
-    //        let mut rsrc = RuleStore::new();
-    //        if self.len() > 0 {
-    //            rsrc.add(self.avec[0].clone());
-    //            if self.avec.len() == 2 {
-    //                rsrc.add(self.avec[1].clone());
-    //            }
-    //        }
-    //        rsrc
-    //    }
-
     pub fn first(&self) -> &SomeRule {
         &self.avec[0]
     }
@@ -81,19 +71,6 @@ impl RuleStore {
     pub fn second(&self) -> &SomeRule {
         &self.avec[1]
     }
-
-    // Return true if two RuleStores can be combined
-    //    pub fn can_combine(&self, other: &Self) -> bool {
-    //        if self.len() != other.len() {
-    //            return false;
-    //        }
-    //
-    //        let rulsx = self.union(&other);
-    //
-    //        if rulsx.len() == 0 { return false; }
-    //
-    //        true
-    //    }
 
     // Return true if one RuleStore is a subset of another.
     // This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
@@ -175,7 +152,11 @@ impl RuleStore {
             } else {
                 return None;
             }
-        } else if self.len() == 2 {
+        }
+
+        if self.len() == 2 {
+            // Avoid a combination or rules that combines changes that
+            // are not seen together in the source rules.
             let mut cng_pats = MaskStore::new_with_capacity(4);
             cng_pats.push(self.avec[0].change_mask());
             cng_pats.push(self.avec[1].change_mask());
@@ -217,18 +198,13 @@ impl RuleStore {
             return None;
         } // end if
 
-        None
+        if self.len() == 0 {
+            // needed?
+            return Some(Self::new());
+        }
+
+        panic!("unexpected RuleStore length");
     }
-
-    // Return the result of the first rule
-    //    pub fn result_state_of(&self, sta: &SomeState) -> SomeState {
-    //        self.avec[0].result_of_state(sta)
-    //    }
-
-    // Return the result of the second rule
-    //    pub fn result2_state_of(&self, sta: &SomeState) -> SomeState {
-    //        self.avec[1].result_of_state(sta)
-    //    }
 
     pub fn iter(&self) -> Iter<SomeRule> {
         self.avec.iter()
@@ -305,7 +281,7 @@ impl RuleStore {
         rcrs
     }
 
-    // Return the union of two RuleStores, pruned if needed
+    // Return the union of two RuleStores, pruned or 1->X and 0->X, under initial X bits, if needed
     pub fn union_prune(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             return None;
@@ -367,29 +343,6 @@ impl RuleStore {
 
     pub fn initial_region(&self) -> SomeRegion {
         self.avec[0].initial_region()
-    }
-
-    // Return true if two rulestores are equal
-    pub fn is_equal(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        if self.len() == 1 {
-            if self.avec[0] == other.avec[0] {
-                return true;
-            }
-        } else if self.len() == 2 {
-            if self.avec[0] == other.avec[0] && self.avec[1] == other.avec[1] {
-                return true;
-            }
-            if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
-                return true;
-            }
-        } else {
-            panic!("unexpected rulestore length! {}", self.len());
-        }
-        false
     }
 
     pub fn formatted_string_length(&self) -> usize {

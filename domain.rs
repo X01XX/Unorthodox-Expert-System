@@ -1,14 +1,36 @@
+/*
+ * domain.rs
+ *
+ * Copyright 2021 Owner <Owner@DESKTOP-64S9LGE>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ *
+ */
 use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
-use crate::bits::{bits_new_low, bits_new_vec, SomeBits};
+use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
-use crate::region::{region_from_string, SomeRegion};
+use crate::region::SomeRegion;
 use crate::rule::region_to_region;
-use crate::state::{state_from_string, SomeState};
+use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
@@ -50,13 +72,13 @@ pub struct SomeDomain {
 }
 
 impl SomeDomain {
-    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
+    pub fn new(num_ints: usize, start_state: &str, optimal: &str, num: usize) -> Self {
         // Convert the state string into a state type instance.
-        let cur = state_from_string(num_ints, &start_state).unwrap();
-        let opt = region_from_string(num_ints, &optimal).unwrap();
+        let cur = SomeState::from_string(num_ints, &start_state).unwrap();
+        let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
-            num: 0, // may be changed when added to a DomainStore, to reflect the index into a vector
+            num,
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
@@ -69,8 +91,7 @@ impl SomeDomain {
     }
 
     pub fn add_action(&mut self, hv: usize) {
-        let mut actx = SomeAction::new(self.num_ints);
-        actx.num = self.actions.len();
+        let actx = SomeAction::new(self.num_ints, self.actions.len());
         self.actions.push(actx); // Add an action
 
         // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
@@ -80,13 +101,11 @@ impl SomeDomain {
 
     pub fn _bits_new(&self, avec: Vec<usize>) -> SomeBits {
         assert!(avec.len() == self.num_ints);
-        bits_new_vec(&avec)
+        SomeBits::bits_new_vec(&avec)
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
-        let mut nst = self
-            .actions
-            .get_needs(&self.cur_state, &self.max_region.x_mask());
+        let mut nst = self.actions.get_needs(&self.cur_state);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -430,7 +449,7 @@ impl SomeDomain {
         //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
-        let mut b01 = SomeMask::new(bits_new_low(self.num_ints));
+        let mut b01 = SomeMask::new(SomeBits::bits_new_low(self.num_ints));
         let mut b10 = b01.clone();
 
         // Get union of changes for each step

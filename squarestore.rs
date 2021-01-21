@@ -1,6 +1,6 @@
 // Implement a store for squares
 //
-use crate::combinable::Combinable;
+
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
@@ -103,50 +103,20 @@ impl SquareStore {
         states
     }
 
-    // Return a StateStore of states of squares in a given region
+    // Return a StateStore of states of squares in a given regions
     pub fn stas_in_regs(&self, regsx: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 
         for (key, _sqry) in &self.ahash {
             for regx in regsx.iter() {
                 if regx.is_superset_of_state(&key) {
-                    if states.contains(&key) {
-                    } else {
-                        states.push(key.clone());
-                    }
+                    states.push(key.clone());
+                    break;
                 }
             }
         }
 
         states
-    }
-
-    // Given a list of square states, compare every pair of
-    // squares and return the aggregate Combinable state.
-    pub fn no_incompatible_pairs(&self, keys: &StateStore) -> bool {
-        assert!(keys.len() > 0);
-
-        if keys.len() == 1 {
-            return true;
-        }
-
-        for inx1 in 0..keys.len() {
-            let key1 = &keys[inx1];
-
-            let sqr1 = self.find(&key1).unwrap();
-            for inx2 in (inx1 + 1)..keys.len() {
-                let key2 = &keys[inx2];
-
-                let sqr2 = self.find(&key2).unwrap();
-                match sqr1.can_combine(&sqr2) {
-                    Combinable::False => {
-                        return false;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        true
     }
 
     // Return the maximum Pn value of a set of squares,

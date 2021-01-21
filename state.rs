@@ -1,27 +1,14 @@
 // State struct for an Unorthodox Expert System
 
-use crate::bits::{bits_new_low, SomeBits};
+use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeState {
     pub bts: SomeBits,
 }
-
-impl Hash for SomeState {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.bts.hash(state);
-    }
-}
-
-impl PartialEq for SomeState {
-    fn eq(&self, other: &Self) -> bool {
-        self.bts == other.bts
-    }
-}
-impl Eq for SomeState {}
 
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -32,12 +19,6 @@ impl fmt::Display for SomeState {
 impl SomeState {
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
-    }
-
-    pub fn clone(&self) -> Self {
-        Self {
-            bts: self.bts.clone(),
-        }
     }
 
     // Return true is a given bit is set to one.
@@ -101,40 +82,48 @@ impl SomeState {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }
-} // end impl SomeState
 
-// Return a State from a string, like "s0101".
-// Left-most, consecutive, zeros can be omitted.
-pub fn state_from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
-    let mut bts = bits_new_low(num_ints);
+    // Return a State from a string, like "s0101".
+    // Left-most, consecutive, zeros can be omitted.
+    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
+        let mut bts = SomeBits::bits_new_low(num_ints);
 
-    let mut inx = -1;
+        let mut inx = -1;
 
-    for ch in str.chars() {
-        inx += 1;
+        for ch in str.chars() {
+            inx += 1;
 
-        if inx == 0 {
-            if ch == 's' {
+            if inx == 0 {
+                if ch == 's' {
+                    continue;
+                } else {
+                    return Err(String::from("initial character should be s"));
+                }
+            }
+
+            if bts.high_bit_set() {
+                return Err(String::from("too long"));
+            }
+
+            if ch == '0' {
+                bts = bts.shift_left();
+            } else if ch == '1' {
+                bts = bts.push_1();
+            } else if ch == '_' {
                 continue;
             } else {
-                return Err(String::from("initial character should be s"));
+                return Err(String::from("invalid character"));
             }
-        }
+        } // end for ch
 
-        if bts.high_bit_set() {
-            return Err(String::from("too long"));
-        }
+        Ok(SomeState::new(bts))
+    } // end state_from_string
+} // end impl SomeState
 
-        if ch == '0' {
-            bts = bts.shift_left();
-        } else if ch == '1' {
-            bts = bts.push_1();
-        } else if ch == '_' {
-            continue;
-        } else {
-            return Err(String::from("invalid character"));
+impl Clone for SomeState {
+    fn clone(&self) -> Self {
+        Self {
+            bts: self.bts.clone(),
         }
-    } // end for ch
-
-    Ok(SomeState::new(bts))
-} // end state_from_string
+    }
+}

@@ -2,20 +2,16 @@
 
 use crate::group::SomeGroup;
 use crate::mask::SomeMask;
-//use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-//use crate::rule::SomeRule;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-//use crate::step::SomeStep;
-//use crate::stepstore::StepStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
-use std::slice::Iter; // IterMut
+use std::slice::Iter;
 
 impl fmt::Display for GroupStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -220,10 +216,6 @@ impl GroupStore {
     pub fn iter(&self) -> Iter<SomeGroup> {
         self.avec.iter()
     }
-
-    //    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
-    //        self.avec.iter_mut()
-    //    }
 
     pub fn len(&self) -> usize {
         self.avec.len()

@@ -100,7 +100,7 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 mbit: mbitx,
             } => format!("N(group {} clear check bit {})", greg, mbitx,),
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
@@ -109,11 +109,11 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Act {} Sample State {}, between {} and {})",
                 dm, an, &sta, &greg.state1, &greg.state2
             ),
-            SomeNeed::InactivateCloser { reg: regx } => {
-                format!("N(Inactivate closer region: {}", &regx)
+            SomeNeed::InactivateSeekEdge { reg: regx } => {
+                format!("N(Inactivate SeekEdge region: {}", &regx)
             }
 
-            SomeNeed::AddCloser { reg: regx } => format!("N(Add closer region: {}", &regx),
+            SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {}", &regx),
         }; // end match
 
         write!(f, "{}", rc_str)
@@ -178,16 +178,16 @@ pub enum SomeNeed {
         group_region: SomeRegion,
         mbit: SomeMask,
     },
-    InBetween {
+    SeekEdge {
         dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         in_group: SomeRegion,
     },
-    InactivateCloser {
+    InactivateSeekEdge {
         reg: SomeRegion,
     },
-    AddCloser {
+    AddSeekEdge {
         reg: SomeRegion,
     },
 }
@@ -361,13 +361,13 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 in_group: greg,
             } => match other {
-                SomeNeed::InBetween {
+                SomeNeed::SeekEdge {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
@@ -379,16 +379,16 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::InactivateCloser { reg: regx } => match other {
-                SomeNeed::InactivateCloser { reg: regy } => {
+            SomeNeed::InactivateSeekEdge { reg: regx } => match other {
+                SomeNeed::InactivateSeekEdge { reg: regy } => {
                     if *regx == *regy {
                         return true;
                     }
                 }
                 _ => {}
             },
-            SomeNeed::AddCloser { reg: regx } => match other {
-                SomeNeed::AddCloser { reg: regy } => {
+            SomeNeed::AddSeekEdge { reg: regx } => match other {
+                SomeNeed::AddSeekEdge { reg: regy } => {
                     if *regx == *regy {
                         return true;
                     }
@@ -466,7 +466,7 @@ impl SomeNeed {
             //            } => {
             //                return 5;
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
                 targ_state: _,
@@ -548,7 +548,7 @@ impl SomeNeed {
             //                }
             //                return false;
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
                 targ_state: sta,
@@ -636,7 +636,7 @@ impl SomeNeed {
             //            } => {
             //                return *an;
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: an,
                 targ_state: _,
@@ -703,7 +703,7 @@ impl SomeNeed {
             //            } => {
             //                return *dm;
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: _,
                 targ_state: _,
@@ -763,7 +763,7 @@ impl SomeNeed {
             //            } => {
             //                return SomeRegion::new(&sta, &sta);
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
                 targ_state: sta,
@@ -832,7 +832,7 @@ impl SomeNeed {
             //            } => {
             //                *dm = num;
             //            }
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: _,
                 targ_state: _,
@@ -858,7 +858,7 @@ impl SomeNeed {
 }
 
 impl Clone for SomeNeed {
-    fn clone(&self) -> SomeNeed {
+    fn clone(&self) -> Self {
         match self {
             SomeNeed::AStateMakeGroup {
                 dom_num: dm,
@@ -994,13 +994,13 @@ impl Clone for SomeNeed {
                 };
             }
 
-            SomeNeed::InBetween {
+            SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 in_group: greg,
             } => {
-                return SomeNeed::InBetween {
+                return SomeNeed::SeekEdge {
                     dom_num: *dm,
                     act_num: *an,
                     targ_state: sta.clone(),
@@ -1008,12 +1008,12 @@ impl Clone for SomeNeed {
                 };
             }
 
-            SomeNeed::InactivateCloser { reg: regx } => {
-                return SomeNeed::InactivateCloser { reg: regx.clone() };
+            SomeNeed::InactivateSeekEdge { reg: regx } => {
+                return SomeNeed::InactivateSeekEdge { reg: regx.clone() };
             }
 
-            SomeNeed::AddCloser { reg: regx } => {
-                return SomeNeed::AddCloser { reg: regx.clone() };
+            SomeNeed::AddSeekEdge { reg: regx } => {
+                return SomeNeed::AddSeekEdge { reg: regx.clone() };
             }
         } // end match ndx
     } // end clone

@@ -7,30 +7,7 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-impl PartialEq for SomeRule {
-    fn eq(&self, other: &Self) -> bool {
-        if self.b00.is_eq(&other.b00) == false {
-            return false;
-        }
-
-        if self.b01.is_eq(&other.b01) == false {
-            return false;
-        }
-
-        if self.b11.is_eq(&other.b11) == false {
-            return false;
-        }
-
-        if self.b10.is_eq(&other.b10) == false {
-            return false;
-        }
-
-        return true;
-    }
-}
-impl Eq for SomeRule {}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeRule {
     pub b00: SomeMask,
     pub b01: SomeMask,
