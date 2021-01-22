@@ -1130,34 +1130,17 @@ impl SomeAction {
         for greg in regs.iter() {
             let grpx = self.groups.find_mut(greg).unwrap();
 
-            let mut stsin = greg.states_in(&states1); // The states in greg and no other group
+            let stsin = greg.states_in(&states1); // The states in greg and no other group
 
             // println!("Act {} Group {} States {}", self.num, greg, stsin);
 
-            // Look for states in greg that have not been sampled and are adjacent to an
-            // external square that is in only one group.
-            for stax in states1.iter() {
-                if greg.is_adjacent_state(&stax) {
-                    let adj_sta = greg.overlapping_part_state(&stax);
-
-                    if regs.state_in_1_region(&adj_sta) {
-                        if states1.contains(&adj_sta) {
-                        } else {
-                            //println!("adding state {} for group {} to state1", &adj_sta, &greg);
-                            stsin.push(adj_sta);
-                        }
-                    } // end if self.groups
-                } // end if greg.adjecent
-            } // next stax
-
-            if stsin.len() == 0 {
-                // Check if previously confirmed group no longer has
-                // squares in one group.
-                //let grpx = self.groups.find_mut(greg).unwrap();
-                if let Some(_) = grpx.anchor {
+            if let Some(stax) = &grpx.anchor {
+                if stsin.contains(&stax) == false {
                     grpx.set_anchor_off();
                 }
+            }
 
+            if stsin.len() == 0 {
                 continue;
             }
 
@@ -1270,22 +1253,12 @@ impl SomeAction {
             //
             // else confirm the group.
             let anchor_sta = &cfm_max[0];
-            if let Some(anchor_sqr) = self.squares.find(anchor_sta) {
-                if anchor_sqr.pnc() {
-                    // println!("group {} anchor {} pnc", &greg, &anchor_sta);
-                } else {
-                    // Get additional samples of the anchor
-                    ret_nds.push(SomeNeed::ConfirmGroup {
-                        dom_num: 0, // will be set in domain code
-                        act_num: self.num,
-                        anchor: anchor_sta.clone(),
-                        targ_state: anchor_sta.clone(),
-                        for_group: greg.clone(),
-                    });
-                    continue; // next greg
-                }
+
+            let anchor_sqr = self.squares.find(anchor_sta).unwrap();
+            if anchor_sqr.pnc() {
+                // println!("group {} anchor {} pnc", &greg, &anchor_sta);
             } else {
-                // Get the first sample of the anchor
+                // Get additional samples of the anchor
                 ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
@@ -1293,7 +1266,7 @@ impl SomeAction {
                     targ_state: anchor_sta.clone(),
                     for_group: greg.clone(),
                 });
-                continue;
+                continue; // next greg
             }
 
             // Check each adjacent external state
@@ -1354,15 +1327,15 @@ impl SomeAction {
                 continue;
             }
 
-            if nds_grp.len() > 0 {
-                //  println!("*** nds_grp {}", &nds_grp);
-                ret_nds.append(&mut nds_grp);
-                continue;
-            }
-
             if grp_clear_bit.len() > 0 {
                 //  println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
                 ret_nds.append(&mut grp_clear_bit);
+                //continue;
+            }
+
+            if nds_grp.len() > 0 {
+                //  println!("*** nds_grp {}", &nds_grp);
+                ret_nds.append(&mut nds_grp);
                 continue;
             }
 
@@ -1380,7 +1353,7 @@ impl SomeAction {
                         group_region: greg.clone(),
                         cstate: anchor_sta.clone(),
                     });
-                    continue;
+                //continue;
                 } else {
                     // Get additional samples of the far state
                     ret_nds.push(SomeNeed::ConfirmGroup {

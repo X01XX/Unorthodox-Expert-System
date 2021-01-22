@@ -340,13 +340,13 @@ impl SomeRegion {
         self.intersection(&other).set_to_x(&adj_bit) // a strange use of the intersection logic
     }
 
-    pub fn overlapping_part_state(&self, other: &SomeState) -> SomeState {
-        assert!(self.is_adjacent_state(&other));
-
-        let adj_bit = self.diff_mask_state(&other);
-
-        SomeState::new(other.bts.b_xor(&adj_bit.bts))
-    }
+    //    pub fn overlapping_part_state(&self, other: &SomeState) -> SomeState {
+    //        assert!(self.is_adjacent_state(&other));
+    //
+    //        let adj_bit = self.diff_mask_state(&other);
+    //
+    //        SomeState::new(other.bts.b_xor(&adj_bit.bts))
+    //    }
 
     pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
         let stxor = SomeState::new(tbits.bts.clone());
