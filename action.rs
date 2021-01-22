@@ -1156,6 +1156,8 @@ impl SomeAction {
             //  Calculate a rate for each sta1 option, based on the number of adjacent states
             //  in only one group and and/or being used as an anchor in another group.
             let mut max_num = 0;
+
+            // Create a StateStore composed of anchor, far, adjacent-external
             let mut cfmv_max = Vec::<StateStore>::new();
 
             for sta1 in stsin.iter() {
@@ -1165,6 +1167,7 @@ impl SomeAction {
 
                 let mut cnt = 1;
 
+                // Rate anchor
                 if let Some(sqrx) = self.squares.find(&sta1) {
                     if sqrx.pnc() {
                         cnt += 5;
@@ -1173,7 +1176,18 @@ impl SomeAction {
                     }
                 }
 
-                // Process adjacent external states
+                cfmx.push(greg.far_state(&sta1));
+
+                // Rate far state
+                if let Some(sqrx) = self.squares.find(&cfmx[1]) {
+                    if sqrx.pnc() {
+                        cnt += 5;
+                    } else {
+                        cnt += sqrx.len_results();
+                    }
+                }
+
+                // Rate adjacent external states
                 for non_x_bit in non_x_msks.iter() {
                     let sta_adj = SomeState::new(sta1.bts.b_xor(non_x_bit));
                     //println!(
@@ -1199,18 +1213,9 @@ impl SomeAction {
                     }
                 } // next non_x_bit
 
-                // check far state
-                let far_sta = greg.far_state(&sta1);
-                if let Some(sqrx) = self.squares.find(&far_sta) {
-                    if sqrx.pnc() {
-                        cnt += 5;
-                    } else {
-                        cnt += sqrx.len_results();
-                    }
-                }
-
                 //println!("group {} anchor {} rating {}", &greg, &cfmx[0], cnt);
 
+                // Accumulate highest rated anchors
                 if cnt > max_num {
                     max_num = cnt;
                     cfmv_max = Vec::<StateStore>::new();
@@ -1222,6 +1227,7 @@ impl SomeAction {
             } // next sta1
 
             // Check if a confirmed group anchor is still rated the best
+            // If so, skip further processing.
             if grpx.confirmed {
                 if let Some(anchor) = &grpx.anchor {
                     // handle the rare case of anchors with the same rating
@@ -1243,15 +1249,18 @@ impl SomeAction {
                 }
             }
 
-            let cfm_max = &cfmv_max[0];
+            // Select an anchor
+            let mut cfm_max = &cfmv_max[0];
+            if cfmv_max.len() > 1 {
+                cfm_max = &cfmv_max[rand::thread_rng().gen_range(0, cfmv_max.len())];
+            }
 
-            // If the anchor has not been sampled, enough, return a need for that.
+            // If any external adjacent states have not been sampled, or not enough,
+            // return needs for that.
             //
-            // if group external adjacent states have not been sampled, enough, return needs for that.
+            // If the group far state has not been sampled, or not enough, return a need for that.
             //
-            // If the group far state has not been sampled, enough, return a need for that.
-            //
-            // else confirm the group.
+            // Else confirm the group.
             let anchor_sta = &cfm_max[0];
 
             let anchor_sqr = self.squares.find(anchor_sta).unwrap();
@@ -1274,7 +1283,7 @@ impl SomeAction {
             let mut nds_grp_add = NeedStore::new(); // needs for added group
             let mut grp_clear_bit = NeedStore::new(); // clear bit need for group
 
-            for inx in 1..cfm_max.len() {
+            for inx in 2..cfm_max.len() {
                 let adj_sta = &cfm_max[inx];
 
                 let a_bit_msk = SomeMask::new(adj_sta.bts.b_xor(&anchor_sta.bts));
@@ -1330,7 +1339,6 @@ impl SomeAction {
             if grp_clear_bit.len() > 0 {
                 //  println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
                 ret_nds.append(&mut grp_clear_bit);
-                //continue;
             }
 
             if nds_grp.len() > 0 {
@@ -1341,26 +1349,24 @@ impl SomeAction {
 
             //   println!("grp {} check far", &greg);
 
-            // Process far state, after the anchor and adjacent, external, tests have been made.
+            // Process far state, after the anchor and adjacent, external, checks have been made.
             // If its dissimilar to the anchor, the group will be invalidated.
             // Fairly cheap, quick, somewhat accurate, method of establishing a region,
-            // instead of checking all states adjacent-internal.
-            let sta_far = SomeState::new(anchor_sta.bts.b_xor(&greg.x_mask().bts));
-            if let Some(sqrf) = self.squares.find(&sta_far) {
+            // instead of checking all states adjacent-internal to the anchor.
+            if let Some(sqrf) = self.squares.find(&cfm_max[1]) {
                 if sqrf.pnc() {
                     // Set the group confirmed
                     ret_nds.push(SomeNeed::SetGroupConfirmed {
                         group_region: greg.clone(),
                         cstate: anchor_sta.clone(),
                     });
-                //continue;
                 } else {
                     // Get additional samples of the far state
                     ret_nds.push(SomeNeed::ConfirmGroup {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
-                        targ_state: sta_far.clone(),
+                        targ_state: cfm_max[1].clone(),
                         for_group: greg.clone(),
                     });
                 }
@@ -1370,11 +1376,11 @@ impl SomeAction {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    targ_state: sta_far.clone(),
+                    targ_state: cfm_max[1].clone(),
                     for_group: greg.clone(),
                 });
             }
-        } // netx greg
+        } // next greg
         ret_nds
     } // end confirm_group_needs
 
