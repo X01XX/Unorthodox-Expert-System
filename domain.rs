@@ -30,6 +30,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::rule::region_to_region;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -66,6 +67,7 @@ pub struct SomeDomain {
     pub max_region: SomeRegion, // Region formed by the union of all Current States experienced.
     pub optimal: SomeRegion, // An optimal region that is sought if there ar eno needs.  This may be changed.
     pub prev_state: SomeState, // A copy of the current state, to detect if it has changed between Domain activities.
+    pub pos_bit_cngs: SomeRule, // A store of possible, predictable, bit changes
     vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
     vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
                          // chosen randomly at first sample, incremented after each subsequent sample.
@@ -76,6 +78,8 @@ impl SomeDomain {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
         let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
+        let st_low = SomeState::new(SomeBits::new_low(num_ints));
+
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
             num,
@@ -85,6 +89,7 @@ impl SomeDomain {
             max_region: SomeRegion::new(&cur, &cur),
             optimal: opt,
             prev_state: cur.clone(),
+            pos_bit_cngs: SomeRule::new(&st_low, &st_low),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -99,9 +104,10 @@ impl SomeDomain {
         self.vec_hvr.push(hv);
     }
 
+    // Used in tests.rs
     pub fn _bits_new(&self, avec: Vec<usize>) -> SomeBits {
         assert!(avec.len() == self.num_ints);
-        SomeBits::bits_new_vec(&avec)
+        SomeBits::new_vec(&avec)
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
@@ -164,6 +170,7 @@ impl SomeDomain {
                 "Asynchronous change from {} to {}",
                 &self.prev_state, &self.cur_state
             );
+            // TODO store change?
             self.prev_state = self.cur_state.clone();
         }
     }
@@ -449,7 +456,7 @@ impl SomeDomain {
         //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
-        let mut b01 = SomeMask::new(SomeBits::bits_new_low(self.num_ints));
+        let mut b01 = SomeMask::new(SomeBits::new_low(self.num_ints));
         let mut b10 = b01.clone();
 
         // Get union of changes for each step

@@ -41,7 +41,7 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
-    pub fn bits_new_vec(avec: &Vec<usize>) -> SomeBits {
+    pub fn new_vec(avec: &Vec<usize>) -> SomeBits {
         let mut bvec = Vec::<u8>::with_capacity(avec.len());
 
         for numx in avec {
@@ -50,12 +50,12 @@ impl SomeBits {
         SomeBits { ints: bvec }
     }
 
-    pub fn bits_new_low(num_ints: usize) -> SomeBits {
+    pub fn new_low(num_ints: usize) -> SomeBits {
         let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
         for _ in 0..num_ints {
             ints_vec.push(0);
         }
-        SomeBits::bits_new_vec(&ints_vec)
+        SomeBits::new_vec(&ints_vec)
     }
 
     pub fn len(&self) -> usize {
@@ -82,7 +82,7 @@ impl SomeBits {
 
                     let abit = tmpint & !tmp2;
 
-                    let mut btsx = SomeBits::bits_new_low(num_ints); // new Bits object, all zeros
+                    let mut btsx = SomeBits::new_low(num_ints); // new Bits object, all zeros
 
                     btsx.ints[int_inx] = abit; // update one integer
 

@@ -38,6 +38,11 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" clsr: {}", self.seek_edge));
         }
 
+        rc_str.push_str(&format!(
+            " b01: {} b10: {} recent cng: {}",
+            self.pos_bit_cngs.b01, self.pos_bit_cngs.b10, self.pos_bit_changed
+        ));
+
         let regs = self.groups.regions();
 
         let mut fil = String::from(",\n       Grps: (");
@@ -83,23 +88,38 @@ impl fmt::Display for SomeAction {
 
 #[derive(Serialize, Deserialize)]
 pub struct SomeAction {
-    pub num: usize,             // Action number, index into vector of ActionStore.
-    pub groups: GroupStore,     // Groups of compatible-change squares
-    pub squares: SquareStore,   // Squares, or State->results
-    pub seek_edge: RegionStore, // Regions where closer, and closer, dissimilar squares are sought,
-    // until two adjacent, dissimilar squares are found.
-    // This discovers a new edge in the solution.
-    x_mask: SomeMask, // The results of all actions of a Domain indicate bit positions that may be 0 or 1.
+    // Action number, index/key into ActionStore vector.
+    pub num: usize,
+    // Groups of compatible-change squares
+    pub groups: GroupStore,
+    // Squares hold results of multiple samples of the same state
+    pub squares: SquareStore,
+    // Regions of invalidated groups hide a new edge of the solution
+    // Closer and closer dissimilar squares are sought, producing smaller and smaller
+    // regions, until a pair of adjacent, dissimilar, squares are found.
+    pub seek_edge: RegionStore,
+    // The results of all actions of a Domain indicate bit positions that may be 0 or 1.
+    x_mask: SomeMask,
+    // The number of ints the action uses to represent a bit pattern
+    num_ints: usize,
+    // Aggregation of possible bit changes
+    pos_bit_cngs: SomeRule,
+    // Flag for indicating a recent change in the pos_bit_cngs rule
+    pos_bit_changed: bool,
 }
 
 impl SomeAction {
     pub fn new(num_ints: usize, num: usize) -> Self {
+        let st_low = SomeState::new(SomeBits::new_low(num_ints));
         SomeAction {
             num,
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            x_mask: SomeMask::new(SomeBits::bits_new_low(num_ints)),
+            x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
+            num_ints,
+            pos_bit_cngs: SomeRule::new(&st_low, &st_low),
+            pos_bit_changed: false,
         }
     }
 
@@ -435,6 +455,7 @@ impl SomeAction {
                 }
             }
         }
+        self.update_pos_bit_chgs();
     }
 
     // Check groups an updated square is in to see if they are still valid.
@@ -454,6 +475,7 @@ impl SomeAction {
                 regs_invalid
             );
         }
+
         return regs_invalid;
     }
 
@@ -817,7 +839,7 @@ impl SomeAction {
                 let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
                 //let mut dif_msk = SomeMask::new(cur_state.bts.new_low());
-                let mut dif_msk = SomeMask::new(SomeBits::bits_new_low(cur_state.num_ints()));
+                let mut dif_msk = SomeMask::new(SomeBits::new_low(cur_state.num_ints()));
 
                 let mut inx = 0;
                 for mskx in dif_bits.iter() {
@@ -1037,7 +1059,7 @@ impl SomeAction {
 
                 let reg_both = reg_exp.union(&grpx.region); // one bit so double the "area"
 
-                let mut ndsx = self.possible_group_needs(&reg_both, 55);
+                let mut ndsx = self.possible_group_needs(&reg_both, 1);
 
                 // println!(
                 //     "expand_needs, act {}, check reg {} needs {} for expansion of group {}",
@@ -1581,7 +1603,7 @@ impl SomeAction {
         }
 
         // Rules are the same, see if the two groups can be combined
-        return self.possible_group_needs(&reg_both, 2);
+        return self.possible_group_needs(&reg_both, 3);
     } // end groups_intersection_needs
 
     // Get needs for two adjacent groups, with the same pn rating.
@@ -1598,29 +1620,29 @@ impl SomeAction {
                 // If the regions have the same X-bit pattern, they can be combined
                 if grpx.region.x_mask() == grpy.region.x_mask() {
                     let regx = grpx.region.union(&grpy.region);
-                    return self.possible_group_needs(&regx, 3);
+                    return self.possible_group_needs(&regx, 4);
                 }
 
                 let regz = grpx.region.overlapping_part(&grpy.region);
 
-                if regz.intersects(&grpx.region) && regz.intersects(&grpy.region) {
-                    if self.groups.any_superset_of(&regz) {
-                        return nds;
-                    }
-
-                    //println!("groups_adjacent_needs: {} and {}", &grpx.region, &grpy.region);
-                    return self.possible_group_needs(&regz, 4);
+                if self.groups.any_superset_of(&regz) {
+                    return nds;
                 }
+
+                //println!("groups_adjacent_needs: {} and {}", &grpx.region, &grpy.region);
+                return self.possible_group_needs(&regz, 5);
             }
             _ => {
-                // If the regions have the same X-bit pattern, the overlapping part may be a superset of both.
+                // If the regions have the same X-bit pattern, the overlapping part may be a superset
+                // of both.
                 if grpx.region.x_mask() == grpy.region.x_mask() {
                     if let Some(_) = grpx.rules.union(&grpy.rules) {
                         let regx = grpx.region.union(&grpy.region);
-                        return self.possible_group_needs(&regx, 3);
+                        return self.possible_group_needs(&regx, 6);
                     }
                 }
 
+                // Check if any valid rules can be found in the overlapping region.
                 let reg_ov = grpx.region.overlapping_part(&grpy.region);
 
                 if let Some(rulesx) = grpx
@@ -1640,7 +1662,7 @@ impl SomeAction {
                             self.num, grpx.region, grpy.region, regz, rulesx
                         );
 
-                        return self.possible_group_needs(&regz, 6);
+                        return self.possible_group_needs(&regz, 7);
                     }
                 } // end if let Some
             } // end match pn default
@@ -1887,4 +1909,47 @@ impl SomeAction {
         //println!("regions for new groups {}", rsx.str());
         rsx
     } // end possible_group_regions
+
+    // Aggregate all predictable bit changes that are possible.
+    // Repeated sampling of squares will tend to increase the number
+    // of possible bits changes.  Some changes, like going from
+    // predictable to unpredictable, could decrease them.
+    pub fn possible_bit_changes(&self) -> SomeRule {
+        let st_low = SomeState::new(SomeBits::new_low(self.num_ints));
+        let mut ret_rule = SomeRule::new(&st_low, &st_low);
+
+        for grpx in &self.groups.avec {
+            if grpx.active == false {
+                continue;
+            }
+
+            match grpx.pn {
+                Pn::One => {
+                    // Find bit changes that are desired
+                    ret_rule.b10 = ret_rule.b01.m_or(&grpx.rules[0].b10);
+                    ret_rule.b01 = ret_rule.b01.m_or(&grpx.rules[0].b01);
+                }
+                Pn::Two => {
+                    for rulx in &grpx.rules.avec {
+                        ret_rule.b10 = ret_rule.b01.m_or(&rulx.b10);
+                        ret_rule.b01 = ret_rule.b01.m_or(&rulx.b01);
+                    } // next rulx
+                } // end match Two
+                Pn::Unpredictable => {}
+            } // end match pn
+        } // next grpx
+
+        ret_rule
+    }
+
+    // Update the action pos_bit_cngs rule, if needed
+    fn update_pos_bit_chgs(&mut self) {
+        let rulx = self.possible_bit_changes();
+        if rulx == self.pos_bit_cngs {
+            self.pos_bit_changed = false;
+        } else {
+            self.pos_bit_cngs = rulx;
+            self.pos_bit_changed = true;
+        }
+    }
 }

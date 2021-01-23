@@ -468,9 +468,9 @@ impl SomeRegion {
     // Return a Region from a string, like "r01X1".
     // Left-most, consecutive, zeros can be omitted.
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
-        let mut bts_high = SomeBits::bits_new_low(num_ints);
+        let mut bts_high = SomeBits::new_low(num_ints);
 
-        let mut bts_low = SomeBits::bits_new_low(num_ints);
+        let mut bts_low = SomeBits::new_low(num_ints);
 
         let mut inx = -1;
 

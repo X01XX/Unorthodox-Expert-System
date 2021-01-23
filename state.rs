@@ -86,7 +86,7 @@ impl SomeState {
     // Return a State from a string, like "s0101".
     // Left-most, consecutive, zeros can be omitted.
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
-        let mut bts = SomeBits::bits_new_low(num_ints);
+        let mut bts = SomeBits::new_low(num_ints);
 
         let mut inx = -1;
 
