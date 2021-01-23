@@ -6,7 +6,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
+//use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -199,18 +199,18 @@ impl GroupStore {
     }
 
     // Collect all group anchor states
-    pub fn anchors(&self) -> StateStore {
-        let mut stas = StateStore::new();
-
-        for grpx in &self.avec {
-            if grpx.active {
-                if let Some(stax) = &grpx.anchor {
-                    stas.push(stax.clone());
-                }
-            }
-        }
-        stas
-    }
+    //    pub fn anchors(&self) -> StateStore {
+    //        let mut stas = StateStore::new();
+    //
+    //        for grpx in &self.avec {
+    //            if grpx.active {
+    //                if let Some(stax) = &grpx.anchor {
+    //                    stas.push(stax.clone());
+    //                }
+    //            }
+    //        }
+    //        stas
+    //    }
 
     // Return an iterator
     pub fn iter(&self) -> Iter<SomeGroup> {

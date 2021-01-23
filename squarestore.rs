@@ -138,38 +138,38 @@ impl SquareStore {
 
     // Return the minimum Pn value of a set pnc squares,
     // identified by a list of their keys.
-    pub fn min_pnc(&self, keys: &StateStore) -> Pn {
-        assert!(keys.len() > 0);
-
-        let mut min_pnc = Pn::Unpredictable;
-        let mut not_found = true;
-
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pnc() {
-                not_found = false;
-                if sqrx.pn() < min_pnc {
-                    min_pnc = sqrx.pn();
-                }
-            }
-        }
-
-        if not_found {
-            panic!("No pnc square found in list!");
-        }
-        min_pnc
-    } // end min_pnc
+    //    pub fn min_pnc(&self, keys: &StateStore) -> Pn {
+    //        assert!(keys.len() > 0);
+    //
+    //        let mut min_pnc = Pn::Unpredictable;
+    //        let mut not_found = true;
+    //
+    //        for keyx in keys.iter() {
+    //            let sqrx = self.find(&keyx).unwrap();
+    //            if sqrx.pnc() {
+    //                not_found = false;
+    //                if sqrx.pn() < min_pnc {
+    //                    min_pnc = sqrx.pn();
+    //                }
+    //            }
+    //        }
+    //
+    //        if not_found {
+    //            panic!("No pnc square found in list!");
+    //        }
+    //        min_pnc
+    //    } // end min_pnc
 
     // Return true if any key value in a StateStore corresponds with
     // a square that has pnc set to true.
-    pub fn any_pnc(&self, keys: &StateStore) -> bool {
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pnc() {
-                return true;
-            }
-        }
-
-        false
-    }
+    //    pub fn any_pnc(&self, keys: &StateStore) -> bool {
+    //        for keyx in keys.iter() {
+    //            let sqrx = self.find(&keyx).unwrap();
+    //            if sqrx.pnc() {
+    //                return true;
+    //            }
+    //        }
+    //
+    //        false
+    //    }
 } // end impl SquareStore

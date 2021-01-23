@@ -1060,8 +1060,6 @@ impl SomeAction {
         //println!("far_needs");
         let mut ret_nds = NeedStore::new();
 
-        //let stas_in_reg = self.squares.stas_in_reg(&aregion);
-
         assert!(stas_in_reg.len() > 0);
 
         // Get states representing squares with the highest number of results
@@ -1121,9 +1119,6 @@ impl SomeAction {
 
         let states1: StateStore = self.squares.states_in_1_region(&regs);
 
-        let anchors: StateStore = self.groups.anchors();
-        //println!("anchors {}", &anchors);
-
         //println!("Act {}, states in one region {}", self.num, states1);
 
         // Find squares in one group for each group, that may be an anchor
@@ -1154,7 +1149,7 @@ impl SomeAction {
             //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
             //
             //  Calculate a rate for each sta1 option, based on the number of adjacent states
-            //  in only one group and and/or being used as an anchor in another group.
+            //  in only one group.
             let mut max_num = 0;
 
             // Create a StateStore composed of anchor, far, adjacent-external
@@ -1194,10 +1189,8 @@ impl SomeAction {
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg
                     // );
-                    if anchors.contains(&sta_adj) {
-                        //println!("{} is an anchor", &sta_adj);
-                        cnt += 1000;
-                    } else if states1.contains(&sta_adj) {
+
+                    if states1.contains(&sta_adj) {
                         //println!("{} is in only one group", &sta_adj);
                         cnt += 100;
                     }
@@ -1552,44 +1545,43 @@ impl SomeAction {
     fn groups_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
         //println!("groups_intersection_needs");
 
-        if grpx.pn != grpy.pn {
-            return self.group_pair_cont_int_needs(&grpx, &grpy);
+        let reg_both = grpx.region.union(&grpy.region);
+
+        if grpx.pn == Pn::Unpredictable && grpy.pn == Pn::Unpredictable {
+            return self.possible_group_needs(&reg_both, 2);
         }
 
-        // So grpx.pn == grpy.pn
-        match grpx.pn {
-            Pn::Unpredictable => {
-                // The intersection is not contradictory, check if combination is possible
-                let regx = grpx.region.union(&grpy.region);
+        let reg_int = grpx.region.intersection(&grpy.region);
 
-                let stas_in = self.squares.stas_in_reg(&regx);
+        if grpx.pn != grpy.pn {
+            let mut nds = NeedStore::new();
+            nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
+            return nds;
+        }
 
-                if self.squares.any_pnc(&stas_in) {
-                    let min_pnc = self.squares.min_pnc(&stas_in);
+        let rulsx = grpx.rules.restrict_initial_region(&reg_int);
+        let rulsy = grpy.rules.restrict_initial_region(&reg_int);
 
-                    if min_pnc < Pn::Unpredictable {
-                        return NeedStore::new();
-                    }
-                }
-                return self.possible_group_needs(&regx, 1);
+        // If contradictory, return needs to resolve
+        if rulsx != rulsy {
+            let mut nds = NeedStore::new();
+
+            // Check if a valid sub-region of the intersection exists
+            if let Some(rulsxy) = rulsx.intersection(&rulsy) {
+                // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
+                let ok_reg = rulsxy.initial_region();
+
+                let regy = reg_int.far_reg(&ok_reg); // to avoid subtraction, use the far sub-region
+
+                nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
+            } else {
+                nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             }
-            _ => {
-                let reg_int = grpx.region.intersection(&grpy.region);
-                let rulsx = grpx.rules.restrict_initial_region(&reg_int);
-                let rulsy = grpy.rules.restrict_initial_region(&reg_int);
+            return nds;
+        }
 
-                // If contradictory, return needs to resolve
-                if rulsx != rulsy {
-                    return self.group_pair_cont_int_needs(&grpx, &grpy);
-                }
-
-                // Rules are the same, see if the two groups can be combined
-                let reg_both = grpx.region.union(&grpy.region);
-
-                return self.possible_group_needs(&reg_both, 2);
-                //                }
-            } // end match variant _
-        } // end match pn
+        // Rules are the same, see if the two groups can be combined
+        return self.possible_group_needs(&reg_both, 2);
     } // end groups_intersection_needs
 
     // Get needs for two adjacent groups, with the same pn rating.
@@ -1622,6 +1614,12 @@ impl SomeAction {
             }
             _ => {
                 // If the regions have the same X-bit pattern, the overlapping part may be a superset of both.
+                if grpx.region.x_mask() == grpy.region.x_mask() {
+                    if let Some(_) = grpx.rules.union(&grpy.rules) {
+                        let regx = grpx.region.union(&grpy.region);
+                        return self.possible_group_needs(&regx, 3);
+                    }
+                }
 
                 let reg_ov = grpx.region.overlapping_part(&grpy.region);
 
@@ -1649,48 +1647,6 @@ impl SomeAction {
         } // end match pn for adjacent regions
         nds
     } // end groups_adjacent_needs
-
-    // Return the contradictory intersection needs, if any, for two intersecting groups.
-    fn group_pair_cont_int_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        //println!("group_pair_cont_int_needs");
-        let mut nds = NeedStore::new();
-
-        // Calculate the intersection
-        let reg_int = grpx.region.intersection(&grpy.region);
-
-        if grpx.pn != grpy.pn {
-            // Pns not equal, the whole region is contradictory
-            nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
-            return nds;
-        }
-
-        if grpx.pn == Pn::Unpredictable {
-            println!("Pn::Unpredictable in group_pair_cont_int_need ? this should not happen.");
-            return nds;
-        }
-
-        let rulsx = grpx.rules.restrict_initial_region(&reg_int);
-
-        let rulsy = grpy.rules.restrict_initial_region(&reg_int);
-
-        if rulsx == rulsy {
-            return nds;
-        } // A valid union of the whole intersection region exists
-
-        // Check if a valid sub-region of the intersection exists
-        if let Some(rulsxy) = rulsx.intersection(&rulsy) {
-            // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
-            let ok_reg = rulsxy.initial_region();
-
-            let regy = reg_int.far_reg(&ok_reg); // to avoid subtraction, use the far sub-region
-
-            nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
-        } else {
-            nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
-        }
-
-        nds
-    } // end groups_pair_cont_int_needs
 
     // For a contradictory intersection, return a need for more samples.
     // If no prior samples in the intersection, seek one.
@@ -1735,14 +1691,23 @@ impl SomeAction {
 
             if sqrz.len_results() > max_rslts {
                 max_rslts = sqrz.len_results();
+                stas_check = StateStore::new();
+            }
+
+            if sqrz.len_results() == max_rslts {
                 stas_check.push(sqrz.state.clone());
             }
+        }
+
+        let mut inx = 0;
+        if stas_check.len() > 1 {
+            inx = rand::thread_rng().gen_range(0, stas_check.len());
         }
 
         SomeNeed::ContradictoryIntersection {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
-            goal_reg: SomeRegion::new(&stas_check[0], &stas_check[0]),
+            goal_reg: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
             group1: grpx.region.clone(),
             ruls1: grpx.rules.restrict_initial_region(regx),
             group2: grpy.region.clone(),
