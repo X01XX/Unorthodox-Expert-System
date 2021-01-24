@@ -319,10 +319,8 @@ impl SomeRule {
     pub fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.formatted_string_length());
 
-        let mut agg = false;
-
         let num_ints = self.b00.num_ints();
-        let num_bits = num_ints * 8;
+        let num_bits = num_ints * NUM_BITS_PER_INT;
 
         for i in (0..num_bits).rev() {
             let b00: bool = self.b00.is_bit_set(i);
@@ -352,10 +350,8 @@ impl SomeRule {
                 strrc.push_str("01");
             } else if b00 && b01 && b11 == false && b10 == false {
                 strrc.push_str("0X");
-                agg = true;
             } else if b00 == false && b01 == false && b11 && b10 {
                 strrc.push_str("1X");
-                agg = true;
             } else if b00 == false && b01 == false && b11 == false && b10 == false {
                 // Return a new Square instance
                 strrc.push_str("dc");
@@ -363,10 +359,6 @@ impl SomeRule {
                 strrc.push_str("**");
             }
         } // next i
-
-        if agg {
-            strrc.push_str("(agg)");
-        }
 
         strrc
     }
@@ -386,18 +378,23 @@ pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
 
     let t_ones = SomeMask::new(to.state1.bts.b_and(&to.state2.bts));
     let t_zeros = SomeMask::new(to.state1.bts.b_not().b_and(&to.state2.bts.b_not()));
-
+    let t_xes = SomeMask::new(to.state1.bts.b_xor(&to.state2.bts));
+    
     let bx1 = f_xes.m_and(&t_ones);
     let bx0 = f_xes.m_and(&t_zeros);
+    
+    let b1x = f_ones.m_and(&t_xes);
+    let b0x = f_zeros.m_and(&t_xes);
+    let bxx = f_xes.m_and(&t_xes);
 
     // Set the bits desired, the undesired bits end up as zeros
-    let nb00 = f_zeros.m_and(&t_zeros).m_or(&bx0);
+    let nb00 = f_zeros.m_and(&t_zeros).m_or(&bx0).m_or(&b0x).m_or(&bxx);
 
-    let nb01 = f_zeros.m_and(&t_ones).m_or(&bx1);
+    let nb01 = f_zeros.m_and(&t_ones).m_or(&bx1).m_or(&b0x);
 
-    let nb11 = f_ones.m_and(&t_ones).m_or(&bx1);
+    let nb11 = f_ones.m_and(&t_ones).m_or(&bx1).m_or(&b1x).m_or(&bxx);
 
-    let nb10 = f_ones.m_and(&t_zeros).m_or(&bx0);
+    let nb10 = f_ones.m_and(&t_zeros).m_or(&bx0).m_or(&b1x);
 
     // println!("from {} to {} = b01: {}  b10: {}", &from, &to, &nb01, &nb10);
 

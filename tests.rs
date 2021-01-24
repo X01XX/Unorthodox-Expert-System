@@ -280,28 +280,44 @@ mod tests {
 
     #[test]
     fn region_to_region_test() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
 
-        let reg1 = SomeRegion::from_string(1, "r00x11x").unwrap();
+        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
 
-        let reg2 = SomeRegion::from_string(1, "r010101").unwrap();
+        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
 
+        let b00 = SomeMask {
+            bts: dm1._bits_new(vec![255, 325]),
+        };
+        
         let b01 = SomeMask {
-            bts: dm1._bits_new(vec![17]),
+            bts: dm1._bits_new(vec![0, 194]),
         };
 
+        let b11 = SomeMask {
+            bts: dm1._bits_new(vec![0, 27]),
+        };
+        
         let b10 = SomeMask {
-            bts: dm1._bits_new(vec![10]),
+            bts: dm1._bits_new(vec![0, 44]),
         };
 
         let ragg = region_to_region(&reg1, &reg2);
 
-        if b10 != ragg.b10 {
-            return Err(String::from("b10 NEQ rule.b10"));
+        if b00 != ragg.b00 {
+            return Err(format!("b00 {} problem in {} s/b {}", &b00, &ragg, &ragg.b00));
         }
 
         if b01 != ragg.b01 {
-            return Err(String::from("b01 NEQ rule.b01"));
+            return Err(format!("b01 {} problem in {} s/b {}", &b01, &ragg, &ragg.b01));
+        }
+
+        if b11 != ragg.b11 {
+            return Err(format!("b11 {} problem in {} s/b {}", &b11, &ragg, &ragg.b11));
+        }
+               
+        if b10 != ragg.b10 {
+            return Err(format!("b10 {} problem in {} s/b {}", &b10, &ragg, &ragg.b10));
         }
 
         Ok(())
