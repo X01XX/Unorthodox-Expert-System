@@ -38,10 +38,10 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" clsr: {}", self.seek_edge));
         }
 
-        rc_str.push_str(&format!(
-            " b01: {} b10: {} recent cng: {}",
-            self.pos_bit_cngs.b01, self.pos_bit_cngs.b10, self.pos_bit_changed
-        ));
+        //rc_str.push_str(&format!(
+        //    " Change rule {} recent cng: {}",
+        //    self.pos_bit_cngs, self.pos_bit_changed
+        //));
 
         let regs = self.groups.regions();
 

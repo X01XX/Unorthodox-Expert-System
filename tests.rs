@@ -289,7 +289,7 @@ mod tests {
         let b00 = SomeMask {
             bts: dm1._bits_new(vec![255, 325]),
         };
-        
+
         let b01 = SomeMask {
             bts: dm1._bits_new(vec![0, 194]),
         };
@@ -297,7 +297,7 @@ mod tests {
         let b11 = SomeMask {
             bts: dm1._bits_new(vec![0, 27]),
         };
-        
+
         let b10 = SomeMask {
             bts: dm1._bits_new(vec![0, 44]),
         };
@@ -305,19 +305,31 @@ mod tests {
         let ragg = region_to_region(&reg1, &reg2);
 
         if b00 != ragg.b00 {
-            return Err(format!("b00 {} problem in {} s/b {}", &b00, &ragg, &ragg.b00));
+            return Err(format!(
+                "b00 {} problem in {} s/b {}",
+                &b00, &ragg, &ragg.b00
+            ));
         }
 
         if b01 != ragg.b01 {
-            return Err(format!("b01 {} problem in {} s/b {}", &b01, &ragg, &ragg.b01));
+            return Err(format!(
+                "b01 {} problem in {} s/b {} r1 {} r2 {}",
+                &b01, &ragg, &ragg.b01, &reg1, &reg2
+            ));
         }
 
         if b11 != ragg.b11 {
-            return Err(format!("b11 {} problem in {} s/b {}", &b11, &ragg, &ragg.b11));
+            return Err(format!(
+                "b11 {} problem in {} s/b {}",
+                &b11, &ragg, &ragg.b11
+            ));
         }
-               
+
         if b10 != ragg.b10 {
-            return Err(format!("b10 {} problem in {} s/b {}", &b10, &ragg, &ragg.b10));
+            return Err(format!(
+                "b10 {} problem in {} s/b {}",
+                &b10, &ragg, &ragg.b10
+            ));
         }
 
         Ok(())

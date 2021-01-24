@@ -21,10 +21,12 @@ impl SomeMask {
         Self { bts: val }
     }
 
-    pub fn new_low(num_ints: usize) -> Self {
-	   Self { bts: SomeBits::new_low(num_ints) }	
-	}
-	
+    pub fn _new_low(num_ints: usize) -> Self {
+        Self {
+            bts: SomeBits::new_low(num_ints),
+        }
+    }
+
     // Return the xor or two maks
     pub fn m_xor(&self, other: &Self) -> Self {
         Self::new(self.bts.b_xor(&other.bts))

@@ -364,45 +364,21 @@ impl SomeRule {
     }
 } // end SomeRule
 
-// Create an rule that represents a change from one region to equal, or subset, another.
-// X->X, 1->X and 0->X bit positions will have zero in all rule bit positions, signfying "don't care".
-// Such an all-zeros column would cause the is_valid_intersection function to return false.
-// For later operations with a second rule:
-//   "don't care" + "do care" = "do care" (a column with one or two bits set)
-//   "don't care" & "do care" = "don't care"
-//   "don't care" ^ "do care" = "do care"
+// Create an rule that represents a change from one region to another.
 pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-    let f_ones = SomeMask::new(from.state1.bts.b_and(&from.state2.bts));
-    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_and(&from.state2.bts.b_not()));
-    let f_xes = SomeMask::new(from.state1.bts.b_xor(&from.state2.bts));
+    let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
+    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
 
-    let t_ones = SomeMask::new(to.state1.bts.b_and(&to.state2.bts));
-    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_and(&to.state2.bts.b_not()));
-    let t_xes = SomeMask::new(to.state1.bts.b_xor(&to.state2.bts));
-    
-    let bx1 = f_xes.m_and(&t_ones);
-    let bx0 = f_xes.m_and(&t_zeros);
-    
-    let b1x = f_ones.m_and(&t_xes);
-    let b0x = f_zeros.m_and(&t_xes);
-    let bxx = f_xes.m_and(&t_xes);
+    let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
 
-    // Set the bits desired, the undesired bits end up as zeros
-    let nb00 = f_zeros.m_and(&t_zeros).m_or(&bx0).m_or(&b0x).m_or(&bxx);
-
-    let nb01 = f_zeros.m_and(&t_ones).m_or(&bx1).m_or(&b0x);
-
-    let nb11 = f_ones.m_and(&t_ones).m_or(&bx1).m_or(&b1x).m_or(&bxx);
-
-    let nb10 = f_ones.m_and(&t_zeros).m_or(&bx0).m_or(&b1x);
-
-    // println!("from {} to {} = b01: {}  b10: {}", &from, &to, &nb01, &nb10);
+    let bxx = from.x_mask().m_and(&to.x_mask());
 
     SomeRule {
-        b00: nb00,
-        b01: nb01,
-        b11: nb11,
-        b10: nb10,
+        b00: f_zeros.m_and(&t_zeros),
+        b01: f_zeros.m_and(&t_ones).m_xor(&bxx),
+        b11: f_ones.m_and(&t_ones),
+        b10: f_ones.m_and(&t_zeros).m_xor(&bxx),
     }
 }
 
