@@ -365,7 +365,7 @@ impl SomeRule {
 } // end SomeRule
 
 // Create an rule that represents a change from one region to another.
-pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+pub fn _region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
     let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
     let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
 

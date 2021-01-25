@@ -21,7 +21,7 @@ impl SomeMask {
         Self { bts: val }
     }
 
-    pub fn _new_low(num_ints: usize) -> Self {
+    pub fn new_low(num_ints: usize) -> Self {
         Self {
             bts: SomeBits::new_low(num_ints),
         }

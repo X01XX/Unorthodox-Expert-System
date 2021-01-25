@@ -4,6 +4,7 @@
 //
 use crate::bits::SomeBits;
 use crate::bitsstore::BitsStore;
+use crate::change::SomeChange;
 use crate::combinable::Combinable;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -14,7 +15,7 @@ use crate::needstore::NeedStore;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::rule::SomeRule;
+//use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
@@ -38,10 +39,10 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" clsr: {}", self.seek_edge));
         }
 
-        //rc_str.push_str(&format!(
-        //    " Change rule {} recent cng: {}",
-        //    self.pos_bit_cngs, self.pos_bit_changed
-        //));
+        rc_str.push_str(&format!(
+            " Changes {} recent cng: {}",
+            self.pos_bit_cngs, self.pos_bit_changed
+        ));
 
         let regs = self.groups.regions();
 
@@ -103,14 +104,14 @@ pub struct SomeAction {
     // The number of ints the action uses to represent a bit pattern
     num_ints: usize,
     // Aggregation of possible bit changes
-    pos_bit_cngs: SomeRule,
+    pub pos_bit_cngs: SomeChange,
     // Flag for indicating a recent change in the pos_bit_cngs rule
     pos_bit_changed: bool,
 }
 
 impl SomeAction {
     pub fn new(num_ints: usize, num: usize) -> Self {
-        let st_low = SomeState::new(SomeBits::new_low(num_ints));
+        //let st_low = SomeState::new(SomeBits::new_low(num_ints));
         SomeAction {
             num,
             groups: GroupStore::new(),
@@ -118,7 +119,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
             num_ints,
-            pos_bit_cngs: SomeRule::new(&st_low, &st_low),
+            pos_bit_cngs: SomeChange::new(num_ints),
             pos_bit_changed: false,
         }
     }
@@ -187,6 +188,8 @@ impl SomeAction {
     pub fn take_action_need(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
         // println!("take_action_need {}", &ndx);
         // Get the result, the sample is cur -> new_state
+
+        self.groups.changed = false;
 
         // Process each kind of need
         match ndx {
@@ -300,6 +303,10 @@ impl SomeAction {
                 self.check_square_new_sample(&cur);
             }
         } // end match ndx
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
     } // End take_action_need
 
     // Add a sample by user command
@@ -322,6 +329,8 @@ impl SomeAction {
     //         add it as a square
     //
     pub fn take_action_step(&mut self, cur: &SomeState, new_state: &SomeState) {
+        self.groups.changed = false;
+
         // If square exists, update it, check square, return
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
@@ -351,6 +360,10 @@ impl SomeAction {
             self.store_sample(cur, new_state);
             self.check_square_new_sample(cur);
         }
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
     }
 
     // Evaluate a sample produced for a need.
@@ -375,6 +388,8 @@ impl SomeAction {
     // that are in no groups.
     fn check_square_new_sample(&mut self, key: &SomeState) {
         //println!("check_square_new_sample");
+
+        self.groups.changed = false;
 
         // Get number of groups invalidated, which may orphan some squares.
         let regs_invalid = self.validate_groups_new_sample(&key);
@@ -455,7 +470,10 @@ impl SomeAction {
                 }
             }
         }
-        self.update_pos_bit_chgs();
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
     }
 
     // Check groups an updated square is in to see if they are still valid.
@@ -545,8 +563,10 @@ impl SomeAction {
     // When most needs are satisfied, needs for group confirmation are generated.
     // If housekeeping needes are grenerated, they are processed and needs
     // are checked again.
-    pub fn get_needs(&mut self, cur_state: &SomeState) -> NeedStore {
+    pub fn get_needs(&mut self, cur_state: &SomeState, x_mask: &SomeMask) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
+
+        self.x_mask = x_mask.clone();
 
         // loop until no housekeeping need is returned.
         let mut nds = NeedStore::new();
@@ -1739,7 +1759,7 @@ impl SomeAction {
 
     // Get possible steps that can be used to make at least one
     // change in a given rule.
-    pub fn get_steps(&self, arule: &SomeRule) -> StepStore {
+    pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 
         for grpx in &self.groups.avec {
@@ -1750,8 +1770,8 @@ impl SomeAction {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    let ones = grpx.rules[0].b10.m_and(&arule.b10);
-                    let zeros = grpx.rules[0].b01.m_and(&arule.b01);
+                    let ones = grpx.rules[0].b10.m_and(&achange.b10);
+                    let zeros = grpx.rules[0].b01.m_and(&achange.b01);
 
                     if ones.is_not_low() || zeros.is_not_low() {
                         let mut xrule = grpx.rules[0].clone();
@@ -1770,8 +1790,8 @@ impl SomeAction {
                 }
                 Pn::Two => {
                     for rulx in &grpx.rules.avec {
-                        let ones = rulx.b10.m_and(&arule.b10);
-                        let zeros = rulx.b01.m_and(&arule.b01);
+                        let ones = rulx.b10.m_and(&achange.b10);
+                        let zeros = rulx.b01.m_and(&achange.b01);
 
                         if ones.is_not_low() || zeros.is_not_low() {
                             let mut xrule = rulx.clone();
@@ -1914,9 +1934,9 @@ impl SomeAction {
     // Repeated sampling of squares will tend to increase the number
     // of possible bits changes.  Some changes, like going from
     // predictable to unpredictable, could decrease them.
-    pub fn possible_bit_changes(&self) -> SomeRule {
-        let st_low = SomeState::new(SomeBits::new_low(self.num_ints));
-        let mut ret_rule = SomeRule::new(&st_low, &st_low);
+    pub fn possible_bit_changes(&self) -> SomeChange {
+        //let st_low = SomeState::new(SomeBits::new_low(self.num_ints));
+        let mut ret_cng = SomeChange::new(self.num_ints);
 
         for grpx in &self.groups.avec {
             if grpx.active == false {
@@ -1926,30 +1946,19 @@ impl SomeAction {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    ret_rule.b10 = ret_rule.b01.m_or(&grpx.rules[0].b10);
-                    ret_rule.b01 = ret_rule.b01.m_or(&grpx.rules[0].b01);
+                    ret_cng.b10 = ret_cng.b01.m_or(&grpx.rules[0].b10);
+                    ret_cng.b01 = ret_cng.b01.m_or(&grpx.rules[0].b01);
                 }
                 Pn::Two => {
                     for rulx in &grpx.rules.avec {
-                        ret_rule.b10 = ret_rule.b01.m_or(&rulx.b10);
-                        ret_rule.b01 = ret_rule.b01.m_or(&rulx.b01);
+                        ret_cng.b10 = ret_cng.b01.m_or(&rulx.b10);
+                        ret_cng.b01 = ret_cng.b01.m_or(&rulx.b01);
                     } // next rulx
                 } // end match Two
                 Pn::Unpredictable => {}
             } // end match pn
         } // next grpx
 
-        ret_rule
-    }
-
-    // Update the action pos_bit_cngs rule, if needed
-    fn update_pos_bit_chgs(&mut self) {
-        let rulx = self.possible_bit_changes();
-        if rulx == self.pos_bit_cngs {
-            self.pos_bit_changed = false;
-        } else {
-            self.pos_bit_cngs = rulx;
-            self.pos_bit_changed = true;
-        }
+        ret_cng
     }
 }

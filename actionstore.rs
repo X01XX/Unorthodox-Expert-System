@@ -1,11 +1,12 @@
 // Implement a store for actions
 
 use crate::action::SomeAction;
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 //use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 //use crate::region::SomeRegion;
-use crate::rule::SomeRule;
+//use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
 
@@ -53,13 +54,25 @@ impl ActionStore {
         self.avec.push(val);
     }
 
+    // Get an x_mask for all actions.
+    // Indicates bit position that can predictably change
+    pub fn get_x_mask(&self, num_ints: usize) -> SomeMask {
+        let mut cngx = SomeChange::new(num_ints);
+
+        for actx in &self.avec {
+            cngx = cngx.union(&actx.pos_bit_cngs);
+        }
+
+        cngx.x_mask()
+    }
+
     // Get needs for all actions
-    pub fn get_needs(&mut self, cur: &SomeState) -> NeedStore {
+    pub fn get_needs(&mut self, cur: &SomeState, x_mask: &SomeMask) -> NeedStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur))
+            .map(|actx| actx.get_needs(cur, x_mask))
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
@@ -72,11 +85,11 @@ impl ActionStore {
         nds_agg
     }
 
-    pub fn get_steps(&self, arule: &SomeRule) -> StepStore {
+    pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 
         for actx in &self.avec {
-            stps.append(actx.get_steps(arule));
+            stps.append(actx.get_steps(achange));
         }
 
         //println!("possible steps: {}", stps.str());

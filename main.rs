@@ -20,6 +20,7 @@ mod maskstore;
 mod need;
 mod region;
 use crate::region::SomeRegion;
+mod change;
 mod regionstore;
 mod resultstore;
 mod rule;
@@ -101,7 +102,10 @@ fn main() {
 
         //let mut dmx = &mut dmxs[dom_num];
 
-        println!("\nDom: {} Acts: {}", dom_num, &dmxs[dom_num].actions);
+        println!(
+            "\nDom: {} x_mask: {}\nActs: {}",
+            dom_num, &dmxs[dom_num].x_mask, &dmxs[dom_num].actions
+        );
 
         if nds.len() > 0 {
             println!("\nAction needs: {}", nds);

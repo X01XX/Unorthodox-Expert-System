@@ -24,13 +24,14 @@ use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
 use crate::bits::SomeBits;
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
-use crate::rule::region_to_region;
-use crate::rule::SomeRule;
+//use crate::rule::region_to_region;
+//use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -67,7 +68,7 @@ pub struct SomeDomain {
     pub max_region: SomeRegion, // Region formed by the union of all Current States experienced.
     pub optimal: SomeRegion, // An optimal region that is sought if there ar eno needs.  This may be changed.
     pub prev_state: SomeState, // A copy of the current state, to detect if it has changed between Domain activities.
-    pub pos_bit_cngs: SomeRule, // A store of possible, predictable, bit changes
+    pub x_mask: SomeMask,      // A store of possible, predictable, bit changes
     vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
     vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
                          // chosen randomly at first sample, incremented after each subsequent sample.
@@ -78,7 +79,7 @@ impl SomeDomain {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
         let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
-        let st_low = SomeState::new(SomeBits::new_low(num_ints));
+        //let st_low = SomeState::new(SomeBits::new_low(num_ints));
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
@@ -89,7 +90,7 @@ impl SomeDomain {
             max_region: SomeRegion::new(&cur, &cur),
             optimal: opt,
             prev_state: cur.clone(),
-            pos_bit_cngs: SomeRule::new(&st_low, &st_low),
+            x_mask: SomeMask::new_low(num_ints),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -111,7 +112,9 @@ impl SomeDomain {
     }
 
     pub fn get_needs(&mut self) -> NeedStore {
-        let mut nst = self.actions.get_needs(&self.cur_state);
+        self.x_mask = self.actions.get_x_mask(self.num_ints);
+
+        let mut nst = self.actions.get_needs(&self.cur_state, &self.x_mask);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -435,7 +438,7 @@ impl SomeDomain {
         // Create an aggregate rule to represent the changes needed
         // 1->X and 0->X bits are a column of zero bits in the rule,
         // which would cause the rule to fail a valid_intersection test.
-        let rule_agg = region_to_region(&from_reg, &goal_reg);
+        let achange = SomeChange::region_to_region(&from_reg, &goal_reg);
 
         // println!(
         //    "find steps for from_reg {} to goal_reg {}, rule {}",
@@ -443,7 +446,7 @@ impl SomeDomain {
         // );
 
         // Get steps that include at least one bit of the needed change masks.
-        let stpsx = self.actions.get_steps(&rule_agg);
+        let stpsx = self.actions.get_steps(&achange);
 
         if stpsx.len() == 0 {
             //if recur == 0 {
@@ -467,7 +470,7 @@ impl SomeDomain {
         }
 
         // Check if the changes found roughly satisfy the needed change
-        if rule_agg.b01.is_subset_of(&b01) && rule_agg.b10.is_subset_of(&b10) {
+        if achange.b01.is_subset_of(&b01) && achange.b10.is_subset_of(&b10) {
             //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
             //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);

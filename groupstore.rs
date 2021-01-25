@@ -35,12 +35,14 @@ impl fmt::Display for GroupStore {
 #[derive(Serialize, Deserialize)]
 pub struct GroupStore {
     pub avec: Vec<SomeGroup>,
+    pub changed: bool,
 }
 
 impl GroupStore {
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(5),
+            changed: false,
         }
     }
 
@@ -120,6 +122,10 @@ impl GroupStore {
             }
         }
 
+        if fnd {
+            self.changed = true;
+        }
+
         fnd
     }
 
@@ -161,6 +167,8 @@ impl GroupStore {
             self.avec[inx] = grp;
         }
 
+        self.changed = true;
+
         true
     }
 
@@ -183,6 +191,9 @@ impl GroupStore {
                     }
                 }
             }
+        }
+        if num_grps > 0 {
+            self.changed = true;
         }
         num_grps
     }

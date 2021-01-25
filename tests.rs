@@ -4,13 +4,14 @@
 #[cfg(test)]
 mod tests {
     use crate::bitsstore::BitsStore;
+    use crate::change::SomeChange;
     use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
     use crate::maskstore::MaskStore;
     use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
     use crate::resultstore::ResultStore;
-    use crate::rule::{region_to_region, SomeRule};
+    use crate::rule::{SomeRule, _region_to_region};
     use crate::rulestore::RuleStore;
     use crate::square::SomeSquare;
     use crate::state::SomeState;
@@ -302,7 +303,7 @@ mod tests {
             bts: dm1._bits_new(vec![0, 44]),
         };
 
-        let ragg = region_to_region(&reg1, &reg2);
+        let ragg = _region_to_region(&reg1, &reg2);
 
         if b00 != ragg.b00 {
             return Err(format!(
@@ -945,11 +946,11 @@ mod tests {
 
         let rx10x = SomeRegion::from_string(dm1.num_ints, "rx10x").unwrap();
         let rx01x = SomeRegion::from_string(dm1.num_ints, "rx01x").unwrap();
-        let rulx = region_to_region(&rx10x, &rx01x);
+        let cngx = SomeChange::region_to_region(&rx10x, &rx01x);
 
-        println!("r-2-r rule: {}", &rulx);
+        println!("r-2-r rule: {}", &cngx);
 
-        let stps = dm1.actions.get_steps(&rulx);
+        let stps = dm1.actions.get_steps(&cngx);
 
         if stps.len() != 2 {
             return Err(format!("Number steps NEQ 2 {}", stps));
