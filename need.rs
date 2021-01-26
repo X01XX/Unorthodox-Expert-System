@@ -82,24 +82,17 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
             } => format!("N(Act: {} Create group {})", an, greg,),
             SomeNeed::SetGroupConfirmed {
-                //                act_num: an,
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} confirmed by {})", greg, sta1,),
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: dm,
-            //                act_num: an,
-            //                targ_state: sta,
-            //                base_group: greg,
-            //            } => format!(
-            //                "N(Dom {} Act {} Sample State {}, to expand group {})",
-            //                dm, an, sta, greg,
-            //            ),
             SomeNeed::ClearGroupCheckBit {
-                //                act_num: an,
                 group_region: greg,
                 mbit: mbitx,
-            } => format!("N(group {} clear check bit {})", greg, mbitx,),
+            } => format!("N(group {} clear confirm bit {})", greg, mbitx,),
+            SomeNeed::ClearGroupExpandBit {
+                group_region: greg,
+                mbit: mbitx,
+            } => format!("N(group {} clear expand bit {})", greg, mbitx,),
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
@@ -163,18 +156,14 @@ pub enum SomeNeed {
         group_region: SomeRegion,
     },
     SetGroupConfirmed {
-        //        act_num: usize,
         group_region: SomeRegion,
         cstate: SomeState,
     },
-    //    AStateExpandGroup {
-    //        dom_num: usize,
-    //        act_num: usize,
-    //        targ_state: SomeState,
-    //        base_group: SomeRegion,
-    //    },
     ClearGroupCheckBit {
-        //        act_num: usize,
+        group_region: SomeRegion,
+        mbit: SomeMask,
+    },
+    ClearGroupExpandBit {
         group_region: SomeRegion,
         mbit: SomeMask,
     },
@@ -312,12 +301,10 @@ impl PartialEq for SomeNeed {
                 _ => {}
             },
             SomeNeed::SetGroupConfirmed {
-                //                act_num: an,
                 group_region: greg,
                 cstate: sta1,
             } => match other {
                 SomeNeed::SetGroupConfirmed {
-                    //                    act_num: anx,
                     group_region: gregx,
                     cstate: sta1x,
                 } => {
@@ -327,31 +314,25 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: dm,
-            //                act_num: an,
-            //                targ_state: sta,
-            //                base_group: greg,
-            //            } => match other {
-            //                SomeNeed::AStateExpandGroup {
-            //                    dom_num: dmx,
-            //                    act_num: anx,
-            //                    targ_state: stax,
-            //                    base_group: gregx,
-            //                } => {
-            //                    if dm == dmx && an == anx && greg == gregx && sta == stax {
-            //                        return true;
-            //                    }
-            //                }
-            //                _ => {}
-            //            },
             SomeNeed::ClearGroupCheckBit {
-                //                act_num: an,
                 group_region: greg,
                 mbit: mbitx,
             } => match other {
                 SomeNeed::ClearGroupCheckBit {
-                    //                    act_num: anx,
+                    group_region: gregx,
+                    mbit: mbity,
+                } => {
+                    if greg == gregx && mbitx == mbity {
+                        return true;
+                    }
+                }
+                _ => {}
+            },
+            SomeNeed::ClearGroupExpandBit {
+                group_region: greg,
+                mbit: mbitx,
+            } => match other {
+                SomeNeed::ClearGroupExpandBit {
                     group_region: gregx,
                     mbit: mbity,
                 } => {
@@ -457,15 +438,6 @@ impl SomeNeed {
             } => {
                 return 4;
             } // end process for StateAdditionalSample
-
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: _,
-            //                act_num: _,
-            //                targ_state: _,
-            //                base_group: _,
-            //            } => {
-            //                return 5;
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
@@ -536,18 +508,6 @@ impl SomeNeed {
                 }
                 return false;
             } // end process a StateAdditionalSample need
-
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: _,
-            //                act_num: _,
-            //                targ_state: sta,
-            //                base_group: _,
-            //            } => {
-            //                if cur_state == sta {
-            //                    return true;
-            //                }
-            //                return false;
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
@@ -627,15 +587,6 @@ impl SomeNeed {
             } => {
                 return *an;
             }
-
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: _,
-            //                act_num: an,
-            //                targ_state: _,
-            //                base_group: _,
-            //            } => {
-            //                return *an;
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: an,
@@ -694,15 +645,6 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process a StateAdditionalSample need
-
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: dm,
-            //                act_num: _,
-            //                targ_state: _,
-            //                base_group: _,
-            //            } => {
-            //                return *dm;
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: _,
@@ -755,14 +697,6 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: _,
-            //                act_num: _,
-            //                targ_state: sta,
-            //                base_group: _,
-            //            } => {
-            //                return SomeRegion::new(&sta, &sta);
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: _,
                 act_num: _,
@@ -824,14 +758,6 @@ impl SomeNeed {
             } => {
                 *dm = num;
             }
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: dm,
-            //                act_num: _,
-            //                targ_state: _,
-            //                base_group: _,
-            //            } => {
-            //                *dm = num;
-            //            }
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: _,
@@ -955,7 +881,6 @@ impl Clone for SomeNeed {
 
             // Previously handled, but not removed from list
             SomeNeed::SetGroupConfirmed {
-                //                act_num: an,
                 group_region: greg,
                 cstate: cst,
             } => {
@@ -965,35 +890,26 @@ impl Clone for SomeNeed {
                     cstate: cst.clone(),
                 };
             }
-
-            // Previously handled, but not removed from list
-            //            SomeNeed::AStateExpandGroup {
-            //                dom_num: dm,
-            //                act_num: an,
-            //                targ_state: tstate,
-            //                base_group: bgrp,
-            //            } => {
-            //                return SomeNeed::AStateExpandGroup {
-            //                    dom_num: *dm,
-            //                    act_num: *an,
-            //                    targ_state: tstate.clone(),
-            //                    base_group: bgrp.clone(),
-            //                };
-            //            }
-
             // Previously handled, but not removed from list
             SomeNeed::ClearGroupCheckBit {
-                //                act_num: an,
                 group_region: greg,
                 mbit: abit,
             } => {
                 return SomeNeed::ClearGroupCheckBit {
-                    //                    act_num: *an,
                     group_region: greg.clone(),
                     mbit: abit.clone(),
                 };
             }
-
+            // Previously handled, but not removed from list
+            SomeNeed::ClearGroupExpandBit {
+                group_region: greg,
+                mbit: abit,
+            } => {
+                return SomeNeed::ClearGroupExpandBit {
+                    group_region: greg.clone(),
+                    mbit: abit.clone(),
+                };
+            }
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,

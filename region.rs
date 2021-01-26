@@ -183,9 +183,9 @@ impl SomeRegion {
 
     // Return mask of not x bits
     // In some cases, the caller may need to AND the result with the domain max_region x_mask.
-    pub fn not_x_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts).b_not())
-    }
+    //    pub fn not_x_mask(&self) -> SomeMask {
+    //        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts).b_not())
+    //    }
 
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
         SomeState::new(self.state1.bts.b_xor(&self.state2.bts).b_xor(&sta.bts))

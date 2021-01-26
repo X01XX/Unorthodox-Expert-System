@@ -3,7 +3,7 @@
 // of executing an action, based on the current state.
 //
 use crate::bits::SomeBits;
-use crate::bitsstore::BitsStore;
+//use crate::bitsstore::BitsStore;
 use crate::change::SomeChange;
 use crate::combinable::Combinable;
 use crate::group::SomeGroup;
@@ -67,8 +67,8 @@ impl fmt::Display for SomeAction {
                     &cnt,
                 ));
 
-                if grpx.not_x_check.is_low() == false {
-                    rc_str.push_str(&format!(" chk: {}", &grpx.not_x_check));
+                if grpx.not_x_confirm.is_low() == false {
+                    rc_str.push_str(&format!(" chk: {}", &grpx.not_x_confirm));
                 }
 
                 fil = String::from(",\n              ");
@@ -182,14 +182,22 @@ impl SomeAction {
         cmbx
     }
 
+    pub fn take_action_need(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
+        self.groups.changed = false;
+
+        self.take_action_need2(cur, ndx, new_state);
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
+    }
+
     // Significant effort is used to generate needs, so take in the
     // state that will satisfy the need, and the need itself for clues in
     // processing the result.
-    pub fn take_action_need(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
+    pub fn take_action_need2(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
         // println!("take_action_need {}", &ndx);
         // Get the result, the sample is cur -> new_state
-
-        self.groups.changed = false;
 
         // Process each kind of need
         match ndx {
@@ -216,7 +224,7 @@ impl SomeAction {
                                     &sqry.state,
                                     RuleStore::new(),
                                     self.num,
-                                    &self.x_mask,
+                                    //   &self.x_mask,
                                 ));
                             } else {
                                 panic!(
@@ -241,7 +249,7 @@ impl SomeAction {
                                     &sqry.state,
                                     rulsxy,
                                     self.num,
-                                    &self.x_mask,
+                                    //    &self.x_mask,
                                 ));
                             }
                         } // end if Unpredictable
@@ -303,11 +311,7 @@ impl SomeAction {
                 self.check_square_new_sample(&cur);
             }
         } // end match ndx
-
-        if self.groups.changed {
-            self.pos_bit_cngs = self.possible_bit_changes();
-        }
-    } // End take_action_need
+    } // End take_action_need2
 
     // Add a sample by user command
     pub fn take_action_arbitrary(&mut self, init_state: &SomeState, rslt_state: &SomeState) {
@@ -315,8 +319,25 @@ impl SomeAction {
             "take_action_arbitrary for state {} result {}",
             init_state, rslt_state
         );
+
+        self.groups.changed = false;
+
         self.store_sample(&init_state, &rslt_state);
         self.check_square_new_sample(&init_state);
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
+    }
+
+    pub fn take_action_step(&mut self, cur: &SomeState, new_state: &SomeState) {
+        self.groups.changed = false;
+
+        self.take_action_step2(cur, new_state);
+
+        if self.groups.changed {
+            self.pos_bit_cngs = self.possible_bit_changes();
+        }
     }
 
     // Evaluate a sample produced by a step in a plan.
@@ -328,9 +349,7 @@ impl SomeAction {
     //     if it brakes anything
     //         add it as a square
     //
-    pub fn take_action_step(&mut self, cur: &SomeState, new_state: &SomeState) {
-        self.groups.changed = false;
-
+    pub fn take_action_step2(&mut self, cur: &SomeState, new_state: &SomeState) {
         // If square exists, update it, check square, return
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
@@ -359,10 +378,6 @@ impl SomeAction {
         if num_grps_invalidated > 0 || num_grps_in == 0 {
             self.store_sample(cur, new_state);
             self.check_square_new_sample(cur);
-        }
-
-        if self.groups.changed {
-            self.pos_bit_cngs = self.possible_bit_changes();
         }
     }
 
@@ -528,7 +543,7 @@ impl SomeAction {
                                 &regx.state2,
                                 RuleStore::new(),
                                 self.num,
-                                &self.x_mask,
+                                //  &self.x_mask,
                             ));
                         } else {
                             let sqr_1 = self.squares.find(&regx.state1).unwrap();
@@ -541,7 +556,7 @@ impl SomeAction {
                                 &regx.state2,
                                 sqr_1.rules.union(&sqr_2.rules).unwrap(),
                                 self.num,
-                                &self.x_mask,
+                                //     &self.x_mask,
                             ));
                         }
                     }
@@ -553,7 +568,7 @@ impl SomeAction {
                     &sqrx.state,
                     sqrx.rules.clone(),
                     self.num,
-                    &self.x_mask,
+                    //   &self.x_mask,
                 ));
             }
         }
@@ -673,7 +688,6 @@ impl SomeAction {
                                 &greg.state2,
                                 RuleStore::new(),
                                 self.num,
-                                &self.x_mask,
                             ));
                             try_again = true;
                         } else {
@@ -682,13 +696,11 @@ impl SomeAction {
                                 &greg.state2,
                                 sqrx.rules.union(&sqry.rules).unwrap(),
                                 self.num,
-                                &self.x_mask,
                             ));
                             try_again = true;
                         }
                     }
                     SomeNeed::SetGroupConfirmed {
-                        //                        act_num: _,
                         group_region: greg,
                         cstate: sta1,
                     } => {
@@ -699,14 +711,22 @@ impl SomeAction {
                         grpx.set_anchor(sta1.clone());
                     }
                     SomeNeed::ClearGroupCheckBit {
-                        //                        act_num: _,
                         group_region: greg,
                         mbit: mbitx,
                     } => {
                         try_again = true;
 
                         let grpx = self.groups.find_mut(&greg).unwrap();
-                        grpx.check_off(&mbitx);
+                        grpx.check_off_confirm_bit(&mbitx);
+                    }
+                    SomeNeed::ClearGroupExpandBit {
+                        group_region: greg,
+                        mbit: mbitx,
+                    } => {
+                        try_again = true;
+
+                        let grpx = self.groups.find_mut(&greg).unwrap();
+                        grpx.check_off_expand_bit(&mbitx);
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         self.seek_edge.inactivate(&regx);
@@ -812,8 +832,6 @@ impl SomeAction {
         // Apply new regions, set flag to try again
         for regx in new_regs.iter() {
             if regx.active {
-                //do_again = true;
-                //self.seek_edge.push_nosups(regx.clone());
                 ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
             }
         }
@@ -1053,7 +1071,7 @@ impl SomeAction {
     } // end additional_group_state_samples
 
     // Return expand needs for groups.
-    fn expand_needs(&self) -> NeedStore {
+    fn expand_needs(&mut self) -> NeedStore {
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -1061,13 +1079,19 @@ impl SomeAction {
         //        let states_in_1 = self.squares.states_in_1_region(&regs);
 
         for grpx in self.groups.iter() {
-            if grpx.active == false || grpx.not_x_check.is_low() {
+            if grpx.active == false {
+                continue;
+            }
+
+            let not_x = grpx.not_x_expand.m_and(&self.x_mask);
+
+            if not_x.is_low() {
                 continue;
             }
 
             // Get a vector of one-bit masks
             let check_bits = MaskStore {
-                avec: grpx.not_x_check.split(),
+                avec: not_x.split(),
             };
 
             // Check for expansion, or single-bit adjacent external
@@ -1086,7 +1110,12 @@ impl SomeAction {
                 //     &self.num, &reg_both, &ndsx, &grpx.region
                 // );
 
-                if ndsx.len() > 0 {
+                if ndsx.len() == 0 {
+                    ret_nds.push(SomeNeed::ClearGroupExpandBit {
+                        group_region: grpx.region.clone(),
+                        mbit: bitx.clone(),
+                    });
+                } else {
                     ret_nds.append(&mut ndsx);
                 }
             } // next bitx
@@ -1181,10 +1210,10 @@ impl SomeAction {
                 continue;
             }
 
+            let non_x_mask = grpx.not_x_confirm.m_and(&self.x_mask);
+
             // Get the bit masks on non-X bit-positions in greg
-            let non_x_msks = BitsStore {
-                avec: greg.not_x_mask().bts.split(),
-            };
+            let non_x_msks = non_x_mask.split();
 
             // For each state, sta1, only in the group region, greg:
             //
@@ -1226,7 +1255,7 @@ impl SomeAction {
 
                 // Rate adjacent external states
                 for non_x_bit in non_x_msks.iter() {
-                    let sta_adj = SomeState::new(sta1.bts.b_xor(non_x_bit));
+                    let sta_adj = SomeState::new(sta1.bts.b_xor(&non_x_bit.bts));
                     //println!(
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg
@@ -1323,7 +1352,7 @@ impl SomeAction {
 
                 let a_bit_msk = SomeMask::new(adj_sta.bts.b_xor(&anchor_sta.bts));
 
-                if grpx.not_x_bit_set(&a_bit_msk) == false {
+                if grpx.not_x_confirm_bit_set(&a_bit_msk) == false {
                     continue;
                 }
 
@@ -1849,10 +1878,10 @@ impl SomeAction {
         stps
     } // end get_steps
 
-    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-        self.x_mask = self.x_mask.m_or(&bitsx);
-        self.groups.new_x_bits(&bitsx);
-    }
+    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
+    //        self.x_mask = self.x_mask.m_or(&bitsx);
+    //        self.groups.new_x_bits(&bitsx);
+    //    }
 
     // Return true if a group exists and is active
     pub fn group_exists_and_active(&self, group_reg: &SomeRegion) -> bool {
@@ -1935,7 +1964,6 @@ impl SomeAction {
     // of possible bits changes.  Some changes, like going from
     // predictable to unpredictable, could decrease them.
     pub fn possible_bit_changes(&self) -> SomeChange {
-        //let st_low = SomeState::new(SomeBits::new_low(self.num_ints));
         let mut ret_cng = SomeChange::new(self.num_ints);
 
         for grpx in &self.groups.avec {

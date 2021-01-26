@@ -1,7 +1,7 @@
 // Implement a store of groups
 
 use crate::group::SomeGroup;
-use crate::mask::SomeMask;
+//use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
@@ -228,6 +228,10 @@ impl GroupStore {
         self.avec.iter()
     }
 
+    //    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
+    //        self.avec.iter_mut()
+    //    }
+
     pub fn len(&self) -> usize {
         self.avec.len()
     }
@@ -251,14 +255,14 @@ impl GroupStore {
     }
 
     // Inform each group of new X bits in the max_region
-    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-        for grpx in &mut self.avec {
-            if grpx.active {
-                grpx.new_x_bits(&bitsx);
-            }
-        }
-    }
-}
+    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
+    //        for grpx in &mut self.avec {
+    //            if grpx.active {
+    //                grpx.new_x_confirm_bits(&bitsx);
+    //            }
+    //        }
+    //    }
+} // end impl GroupStore
 
 impl Index<usize> for GroupStore {
     type Output = SomeGroup;

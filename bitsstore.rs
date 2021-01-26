@@ -3,7 +3,7 @@
 use crate::bits::SomeBits;
 use std::fmt;
 use std::ops::Index;
-use std::slice::Iter;
+//use std::slice::Iter;
 
 impl fmt::Display for BitsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -31,9 +31,9 @@ impl BitsStore {
         self.avec.push(val);
     }
 
-    pub fn iter(&self) -> Iter<SomeBits> {
-        self.avec.iter()
-    }
+    //    pub fn iter(&self) -> Iter<SomeBits> {
+    //        self.avec.iter()
+    //    }
 
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;

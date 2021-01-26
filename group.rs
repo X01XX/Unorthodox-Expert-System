@@ -28,17 +28,12 @@ pub struct SomeGroup {
     pub act_num: usize,     // The nAct umber of the action that the group belongs to
     pub confirmed: bool, // Set to true when a state only in the group has all adjacent states checked
     pub anchor: Option<SomeState>, // The state in only the group used to confirm
-    pub not_x_check: SomeMask, // Mask of non-x bits to check or rule out.
+    pub not_x_confirm: SomeMask, // Mask of non-x bits to check for confirmation.
+    pub not_x_expand: SomeMask, // Mask of non-x bits to check for expansion.
 }
 
 impl SomeGroup {
-    pub fn new(
-        sta1: &SomeState,
-        sta2: &SomeState,
-        ruls: RuleStore,
-        act_num: usize,
-        max_x: &SomeMask,
-    ) -> Self {
+    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore, act_num: usize) -> Self {
         //        println!(
         //            "adding group {}",
         //            SomeRegion::new(&sta1, &sta2)
@@ -50,6 +45,8 @@ impl SomeGroup {
             pnx = Pn::Two;
         }
 
+        let not_x = SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not());
+
         Self {
             region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
             pn: pnx,
@@ -58,18 +55,24 @@ impl SomeGroup {
             act_num,
             confirmed: false,
             anchor: None,
-            not_x_check: max_x.m_and(&SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not())),
+            not_x_confirm: not_x.clone(),
+            not_x_expand: not_x,
         }
     }
 
-    pub fn check_off(&mut self, boff: &SomeMask) {
-        //println!("*** group {} checking off bit {}", &self.region, &boff);
-        self.not_x_check = self.not_x_check.m_and(&boff.m_not());
+    pub fn check_off_confirm_bit(&mut self, boff: &SomeMask) {
+        //println!("*** group {} checking off confirm bit {}", &self.region, &boff);
+        self.not_x_confirm = self.not_x_confirm.m_and(&boff.m_not());
     }
 
-    // Return true if a not_x_check bit is set
-    pub fn not_x_bit_set(&self, bmsk: &SomeMask) -> bool {
-        return !self.not_x_check.m_and(&bmsk).is_low();
+    pub fn check_off_expand_bit(&mut self, boff: &SomeMask) {
+        //println!("*** group {} checking off expand bit {}", &self.region, &boff);
+        self.not_x_expand = self.not_x_expand.m_and(&boff.m_not());
+    }
+
+    // Return true if a not_x_confirm bit is set
+    pub fn not_x_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
+        return !self.not_x_confirm.m_and(&bmsk).is_low();
     }
 
     pub fn formatted_string(&self) -> String {
@@ -109,6 +112,11 @@ impl SomeGroup {
                 None => {}
             }
         }
+
+        rc_str.push_str(&format!(
+            " nxe: {} nxc: {}",
+            &self.not_x_expand, &self.not_x_confirm
+        ));
 
         rc_str.push_str(")");
         rc_str
@@ -189,10 +197,10 @@ impl SomeGroup {
     }
 
     // Process new X bits mask in max_region
-    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-        let bitsy = bitsx.m_and(&self.region.x_mask().m_not());
-        self.not_x_check = self.not_x_check.m_or(&bitsy);
-    }
+    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
+    //        let bitsy = bitsx.m_and(&self.region.x_mask().m_not());
+    //        self.not_x_confirm = self.not_x_confirm.m_or(&bitsy);
+    //    }
 
     pub fn set_anchor_off(&mut self) {
         self.anchor = None;

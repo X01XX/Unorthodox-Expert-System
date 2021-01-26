@@ -958,4 +958,39 @@ mod tests {
 
         Ok(())
     } // end two_result_region_rules
+
+    #[test]
+    fn change_region_to_region_test() -> Result<(), String> {
+        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
+
+        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
+
+        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
+
+        let b01 = SomeMask {
+            bts: dm1._bits_new(vec![0, 194]),
+        };
+
+        let b10 = SomeMask {
+            bts: dm1._bits_new(vec![0, 44]),
+        };
+
+        let cngx = SomeChange::region_to_region(&reg1, &reg2);
+
+        if b01 != cngx.b01 {
+            return Err(format!(
+                "b01 {} problem in {} s/b {} r1 {} r2 {}",
+                &b01, &cngx, &cngx.b01, &reg1, &reg2
+            ));
+        }
+
+        if b10 != cngx.b10 {
+            return Err(format!(
+                "b10 {} problem in {} s/b {}",
+                &b10, &cngx, &cngx.b10
+            ));
+        }
+
+        Ok(())
+    } // end region_to_region_test
 } // end mod tests

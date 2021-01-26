@@ -101,12 +101,12 @@ impl ActionStore {
     //    }
 
     // Update actions with new X-bits mask
-    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-        for actx in &mut self.avec {
-            actx.new_x_bits(&bitsx);
-        }
-    }
-}
+    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
+    //        for actx in &mut self.avec {
+    //            actx.new_x_bits(&bitsx);
+    //        }
+    //    }
+} // end impl ActionStore
 
 impl Index<usize> for ActionStore {
     type Output = SomeAction;

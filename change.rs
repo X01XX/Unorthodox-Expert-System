@@ -3,7 +3,6 @@
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
-//use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
