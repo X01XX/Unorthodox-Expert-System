@@ -11,7 +11,7 @@ mod tests {
     use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
     use crate::resultstore::ResultStore;
-    use crate::rule::{SomeRule, _region_to_region};
+    use crate::rule::SomeRule;
     use crate::rulestore::RuleStore;
     use crate::square::SomeSquare;
     use crate::state::SomeState;
@@ -279,62 +279,62 @@ mod tests {
         Err(String::from("failed, at end"))
     } // end pn_2_rules_union
 
-    #[test]
-    fn region_to_region_test() -> Result<(), String> {
-        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
-
-        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
-
-        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
-
-        let b00 = SomeMask {
-            bts: dm1._bits_new(vec![255, 325]),
-        };
-
-        let b01 = SomeMask {
-            bts: dm1._bits_new(vec![0, 194]),
-        };
-
-        let b11 = SomeMask {
-            bts: dm1._bits_new(vec![0, 27]),
-        };
-
-        let b10 = SomeMask {
-            bts: dm1._bits_new(vec![0, 44]),
-        };
-
-        let ragg = _region_to_region(&reg1, &reg2);
-
-        if b00 != ragg.b00 {
-            return Err(format!(
-                "b00 {} problem in {} s/b {}",
-                &b00, &ragg, &ragg.b00
-            ));
-        }
-
-        if b01 != ragg.b01 {
-            return Err(format!(
-                "b01 {} problem in {} s/b {} r1 {} r2 {}",
-                &b01, &ragg, &ragg.b01, &reg1, &reg2
-            ));
-        }
-
-        if b11 != ragg.b11 {
-            return Err(format!(
-                "b11 {} problem in {} s/b {}",
-                &b11, &ragg, &ragg.b11
-            ));
-        }
-
-        if b10 != ragg.b10 {
-            return Err(format!(
-                "b10 {} problem in {} s/b {}",
-                &b10, &ragg, &ragg.b10
-            ));
-        }
-
-        Ok(())
-    } // end region_to_region_test
+    //    #[test]
+    //    fn region_to_region_test() -> Result<(), String> {
+    //        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
+    //
+    //        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
+    //
+    //        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
+    //
+    //        let b00 = SomeMask {
+    //            bts: dm1._bits_new(vec![255, 325]),
+    //        };
+    //
+    //        let b01 = SomeMask {
+    //            bts: dm1._bits_new(vec![0, 194]),
+    //        };
+    //
+    //        let b11 = SomeMask {
+    //            bts: dm1._bits_new(vec![0, 27]),
+    //        };
+    //
+    //        let b10 = SomeMask {
+    //            bts: dm1._bits_new(vec![0, 44]),
+    //        };
+    //
+    //        let ragg = _region_to_region(&reg1, &reg2);
+    //
+    //        if b00 != ragg.b00 {
+    //            return Err(format!(
+    //                "b00 {} problem in {} s/b {}",
+    //                &b00, &ragg, &ragg.b00
+    //            ));
+    //        }
+    //
+    //        if b01 != ragg.b01 {
+    //            return Err(format!(
+    //                "b01 {} problem in {} s/b {} r1 {} r2 {}",
+    //                &b01, &ragg, &ragg.b01, &reg1, &reg2
+    //            ));
+    //        }
+    //
+    //        if b11 != ragg.b11 {
+    //            return Err(format!(
+    //                "b11 {} problem in {} s/b {}",
+    //                &b11, &ragg, &ragg.b11
+    //            ));
+    //        }
+    //
+    //        if b10 != ragg.b10 {
+    //            return Err(format!(
+    //                "b10 {} problem in {} s/b {}",
+    //                &b10, &ragg, &ragg.b10
+    //            ));
+    //        }
+    //
+    //        Ok(())
+    //    } // end region_to_region_test
 
     #[test]
     fn shift_left() -> Result<(), String> {

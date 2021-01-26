@@ -1,12 +1,10 @@
 // Implement a store of groups
 
 use crate::group::SomeGroup;
-//use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-//use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -209,20 +207,6 @@ impl GroupStore {
         regs
     }
 
-    // Collect all group anchor states
-    //    pub fn anchors(&self) -> StateStore {
-    //        let mut stas = StateStore::new();
-    //
-    //        for grpx in &self.avec {
-    //            if grpx.active {
-    //                if let Some(stax) = &grpx.anchor {
-    //                    stas.push(stax.clone());
-    //                }
-    //            }
-    //        }
-    //        stas
-    //    }
-
     // Return an iterator
     pub fn iter(&self) -> Iter<SomeGroup> {
         self.avec.iter()
@@ -253,15 +237,6 @@ impl GroupStore {
         }
         None
     }
-
-    // Inform each group of new X bits in the max_region
-    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-    //        for grpx in &mut self.avec {
-    //            if grpx.active {
-    //                grpx.new_x_confirm_bits(&bitsx);
-    //            }
-    //        }
-    //    }
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

@@ -3,7 +3,6 @@
 // of executing an action, based on the current state.
 //
 use crate::bits::SomeBits;
-//use crate::bitsstore::BitsStore;
 use crate::change::SomeChange;
 use crate::combinable::Combinable;
 use crate::group::SomeGroup;
@@ -15,7 +14,6 @@ use crate::needstore::NeedStore;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-//use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
@@ -39,10 +37,7 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" clsr: {}", self.seek_edge));
         }
 
-        rc_str.push_str(&format!(
-            " Changes {} recent cng: {}",
-            self.pos_bit_cngs, self.pos_bit_changed
-        ));
+        rc_str.push_str(&format!(" Changes {}", self.pos_bit_cngs));
 
         let regs = self.groups.regions();
 
@@ -99,19 +94,16 @@ pub struct SomeAction {
     // Closer and closer dissimilar squares are sought, producing smaller and smaller
     // regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
-    // The results of all actions of a Domain indicate bit positions that may be 0 or 1.
+    // The results of all actions of a Domain indicate bit positions that can predictably change.
     x_mask: SomeMask,
     // The number of ints the action uses to represent a bit pattern
     num_ints: usize,
     // Aggregation of possible bit changes
     pub pos_bit_cngs: SomeChange,
-    // Flag for indicating a recent change in the pos_bit_cngs rule
-    pos_bit_changed: bool,
 }
 
 impl SomeAction {
     pub fn new(num_ints: usize, num: usize) -> Self {
-        //let st_low = SomeState::new(SomeBits::new_low(num_ints));
         SomeAction {
             num,
             groups: GroupStore::new(),
@@ -120,11 +112,10 @@ impl SomeAction {
             x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
             num_ints,
             pos_bit_cngs: SomeChange::new(num_ints),
-            pos_bit_changed: false,
         }
     }
 
-    // Return Combinable enum for any two squares with the same Pn value
+    // Return Combinable enum for any two squares with the same Pn value.
     // Check squares inbetween for compatibility.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Combinable {
         assert!(sqrx.pn() == sqry.pn());
@@ -196,8 +187,7 @@ impl SomeAction {
     // state that will satisfy the need, and the need itself for clues in
     // processing the result.
     pub fn take_action_need2(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
-        // println!("take_action_need {}", &ndx);
-        // Get the result, the sample is cur -> new_state
+        // println!("take_action_need2 {}", &ndx);
 
         // Process each kind of need
         match ndx {
@@ -224,7 +214,6 @@ impl SomeAction {
                                     &sqry.state,
                                     RuleStore::new(),
                                     self.num,
-                                    //   &self.x_mask,
                                 ));
                             } else {
                                 panic!(
@@ -249,7 +238,6 @@ impl SomeAction {
                                     &sqry.state,
                                     rulsxy,
                                     self.num,
-                                    //    &self.x_mask,
                                 ));
                             }
                         } // end if Unpredictable
@@ -404,8 +392,6 @@ impl SomeAction {
     fn check_square_new_sample(&mut self, key: &SomeState) {
         //println!("check_square_new_sample");
 
-        self.groups.changed = false;
-
         // Get number of groups invalidated, which may orphan some squares.
         let regs_invalid = self.validate_groups_new_sample(&key);
 
@@ -484,10 +470,6 @@ impl SomeAction {
                     self.create_groups_given_sample(&keyx);
                 }
             }
-        }
-
-        if self.groups.changed {
-            self.pos_bit_cngs = self.possible_bit_changes();
         }
     }
 
@@ -710,7 +692,7 @@ impl SomeAction {
                         println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
                         grpx.set_anchor(sta1.clone());
                     }
-                    SomeNeed::ClearGroupCheckBit {
+                    SomeNeed::ClearGroupConfirmBit {
                         group_region: greg,
                         mbit: mbitx,
                     } => {
@@ -876,7 +858,6 @@ impl SomeAction {
                 // 50% on each cycle.
                 let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
-                //let mut dif_msk = SomeMask::new(cur_state.bts.new_low());
                 let mut dif_msk = SomeMask::new(SomeBits::new_low(cur_state.num_ints()));
 
                 let mut inx = 0;
@@ -1369,7 +1350,7 @@ impl SomeAction {
                             });
                         } else {
                             // Set that bit off in the check mask
-                            grp_clear_bit.push(SomeNeed::ClearGroupCheckBit {
+                            grp_clear_bit.push(SomeNeed::ClearGroupConfirmBit {
                                 group_region: greg.clone(),
                                 mbit: SomeMask::new(anchor_sta.bts.b_xor(&adj_sta.bts)),
                             });
@@ -1877,11 +1858,6 @@ impl SomeAction {
 
         stps
     } // end get_steps
-
-    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-    //        self.x_mask = self.x_mask.m_or(&bitsx);
-    //        self.groups.new_x_bits(&bitsx);
-    //    }
 
     // Return true if a group exists and is active
     pub fn group_exists_and_active(&self, group_reg: &SomeRegion) -> bool {

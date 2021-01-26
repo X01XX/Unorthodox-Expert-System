@@ -85,7 +85,7 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} confirmed by {})", greg, sta1,),
-            SomeNeed::ClearGroupCheckBit {
+            SomeNeed::ClearGroupConfirmBit {
                 group_region: greg,
                 mbit: mbitx,
             } => format!("N(group {} clear confirm bit {})", greg, mbitx,),
@@ -105,7 +105,6 @@ impl fmt::Display for SomeNeed {
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
             }
-
             SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {}", &regx),
         }; // end match
 
@@ -159,7 +158,7 @@ pub enum SomeNeed {
         group_region: SomeRegion,
         cstate: SomeState,
     },
-    ClearGroupCheckBit {
+    ClearGroupConfirmBit {
         group_region: SomeRegion,
         mbit: SomeMask,
     },
@@ -314,11 +313,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ClearGroupCheckBit {
+            SomeNeed::ClearGroupConfirmBit {
                 group_region: greg,
                 mbit: mbitx,
             } => match other {
-                SomeNeed::ClearGroupCheckBit {
+                SomeNeed::ClearGroupConfirmBit {
                     group_region: gregx,
                     mbit: mbity,
                 } => {
@@ -469,7 +468,6 @@ impl SomeNeed {
                 }
                 return false;
             } // end process a AStateMakeGroup need
-
             SomeNeed::StateNotInGroup {
                 dom_num: _,
                 act_num: _,
@@ -480,7 +478,6 @@ impl SomeNeed {
                 }
                 return false;
             } // end process a StateNotInGroup need
-
             SomeNeed::ContradictoryIntersection {
                 dom_num: _,
                 act_num: _,
@@ -495,7 +492,6 @@ impl SomeNeed {
                 }
                 return false;
             } // end process ContradictoryIntersection
-
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -519,7 +515,6 @@ impl SomeNeed {
                 }
                 return false;
             }
-
             SomeNeed::ConfirmGroup {
                 dom_num: _,
                 act_num: _,
@@ -532,7 +527,6 @@ impl SomeNeed {
                 }
                 return false;
             } // end process a ConfirmGroup need
-
             _ => panic!("satisfied_by: should not be called on this need"),
         } //end match self
     } // end satisfied_by
@@ -550,7 +544,6 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process a AStateMakeGroup need
-
             SomeNeed::StateNotInGroup {
                 dom_num: _,
                 act_num: an,
@@ -558,7 +551,6 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process a StateNotInGroup need
-
             SomeNeed::ContradictoryIntersection {
                 dom_num: _,
                 act_num: an,
@@ -570,7 +562,6 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process ContradictoryIntersection
-
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: an,
@@ -580,7 +571,6 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process a StateAdditionalSample need
-
             SomeNeed::AddGroup {
                 act_num: an,
                 group_region: _,
@@ -595,7 +585,6 @@ impl SomeNeed {
             } => {
                 return *an;
             }
-
             _ => {
                 return 0;
             }
@@ -615,7 +604,6 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process a AStateMakeGroup need
-
             SomeNeed::StateNotInGroup {
                 dom_num: dm,
                 act_num: _,
@@ -623,7 +611,6 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process a StateNotInGroup need
-
             SomeNeed::ContradictoryIntersection {
                 dom_num: dm,
                 act_num: _,
@@ -635,7 +622,6 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process ContradictoryIntersection
-
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
                 act_num: _,
@@ -705,7 +691,6 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
-
             SomeNeed::ConfirmGroup {
                 dom_num: _,
                 act_num: _,
@@ -715,7 +700,6 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             } // end process a ConfirmGroup need
-
             _ => panic!("target should not be called for this need"),
         };
     } // end target
@@ -803,7 +787,6 @@ impl Clone for SomeNeed {
                     num_x: *nx,
                 };
             } // end process for AStateMakeGroup
-
             SomeNeed::StateNotInGroup {
                 dom_num: dm,
                 act_num: an,
@@ -815,7 +798,6 @@ impl Clone for SomeNeed {
                     targ_state: tstate.clone(),
                 };
             } // end process for StateNotInGroup
-
             SomeNeed::ContradictoryIntersection {
                 dom_num: dm,
                 act_num: an,
@@ -835,7 +817,6 @@ impl Clone for SomeNeed {
                     ruls2: r2.clone(),
                 };
             } // end process for ContradictoryIntersection
-
             SomeNeed::ConfirmGroup {
                 dom_num: dm,
                 act_num: an,
@@ -851,7 +832,6 @@ impl Clone for SomeNeed {
                     anchor: anch.clone(),
                 };
             } // end process for ConfirmGroup
-
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
                 act_num: an,
@@ -867,7 +847,6 @@ impl Clone for SomeNeed {
                     grp_reg: gx.clone(),
                 };
             } // end process for StateAdditionalSample
-
             // Previously handled, but not removed from list
             SomeNeed::AddGroup {
                 act_num: an,
@@ -878,24 +857,22 @@ impl Clone for SomeNeed {
                     group_region: greg.clone(),
                 };
             }
-
             // Previously handled, but not removed from list
             SomeNeed::SetGroupConfirmed {
                 group_region: greg,
                 cstate: cst,
             } => {
                 return SomeNeed::SetGroupConfirmed {
-                    //                    act_num: *an,
                     group_region: greg.clone(),
                     cstate: cst.clone(),
                 };
             }
             // Previously handled, but not removed from list
-            SomeNeed::ClearGroupCheckBit {
+            SomeNeed::ClearGroupConfirmBit {
                 group_region: greg,
                 mbit: abit,
             } => {
-                return SomeNeed::ClearGroupCheckBit {
+                return SomeNeed::ClearGroupConfirmBit {
                     group_region: greg.clone(),
                     mbit: abit.clone(),
                 };
@@ -923,11 +900,9 @@ impl Clone for SomeNeed {
                     in_group: greg.clone(),
                 };
             }
-
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 return SomeNeed::InactivateSeekEdge { reg: regx.clone() };
             }
-
             SomeNeed::AddSeekEdge { reg: regx } => {
                 return SomeNeed::AddSeekEdge { reg: regx.clone() };
             }

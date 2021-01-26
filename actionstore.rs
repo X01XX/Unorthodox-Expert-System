@@ -3,10 +3,7 @@
 use crate::action::SomeAction;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
-//use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-//use crate::region::SomeRegion;
-//use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
 
@@ -95,17 +92,6 @@ impl ActionStore {
         //println!("possible steps: {}", stps.str());
         stps
     }
-
-    //    pub fn set_inx(&mut self, inx: usize, astate: SomeAction) {
-    //        self.avec[inx] = astate;
-    //    }
-
-    // Update actions with new X-bits mask
-    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-    //        for actx in &mut self.avec {
-    //            actx.new_x_bits(&bitsx);
-    //        }
-    //    }
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

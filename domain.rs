@@ -30,7 +30,6 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
-//use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -132,6 +131,8 @@ impl SomeDomain {
         i_state: &SomeState,
         r_state: &SomeState,
     ) {
+        self.check_async();
+
         // may break hv info, so do not mix with take_action_need
         self.actions[act_num].take_action_arbitrary(i_state, r_state);
         self.set_cur_state(r_state.clone());
@@ -156,10 +157,8 @@ impl SomeDomain {
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
             let new_max_region = self.max_region.union_state(&self.cur_state);
-            //            let new_x_bits = new_max_region.x_mask().m_xor(&self.max_region.x_mask());
             println!("new max region {}", &new_max_region,);
             self.max_region = new_max_region;
-            //            self.actions.new_x_bits(&new_x_bits);
         }
     }
 
