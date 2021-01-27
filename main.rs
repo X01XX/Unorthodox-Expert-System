@@ -34,6 +34,7 @@ use need::SomeNeed;
 mod combinable;
 mod domain;
 mod needstore;
+use crate::needstore::NeedStore;
 mod plan;
 mod pn;
 mod step;
@@ -109,10 +110,15 @@ fn main() {
         //            &dmxs[dom_num].x_mask,
         //        );
 
-        println!("\nActs: {}", &dmxs[dom_num].actions);
+        println!("\nActs: {}\n\nAction needs:", &dmxs[dom_num].actions);
 
         if nds.len() > 0 {
-            println!("\nAction needs: {}", nds);
+            let mut inx = 0;
+            for ndx in nds.iter() {
+                println!("{:02} {}", inx, ndx);
+                inx += 1;
+            }
+        //println!("\nAction needs: {}", nds);
         } else {
             println!("\nAction needs: None");
         }
@@ -234,6 +240,46 @@ fn main() {
                         println!("\nInvalid Domain number");
                     } else {
                         dom_num = d_num;
+                    }
+                    continue;
+                } else if cmd[0] == "dn" {
+                    let n_num = cmd[1].parse().unwrap_or_else(|err| {
+                        println!("Invalid Need Number: {}", err);
+                        999
+                    });
+                    if n_num == 999 {
+                        continue;
+                    }
+                    if n_num >= nds.len() {
+                        println!("Invalid Need Number: {}", cmd[1]);
+                        continue;
+                    }
+
+                    let ndx = &nds[n_num];
+                    let mut nds2 = NeedStore::new();
+                    nds2.push(ndx.clone());
+
+                    if let Some((inx, pln)) = dmxs.choose_need(&nds2) {
+                        let ndx = &nds2[inx];
+                        dom_num = ndx.dom_num();
+
+                        println!("need {}, plan {}", &ndx, &pln);
+
+                        if pln.len() > 0 {
+                            //println!("doing dmx.run_plan");
+                            dmxs.run_plan(dom_num, &pln);
+                        } else {
+                            //println!("NOT doing dmx.run_plan");
+                        }
+
+                        if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                            // println!("doing dmx.take_action_need");
+                            dmxs.take_action_need(dom_num, &ndx);
+                        } else {
+                            // println!("NOT doing dmx.take_action_need");
+                        }
+                    } else {
+                        println!("Path to satisfy the need was not found");
                     }
                     continue;
                 } else if cmd[0] == "ld" {
@@ -646,6 +692,7 @@ fn usage() {
     println!(
         "    cd <dom num>             - Change the displayed Domain to the given Domain number.\n"
     );
+    println!("    dn <need number>        - Run a particular need from the need list");
     println!("    co <region>             - Change the optimal region to the given region.\n");
     println!("    cs <state>               - Arbitrary change state.\n");
     println!(
