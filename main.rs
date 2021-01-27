@@ -115,7 +115,7 @@ fn main() {
         if nds.len() > 0 {
             let mut inx = 0;
             for ndx in nds.iter() {
-                println!("{:02} {}", inx, ndx);
+                println!("{:2} {}", inx, ndx);
                 inx += 1;
             }
         //println!("\nAction needs: {}", nds);
@@ -683,18 +683,20 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
 
 fn usage() {
     println!("\nCommands:");
-    println!("    h | help                 - This list.\n");
+    println!("    h | help                 - Show this list.\n");
 
     println!(
-        "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible.\n"
+        "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible."
     );
+    println!("                               If no needs, change the current state to the optimal region.\n");
     println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
     println!(
         "    cd <dom num>             - Change the displayed Domain to the given Domain number.\n"
     );
-    println!("    dn <need number>        - Run a particular need from the need list");
-    println!("    co <region>             - Change the optimal region to the given region.\n");
+
+    println!("    co <region>              - Change the optimal region to the given region.\n");
     println!("    cs <state>               - Arbitrary change state.\n");
+    println!("    dn <need number>         - Run a particular need from the need list.\n");
     println!(
         "    g1 <act num>             - For an Action, print squares that are only in one region."
     );
@@ -702,32 +704,31 @@ fn usage() {
         "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
     );
 
-    println!("    gn                       - Get needs\n");
+    //println!("    gn                       - Get needs for all Domains.\n");
     println!("    pa                       - Print all actions.");
-    println!("    pa <act num>             - Print an action.\n");
+    println!("    pa <act num>             - Print an action.");
 
     println!("\n    ps <act num>             - For an Action, print all Squares.");
     println!("    ps <act num> <region>    - For an Action, print Squares in a region.\n");
 
     println!("    ss <act num>             - Action to sample the current state.");
-    println!("    ss <act num> <state>     - Action to sample state.");
+    println!("    ss <act num> <state>     - Action to sample a given state.");
     println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
-
+    println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
     println!(
         "\n    An action number is an integer, zero or greater, where such an action exists.\n"
     );
-    println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.");
+    println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
-    println!("\n    A region, or state, may contain the separator '_', which will be ignored.\n");
-    println!("    leading consecutive zeros may be omitted ('r' is the same as 'r0', 's' is the same as 's0').");
+    println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.\n");
 
-    println!("\n    ld <path>                - Load data from a file");
-    println!("\n    sd <path>                - Store data to a file\n");
+    println!("\n    ld <path>                - Load data from a file.");
+    println!("\n    sd <path>                - Store data to a file.\n");
 
     println!("    run                      - Run until no needs left.");
-    println!("    run <number times>       - Run number of times. To elicit panics\n");
+    println!("    run <number times>       - Run a number of times.");
 
     println!("\n    q | exit | quit          - Quit program.");
 }
