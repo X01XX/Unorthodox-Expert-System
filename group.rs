@@ -113,10 +113,10 @@ impl SomeGroup {
             }
         }
 
-        rc_str.push_str(&format!(
-            " nxe: {} nxc: {}",
-            &self.not_x_expand, &self.not_x_confirm
-        ));
+        //        rc_str.push_str(&format!(
+        //            " nxe: {} nxc: {}",
+        //            &self.not_x_expand, &self.not_x_confirm
+        //        ));
 
         rc_str.push_str(")");
         rc_str
@@ -195,12 +195,6 @@ impl SomeGroup {
             }
         }
     }
-
-    // Process new X bits mask in max_region
-    //    pub fn new_x_bits(&mut self, bitsx: &SomeMask) {
-    //        let bitsy = bitsx.m_and(&self.region.x_mask().m_not());
-    //        self.not_x_confirm = self.not_x_confirm.m_or(&bitsy);
-    //    }
 
     pub fn set_anchor_off(&mut self) {
         self.anchor = None;

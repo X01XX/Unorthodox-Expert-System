@@ -102,10 +102,14 @@ fn main() {
 
         //let mut dmx = &mut dmxs[dom_num];
 
-        println!(
-            "\nDom: {} x_mask: {}\nActs: {}",
-            dom_num, &dmxs[dom_num].x_mask, &dmxs[dom_num].actions
-        );
+        print!("\nDom: {}", dom_num,);
+
+        //        print!(
+        //            " Predictable changes: {}",
+        //            &dmxs[dom_num].x_mask,
+        //        );
+
+        println!("\nActs: {}", &dmxs[dom_num].actions);
 
         if nds.len() > 0 {
             println!("\nAction needs: {}", nds);

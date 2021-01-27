@@ -853,6 +853,26 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn change_string_length() -> Result<(), String> {
+        let from_reg = SomeRegion::from_string(2, "rx1x1").unwrap();
+        let goal_reg = SomeRegion::from_string(2, "rx1x1").unwrap();
+
+        let cngtst = SomeChange::region_to_region(&from_reg, &goal_reg);
+
+        let n1 = cngtst.formatted_string_length();
+        let rs = cngtst.formatted_string();
+        let n2 = rs.len();
+        if n1 != n2 {
+            return Err(format!(
+                "calculated len of one int SomeChange string {} NEQ real len {} {}",
+                n1, n2, rs
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Given a square and a two-rule RuleStore,
     /// return the expected next result for the square.
     #[test]

@@ -37,7 +37,7 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" clsr: {}", self.seek_edge));
         }
 
-        rc_str.push_str(&format!(" Changes {}", self.pos_bit_cngs));
+        //rc_str.push_str(&format!(" Predictable changes {}", self.pos_bit_cngs));
 
         let regs = self.groups.regions();
 
@@ -62,9 +62,13 @@ impl fmt::Display for SomeAction {
                     &cnt,
                 ));
 
-                if grpx.not_x_confirm.is_low() == false {
-                    rc_str.push_str(&format!(" chk: {}", &grpx.not_x_confirm));
-                }
+                //                if grpx.not_x_confirm.is_low() == false {
+                //                    rc_str.push_str(&format!(" cfm: {}", &grpx.not_x_confirm));
+                //                }
+
+                //                if grpx.not_x_expand.is_low() == false {
+                //                    rc_str.push_str(&format!(" exp: {}", &grpx.not_x_expand));
+                //                }
 
                 fil = String::from(",\n              ");
             }
