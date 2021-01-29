@@ -390,6 +390,8 @@ impl SomeDomain {
     // The general rule is to use the step(s), with intial-regions
     // furthest from the goal-region, then the next furthest step(s), until the goal-region
     // is attained.
+    //
+    // Figure one step, then call recursively with history of from/to regions.
     fn make_one_plan(
         &self,
         from_reg: &SomeRegion,
@@ -401,7 +403,20 @@ impl SomeDomain {
         //    &from_reg, &goal_reg, reg_hist.len()
         // );
 
-        // Check for loop in path
+        // Check for from region already being a subset of the goal region.
+        if from_reg.is_subset_of(&goal_reg) {
+            println!("zero len plan returned");
+            return Some(SomePlan::new(StepStore::new()));
+        }
+        
+        // Check for path becoming too long
+        if reg_hist.len() >= (self.num_actions() * 2) {
+            println!("recursion limit exceeded by {}", reg_hist.len());
+            //panic!("Done");
+            return None;
+        }
+        
+        // Check for loop in the path so far
         for (fromx, tox) in reg_hist.iter() {
             if *fromx == *from_reg && *tox == *goal_reg {
                 println!(
@@ -415,19 +430,8 @@ impl SomeDomain {
             }
         }
 
-        // Check for path becoming too long
+        // Update path history
         reg_hist.push((from_reg.clone(), goal_reg.clone()));
-        if reg_hist.len() > (self.num_actions() * 2) {
-            println!("recursion limit exceeded by {}", reg_hist.len());
-            //panic!("Done");
-            return None;
-        }
-
-        // Check for from region already being a subset of the goal region.
-        if from_reg.is_subset_of(&goal_reg) {
-            println!("zero len plan returned");
-            return Some(SomePlan::new(StepStore::new()));
-        }
 
         // Create an aggregate change to represent the changes needed.
         let achange = SomeChange::region_to_region(&from_reg, &goal_reg);
