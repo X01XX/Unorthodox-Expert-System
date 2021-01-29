@@ -3,6 +3,7 @@
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
+//use crate::maskstore::MaskStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
@@ -378,7 +379,6 @@ impl SomeRegion {
     //                avec.push(self.set_to_zeros(&mskx));
     //            }
     //        }
-    //
     //        avec
     //    }
 

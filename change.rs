@@ -38,6 +38,15 @@ impl SomeChange {
         self.b01.m_and(&self.b10)
     }
 
+    pub fn is_subset_of(&self, other: &SomeChange) -> bool {
+        if self.b01.is_subset_of(&other.b01) {
+            if self.b10.is_subset_of(&other.b10) {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.b01.bts.len() * 3) - 1
     }
