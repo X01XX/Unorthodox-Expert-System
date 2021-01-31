@@ -972,8 +972,8 @@ mod tests {
 
         let stps = dm1.actions.get_steps(&cngx);
 
-        if stps.len() != 2 {
-            return Err(format!("Number steps NEQ 2 {}", stps));
+        if stps.len() != 1 {
+            return Err(format!("Number steps NEQ 1 {}", stps));
         }
 
         Ok(())
@@ -1013,4 +1013,106 @@ mod tests {
 
         Ok(())
     } // end region_to_region_test
+
+    #[test]
+    fn rule_pruning() -> Result<(), String> {
+        // Test rule pruning to fit a change
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        dm1.add_action(0);
+
+        let s122 = SomeState::from_string(dm1.num_ints, "s1111001").unwrap();
+
+        let s69 = SomeState::from_string(dm1.num_ints, "s1000101").unwrap();
+
+        let s9 = SomeState::from_string(dm1.num_ints, "s1001").unwrap();
+
+        let s85 = SomeState::from_string(dm1.num_ints, "s1010101").unwrap();
+
+        let _s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
+
+        dm1.take_action_arbitrary(0, &s122, &s122);
+        dm1.take_action_arbitrary(0, &s122, &s69);
+        dm1.take_action_arbitrary(0, &s9, &s85);
+        dm1.take_action_arbitrary(0, &s9, &s9);
+
+        //println!("dom {}", &dm1);
+        //println!("acts: {}", &dm1.actions);
+
+        // Sub test 1
+        let cng1 = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![16]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+        };
+
+        let stps = dm1.actions.get_steps(&cng1);
+        //println!("steps for {} are {}", &cng1, &stps);
+        if stps.len() == 1 {
+            let r01001001 = SomeRegion::from_string(dm1.num_ints, "r01001001").unwrap();
+            if r01001001 != stps[0].initial {
+                return Err(format!("r01001001 ne {}", stps[0].initial));
+            }
+            let r01010101 = SomeRegion::from_string(dm1.num_ints, "r01010101").unwrap();
+            if r01010101 != stps[0].result {
+                return Err(format!("r01010101 ne {}", stps[0].result));
+            }
+        } else {
+            panic!("steps len NE 1");
+        }
+
+        // Sub test 2
+        let cng1 = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![32]),
+            },
+        };
+
+        let stps = dm1.actions.get_steps(&cng1);
+        //println!("steps for {} are {}", &cng1, &stps);
+        if stps.len() == 1 {
+            let r011x1001 = SomeRegion::from_string(dm1.num_ints, "r011X1001").unwrap();
+            if r011x1001 != stps[0].initial {
+                return Err(format!("r011X1001 ne {}", stps[0].initial));
+            }
+            let r010x0101 = SomeRegion::from_string(dm1.num_ints, "r010x0101").unwrap();
+            if r010x0101 != stps[0].result {
+                return Err(format!("r010x0101 ne {}", stps[0].result));
+            }
+        } else {
+            panic!("steps len NE 1");
+        }
+
+        // Sub test 3
+        let cng1 = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![64]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+        };
+
+        let stps = dm1.actions.get_steps(&cng1);
+        //println!("steps for {} are {}", &cng1, &stps);
+        if stps.len() == 1 {
+            let r00001001 = SomeRegion::from_string(dm1.num_ints, "r00001001").unwrap();
+            if r00001001 != stps[0].initial {
+                return Err(format!("r00001001 ne {}", stps[0].initial));
+            }
+            let r01010101 = SomeRegion::from_string(dm1.num_ints, "r01010101").unwrap();
+            if r01010101 != stps[0].result {
+                return Err(format!("r01010101 ne {}", stps[0].result));
+            }
+        } else {
+            panic!("steps len NE 1");
+        }
+
+        Ok(())
+    } // end rule_pruning
 } // end mod tests

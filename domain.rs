@@ -48,7 +48,7 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push_str(&self.num.to_string());
 
-        rc_str.push_str(&format!(", Murrent State: {}", &self.cur_state));
+        rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
         rc_str.push_str(&format!(", Maximum Region: {}", &self.max_region));
         rc_str.push_str(&format!(", Optimal Region: {}", &self.optimal));
 
@@ -408,14 +408,14 @@ impl SomeDomain {
             println!("zero len plan returned");
             return Some(SomePlan::new(StepStore::new()));
         }
-        
+
         // Check for path becoming too long
         if reg_hist.len() >= (self.num_actions() * 2) {
             println!("recursion limit exceeded by {}", reg_hist.len());
             //panic!("Done");
             return None;
         }
-        
+
         // Check for loop in the path so far
         for (fromx, tox) in reg_hist.iter() {
             if *fromx == *from_reg && *tox == *goal_reg {

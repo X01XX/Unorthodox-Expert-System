@@ -16,11 +16,13 @@ mod bitsstore;
 mod group;
 mod groupstore;
 mod mask;
+//use crate::mask::SomeMask;
 mod maskstore;
 mod need;
 mod region;
 use crate::region::SomeRegion;
 mod change;
+//use crate::change::SomeChange;
 mod regionstore;
 mod resultstore;
 mod rule;
@@ -218,7 +220,7 @@ fn main() {
             if cmd.len() == 1 {
                 if cmd[0] == "run" {
                     run = 1;
-                    dmxs = init();
+                    //dmxs = init();
                     continue;
                 }
             } else if cmd.len() == 2 {

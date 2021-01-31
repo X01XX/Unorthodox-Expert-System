@@ -40,6 +40,16 @@ impl MaskStore {
         }
         false
     }
+
+    //    pub fn contains_superset(&self, amask: &SomeMask) -> bool {
+    //        for mskx in self.avec.iter() {
+    //            if mskx.is_superset_of(&amask) {
+    //                return true;
+    //            }
+    //        }
+    //        false
+    //    }
+
     pub fn push(&mut self, val: SomeMask) {
         self.avec.push(val);
     }

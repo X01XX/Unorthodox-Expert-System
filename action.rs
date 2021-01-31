@@ -1784,43 +1784,18 @@ impl SomeAction {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    let ones = grpx.rules[0].b10.m_and(&achange.b10);
-                    let zeros = grpx.rules[0].b01.m_and(&achange.b01);
-
-                    if ones.is_not_low() || zeros.is_not_low() {
-                        let mut xrule = grpx.rules[0].clone();
-
-                        if ones.is_not_low() {
-                            xrule = xrule.set_initial_to_ones(&ones);
-                        }
-
-                        if zeros.is_not_low() {
-                            xrule = xrule.set_initial_to_zeros(&zeros);
-                        }
-
-                        let regx = xrule.initial_region();
-                        stps.push(SomeStep::new(self.num, xrule, false, regx));
+                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    {
+                        let i_reg = rulx.initial_region();
+                        stps.push(SomeStep::new(self.num, rulx, false, i_reg));
                     }
                 }
                 Pn::Two => {
-                    for rulx in &grpx.rules.avec {
-                        let ones = rulx.b10.m_and(&achange.b10);
-                        let zeros = rulx.b01.m_and(&achange.b01);
-
-                        if ones.is_not_low() || zeros.is_not_low() {
-                            let mut xrule = rulx.clone();
-
-                            if ones.is_not_low() {
-                                xrule = xrule.set_initial_to_ones(&ones);
-                            }
-
-                            if zeros.is_not_low() {
-                                xrule = xrule.set_initial_to_zeros(&zeros);
-                            }
-
-                            let regx = xrule.initial_region();
-
-                            let stas = self.squares.stas_in_reg(&regx);
+                    for ruly in &grpx.rules.avec {
+                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                            // See if an existing square is ready to produce the desired result
+                            let i_reg = rulx.initial_region();
+                            let stas = self.squares.stas_in_reg(&i_reg);
 
                             let mut found = false;
                             for stax in stas.iter() {
@@ -1828,36 +1803,41 @@ impl SomeAction {
 
                                 let next_result = sqrx.next_result(&grpx.rules);
 
-                                let expected_result = rulx.result_from_initial_state(stax);
+                                let b01 = SomeMask {
+                                    bts: sqrx.state.bts.b_not().b_and(&next_result.bts),
+                                };
+                                let b10 = SomeMask {
+                                    bts: sqrx.state.bts.b_and(&next_result.bts.b_not()),
+                                };
 
-                                if next_result == expected_result {
+                                if b01.m_and(&achange.b01).is_not_low()
+                                    || b10.m_and(&achange.b10).is_not_low()
+                                {
                                     let stpx = SomeStep::new(
                                         self.num,
-                                        xrule.restrict_initial_region(&SomeRegion::new(
+                                        rulx.restrict_initial_region(&SomeRegion::new(
                                             &stax, &stax,
                                         )),
                                         false,
-                                        SomeRegion::new(&next_result, &next_result),
+                                        grpx.region.clone(),
                                     );
-                                    println!(
-                                        "pn2 rul {} sqr {} next rslt {} found. making step {}",
-                                        &rulx, &stax, &next_result, &stpx
-                                    );
+                                    //println!(
+                                    //   "pn2 rul {} sqr {} next rslt {} found. making step {}",
+                                    //    &rulx, &stax, &next_result, &stpx
+                                    //);
                                     stps.push(stpx);
                                     found = true;
                                 } // end if
                             } // next stax
 
                             if found == false {
-                                let stpx = SomeStep::new(self.num, xrule, true, regx);
-                                println!("pn2 rul {} making generic step {}", &rulx, &stpx);
-                                stps.push(stpx);
+                                stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                             }
-                        } // next low or low
+                        } // endif Some(rulx)
                     } // next rulx
                 } // end match Two
                 Pn::Unpredictable => {}
-            } // end match pn
+            } // end match grpx.pn
         } // next grpx
 
         stps

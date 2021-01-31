@@ -33,9 +33,9 @@ impl SomeRule {
     }
 
     // Return a mask of changes b01 or b10
-    pub fn change_mask(&self) -> SomeMask {
-        self.b01.m_or(&self.b10)
-    }
+    //    pub fn change_mask(&self) -> SomeMask {
+    //        self.b01.m_or(&self.b10)
+    //    }
 
     // Return true if a rule is a subset of another
     pub fn is_subset_of(&self, other: &Self) -> bool {
@@ -289,28 +289,28 @@ impl SomeRule {
     //    }
 
     // Set initial region X bits to one
-    pub fn set_initial_to_ones(&self, msk: &SomeMask) -> Self {
-        let nmsk = msk.m_not();
-
-        Self {
-            b00: self.b00.m_and(&nmsk),
-            b01: self.b01.m_and(&nmsk),
-            b11: self.b11.clone(),
-            b10: self.b10.clone(),
-        }
-    }
+    //    pub fn set_initial_to_ones(&self, msk: &SomeMask) -> Self {
+    //        let nmsk = msk.m_not();
+    //
+    //        Self {
+    //            b00: self.b00.m_and(&nmsk),
+    //            b01: self.b01.m_and(&nmsk),
+    //            b11: self.b11.clone(),
+    //            b10: self.b10.clone(),
+    //        }
+    //    }
 
     // Set initial region X bits to zero
-    pub fn set_initial_to_zeros(&self, msk: &SomeMask) -> Self {
-        let nmsk = msk.m_not();
-
-        Self {
-            b00: self.b00.clone(),
-            b01: self.b01.clone(),
-            b11: self.b11.m_and(&nmsk),
-            b10: self.b10.m_and(&nmsk),
-        }
-    }
+    //    pub fn set_initial_to_zeros(&self, msk: &SomeMask) -> Self {
+    //        let nmsk = msk.m_not();
+    //
+    //        Self {
+    //            b00: self.b00.clone(),
+    //            b01: self.b01.clone(),
+    //            b11: self.b11.m_and(&nmsk),
+    //            b10: self.b10.m_and(&nmsk),
+    //        }
+    //    }
 
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.b00.bts.len() * 3) - 1
@@ -362,25 +362,63 @@ impl SomeRule {
 
         strrc
     }
+
+    pub fn parse_for_changes(&self, b01: &SomeMask, b10: &SomeMask) -> Option<Self> {
+        let ones = self.b10.m_and(&b10);
+        let zeros = self.b01.m_and(&b01);
+
+        if ones.is_low() && zeros.is_low() {
+            return None;
+        }
+
+        // Get unwanted changes, except when there are two
+        // in the same position, that is 1->0 and 0->1.
+        let mut ones_not = self.b10.m_xor(&ones);
+        let mut zeros_not = self.b01.m_xor(&zeros);
+
+        // Filter out two-change bit positions.
+        let both_not = ones_not.m_and(&zeros_not);
+        ones_not = ones_not.m_xor(&both_not);
+        zeros_not = zeros_not.m_xor(&both_not);
+
+        // Get rule initial region and x mask.
+        let mut i_reg = self.initial_region();
+        let i_reg_xes = i_reg.x_mask();
+
+        // Figure region bit positions to change from X to 1
+        let to_ones = ones.m_or(&zeros_not).m_and(&i_reg_xes);
+
+        if to_ones.is_not_low() {
+            i_reg = i_reg.set_to_ones(&to_ones);
+        }
+
+        // Figure region bit positions to change from X to 0
+        let to_zeros = zeros.m_or(&ones_not).m_and(&i_reg_xes);
+
+        if to_zeros.is_not_low() {
+            i_reg = i_reg.set_to_zeros(&to_zeros);
+        }
+        Some(self.restrict_initial_region(&i_reg))
+    }
 } // end SomeRule
 
 // Create an rule that represents a change from one region to another.
-pub fn _region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-    let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
-    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
-
-    let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
-
-    let bxx = from.x_mask().m_and(&to.x_mask());
-
-    SomeRule {
-        b00: f_zeros.m_and(&t_zeros),
-        b01: f_zeros.m_and(&t_ones).m_xor(&bxx),
-        b11: f_ones.m_and(&t_ones),
-        b10: f_ones.m_and(&t_zeros).m_xor(&bxx),
-    }
-}
+//pub fn _region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+//    let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
+//    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
+//
+//    let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+//    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
+//
+//    let bxx = from.x_mask().m_and(&to.x_mask());
+//
+//    SomeRule {
+//        b00: f_zeros.m_and(&t_zeros),
+//        b01: f_zeros.m_and(&t_ones).m_xor(&bxx),
+//        b11: f_ones.m_and(&t_ones),
+//        b10: f_ones.m_and(&t_zeros).m_xor(&bxx),
+//    }
+//}
 
 impl Clone for SomeRule {
     fn clone(&self) -> Self {

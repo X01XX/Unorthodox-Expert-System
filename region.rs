@@ -276,20 +276,20 @@ impl SomeRegion {
     }
 
     // Return a region with masked X-bits set to zeros
-    //    pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-    //        Self::new(
-    //            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
-    //            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
-    //        )
-    //    }
+    pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
+        Self::new(
+            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
+            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+        )
+    }
 
     // Return a region with masked X-bits set to ones
-    //    pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-    //        Self::new(
-    //            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-    //            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
-    //        )
-    //    }
+    pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
+        Self::new(
+            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
+            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
+        )
+    }
 
     // Return a region with masked X-bits set to zeros
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {

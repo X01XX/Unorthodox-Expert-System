@@ -124,14 +124,27 @@ impl RuleStore {
     }
 
     // Return the union of two RuleStores.
-    // May return an empty RuleStore, if the union is invalid.
+    // May return None, if the union is invalid.
     //
     // The rules will be from two squares, the possible combinations
     // for each bit position are:
-    // 0->0, 0->1 and 0->0, 0->1 = 0->0, 0->1, since 0->X is disallowed.
-    // 1->1, 1->0 and 1->1, 1->0 = 1->1, 1->0, since 1->X is disallowed
-    // 0->0, 0->1 and 1->1, 1->0 = X->X, X->x or X->0, X->1, both have the same aggregate result, take the first valid combination.
+    //
+    // 0->0, 0->0 = 0->0
+    // 0->0, 0->1 = 0->X, disallowed
+    // 0->0, 1->1 = X->X
+    // 0->0, 1->0 = X->0
+    //
+    // 0->1, 0->1 = 0->1
+    // 0->1, 1->1 = X->1
+    // 0->1, 1->0 = X->x (X to x-not)
+    //
+    // 1->1, 1->1 = 1->1
+    // 1->1, 1->0 = 1->X, disallowed
+    //
+    // 1->0, 1->0 = 1->0
+    //
     pub fn union(&self, other: &Self) -> Option<Self> {
+        //println!("\nrulestore union {} and {}", &self, &other);
         if self.len() != other.len() {
             return None;
         }
@@ -157,20 +170,36 @@ impl RuleStore {
         if self.len() == 2 {
             // Avoid a combination or rules that combines changes that
             // are not seen together in the source rules.
-            let mut cng_pats = MaskStore::new_with_capacity(4);
-            cng_pats.push(self.avec[0].change_mask());
-            cng_pats.push(self.avec[1].change_mask());
-            cng_pats.push(other.avec[0].change_mask());
-            cng_pats.push(other.avec[1].change_mask());
 
+            // Store b01 change patterns
+            let mut b01_cng_pats = MaskStore::new_with_capacity(4);
+            b01_cng_pats.push(self.avec[0].b01.clone());
+            b01_cng_pats.push(self.avec[1].b01.clone());
+            b01_cng_pats.push(other.avec[0].b01.clone());
+            b01_cng_pats.push(other.avec[1].b01.clone());
+
+            //  Store b10 change patterns
+            let mut b10_cng_pats = MaskStore::new_with_capacity(4);
+            b10_cng_pats.push(self.avec[0].b10.clone());
+            b10_cng_pats.push(self.avec[1].b10.clone());
+            b10_cng_pats.push(other.avec[0].b10.clone());
+            b10_cng_pats.push(other.avec[1].b10.clone());
+
+            // Attempt self[0]/other[0], self[1]/other[1] combination
             let mut ars1 = Self::new();
 
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() && cng_pats.contains(&rulx.change_mask()) {
+            if rulx.is_valid_union()
+                && b01_cng_pats.contains(&rulx.b01)
+                && b10_cng_pats.contains(&rulx.b10)
+            {
                 let ruly = self.avec[1].union(&other.avec[1]);
 
-                if ruly.is_valid_union() && cng_pats.contains(&ruly.change_mask()) {
+                if ruly.is_valid_union()
+                    && b01_cng_pats.contains(&ruly.b01)
+                    && b10_cng_pats.contains(&ruly.b10)
+                {
                     if rulx.initial_region() == ruly.initial_region() {
                         ars1.push(rulx);
                         ars1.push(ruly);
@@ -179,14 +208,21 @@ impl RuleStore {
                 }
             }
 
+            // Attempt self[0]/other[1], self[1]/other[0] combination
             let mut ars2 = Self::new();
 
             let rulx = self.avec[0].union(&other.avec[1]);
 
-            if rulx.is_valid_union() && cng_pats.contains(&rulx.change_mask()) {
+            if rulx.is_valid_union()
+                && b01_cng_pats.contains(&rulx.b01)
+                && b10_cng_pats.contains(&rulx.b10)
+            {
                 let ruly = self.avec[1].union(&other.avec[0]);
 
-                if ruly.is_valid_union() && cng_pats.contains(&ruly.change_mask()) {
+                if ruly.is_valid_union()
+                    && b01_cng_pats.contains(&ruly.b01)
+                    && b10_cng_pats.contains(&ruly.b10)
+                {
                     if rulx.initial_region() == ruly.initial_region() {
                         ars2.push(rulx);
                         ars2.push(ruly);
@@ -195,6 +231,7 @@ impl RuleStore {
                 }
             }
 
+            //println!("rulestore union returns None\n");
             return None;
         } // end if
 
