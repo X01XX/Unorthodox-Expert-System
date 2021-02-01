@@ -363,12 +363,12 @@ impl SomeRule {
         strrc
     }
 
-    // Of the changes in a rule, the rule initial region may be manipulated to 
+    // Of the changes in a rule, the rule initial region may be manipulated to
     // focus in on desired changes, and avoid undesired changes.
     //
     // The arguments b01 and b10 are masks of changes that are sought.
     //
-    // It is expected that b01 & b10 would be all zeros, e.g. you do not need 
+    // It is expected that b01 & b10 would be all zeros, e.g. you do not need
     // 0->1 and 1->0 in the same bit position.
     //
     // It is expected that b01 and b10 are not both all zeros, otherwise
@@ -389,7 +389,7 @@ impl SomeRule {
     // X->0, the X bit position can be changed to 0, to avoid 1->0.
     //
     // Changing the X bit positions of a rules' initial region increases the
-    // non-X bit position requirements that the current state must match in 
+    // non-X bit position requirements that the current state must match in
     // order to use the rule.
     pub fn parse_for_changes(&self, b01: &SomeMask, b10: &SomeMask) -> Option<Self> {
         let ones = self.b10.m_and(&b10);
@@ -426,7 +426,7 @@ impl SomeRule {
         if to_zeros.is_not_low() {
             i_reg = i_reg.set_to_zeros(&to_zeros);
         }
-        
+
         // Return a restricted rule
         Some(self.restrict_initial_region(&i_reg))
     }

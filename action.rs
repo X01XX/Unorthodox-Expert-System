@@ -529,7 +529,6 @@ impl SomeAction {
                                 &regx.state2,
                                 RuleStore::new(),
                                 self.num,
-                                //  &self.x_mask,
                             ));
                         } else {
                             let sqr_1 = self.squares.find(&regx.state1).unwrap();
@@ -542,7 +541,6 @@ impl SomeAction {
                                 &regx.state2,
                                 sqr_1.rules.union(&sqr_2.rules).unwrap(),
                                 self.num,
-                                //     &self.x_mask,
                             ));
                         }
                     }
@@ -554,7 +552,6 @@ impl SomeAction {
                     &sqrx.state,
                     sqrx.rules.clone(),
                     self.num,
-                    //   &self.x_mask,
                 ));
             }
         }
@@ -1771,8 +1768,13 @@ impl SomeAction {
         }
     } // end cont_int_region_needs
 
-    // Get possible steps that can be used to make at least one
-    // change in a given rule.
+    // Get possible steps that can be used to make at least part of a
+    // given change.
+    //
+    // For each rule, prune the rule X bit positions to favor desired changes and aoiv undesired changes.
+    //
+    // For a two-result group, see if there is an existing square that is expected to
+    // produce the desired change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 
@@ -1803,16 +1805,10 @@ impl SomeAction {
 
                                 let next_result = sqrx.next_result(&grpx.rules);
 
-                                let b01 = SomeMask {
-                                    bts: sqrx.state.bts.b_not().b_and(&next_result.bts),
-                                };
-                                let b10 = SomeMask {
-                                    bts: sqrx.state.bts.b_and(&next_result.bts.b_not()),
-                                };
+                                // Will include at least one bit change desired, but maybe others.
+                                let expected_result = rulx.result_from_initial_state(&stax);
 
-                                if b01.m_and(&achange.b01).is_not_low()
-                                    || b10.m_and(&achange.b10).is_not_low()
-                                {
+                                if next_result == expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(
