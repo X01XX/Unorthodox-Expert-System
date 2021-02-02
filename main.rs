@@ -12,6 +12,7 @@
 mod action;
 mod actionstore;
 mod bits;
+//use crate::bits::SomeBits;
 mod bitsstore;
 mod group;
 mod groupstore;

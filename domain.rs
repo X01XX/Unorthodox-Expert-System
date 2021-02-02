@@ -512,28 +512,8 @@ impl SomeDomain {
             //println!("stp_vec: did not find a step to make the whole change");
         }
 
-        // Group together steps with the same changes, using step references.
-        let mut stp_cngs = Vec::<Vec<&SomeStep>>::with_capacity(stpsx.len());
-
-        for stpx in stpsx.iter() {
-            // Check for an existing vector of one or more changes of the same kind
-            // If found, push the step onto it.
-            let mut add_new_vec = true;
-
-            for stp_cng in stp_cngs.iter_mut() {
-                if stpx.rule.b01 == stp_cng[0].rule.b01 && stpx.rule.b10 == stp_cng[0].rule.b10 {
-                    stp_cng.push(stpx);
-
-                    add_new_vec = false;
-                    break;
-                }
-            }
-
-            // If no vector of similar step changes found, add one.
-            if add_new_vec {
-                stp_cngs.push(vec![stpx]);
-            }
-        } // next stpx
+        // Get steps sorted by change
+        let stp_cngs = self.sort_steps(&stpsx, &achange);
 
         // println!("{} stp_cngs steps", stp_cngs.len());
 
@@ -559,7 +539,7 @@ impl SomeDomain {
             //   println!("    {}", &stpx);
             //}
             // Select a step
-            let mut astep = vecx[0];
+            let mut astep = &stpsx[vecx[0]];
 
             if vecx.len() > 1 {
                 // Get a vector of steps that have an initial region closest to the goal-region
@@ -570,13 +550,16 @@ impl SomeDomain {
                 let mut sr_found = false;
 
                 // Scan for a single-result step
-                for stpx in vecx.iter() {
+                for inx in vecx.iter() {
+                    let stpx = &stpsx[*inx];
                     if stpx.alt_rule == false {
                         sr_found = true;
                     }
                 }
 
-                for stpx in vecx.iter() {
+                for inx in vecx.iter() {
+                    let stpx = &stpsx[*inx];
+
                     if stpx.alt_rule {
                         if sr_found {
                             continue;
@@ -590,7 +573,7 @@ impl SomeDomain {
                         min_diff_goal = Vec::<&SomeStep>::with_capacity(5);
                     }
                     if tmp_diff == local_min {
-                        min_diff_goal.push(stpx);
+                        min_diff_goal.push(&stpx);
                     }
                 }
 
@@ -767,4 +750,103 @@ impl SomeDomain {
             return false;
         }
     } // end to_region
+
+    // Sort a list of steps into a vector of step stores
+    pub fn sort_steps(&self, stpsx: &StepStore, achange: &SomeChange) -> Vec<Vec<usize>> {
+        let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stpsx.len());
+
+        // Check and store each step that is an exact subset of the needed changes.
+        let mut inx = 0;
+        for stpx in stpsx.iter() {
+            if stpx.rule.b01.is_subset_of(&achange.b01) && stpx.rule.b10.is_subset_of(&achange.b10)
+            {
+                // Check for an existing vector of one or more changes of the same kind
+                // If found, push the step onto it.
+                let mut add_new_vec = true;
+
+                for stp_cng in stp_cngs.iter_mut() {
+                    if stpx.rule.b01 == stpsx[stp_cng[0]].rule.b01
+                        && stpx.rule.b10 == stpsx[stp_cng[0]].rule.b10
+                    {
+                        stp_cng.push(inx);
+                        add_new_vec = false;
+                        break;
+                    }
+                }
+
+                // If no vector of similar step changes found, add one.
+                if add_new_vec {
+                    stp_cngs.push(vec![inx]);
+                }
+            }
+            inx += 1;
+        } // next stpx
+
+        // Check each step that is not an exact subset of the needed changes,
+        // Save index if it should be stored.
+        let mut stp_inx = Vec::<usize>::new();
+        let mut inx = 0;
+
+        for stpx in stpsx.iter() {
+            if stpx.rule.b01.is_subset_of(&achange.b01) && stpx.rule.b10.is_subset_of(&achange.b10)
+            {
+            } else {
+                // Check for an existing vector of one or more changes of the same kind
+                // If not found, save inx number.
+
+                // Get desired changes in step
+                let mut b01 = stpx.rule.b01.m_and(&achange.b01);
+                let mut b10 = stpx.rule.b10.m_and(&achange.b10);
+
+                // Check steps stored in stp_cngs to see if they satisfy the same needed changes.
+                for stp_cng in stp_cngs.iter_mut() {
+                    // Check a b01 needed change
+                    let stpx01 = stpsx[stp_cng[0]].rule.b01.m_and(&b01);
+                    if stpx01.is_not_low() {
+                        b01 = b01.m_xor(&stpx01);
+                    }
+
+                    // Check a b10 needed change
+                    let stpx10 = stpsx[stp_cng[0]].rule.b10.m_and(&b10);
+                    if stpx10.is_not_low() {
+                        b10 = b10.m_xor(&stpx10);
+                    }
+                } // next stp_cng
+
+                // If no steps, or combination of steps, satisfies the same
+                // needed changes, save the index to the step.
+                if b01.is_not_low() || b10.is_not_low() {
+                    stp_inx.push(inx);
+                }
+            } // end-else
+
+            inx += 1;
+        } // next stpx
+
+        // Add steps that have an unrequired change with a still required change
+        for inx in stp_inx.iter() {
+            let stpx = &stpsx[*inx];
+
+            // Check for an existing vector of one or more changes of the same kind
+            // If found, push the step onto it.
+            let mut add_new_vec = true;
+
+            for stp_cng in stp_cngs.iter_mut() {
+                if stpx.rule.b01 == stpsx[stp_cng[0]].rule.b01
+                    && stpx.rule.b10 == stpsx[stp_cng[0]].rule.b10
+                {
+                    stp_cng.push(*inx);
+                    add_new_vec = false;
+                    break;
+                }
+            }
+
+            // If no vector of similar step changes found, add one.
+            if add_new_vec {
+                stp_cngs.push(vec![*inx]);
+            }
+        } // next inx
+
+        stp_cngs
+    } // end sort_steps
 } // end impl SomeDomain

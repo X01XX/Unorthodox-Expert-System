@@ -1028,8 +1028,6 @@ mod tests {
 
         let s85 = SomeState::from_string(dm1.num_ints, "s1010101").unwrap();
 
-        let _s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
-
         dm1.take_action_arbitrary(0, &s122, &s122);
         dm1.take_action_arbitrary(0, &s122, &s69);
         dm1.take_action_arbitrary(0, &s9, &s85);
@@ -1115,4 +1113,136 @@ mod tests {
 
         Ok(())
     } // end rule_pruning
+
+    #[test]
+    fn sort_steps() -> Result<(), String> {
+        // Test SomeDomain::sort_steps to filter out steps that have more
+        // changes then needed, if possible.
+
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        dm1.add_action(0);
+        dm1.add_action(0);
+        dm1.add_action(0);
+
+        let s0 = SomeState::from_string(dm1.num_ints, "s0").unwrap();
+
+        let s3 = SomeState::from_string(dm1.num_ints, "s11").unwrap();
+
+        let s4 = SomeState::from_string(dm1.num_ints, "s100").unwrap();
+
+        let s6 = SomeState::from_string(dm1.num_ints, "s110").unwrap();
+
+        let s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
+
+        let s8 = SomeState::from_string(dm1.num_ints, "s1000").unwrap();
+
+        let s12 = SomeState::from_string(dm1.num_ints, "s1100").unwrap();
+
+        let s14 = SomeState::from_string(dm1.num_ints, "s1110").unwrap();
+
+        dm1.take_action_arbitrary(0, &s0, &s8);
+        dm1.take_action_arbitrary(0, &s7, &s8);
+
+        dm1.take_action_arbitrary(1, &s0, &s14);
+        dm1.take_action_arbitrary(1, &s3, &s12);
+
+        dm1.take_action_arbitrary(2, &s4, &s6);
+        dm1.take_action_arbitrary(2, &s6, &s6);
+
+        //println!("Acts: {}", &dm1.actions);
+
+        let cngx = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![8]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+        };
+
+        let stpsx = dm1.actions.get_steps(&cngx);
+
+        //println!("cng {} steps: {}", &cngx, &stpsx);
+
+        let stp_cngs = dm1.sort_steps(&stpsx, &cngx);
+        //println!("stp_cngs (inx): {:?}", &stp_cngs);
+
+        if stp_cngs.len() != 1 {
+            return Err(format!("1 stp_cngs len NE 1"));
+        }
+
+        if stp_cngs[0].len() != 1 {
+            return Err(format!("1 stp_cngs[0] len NE 1"));
+        }
+
+        if stpsx[stp_cngs[0][0]].act_num != 0 {
+            return Err(format!("1 stpsx[stp_cngs[0][0]].act_num != 0"));
+        }
+
+        let cngx = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![2]),
+            },
+        };
+
+        let stpsx = dm1.actions.get_steps(&cngx);
+
+        //println!("cng {} steps: {}", &cngx, &stpsx);
+
+        let stp_cngs = dm1.sort_steps(&stpsx, &cngx);
+        //println!("stp_cngs (inx): {:?}", &stp_cngs);
+
+        if stp_cngs.len() != 2 {
+            return Err(format!("2 stp_cngs len NE 2"));
+        }
+
+        if stp_cngs[0].len() != 1 {
+            return Err(format!("2 stp_cngs[0] len NE 1"));
+        }
+
+        if stpsx[stp_cngs[0][0]].act_num > 1 {
+            return Err(format!("2 stpsx[stp_cngs[0][0]].act_num > 1"));
+        }
+
+        if stp_cngs[1].len() != 1 {
+            return Err(format!("2 stp_cngs[1] len NE 1"));
+        }
+
+        if stpsx[stp_cngs[1][0]].act_num > 1 {
+            return Err(format!("2 stpsx[stp_cngs[1][0]].act_num > 1"));
+        }
+
+        let cngx = SomeChange {
+            b01: SomeMask {
+                bts: dm1._bits_new(vec![2]),
+            },
+            b10: SomeMask {
+                bts: dm1._bits_new(vec![0]),
+            },
+        };
+
+        let stpsx = dm1.actions.get_steps(&cngx);
+
+        //println!("cng {} steps: {}", &cngx, &stpsx);
+
+        let stp_cngs = dm1.sort_steps(&stpsx, &cngx);
+        //println!("stp_cngs (inx): {:?}", &stp_cngs);
+
+        if stp_cngs.len() != 1 {
+            return Err(format!("3 stp_cngs len NE 1"));
+        }
+
+        if stp_cngs[0].len() != 1 {
+            return Err(format!("3 stp_cngs[0] len NE 1"));
+        }
+
+        if stpsx[stp_cngs[0][0]].act_num != 2 {
+            return Err(format!("3 stpsx[stp_cngs[0][0]].act_num != 2"));
+        }
+
+        Ok(())
+    } // end sort_steps
 } // end mod tests
