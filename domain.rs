@@ -158,7 +158,8 @@ impl SomeDomain {
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
             let new_max_region = self.max_region.union_state(&self.cur_state);
-            println!("new max region {}", &new_max_region,);
+            println!("\nOld max region {}", &self.max_region,);            
+            println!("New max region {}", &new_max_region,);
             self.max_region = new_max_region;
         }
     }
@@ -455,7 +456,7 @@ impl SomeDomain {
         //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
-        let mut bchange = SomeChange::new(self.num_ints);
+        let mut bchange = SomeChange::new_low(self.num_ints);
         //let mut b01 = SomeMask::new(SomeBits::new_low(self.num_ints));
         //let mut b10 = b01.clone();
 

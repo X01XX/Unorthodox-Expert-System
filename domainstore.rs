@@ -5,16 +5,12 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::state::SomeState;
-//use crate::stepstore::StepStore;
 
-//use std::thread;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 extern crate rand;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-
-//use std::slice::{Iter}; //, IterMut};
 
 use rayon::prelude::*;
 

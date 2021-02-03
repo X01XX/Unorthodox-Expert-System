@@ -184,7 +184,7 @@ fn main() {
                     let ndx = &nds[inx];
                     dom_num = ndx.dom_num();
 
-                    println!("need {}, plan {}", &ndx, &pln);
+                    //println!("need {}, plan {}", &ndx, &pln);
 
                     if pln.len() > 0 {
                         //println!("doing dmx.run_plan");
@@ -266,7 +266,7 @@ fn main() {
                         let ndx = &nds2[inx];
                         dom_num = ndx.dom_num();
 
-                        println!("need {}, plan {}", &ndx, &pln);
+                        //println!("need {}, plan {}", &ndx, &pln);
 
                         if pln.len() > 0 {
                             //println!("doing dmx.run_plan");

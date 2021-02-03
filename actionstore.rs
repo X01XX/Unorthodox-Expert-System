@@ -54,7 +54,7 @@ impl ActionStore {
     // Get an x_mask for all actions.
     // Indicates bit position that can predictably change
     pub fn get_x_mask(&self, num_ints: usize) -> SomeMask {
-        let mut cngx = SomeChange::new(num_ints);
+        let mut cngx = SomeChange::new_low(num_ints);
 
         for actx in &self.avec {
             cngx = cngx.union(&actx.pos_bit_cngs);

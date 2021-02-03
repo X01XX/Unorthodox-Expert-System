@@ -115,7 +115,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
             num_ints,
-            pos_bit_cngs: SomeChange::new(num_ints),
+            pos_bit_cngs: SomeChange::new_low(num_ints),
         }
     }
 
@@ -177,6 +177,9 @@ impl SomeAction {
         cmbx
     }
 
+    // Take an action to satify a need.
+    //
+    // If the GroupStore has changed, recalcualte the predicted change mask.
     pub fn take_action_need(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
         self.groups.changed = false;
 
@@ -229,7 +232,7 @@ impl SomeAction {
                         } else {
                             let rulsxy = sqrx.rules.union(&sqry.rules).unwrap();
 
-                            println!("Adding group: {}", &rulsxy[0].initial_region());
+                            //println!("Adding group   {}", &rulsxy[0].initial_region());
                             if self.groups.any_superset_of(&rulsxy[0].initial_region()) {
                                 //println!(
                                 //    "Supersets found for new group {} in {}",
@@ -306,6 +309,11 @@ impl SomeAction {
     } // End take_action_need2
 
     // Add a sample by user command
+    // Its best to start a session and proceed with:
+    //   all user-specified samples, or
+    //   no user-specified samples.
+    //
+    // If the GroupStore has changed, recalcualte the predicted change mask.
     pub fn take_action_arbitrary(&mut self, init_state: &SomeState, rslt_state: &SomeState) {
         println!(
             "take_action_arbitrary for state {} result {}",
@@ -322,6 +330,9 @@ impl SomeAction {
         }
     }
 
+    // Take an action for a step.
+    //
+    // If the GroupStore has changed, recalcualte the predicted change mask.
     pub fn take_action_step(&mut self, cur: &SomeState, new_state: &SomeState) {
         self.groups.changed = false;
 
@@ -391,7 +402,7 @@ impl SomeAction {
     // Check a square, referenced by state, against valid groups.
     // The square may invalidate some groups.
     // Add a group for the square if the square is in no valid group.
-    // If any groups were invalidated, check other squares
+    // If any groups were invalidated, check for any other squares
     // that are in no groups.
     fn check_square_new_sample(&mut self, key: &SomeState) {
         //println!("check_square_new_sample");
@@ -498,9 +509,8 @@ impl SomeAction {
         return regs_invalid;
     }
 
-    // Check groups due to a new sample
+    // Check groups due to a new sample.
     // Create a group with the square, if needed.
-    // Return the number of groups invalidated
     fn create_groups_given_sample(&mut self, key: &SomeState) {
         // Square should exist
         let sqrx = self.squares.find(&key).unwrap();
@@ -559,7 +569,7 @@ impl SomeAction {
 
     // Get needs for an Action, to improve understanding of the reaction pattern(s).
     // When most needs are satisfied, needs for group confirmation are generated.
-    // If housekeeping needes are grenerated, they are processed and needs
+    // If housekeeping needs are grenerated, they are processed and needs
     // are checked again.
     pub fn get_needs(&mut self, cur_state: &SomeState, x_mask: &SomeMask) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
@@ -1106,7 +1116,7 @@ impl SomeAction {
         ret_nds
     }
 
-    // Given a region look for far needs
+    // Given a region look for far needs.
     //
     // Return needs for first or more samples to reach pn EQ.
     fn far_needs(&self, aregion: &SomeRegion, stas_in_reg: &StateStore) -> NeedStore {
@@ -1430,7 +1440,7 @@ impl SomeAction {
         ret_nds
     } // end confirm_group_needs
 
-    // Check overlapping intersection for combinations
+    // Check overlapping intersections of groups for combinations.
     fn group_pair_needs(&self) -> NeedStore {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
@@ -1906,8 +1916,8 @@ impl SomeAction {
         for regx in rsx.iter() {
             let sqry = self.squares.find(&regx.state2).unwrap();
             println!(
-                "\nSquare {} can combine with\nSquare {}\ngiving {}\n",
-                sqrx, sqry, regx,
+                "\nSquare {} {} can combine with\nSquare {} {}\ngiving {}\n",
+                &sqrx.state, &sqrx.rules, &sqry.state, &sqry.rules, regx
             );
         }
 
@@ -1920,7 +1930,7 @@ impl SomeAction {
     // of possible bits changes.  Some changes, like going from
     // predictable to unpredictable, could decrease them.
     pub fn possible_bit_changes(&self) -> SomeChange {
-        let mut ret_cng = SomeChange::new(self.num_ints);
+        let mut ret_cng = SomeChange::new_low(self.num_ints);
 
         for grpx in &self.groups.avec {
             if grpx.active == false {

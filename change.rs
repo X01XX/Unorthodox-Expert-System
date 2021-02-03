@@ -3,6 +3,7 @@
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
+use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -19,8 +20,15 @@ impl fmt::Display for SomeChange {
 }
 
 impl SomeChange {
-    // Return a new rule struct instance
-    pub fn new(num_ints: usize) -> Self {
+    pub fn new(initial: &SomeState, result: &SomeState) -> Self {
+        Self {
+            b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
+            b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
+        }
+    }
+
+    // Return a new rule struct instance set to zeros
+    pub fn new_low(num_ints: usize) -> Self {
         Self {
             b01: SomeMask::new(SomeBits::new_low(num_ints)),
             b10: SomeMask::new(SomeBits::new_low(num_ints)),
