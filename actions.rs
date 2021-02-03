@@ -1,4 +1,4 @@
-// Actions to be taken by the UES
+// Actions to be taken, for an Unorthodox Expert System.
 //
 use crate::change::SomeChange;
 use crate::state::SomeState;

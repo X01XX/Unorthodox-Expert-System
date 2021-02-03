@@ -1,4 +1,14 @@
-// Rule struct for an Unorthodox Expert System
+// Rule struct for, an Unorthodox Expert System
+//
+// A way of representing changes that can be expected by running an action
+// for states within the initial_region() of the rule.
+//
+// In combining rules, 0->X and 1->X bit positions are considered invalid.
+//
+// There has to be some limit on combination that leaves a rule with predictive power.
+//
+// The rule can be used in a way that is like "forward chaining" (result_from_initial) and
+// "backward chaining" (intitial_from_result).
 
 use crate::bits::NUM_BITS_PER_INT;
 use crate::mask::SomeMask;

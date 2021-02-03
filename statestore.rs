@@ -1,4 +1,4 @@
-// Implement a store for states
+// Implement a store for states, for an Unorthodox Expert System.
 
 use crate::state::SomeState;
 use std::ops::Index;

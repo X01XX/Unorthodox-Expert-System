@@ -1,4 +1,4 @@
-// tests for the ues
+// tests, for an Unorthodox Expert System.
 //
 
 #[cfg(test)]

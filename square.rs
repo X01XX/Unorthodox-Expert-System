@@ -1,5 +1,5 @@
-// Implement a square struct,
-// which represents a state in a K-Map and one or more result states
+// Implement a square struct, for an Unorthodox Expert System.
+// This represents a state in a K-Map and one or more result states
 // from excuting an action.
 
 use crate::combinable::Combinable;

@@ -1,4 +1,4 @@
-// Unorthodox Expert System
+// Main function for an Unorthodox Expert System
 
 #![allow(
 // dead_code,

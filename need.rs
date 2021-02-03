@@ -1,4 +1,10 @@
-// Need type
+// Need type, for an Unorthodox Expert System.
+//
+// Something is logically needed, like:
+// More samples of a square(or state, or bit pattern),
+// A sample in a region that has contradictory predictions.
+// Samples to confirm a group.
+// Housekeeping needs, like deciding that nothing more needs to be done to confirm a group.
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;

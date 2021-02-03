@@ -158,7 +158,7 @@ impl SomeDomain {
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
             let new_max_region = self.max_region.union_state(&self.cur_state);
-            println!("\nOld max region {}", &self.max_region,);            
+            println!("\nOld max region {}", &self.max_region,);
             println!("New max region {}", &new_max_region,);
             self.max_region = new_max_region;
         }

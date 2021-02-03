@@ -1,4 +1,4 @@
-// Implement a store for needs
+// Implement a store for needs, for an Unorthodox Expert System.
 
 use crate::need::SomeNeed;
 use std::fmt;

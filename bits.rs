@@ -2,7 +2,7 @@
 //
 // A vector of one or more unsigned integers.
 //
-// Bits operations will use the same number of integers as used by the operand(s).
+// Most bits operations will use the same number of integers as used by the operand(s).
 //
 // Some conventions:
 //
@@ -11,8 +11,8 @@
 //   Counting bits starts at the right-most bit of the right-most int,
 //   and proceeds to the left, as in standard integer bit-position reckoning.
 //
-// The integer type/size could be increased, search for and change "u8" references in this file.
-// Change the constants, below, as needed.
+// The integer type/size could be increased, search for and change "u8" references in this file,
+// and change the constants, below, as needed.
 //
 pub const NUM_BITS_PER_INT: usize = 8;
 
@@ -64,7 +64,7 @@ impl SomeBits {
 
     // Return a vector of bits where each has only
     // one 1 bit isolated from the given Bits struct.
-    // Should be called like BitsStore { avec: <a bits object>.split() }
+    // Should be called like: BitsStore { avec: <a bits object>.split() }
     pub fn split(&self) -> Vec<Self> {
         let num_bits = self.num_one_bits();
 
@@ -239,6 +239,7 @@ impl SomeBits {
     }
 
     // Return the number of bits that are different
+    // This can be interpreted as how "far away" two bit pattewrns are.
     pub fn distance(&self, other: &SomeBits) -> usize {
         self.b_xor(&other).num_one_bits()
     }
@@ -306,6 +307,7 @@ impl SomeBits {
         self.ints.len()
     }
 
+    // Return true if the highest bit is set to 1.
     pub fn high_bit_set(&self) -> bool {
         if self.ints[0] & INT_HIGH_BIT == 0 {
             return false;

@@ -1,9 +1,8 @@
-// Implement a store for bits
+// Implement a store for bits, for an Unorthodox Expert System.
 
 use crate::bits::SomeBits;
 use std::fmt;
 use std::ops::Index;
-//use std::slice::Iter;
 
 impl fmt::Display for BitsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

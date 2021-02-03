@@ -1,4 +1,4 @@
-// Implement a store for one or two rules
+// Implement a store for one or two rules, for an Unorthodox Expert System.
 
 use crate::maskstore::MaskStore;
 use crate::region::SomeRegion;

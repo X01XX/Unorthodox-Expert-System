@@ -1,5 +1,5 @@
-// Implement a Group struct,
-// which represents a group of two or more Squares, that are
+// Implement a Group struct, for an Unorthodox Expert System.
+// This represents a group of two or more Squares, that are
 // mutually compatible.
 
 use crate::mask::SomeMask;

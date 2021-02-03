@@ -1,4 +1,7 @@
-// Region struct for an Unorthodox Expert System
+// Region struct, for an Unorthodox Expert System.
+//
+// Uses two states to represent the two states and every state between them.
+//
 // Can serve as a store for any two states.
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};

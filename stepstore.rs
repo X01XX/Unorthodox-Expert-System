@@ -1,10 +1,5 @@
-// Implement a store for steps
+// Implement a store for steps, for an Unorthodox Expert System.
 
-//use crate::bits::SomeBits;
-//use crate::mask::SomeMask;
-//use crate::region::SomeRegion;
-//use crate::regionstore::RegionStore;
-//use crate::rule::SomeRule;
 use crate::step::SomeStep;
 
 use std::fmt;

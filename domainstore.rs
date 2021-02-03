@@ -1,4 +1,4 @@
-// Implement a store for Domains
+// Implement a store for Domains, for an Unorthodox Expert System.
 
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;

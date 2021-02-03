@@ -1,4 +1,4 @@
-// Implement a store for masks
+// Implement a store for masks, for an Unorthodox Expert System.
 
 use crate::mask::SomeMask;
 use std::fmt;

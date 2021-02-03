@@ -1,4 +1,4 @@
-// Implement a store of groups
+// Implement a store of groups, for an Unorthodox Expert System.
 
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;

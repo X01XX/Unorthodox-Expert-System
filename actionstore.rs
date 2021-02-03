@@ -1,4 +1,4 @@
-// Implement a store for actions
+// Implement a store for actions, for an Unorthodox Expert System.
 
 use crate::action::SomeAction;
 use crate::change::SomeChange;

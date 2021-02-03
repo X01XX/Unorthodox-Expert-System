@@ -1,4 +1,8 @@
-// Implement a store for regions
+// Implement a store for regions, for an Unorthodox Expert System.
+//
+// To avoid a lot of vector copying, setting a region to inactive is kind of
+// like deleting it.  But is remains until it is overwritten by a region with the active
+// indicator set to true.
 
 use crate::region::SomeRegion;
 use crate::state::SomeState;

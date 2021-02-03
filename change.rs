@@ -1,4 +1,6 @@
-// Change struct for an Unorthodox Expert System
+// Change struct, for an Unorthodox Expert System
+//
+// This is a subset of a rule, just storing masks for 0->1 and 1->0 changes.
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
@@ -20,6 +22,7 @@ impl fmt::Display for SomeChange {
 }
 
 impl SomeChange {
+    // Return a change using an initial and result state.
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         Self {
             b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),

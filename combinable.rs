@@ -1,5 +1,6 @@
-// Implement a Bool-like enum signifying the ability for two squares to be combined.
-// Allows True, False, and two additional states
+// Implement a Bool-like enum, for an Unorthodox Expert System.
+// This signifies the ability for two squares to be combined.
+// Allowing the states True, False, and "More samples needed"
 
 use std::fmt;
 

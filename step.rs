@@ -1,4 +1,6 @@
-// Step struct for an Unorthodox Expert System
+// Step struct, for an Unorthodox Expert System.
+//
+// Given an initial region, when running an action the result is expected to be within the result region.
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;

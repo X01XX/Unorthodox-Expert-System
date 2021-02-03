@@ -3,7 +3,7 @@
 use crate::pn::Pn;
 use crate::state::SomeState;
 
-const MAX_RESULTS: usize = 4;
+const MAX_RESULTS: usize = 4; // Seems like the best. It certaily should be even, for two-result squares.
 
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -18,10 +18,12 @@ impl fmt::Display for ResultStore {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     pub astore: VecDeque<SomeState>,
-    pub pn: Pn, // Pattern number, 1, 2, 3 (unpredicatble), trips change indicatore when changed.
-    pub changed: bool, // First sample, pn or pnc has changed
-    pub pnc: bool, // Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS
-                //    pub num_results: usize, // Total number of results
+    pub pn: Pn, // Pattern number, One, Two or Unpredicatble, trips change indicator when changed.
+    pub changed: bool, // When first sample, pn or pnc has changed
+    pub pnc: bool, // Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS,
+                // or three different results, or three results with two different values not in an
+                // order that would suggest a two-result Pn, like [1, 0, 0] instead of [0, 1, 0].
+                // pnc can change with more and different samples.
 }
 
 impl ResultStore {

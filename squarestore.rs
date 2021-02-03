@@ -1,4 +1,4 @@
-// Implement a store for squares
+// Implement a store for squares, for an Unorthodox Expert System.
 //
 
 use crate::pn::Pn;

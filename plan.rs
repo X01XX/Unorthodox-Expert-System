@@ -1,10 +1,17 @@
-// Implement a Plan structure for an Unorthodox Expert System
+// Implement a Plan structure, for an Unorthodox Expert System
 //
-// A StepStore is zero of more steps that may not be related
+// A StepStore is zero of more steps that may not be related.
 //
-// A Plan uses a StepStore where the steps are related,
+// A Plan uses a StepStore but enforces relatedness,
 // where the result of one step is equal to the initial region
 // of the next step.
+//
+// A finished plan can be considered to be a "forward chaining" plan from
+// a given region (often a state, or a region with no X-bit positions) to
+// an end-region.
+//
+// This is often a "pre-positioning", to change the current state to a state where a sample
+// is needed.  The final sample taken is not part of the plan, at least so far.
 
 use crate::region::SomeRegion;
 use crate::step::SomeStep;

@@ -1,4 +1,6 @@
-// State struct for an Unorthodox Expert System
+// State struct, for an Unorthodox Expert System.
+//
+// The difference between a State and a Mask is the intended use.
 
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};

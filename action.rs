@@ -1,5 +1,5 @@
-// Implement an Action struct,
-// which represents the best guess of the expected responses
+// Implement an Action struct, for an Unorthodox Expert System.
+// It represents the best guess of the expected responses
 // of executing an action, based on the current state.
 //
 use crate::bits::SomeBits;

@@ -3,7 +3,7 @@
 // Squares with the same Pn may be combinable into a group.
 //
 // For Pn::Unpredictable squares to form a group, there should be no squares
-// inbetween that have filled the maximum results (4) and established a Pn other 
+// inbetween that have filled the maximum results (4) and established a Pn other
 // than Unpredictable.
 //
 // For Pn::One squares, their RuleStores should be compatible for a union.
