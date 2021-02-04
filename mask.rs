@@ -1,4 +1,4 @@
-// Mask struct, for an Unorthodox Expert System
+// Mask struct, for an Unorthodox Expert System.
 //
 // The difference between a Mask and a State is the intended use.
 

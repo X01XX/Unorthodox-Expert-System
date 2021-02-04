@@ -1,6 +1,7 @@
 // Implement a store for Domains, for an Unorthodox Expert System.
 
 use crate::domain::SomeDomain;
+use crate::inxplan::InxPlan;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -114,6 +115,32 @@ impl DomainStore {
     // Return the number of domains
     pub fn num_domains(&self) -> usize {
         self.avec.len()
+    }
+
+    //struct InxPlan {
+    //    inx: usize,            // Index to a need in a NeedStore.
+    //    pln: Option<SomePlan>, // Plan to satisfy need (may be empty if the current state satisfies the need), or None.
+    //}
+
+    // Return a vector of InxPlan structs, in no order, given a NeedStore.
+    // Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
+    pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
+        // Make a vector of need position indicies.
+        let avec: Vec<usize> = (0..nds.len()).collect();
+
+        // Scan needs to see what can be achieved with a plan
+        // Parallel make_plans for needs
+        // It likes to collect a structure, in this case InxPlan,
+        // instead of a tuple or array
+        let ndsinx_plan = avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|nd_inx| InxPlan {
+                inx: *nd_inx,
+                pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
+            })
+            .collect::<Vec<InxPlan>>();
+
+        ndsinx_plan
     }
 
     // Check need list to see if a need can be satisfied.
@@ -396,13 +423,4 @@ impl IndexMut<usize> for DomainStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
         &mut self.avec[i]
     }
-}
-
-// This struct is needed for parallel processing to make plans,
-// in the choose_need method.  A need is chosen that a plan
-// can be calculated for.
-// A Vec<T> is needed but a tuple, or array, does not qualify as a "T".
-struct InxPlan {
-    inx: usize,            // Index to a need in a NeedStore.
-    pln: Option<SomePlan>, // Plan to satisfy need (may be empty if the current state satisfies the need), or None.
 }

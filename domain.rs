@@ -339,40 +339,40 @@ impl SomeDomain {
             if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, &mut reg_hist) {
                 if from_reg.is_subset_of(planz.initial_region()) {
                 } else {
-                    println!(
-                        "make_plan: from reg {} does not intersect {}",
-                        &from_reg, &planz
-                    );
+                    //println!(
+                    //    "make_plan: from reg {} does not intersect {}",
+                    //    &from_reg, &planz
+                    //);
                     continue;
                 }
 
                 if let Some(planx) = planz.short_cuts() {
                     if from_reg.is_subset_of(planx.initial_region()) {
                     } else {
-                        println!(
-                            "make_plan: short_cuts from reg {} does not intersect {}",
-                            &from_reg, &planz
-                        );
+                        //println!(
+                        //    "make_plan: short_cuts from reg {} does not intersect {}",
+                        //    &from_reg, &planz
+                        //);
                         continue;
                     }
 
                     if planx.result_region().is_subset_of(&goal_reg) {
                         return Some(planx);
                     } else {
-                        println!("Short cut failed to match the goal region");
+                        //println!("Short cut failed to match the goal region");
                         continue;
                     }
                 }
 
                 if planz.result_region().is_subset_of(&goal_reg) {
-                    println!("plan from {} to {} found", &from_reg, &goal_reg);
+                    //println!("plan from {} to {} found", &from_reg, &goal_reg);
                     return Some(planz);
                 } else {
-                    println!("Plan failed to match the goal region");
+                    //println!("Plan failed to match the goal region");
                     continue;
                 }
             } else {
-                println!("plan from {} to {} not found", &from_reg, &goal_reg);
+                //println!("plan from {} to {} not found", &from_reg, &goal_reg);
             } // end if let planz
         } // end loop
         None

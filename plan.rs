@@ -55,6 +55,22 @@ impl SomePlan {
         Self { steps: stpt }
     }
 
+    pub fn str_terse(&self) -> String {
+        let mut rs = String::from("P[");
+
+        let mut flg = 0;
+        for stpx in self.steps.iter() {
+            if flg == 0 {
+                flg = 1;
+            } else {
+                rs.push_str(",");
+            }
+            rs.push_str(&format!("{}", stpx.act_num));
+        }
+        rs.push_str("]");
+        rs
+    }
+
     pub fn new_step(stpx: SomeStep) -> Self {
         let mut stps = StepStore::new_with_capacity(1);
         stps.push(stpx);

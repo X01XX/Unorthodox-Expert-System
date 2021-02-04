@@ -47,6 +47,7 @@ mod actions;
 mod domainstore;
 mod tests;
 use domainstore::DomainStore;
+mod inxplan;
 
 use std::io;
 use std::io::{Read, Write};
@@ -113,15 +114,70 @@ fn main() {
         //            &dmxs[dom_num].x_mask,
         //        );
 
-        println!("\nActs: {}\n\nAction needs:", &dmxs[dom_num].actions);
+        println!("\nActs: {}", &dmxs[dom_num].actions);
+
+        // Vector for position = display index, val = need_plans index
+        let mut need_can = Vec::<usize>::with_capacity(nds.len());
 
         if nds.len() > 0 {
-            let mut inx = 0;
-            for ndx in nds.iter() {
-                println!("{:2} {}", inx, ndx);
-                inx += 1;
+            //            let mut inx = 0;
+            //            for ndx in nds.iter() {
+            //                println!("{:2} {}", inx, ndx);
+            //                inx += 1;
+            //            }
+            //println!("\nAction needs: {}", nds);
+
+            // Check if each need can be done
+            let need_plans = dmxs.evaluate_needs(&nds);
+
+            // Get count of needs that can, and cannot, be done.
+            let mut can_do = 0;
+            let mut cant_do = 0;
+            for ndplnx in need_plans.iter() {
+                if let Some(_) = ndplnx.pln {
+                    can_do += 1;
+                } else {
+                    cant_do += 1;
+                }
             }
-        //println!("\nAction needs: {}", nds);
+
+            println!(" ");
+            // Print needs that cannot be done.
+            if cant_do == 0 {
+                println!("Needs that cannot be done: None\n");
+            } else {
+                println!("Needs that cannot be done:");
+                for ndplnx in need_plans.iter() {
+                    if let Some(_) = ndplnx.pln {
+                    } else {
+                        println!("{}", nds[ndplnx.inx]);
+                    }
+                }
+                println!(" ");
+            }
+
+            // Print needs that can be done.
+
+            if can_do == 0 {
+                println!("Needs that can be done: None\n");
+            } else {
+                println!("Needs that can be done:");
+                let mut inx = 0;
+                let mut disp = 0;
+                for ndplnx in need_plans.iter() {
+                    if let Some(plnx) = &ndplnx.pln {
+                        if plnx.len() > 0 {
+                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
+                        } else {
+                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
+                        }
+                        need_can.push(inx);
+                        disp += 1;
+                    }
+                    inx += 1;
+                }
+                println!(" ");
+            }
         } else {
             println!("\nAction needs: None");
         }
@@ -253,12 +309,12 @@ fn main() {
                     if n_num == 999 {
                         continue;
                     }
-                    if n_num >= nds.len() {
+                    if n_num >= need_can.len() {
                         println!("Invalid Need Number: {}", cmd[1]);
                         continue;
                     }
 
-                    let ndx = &nds[n_num];
+                    let ndx = &nds[need_can[n_num]];
                     let mut nds2 = NeedStore::new();
                     nds2.push(ndx.clone());
 
@@ -720,9 +776,8 @@ fn usage() {
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
-    println!(
-        "\n    An action number is an integer, zero or greater, where such an action exists.\n"
-    );
+    println!("\n    An action number is an integer, zero or greater, where such an action exists.");
+    println!("\n    A need number is an integer, zero or greater, where such a need exists.\n");
     println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.\n");
