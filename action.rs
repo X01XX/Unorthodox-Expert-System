@@ -671,6 +671,7 @@ impl SomeAction {
             //println!("needs: {}", nds);
 
             // Process a few specific housekeeping needs related to changing the Action or groups.
+            //let mut adds = RegionStore::new();
             for ndx in nds.iter_mut() {
                 match ndx {
                     SomeNeed::AddGroup {
@@ -678,6 +679,9 @@ impl SomeAction {
                         group_region: greg,
                     } => {
                         // Add a new group
+                        //if adds.contains(&greg) {
+                        //	continue;
+                        //}
                         if self.groups.any_superset_of(&greg) {
                             println!(
                                 "**** Supersets found for new group {} in {}",
@@ -692,6 +696,8 @@ impl SomeAction {
                             "AddGroup {} using {} and {}",
                             &greg, &greg.state1, &greg.state2
                         );
+
+                        //adds.push(greg.clone());
 
                         let sqrx = self.squares.find(&greg.state1).unwrap();
                         let sqry = self.squares.find(&greg.state2).unwrap();
@@ -720,29 +726,29 @@ impl SomeAction {
                         group_region: greg,
                         cstate: sta1,
                     } => {
-                        try_again = true;
-
-                        let grpx = self.groups.find_mut(&greg).unwrap();
-                        println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
-                        grpx.set_anchor(sta1.clone());
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
+                            println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
+                            grpx.set_anchor(sta1.clone());
+                        }
                     }
                     SomeNeed::ClearGroupConfirmBit {
                         group_region: greg,
                         mbit: mbitx,
                     } => {
-                        try_again = true;
-
-                        let grpx = self.groups.find_mut(&greg).unwrap();
-                        grpx.check_off_confirm_bit(&mbitx);
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
+                            grpx.check_off_confirm_bit(&mbitx);
+                        }
                     }
                     SomeNeed::ClearGroupExpandBit {
                         group_region: greg,
                         mbit: mbitx,
                     } => {
-                        try_again = true;
-
-                        let grpx = self.groups.find_mut(&greg).unwrap();
-                        grpx.check_off_expand_bit(&mbitx);
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
+                            grpx.check_off_expand_bit(&mbitx);
+                        }
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         self.seek_edge.inactivate(&regx);
@@ -751,6 +757,12 @@ impl SomeAction {
                     SomeNeed::AddSeekEdge { reg: regx } => {
                         self.seek_edge.push_nosups(regx.clone());
                         try_again = true;
+                    }
+                    SomeNeed::ClearGroupPairNeeds { group_region: greg } => {
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
+                            grpx.pair_needs = false;
+                        }
                     }
                     _ => {}
                 } // end match
@@ -1463,7 +1475,7 @@ impl SomeAction {
         ret_nds
     } // end confirm_group_needs
 
-    // Check overlapping intersections of groups for combinations.
+    // Check needs for adjacent and intersecting groups.
     fn group_pair_needs(&self) -> NeedStore {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
@@ -1472,12 +1484,18 @@ impl SomeAction {
         for inx in 0..self.groups.len() {
             let grpx = &self.groups[inx];
 
-            if grpx.active == false {
+            if grpx.active == false || grpx.pair_needs == false {
                 continue;
             }
 
+            let mut need_flag = false;
+
             // Pair grpx with every group after it in the GroupStore
-            for iny in (inx + 1)..self.groups.len() {
+            for iny in 0..self.groups.len() {
+                if iny == inx {
+                    continue;
+                }
+
                 let grpy = &self.groups[iny];
 
                 if grpy.active == false {
@@ -1487,17 +1505,25 @@ impl SomeAction {
                 if grpx.region.intersects(&grpy.region) {
                     let mut ndx = self.groups_intersection_needs(&grpx, &grpy);
                     if ndx.len() > 0 {
+                        need_flag = true;
                         nds.append(&mut ndx);
                     }
                 } else if grpx.region.is_adjacent(&grpy.region) {
                     if grpx.pn == grpy.pn {
                         let mut ndx = self.groups_adjacent_needs(&grpx, &grpy);
                         if ndx.len() > 0 {
+                            need_flag = true;
                             nds.append(&mut ndx);
                         }
                     } // end if pn ==
                 } // end if regions adjacent
             } // next iny
+
+            if need_flag == false {
+                nds.push(SomeNeed::ClearGroupPairNeeds {
+                    group_region: grpx.region.clone(),
+                });
+            }
         } // next inx
 
         nds
@@ -1506,7 +1532,7 @@ impl SomeAction {
     // Check for needs, for making a given region into a group.
     // A need may be to take more samples, or just add the group.
     fn possible_group_needs(&self, reg_grp: &SomeRegion, _from: usize) -> NeedStore {
-        //println!("possible_group_needs from {}", from);
+        //println!("possible_group_needs for {} from {}", &reg_grp, from);
         let mut nds = NeedStore::new();
 
         // Get squares in the region.
@@ -1540,7 +1566,7 @@ impl SomeAction {
             return nds;
         }
 
-        // At this point, at least one existing square is in the region
+        // If one square in the region, return a need for the far square.
         if stas_in_reg.len() == 1 {
             let sta_far = reg_grp.far_state(&stas_in_reg[0]);
 
@@ -1558,9 +1584,11 @@ impl SomeAction {
 
         // See if a pair of squares defines the region
         let max_pn = self.squares.max_pn(&stas_in_reg);
+
         let pair_stas = reg_grp.defining_pairs(&stas_in_reg);
 
         if pair_stas.len() == 0 {
+            //println!("no defining pairs in {}", &pair_stas);
             return self.far_needs(&reg_grp, &stas_in_reg);
         }
 
@@ -1569,45 +1597,44 @@ impl SomeAction {
             let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
             let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-            if sqrx.pn() != sqry.pn() {
+            if sqrx.pn() != sqry.pn() || sqrx.pn() != max_pn {
                 inx += 2;
                 continue;
             }
 
+            let regz = SomeRegion::new(&sqrx.state, &sqry.state);
+            if regz != *reg_grp {
+                panic!("defining pair reg {} ne grp_reg {}??", &regz, &reg_grp);
+            }
+
             let cmbl = self.can_combine(&sqrx, &sqry);
+            //println!("can {} combine with {}, {}", &sqrx, &sqry, &cmbl);
 
             if cmbl == Combinable::MoreSamplesNeeded {
-                if sqrx.pn() < max_pn {
-                    if sqrx.pnc() {
-                        return NeedStore::new();
-                    } else {
-                        nds.push(SomeNeed::StateAdditionalSample {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqrx.state.clone(),
-                            grp_reg: reg_grp.clone(),
-                            far: sqry.state.clone(),
-                        });
-                    }
+                if sqrx.pnc() == false {
+                    nds.push(SomeNeed::StateAdditionalSample {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: sqrx.state.clone(),
+                        grp_reg: reg_grp.clone(),
+                        far: sqry.state.clone(),
+                    });
+
                     inx += 2;
-                    continue;
                 }
 
-                if sqry.pn() < max_pn {
-                    if sqry.pnc() {
-                        return NeedStore::new();
-                    } else {
-                        nds.push(SomeNeed::StateAdditionalSample {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqry.state.clone(),
-                            grp_reg: reg_grp.clone(),
-                            far: sqrx.state.clone(),
-                        });
-                    }
+                if sqry.pnc() == false {
+                    nds.push(SomeNeed::StateAdditionalSample {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: sqry.state.clone(),
+                        grp_reg: reg_grp.clone(),
+                        far: sqrx.state.clone(),
+                    });
+
                     inx += 2;
-                    continue;
                 }
+                continue;
             }
 
             if cmbl == Combinable::True {
@@ -1629,7 +1656,9 @@ impl SomeAction {
     // Possibly combining to groups.
     // Possibly checking for a contradictatory intersection.
     fn groups_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        //println!("groups_intersection_needs");
+        //println!("groups_intersection_needs {} and {}", &grpx.region, &grpy.region);
+
+        let mut nds = NeedStore::new();
 
         let reg_both = grpx.region.union(&grpy.region);
 
@@ -1650,8 +1679,6 @@ impl SomeAction {
 
         // If contradictory, return needs to resolve
         if rulsx != rulsy {
-            let mut nds = NeedStore::new();
-
             // Check if a valid sub-region of the intersection exists
             if let Some(rulsxy) = rulsx.intersection(&rulsy) {
                 // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
@@ -1667,12 +1694,12 @@ impl SomeAction {
         }
 
         // Rules are the same, see if the two groups can be combined
-        return self.possible_group_needs(&reg_both, 3);
+        self.possible_group_needs(&reg_both, 3)
     } // end groups_intersection_needs
 
     // Get needs for two adjacent groups, with the same pn rating.
     fn groups_adjacent_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        //println!("groups_adjacent_needs");
+        //println!("groups_adjacent_needs {} and {}", &grpx.region, &grpy.region);
         let nds = NeedStore::new();
 
         if grpx.pn != grpy.pn {
@@ -1721,12 +1748,20 @@ impl SomeAction {
                             return nds;
                         }
 
-                        println!(
-                            "overlap for act {} grp {} grp {} region {} rules {}",
-                            self.num, grpx.region, grpy.region, regz, rulesx
-                        );
+                        //println!(
+                        //    "overlap for act {} grp {} grp {} region {} rules {}",
+                        //    self.num, grpx.region, grpy.region, regz, rulesx
+                        //);
 
-                        return self.possible_group_needs(&regz, 7);
+                        let xx = self.possible_group_needs(&regz, 7);
+                        //println!("poss grp needs: {}", &xx);
+                        if xx.len() > 0 {
+                            println!(
+                                "overlap for act {} grp {} grp {} region {} rules {}\n needs: {}",
+                                self.num, grpx.region, grpy.region, regz, rulesx, &xx
+                            );
+                        }
+                        return xx;
                     }
                 } // end if let Some
             } // end match pn default

@@ -65,12 +65,7 @@ impl NeedStore {
     }
 
     pub fn append(&mut self, other: &mut NeedStore) {
-        for ndx in &other.avec {
-            if self.contains(&ndx) == false {
-                self.avec.push(ndx.clone());
-            }
-        }
-        //self.avec.append(&mut other.avec);
+        self.avec.append(&mut other.avec);
     }
 
     pub fn iter(&self) -> Iter<SomeNeed> {

@@ -72,6 +72,15 @@ impl RegionStore {
         false
     }
 
+    //    pub fn contains(&self, reg: &SomeRegion) -> bool {
+    //        for regx in &self.avec {
+    //            if reg.active && regx == reg {
+    //                return true;
+    //            }
+    //        }
+    //        false
+    //    }
+
     pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
         let mut cnt = 0;
 

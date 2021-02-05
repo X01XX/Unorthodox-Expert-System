@@ -458,10 +458,11 @@ impl SomeRegion {
 
         // Check each possible combination of two states
         for inx in 0..stas.len() {
-            for iny in inx..stas.len() {
+            for iny in (inx + 1)..stas.len() {
                 if SomeRegion::new(&stas[inx], &stas[iny]) == *self {
                     store.push(stas[inx].clone());
                     store.push(stas[iny].clone());
+                    //println!("regx {} equals regy {}", &self, SomeRegion::new(&stas[inx], &stas[iny]));
                 }
             }
         }

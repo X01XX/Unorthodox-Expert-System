@@ -30,6 +30,7 @@ pub struct SomeGroup {
     pub anchor: Option<SomeState>, // The state in only the group used to confirm
     pub not_x_confirm: SomeMask, // Mask of non-x bits to check for confirmation.
     pub not_x_expand: SomeMask, // Mask of non-x bits to check for expansion.
+    pub pair_needs: bool, // flag used to check for other groups that are close.
 }
 
 impl SomeGroup {
@@ -57,6 +58,7 @@ impl SomeGroup {
             anchor: None,
             not_x_confirm: not_x.clone(),
             not_x_expand: not_x,
+            pair_needs: true,
         }
     }
 

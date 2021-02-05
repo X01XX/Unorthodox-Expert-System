@@ -112,6 +112,9 @@ impl fmt::Display for SomeNeed {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
             }
             SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {}", &regx),
+            SomeNeed::ClearGroupPairNeeds { group_region: regx } => {
+                format!("N(Group: {} ClearGroupPairNeeds", &regx)
+            }
         }; // end match
 
         write!(f, "{}", rc_str)
@@ -183,6 +186,9 @@ pub enum SomeNeed {
     },
     AddSeekEdge {
         reg: SomeRegion,
+    },
+    ClearGroupPairNeeds {
+        group_region: SomeRegion,
     },
 }
 
@@ -376,6 +382,16 @@ impl PartialEq for SomeNeed {
             SomeNeed::AddSeekEdge { reg: regx } => match other {
                 SomeNeed::AddSeekEdge { reg: regy } => {
                     if *regx == *regy {
+                        return true;
+                    }
+                }
+                _ => {}
+            },
+            SomeNeed::ClearGroupPairNeeds { group_region: greg } => match other {
+                SomeNeed::ClearGroupPairNeeds {
+                    group_region: gregx,
+                } => {
+                    if greg == gregx {
                         return true;
                     }
                 }
@@ -787,147 +803,4 @@ impl SomeNeed {
             }
         };
     } // end set_dom
-}
-
-impl Clone for SomeNeed {
-    fn clone(&self) -> Self {
-        match self {
-            SomeNeed::AStateMakeGroup {
-                dom_num: dm,
-                act_num: an,
-                targ_state: tstate,
-                for_reg: freg,
-                far: far_state,
-                num_x: nx,
-            } => {
-                return SomeNeed::AStateMakeGroup {
-                    dom_num: *dm,
-                    act_num: *an,
-                    targ_state: tstate.clone(),
-                    for_reg: freg.clone(),
-                    far: far_state.clone(),
-                    num_x: *nx,
-                };
-            } // end process for AStateMakeGroup
-            SomeNeed::StateNotInGroup {
-                dom_num: dm,
-                act_num: an,
-                targ_state: tstate,
-            } => {
-                return SomeNeed::StateNotInGroup {
-                    dom_num: *dm,
-                    act_num: *an,
-                    targ_state: tstate.clone(),
-                };
-            } // end process for StateNotInGroup
-            SomeNeed::ContradictoryIntersection {
-                dom_num: dm,
-                act_num: an,
-                goal_reg: greg,
-                group1: g1reg,
-                group2: g2reg,
-                ruls1: r1,
-                ruls2: r2,
-            } => {
-                return SomeNeed::ContradictoryIntersection {
-                    dom_num: *dm,
-                    act_num: *an,
-                    goal_reg: greg.clone(),
-                    group1: g1reg.clone(),
-                    group2: g2reg.clone(),
-                    ruls1: r1.clone(),
-                    ruls2: r2.clone(),
-                };
-            } // end process for ContradictoryIntersection
-            SomeNeed::ConfirmGroup {
-                dom_num: dm,
-                act_num: an,
-                targ_state: tstate,
-                for_group: fgrp,
-                anchor: anch,
-            } => {
-                return SomeNeed::ConfirmGroup {
-                    dom_num: *dm,
-                    act_num: *an,
-                    targ_state: tstate.clone(),
-                    for_group: fgrp.clone(),
-                    anchor: anch.clone(),
-                };
-            } // end process for ConfirmGroup
-            SomeNeed::StateAdditionalSample {
-                dom_num: dm,
-                act_num: an,
-                targ_state: tstate,
-                far: fx,
-                grp_reg: gx,
-            } => {
-                return SomeNeed::StateAdditionalSample {
-                    dom_num: *dm,
-                    act_num: *an,
-                    targ_state: tstate.clone(),
-                    far: fx.clone(),
-                    grp_reg: gx.clone(),
-                };
-            } // end process for StateAdditionalSample
-            // Previously handled, but not removed from list
-            SomeNeed::AddGroup {
-                act_num: an,
-                group_region: greg,
-            } => {
-                return SomeNeed::AddGroup {
-                    act_num: *an,
-                    group_region: greg.clone(),
-                };
-            }
-            // Previously handled, but not removed from list
-            SomeNeed::SetGroupConfirmed {
-                group_region: greg,
-                cstate: cst,
-            } => {
-                return SomeNeed::SetGroupConfirmed {
-                    group_region: greg.clone(),
-                    cstate: cst.clone(),
-                };
-            }
-            // Previously handled, but not removed from list
-            SomeNeed::ClearGroupConfirmBit {
-                group_region: greg,
-                mbit: abit,
-            } => {
-                return SomeNeed::ClearGroupConfirmBit {
-                    group_region: greg.clone(),
-                    mbit: abit.clone(),
-                };
-            }
-            // Previously handled, but not removed from list
-            SomeNeed::ClearGroupExpandBit {
-                group_region: greg,
-                mbit: abit,
-            } => {
-                return SomeNeed::ClearGroupExpandBit {
-                    group_region: greg.clone(),
-                    mbit: abit.clone(),
-                };
-            }
-            SomeNeed::SeekEdge {
-                dom_num: dm,
-                act_num: an,
-                targ_state: sta,
-                in_group: greg,
-            } => {
-                return SomeNeed::SeekEdge {
-                    dom_num: *dm,
-                    act_num: *an,
-                    targ_state: sta.clone(),
-                    in_group: greg.clone(),
-                };
-            }
-            SomeNeed::InactivateSeekEdge { reg: regx } => {
-                return SomeNeed::InactivateSeekEdge { reg: regx.clone() };
-            }
-            SomeNeed::AddSeekEdge { reg: regx } => {
-                return SomeNeed::AddSeekEdge { reg: regx.clone() };
-            }
-        } // end match ndx
-    } // end clone
 }

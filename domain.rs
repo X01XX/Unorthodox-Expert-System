@@ -223,6 +223,14 @@ impl SomeDomain {
             if stpx.initial.is_superset_of_state(&self.cur_state) {
                 let hv = self.get_hv(stpx.act_num);
                 let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
+
+                if stpx.result.is_superset_of_state(&astate) == false {
+                    println!(
+                        "Action result {} is unexpected, not subset of step result {}",
+                        &astate, &stpx.result
+                    );
+                }
+
                 self.actions[stpx.act_num].take_action_step(&self.cur_state, &astate);
 
                 let prev_state = self.cur_state.clone();
@@ -235,11 +243,6 @@ impl SomeDomain {
 
                 // Handle unexpected/unwanted result
                 // May be an expected possibility from a two result state
-
-                println!(
-                    "step result {} is not superset of the result found {}",
-                    stpx.result, &self.cur_state
-                );
 
                 // Check if the alt_rule explains the plan error
                 if stpx.alt_rule {
@@ -294,7 +297,7 @@ impl SomeDomain {
                         // );
                     }
                 } else {
-                    println!("result {} unexpected", &self.cur_state);
+                    //println!("result {} unexpected", &self.cur_state);
                 }
 
                 // Default, try re-plan to goal
