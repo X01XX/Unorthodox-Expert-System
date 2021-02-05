@@ -591,9 +591,16 @@ impl SomeNeed {
             } => {
                 return *an;
             }
-            _ => {
-                return 0;
-            }
+            SomeNeed::ConfirmGroup {
+                dom_num: _,
+                act_num: an,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => {
+                return *an;
+            } // end process a ConfirmGroup need
+            _ => panic!("act_num not known for need {}", &self),
         } //end match self
     } // end act_num
 
@@ -645,7 +652,16 @@ impl SomeNeed {
             } => {
                 return *dm;
             }
-            _ => return 0,
+            SomeNeed::ConfirmGroup {
+                dom_num: dm,
+                act_num: _,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => {
+                return *dm;
+            } // end process a ConfirmGroup need
+            _ => panic!("dom not known for need {}", &self),
         } //end match self
     } // end dom_num
 

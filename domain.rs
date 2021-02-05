@@ -420,12 +420,12 @@ impl SomeDomain {
         // Check for loop in the path so far
         for (fromx, tox) in reg_hist.iter() {
             if *fromx == *from_reg && *tox == *goal_reg {
-                println!(
-                    "from reg {} and goal reg {} already in reg_hist, recur {}",
-                    &from_reg,
-                    &goal_reg,
-                    reg_hist.len()
-                );
+                //println!(
+                //    "from reg {} and goal reg {} already in reg_hist, recur {}",
+                //    &from_reg,
+                //    &goal_reg,
+                //    reg_hist.len()
+                //);
                 //panic!("Done");
                 return None;
             }

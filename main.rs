@@ -37,7 +37,7 @@ use need::SomeNeed;
 mod combinable;
 mod domain;
 mod needstore;
-use crate::needstore::NeedStore;
+//use crate::needstore::NeedStore;
 mod plan;
 mod pn;
 mod step;
@@ -48,6 +48,7 @@ mod domainstore;
 mod tests;
 use domainstore::DomainStore;
 mod inxplan;
+use crate::inxplan::InxPlan;
 
 use std::io;
 use std::io::{Read, Write};
@@ -119,6 +120,11 @@ fn main() {
         // Vector for position = display index, val = need_plans index
         let mut need_can = Vec::<usize>::with_capacity(nds.len());
 
+        let mut need_plans = Vec::<InxPlan>::with_capacity(1);
+
+        let mut can_do = 0;
+        let mut cant_do = 0;
+
         if nds.len() > 0 {
             //            let mut inx = 0;
             //            for ndx in nds.iter() {
@@ -128,11 +134,10 @@ fn main() {
             //println!("\nAction needs: {}", nds);
 
             // Check if each need can be done
-            let need_plans = dmxs.evaluate_needs(&nds);
+            need_plans = dmxs.evaluate_needs(&nds);
 
             // Get count of needs that can, and cannot, be done.
-            let mut can_do = 0;
-            let mut cant_do = 0;
+
             for ndplnx in need_plans.iter() {
                 if let Some(_) = ndplnx.pln {
                     can_do += 1;
@@ -150,7 +155,7 @@ fn main() {
                 for ndplnx in need_plans.iter() {
                     if let Some(_) = ndplnx.pln {
                     } else {
-                        println!("{}", nds[ndplnx.inx]);
+                        println!("   {}", nds[ndplnx.inx]);
                     }
                 }
                 println!(" ");
@@ -233,10 +238,10 @@ fn main() {
         // Default command, just press Enter
         if cmd.len() == 0 {
             // Process needs
-            if nds.len() > 0 {
+            if can_do > 0 {
                 //println!("\nAction needs: {}", nds);
 
-                if let Some((inx, pln)) = dmxs.choose_need(&nds) {
+                if let Some((inx, pln)) = dmxs.choose_need(&nds, &need_plans) {
                     let ndx = &nds[inx];
                     dom_num = ndx.dom_num();
 
@@ -277,7 +282,9 @@ fn main() {
             if cmd.len() == 1 {
                 if cmd[0] == "run" {
                     run = 1;
-                    //dmxs = init();
+                    if nds.len() == 0 {
+                        dmxs = init();
+                    }
                     continue;
                 }
             } else if cmd.len() == 2 {
@@ -315,31 +322,29 @@ fn main() {
                     }
 
                     let ndx = &nds[need_can[n_num]];
-                    let mut nds2 = NeedStore::new();
-                    nds2.push(ndx.clone());
 
-                    if let Some((inx, pln)) = dmxs.choose_need(&nds2) {
-                        let ndx = &nds2[inx];
-                        dom_num = ndx.dom_num();
+                    let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
 
-                        //println!("need {}, plan {}", &ndx, &pln);
+                    println!("\nNeed chosen: {} {}\n", &ndx, &pln);
 
-                        if pln.len() > 0 {
-                            //println!("doing dmx.run_plan");
-                            dmxs.run_plan(dom_num, &pln);
-                        } else {
-                            //println!("NOT doing dmx.run_plan");
-                        }
+                    dom_num = ndx.dom_num();
 
-                        if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                            // println!("doing dmx.take_action_need");
-                            dmxs.take_action_need(dom_num, &ndx);
-                        } else {
-                            // println!("NOT doing dmx.take_action_need");
-                        }
+                    //println!("need {}, plan {}", &ndx, &pln);
+
+                    if pln.len() > 0 {
+                        //println!("doing dmx.run_plan");
+                        dmxs.run_plan(dom_num, &pln);
                     } else {
-                        println!("Path to satisfy the need was not found");
+                        //println!("NOT doing dmx.run_plan");
                     }
+
+                    if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                        // println!("doing dmx.take_action_need");
+                        dmxs.take_action_need(dom_num, &ndx);
+                    } else {
+                        // println!("NOT doing dmx.take_action_need");
+                    }
+
                     continue;
                 } else if cmd[0] == "ld" {
                     match load_data(&cmd[1]) {
@@ -770,8 +775,8 @@ fn usage() {
     println!("\n    ps <act num>             - For an Action, print all Squares.");
     println!("    ps <act num> <region>    - For an Action, print Squares in a region.\n");
 
-    println!("    ss <act num>             - Action to sample the current state.");
-    println!("    ss <act num> <state>     - Action to sample a given state.");
+    println!("    ss <act num>                        - Action to sample the current state.");
+    println!("    ss <act num> <state>                - Action to sample a given state.");
     println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
 
     println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");

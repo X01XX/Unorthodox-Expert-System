@@ -141,35 +141,58 @@ impl SomeAction {
             return cmbx;
         }
 
-        // Check squares between
+        // Handle Pn::Unpredictable squares
+        if sqrx.pn() == Pn::Unpredictable {
+            // Check each inbetween square
+            for stax in stas.iter() {
+                if *stax == sqrx.state || *stax == sqry.state {
+                    continue;
+                }
 
-        // Get square references from the states between sqrx and sqry.
-        let mut sqrs_ref = Vec::<&SomeSquare>::with_capacity(stas.len());
-
-        for stax in stas.iter() {
-            if *stax == sqrx.state || *stax == sqry.state {
-            } else {
-                sqrs_ref.push(self.squares.find(&stax).unwrap());
+                let sqrz = self.squares.find(&stax).unwrap();
+                if sqrz.pn() == Pn::Unpredictable {
+                } else {
+                    if sqrz.pnc() {
+                        return Combinable::False;
+                    }
+                }
             }
+            return Combinable::True;
         }
 
-        // Check each square for compatibility to the two defining squares.
+        // Get rules
+        let rulsx = sqrx.rules.union(&sqry.rules).unwrap();
+
+        // Check squares between for compatibility to the rules.
         //
         // Two squares, with one sample each, Pn::One, could have rules that are mutually incompatible,
         // but both rules could be valid subsets of a Pn::Two pair of squares.
-        for sqrz in &sqrs_ref {
+        for stax in stas.iter() {
+            if *stax == sqrx.state || *stax == sqry.state {
+                continue;
+            }
+
+            let sqrz = self.squares.find(&stax).unwrap();
+
             // If an inbetween square had a Pn value greater than the defining pair,
             // assuming the lower Pn square used is not <SomeSquare>.pnc() == true,
             // the SomeSquare::can_combine function would return
             // Combinable::MoreSamplesNeeded (for the lower Pn square).
-            if sqrz.pn() > sqrx.pn() {
-                return Combinable::False;
+            if sqrz.pn() != sqrx.pn() {
+                if sqrz.pn() > sqrx.pn() {
+                    return Combinable::False;
+                }
+
+                if sqrx.pn() > sqrz.pn() {
+                    // must be Pn::Two vs Pn::One
+                    if sqrz.len_results() > 1 {
+                        return Combinable::False;
+                    }
+                }
             }
 
-            if sqrz.can_combine(&sqrx) == Combinable::False {
-                return Combinable::False;
-            }
-            if sqrz.can_combine(&sqry) == Combinable::False {
+            if sqrz.rules.is_subset_of(&rulsx) {
+            } else {
                 return Combinable::False;
             }
         }
