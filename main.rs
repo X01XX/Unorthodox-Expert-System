@@ -149,7 +149,7 @@ fn main() {
             println!(" ");
             // Print needs that cannot be done.
             if cant_do == 0 {
-                println!("Needs that cannot be done: None\n");
+                println!("Needs that cannot be done: None");
             } else {
                 println!("Needs that cannot be done:");
                 for ndplnx in need_plans.iter() {
@@ -158,15 +158,14 @@ fn main() {
                         println!("   {}", nds[ndplnx.inx]);
                     }
                 }
-                println!(" ");
             }
 
             // Print needs that can be done.
 
             if can_do == 0 {
-                println!("Needs that can be done: None\n");
+                println!("\nNeeds that can be done: None");
             } else {
-                println!("Needs that can be done:");
+                println!("\nNeeds that can be done:");
                 let mut inx = 0;
                 let mut disp = 0;
                 for ndplnx in need_plans.iter() {
@@ -181,7 +180,6 @@ fn main() {
                     }
                     inx += 1;
                 }
-                println!(" ");
             }
         } else {
             println!("\nAction needs: None");

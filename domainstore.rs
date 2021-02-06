@@ -356,7 +356,7 @@ impl DomainStore {
 
         let pln = itmx.pln.as_ref().unwrap().clone();
 
-        println!("\nNeed chosen: {} {}\n", &ndx, &pln);
+        println!("\nNeed chosen: {} {}", &ndx, &pln);
         return Some((itmx.inx, pln));
     } // end choose_need
 } // end impl DomainStore

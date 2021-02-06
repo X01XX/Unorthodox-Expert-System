@@ -15,15 +15,10 @@ use rayon::prelude::*;
 
 impl fmt::Display for ActionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
         let mut rc_str = String::new();
 
         for actx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(",\n");
-            }
-            rc_str.push_str(&format!("{}", &actx));
-            flg = 1;
+            rc_str.push_str(&format!("\n  {}", &actx));
         }
 
         write!(f, "{}", rc_str)

@@ -96,7 +96,7 @@ impl SomeGroup {
                 rc_str.push_str(&format!(", {}", self.rules));
             }
             Pn::Unpredictable => {
-                rc_str.push_str(", []");
+                rc_str.push_str(", [Unpredictable]");
             }
         }
 
@@ -129,7 +129,7 @@ impl SomeGroup {
     }
 
     pub fn inactivate(&mut self) -> bool {
-        println!("Deleting group {}", self.str_region());
+        println!("\nDeleting group {}", self.str_region());
         self.active = false;
         true
     }

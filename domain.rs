@@ -215,7 +215,7 @@ impl SomeDomain {
 
     fn run_plan2(&mut self, pln: &SomePlan, recur: usize) {
         if recur > 3 {
-            println!("run_plan2 recursion limit exceeded, plan failed");
+            //println!("run_plan2 recursion limit exceeded, plan failed");
             return;
         }
 
@@ -415,7 +415,7 @@ impl SomeDomain {
 
         // Check for path becoming too long
         if reg_hist.len() >= (self.num_actions() * 2) {
-            println!("recursion limit exceeded by {}", reg_hist.len());
+            //println!("recursion limit exceeded by {}", reg_hist.len());
             //panic!("Done");
             return None;
         }

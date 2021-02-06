@@ -155,13 +155,13 @@ impl GroupStore {
 
         // If no inactive group found, push the new group
         if inx < 0 {
-            println!("Adding group {}", grp);
+            println!("\nAdding group {}", grp);
             self.avec.push(grp);
         } else {
             // Replace the inactive group with the new group
             let inx = inx as usize;
             //println!("Deleting group {}", self.avec[inx].str_terse());
-            println!("Adding group {}", grp);
+            println!("\nAdding group {}", grp);
             self.avec[inx] = grp;
         }
 
