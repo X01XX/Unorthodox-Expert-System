@@ -79,10 +79,19 @@ impl fmt::Display for SomeNeed {
                 targ_state: sta,
                 grp_reg: greg,
                 far: farx,
-            } => format!(
-                "N(Dom {} Act {} Get additional sample of state {} for region {} far {})",
-                dm, an, &sta, &greg, &farx
-            ),
+            } => {
+                if farx == sta {
+                    format!(
+                        "N(Dom {} Act {} Get additional sample of state {} for region {})",
+                        dm, an, &sta, &greg
+                    )
+                } else {
+                    format!(
+                        "N(Dom {} Act {} Get additional sample of state {} for region {} far {})",
+                        dm, an, &sta, &greg, &farx
+                    )
+                }
+            }
             SomeNeed::AddGroup {
                 act_num: an,
                 group_region: greg,

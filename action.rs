@@ -521,13 +521,13 @@ impl SomeAction {
 
         // Get num groups inactivated
         let regs_invalid = self.groups.check_square(&sqrx);
-        if regs_invalid.len() > 0 {
-            println!(
-                "Square {} invalidated groups {}",
-                sqrx.str_terse(),
-                regs_invalid
-            );
-        }
+        //if regs_invalid.len() > 0 {
+        //    println!(
+        //        "Square {} invalidated groups {}",
+        //        sqrx.str_terse(),
+        //        regs_invalid
+        //    );
+        //}
 
         return regs_invalid;
     }
@@ -722,7 +722,7 @@ impl SomeAction {
                     } => {
                         try_again = true;
                         if let Some(grpx) = self.groups.find_mut(&greg) {
-                            println!("Act {} Group {} confirmed using {}", self.num, greg, sta1);
+                            println!("\nAct {} Group {} confirmed using {}", self.num, greg, sta1);
                             grpx.set_anchor(sta1.clone());
                         }
                     }

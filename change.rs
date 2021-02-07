@@ -73,18 +73,16 @@ impl SomeChange {
 
             let b10: bool = self.b10.is_bit_set(i);
 
-            if i != (num_bits - 1) {
-                strrc.push('/');
-            }
+            //            if i != (num_bits - 1) {
+            //                strrc.push('/');
+            //            }
 
             if b01 && b10 {
-                strrc.push_str("Xx");
+                strrc.push_str(&format!("/bit{}:Xx", &i));
             } else if b01 {
-                strrc.push_str("01");
+                strrc.push_str(&format!("/bit{}:01", &i));
             } else if b10 {
-                strrc.push_str("10");
-            } else {
-                strrc.push_str("..");
+                strrc.push_str(&format!("/bit{}:10", &i));
             }
         } // next i
 

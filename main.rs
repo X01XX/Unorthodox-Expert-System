@@ -108,7 +108,7 @@ fn main() {
 
         //let mut dmx = &mut dmxs[dom_num];
 
-        print!("\nDom: {}", dom_num,);
+        print!("\nCurrent Domain: {}", dom_num,);
 
         //        print!(
         //            " Predictable changes: {}",
@@ -323,7 +323,7 @@ fn main() {
 
                     let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
 
-                    println!("\nNeed chosen: {} {}\n", &ndx, &pln);
+                    println!("\nNeed chosen: {} {}\n", &ndx, &pln.str_terse());
 
                     dom_num = ndx.dom_num();
 
