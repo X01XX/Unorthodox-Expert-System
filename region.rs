@@ -37,6 +37,7 @@ impl PartialEq for SomeRegion {
 impl Eq for SomeRegion {}
 
 impl SomeRegion {
+    // Create new region from two states.
     pub fn new(sta1: &SomeState, sta2: &SomeState) -> Self {
         Self {
             state1: sta1.clone(),

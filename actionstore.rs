@@ -52,7 +52,7 @@ impl ActionStore {
         let mut cngx = SomeChange::new_low(num_ints);
 
         for actx in &self.avec {
-            cngx = cngx.union(&actx.pos_bit_cngs);
+            cngx = cngx.union(&actx.predictable_bit_changes);
         }
 
         cngx.x_mask()

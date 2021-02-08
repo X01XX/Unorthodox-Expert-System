@@ -104,20 +104,19 @@ impl SquareStore {
     }
 
     // Return a StateStore of states of squares in a given regions
-    pub fn stas_in_regs(&self, regsx: &RegionStore) -> StateStore {
-        let mut states = StateStore::new();
-
-        for (key, _sqry) in &self.ahash {
-            for regx in regsx.iter() {
-                if regx.is_superset_of_state(&key) {
-                    states.push(key.clone());
-                    break;
-                }
-            }
-        }
-
-        states
-    }
+    //    pub fn stas_in_regs(&self, regsx: &RegionStore) -> StateStore {
+    //        let mut states = StateStore::new();
+    //
+    //        for (key, _sqry) in &self.ahash {
+    //            for regx in regsx.iter() {
+    //                if regx.is_superset_of_state(&key) {
+    //                    states.push(key.clone());
+    //                    break;
+    //                }
+    //            }
+    //        }
+    //        states
+    //    }
 
     // Return the maximum Pn value of a set of squares,
     // identified by a list of their keys.

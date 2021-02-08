@@ -269,9 +269,9 @@ impl SomeSquare {
         self.state.is_adjacent(&other.state)
     }
 
-    pub fn distance(&self, other: &SomeSquare) -> usize {
-        self.state.distance(&other.state)
-    }
+    //    pub fn distance(&self, other: &SomeSquare) -> usize {
+    //        self.state.distance(&other.state)
+    //    }
 
     // Given a 2-rule RuleStore, and a square within it,
     // return the expected next result for the square
