@@ -1,5 +1,7 @@
-// Implement a store for actions, for an Unorthodox Expert System.
-
+//! The ActionStore struct, for an Unorthodox Expert System.
+//!
+//! This stores a vector of Action structs, for a Domain struct.
+//!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -74,7 +76,8 @@ impl ActionStore {
             nds_agg.append(&mut nst);
         }
 
-        // For testing to make output squential
+        // For testing to make the terminal output squential, comment out the code above.
+        //        let mut nds_agg = NeedStore::new();
         //        for actx in self.avec.iter_mut() {
         //			let mut ndsx = actx.get_needs(cur, x_mask);
         //			if ndsx.len() > 0 {

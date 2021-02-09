@@ -1,5 +1,7 @@
-// Implement a store for bits, for an Unorthodox Expert System.
-
+//! The BitsStore struct, for an Unorthodox Expert System.
+//!
+//! Used to store a vector of Bits structs.
+//!
 use crate::bits::SomeBits;
 use std::fmt;
 use std::ops::Index;

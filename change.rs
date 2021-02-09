@@ -1,7 +1,7 @@
-// Change struct, for an Unorthodox Expert System
-//
-// This is a subset of a rule, just storing masks for 0->1 and 1->0 changes.
-
+//! A Change struct, for an Unorthodox Expert System.
+//!
+//! This stores masks for 0->1 and 1->0 bit changes.
+//!
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -78,11 +78,11 @@ impl SomeChange {
             //            }
 
             if b01 && b10 {
-                strrc.push_str(&format!("/bit{}:Xx", &i));
+                strrc.push_str(&format!("/bit{}:X->x", &i));
             } else if b01 {
-                strrc.push_str(&format!("/bit{}:01", &i));
+                strrc.push_str(&format!("/bit{}:0->1", &i));
             } else if b10 {
-                strrc.push_str(&format!("/bit{}:10", &i));
+                strrc.push_str(&format!("/bit{}:1->0", &i));
             }
         } // next i
 

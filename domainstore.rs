@@ -1,5 +1,30 @@
-// Implement a store for Domains, for an Unorthodox Expert System.
+/*
+ * domainstore.rs
+ *
+ * Copyright 2021 Bitflogger <earl.dukerschein@wisc.edu>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ *
+ */
 
+//! The DomainStore struct, for an Unorthodox Expert System.
+//!
+//! Keeps a vector of Domain structs.
+//!
 use crate::domain::SomeDomain;
 use crate::inxplan::InxPlan;
 use crate::need::SomeNeed;
@@ -36,7 +61,7 @@ impl fmt::Display for DomainStore {
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
-    pub step: usize,
+    pub step: usize,            // The current step number in the UI.
 }
 
 impl DomainStore {
@@ -95,7 +120,8 @@ impl DomainStore {
             nds_agg.append(&mut nst);
         }
 
-        //  For testing and making the ouput sequential
+        //  For testing, to make the terminal ouput sequential, comment out the above code.
+        //        let mut nds_agg = NeedStore::new();
         //        for domx in self.avec.iter_mut() {
         //		    let mut ndx = domx.get_needs();
         //		    if ndx.len() > 0 {
@@ -147,6 +173,14 @@ impl DomainStore {
                 pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
             })
             .collect::<Vec<InxPlan>>();
+
+        // For testing, to make the terminal output sequential, comment out the above code.
+        //        let mut ndsinx_plan = Vec::<InxPlan>::new();
+        //        let mut inx = 0;
+        //        for ndx in nds.iter() {
+        //		    ndsinx_plan.push(InxPlan { inx, pln: self.avec[ndx.dom_num()].make_plan(&ndx.target().clone()) });
+        //		    inx += 1;
+        //		}
 
         ndsinx_plan
     }

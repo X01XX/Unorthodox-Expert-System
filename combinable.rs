@@ -1,7 +1,11 @@
-// Implement a Bool-like enum, for an Unorthodox Expert System.
-// This signifies the ability for two squares to be combined.
-// Allowing the states True, False, and "More samples needed"
-
+//! The Combinable enum, for an Unorthodox Expert System.
+//!
+//! This signifies the ability for two squares to be combined.
+//!
+//! The allowable values are True, False, and MoreSamplesNeeded.
+//!
+//! Kind of like Boolean True/False, plus Maybe.
+//!
 use std::fmt;
 
 impl fmt::Display for Combinable {

@@ -1,7 +1,9 @@
-// Implement an Action struct, for an Unorthodox Expert System.
-// It represents the best guess of the expected responses
-// of executing an action, based on the current state.
-//
+//! The Action struct, for an Unorthodox Expert System.
+//!
+//! This stores data, generates needs for more data, and
+//! represents the current best-guess rules of the expected responses
+//! of executing an action, based on the current state.
+//!
 use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::combinable::Combinable;

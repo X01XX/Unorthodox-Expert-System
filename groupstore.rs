@@ -1,5 +1,7 @@
-// Implement a store of groups, for an Unorthodox Expert System.
-
+//! The GroupStore struct, for an Unorthodox Expert System.
+//!
+//! A vector of Group structs.
+//!
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;

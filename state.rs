@@ -1,6 +1,10 @@
-// State struct, for an Unorthodox Expert System.
-//
-// The difference between a State and a Mask is the intended use.
+//! The State struct, for an Unorthodox Expert System.
+//!
+//! A series of bits, representing a state of the program, or
+//! a "square" or "bit pattern" on a Karnaugh map.
+//!
+//! The structure of a State and a Mask are the same,
+//! the difference is in the intended use.
 
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
@@ -85,8 +89,17 @@ impl SomeState {
         self.bts.formatted_string('s')
     }
 
-    // Return a State from a string, like "s0101".
-    // Left-most, consecutive, zeros can be omitted.
+    /// Return a State from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// # Examples
+    /// 
+    /// ```
+    /// if let Ok(_) = SomeState::from_string(1, "0101")) {
+    /// } else {
+    ///    panic!("Invalid State");
+    /// }
+    /// ```
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
         let mut bts = SomeBits::new_low(num_ints);
 

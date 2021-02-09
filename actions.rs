@@ -1,5 +1,8 @@
-// Actions to be taken, for an Unorthodox Expert System.
-//
+//! Actions to be taken, for an Unorthodox Expert System.
+//!
+//! These actions are for testing and learning, they sould eventually be replaced
+//! by actions that make changes outside the program.
+//!
 use crate::change::SomeChange;
 use crate::state::SomeState;
 

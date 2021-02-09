@@ -1,7 +1,8 @@
-// Implement a Group struct, for an Unorthodox Expert System.
-// This represents a group of two or more Squares, that are
-// mutually compatible.
-
+//! The Group struct, for an Unorthodox Expert System.
+//!
+//! This represents a group of two or more Squares, that are
+//! mutually compatible, as are any squares between them.
+//!
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
