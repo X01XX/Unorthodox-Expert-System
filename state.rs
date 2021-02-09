@@ -88,18 +88,16 @@ impl SomeState {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }
-
+    
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// # Examples
-    /// 
-    /// ```
-    /// if let Ok(_) = SomeState::from_string(1, "0101")) {
+    /// if let Ok(sta) = SomeState::state_from_string(1, "0101")) {
+    ///    println!("State {}", &sta);
     /// } else {
     ///    panic!("Invalid State");
     /// }
-    /// ```
+    ///
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
         let mut bts = SomeBits::new_low(num_ints);
 
@@ -132,7 +130,8 @@ impl SomeState {
         } // end for ch
 
         Ok(SomeState::new(bts))
-    } // end state_from_string
+    } // end from_string
+
 } // end impl SomeState
 
 impl Clone for SomeState {
@@ -142,3 +141,5 @@ impl Clone for SomeState {
         }
     }
 }
+
+

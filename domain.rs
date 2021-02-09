@@ -835,4 +835,17 @@ impl SomeDomain {
 
         stp_cngs
     } // end sort_steps
+
+    /// Return a Region from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
+        SomeRegion::from_string(self.num_ints, &str)
+    } // end region_from_string
+
+    /// Return a State from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
+		SomeState::from_string(self.num_ints, &str)
+    } // end state_from_string
+    
 } // end impl SomeDomain

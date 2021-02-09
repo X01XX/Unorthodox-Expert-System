@@ -4,7 +4,7 @@
 //!
 //! Can serve as a store for any two states.
 
-use crate::bits::{SomeBits, NUM_BITS_PER_INT};
+use crate::bits::{ SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 //use crate::maskstore::MaskStore;
 use crate::state::SomeState;
@@ -478,18 +478,16 @@ impl SomeRegion {
         }
         store
     }
-
-    /// Return a Region from a string.
+    
+    /// Return a Region from a string and hint as to the number of integers to use.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// # Examples
-    /// 
-    /// ```
-    /// if let Ok(_) = SomeRegion::from_string(1, "r01x1")) {
+    /// if let Ok(regx) = <SomeDomain>.region_from_string(1, "r01x1")) {
+    ///    println!("Region {}", &regx);
     /// } else {
-    ///    panic!("Invalid region");
+    ///    panic!("Invalid Region");
     /// }
-    /// ```
+    ///
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
         let mut bts_high = SomeBits::new_low(num_ints);
 
@@ -504,7 +502,7 @@ impl SomeRegion {
                 if ch == 'r' {
                     continue;
                 } else if ch == 's' {
-                    let state_r = SomeState::from_string(num_ints, str);
+                   let state_r = SomeState::from_string(num_ints, &str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(SomeRegion::new(&a_state, &a_state));
@@ -546,7 +544,8 @@ impl SomeRegion {
             &SomeState::new(bts_high),
             &SomeState::new(bts_low),
         ))
-    } // end region_from_string
+    } // end from_string
+    
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {
@@ -558,3 +557,6 @@ impl Clone for SomeRegion {
         }
     }
 }
+
+
+    

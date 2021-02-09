@@ -8,7 +8,7 @@ mod tests {
     use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
     use crate::maskstore::MaskStore;
-    use crate::region::SomeRegion;
+//    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
     use crate::resultstore::ResultStore;
     use crate::rule::SomeRule;
@@ -33,17 +33,17 @@ mod tests {
         let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
-        let s5 = SomeState::from_string(dm1.num_ints, "s101").unwrap();
+        let s5 = dm1.state_from_string("s101").unwrap();
 
-        let s4 = SomeState::from_string(dm1.num_ints, "s100").unwrap();
+        let s4 = dm1.state_from_string("s100").unwrap();
 
-        let sf = SomeState::from_string(dm1.num_ints, "s1111").unwrap();
+        let sf = dm1.state_from_string("s1111").unwrap();
 
-        let se = SomeState::from_string(dm1.num_ints, "s1110").unwrap();
+        let se = dm1.state_from_string("s1110").unwrap();
 
-        let s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
+        let s7 = dm1.state_from_string("s111").unwrap();
 
-        let rx1x1 = SomeRegion::from_string(dm1.num_ints, "rx1x1").unwrap();
+        let rx1x1 = dm1.region_from_string("rx1x1").unwrap();
 
         dm1.take_action_arbitrary(0, &s5, &s5);
         dm1.take_action_arbitrary(0, &s5, &s4);
@@ -90,17 +90,17 @@ mod tests {
         let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
-        let s5 = SomeState::from_string(dm1.num_ints, "s101").unwrap();
+        let s5 = dm1.state_from_string("s101").unwrap();
 
-        let s4 = SomeState::from_string(dm1.num_ints, "s100").unwrap();
+        let s4 = dm1.state_from_string("s100").unwrap();
 
-        let sf = SomeState::from_string(dm1.num_ints, "s1111").unwrap();
+        let sf = dm1.state_from_string("s1111").unwrap();
 
-        let se = SomeState::from_string(dm1.num_ints, "s1110").unwrap();
+        let se = dm1.state_from_string("s1110").unwrap();
 
-        let s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
+        let s7 = dm1.state_from_string("s111").unwrap();
 
-        let rx1x1 = SomeRegion::from_string(dm1.num_ints, "rx1x1").unwrap();
+        let rx1x1 = dm1.region_from_string("rx1x1").unwrap();
 
         //println!(
         //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
@@ -148,8 +148,8 @@ mod tests {
     //    let mut dm1 = SomeDomain::new(1, "s1");
     //    dm1.add_action(action0, 0);
     //
-    //    if let Ok(rx1x1) = SomeRegion::from_string(dm1.num_ints, "rx1x1") {
-    //        if let Ok(r1x0x) = SomeRegion::from_string(dm1.num_ints, "r1x0x") {
+    //    if let Ok(rx1x1) = dm1.region_from_string("rx1x1") {
+    //        if let Ok(r1x0x) = dm1.region_from_string("r1x0x") {
     //            let subs = RegionStore {
     //                avec: rx1x1.subtract(&r1x0x),
     //            }; // subtract -> Vec<SomeRegion>
@@ -181,28 +181,28 @@ mod tests {
     //
     //    let mut regs = RegionStore::new();
     //
-    //    if let Ok(r00x1) = SomeRegion::from_string(dm1.num_ints, "r00x1") {
+    //    if let Ok(r00x1) = dm1.region_from_string("r00x1") {
     //        // adjacent to rx1x1
     //        regs.push(r00x1);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r1x1x) = SomeRegion::from_string(dm1.num_ints, "r1x1x") {
+    //    if let Ok(r1x1x) = dm1.region_from_string("r1x1x") {
     //       // intersects rx1x1
     //        regs.push(r1x1x);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(r0010) = SomeRegion::from_string(dm1.num_ints, "r0010") {
+    //    if let Ok(r0010) = dm1.region_from_string("r0010") {
     //        // not adjacent to rx1x1
     //        regs.push(r0010);
     //    } else {
     //        process::exit(1);
     //    }
     //
-    //    if let Ok(rx1x1) = SomeRegion::from_string(dm1.num_ints, "rx1x1") {
+    //    if let Ok(rx1x1) = dm1.region_from_string("rx1x1") {
     //        regs.push(rx1x1.clone());
     //        let empty_adjacent: RegionStore = regs.empty_adjacent(&rx1x1);
     //
@@ -264,7 +264,7 @@ mod tests {
 
                 if let Some(rules_int) = rules_5e.intersection(&rules_58) {
                     //println!("rules_int {}", &rules_int);
-                    if let Ok(rx10x) = SomeRegion::from_string(dm1.num_ints, "rx10x") {
+                    if let Ok(rx10x) = dm1.region_from_string("rx10x") {
                         if rx10x == rules_int.initial_region() {
                             return Ok(());
                         }
@@ -283,9 +283,9 @@ mod tests {
     //    fn region_to_region_test() -> Result<(), String> {
     //        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
     //
-    //        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
+    //        let reg1 = dm1.region_from_string("r000_111_xxx").unwrap();
     //
-    //        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
+    //        let reg2 = dm1.region_from_string("r01x_01x_01x").unwrap();
     //
     //        let b00 = SomeMask {
     //            bts: dm1._bits_new(vec![255, 325]),
@@ -581,7 +581,9 @@ mod tests {
 
     #[test]
     fn region_string_length() -> Result<(), String> {
-        let reg1 = SomeRegion::from_string(1, "rx1x1").unwrap();
+        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
+        		
+        let reg1 = dm1.region_from_string("rx1x1").unwrap();
 
         let n1 = reg1.formatted_string_length();
         let rs = reg1.formatted_string();
@@ -593,7 +595,7 @@ mod tests {
             ));
         }
 
-        let reg2 = SomeRegion::from_string(2, "rx1x1").unwrap();
+        let reg2 = dm1.region_from_string("rx1x1").unwrap();
 
         let n1 = reg2.formatted_string_length();
         let rs = reg2.formatted_string();
@@ -618,7 +620,7 @@ mod tests {
         }
 
         regt = RegionStore {
-            avec: vec![SomeRegion::from_string(2, "rx1x1").unwrap()],
+            avec: vec![dm1.region_from_string("rx1x1").unwrap()],
         };
         let n1 = regt.formatted_string_length();
         let rs = regt.formatted_string();
@@ -632,8 +634,8 @@ mod tests {
 
         regt = RegionStore {
             avec: vec![
-                SomeRegion::from_string(2, "rx1x1").unwrap(),
-                SomeRegion::from_string(2, "rx1x1").unwrap(),
+                dm1.region_from_string("rx1x1").unwrap(),
+                dm1.region_from_string("rx1x1").unwrap(),
             ],
         };
         let n1 = regt.formatted_string_length();
@@ -651,13 +653,13 @@ mod tests {
 
     #[test]
     fn step_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        let dm1 = SomeDomain::new(1, "s1", "r1", 0);
 
         let stp1 = SomeStep {
             act_num: 0,
-            initial: SomeRegion::from_string(1, "r1011").unwrap(),
-            result: SomeRegion::from_string(1, "r1010").unwrap(),
-            group_reg: SomeRegion::from_string(1, "rx0x1").unwrap(),
+            initial: dm1.region_from_string("r1011").unwrap(),
+            result: dm1.region_from_string("r1010").unwrap(),
+            group_reg: dm1.region_from_string("rx0x1").unwrap(),
             rule: SomeRule::new(
                 &SomeState {
                     bts: dm1._bits_new(vec![11]),
@@ -683,9 +685,9 @@ mod tests {
 
         let stp2 = SomeStep {
             act_num: 0,
-            initial: SomeRegion::from_string(2, "r1011").unwrap(),
-            result: SomeRegion::from_string(2, "r1010").unwrap(),
-            group_reg: SomeRegion::from_string(2, "rx0x1").unwrap(),
+            initial: dm2.region_from_string("r1011").unwrap(),
+            result: dm2.region_from_string("r1010").unwrap(),
+            group_reg: dm2.region_from_string("rx0x1").unwrap(),
             rule: SomeRule::new(
                 &SomeState {
                     bts: dm2._bits_new(vec![0, 11]),
@@ -853,10 +855,10 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    //#[test]
     //    fn change_string_length() -> Result<(), String> {
-    //        let from_reg = SomeRegion::from_string(2, "rx1x1").unwrap();
-    //        let goal_reg = SomeRegion::from_string(2, "rx1x1").unwrap();
+    //        let from_reg = dm1.region_from_string("rx1x1").unwrap();
+    //        let goal_reg = dm1.region_from_string("rx1x1").unwrap();
     //
     //        let cngtst = SomeChange::region_to_region(&from_reg, &goal_reg);
     //
@@ -877,13 +879,16 @@ mod tests {
     /// return the expected next result for the square.
     #[test]
     fn predict_next_result() -> Result<(), String> {
-        let s5 = SomeState::from_string(1, "s101").unwrap();
+        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        dm1.add_action(0);
+        
+        let s5 = dm1.state_from_string("s101").unwrap();
 
-        let s4 = SomeState::from_string(1, "s100").unwrap();
+        let s4 = dm1.state_from_string("s100").unwrap();
 
-        let sf = SomeState::from_string(1, "s1111").unwrap();
+        let sf = dm1.state_from_string("s1111").unwrap();
 
-        let se = SomeState::from_string(1, "s1110").unwrap();
+        let se = dm1.state_from_string("s1110").unwrap();
 
         // Build 2-result square 1
         let mut sqr1 = SomeSquare::new(s5.clone(), s5.clone());
@@ -942,18 +947,18 @@ mod tests {
         let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
-        let s0 = SomeState::from_string(dm1.num_ints, "s0").unwrap();
-        let s2 = SomeState::from_string(dm1.num_ints, "s10").unwrap();
-        let s4 = SomeState::from_string(dm1.num_ints, "s100").unwrap();
+        let s0 = dm1.state_from_string("s0").unwrap();
+        let s2 = dm1.state_from_string("s10").unwrap();
+        let s4 = dm1.state_from_string("s100").unwrap();
 
         dm1.take_action_arbitrary(0, &s0, &s2);
         dm1.take_action_arbitrary(0, &s0, &s4);
         dm1.take_action_arbitrary(0, &s0, &s2);
         dm1.take_action_arbitrary(0, &s0, &s4);
 
-        let sf = SomeState::from_string(dm1.num_ints, "s1111").unwrap();
-        let sb = SomeState::from_string(dm1.num_ints, "s1011").unwrap();
-        let sd = SomeState::from_string(dm1.num_ints, "s1101").unwrap();
+        let sf = dm1.state_from_string("s1111").unwrap();
+        let sb = dm1.state_from_string("s1011").unwrap();
+        let sd = dm1.state_from_string("s1101").unwrap();
 
         dm1.take_action_arbitrary(0, &sf, &sb);
         dm1.take_action_arbitrary(0, &sf, &sd);
@@ -964,8 +969,8 @@ mod tests {
 
         //println!("sqrs: \n{}", &dm1.actions[0].squares);
 
-        let rx10x = SomeRegion::from_string(dm1.num_ints, "rx10x").unwrap();
-        let rx01x = SomeRegion::from_string(dm1.num_ints, "rx01x").unwrap();
+        let rx10x = dm1.region_from_string("rx10x").unwrap();
+        let rx01x = dm1.region_from_string("rx01x").unwrap();
         let cngx = SomeChange::region_to_region(&rx10x, &rx01x);
 
         println!("r-2-r rule: {}", &cngx);
@@ -983,9 +988,9 @@ mod tests {
     fn change_region_to_region_test() -> Result<(), String> {
         let dm1 = SomeDomain::new(2, "s1", "r1", 0);
 
-        let reg1 = SomeRegion::from_string(2, "r000_111_xxx").unwrap();
+        let reg1 = dm1.region_from_string("r000_111_xxx").unwrap();
 
-        let reg2 = SomeRegion::from_string(2, "r01x_01x_01x").unwrap();
+        let reg2 = dm1.region_from_string("r01x_01x_01x").unwrap();
 
         let b01 = SomeMask {
             bts: dm1._bits_new(vec![0, 194]),
@@ -1020,13 +1025,13 @@ mod tests {
         let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
 
-        let s122 = SomeState::from_string(dm1.num_ints, "s1111001").unwrap();
+        let s122 = dm1.state_from_string("s1111001").unwrap();
 
-        let s69 = SomeState::from_string(dm1.num_ints, "s1000101").unwrap();
+        let s69 = dm1.state_from_string("s1000101").unwrap();
 
-        let s9 = SomeState::from_string(dm1.num_ints, "s1001").unwrap();
+        let s9 = dm1.state_from_string("s1001").unwrap();
 
-        let s85 = SomeState::from_string(dm1.num_ints, "s1010101").unwrap();
+        let s85 = dm1.state_from_string("s1010101").unwrap();
 
         dm1.take_action_arbitrary(0, &s122, &s122);
         dm1.take_action_arbitrary(0, &s122, &s69);
@@ -1049,11 +1054,11 @@ mod tests {
         let stps = dm1.actions.get_steps(&cng1);
         //println!("steps for {} are {}", &cng1, &stps);
         if stps.len() == 1 {
-            let r01001001 = SomeRegion::from_string(dm1.num_ints, "r01001001").unwrap();
+            let r01001001 = dm1.region_from_string("r01001001").unwrap();
             if r01001001 != stps[0].initial {
                 return Err(format!("r01001001 ne {}", stps[0].initial));
             }
-            let r01010101 = SomeRegion::from_string(dm1.num_ints, "r01010101").unwrap();
+            let r01010101 = dm1.region_from_string("r01010101").unwrap();
             if r01010101 != stps[0].result {
                 return Err(format!("r01010101 ne {}", stps[0].result));
             }
@@ -1074,11 +1079,11 @@ mod tests {
         let stps = dm1.actions.get_steps(&cng1);
         //println!("steps for {} are {}", &cng1, &stps);
         if stps.len() == 1 {
-            let r011x1001 = SomeRegion::from_string(dm1.num_ints, "r011X1001").unwrap();
+            let r011x1001 = dm1.region_from_string("r011X1001").unwrap();
             if r011x1001 != stps[0].initial {
                 return Err(format!("r011X1001 ne {}", stps[0].initial));
             }
-            let r010x0101 = SomeRegion::from_string(dm1.num_ints, "r010x0101").unwrap();
+            let r010x0101 = dm1.region_from_string("r010x0101").unwrap();
             if r010x0101 != stps[0].result {
                 return Err(format!("r010x0101 ne {}", stps[0].result));
             }
@@ -1099,11 +1104,11 @@ mod tests {
         let stps = dm1.actions.get_steps(&cng1);
         //println!("steps for {} are {}", &cng1, &stps);
         if stps.len() == 1 {
-            let r00001001 = SomeRegion::from_string(dm1.num_ints, "r00001001").unwrap();
+            let r00001001 = dm1.region_from_string("r00001001").unwrap();
             if r00001001 != stps[0].initial {
                 return Err(format!("r00001001 ne {}", stps[0].initial));
             }
-            let r01010101 = SomeRegion::from_string(dm1.num_ints, "r01010101").unwrap();
+            let r01010101 = dm1.region_from_string("r01010101").unwrap();
             if r01010101 != stps[0].result {
                 return Err(format!("r01010101 ne {}", stps[0].result));
             }
@@ -1124,21 +1129,21 @@ mod tests {
         dm1.add_action(0);
         dm1.add_action(0);
 
-        let s0 = SomeState::from_string(dm1.num_ints, "s0").unwrap();
+        let s0 = dm1.state_from_string("s0").unwrap();
 
-        let s3 = SomeState::from_string(dm1.num_ints, "s11").unwrap();
+        let s3 = dm1.state_from_string("s11").unwrap();
 
-        let s4 = SomeState::from_string(dm1.num_ints, "s100").unwrap();
+        let s4 = dm1.state_from_string("s100").unwrap();
 
-        let s6 = SomeState::from_string(dm1.num_ints, "s110").unwrap();
+        let s6 = dm1.state_from_string("s110").unwrap();
 
-        let s7 = SomeState::from_string(dm1.num_ints, "s111").unwrap();
+        let s7 = dm1.state_from_string("s111").unwrap();
 
-        let s8 = SomeState::from_string(dm1.num_ints, "s1000").unwrap();
+        let s8 = dm1.state_from_string("s1000").unwrap();
 
-        let s12 = SomeState::from_string(dm1.num_ints, "s1100").unwrap();
+        let s12 = dm1.state_from_string("s1100").unwrap();
 
-        let s14 = SomeState::from_string(dm1.num_ints, "s1110").unwrap();
+        let s14 = dm1.state_from_string("s1110").unwrap();
 
         dm1.take_action_arbitrary(0, &s0, &s8);
         dm1.take_action_arbitrary(0, &s7, &s8);
