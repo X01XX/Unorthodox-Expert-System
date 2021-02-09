@@ -837,10 +837,10 @@ impl SomeAction {
                                 if &SomeRegion::new(&sqrx.state, &sqry.state) == regx {
                                 } else {
                                     let regy = SomeRegion::new(&sqrx.state, &sqry.state);
-                                    println!(
-                                        "seek_edge_needs1 adding need for {} sub of {}",
-                                        &regy, &regx
-                                    );
+                                    //println!(
+                                    //    "seek_edge_needs1 adding need for {} sub of {}",
+                                    //    &regy, &regx
+                                    //);
 
                                     new_regs.push_nosups(regy);
                                     found = true;
@@ -1617,10 +1617,10 @@ impl SomeAction {
     // Possibly combining to groups.
     // Possibly checking for a contradictatory intersection.
     fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        println!(
-            "groups_intersection_needs {} and {}",
-            &grpx.region, &grpy.region
-        );
+        //println!(
+        //    "groups_intersection_needs {} and {}",
+        //    &grpx.region, &grpy.region
+        //);
 
         let mut nds = NeedStore::new();
 
@@ -1667,10 +1667,10 @@ impl SomeAction {
 
     // Get needs for two adjacent groups, with the same pn rating.
     fn group_pair_adjacent_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        println!(
-            "group_pair_adjacent_needs {} and {}",
-            &grpx.region, &grpy.region
-        );
+        //println!(
+        //    "group_pair_adjacent_needs {} and {}",
+        //    &grpx.region, &grpy.region
+        //);
         let nds = NeedStore::new();
 
         if grpx.pn != grpy.pn {
