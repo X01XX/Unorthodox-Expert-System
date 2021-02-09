@@ -55,7 +55,7 @@ impl RegionStore {
     // Return true if any region is a subset, or equal, to a region
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if reg.active && regx.is_subset_of(&reg) {
+            if regx.active && regx.is_subset_of(&reg) {
                 return true;
             }
         }
@@ -89,7 +89,6 @@ impl RegionStore {
                 cnt += 1;
             }
         }
-
         cnt == 1
     }
 
@@ -103,7 +102,6 @@ impl RegionStore {
                 fnd = true;
             }
         }
-
         fnd
     }
 
@@ -117,7 +115,6 @@ impl RegionStore {
                 fnd = true;
             }
         }
-
         fnd
     }
 
@@ -131,7 +128,6 @@ impl RegionStore {
                 fnd = true;
             }
         }
-
         fnd
     }
 
@@ -144,7 +140,6 @@ impl RegionStore {
             }
             cnt += 1;
         }
-
         -1
     }
 
@@ -154,7 +149,6 @@ impl RegionStore {
                 return true;
             }
         }
-
         false
     }
 
@@ -216,10 +210,10 @@ impl RegionStore {
             self.avec.push(reg);
         } else {
             // Replace the inactive region with the new region
-            let inx = inx as usize;
+            //let inx = inx as usize;
             //println!("deleting region {}", self.avec[inx]);
             // println!("adding region {}", reg);
-            self.avec[inx] = reg;
+            self.avec[inx as usize] = reg;
         }
 
         true
@@ -297,7 +291,14 @@ impl RegionStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if self.avec.len() > 0 {
+        let mut alen = 0;
+        for regx in &self.avec {
+            if regx.active {
+                alen += 1;
+            }
+        }
+
+        if alen > 0 {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
@@ -312,11 +313,15 @@ impl RegionStore {
         let mut rc_str = String::with_capacity(self.formatted_string_length());
         rc_str.push('[');
 
-        for stax in &self.avec {
+        for regx in &self.avec {
+            if regx.active == false {
+                continue;
+            }
+
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &stax));
+            rc_str.push_str(&format!("{}", &regx));
             flg = 1;
         }
 

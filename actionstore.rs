@@ -74,6 +74,14 @@ impl ActionStore {
             nds_agg.append(&mut nst);
         }
 
+        // For testing to make output squential
+        //        for actx in self.avec.iter_mut() {
+        //			let mut ndsx = actx.get_needs(cur, x_mask);
+        //			if ndsx.len() > 0 {
+        //				nds_agg.append(&mut ndsx);
+        //			}
+        //		}
+
         nds_agg
     }
 

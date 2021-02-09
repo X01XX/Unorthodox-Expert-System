@@ -489,7 +489,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return true;
             }
 
-            let ndx = &dm1.actions[act_num].seek_edge_needs2(&dm1.cur_state);
+            let ndx = &dm1.actions[act_num].seek_edge_needs2();
 
             println!("Seek Edge Needs are {}", &ndx);
             return true;

@@ -95,6 +95,14 @@ impl DomainStore {
             nds_agg.append(&mut nst);
         }
 
+        //  For testing and making the ouput sequential
+        //        for domx in self.avec.iter_mut() {
+        //		    let mut ndx = domx.get_needs();
+        //		    if ndx.len() > 0 {
+        //				nds_agg.append(&mut ndx);
+        //			}
+        //		}
+
         nds_agg
     }
 
