@@ -1,7 +1,7 @@
 # Unorthodox-Expert-System
 An Unorthodox Expert System based on an improved interpretation of the Karnaugh Map.
 
-See the index.html file for theory. There is extensive use of Boolean Algebra, which is supported by almost any programming language.
+See the theory.html file for theory. There is extensive use of Boolean Algebra, which is supported by almost any programming language.
 
 Run under Rust, a command help screen will display.  
 
