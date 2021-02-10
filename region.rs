@@ -4,7 +4,7 @@
 //!
 //! Can serve as a store for any two states.
 
-use crate::bits::{ SomeBits, NUM_BITS_PER_INT};
+use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 //use crate::maskstore::MaskStore;
 use crate::state::SomeState;
@@ -478,7 +478,7 @@ impl SomeRegion {
         }
         store
     }
-    
+
     /// Return a Region from a string and hint as to the number of integers to use.
     /// Left-most, consecutive, zeros can be omitted.
     ///
@@ -502,7 +502,7 @@ impl SomeRegion {
                 if ch == 'r' {
                     continue;
                 } else if ch == 's' {
-                   let state_r = SomeState::from_string(num_ints, &str);
+                    let state_r = SomeState::from_string(num_ints, &str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(SomeRegion::new(&a_state, &a_state));
@@ -545,7 +545,6 @@ impl SomeRegion {
             &SomeState::new(bts_low),
         ))
     } // end from_string
-    
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {
@@ -557,6 +556,3 @@ impl Clone for SomeRegion {
         }
     }
 }
-
-
-    

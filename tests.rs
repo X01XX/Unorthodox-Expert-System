@@ -8,7 +8,7 @@ mod tests {
     use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
     use crate::maskstore::MaskStore;
-//    use crate::region::SomeRegion;
+    //    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
     use crate::resultstore::ResultStore;
     use crate::rule::SomeRule;
@@ -582,7 +582,7 @@ mod tests {
     #[test]
     fn region_string_length() -> Result<(), String> {
         let dm1 = SomeDomain::new(2, "s1", "r1", 0);
-        		
+
         let reg1 = dm1.region_from_string("rx1x1").unwrap();
 
         let n1 = reg1.formatted_string_length();
@@ -881,7 +881,7 @@ mod tests {
     fn predict_next_result() -> Result<(), String> {
         let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
         dm1.add_action(0);
-        
+
         let s5 = dm1.state_from_string("s101").unwrap();
 
         let s4 = dm1.state_from_string("s100").unwrap();

@@ -239,25 +239,28 @@ fn main() {
             if can_do > 0 {
                 //println!("\nAction needs: {}", nds);
 
-                if let Some((inx, pln)) = dmxs.choose_need(&nds, &need_plans) {
-                    let ndx = &nds[inx];
-                    dom_num = ndx.dom_num();
+                let np_inx = dmxs.choose_need(&nds, &need_plans, &need_can);
 
-                    //println!("need {}, plan {}", &ndx, &pln);
+                let nd_inx = need_plans[np_inx].inx;
+                let ndx = &nds[nd_inx];
+                dom_num = ndx.dom_num();
 
-                    if pln.len() > 0 {
-                        //println!("doing dmx.run_plan");
-                        dmxs.run_plan(dom_num, &pln);
-                    } else {
-                        //println!("NOT doing dmx.run_plan");
-                    }
+                let pln = &need_plans[np_inx].pln.as_ref().unwrap();
 
-                    if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                        // println!("doing dmx.take_action_need");
-                        dmxs.take_action_need(dom_num, &ndx);
-                    } else {
-                        // println!("NOT doing dmx.take_action_need");
-                    }
+                //println!("need {}, plan {}", &ndx, &pln);
+
+                if pln.len() > 0 {
+                    //println!("doing dmx.run_plan");
+                    dmxs.run_plan(dom_num, &pln);
+                } else {
+                    //println!("NOT doing dmx.run_plan");
+                }
+
+                if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                    // println!("doing dmx.take_action_need");
+                    dmxs.take_action_need(dom_num, &ndx);
+                } else {
+                    // println!("NOT doing dmx.take_action_need");
                 }
             } else {
                 dmxs[dom_num].check_async();

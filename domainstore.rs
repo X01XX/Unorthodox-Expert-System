@@ -61,7 +61,7 @@ impl fmt::Display for DomainStore {
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
-    pub step: usize,            // The current step number in the UI.
+    pub step: usize, // The current step number in the UI.
 }
 
 impl DomainStore {
@@ -185,100 +185,68 @@ impl DomainStore {
         ndsinx_plan
     }
 
-    // Choose a need, given a vector of needs and a vectore of InxPlans (with
-    // at least one doable need).
-    //
-    // Sort needs by priority.
-    //
-    // Scan needs, by priority, to see what need can be satisfied by a plan,
-    // limit to three of the same priority.
-    //
-    // Return a tuple of the (index to the need that can be satisfied, a plan to do so).
+    /// Choose a need, given a vector of needs,
+    /// a vector of InxPlans Vec::<{ inx: need vector index, pln: Some(plan}>
+    /// at least one do
+    ///
+    /// Sort needs by priority.
+    ///
+    /// Scan needs, by priority, to see what need can be satisfied by a plan.
+    ///
+    /// Return an index to the ndsinx_plan_all vector.
     pub fn choose_need(
         &self,
         nds: &NeedStore,
         ndsinx_plan_all: &Vec<InxPlan>,
-    ) -> Option<(usize, SomePlan)> {
-        // Store tuples of NeedStore-index and plan, for needs that can be acheived
-        // by matching the current state (empty plan) or by having a plan calculated.
+        need_can: &Vec<usize>, // indicies to ndsinx_plan_all
+    ) -> usize {
+        assert!(need_can.len() > 0);
 
-        // A vector of vectors, for needs to be processed in order of priority,
-        // lowest number first/highest.
-        let mut pri_vec = Vec::<Vec<usize>>::with_capacity(8);
+        // Find highest priority needs
+        let mut min_pri = std::usize::MAX;
 
-        // Scan for needs, put need indicies into a vector.
-        // Sort by priority.
-        let mut inx = 0;
-        for ndx in nds.iter() {
-            let pri = ndx.priority();
-            while pri_vec.len() <= pri {
-                pri_vec.push(Vec::<usize>::new());
+        let mut cnt = 0; // Count the number of high-priority needs
+        for npa_inx in need_can {
+            let nds_inx = ndsinx_plan_all[*npa_inx].inx;
+
+            let pri = nds[nds_inx].priority();
+
+            if pri < min_pri {
+                min_pri = pri;
+                cnt = 0;
             }
-
-            pri_vec[pri].push(inx);
-
-            inx += 1;
-        } // end scan of needs to assign priority
-
-        // A vector of need-index and plan, for needs that can be met with a plan.
-        let mut ndsinx_plan = Vec::<usize>::new();
-
-        // Scan needs to see what can be achieved with a plan
-        for avec in pri_vec.iter() {
-            if avec.len() == 0 {
-                continue;
+            if pri == min_pri {
+                cnt += 1;
             }
+        }
 
-            //println!(" ***** number needs to plan for is {}", avec.len());
-            if avec.len() == 1 {
-                let nd_inx = avec[0];
+        // Gather highest priority needs
 
-                // Find need in ndsinx_plan_all, and store index if there is a plan.
-                let mut inx = 0;
-                for ndsin in ndsinx_plan_all.iter() {
-                    if ndsin.inx == nd_inx {
-                        if let Some(_) = ndsin.pln {
-                            ndsinx_plan.push(inx);
-                            break;
-                        }
-                    }
-                    inx += 1;
-                }
-            } else {
-                for nd_inx in avec.iter() {
-                    // Find need in ndsinx_plan_all, and store index if there is a plan.
-                    let mut inx = 0;
-                    for ndsin in ndsinx_plan_all.iter() {
-                        if ndsin.inx == *nd_inx {
-                            if let Some(_) = ndsin.pln {
-                                ndsinx_plan.push(inx);
-                                break;
-                            }
-                        }
-                        inx += 1;
-                    }
-                } // next nd_inx
+        // Make vector of tuples (need_can index, ndsinx_plan_all index)
+        let mut can_nds_pln = Vec::<(usize, usize)>::with_capacity(cnt);
+
+        let mut can_inx = 0;
+        for npa_inx in need_can {
+            let nds_inx = ndsinx_plan_all[*npa_inx].inx;
+
+            if nds[nds_inx].priority() == min_pri {
+                can_nds_pln.push((can_inx, *npa_inx));
             }
+            can_inx += 1;
+        }
 
-            // If at least one need of the current priority has been
-            // found to be doable, do not check later priority needs
-            if ndsinx_plan.len() > 0 {
-                break;
-            }
-        } // next avec in pri_vec
-
-        // Selection for needs that can be planned
-        // A vector of indicies to a (need-index and plan) vector, for needs that can be met with a plan.
+        // Make second selection, index to can_nds_pln
         let mut can_do2 = Vec::<usize>::new();
 
-        assert!(ndsinx_plan.len() > 0);
+        assert!(can_nds_pln.len() > 0);
 
         // Get the first need, in a group of needs with the same priority/type
-        let nd0 = &nds[ndsinx_plan_all[ndsinx_plan[0]].inx];
+        let cnp_inx = can_nds_pln[0].1;
+
+        let nd0 = &nds[ndsinx_plan_all[cnp_inx].inx];
         //println!("nd0 {}", nd0);
 
         // Make further selections of needs that can be met,
-        // after previously selecting for the highest priority.
         //
         // If the needs are AStateMakeGroup,
         //   Find the largest number-X group that will be created,
@@ -299,10 +267,12 @@ impl DomainStore {
             } => {
                 // Get max x group num
                 let mut a_state_make_group_max_x = 0;
-                for cd in &ndsinx_plan {
-                    let itmx = &ndsinx_plan_all[*cd];
+                for cnp_tpl in &can_nds_pln {
+                    //let cd = cnp_tup.2;
 
-                    let ndx = &nds[itmx.inx];
+                    //let itmx = &ndsinx_plan_all[*cd];
+
+                    let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
@@ -319,14 +289,14 @@ impl DomainStore {
                         }
                         _ => {}
                     } // end match ndx
-                } // next itmx
+                } // next cnp_tup
 
                 // Save indicies for the max-X group created needs
-                let mut inx: usize = 0;
-                for cd in &ndsinx_plan {
-                    let itmx = &ndsinx_plan_all[*cd];
+                let mut cnp_inx: usize = 0;
+                for cnp_tpl in &can_nds_pln {
+                    //let itmx = &ndsinx_plan_all[*cd];
 
-                    let ndx = &nds[itmx.inx];
+                    let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
@@ -338,20 +308,21 @@ impl DomainStore {
                             num_x: nx,
                         } => {
                             if *nx == a_state_make_group_max_x {
-                                can_do2.push(inx);
+                                can_do2.push(cnp_inx);
                             }
                         }
                         _ => {}
                     } // end match ndx
 
-                    inx += 1;
+                    cnp_inx += 1;
                 }
             } // end match AStateMakeGroup
             _ => {
                 // Find the shortest plan length
                 let mut min_plan_len = std::usize::MAX;
-                for cd in &ndsinx_plan {
-                    let itmx = &ndsinx_plan_all[*cd];
+                for cnp_tpl in &can_nds_pln {
+                    let itmx = &ndsinx_plan_all[cnp_tpl.1];
+
                     match &itmx.pln {
                         Some(plnx) => {
                             if plnx.len() < min_plan_len {
@@ -363,43 +334,45 @@ impl DomainStore {
                 }
 
                 // Push index to shortest plan needs
-                let mut inx = 0;
-                for cd in &ndsinx_plan {
-                    let itmx = &ndsinx_plan_all[*cd];
+                let mut cnp_inx = 0;
+                for cnp_tpl in &can_nds_pln {
+                    let itmx = &ndsinx_plan_all[cnp_tpl.1];
+
                     match &itmx.pln {
                         Some(plnx) => {
                             if plnx.len() == min_plan_len {
-                                can_do2.push(inx);
+                                can_do2.push(cnp_inx);
                             }
                         }
                         None => {}
                     }
 
-                    inx += 1;
+                    cnp_inx += 1;
                 }
             } // End match all other needs
         } // End match nd0
 
-        // Return if no plans.  Includes plans of zero length for the current state.
-        if can_do2.len() == 0 {
-            panic!("at least one doable need/plan should have been selected!");
-        }
-
-        //println!("can_do2: {:?}", can_do2);
+        assert!(can_do2.len() > 0);
 
         // Take a random choice
-        let inx2 = rand::thread_rng().gen_range(0, can_do2.len());
+        let cd2_inx = rand::thread_rng().gen_range(0, can_do2.len());
         //println!("inx2 = {}  can_do2 = {}", &inx2, &can_do2[inx2]);
 
-        let itmx = &ndsinx_plan_all[ndsinx_plan[inx2]];
+        let itmx = &ndsinx_plan_all[can_nds_pln[can_do2[cd2_inx]].1];
         //println!("itmx.inx = {}", &itmx.inx);
 
         let ndx = &nds[itmx.inx]; // get need using tuple index
 
-        let pln = itmx.pln.as_ref().unwrap().clone();
+        if let Some(pln) = &itmx.pln {
+            println!(
+                "\nNeed chosen: {} {} {}",
+                &can_nds_pln[can_do2[cd2_inx]].0,
+                &ndx,
+                &pln.str_terse()
+            );
+        }
 
-        println!("\nNeed chosen: {} {} {}", &itmx.inx, &ndx, &pln.str_terse());
-        return Some((itmx.inx, pln));
+        can_nds_pln[can_do2[cd2_inx]].1
     } // end choose_need
 } // end impl DomainStore
 

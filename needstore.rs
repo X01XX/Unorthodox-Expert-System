@@ -3,7 +3,7 @@
 use crate::need::SomeNeed;
 use std::fmt;
 use std::ops::Index; // IndexMut
-use std::slice::{Iter, IterMut};
+use std::slice::IterMut;
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -68,9 +68,9 @@ impl NeedStore {
         self.avec.append(&mut other.avec);
     }
 
-    pub fn iter(&self) -> Iter<SomeNeed> {
-        self.avec.iter()
-    }
+    //    pub fn iter(&self) -> Iter<SomeNeed> {
+    //        self.avec.iter()
+    //    }
 
     pub fn iter_mut(&mut self) -> IterMut<SomeNeed> {
         self.avec.iter_mut()

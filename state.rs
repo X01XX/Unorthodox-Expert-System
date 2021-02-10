@@ -88,7 +88,7 @@ impl SomeState {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }
-    
+
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
@@ -131,7 +131,6 @@ impl SomeState {
 
         Ok(SomeState::new(bts))
     } // end from_string
-
 } // end impl SomeState
 
 impl Clone for SomeState {
@@ -141,5 +140,3 @@ impl Clone for SomeState {
         }
     }
 }
-
-

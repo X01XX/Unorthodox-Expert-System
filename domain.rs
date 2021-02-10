@@ -845,7 +845,6 @@ impl SomeDomain {
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-		SomeState::from_string(self.num_ints, &str)
+        SomeState::from_string(self.num_ints, &str)
     } // end state_from_string
-    
 } // end impl SomeDomain
