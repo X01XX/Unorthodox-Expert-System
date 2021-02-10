@@ -323,7 +323,7 @@ fn main() {
 
                     let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
 
-                    println!("\nNeed chosen: {} {}\n", &ndx, &pln.str_terse());
+                    println!("\nNeed chosen: {} {} {}\n", &n_num, &ndx, &pln.str_terse());
 
                     dom_num = ndx.dom_num();
 
