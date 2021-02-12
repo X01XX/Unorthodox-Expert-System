@@ -1,14 +1,15 @@
-// Rule struct for, an Unorthodox Expert System
-//
-// A way of representing changes that can be expected by running an action
-// for states within the initial_region() of the rule.
-//
-// In combining rules, 0->X and 1->X bit positions are considered invalid.
-//
-// There has to be some limit on combination that leaves a rule with predictive power.
-//
-// The rule can be used in a way that is like "forward chaining" (result_from_initial) and
-// "backward chaining" (intitial_from_result).
+//! Rule struct for, representing a change of bits between aninitial and result state.
+//!
+//! Rules for two squares can be combined to create a rule for a SomeGroup struct.
+//!
+//! If the initial region of two groups intersect, and intersection of their rules can be taken,
+//! which may be valid, invalid, or partially valid.
+//!
+//! In combining rules, 0->X and 1->X bit positions are disallowed, since
+//! there has to be some limit on combination that leaves a rule with predictive power.
+//!
+//! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
+//! "backward chaining" (intitial_from_result).
 
 use crate::bits::NUM_BITS_PER_INT;
 use crate::mask::SomeMask;
@@ -19,9 +20,13 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeRule {
+    /// A mask for bit change 0->0
     pub b00: SomeMask,
+    /// A mask for bit change 0->1
     pub b01: SomeMask,
+    /// A mask for bit change 1->1
     pub b11: SomeMask,
+    /// A mask for bit change 1->0
     pub b10: SomeMask,
 }
 
@@ -32,13 +37,13 @@ impl fmt::Display for SomeRule {
 }
 
 impl SomeRule {
-    // Return a new rule struct instance
-    pub fn new(sta1: &SomeState, sta2: &SomeState) -> Self {
+    /// Return a new SomeRule instance given an initial state and the corresponding result state.
+    pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         Self {
-            b00: SomeMask::new(sta1.bts.b_not().b_and(&sta2.bts.b_not())),
-            b01: SomeMask::new(sta1.bts.b_not().b_and(&sta2.bts)),
-            b11: SomeMask::new(sta1.bts.b_and(&sta2.bts)),
-            b10: SomeMask::new(sta1.bts.b_and(&sta2.bts.b_not())),
+            b00: SomeMask::new(initial.bts.b_not().b_and(&result.bts.b_not())),
+            b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
+            b11: SomeMask::new(initial.bts.b_and(&result.bts)),
+            b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
         }
     }
 
@@ -47,14 +52,14 @@ impl SomeRule {
     //        self.b01.m_or(&self.b10)
     //    }
 
-    // Return true if a rule is a subset of another
+    /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         let tmprul = self.intersection(other);
 
         *self == tmprul
     }
 
-    // Return true if a rule is valid after a union (no 1X or 0X bits)
+    /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
         if self.b00.m_and(&self.b01).is_low() {
             if self.b11.m_and(&self.b10).is_low() {
@@ -64,8 +69,8 @@ impl SomeRule {
         false
     }
 
-    // Return true if a rule is valid after an intersection (and),
-    // no bit positions are zero in all 4 masks.
+    /// Return true if a rule is valid after an intersection,
+    /// that is no bit positions are zero in all 4 masks.
     pub fn is_valid_intersection(&self) -> bool {
         if self
             .b00
@@ -80,7 +85,7 @@ impl SomeRule {
         false
     }
 
-    // Return a logical OR of two rules
+    /// Return a logical OR of two rules. The result may be invalid.
     pub fn union(&self, other: &Self) -> Self {
         Self {
             b00: self.b00.m_or(&other.b00),
@@ -112,7 +117,7 @@ impl SomeRule {
     //        true
     //    }
 
-    // Return a logical AND of two rules
+    /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Self {
         Self {
             b00: self.b00.m_and(&other.b00),
@@ -133,6 +138,7 @@ impl SomeRule {
     //        SomeState::new(sta_msk.m_xor(&b01).m_xor(&b10).bts)
     //    }
 
+    /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
         let st_high = SomeState::new(self.b11.bts.b_or(&self.b10.bts));
         let st_low = SomeState::new(self.b00.bts.b_or(&self.b01.bts).b_not());
@@ -140,6 +146,7 @@ impl SomeRule {
         SomeRegion::new(&st_high, &st_low)
     }
 
+    /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
         let st_high = SomeState::new(self.b11.bts.b_or(&self.b01.bts));
         let st_low = SomeState::new(self.b00.bts.b_or(&self.b10.bts).b_not());
@@ -161,7 +168,8 @@ impl SomeRule {
     //        self.b10.m_xor(&self.b01.m_and(&self.b10))
     //    }
 
-    // Return the result region after applying an initial region to a rule
+    /// Return the result region after applying an initial region to a rule.
+    /// This could be called "forward chaining".
     pub fn result_from_initial(&self, reg: &SomeRegion) -> SomeRegion {
         if reg.intersects(&self.initial_region()) == false {
             panic!("result_from_initial: given region does not intersect the ruls initial region");
@@ -170,7 +178,8 @@ impl SomeRule {
         self.restrict_initial_region(reg).result_region()
     }
 
-    // Return the result region after applying an initial region to a rule
+    /// Return the result region after applying an initial state to a rule.
+    /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
         if self.initial_region().is_superset_of_state(&sta) == false {
             panic!(
@@ -185,7 +194,8 @@ impl SomeRule {
         }
     }
 
-    // Return the initial region after applying a result region to a rule
+    /// Return the initial region after applying a result region to a rule.
+    /// This could be called "backward chaining".    
     pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
         if reg.intersects(&self.result_region()) == false {
             panic!("initial_from_result: given region does not intersect the ruls result region");
@@ -193,9 +203,9 @@ impl SomeRule {
 
         self.restrict_result_region(reg).initial_region()
     }
-    // Restrict the intitial region to an intersection of the
-    // given region.  Assuming the region given is not a superset
-    // this will also change the result region.
+    /// Restrict the initial region to an intersection of the
+    /// given region.  Assuming the region given is not a superset
+    /// this will also change the result region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let init_reg = self.initial_region();
 
@@ -219,13 +229,14 @@ impl SomeRule {
         }
     }
 
-    // Return true if the rule does not change anything
-    pub fn no_change(&self) -> bool {
-        self.b01.is_low() && self.b10.is_low()
-    }
-    // Restrict the result region to an intersection of the
-    // given region.  Assuming the region given is not a superset
-    // this will also change the initial region.
+    /// Return true if the rule does not change anything
+    //    pub fn no_change(&self) -> bool {
+    //        self.b01.is_low() && self.b10.is_low()
+    //    }
+
+    /// Restrict the result region to an intersection of the
+    /// given region.  Assuming the region given is not a superset
+    /// this will also change the initial region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
         //println!("restricting result region of {} to {}", &self, &regx);
 
@@ -322,10 +333,12 @@ impl SomeRule {
     //        }
     //    }
 
+    /// Return the expected length of a string representation of SomeRule.
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.b00.bts.len() * 3) - 1
     }
 
+    /// Return a string representation of SomeRule.
     pub fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.formatted_string_length());
 

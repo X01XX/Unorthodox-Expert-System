@@ -1,6 +1,4 @@
-//! The GroupStore struct, for an Unorthodox Expert System.
-//!
-//! A vector of Group structs.
+//! The GroupStore struct, a vector of SomeGroup structs.
 //!
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;
@@ -231,7 +229,7 @@ impl GroupStore {
         None
     }
 
-    pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
+    pub fn _find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         for grpx in &self.avec {
             if grpx.active && grpx.region == *val {
                 return Some(grpx);

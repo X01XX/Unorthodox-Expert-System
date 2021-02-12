@@ -1,6 +1,14 @@
-// Mask struct, for an Unorthodox Expert System.
-//
-// The difference between a Mask and a State is the intended use.
+//! The SomeMask struct, a mask of bits.
+//!
+//! The SomeState struct is exactly the same, the difference is in the intended use.
+//!
+//! A Mask of differences between two states would be calculated like:
+//!
+//! let diff_mask = SomeMask { ints: state1.bts.b_xor(&state2.bts) };
+//!
+//! A difference mask applied to a state, to get a new state, would be calculated like:
+//!
+//! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
 
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
@@ -8,6 +16,7 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeMask {
+    /// Bits set to one are significant.
     pub bts: SomeBits,
 }
 

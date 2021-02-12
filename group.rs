@@ -1,6 +1,6 @@
-//! The Group struct, for an Unorthodox Expert System.
+//! The SomeGroup struct, which represents a group of two compatible Squares.
 //!
-//! This represents a group of two or more Squares, that are
+//! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 //!
 use crate::mask::SomeMask;
@@ -26,7 +26,6 @@ pub struct SomeGroup {
     pub pn: Pn,             // Pattern Number enum One, Two or Unpredictable
     pub rules: RuleStore,   // Rules that all squares of the group are a subset of
     pub active: bool,       // Set to false to "delete" the group from a vector
-    pub act_num: usize,     // The nAct umber of the action that the group belongs to
     pub confirmed: bool, // Set to true when a state only in the group has all adjacent states checked
     pub anchor: Option<SomeState>, // The state in only the group used to confirm
     pub not_x_confirm: SomeMask, // Mask of non-x bits to check for confirmation.
@@ -35,7 +34,7 @@ pub struct SomeGroup {
 }
 
 impl SomeGroup {
-    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore, act_num: usize) -> Self {
+    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore) -> Self {
         //        println!(
         //            "adding group {}",
         //            SomeRegion::new(&sta1, &sta2)
@@ -54,7 +53,6 @@ impl SomeGroup {
             pn: pnx,
             rules: ruls,
             active: true,
-            act_num,
             confirmed: false,
             anchor: None,
             not_x_confirm: not_x.clone(),

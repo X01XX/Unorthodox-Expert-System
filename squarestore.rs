@@ -1,7 +1,7 @@
-// Implement a store for squares, for an Unorthodox Expert System.
-//
+//! The SquareStore struct.  A HashMap of SomeSquare structs.
+//!
 
-use crate::pn::Pn;
+//use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
@@ -120,20 +120,19 @@ impl SquareStore {
 
     // Return the maximum Pn value of a set of squares,
     // identified by a list of their keys.
-    pub fn max_pn(&self, keys: &StateStore) -> Pn {
-        assert!(keys.len() > 0);
-
-        let mut max_pn = Pn::One;
-
-        for keyx in keys.iter() {
-            let sqrx = self.find(&keyx).unwrap();
-            if sqrx.pn() > max_pn {
-                max_pn = sqrx.pn();
-            }
-        }
-
-        max_pn
-    } // end max_pn
+    //    pub fn max_pn(&self, keys: &StateStore) -> Pn {
+    //        assert!(keys.len() > 0);
+    //
+    //        let mut max_pn = Pn::One;
+    //
+    //        for keyx in keys.iter() {
+    //            let sqrx = self.find(&keyx).unwrap();
+    //            if sqrx.pn() > max_pn {
+    //                max_pn = sqrx.pn();
+    //            }
+    //        }
+    //        max_pn
+    //    } // end max_pn
 
     // Return the minimum Pn value of a set pnc squares,
     // identified by a list of their keys.

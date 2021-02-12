@@ -1,8 +1,4 @@
-//! The Bits struct, for an Unorthodox Expert System.
-//!
-//! This represents a bit pattern, as a vector of one or more unsigned integers.
-//!
-//! Most operations on Bits structs will use the same number of integers as used by the operand(s).
+//! The SomeBits struct, storing a bit pattern in one or more unsigned integers.
 //!
 //! Some conventions:
 //!
@@ -12,17 +8,21 @@
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
 //! The integer type/size could be increased, search for and change "u8" references in this file,
-//! and change the constants, below, as needed.
+//! test.rs, and change the constants, below, as needed.
 //!
+
+/// The number of bits in an integer used by SomeBits.
 pub const NUM_BITS_PER_INT: usize = 8;
 
+/// An integer with all bits set to one.
 const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
-// Masks, powers of 2, to isolate bits.
-// Isolate bit 0 with: integer & ALL_BIT_MASKS[0]
-// Isolate bit 5 with: integer & ALL_BIT_MASKS[5];
+/// Masks, powers of 2, to isolate any bit-position of a single integer.
+/// Isolate bit 0 with: integer & ALL_BIT_MASKS[0]
+/// Isolate bit 5 with: integer & ALL_BIT_MASKS[5];
 const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128];
 
+/// The highest bit position in an integer.
 const INT_HIGH_BIT: u8 = 1 << (NUM_BITS_PER_INT - 1);
 
 use serde::{Deserialize, Serialize};
@@ -41,21 +41,15 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
-    pub fn new_vec(avec: &Vec<usize>) -> SomeBits {
-        let mut bvec = Vec::<u8>::with_capacity(avec.len());
-
-        for numx in avec {
-            bvec.push(*numx as u8);
-        }
-        SomeBits { ints: bvec }
-    }
-
+    /// Create a SomeBits instance with integer(s) set to zero
     pub fn new_low(num_ints: usize) -> SomeBits {
         let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
         for _ in 0..num_ints {
             ints_vec.push(0);
         }
-        SomeBits::new_vec(&ints_vec)
+        SomeBits {
+            ints: vec![0 as u8; num_ints],
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -302,12 +296,14 @@ impl SomeBits {
         Self { ints: ints2 }
     }
 
-    // Return the number of integers used to express the SomeBits type
+    /// Return the number of integers used in the given SomeBits struct.
     pub fn num_ints(&self) -> usize {
         self.ints.len()
     }
 
-    // Return true if the highest bit is set to 1.
+    /// Return true if the highest bit is set to 1.
+    /// This is used in the from_string functions to detect overflow
+    /// from the next shift-left operation.
     pub fn high_bit_set(&self) -> bool {
         if self.ints[0] & INT_HIGH_BIT == 0 {
             return false;
@@ -315,6 +311,7 @@ impl SomeBits {
         return true;
     }
 
+    // Calculate the expected length of a string that represents a SomeBits struct.
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.ints.len()) + self.ints.len()
     }

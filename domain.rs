@@ -1,11 +1,11 @@
-//! The Domain struct, for an Unorthodox Epert System.
+//! The SomeDomain struct, representing a pseudo Karnaugh Map with a specific number of bits.
 //!
 //! Contains a vector of Action structs, the current state, and a few other fields.
 //!
 use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
-use crate::bits::SomeBits;
+//use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
@@ -59,8 +59,9 @@ impl SomeDomain {
     pub fn new(num_ints: usize, start_state: &str, optimal: &str, num: usize) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
+
+        // Convert the optimal region from string to SomeRegion.
         let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
-        //let st_low = SomeState::new(SomeBits::new_low(num_ints));
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
@@ -86,12 +87,6 @@ impl SomeDomain {
         self.vec_hvr.push(hv);
     }
 
-    // Used in tests.rs
-    pub fn _bits_new(&self, avec: Vec<usize>) -> SomeBits {
-        assert!(avec.len() == self.num_ints);
-        SomeBits::new_vec(&avec)
-    }
-
     pub fn get_needs(&mut self) -> NeedStore {
         self.x_mask = self.actions.get_x_mask(self.num_ints);
 
@@ -108,7 +103,7 @@ impl SomeDomain {
         self.actions.len()
     }
 
-    pub fn take_action_arbitrary(
+    pub fn eval_sample_arbitrary(
         &mut self,
         act_num: usize,
         i_state: &SomeState,
@@ -117,7 +112,7 @@ impl SomeDomain {
         self.check_async();
 
         // may break hv info, so do not mix with take_action_need
-        self.actions[act_num].take_action_arbitrary(i_state, r_state);
+        self.actions[act_num].eval_arbitrary_sample(i_state, r_state);
         self.set_cur_state(r_state.clone());
     }
 
@@ -128,7 +123,7 @@ impl SomeDomain {
 
         let hv = self.get_hv(act_num);
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
-        self.actions[act_num].take_action_need(&self.cur_state, ndx, &astate);
+        self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate);
         self.set_cur_state(astate);
     }
 
@@ -204,16 +199,10 @@ impl SomeDomain {
         for stpx in pln.iter() {
             if stpx.initial.is_superset_of_state(&self.cur_state) {
                 let hv = self.get_hv(stpx.act_num);
+
                 let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
 
-                if stpx.result.is_superset_of_state(&astate) == false {
-                    println!(
-                        "Action result {} is unexpected, not subset of step result {}",
-                        &astate, &stpx.result
-                    );
-                }
-
-                self.actions[stpx.act_num].take_action_step(&self.cur_state, &astate);
+                self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate);
 
                 let prev_state = self.cur_state.clone();
 
@@ -226,63 +215,21 @@ impl SomeDomain {
                 // Handle unexpected/unwanted result
                 // May be an expected possibility from a two result state
 
-                // Check if the alt_rule explains the plan error
-                if stpx.alt_rule {
-                    // Check if the alternate rule predicted the result
-                    if self.actions[stpx.act_num].group_exists_and_active(&stpx.group_reg) {
-                        // alt_rule predicted the result
-                        if stpx.rule.no_change() {
-                            println!("alt rule, retry same state");
-                            // If no-change, try again once, if OK continue with plan
-                            let hv = self.get_hv(stpx.act_num);
-                            let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
-                            self.actions[stpx.act_num].take_action_step(&self.cur_state, &astate);
+                if prev_state == self.cur_state {
+                    println!("Try action a second time");
 
-                            self.set_cur_state(astate);
+                    let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
 
-                            if stpx.result.is_superset_of_state(&self.cur_state) {
-                                continue;
-                            }
-                        } else {
-                            // Possible change happened, try plan back to step initial-region, rerun step, if OK continue with plan
-                            if let Some(planx) =
-                                self.make_plan(&SomeRegion::new(&prev_state, &prev_state))
-                            {
-                                println!("alt rule, go back to previous state");
-                                self.run_plan2(&planx, recur + 1);
+                    self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate);
 
-                                if stpx.initial.is_superset_of_state(&self.cur_state) {
-                                    // Try step again
-                                    let hv = self.get_hv(stpx.act_num);
-                                    let astate =
-                                        take_action(self.num, stpx.act_num, &self.cur_state, hv);
-                                    self.actions[stpx.act_num]
-                                        .take_action_step(&self.cur_state, &astate);
+                    self.set_cur_state(astate);
 
-                                    self.set_cur_state(astate);
-
-                                    if stpx.result.is_superset_of_state(&self.cur_state) {
-                                        // continue with plan
-                                        continue;
-                                    }
-                                }
-                            } else {
-                                // alt_2 make_plan failed
-                                println!("plan failed");
-                                return;
-                            }
-                        }
-                    } else {
-                        // println!(
-                        //    "group {} invalidated by sample",
-                        //     &stpx.group_reg
-                        // );
+                    if stpx.result.is_superset_of_state(&self.cur_state) {
+                        continue;
                     }
-                } else {
-                    //println!("result {} unexpected", &self.cur_state);
                 }
 
-                // Default, try re-plan to goal
+                // Try re-plan to goal
                 println!(
                     "Make new plan from {} to {}",
                     &self.cur_state,

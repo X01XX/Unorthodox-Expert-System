@@ -13,7 +13,7 @@ mod action;
 mod actionstore;
 mod bits;
 //use crate::bits::SomeBits;
-mod bitsstore;
+//mod bitsstore;
 mod group;
 mod groupstore;
 mod mask;
@@ -58,6 +58,7 @@ use rand::Rng;
 use std::fs::File;
 use std::path::Path;
 
+/// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
@@ -90,6 +91,7 @@ fn init() -> DomainStore {
     dmxs
 }
 
+/// User Interface
 fn main() {
     // Start a DomainStore, add a Domain
 
@@ -378,9 +380,7 @@ fn main() {
     } // end loop
 } // end main
 
-// Do a command
-// if done, return true
-// else print an error message and return false
+/// Do most commands entered by the user.
 fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     // Handle one-word commands
     if cmd.len() == 1 {
@@ -725,7 +725,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         Ok(r_state) => {
                             println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
 
-                            dm1.take_action_arbitrary(act_num, &i_state, &r_state);
+                            dm1.eval_sample_arbitrary(act_num, &i_state, &r_state);
                             return true;
                         }
                         Err(error) => {
@@ -746,6 +746,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     false
 } // end do_command
 
+/// Display usage options.
 fn usage() {
     println!("\nCommands:");
     println!("    h | help                 - Show this list.\n");
@@ -797,7 +798,7 @@ fn usage() {
     println!("\n    q | exit | quit          - Quit program.");
 }
 
-// Pause for input of 'c'. i.e stop consecutive Enter
+///Pause for input from user.
 pub fn pause_for_input(loc: &str) {
     loop {
         println!("{} Press c to continue: ", loc);
@@ -815,6 +816,7 @@ pub fn pause_for_input(loc: &str) {
     } // end loop
 }
 
+/// Pause execution until the Enter key is pressed.
 pub fn pause_for_enter(loc: &str) {
     println!("{} Press Enter to continue: ", loc);
     io::stdout().flush().unwrap();
@@ -824,6 +826,7 @@ pub fn pause_for_enter(loc: &str) {
         .expect("Falied to read line");
 }
 
+/// Load data from a given path string.
 fn load_data(path_str: &String) -> Result<DomainStore, String> {
     let path = Path::new(path_str);
     let display = path.display();
@@ -855,6 +858,7 @@ fn load_data(path_str: &String) -> Result<DomainStore, String> {
     } // end match open file
 }
 
+/// Store current data to a given path string.
 fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<(), String> {
     let serialized_r = serde_yaml::to_string(&dmxs);
     match serialized_r {

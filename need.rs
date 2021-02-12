@@ -1,10 +1,10 @@
-// Need type, for an Unorthodox Expert System.
-//
-// Something is logically needed, like:
-// More samples of a square(or state, or bit pattern),
-// A sample in a region that has contradictory predictions.
-// Samples to confirm a group.
-// Housekeeping needs, like deciding that nothing more needs to be done to confirm a group.
+//! The SomeNeed enum, representing needs for samples, or housekeeping tasks.
+//!
+//! Something is logically needed, like:
+//! More samples of a square(or state, or bit pattern),
+//! A sample in a region that has contradictory predictions.
+//! Samples to confirm a group.
+//! Housekeeping needs, like confirming a group.
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -92,10 +92,16 @@ impl fmt::Display for SomeNeed {
                     )
                 }
             }
-            SomeNeed::AddGroup {
+            SomeNeed::SeekEdge {
+                dom_num: dm,
                 act_num: an,
-                group_region: greg,
-            } => format!("N(Act: {} Create group {})", an, greg,),
+                targ_state: sta,
+                in_group: greg,
+            } => format!(
+                "N(Dom {} Act {} Sample State {}, between {} and {})",
+                dm, an, &sta, &greg.state1, &greg.state2
+            ),
+            SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg,),
             SomeNeed::SetGroupConfirmed {
                 group_region: greg,
                 cstate: sta1,
@@ -108,15 +114,7 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 mbit: mbitx,
             } => format!("N(group {} clear expand bit {})", greg, mbitx,),
-            SomeNeed::SeekEdge {
-                dom_num: dm,
-                act_num: an,
-                targ_state: sta,
-                in_group: greg,
-            } => format!(
-                "N(Dom {} Act {} Sample State {}, between {} and {})",
-                dm, an, &sta, &greg.state1, &greg.state2
-            ),
+
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
             }
@@ -168,8 +166,13 @@ pub enum SomeNeed {
         grp_reg: SomeRegion,
         far: SomeState,
     },
-    AddGroup {
+    SeekEdge {
+        dom_num: usize,
         act_num: usize,
+        targ_state: SomeState,
+        in_group: SomeRegion,
+    },
+    AddGroup {
         group_region: SomeRegion,
     },
     SetGroupConfirmed {
@@ -183,12 +186,6 @@ pub enum SomeNeed {
     ClearGroupExpandBit {
         group_region: SomeRegion,
         mbit: SomeMask,
-    },
-    SeekEdge {
-        dom_num: usize,
-        act_num: usize,
-        targ_state: SomeState,
-        in_group: SomeRegion,
     },
     InactivateSeekEdge {
         reg: SomeRegion,
@@ -306,15 +303,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::AddGroup {
-                act_num: an,
-                group_region: greg,
-            } => match other {
+            SomeNeed::AddGroup { group_region: greg } => match other {
                 SomeNeed::AddGroup {
-                    act_num: anx,
                     group_region: gregx,
                 } => {
-                    if an == anx && *greg == *gregx {
+                    if *greg == *gregx {
                         return true;
                     }
                 }
@@ -599,12 +592,6 @@ impl SomeNeed {
                 targ_state: _,
                 grp_reg: _,
                 far: _,
-            } => {
-                return *an;
-            } // end process a StateAdditionalSample need
-            SomeNeed::AddGroup {
-                act_num: an,
-                group_region: _,
             } => {
                 return *an;
             }
