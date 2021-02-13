@@ -1568,7 +1568,7 @@ impl SomeAction {
             //println!("can {} combine with {}, {}", &sqrx, &sqry, &cmbl);
 
             if cmbl == Combinable::MoreSamplesNeeded {
-                if sqrx.pnc() == false {
+                if sqrx.pn() < sqry.pn() {
                     nds.push(SomeNeed::StateAdditionalSample {
                         dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
@@ -1577,10 +1577,9 @@ impl SomeAction {
                         far: sqry.state.clone(),
                     });
 
-                    inx += 2;
                 }
 
-                if sqry.pnc() == false {
+                if sqry.pn() < sqrx.pn() {
                     nds.push(SomeNeed::StateAdditionalSample {
                         dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
@@ -1589,8 +1588,8 @@ impl SomeAction {
                         far: sqrx.state.clone(),
                     });
 
-                    inx += 2;
                 }
+                inx += 2;
                 continue;
             }
 
