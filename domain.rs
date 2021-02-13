@@ -42,21 +42,33 @@ impl fmt::Display for SomeDomain {
 
 #[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
-    pub num: usize,             // Domain number.  Index into vec for DomainStore.
-    pub num_ints: usize,        // Number integers making up a bits struct.
-    pub actions: ActionStore,   // Actions the Domain can take
-    pub cur_state: SomeState,   // Current State.
-    pub max_region: SomeRegion, // Region formed by the union of all Current States experienced.
-    pub optimal: SomeRegion, // An optimal region that is sought if there ar eno needs.  This may be changed.
-    pub prev_state: SomeState, // A copy of the current state, to detect if it has changed between Domain activities.
-    pub x_mask: SomeMask,      // A store of possible, predictable, bit changes
-    vec_hash: Vec<HashMap<SomeState, usize>>, // Hashmaps, one per action, allowing for "hidden variable" per state, for testing
-    vec_hvr: Vec<usize>, // hidden variable hidden variable range, for testing.  0-max(exclusive)
-                         // chosen randomly at first sample, incremented after each subsequent sample.
+    /// Domain number.  Index into a DomainStore.
+    pub num: usize,
+    /// Number integers making up a bits struct.    
+    pub num_ints: usize,
+    /// Actions the Domain can take.    
+    pub actions: ActionStore,
+    /// The Current State.    
+    pub cur_state: SomeState,
+    /// The region formed by the union of all Current States experienced.    
+    pub max_region: SomeRegion,
+    /// An optimal region that is sought if there ar eno needs.  This may be changed.    
+    pub optimal: SomeRegion,
+    /// A copy of the current state, to detect if it has changed between Domain activities.    
+    pub prev_state: SomeState,
+    /// A store of possible, predictable, bit changes.
+    pub x_mask: SomeMask,
+    /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
+    vec_hash: Vec<HashMap<SomeState, usize>>,
+    /// Hidden variable range, for testing.  0-max(exclusive).
+    /// Chosen randomly at first sample, incremented after each subsequent sample.     
+    vec_hvr: Vec<usize>,
 }
 
 impl SomeDomain {
-    pub fn new(num_ints: usize, start_state: &str, optimal: &str, num: usize) -> Self {
+    /// Return a new domain instance, given the number of integers, and strings for the
+    /// initial state, the optimal state, and index into the DomainStore struct.
+    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
 
@@ -65,7 +77,7 @@ impl SomeDomain {
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
-            num,
+            num: 0, // will be set later
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
@@ -78,15 +90,18 @@ impl SomeDomain {
         };
     }
 
-    pub fn add_action(&mut self, hv: usize) {
-        let actx = SomeAction::new(self.num_ints, self.actions.len());
-        self.actions.push(actx); // Add an action
+    /// Add a SomeAction struct to the store.
+    pub fn push(&mut self, mut actx: SomeAction, hv: usize) {
+        actx.num = self.actions.len();
+        //actx.num_ints = self.num_ints;
+        self.actions.push(actx);
 
         // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
         self.vec_hash.push(HashMap::new());
         self.vec_hvr.push(hv);
     }
 
+    /// Return needs gathers from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
         self.x_mask = self.actions.get_x_mask(self.num_ints);
 
@@ -99,10 +114,12 @@ impl SomeDomain {
         nst
     }
 
+    /// Return the total number of actions.
     pub fn num_actions(&self) -> usize {
         self.actions.len()
     }
 
+    /// Evaluate an arbitrary sample given by the user.
     pub fn eval_sample_arbitrary(
         &mut self,
         act_num: usize,
@@ -116,6 +133,7 @@ impl SomeDomain {
         self.set_cur_state(r_state.clone());
     }
 
+    /// Take an action for a need, evaluate the resulting sample.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
         self.check_async();
 
@@ -127,6 +145,7 @@ impl SomeDomain {
         self.set_cur_state(astate);
     }
 
+    /// Set the current state.
     fn set_cur_state(&mut self, new_state: SomeState) {
         self.prev_state = new_state.clone();
 
@@ -141,6 +160,7 @@ impl SomeDomain {
         }
     }
 
+    /// Check for a state change between sampling.
     pub fn check_async(&mut self) {
         if self.cur_state != self.prev_state {
             println!(
@@ -152,18 +172,18 @@ impl SomeDomain {
         }
     }
 
-    // Run a plan
+    /// Run a plan.
     pub fn run_plan(&mut self, pln: &SomePlan) {
         self.check_async();
 
         self.run_plan2(pln, 0) // return run_plan2, which uses a recursion count limit
     }
 
-    // Get a hidden variable value, for testing purposes.
-    // Its per state sampled, in the range 0-N(exclusive), where N was given in the <domain>.add_action call.
-    // If N was given as 0, then no hidden variable.
-    // Is randomly generated on the first sample of a state.
-    // In subsequent samples it is incremented, with wrap around.
+    /// Get a hidden variable value, for testing purposes.
+    /// Its per state sampled, in the range 0-N(exclusive), where N was given in the <domain>.add_action call.
+    /// If N was given as 0, then no hidden variable.
+    /// Is randomly generated on the first sample of a state.
+    /// In subsequent samples it is incremented, with wrap around.
     fn get_hv(&mut self, act_num: usize) -> usize {
         let hvr = self.vec_hvr[act_num];
         //println!("get_hv: hvr {}", hvr);
@@ -190,6 +210,7 @@ impl SomeDomain {
         return hvx;
     }
 
+    /// Run a plan.  Try to replan and run if a plan encounters an unexpected result.
     fn run_plan2(&mut self, pln: &SomePlan, recur: usize) {
         if recur > 3 {
             //println!("run_plan2 recursion limit exceeded, plan failed");
@@ -251,9 +272,9 @@ impl SomeDomain {
         } // next stpx
     } // end run_plan
 
-    // Make a plan from a region to another region
-    // Since there are some random choices, it may be useful to try
-    // running make_one_plan more than once.
+    /// Make a plan from a region to another region.
+    /// Since there are some random choices, it may be useful to try
+    /// running make_one_plan more than once.
     pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
         // Check if a need can be achieved, if so store index and Option<plan>.
         // Higher priority needs that can be reached will superceed lower prioriyt needs.
@@ -310,21 +331,21 @@ impl SomeDomain {
         None
     } // end make plan
 
-    // Given a from-region and a goal-region, then calculate the required bit-changes.
-    //
-    // Get a list of from-action-to steps that will roughly produce all the desired changes.
-    //     else return None.
-    //
-    // Check if one step will do the change needed.
-    //
-    // The initial-regions of the steps, representing the paths to the needed changes, will be
-    // at different distances (number bit differences) from the goal-region.
-    //
-    // The general rule is to use the step(s), with intial-regions
-    // furthest from the goal-region, then the next furthest step(s), until the goal-region
-    // is attained.
-    //
-    // Figure one step, then call recursively with history of from/to regions.
+    /// Given a from-region and a goal-region, then calculate the required bit-changes.
+    ///
+    /// Get a list of from-action-to steps that will roughly produce all the desired changes.
+    ///     else return None.
+    ///
+    /// Check if one step will do the change needed.
+    ///
+    /// The initial-regions of the steps, representing the paths to the needed changes, will be
+    /// at different distances (number bit differences) from the goal-region.
+    ///
+    /// The general rule is to use the step(s), with intial-regions
+    /// furthest from the goal-region, then the next furthest step(s), until the goal-region
+    /// is attained.
+    ///
+    /// Figure one step, then call recursively with history of from/to regions.
     fn make_one_plan(
         &self,
         from_reg: &SomeRegion,
@@ -561,20 +582,20 @@ impl SomeDomain {
         }
     } // end make_one_plan
 
-    // Process a possible step for translation of the from-region to the goal-region.
-    //
-    // If the given step translates the from-region to the goal-region.
-    // return a one-step plan.
-    //
-    // If needed, get a plan from the from-region to the step initial-region,
-    // else return None.
-    //
-    // If needed, get a plan from the step result-region to the goal-region,
-    // else return None.
-    //
-    // Link plans together as needed.
-    //
-    // Return a plan.
+    /// Process a possible step for translation of the from-region to the goal-region.
+    ///
+    /// If the given step translates the from-region to the goal-region.
+    /// return a one-step plan.
+    ///
+    /// If needed, get a plan from the from-region to the step initial-region,
+    /// else return None.
+    ///
+    /// If needed, get a plan from the step result-region to the goal-region,
+    /// else return None.
+    ///
+    /// Link sub plans together as needed.
+    ///
+    /// Return a plan.
     fn plan_next_steps(
         &self,
         from_reg: &SomeRegion,
@@ -665,7 +686,7 @@ impl SomeDomain {
     //        self.to_region(&self.optimal.clone())
     //    }
 
-    // Change the current state to be within a given region
+    /// Change the current state to be within a given region.
     pub fn to_region(&mut self, goal_region: &SomeRegion) -> bool {
         if goal_region.is_superset_of_state(&self.cur_state) {
             return true;
@@ -684,7 +705,7 @@ impl SomeDomain {
         }
     } // end to_region
 
-    // Sort a list of steps into a vector of step stores
+    /// Sort a list of steps, by change(s), into a vector of step stores.
     pub fn sort_steps(&self, stpsx: &StepStore, achange: &SomeChange) -> Vec<Vec<usize>> {
         let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stpsx.len());
 

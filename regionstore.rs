@@ -1,8 +1,8 @@
-// Implement a store for regions, for an Unorthodox Expert System.
-//
-// To avoid a lot of vector copying, setting a region to inactive is kind of
-// like deleting it.  But is remains until it is overwritten by a region with the active
-// indicator set to true.
+//! The RegionStore, a vector of SomeRegion structs.
+//!
+//! To avoid a lot of vector copying, setting a region to inactive is kind of
+//! like deleting it.  But it remains until it is overwritten by a region with the active
+//! indicator set to true.
 
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -20,29 +20,34 @@ impl fmt::Display for RegionStore {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegionStore {
+    /// A vector of regions.
     pub avec: Vec<SomeRegion>,
 }
 
 impl RegionStore {
+    /// Return a new, empty, RegionStore.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeRegion>::with_capacity(5),
         }
     }
 
+    /// Return the length of the vector, of active and inactive regions.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
+    /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
         self.avec.push(val);
     }
 
+    /// Return a vactor iterator.
     pub fn iter(&self) -> Iter<SomeRegion> {
         self.avec.iter()
     }
 
-    // Return true if any region is a superset, or equal, to a region
+    /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
             if reg.active && regx.is_superset_of(&reg) {
@@ -52,7 +57,7 @@ impl RegionStore {
         false
     }
 
-    // Return true if any region is a subset, or equal, to a region
+    /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
             if regx.active && regx.is_subset_of(&reg) {
@@ -62,7 +67,7 @@ impl RegionStore {
         false
     }
 
-    // Return true if any region is a superset of a state
+    /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
         for regx in &self.avec {
             if regx.active && regx.is_superset_of_state(&sta) {
@@ -72,6 +77,9 @@ impl RegionStore {
         false
     }
 
+    /// Return true if a RegionStore contains a region.
+    /// Regions may be equal, without matching states.
+    /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
             if reg.active && regx == reg {
@@ -81,6 +89,7 @@ impl RegionStore {
         false
     }
 
+    /// Return true if a given state is only in one region.
     pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
         let mut cnt = 0;
 
@@ -92,7 +101,7 @@ impl RegionStore {
         cnt == 1
     }
 
-    // Find and make inactive any subset regions
+    /// Find and make inactive any subset regions.
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
@@ -105,7 +114,7 @@ impl RegionStore {
         fnd
     }
 
-    // Find and make inactive any superset regions
+    /// Find and make inactive any superset regions.
     fn inactivate_supersets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
@@ -118,7 +127,7 @@ impl RegionStore {
         fnd
     }
 
-    // Find and make inactive any superset regions
+    /// Find and make inactive a given region.
     pub fn inactivate(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
@@ -131,7 +140,7 @@ impl RegionStore {
         fnd
     }
 
-    // Find index to first inactive group, or return -1 is none found
+    /// Find index to first inactive group, or return -1 if none found.
     fn first_inactive_index(&self) -> i32 {
         let mut cnt = 0;
         for regx in &self.avec {
@@ -143,6 +152,7 @@ impl RegionStore {
         -1
     }
 
+    /// Return true if any region is active.
     pub fn any_active(&self) -> bool {
         for regx in &self.avec {
             if regx.active {
@@ -162,6 +172,7 @@ impl RegionStore {
     //         false
     //    }
 
+    /// Add a region, inactivating subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
@@ -190,7 +201,7 @@ impl RegionStore {
         true
     }
 
-    // Push no supersets
+    /// Add a region, inactivating superset regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
         // Check for subsets, which probably is an error
         if self.any_subset_of(&reg) {
@@ -288,6 +299,7 @@ impl RegionStore {
     //        false
     //    }
 
+    /// Return the expected length of a string representing a RegionStore.
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
@@ -308,6 +320,7 @@ impl RegionStore {
         rc_len
     }
 
+    /// Return a string representing a RegionStore.
     pub fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());

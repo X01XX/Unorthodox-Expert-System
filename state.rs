@@ -1,11 +1,16 @@
-//! The State struct, for an Unorthodox Expert System.
-//!
-//! A series of bits, representing a state of the program, or
-//! a "square" or "bit pattern" on a Karnaugh map.
+//! The SomeState struct. Represents a bit-pattern/square/state on a pseudo Karnaugh Map.
 //!
 //! The structure of a State and a Mask are the same,
 //! the difference is in the intended use.
-
+//!
+//! A different mask for two states would be calculated like:
+//!
+//! let diff_mask = SomeMask { ints: state1.bts.b_xor(&state2.bts) };
+//!
+//! A difference mask applied to a state, to get a new state, would be calculated like:
+//!
+//! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
+//!
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -23,11 +28,12 @@ impl fmt::Display for SomeState {
 }
 
 impl SomeState {
+    /// Return a new SOmeState instance, given a SommeBits instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
     }
 
-    // Return true is a given bit is set to one.
+    /// Return true is a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
     }
@@ -40,17 +46,17 @@ impl SomeState {
     //            .is_low()
     //    }
 
-    // Return a state and another
+    /// Return a state and another state.
     pub fn s_and(&self, other: &Self) -> Self {
         Self::new(self.bts.b_and(&other.bts))
     }
 
-    // Return a state or another
+    /// Return a state or another state.
     pub fn s_or(&self, other: &Self) -> Self {
         Self::new(self.bts.b_or(&other.bts))
     }
 
-    // Return a state xor another
+    /// Return a state xor another state.
     pub fn s_xor(&self, other: &Self) -> Self {
         Self::new(self.bts.b_xor(&other.bts))
     }
@@ -60,31 +66,34 @@ impl SomeState {
     //        Self::new(self.bts.b_not())
     //    }
 
+    /// Togle the bits of a state, given a vector of numbers.
     pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {
         SomeState {
             bts: self.bts.toggle_bits(nums),
         }
     }
 
-    // Return the number of integers used to express a SomeState innstance
+    /// Return the number of integers used to represent a state.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }
 
-    // Return true if two squares are adjacent, that is there is exactly one bit difference.
+    /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &SomeState) -> bool {
         self.s_xor(&other).bts.just_one_bit()
     }
 
-    // Return the number of one bits that are different between two states
+    // /Return the number of one bits that are different between two states.
     pub fn distance(&self, other: &SomeState) -> usize {
         self.bts.distance(&other.bts)
     }
 
+    /// Return the expected length of a string used to represent a state.
     pub fn formatted_string_length(&self) -> usize {
         self.bts.formatted_string_length()
     }
 
+    /// Return a string used to represent a state.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }

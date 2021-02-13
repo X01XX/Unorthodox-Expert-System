@@ -1,4 +1,4 @@
-// Implement a store for states, for an Unorthodox Expert System.
+//! The StateStore struct. A vector of SomeState structs.
 
 use crate::state::SomeState;
 use std::ops::Index;
@@ -14,34 +14,41 @@ impl fmt::Display for StateStore {
 
 #[derive(Debug)]
 pub struct StateStore {
+    /// A vector of states.
     avec: Vec<SomeState>,
 }
 
 impl StateStore {
+    /// Return a new StateStore instance, empty.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeState>::new(),
         }
     }
 
+    /// Return a new StateStore instance, empty, with a specified capacity.
     pub fn new_with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeState>::with_capacity(num),
         }
     }
 
+    /// Return the number of states in a StateStore.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
+    /// Add a state to a StateStore.
     pub fn push(&mut self, val: SomeState) {
         self.avec.push(val);
     }
 
+    /// Return an immuable iterator.
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()
     }
 
+    /// Return true if a tateStore contains a given state.
     pub fn contains(&self, stax: &SomeState) -> bool {
         for stay in &self.avec {
             if stay == stax {
@@ -51,6 +58,7 @@ impl StateStore {
         false
     }
 
+    /// Return the expected length of a string representing a StateStore.
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
@@ -64,6 +72,7 @@ impl StateStore {
         rc_len
     }
 
+    /// Return a string representing a StateStore.
     pub fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());

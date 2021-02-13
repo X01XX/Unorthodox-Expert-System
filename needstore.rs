@@ -1,4 +1,4 @@
-// Implement a store for needs, for an Unorthodox Expert System.
+//! The NeedStore struct, a vector of SomeNeeds structs.
 
 use crate::need::SomeNeed;
 use std::fmt;
@@ -27,10 +27,12 @@ impl fmt::Display for NeedStore {
 }
 
 pub struct NeedStore {
+    /// A vector od SomeNeed instances.
     avec: Vec<SomeNeed>,
 }
 
 impl NeedStore {
+    /// Return a new NeedStore instance.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeNeed>::with_capacity(5),
@@ -43,11 +45,12 @@ impl NeedStore {
     //        }
     //    }
 
+    /// Return the length of the SomeNeed vector.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
-    // Check if a need is already in a needstore
+    /// Return true if a need is already in a SeedStore.
     pub fn contains(&self, new_need: &SomeNeed) -> bool {
         for nedx in &self.avec {
             if *nedx == *new_need {
@@ -58,12 +61,14 @@ impl NeedStore {
         false
     }
 
+    /// Add a need to the vector.
     pub fn push(&mut self, val: SomeNeed) {
         if self.contains(&val) == false {
             self.avec.push(val);
         }
     }
 
+    /// Append a Needstore.
     pub fn append(&mut self, other: &mut NeedStore) {
         self.avec.append(&mut other.avec);
     }
@@ -72,6 +77,7 @@ impl NeedStore {
     //        self.avec.iter()
     //    }
 
+    /// Return a mutable iterator.
     pub fn iter_mut(&mut self) -> IterMut<SomeNeed> {
         self.avec.iter_mut()
     }

@@ -1,7 +1,5 @@
-// Implement a square struct, for an Unorthodox Expert System.
-// This represents a state in a K-Map and one or more result states
-// from excuting an action.
-
+//! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
+//!
 use crate::combinable::Combinable;
 use crate::pn::Pn;
 use crate::resultstore::ResultStore;
@@ -37,7 +35,7 @@ pub struct SomeSquare {
 }
 
 impl SomeSquare {
-    // Return a new Square instance
+    /// Return a new Square instance.
     pub fn new(state: SomeState, result_state: SomeState) -> Self {
         let mut rcsqr = Self {
             state: state.clone(),
@@ -50,14 +48,17 @@ impl SomeSquare {
         rcsqr
     }
 
+    /// Return the Pn value for a square.
     pub fn pn(&self) -> Pn {
         self.results.pn
     }
 
+    /// Return the pnc (Pattern Number Confirmed) value for a square.
     pub fn pnc(&self) -> bool {
         self.results.pnc
     }
 
+    /// Return true if the most recent sample changed some interpretation of a square.
     pub fn changed(&self) -> bool {
         self.results.changed
     }
@@ -66,33 +67,34 @@ impl SomeSquare {
     //        1 == self.results.len()
     //    }
 
+    /// Return a string representing a square.
     pub fn str_terse(&self) -> String {
         self.state.bts.formatted_string('S')
     }
 
-    // Can two squares be combined?
-    //
-    // This is one of the most tricky, and crucial, functions.
-    //
-    // At program start, you want a few easy wins by combining squares
-    // with only one sample each, even if a few combinations turn out to be invalid.
-    //
-    // Combinations allow plans to be formed to get desired samples,
-    // to improve understanding of the logic.
-    //
-    // Combinations will be invalidated if they produce an unexpected result
-    // when used in a plan.
-    //
-    // No more than the last four samples are considered.
-    //
-    // The pattern number (pn) and the number of samples are
-    // deciding factors.
-    //
-    // With continuing samples, a square might cycle through different
-    // patterns, although that should be rare.
-    //
-    // This returns three possible results: True, False or MoreSamplesNeeded.
-    //
+    /// Can two squares be combined?
+    ///
+    /// This is one of the most tricky, and crucial, functions.
+    ///
+    /// At program start, you want a few easy wins by combining squares
+    /// with only one sample each, even if a few combinations turn out to be invalid.
+    ///
+    /// Combinations allow plans to be formed to get desired samples,
+    /// to improve understanding of the logic.
+    ///
+    /// Combinations will be invalidated if they produce an unexpected result
+    /// when used in a plan.
+    ///
+    /// No more than the last four samples are considered.
+    ///
+    /// The pattern number (pn) and the number of samples are
+    /// deciding factors.
+    ///
+    /// With continuing samples, a square might cycle through different
+    /// patterns, although that should be rare.
+    ///
+    /// This returns three possible results: True, False or MoreSamplesNeeded.
+    ///
     pub fn can_combine(&self, other: &Self) -> Combinable {
         match self.pn() {
             Pn::One => {
@@ -219,9 +221,9 @@ impl SomeSquare {
         } // end match self.pn
     } // end can_combine
 
-    // Add a result to a square (4-item circular buffer).
-    // Return true if the addition changed the square, either the
-    // pn or pnc changed.  If there is a change, update the rules.
+    /// Add a result to a square (4-item circular buffer).
+    /// Return true if the addition changed the square, either the
+    /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
         //println!("Adding result {} to square {}", st, self.str_terse());
 
@@ -253,18 +255,22 @@ impl SomeSquare {
         rc
     }
 
+    /// Return the number of results stored for the square.
     pub fn len_results(&self) -> usize {
         self.results.len()
     }
 
+    /// Return the last result for the square.
     pub fn last_result(&self) -> SomeState {
         self.results.last_result()
     }
 
+    /// Return the second to last result for the square.
     pub fn second_last_result(&self) -> SomeState {
         self.results.second_last_result()
     }
 
+    /// Return true if two squares are adjacent, that is they differ by exactly one bit.
     pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
         self.state.is_adjacent(&other.state)
     }
@@ -273,8 +279,7 @@ impl SomeSquare {
     //        self.state.distance(&other.state)
     //    }
 
-    // Given a 2-rule RuleStore, and a square within it,
-    // return the expected next result for the square
+    /// Given a Pn::Two square, return the expected next result.
     pub fn next_result(&self, ruls: &RuleStore) -> SomeState {
         assert!(ruls.avec.len() == 2);
 

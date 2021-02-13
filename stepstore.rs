@@ -1,4 +1,4 @@
-// Implement a store for steps, for an Unorthodox Expert System.
+//! The StepStore struct.  A vector of SomeStep structs.
 
 use crate::step::SomeStep;
 
@@ -14,34 +14,41 @@ impl fmt::Display for StepStore {
 
 #[derive(Debug)]
 pub struct StepStore {
+    /// A vector for steps.
     pub avec: Vec<SomeStep>,
 }
 
 impl StepStore {
+    /// Return a new StepStore, empty.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(5),
         }
     }
 
+    /// Return a new StepStore, empty, with an expected capacity.
     pub fn new_with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(num),
         }
     }
 
+    /// Return the number of steps in a StepStore.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
+    /// Add a step to a StepStore.
     pub fn push(&mut self, val: SomeStep) {
         self.avec.push(val);
     }
 
+    /// Append a StepStore to a StepStore.
     pub fn append(&mut self, mut val: StepStore) {
         self.avec.append(&mut val.avec); // empties val.avec
     }
 
+    /// Return an immutable iterator for a StepStore.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.avec.iter()
     }
@@ -56,12 +63,13 @@ impl StepStore {
     //		rc_steps
     //	}
 
+    /// Reverse the order of steps in a StepStore.
     pub fn reverse(&mut self) {
         self.avec.reverse();
     }
 
-    // Return a vector with indices of two steps with the same initial region
-    // else return an empty vector.
+    /// Return a vector with indices of two steps with the same initial region,
+    /// else return an empty vector.
     pub fn same_intitial(&self) -> Vec<usize> {
         let mut ret_vec = Vec::<usize>::new();
 
@@ -81,6 +89,7 @@ impl StepStore {
         ret_vec
     }
 
+    /// Return the expected length of a string representing a StepStore.
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
@@ -94,6 +103,7 @@ impl StepStore {
         rc_len
     }
 
+    /// Return a string representing a StepStore.
     pub fn formatted_string(&self, prefix: &str) -> String {
         let mut flg = 0;
         let mut rc_str = String::with_capacity(prefix.len() + self.formatted_string_length());

@@ -112,14 +112,16 @@ pub struct SomeAction {
 impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct,
     /// and the Action number, an index into SomeDomain::ActionStore which contains it.
-    pub fn new(num_ints: usize, num: usize) -> Self {
+    pub fn new(num_ints: usize) -> Self {
+        assert!(num_ints > 0);
+
         SomeAction {
-            num,
+            num: 0,
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
-            num_ints,
+            num_ints: num_ints,
             predictable_bit_changes: SomeChange::new_low(num_ints),
         }
     }
@@ -208,10 +210,10 @@ impl SomeAction {
     /// Evaluate a sample taken to satisfy a need.
     ///
     /// If the GroupStore has changed, recalcualte the predictable change mask.
-    pub fn eval_need_sample(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
+    pub fn eval_need_sample(&mut self, initial: &SomeState, ndx: &SomeNeed, result: &SomeState) {
         self.groups.changed = false;
 
-        self.eval_need_sample2(cur, ndx, new_state);
+        self.eval_need_sample2(initial, ndx, result);
 
         // Update predictable bit change masks, for group expansion and confirmation.
         if self.groups.changed {
@@ -219,7 +221,7 @@ impl SomeAction {
         }
     }
 
-    pub fn eval_need_sample2(&mut self, cur: &SomeState, ndx: &SomeNeed, new_state: &SomeState) {
+    pub fn eval_need_sample2(&mut self, initial: &SomeState, ndx: &SomeNeed, result: &SomeState) {
         // println!("take_action_need2 {}", &ndx);
 
         // Process each kind of need
@@ -232,7 +234,7 @@ impl SomeAction {
                 far,
                 num_x: _,
             } => {
-                self.store_sample(&cur, &new_state);
+                self.store_sample(&initial, &result);
 
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
@@ -279,8 +281,8 @@ impl SomeAction {
                 targ_state: sta,
                 in_group: greg,
             } => {
-                self.store_sample(&cur, &new_state);
-                self.check_square_new_sample(&cur);
+                self.store_sample(&initial, &result);
+                self.check_square_new_sample(&initial);
 
                 // Form the rules, make the group
                 let sqr1 = self.squares.find(&greg.state1).unwrap();
@@ -321,9 +323,9 @@ impl SomeAction {
             } // end match SeekEdgeNeed
             _ => {
                 // Store sample.
-                self.store_sample(&cur, &new_state);
+                self.store_sample(&initial, &result);
                 // Check to invalidate old groups, create new groups.
-                self.check_square_new_sample(&cur);
+                self.check_square_new_sample(&initial);
             }
         } // end match ndx
     } // End take_action_need2
@@ -643,7 +645,7 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-                    SomeNeed::ClearGroupConfirmBit {
+                    SomeNeed::ClearEdgeConfirmBit {
                         group_region: greg,
                         mbit: mbitx,
                     } => {
@@ -652,7 +654,7 @@ impl SomeAction {
                             grpx.check_off_confirm_bit(&mbitx);
                         }
                     }
-                    SomeNeed::ClearGroupExpandBit {
+                    SomeNeed::ClearEdgeExpandBit {
                         group_region: greg,
                         mbit: mbitx,
                     } => {
@@ -1010,20 +1012,19 @@ impl SomeAction {
                 continue;
             }
 
-            let not_x = grpx.not_x_expand.m_and(&self.x_mask);
+            // Check for edge bits under mask of all possible X bits.
+            let edge_expand = grpx.edge_expand.m_and(&self.x_mask);
 
-            if not_x.is_low() {
+            if edge_expand.is_low() {
                 continue;
             }
 
             // Get a vector of one-bit masks
-            let check_bits = MaskStore {
-                avec: not_x.split(),
-            };
+            let edge_msks = edge_expand.split();
 
             // Check for expansion, or single-bit adjacent external
-            for bitx in check_bits.iter() {
-                let reg_exp = grpx.region.toggle_bits(bitx);
+            for edge_msk in edge_msks.iter() {
+                let reg_exp = grpx.region.toggle_bits(&edge_msk);
 
                 // At least two squares should be in the group, so in the expanded region
                 //let sqr_stas = self.squares.stas_in_reg(&reg_exp);
@@ -1038,9 +1039,9 @@ impl SomeAction {
                 // );
 
                 if ndsx.len() == 0 {
-                    ret_nds.push(SomeNeed::ClearGroupExpandBit {
+                    ret_nds.push(SomeNeed::ClearEdgeExpandBit {
                         group_region: grpx.region.clone(),
-                        mbit: bitx.clone(),
+                        mbit: edge_msk.clone(),
                     });
                 } else {
                     ret_nds.append(&mut ndsx);
@@ -1159,10 +1160,10 @@ impl SomeAction {
                 continue;
             }
 
-            let non_x_mask = grpx.not_x_confirm.m_and(&self.x_mask);
+            let edge_confirm = grpx.edge_confirm.m_and(&self.x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
-            let non_x_msks = non_x_mask.split();
+            let edge_msks = edge_confirm.split();
 
             // For each state, sta1, only in the group region, greg:
             //
@@ -1203,8 +1204,8 @@ impl SomeAction {
                 }
 
                 // Rate adjacent external states
-                for non_x_bit in non_x_msks.iter() {
-                    let sta_adj = SomeState::new(sta1.bts.b_xor(&non_x_bit.bts));
+                for edge_bit in edge_msks.iter() {
+                    let sta_adj = SomeState::new(sta1.bts.b_xor(&edge_bit.bts));
                     //println!(
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg
@@ -1301,7 +1302,7 @@ impl SomeAction {
 
                 let a_bit_msk = SomeMask::new(adj_sta.bts.b_xor(&anchor_sta.bts));
 
-                if grpx.not_x_confirm_bit_set(&a_bit_msk) == false {
+                if grpx.edge_confirm_bit_set(&a_bit_msk) == false {
                     continue;
                 }
 
@@ -1317,7 +1318,7 @@ impl SomeAction {
                             });
                         } else {
                             // Set that bit off in the check mask
-                            grp_clear_bit.push(SomeNeed::ClearGroupConfirmBit {
+                            grp_clear_bit.push(SomeNeed::ClearEdgeConfirmBit {
                                 group_region: greg.clone(),
                                 mbit: SomeMask::new(anchor_sta.bts.b_xor(&adj_sta.bts)),
                             });

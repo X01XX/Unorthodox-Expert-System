@@ -35,13 +35,14 @@ pub struct SquareStore {
 }
 
 impl SquareStore {
+    /// Return a new, empty, SquareStore.
     pub fn new() -> Self {
         Self {
             ahash: HashMap::new(),
         }
     }
 
-    // Return a string for squares in a given region.
+    /// Return a list of squares in a given region.
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
         let mut rc_store = StateStore::new();
 
@@ -53,19 +54,24 @@ impl SquareStore {
         rc_store
     }
 
+    /// Return an Option mutable reference for a square given a state,
+    /// or None if not found.
     pub fn find_mut(&mut self, val: &SomeState) -> Option<&mut SomeSquare> {
         self.ahash.get_mut(val)
     }
 
+    /// Return an Option immutable reference for a square given a state,
+    /// or None if not found.
     pub fn find(&self, val: &SomeState) -> Option<&SomeSquare> {
         self.ahash.get(val)
     }
 
-    // Add a square that is not currently in the store.
+    /// Add a square that is not currently in the store.
     pub fn insert(&mut self, sqrx: SomeSquare) {
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 
+    /// Return a list of square states no in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 
@@ -78,6 +84,7 @@ impl SquareStore {
         states
     }
 
+    /// Return a list of square states that are only in one region of a list of regions.
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 
@@ -90,7 +97,7 @@ impl SquareStore {
         states
     }
 
-    // Return states that are adjacent to a given region.
+    /// Return a list of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
         let mut states = StateStore::new();
 

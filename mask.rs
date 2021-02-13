@@ -27,76 +27,80 @@ impl fmt::Display for SomeMask {
 }
 
 impl SomeMask {
-    // Return a new Mask struct instance
+    /// Return a new Mask struct instance.
     pub fn new(val: SomeBits) -> Self {
         Self { bts: val }
     }
 
+    /// Return a new mask set to all zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
             bts: SomeBits::new_low(num_ints),
         }
     }
 
-    // Return the xor or two maks
+    /// Return the xor or of two masks.
     pub fn m_xor(&self, other: &Self) -> Self {
         Self::new(self.bts.b_xor(&other.bts))
     }
 
-    // Return the or or two maks
+    /// Return the or of two maks.
     pub fn m_or(&self, other: &Self) -> Self {
         Self::new(self.bts.b_or(&other.bts))
     }
 
-    // Return the and or two maks
+    /// Return the and of two masks.
     pub fn m_and(&self, other: &Self) -> Self {
         Self::new(self.bts.b_and(&other.bts))
     }
 
-    // Return result of a not operation
+    /// Return the result of a not operation.
     pub fn m_not(&self) -> Self {
         Self::new(self.bts.b_not())
     }
 
-    // Return true if the mask is low, that is all zeros
+    /// Return true if the mask is low, that is all zeros.
     pub fn is_low(&self) -> bool {
         self.bts.is_low()
     }
 
+    /// Return true if the mask is not low, that is not all zeros.
     pub fn is_not_low(&self) -> bool {
         self.bts.is_not_low()
     }
 
-    // Return true if the mask is high, that is all ones
+    /// Return true if the mask is high, that is all ones/
     pub fn is_high(&self) -> bool {
         self.bts.is_high()
     }
 
-    // Return true is a given bit is one at a given position
+    /// Return true if a given bit is one at a given position.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
     }
 
-    // Return true is a mask is a subset of a second mask
+    // Return true if a mask is a subset of a second mask.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         self.bts.is_subset_of(&other.bts)
     }
 
-    // Return true is a mask is a superset of a second mask
+    /// Return true if a mask is a superset of a second mask.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         self.bts.is_superset_of(&other.bts)
     }
 
+    /// Return the number of bits set to one.
     pub fn num_one_bits(&self) -> usize {
         self.bts.num_one_bits()
     }
 
+    /// Return true if only one bit is set to one.
     pub fn just_one_bit(&self) -> bool {
         self.bts.just_one_bit()
     }
 
-    // Return a vector of one-bit masks
-    // Should be called like MaskStore { avec: <a mask object>.split() }
+    /// Return a vector of one-bit masks.
+    /// Could be called like MaskStore { avec: <a mask object>.split() }
     pub fn split(&self) -> Vec<Self> {
         let bitsx = self.bts.split();
 
@@ -109,15 +113,17 @@ impl SomeMask {
         rc_vec
     }
 
-    // Return the number of ints used to express a SomeMask instance
+    /// Return the number of ints used to express a SomeMask instance.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }
 
+    /// Return the expected length of a formatted string.
     pub fn formatted_string_length(&self) -> usize {
         self.bts.formatted_string_length()
     }
 
+    /// Return a formatted string.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('m')
     }

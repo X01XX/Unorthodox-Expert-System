@@ -37,6 +37,9 @@ impl fmt::Display for SomeBits {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeBits {
+    /// Vector of one, or more, unsigned integers.
+    /// This structure sets the type of integer.
+    /// Each Domain sets the number of integers.
     pub ints: Vec<u8>,
 }
 
@@ -52,13 +55,13 @@ impl SomeBits {
         }
     }
 
+    /// Return the number of integers in a SomeBits struct.
     pub fn len(&self) -> usize {
         self.ints.len()
     }
 
-    // Return a vector of bits where each has only
-    // one 1 bit isolated from the given Bits struct.
-    // Should be called like: BitsStore { avec: <a bits object>.split() }
+    /// Return a vector of bits where each has only
+    /// one 1 bit isolated from the given Bits struct.
     pub fn split(&self) -> Vec<Self> {
         let num_bits = self.num_one_bits();
 
@@ -89,7 +92,7 @@ impl SomeBits {
         rc_vec
     }
 
-    // Return a Bits struct with specified bit(s) changed
+    /// Return a Bits struct with specified bit(s) changed.
     pub fn toggle_bits(&self, bit_nums: Vec<usize>) -> Self {
         let mut ary2 = self.ints.clone();
 
@@ -110,7 +113,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    // Return true if a bit is one at a given position
+    /// Return true if a bit is one at a given position.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
         let num_ints = self.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
@@ -127,7 +130,7 @@ impl SomeBits {
         self.ints[int_num] & ALL_BIT_MASKS[bit_pos] > 0
     }
 
-    // Bitwise NOT of a Bits stuct
+    /// Bitwise NOT of a Bits stuct.
     pub fn b_not(&self) -> Self {
         let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
 
@@ -138,7 +141,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    // Bitwise AND of two Bits structs
+    /// Bitwise AND of two Bits structs.
     pub fn b_and(&self, other: &Self) -> Self {
         assert!(self.len() == other.len());
 
@@ -150,7 +153,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    // Bitwise OR of two Bits structs
+    /// Bitwise OR of two Bits structs.
     pub fn b_or(&self, other: &Self) -> Self {
         assert!(self.len() == other.len());
 
@@ -162,7 +165,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    // Bitwise XOR of two Bits structs
+    /// Bitwise XOR of two Bits structs.
     pub fn b_xor(&self, other: &Self) -> Self {
         assert!(self.len() == other.len());
 
@@ -174,7 +177,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    // Return true if the Bits struct value is low, that is all zeros
+    /// Return true if the Bits struct value is low, that is all zeros.
     pub fn is_low(&self) -> bool {
         for int_inx in 0..self.num_ints() {
             if self.ints[int_inx] > 0 {
@@ -184,7 +187,7 @@ impl SomeBits {
         true
     }
 
-    // Return true if a Bits struct has at least one bit set to one
+    /// Return true if a Bits struct has at least one bit set to one.
     pub fn is_not_low(&self) -> bool {
         for int_inx in 0..self.num_ints() {
             if self.ints[int_inx] > 0 {
@@ -194,7 +197,7 @@ impl SomeBits {
         false
     }
 
-    // Return true if the Bits struct value is high, that is all ones
+    /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
         for intx in self.ints.iter() {
             if *intx != INT_ALL_BITS_MASK {
@@ -204,17 +207,17 @@ impl SomeBits {
         true
     }
 
-    // Return true is a Bits struct is a ones-subset of another
+    /// Return true is a Bits struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         *self == self.b_and(&other)
     }
 
-    // Return true if a Bits struct is a ones-superset of another
+    /// Return true if a Bits struct is a ones-superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         *other == self.b_and(&other)
     }
 
-    // Return the number of one bits
+    /// Return the number of bits set to one.
     pub fn num_one_bits(&self) -> usize {
         let mut cnt = 0;
 
@@ -232,13 +235,13 @@ impl SomeBits {
         cnt
     }
 
-    // Return the number of bits that are different
-    // This can be interpreted as how "far away" two bit pattewrns are.
+    /// Return the number of bits that are different.
+    /// This can be interpreted as how "far away" two bit patterns are.
     pub fn distance(&self, other: &SomeBits) -> usize {
         self.b_xor(&other).num_one_bits()
     }
 
-    // Return true if only one bit set
+    /// Return true if only one bit is setto one.
     pub fn just_one_bit(&self) -> bool {
         let mut cnt = 0;
 
@@ -261,7 +264,7 @@ impl SomeBits {
         cnt == 1
     }
 
-    // Return a copy of self, shifted 1 to the left, and 1 added.
+    /// Return a copy of self, shifted 1 to the left, and 1 added.
     pub fn push_1(&self) -> Self {
         let num_ints = self.num_ints();
 
@@ -271,8 +274,8 @@ impl SomeBits {
         tmp
     }
 
-    // Return a copy, shifted left by 1 bit
-    // Most Significant Bit value is lost.
+    /// Return a copy, shifted left by 1 bit
+    /// The Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {
         let mut ints2 = vec![0 as u8; self.num_ints()];
 
@@ -311,7 +314,7 @@ impl SomeBits {
         return true;
     }
 
-    // Calculate the expected length of a string that represents a SomeBits struct.
+    /// Calculate the expected length of a string that represents a SomeBits struct.
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.ints.len()) + self.ints.len()
     }

@@ -1,6 +1,4 @@
-//! The Combinable enum, for an Unorthodox Expert System.
-//!
-//! This signifies the ability for two squares to be combined.
+//! The Combinable enum, representing the combinability of two SomeSquare structs.
 //!
 //! The allowable values are True, False, and MoreSamplesNeeded.
 //!
@@ -22,12 +20,16 @@ impl fmt::Display for Combinable {
 
 #[derive(Debug)]
 pub enum Combinable {
+    /// Boolean True.
     True,
+    /// Boolean False.
     False,
+    /// Non-Boolean "Maybe".
     MoreSamplesNeeded,
 }
 
 impl PartialEq for Combinable {
+    /// Return true if two Combinable enums are equal.
     fn eq(&self, other: &Self) -> bool {
         match self {
             Combinable::True => match other {

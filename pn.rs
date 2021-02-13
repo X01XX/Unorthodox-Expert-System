@@ -1,23 +1,27 @@
-// Implement a Pattern Number.
-//
-// Squares with the same Pn may be combinable into a group.
-//
-// For Pn::Unpredictable squares to form a group, there should be no squares
-// inbetween that have filled the maximum results (4) and established a Pn other
-// than Unpredictable.
-//
-// For Pn::One squares, their RuleStores should be compatible for a union.
-// There should be no squares inbetween that are not Pn::One.
-// Squares inbetween should have a rule that is a subset of the combined rules.
-//
-// For Pn::Two squares, their RuleStores should be compatible for a union.
-// There should be no squares inbetween that are Pn::Unpredictable.
-// There should be no squares inbetween that are Pn::One, with more than one sample,
-// as that indicates not-Pn::Two, since order matters.
-// Squares inbetween with one sample should have a rule that is a subset of one
-// of the combined rules.
-// Squares inbetween that are Pn::Two, must be a subset of the combined rules.
-//
+//! The Pn enum. Pn stands for Pattern Number, with values of One, Two (order matters) or Unpredictable.
+//!
+//! Squares with the same Pn value may be combinable into a group.
+//!
+//! For Pn::One squares, their RuleStores should be compatible for a union.
+//! There should be no squares inbetween that are not Pn::One.
+//! Squares inbetween should have a rule that is a subset of the combined rules.
+//!
+//! For Pn::Two squares, their RuleStores should be compatible for a union.
+//! There should be no squares inbetween that are Pn::Unpredictable.
+//! There should be no squares inbetween that are Pn::One, with more than one sample,
+//! as that indicates not-Pn::Two, since order matters.
+//! Squares inbetween with one sample should have a rule that is a subset of one
+//! of the combined rules.
+//! Squares inbetween that are Pn::Two, must have rules that are a subset of the combined rules.
+//!
+//! For Pn::Unpredictable squares, there should be no squares
+//! inbetween that have filled the maximum results (4),
+//! (referred to as pnc, or pattern number confirmed)
+//! with a Pn other than Unpredictable.
+//!
+//! Repeated sampling can cause the Pn value to change back and forth, its contingent.
+//! Just like a ball drops when you let go of it, until is doesn't.
+//!
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
@@ -96,9 +100,12 @@ impl PartialEq for Pn {
 
 #[derive(Serialize, Deserialize, Eq, Clone, Copy, Debug)]
 pub enum Pn {
-    One,           // Only one result for a state
-    Two,           // Two predictable results/order for a state
-    Unpredictable, // Unpredicable results
+    /// Only one result for a state.
+    One,
+    // Two predictable results (order matters) for a state.
+    Two,
+    // Unpredicable results.
+    Unpredictable,
 }
 
 impl Pn {}

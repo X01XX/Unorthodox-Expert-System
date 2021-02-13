@@ -1,17 +1,17 @@
-// Implement a Plan structure, for an Unorthodox Expert System
-//
-// A StepStore is zero of more steps that may not be related.
-//
-// A Plan uses a StepStore but enforces relatedness,
-// where the result of one step is equal to the initial region
-// of the next step.
-//
-// A finished plan can be considered to be a "forward chaining" plan from
-// a given region (often a state, or a region with no X-bit positions) to
-// an end-region.
-//
-// This is often a "pre-positioning", to change the current state to a state where a sample
-// is needed.  The final sample taken is not part of the plan, at least so far.
+//! The Plan struct.  A StepStore struct where each step leads to the next.
+//!
+//! A StepStore is zero of more steps that may not be related.
+//!
+//! A Plan uses a StepStore but enforces relatedness,
+//! where the result of one step is equal to the initial region
+//! of the next step.
+//!
+//! A finished plan can be considered to be a "forward chaining" plan from
+//! a given region (often a state, or a region with no X-bit positions) to
+//! an end-region.
+//!
+//! This is often a "pre-positioning", to change the current state to a state where a sample
+//! is needed.  The final sample taken is not part of the plan, at least so far.
 
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
@@ -29,10 +29,14 @@ impl fmt::Display for SomePlan {
 
 #[derive(Debug)]
 pub struct SomePlan {
+    /// A StepStore instance.
     pub steps: StepStore, // Do some steps
 }
 
 impl SomePlan {
+    /// Return a new plan, using a given StepStore.
+    /// Check the steps to insure one leads to the next.
+    /// The StepStore may be empty.
     pub fn new(stpt: StepStore) -> Self {
         if stpt.len() > 1 {
             let mut last_step = &stpt[0];
@@ -55,6 +59,7 @@ impl SomePlan {
         Self { steps: stpt }
     }
 
+    /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
         let mut rs = String::from("P[");
 
@@ -71,12 +76,14 @@ impl SomePlan {
         rs
     }
 
+    /// Return a plan with one step.
     pub fn new_step(stpx: SomeStep) -> Self {
         let mut stps = StepStore::new_with_capacity(1);
         stps.push(stpx);
         Self { steps: stps }
     }
 
+    /// Return the number of steps in a plan.
     pub fn len(&self) -> usize {
         self.steps.len()
     }
@@ -102,12 +109,13 @@ impl SomePlan {
     //        rc_str
     //    }
 
+    /// Return a step iterator.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
     }
 
-    // Link two Plans together, return Some(SomePlan)
-    // Return None if the link fails
+    /// Link two Plans together, return Some(SomePlan).
+    /// Return None if the link fails.
     pub fn link(&self, other: &Self) -> Option<Self> {
         let end_inx = self.len() - 1;
 
@@ -152,8 +160,8 @@ impl SomePlan {
         None
     }
 
-    // Return a new Some(SomePlan) after restricting the initial region.
-    // Return None if the restriction fails.
+    /// Return a new Some(SomePlan) after restricting the initial region.
+    /// Return None if the restriction fails.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
         let mut rc_steps = StepStore::new_with_capacity(self.len());
 
@@ -173,8 +181,8 @@ impl SomePlan {
         Some(Self::new(rc_steps))
     }
 
-    // Return a new Some(SomePlan) after restricting the result region.
-    // Return None if the restriction fails.
+    /// Return a new Some(SomePlan) after restricting the result region.
+    /// Return None if the restriction fails.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
         let mut rc_steps = StepStore::new_with_capacity(self.len());
 
@@ -232,17 +240,19 @@ impl SomePlan {
         Some(Self::new(rc_steps))
     }
 
+    /// Return the initial region of a plan that contains at least one step.
     pub fn initial_region(&self) -> &SomeRegion {
         return &self.steps[0].initial;
     }
 
+    /// Return the result region of a plan that contains at least one step.
     pub fn result_region(&self) -> &SomeRegion {
         return &self.steps[self.steps.len() - 1].result;
     }
 
-    // Return a new plan if short-cuts found
-    // A short cut is found by finding the same initial region for
-    // two steps.
+    /// Return a new plan if short-cuts found.
+    /// A short cut is found by finding the same initial region for
+    /// two steps.
     pub fn short_cuts(&self) -> Option<SomePlan> {
         // Most plans will be checked and None will be returned
         let inx_vec = self.steps.same_intitial();

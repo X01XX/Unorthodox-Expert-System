@@ -22,18 +22,37 @@ impl fmt::Display for SomeGroup {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeGroup {
-    pub region: SomeRegion, // Region the group covers, and the states sampled that are joined
-    pub pn: Pn,             // Pattern Number enum One, Two or Unpredictable
-    pub rules: RuleStore,   // Rules that all squares of the group are a subset of
-    pub active: bool,       // Set to false to "delete" the group from a vector
-    pub confirmed: bool, // Set to true when a state only in the group has all adjacent states checked
-    pub anchor: Option<SomeState>, // The state in only the group used to confirm
-    pub not_x_confirm: SomeMask, // Mask of non-x bits to check for confirmation.
-    pub not_x_expand: SomeMask, // Mask of non-x bits to check for expansion.
-    pub pair_needs: bool, // flag used to check for other groups that are close.
+    /// Region the group covers.  Formed by two Pn equal squares.
+    /// All squares sampled in between are compatable.
+    /// <SomeRegion>.state1 and .state2 are keys to the squares that formed the region.
+    pub region: SomeRegion,
+    /// Pattern Number enum One, Two or Unpredictable
+    pub pn: Pn,
+    /// Rules formed by two squares.
+    pub rules: RuleStore,
+    /// Set to false to "delete" the group from the parent DomainStore vector.
+    /// To minimize vector copying.
+    pub active: bool,
+    /// Set to true when a state only in the group has all adjacent states checked    
+    pub confirmed: bool,
+    /// The state, in only one (this) group, used to confirm the group.
+    pub anchor: Option<SomeState>,
+    /// Mask of non-x bits to check for confirmation, that is the existence
+    /// of a incompatible, adjacent, external square to the anchor.
+    /// After a successful check, a 1 bit will be changed to 0.
+    pub edge_confirm: SomeMask,
+    /// Mask of non-x bits to check for expansion.
+    /// After a failed check, a 1 bit will be changed to 0.    
+    pub edge_expand: SomeMask,
+    /// Flag used to check for other groups that are close.
+    /// So a new group is checked against all others, until no
+    /// more needs are generated.
+    pub pair_needs: bool,
 }
 
 impl SomeGroup {
+    /// Return a new group, using two states, representing two squares, and
+    /// their combined rules.  The RuleStore will be empty for Pn::Unpredictable squares.
     pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore) -> Self {
         //        println!(
         //            "adding group {}",
@@ -55,27 +74,32 @@ impl SomeGroup {
             active: true,
             confirmed: false,
             anchor: None,
-            not_x_confirm: not_x.clone(),
-            not_x_expand: not_x,
+            edge_confirm: not_x.clone(),
+            edge_expand: not_x,
             pair_needs: true,
         }
     }
 
+    /// Set a one bit in edge_confirm to zero.  A square adjacent to the
+    /// anchor has been tested and found to be incompatible.
     pub fn check_off_confirm_bit(&mut self, boff: &SomeMask) {
         //println!("*** group {} checking off confirm bit {}", &self.region, &boff);
-        self.not_x_confirm = self.not_x_confirm.m_and(&boff.m_not());
+        self.edge_confirm = self.edge_confirm.m_and(&boff.m_not());
     }
 
+    /// Set a one bit in edge_expand to zero.  The group cannot
+    /// expand on that edge.
     pub fn check_off_expand_bit(&mut self, boff: &SomeMask) {
         //println!("*** group {} checking off expand bit {}", &self.region, &boff);
-        self.not_x_expand = self.not_x_expand.m_and(&boff.m_not());
+        self.edge_expand = self.edge_expand.m_and(&boff.m_not());
     }
 
-    // Return true if a not_x_confirm bit is set
-    pub fn not_x_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
-        return !self.not_x_confirm.m_and(&bmsk).is_low();
+    /// Return true if a edge_confirm bit is set.
+    pub fn edge_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
+        return !self.edge_confirm.m_and(&bmsk).is_low();
     }
 
+    /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
         let mut rc_str = String::from("G(");
         rc_str.push_str(&format!("{}", self.region.formatted_string()));
@@ -116,23 +140,22 @@ impl SomeGroup {
 
         //        rc_str.push_str(&format!(
         //            " nxe: {} nxc: {}",
-        //            &self.not_x_expand, &self.not_x_confirm
+        //            &self.edge_expand, &self.edge_confirm
         //        ));
 
         rc_str.push_str(")");
         rc_str
     }
 
-    pub fn str_region(&self) -> String {
-        format!("{}", self.region.formatted_string())
-    }
-
+    /// Inactivate a group, rather than deleting it from a vector.
+    /// It may be replaced by a new, active, group.
     pub fn inactivate(&mut self) -> bool {
-        println!("\nDeleting group {}", self.str_region());
+        println!("\nDeleting group {}", self.region.formatted_string());
         self.active = false;
         true
     }
 
+    /// Return true if a square is compatible with a group.
     pub fn square_is_ok(&self, sqrx: &SomeSquare) -> bool {
         //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
         match self.pn {
@@ -180,7 +203,7 @@ impl SomeGroup {
         }
     }
 
-    // Return true if a sample is OK with a group
+    /// Return true if a sample is compatible with a group
     pub fn sample_is_ok(&self, init: &SomeState, rslt: &SomeState) -> bool {
         let tmp_rul = SomeRule::new(&init, &rslt);
 
@@ -197,11 +220,15 @@ impl SomeGroup {
         }
     }
 
+    /// Clear the anchor, it is no longer only in one group.
     pub fn set_anchor_off(&mut self) {
         self.anchor = None;
         self.confirmed = false;
     }
 
+    /// Set the anchor state, representing a square that is only in this group,
+    /// all adjacent, external squares have been tested and found to be
+    /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: SomeState) {
         self.anchor = Some(astate.clone());
         self.confirmed = true;

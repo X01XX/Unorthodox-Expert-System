@@ -10,6 +10,7 @@
 )]
 
 mod action;
+use crate::action::SomeAction;
 mod actionstore;
 mod bits;
 //use crate::bits::SomeBits;
@@ -65,28 +66,37 @@ fn init() -> DomainStore {
 
     // Initialize a domain, with number of integers, initial state, optimal region.
 
-    // Generate a random staring state
+    // Generate a one u8 integer random starting state string.
     let inx = rand::thread_rng().gen_range(0, 2_u8.pow(6));
     let inx_str = &format!("s{:b}", inx);
 
-    dmxs.add_domain(1, inx_str, "r101X");
-    dmxs.add_action(6);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
+    let num_ints = 1;
+    let mut dom1 = SomeDomain::new(num_ints, inx_str, "r101X");
 
-    // Generate a random staring state
+    dom1.push(SomeAction::new(num_ints), 6);
+    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.push(SomeAction::new(num_ints), 0);
+
+    dmxs.push(dom1);
+
+    // Generate a two u8 integer random starting state string,
+    // spanning the two integers.
     let inx = rand::thread_rng().gen_range(0, 2_u8.pow(4));
     let inx_str = &format!("s{:b}000000", inx);
 
-    dmxs.add_domain(2, inx_str, "r10_1X00_0000");
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
-    dmxs.add_action(0);
+    let num_ints = 2;
+    let mut dom2 = SomeDomain::new(num_ints, inx_str, "r10_1X00_0000");
+
+    dom2.push(SomeAction::new(num_ints), 0);
+    dom2.push(SomeAction::new(num_ints), 0);
+    dom2.push(SomeAction::new(num_ints), 0);
+    dom2.push(SomeAction::new(num_ints), 0);
+
+    dmxs.push(dom2);
 
     dmxs
 }

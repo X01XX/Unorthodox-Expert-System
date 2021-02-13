@@ -1,6 +1,5 @@
-// Step struct, for an Unorthodox Expert System.
-//
-// Given an initial region, when running an action the result is expected to be within the result region.
+//! The SomeStep struct.  Indicates an initial region, and action, and a result region..
+//!
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -23,7 +22,7 @@ pub struct SomeStep {
 }
 
 impl SomeStep {
-    // Return a new Step struct instance
+    /// Return a new Step struct instance.
     pub fn new(act_num: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
         let initial = rule.initial_region();
         let result = rule.result_region();
@@ -37,11 +36,8 @@ impl SomeStep {
         }
     }
 
-    // Return a new step, by taking a given step and restricting the initial region
-    // Keep the rule the same, so steps with the same rules can be identified.
+    /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
-        //let rulx = self.rule.restrict_initial_region(reg);
-
         let init_reg = self.initial.intersection(&reg);
 
         Self {
@@ -54,28 +50,26 @@ impl SomeStep {
         }
     }
 
-    // Return a new step, by taking a given step and restricting the result region
-    // Keep the rule the same, so steps with the same rules can be identified.
+    /// Return a new step, by taking a given step and restricting the result region
     pub fn restrict_result_region(&self, reg: &SomeRegion) -> Self {
-        //let rulx = self.rule.restrict_result_region(reg);
-
-        let rslt_reg = self.result.intersection(&reg);
+        let rulx = self.rule.restrict_result_region(reg);
 
         Self {
-            initial: self.rule.initial_from_result(&rslt_reg),
+            initial: rulx.initial_region(),
             act_num: self.act_num,
-            result: rslt_reg,
-            rule: self.rule.clone(),
+            result: rulx.result_region(),
+            rule: rulx,
             alt_rule: self.alt_rule,
             group_reg: self.group_reg.clone(),
         }
     }
 
+    /// Return the expected length of a string representing a step.
     pub fn formatted_string_length(&self) -> usize {
         8 + (2 * self.initial.formatted_string_length())
     }
 
-    // Return a string representing a step
+    /// Return a string representing a step.
     pub fn formatted_string(&self) -> String {
         let mut rcstr = String::with_capacity(self.formatted_string_length());
         rcstr.push('[');

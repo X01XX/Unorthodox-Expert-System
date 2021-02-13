@@ -1,4 +1,6 @@
-// Implement a VecDeque for result states for a square
+//! The ResultStore struct.  Saves up to 4 results of an action for a single state.
+//!
+//! Uses a VecDeque to allow removal of the oldest sample when adding a new sample when 4 are already loaded.
 
 use crate::pn::Pn;
 use crate::state::SomeState;
@@ -17,16 +19,18 @@ impl fmt::Display for ResultStore {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
+    /// A VecDeque to store sample results for one domain/action/state, that is a square.
     pub astore: VecDeque<SomeState>,
-    pub pn: Pn, // Pattern number, One, Two or Unpredicatble, trips change indicator when changed.
-    pub changed: bool, // When first sample, pn or pnc has changed
-    pub pnc: bool, // Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS,
-                // or three different results, or three results with two different values not in an
-                // order that would suggest a two-result Pn, like [1, 0, 0] instead of [0, 1, 0].
-                // pnc can change with more and different samples.
+    /// Pattern number, One, Two or Unpredicatble, trips change indicator when changed.
+    pub pn: Pn,
+    /// When first sample, pn or pnc has changed.
+    pub changed: bool,
+    /// Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS.
+    pub pnc: bool,
 }
 
 impl ResultStore {
+    /// Return a new ResultStore, with an initial result.
     pub fn new(st: SomeState) -> Self {
         let mut ret = Self {
             astore: VecDeque::<SomeState>::with_capacity(MAX_RESULTS),
@@ -39,13 +43,14 @@ impl ResultStore {
         ret
     }
 
+    /// Return the number of results in the store.
     pub fn len(&self) -> usize {
         self.astore.len()
     }
 
-    // Add a result to a circular buffer
-    // Return true if the pattern number or pnc changed
-    // or pn=1 with two results, signals "cannot be pn=2"
+    /// Add a result to a circular buffer.
+    /// Return true if the pattern number or pnc changed
+    /// or Pn::One with two results, which indicates "cannot be Pn::Two"
     pub fn push_wrap(&mut self, st: SomeState) -> bool {
         self.changed = false;
 
@@ -86,23 +91,27 @@ impl ResultStore {
         self.changed
     }
 
+    /// Return the first result.
     pub fn first(&self) -> &SomeState {
         &self.astore[0]
     }
 
+    /// Return the second result.
     pub fn second(&self) -> &SomeState {
         &self.astore[1]
     }
 
+    /// Return the last result.
     pub fn last_result(&self) -> SomeState {
         self.astore[self.astore.len() - 1].clone()
     }
 
+    /// Return the second to lat result.
     pub fn second_last_result(&self) -> SomeState {
         self.astore[self.astore.len() - 2].clone()
     }
 
-    // Calculate the Pattern Number
+    /// Calculate the Pattern Number.
     pub fn calc_pn(&self) -> Pn {
         let num = self.astore.len();
 
@@ -147,6 +156,7 @@ impl ResultStore {
         Pn::Unpredictable
     }
 
+    /// Return the expected length of a string to represent a ResultStore.
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
@@ -162,6 +172,7 @@ impl ResultStore {
         rc_len
     }
 
+    /// Return a string to represent a ResultStore.
     pub fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());

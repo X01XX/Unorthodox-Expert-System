@@ -21,9 +21,7 @@
  *
  */
 
-//! The DomainStore struct, for an Unorthodox Expert System.
-//!
-//! Keeps a vector of Domain structs.
+//! The DomainStore struct, a vector of SomeDomain structs.
 //!
 use crate::domain::SomeDomain;
 use crate::inxplan::InxPlan;
@@ -60,11 +58,14 @@ impl fmt::Display for DomainStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
+    /// Vecto of SomeDomain structs.
     pub avec: Vec<SomeDomain>,
+    /// Current step number of the user interface.
     pub step: usize, // The current step number in the UI.
 }
 
 impl DomainStore {
+    /// Return a new, empty, DomainStore struct.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeDomain>::with_capacity(5),
@@ -72,44 +73,19 @@ impl DomainStore {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.avec.len()
+    /// Add a Domain struct to the store.
+    pub fn push(&mut self, mut domx: SomeDomain) {
+        domx.num = self.avec.len();
+        self.avec.push(domx);
     }
 
-    pub fn add_domain(&mut self, num_ints: usize, start_state: &str, optimal_region: &str) {
-        self.avec.push(SomeDomain::new(
-            num_ints,
-            start_state,
-            optimal_region,
-            self.avec.len(),
-        ));
-    }
-
-    // Add an action to the last added domain.
-    pub fn add_action(&mut self, ran_num: usize) {
-        let last = self.len() - 1;
-        self.avec[last].add_action(ran_num);
-    }
-
-    //    pub fn push(&mut self, mut val: SomeDomain) {
-    //        val.num = self.avec.len();
-    //        self.avec.push(val);
-    //    }
-
-    //    pub fn iter(&self) -> Iter<SomeDomain> {
-    //        self.avec.iter()
-    //    }
-
-    //    pub fn iter_mut(&mut self) -> IterMut<SomeDomain> {
-    //        self.avec.iter_mut()
-    //    }
-
-    // Use threads to get needs for each Domain.
-    // Each Domain uses threads to get needs for each Action.
+    /// Get needs for each Domain.
+    /// Run in parallel per Domain.
+    /// Each Domain uses parallel processing to get needs for each Action.
     pub fn get_needs(&mut self) -> NeedStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
-            .par_iter_mut() // .par_iter for prallel, .iter_mut for easier reading of diagnostic messages
+            .par_iter_mut() // .par_iter_mut for prallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
             .collect::<Vec<NeedStore>>();
 
@@ -120,44 +96,31 @@ impl DomainStore {
             nds_agg.append(&mut nst);
         }
 
-        //  For testing, to make the terminal ouput sequential, comment out the above code.
-        //        let mut nds_agg = NeedStore::new();
-        //        for domx in self.avec.iter_mut() {
-        //		    let mut ndx = domx.get_needs();
-        //		    if ndx.len() > 0 {
-        //				nds_agg.append(&mut ndx);
-        //			}
-        //		}
-
         nds_agg
     }
 
-    // Run a plan for a given Domain
+    /// Run a plan for a given Domain
     pub fn run_plan(&mut self, dmxi: usize, pln: &SomePlan) {
         self.avec[dmxi].run_plan(pln)
     }
 
+    /// Take an action to satisfy a need
     pub fn take_action_need(&mut self, dmxi: usize, ndx: &SomeNeed) {
         self.avec[dmxi].take_action_need(ndx);
     }
 
-    // Return the current state of a given Domain index
+    /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         &self.avec[dmxi].cur_state
     }
 
-    // Return the number of domains
+    /// Return the number of domains
     pub fn num_domains(&self) -> usize {
         self.avec.len()
     }
 
-    //struct InxPlan {
-    //    inx: usize,            // Index to a need in a NeedStore.
-    //    pln: Option<SomePlan>, // Plan to satisfy need (may be empty if the current state satisfies the need), or None.
-    //}
-
-    // Return a vector of InxPlan structs, in no order, given a NeedStore.
-    // Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
+    /// Return a vector of InxPlan structs, in no order, given a NeedStore.
+    /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
         // Make a vector of need position indicies.
         let avec: Vec<usize> = (0..nds.len()).collect();
@@ -173,14 +136,6 @@ impl DomainStore {
                 pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
             })
             .collect::<Vec<InxPlan>>();
-
-        // For testing, to make the terminal output sequential, comment out the above code.
-        //        let mut ndsinx_plan = Vec::<InxPlan>::new();
-        //        let mut inx = 0;
-        //        for ndx in nds.iter() {
-        //		    ndsinx_plan.push(InxPlan { inx, pln: self.avec[ndx.dom_num()].make_plan(&ndx.target().clone()) });
-        //		    inx += 1;
-        //		}
 
         ndsinx_plan
     }

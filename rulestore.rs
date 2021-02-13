@@ -1,4 +1,12 @@
-// Implement a store for one or two rules, for an Unorthodox Expert System.
+//! The RuleStore struct, a vector of SomeRule structs.
+//!
+//! The vector is sometimes empty, or has one or two rules.
+//!
+//! If two rules, they cannot be combined due to a 0->X or 1->X difference.
+//!
+//! If a square has two alternating results, since the square has a bit pattern with
+//! no X positions, the different results must different by one, or more,
+//! 1->X or 0->X bit positions.
 
 use crate::maskstore::MaskStore;
 use crate::region::SomeRegion;
@@ -43,19 +51,20 @@ impl PartialEq for RuleStore {
 impl Eq for RuleStore {}
 
 impl RuleStore {
-    // Return a new RuleStore
+    /// Return a new RuleStore.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeRule>::with_capacity(2),
         }
     }
 
-    // Return the length of a RuleStore
+    /// Return the length of a RuleStore.
+    /// Should be 0, 1 or 2.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
-    // Add a rule to a RuleStore
+    /// Add a rule to a RuleStore.
     pub fn push(&mut self, val: SomeRule) {
         if self.len() > 1 {
             panic!("Rule already full??");
@@ -64,17 +73,19 @@ impl RuleStore {
         self.avec.push(val);
     }
 
+    /// Return a reference to the first rule.
     pub fn first(&self) -> &SomeRule {
         &self.avec[0]
     }
 
+    /// Return a reference to the second rule.
     pub fn second(&self) -> &SomeRule {
         &self.avec[1]
     }
 
-    // Return true if one RuleStore is a subset of another.
-    // This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
-    // should check that the number of samples for the pn=1 rulestore is only 1.
+    /// Return true if one RuleStore is a subset of another.
+    /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
+    /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         if self.len() == 1 {
             if other.len() == 1 {
@@ -106,7 +117,7 @@ impl RuleStore {
         panic!("unexpected rulestore length!");
     }
 
-    // Return true if a RuleStore is a superset of a rule
+    /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
         if self.len() == 1 {
             return other.is_subset_of(&self.first());
@@ -123,26 +134,29 @@ impl RuleStore {
         panic!("unexpected rulestore length!");
     }
 
-    // Return the union of two RuleStores.
-    // May return None, if the union is invalid.
-    //
-    // The rules will be from two squares, the possible combinations
-    // for each bit position are:
-    //
-    // 0->0, 0->0 = 0->0
-    // 0->0, 0->1 = 0->X, disallowed
-    // 0->0, 1->1 = X->X
-    // 0->0, 1->0 = X->0
-    //
-    // 0->1, 0->1 = 0->1
-    // 0->1, 1->1 = X->1
-    // 0->1, 1->0 = X->x (X to x-not)
-    //
-    // 1->1, 1->1 = 1->1
-    // 1->1, 1->0 = 1->X, disallowed
-    //
-    // 1->0, 1->0 = 1->0
-    //
+    /// Return the union of two RuleStores.
+    /// May return None, if the union is invalid.
+    ///
+    /// The rules will be from two squares, the possible combinations
+    /// for each bit position are:
+    ///
+    /// 0->0, 0->0 = 0->0
+    /// 0->0, 0->1 = 0->X, disallowed
+    /// 0->0, 1->1 = X->X
+    /// 0->0, 1->0 = X->0
+    ///
+    /// 0->1, 0->1 = 0->1
+    /// 0->1, 1->1 = X->1
+    /// 0->1, 1->0 = X->x (X to x-not)
+    ///
+    /// 1->1, 1->1 = 1->1
+    /// 1->1, 1->0 = 1->X, disallowed
+    ///
+    /// 1->0, 1->0 = 1->0
+    ///
+    /// For two result rules, the rule order is not important.
+    /// The first union the does not result in a combination of changes not seen
+    /// in the original rule will be returned.
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", &self, &other);
         if self.len() != other.len() {
@@ -243,11 +257,12 @@ impl RuleStore {
         panic!("unexpected RuleStore length");
     }
 
+    /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRule> {
         self.avec.iter()
     }
 
-    // Return intersection of two RuleStores
+    /// Return intersection of two RuleStores.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             panic!("rulestore lengths not eq!");
@@ -309,6 +324,7 @@ impl RuleStore {
         }
     }
 
+    /// Return the result of restricting the initial region of rules.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let mut rcrs = Self::new();
 
@@ -318,7 +334,15 @@ impl RuleStore {
         rcrs
     }
 
-    // Return the union of two RuleStores, pruned or 1->X and 0->X, under initial X bits, if needed
+    /// Return the union of two RuleStores, pruned.
+    ///
+    ///  An invalid union might still include a subset valid union.
+    ///
+    ///  If a bit position contains (0->0 or 0->1, exclusive), and 1->0, 1->1,
+    ///  that bit position can be pruned to be just 0->0 or 0->1.
+    ///
+    ///  If a bit position contains (1->0 or 1->1, exclusive), and 0->0, 0->1,
+    ///  that bit position can be pruned to be just 1->0 or 1->1.    
     pub fn union_prune(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             return None;
@@ -378,10 +402,12 @@ impl RuleStore {
         None
     } // end union_prune
 
+    /// Return the inital region of the first rule in the store.
     pub fn initial_region(&self) -> SomeRegion {
         self.avec[0].initial_region()
     }
 
+    /// Return the expected length of a string representing the store.
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 3;
 
@@ -395,6 +421,7 @@ impl RuleStore {
         rc_len
     }
 
+    /// Return a string representing the store.
     pub fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());

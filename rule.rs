@@ -194,15 +194,16 @@ impl SomeRule {
         }
     }
 
-    /// Return the initial region after applying a result region to a rule.
-    /// This could be called "backward chaining".    
-    pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
-        if reg.intersects(&self.result_region()) == false {
-            panic!("initial_from_result: given region does not intersect the ruls result region");
-        }
+    // Return the initial region after applying a result region to a rule.
+    // This could be called "backward chaining".
+    //    pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
+    //        if reg.intersects(&self.result_region()) == false {
+    //            panic!("initial_from_result: given region does not intersect the ruls result region");
+    //        }
+    //
+    //        self.restrict_result_region(reg).initial_region()
+    //    }
 
-        self.restrict_result_region(reg).initial_region()
-    }
     /// Restrict the initial region to an intersection of the
     /// given region.  Assuming the region given is not a superset
     /// this will also change the result region.
@@ -229,7 +230,7 @@ impl SomeRule {
         }
     }
 
-    /// Return true if the rule does not change anything
+    // Return true if the rule does not change anything
     //    pub fn no_change(&self) -> bool {
     //        self.b01.is_low() && self.b10.is_low()
     //    }
@@ -386,34 +387,34 @@ impl SomeRule {
         strrc
     }
 
-    // Of the changes in a rule, the rule initial region may be manipulated to
-    // focus in on desired changes, and avoid undesired changes.
+    /// Of the changes in a rule, the rule initial region may be manipulated to
+    /// focus in on desired changes, and avoid undesired changes.
+    ///
+    /// The arguments b01 and b10 are masks of changes that are sought.
+    ///
+    /// It is expected that b01 & b10 would be all zeros, e.g. you do not need
+    /// 0->1 and 1->0 in the same bit position.
+    ///
+    /// It is expected that b01 and b10 are not both all zeros, otherwise
+    /// no change would be sought.
+    ///
+    /// Any other change in the rule is to be avoided, if possible.
+    ///
+    /// For changes that are sought, for bit positions that are X->1, X->0, or X->x,
+    /// the X value can be changed to focus on the desired change.
     //
-    // The arguments b01 and b10 are masks of changes that are sought.
-    //
-    // It is expected that b01 & b10 would be all zeros, e.g. you do not need
-    // 0->1 and 1->0 in the same bit position.
-    //
-    // It is expected that b01 and b10 are not both all zeros, otherwise
-    // no change would be sought.
-    //
-    // Any other change in the rule is to be avoided, if possible.
-    //
-    // For changes that are sought, for bit positions that are X->1, X->0, or X->x,
-    // the X value can be changed to focus on the desired change.
-    //
-    // X->1 is 1->1 and 0->1, the X can be changed to 0.
-    // X->0 is 0->0 and 1->0, the X can be changed to 1.
-    // X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
-    //
-    // For changes that are not sought,
-    //
-    // X->1, the X bit position can be changed to 1, to avoid 0->1.
-    // X->0, the X bit position can be changed to 0, to avoid 1->0.
-    //
-    // Changing the X bit positions of a rules' initial region increases the
-    // non-X bit position requirements that the current state must match in
-    // order to use the rule.
+    /// X->1 is 1->1 and 0->1, the X can be changed to 0.
+    /// X->0 is 0->0 and 1->0, the X can be changed to 1.
+    /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
+    ///
+    /// For changes that are not sought,
+    ///
+    /// X->1, the X bit position can be changed to 1, to avoid 0->1.
+    /// X->0, the X bit position can be changed to 0, to avoid 1->0.
+    ///
+    /// Changing the X bit positions of a rules' initial region increases the
+    /// non-X bit position requirements that the current state must match in
+    /// order to use the rule.
     pub fn parse_for_changes(&self, b01: &SomeMask, b10: &SomeMask) -> Option<Self> {
         let ones = self.b10.m_and(&b10);
         let zeros = self.b01.m_and(&b01);

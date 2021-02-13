@@ -1,6 +1,4 @@
-//! A Change struct, for an Unorthodox Expert System.
-//!
-//! This stores masks for 0->1 and 1->0 bit changes.
+//! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 //!
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
@@ -11,7 +9,9 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeChange {
+    /// A Mask for 0->1 changes.
     pub b01: SomeMask,
+    /// A mask for 1->0 changes.
     pub b10: SomeMask,
 }
 
@@ -22,7 +22,7 @@ impl fmt::Display for SomeChange {
 }
 
 impl SomeChange {
-    // Return a change using an initial and result state.
+    /// Return a change using an initial and result state.
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         Self {
             b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
@@ -30,7 +30,7 @@ impl SomeChange {
         }
     }
 
-    // Return a new rule struct instance set to zeros
+    /// Return a new SomeChange struct instance, set to zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
             b01: SomeMask::new(SomeBits::new_low(num_ints)),
@@ -38,6 +38,7 @@ impl SomeChange {
         }
     }
 
+    /// Return the union of two SomeChange instances.
     pub fn union(&self, other: &SomeChange) -> Self {
         SomeChange {
             b01: self.b01.m_or(&other.b01),
@@ -45,10 +46,12 @@ impl SomeChange {
         }
     }
 
+    /// Return a mask of all bit positions that are one in both masks.
     pub fn x_mask(&self) -> SomeMask {
         self.b01.m_and(&self.b10)
     }
 
+    /// Return true if a SomeChange struct is a ones-subset of anoth.
     pub fn is_subset_of(&self, other: &SomeChange) -> bool {
         if self.b01.is_subset_of(&other.b01) {
             if self.b10.is_subset_of(&other.b10) {
@@ -58,12 +61,9 @@ impl SomeChange {
         false
     }
 
-    pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.b01.bts.len() * 3) - 1
-    }
-
+    /// Return a string to represent a SomeChange instance.
     pub fn formatted_string(&self) -> String {
-        let mut strrc = String::with_capacity(self.formatted_string_length());
+        let mut strrc = String::with_capacity(10);
 
         let num_ints = self.b01.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
@@ -89,7 +89,7 @@ impl SomeChange {
         strrc
     }
 
-    // Create an change for one region to another.
+    /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
         let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
         let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));

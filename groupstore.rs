@@ -32,11 +32,16 @@ impl fmt::Display for GroupStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupStore {
+    /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
+    /// If a group is added or deleted, the changed flag is set to true.
+    /// The change mask of possible, predictable, bit changes is rebuilt,
+    /// the change flag is set to false.
     pub changed: bool,
 }
 
 impl GroupStore {
+    /// Return a new GroupStore.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(5),
@@ -44,8 +49,8 @@ impl GroupStore {
         }
     }
 
-    // Check groups for a changed sqaure.
-    // Return the number of active groups inactivated by a square
+    /// Check groups with a recently changed sqaure.
+    /// Return the number of active groups inactivated by a square.
     pub fn check_square(&mut self, sqrx: &SomeSquare) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
@@ -66,7 +71,7 @@ impl GroupStore {
         regs_invalid
     }
 
-    // Return the number of active groups a state is in
+    /// Return the number of active groups a state is in.
     pub fn num_groups_state_in(&self, stax: &SomeState) -> usize {
         let mut num_grps = 0;
 
@@ -80,7 +85,7 @@ impl GroupStore {
         num_grps
     }
 
-    // Return true if any group is a superset, or equal, to a region
+    /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
             if grpx.active && reg.is_subset_of(&grpx.region) {
@@ -90,7 +95,7 @@ impl GroupStore {
         false
     }
 
-    // Return regions of any group is a superset, or equal, to a region
+    /// Return regions of any group is a superset, or equal, to a region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
         let mut rs = RegionStore::new();
 
@@ -102,7 +107,7 @@ impl GroupStore {
         rs
     }
 
-    // Find and make inactive any subset groups
+    /// Find and make inactive any subset groups.
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
 
@@ -127,7 +132,7 @@ impl GroupStore {
         fnd
     }
 
-    // Find index to first inactive group, or return -1 is none found
+    /// Find index to first inactive group, or return -1 is none found.
     fn first_inactive_index(&mut self) -> i32 {
         let mut cnt = 0;
         for grpx in &mut self.avec {
@@ -140,6 +145,7 @@ impl GroupStore {
         -1
     }
 
+    /// Add a group.
     pub fn push(&mut self, grp: SomeGroup) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
@@ -170,22 +176,17 @@ impl GroupStore {
         true
     }
 
-    // Check groups
-    // for a given sample.
-    // Return the number of active groups that could be
-    // inactivated by a square
-    // A pn=One or Two group can be inactivated by a single sample,
-    // A pn=Unpredictable cannot.  A sample for a step is usually not save, unless an
-    // existing needed square has been saved.  A need for a contradictory intersection sample
-    // can build up a pn=One or Two square that can invalidate a pn=Unpredictable group.
+    /// Check groups with a given sample.
+    /// Return the number of active groups that are inactivated.
     pub fn check_sample(&mut self, init: &SomeState, rslt: &SomeState) -> usize {
         let mut num_grps = 0;
 
-        for grpx in &self.avec {
+        for grpx in &mut self.avec {
             if grpx.active {
                 if grpx.region.is_superset_of_state(&init) {
                     if !grpx.sample_is_ok(&init, &rslt) {
                         num_grps += 1;
+                        grpx.inactivate();
                     }
                 }
             }
@@ -196,6 +197,7 @@ impl GroupStore {
         num_grps
     }
 
+    /// Return a RegionStore of regions of each group.
     pub fn regions(&self) -> RegionStore {
         let mut regs = RegionStore::new();
 
@@ -207,7 +209,7 @@ impl GroupStore {
         regs
     }
 
-    // Return an iterator
+    /// Return an iterator
     pub fn iter(&self) -> Iter<SomeGroup> {
         self.avec.iter()
     }
@@ -216,10 +218,12 @@ impl GroupStore {
     //        self.avec.iter_mut()
     //    }
 
+    /// Return the length of the vector.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
+    /// Find a group that matches a region, return a mutable reference.
     pub fn find_mut(&mut self, val: &SomeRegion) -> Option<&mut SomeGroup> {
         for grpx in &mut self.avec {
             if grpx.active && grpx.region == *val {
@@ -229,6 +233,7 @@ impl GroupStore {
         None
     }
 
+    /// Find a group that matches a region, return a reference.
     pub fn _find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         for grpx in &self.avec {
             if grpx.active && grpx.region == *val {

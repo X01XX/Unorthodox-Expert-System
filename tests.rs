@@ -10,6 +10,7 @@ mod tests {
     use crate::mask::SomeMask;
     use crate::maskstore::MaskStore;
     //    use crate::region::SomeRegion;
+    use crate::action::SomeAction;
     use crate::regionstore::RegionStore;
     use crate::resultstore::ResultStore;
     use crate::rule::SomeRule;
@@ -31,8 +32,8 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
 
         let s5 = dm1.state_from_string("s101").unwrap();
 
@@ -88,8 +89,8 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
 
         let s5 = dm1.state_from_string("s101").unwrap();
 
@@ -221,7 +222,7 @@ mod tests {
     // Test the successful union of two two-result rulestores
     #[test]
     fn pn_2_rules_union() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1", 1);
+        let dm1 = SomeDomain::new(1, "s1", "r1");
 
         let sta_5 = SomeState {
             bts: SomeBits {
@@ -607,7 +608,7 @@ mod tests {
 
     #[test]
     fn region_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
+        let dm1 = SomeDomain::new(2, "s1", "r1");
 
         let reg1 = dm1.region_from_string("rx1x1").unwrap();
 
@@ -679,7 +680,7 @@ mod tests {
 
     #[test]
     fn step_string_length() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1", 0);
+        let dm1 = SomeDomain::new(1, "s1", "r1");
 
         let stp1 = SomeStep {
             act_num: 0,
@@ -711,7 +712,7 @@ mod tests {
             ));
         }
 
-        let dm2 = SomeDomain::new(2, "s1", "r1", 2);
+        let dm2 = SomeDomain::new(2, "s1", "r1");
 
         let stp2 = SomeStep {
             act_num: 0,
@@ -917,8 +918,8 @@ mod tests {
     /// return the expected next result for the square.
     #[test]
     fn predict_next_result() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
 
         let s5 = dm1.state_from_string("s101").unwrap();
 
@@ -982,8 +983,8 @@ mod tests {
     // but one or the other.
     #[test]
     fn two_result_rules_union() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
 
         let s0 = dm1.state_from_string("s0").unwrap();
         let s2 = dm1.state_from_string("s10").unwrap();
@@ -1024,7 +1025,7 @@ mod tests {
 
     #[test]
     fn change_region_to_region_test() -> Result<(), String> {
-        let dm1 = SomeDomain::new(2, "s1", "r1", 0);
+        let dm1 = SomeDomain::new(2, "s1", "r1");
 
         let reg1 = dm1.region_from_string("r000_111_xxx").unwrap();
 
@@ -1064,8 +1065,8 @@ mod tests {
     #[test]
     fn rule_pruning() -> Result<(), String> {
         // Test rule pruning to fit a change
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
 
         let s122 = dm1.state_from_string("s1111001").unwrap();
 
@@ -1178,10 +1179,10 @@ mod tests {
         // Test SomeDomain::sort_steps to filter out steps that have more
         // changes then needed, if possible.
 
-        let mut dm1 = SomeDomain::new(1, "s1", "r1", 1);
-        dm1.add_action(0);
-        dm1.add_action(0);
-        dm1.add_action(0);
+        let mut dm1 = SomeDomain::new(1, "s1", "r1");
+        dm1.push(SomeAction::new(1), 0);
+        dm1.push(SomeAction::new(1), 0);
+        dm1.push(SomeAction::new(1), 0);
 
         let s0 = dm1.state_from_string("s0").unwrap();
 

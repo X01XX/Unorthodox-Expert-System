@@ -106,11 +106,11 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} confirmed by {})", greg, sta1,),
-            SomeNeed::ClearGroupConfirmBit {
+            SomeNeed::ClearEdgeConfirmBit {
                 group_region: greg,
                 mbit: mbitx,
             } => format!("N(group {} clear confirm bit {})", greg, mbitx,),
-            SomeNeed::ClearGroupExpandBit {
+            SomeNeed::ClearEdgeExpandBit {
                 group_region: greg,
                 mbit: mbitx,
             } => format!("N(group {} clear expand bit {})", greg, mbitx,),
@@ -130,6 +130,7 @@ impl fmt::Display for SomeNeed {
 
 #[derive(Debug)]
 pub enum SomeNeed {
+    /// Sample a state as part of making a new group.
     AStateMakeGroup {
         dom_num: usize,
         act_num: usize,
@@ -138,11 +139,13 @@ pub enum SomeNeed {
         far: SomeState,
         num_x: usize,
     },
+    /// Sample a state that is not in a group.
     StateNotInGroup {
         dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
     },
+    /// Sample a state to resolve a contradictory intersection of two groups.
     ContradictoryIntersection {
         dom_num: usize,
         act_num: usize,
@@ -152,6 +155,7 @@ pub enum SomeNeed {
         group2: SomeRegion,
         ruls2: RuleStore,
     },
+    /// Sample a state to confirm a group.
     ConfirmGroup {
         dom_num: usize,
         act_num: usize,
@@ -159,6 +163,7 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
     },
+    /// Get an additional sample of a state.
     StateAdditionalSample {
         dom_num: usize,
         act_num: usize,
@@ -166,36 +171,37 @@ pub enum SomeNeed {
         grp_reg: SomeRegion,
         far: SomeState,
     },
+    /// Sample a state to find a new edge in the total solution.
     SeekEdge {
         dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         in_group: SomeRegion,
     },
-    AddGroup {
-        group_region: SomeRegion,
-    },
+    /// Housekeeping, add a group.
+    AddGroup { group_region: SomeRegion },
+    /// Housekeeping, set a group to confirmed, using a state
+    /// that is only in that group, has adjacent, external, dissimilar squares.
     SetGroupConfirmed {
         group_region: SomeRegion,
         cstate: SomeState,
     },
-    ClearGroupConfirmBit {
+    /// Housekeeping, set a edge confirm bit to zero.
+    ClearEdgeConfirmBit {
         group_region: SomeRegion,
         mbit: SomeMask,
     },
-    ClearGroupExpandBit {
+    /// Housekeeping, set a edge expand bit to zero.
+    ClearEdgeExpandBit {
         group_region: SomeRegion,
         mbit: SomeMask,
     },
-    InactivateSeekEdge {
-        reg: SomeRegion,
-    },
-    AddSeekEdge {
-        reg: SomeRegion,
-    },
-    ClearGroupPairNeeds {
-        group_region: SomeRegion,
-    },
+    /// Housekeeping, inactivate a region in the seek_edge vector.
+    InactivateSeekEdge { reg: SomeRegion },
+    /// Housekeeping, add a region to the seek_edge vector.
+    AddSeekEdge { reg: SomeRegion },
+    /// Housekeeping, clear the flag that causes a group to be comapers to other groups.
+    ClearGroupPairNeeds { group_region: SomeRegion },
 }
 
 impl PartialEq for SomeNeed {
@@ -327,11 +333,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ClearGroupConfirmBit {
+            SomeNeed::ClearEdgeConfirmBit {
                 group_region: greg,
                 mbit: mbitx,
             } => match other {
-                SomeNeed::ClearGroupConfirmBit {
+                SomeNeed::ClearEdgeConfirmBit {
                     group_region: gregx,
                     mbit: mbity,
                 } => {
@@ -341,11 +347,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ClearGroupExpandBit {
+            SomeNeed::ClearEdgeExpandBit {
                 group_region: greg,
                 mbit: mbitx,
             } => match other {
-                SomeNeed::ClearGroupExpandBit {
+                SomeNeed::ClearEdgeExpandBit {
                     group_region: gregx,
                     mbit: mbity,
                 } => {
@@ -408,7 +414,7 @@ impl PartialEq for SomeNeed {
 impl Eq for SomeNeed {}
 
 impl SomeNeed {
-    // Return a priority number for a need
+    /// Return a priority number for a need.  Lower is more important.
     pub fn priority(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -476,7 +482,7 @@ impl SomeNeed {
         } // end match ndx
     } // end priority
 
-    // Return true if a state satisfies a need
+    /// Return true if a state satisfies a need.
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -555,7 +561,7 @@ impl SomeNeed {
         } //end match self
     } // end satisfied_by
 
-    // Return need act_num
+    /// Return need action number.
     pub fn act_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -616,7 +622,7 @@ impl SomeNeed {
         } //end match self
     } // end act_num
 
-    // Return need dom_num
+    /// Return need domain number.
     pub fn dom_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -677,7 +683,7 @@ impl SomeNeed {
         } //end match self
     } // end dom_num
 
-    // Return a region for a need target
+    /// Return a region for a need target.
     pub fn target(&self) -> SomeRegion {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -738,7 +744,7 @@ impl SomeNeed {
         };
     } // end target
 
-    // Set the Domain num for a need
+    /// Set the Domain number for a need.
     pub fn set_dom(&mut self, num: usize) {
         match self {
             SomeNeed::AStateMakeGroup {

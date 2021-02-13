@@ -1,6 +1,6 @@
-//! The ActionStore struct, for an Unorthodox Expert System.
+//! The ActionStore struct, a vector of SomeAction structs.
 //!
-//! This stores a vector of Action structs, for a Domain struct.
+//! This stores a vector of SomeAction structs, for a Domain struct.
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
@@ -29,27 +29,31 @@ impl fmt::Display for ActionStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct ActionStore {
+    /// A vector of SomeAction structs
     pub avec: Vec<SomeAction>,
 }
 
 impl ActionStore {
+    /// Return a new, empty ActionStore.
     pub fn new() -> Self {
         ActionStore {
             avec: Vec::<SomeAction>::with_capacity(5),
         }
     }
 
+    /// Return the length of the store.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
 
-    pub fn push(&mut self, mut val: SomeAction) {
-        val.num = self.avec.len();
-        self.avec.push(val);
+    /// Add a SomeAction struct to the store.
+    pub fn push(&mut self, mut actx: SomeAction) {
+        actx.num = self.avec.len();
+        self.avec.push(actx);
     }
 
-    // Get an x_mask for all actions.
-    // Indicates bit position that can predictably change
+    /// Get an x_mask for all actions.
+    /// Indicates bit position that can predictably change
     pub fn get_x_mask(&self, num_ints: usize) -> SomeMask {
         let mut cngx = SomeChange::new_low(num_ints);
 
@@ -60,12 +64,12 @@ impl ActionStore {
         cngx.x_mask()
     }
 
-    // Get needs for all actions
+    /// Get needs for all actions.
     pub fn get_needs(&mut self, cur: &SomeState, x_mask: &SomeMask) -> NeedStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
-            .par_iter_mut() // .iter for easier reading of diagnostic messages
+            .par_iter_mut() // par_iter_mut for parallel, .iter for easier reading of diagnostic messages
             .map(|actx| actx.get_needs(cur, x_mask))
             .collect::<Vec<NeedStore>>();
 
@@ -76,18 +80,10 @@ impl ActionStore {
             nds_agg.append(&mut nst);
         }
 
-        // For testing to make the terminal output squential, comment out the code above.
-        //        let mut nds_agg = NeedStore::new();
-        //        for actx in self.avec.iter_mut() {
-        //			let mut ndsx = actx.get_needs(cur, x_mask);
-        //			if ndsx.len() > 0 {
-        //				nds_agg.append(&mut ndsx);
-        //			}
-        //		}
-
         nds_agg
     }
 
+    /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 

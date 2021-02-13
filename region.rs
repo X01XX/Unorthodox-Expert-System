@@ -1,6 +1,6 @@
-//! The Region struct, for an Unorthodox Expert System.
+//! The SomeRegion struct, representing a region on a pseudo Karnaugh Map.
 //!
-//! Uses two states to represent a region, which includes every state between them.
+//! Uses two states (they can be the same) to represent a region, which includes every state between them.
 //!
 //! Can serve as a store for any two states.
 
@@ -14,9 +14,13 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeRegion {
+    /// First state defining a region, it represents a sempled state.
     pub state1: SomeState,
+    /// Second state defining a region, it represents a sempled state.
+    /// It may be the same as the first state, for a region with no X-bit positions.
     pub state2: SomeState,
-    pub active: bool, // To use Vecs better, inactivated regions should be ignored and may be overwritten.
+    /// To do less vector copying, inactivated regions should be ignored and may be overwritten.
+    pub active: bool,
 }
 
 impl fmt::Display for SomeRegion {
@@ -35,11 +39,11 @@ impl PartialEq for SomeRegion {
 impl Eq for SomeRegion {}
 
 impl SomeRegion {
-    // Create new region from two states.
-    //
-    // Keep the order of the states given, this is used in
-    // SomeAction::create_groups_from_sqare for prosessing the regions
-    // returned from SomeAction::possible_group_regions.
+    /// Create new region from two states.
+    ///
+    /// Keep the order of the states given. This is used in
+    /// SomeAction::create_groups_from_square for prosessing the regions
+    /// returned from SomeAction::possible_group_regions.
     pub fn new(sta1: &SomeState, sta2: &SomeState) -> Self {
         Self {
             state1: sta1.clone(),
@@ -48,12 +52,12 @@ impl SomeRegion {
         }
     }
 
-    // Return a length for string alloaction.
+    /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints()
     }
 
-    // Return a String representation of a Region without any prefix.
+    /// Return a String representation of a Region without any prefix.
     pub fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
@@ -87,9 +91,9 @@ impl SomeRegion {
         s1
     }
 
-    // Return a string representation for a region,
-    // bit positions that toggle are signified by a lower case x,
-    // as in X->x or just Xx.
+    /// Return a string representation for a region,
+    /// bit positions that toggle are signified by a lower case x,
+    /// as in X->x or just Xx.
     pub fn formatted_string_not_x(&self, msk: &SomeMask) -> String {
         let mut s1 = String::with_capacity(
             (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints(),
@@ -134,33 +138,33 @@ impl SomeRegion {
         s1
     }
 
-    // Set a regions active indicator off, effectively deleting it from a
-    // vector without structural changes, or copying, the vector.
+    /// Set a regions active indicator off, effectively deleting it from a
+    /// vector without structural changes to the vector.
     pub fn inactivate(&mut self) -> bool {
         self.active = false;
         true
     }
 
-    // Return true if two regions are adjacent.
+    /// Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         self.diff_mask(&other).just_one_bit()
     }
 
-    // Return true if a region is adjacent to a state.
+    /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
         self.diff_mask_state(&other).just_one_bit()
     }
 
-    // Return true if two regions intersect.
+    /// Return true if two regions intersect.
     pub fn intersects(&self, other: &Self) -> bool {
         self.diff_mask(&other).is_low()
     }
 
-    // Return the intersection of two regions.
-    // Check regions for intersection first.
-    // Strangely, the intersection of two adjacent regions produces
-    // most of an overlapping part, except for a 0/1 pair that needs to be changed
-    // to X.
+    /// Return the intersection of two regions.
+    /// Check regions for intersection first.
+    /// Strangely, the intersection of two adjacent regions produces
+    /// most of an overlapping part, except for a 0/1 pair that needs to be changed
+    /// to X.
     pub fn intersection(&self, other: &Self) -> Self {
         Self::new(
             &SomeState::new(self.high_mask().bts.b_and(&other.high_mask().bts)),
@@ -168,7 +172,7 @@ impl SomeRegion {
         )
     }
 
-    // Return true if a region is a superset of a state.
+    /// Return true if a region is a superset of a state.
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
         let t1 = self
             .state1
@@ -179,7 +183,7 @@ impl SomeRegion {
         t1.is_low()
     }
 
-    // Return mask of x bits.
+    /// Return mask of x bits.
     pub fn x_mask(&self) -> SomeMask {
         SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
     }
@@ -189,7 +193,7 @@ impl SomeRegion {
     //        self.state1.num_ints()
     //	}
 
-    // Return the number of X bits in a region.
+    /// Return the number of X bits in a region.
     pub fn num_x(&self) -> usize {
         self.state1.distance(&self.state2)
     }
@@ -200,13 +204,13 @@ impl SomeRegion {
     //        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts).b_not())
     //    }
 
-    // Given a state in a region, return the far state in the region.
+    /// Given a state in a region, return the far state in the region.
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
         SomeState::new(self.state1.bts.b_xor(&self.state2.bts).b_xor(&sta.bts))
     }
 
-    // Given a region, and a proper subset region, return the
-    // far region within the superset region.
+    /// Given a region, and a proper subset region, return the
+    /// far region within the superset region.
     pub fn far_reg(&self, other: &SomeRegion) -> SomeRegion {
         let int_x_msk = self.x_mask();
 
@@ -225,7 +229,7 @@ impl SomeRegion {
         )
     }
 
-    // Return true if a region is a subset on another region
+    /// Return true if a region is a subset on another region.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         if self.intersects(&other) {
             let x1 = self.x_mask();
@@ -235,6 +239,7 @@ impl SomeRegion {
         false
     }
 
+    /// Return true if a region is a superset on another region.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         if self.intersects(&other) {
             let x1 = self.x_mask();
@@ -244,6 +249,7 @@ impl SomeRegion {
         false
     }
 
+    /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
         let st_low = self
             .state1
@@ -260,6 +266,7 @@ impl SomeRegion {
         Self::new(&st_high, &st_low)
     }
 
+    /// Return the union of a region and a state.
     pub fn union_state(&self, other: &SomeState) -> Self {
         let st_low = self.state1.s_and(&self.state2).s_and(&other);
 
@@ -278,17 +285,17 @@ impl SomeRegion {
     //        SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
     //    }
 
-    // Return a Mask of zero or X bits (which include zero)
+    /// Return a Mask of zero or X bits (which include a zero).
     pub fn low_mask(&self) -> SomeMask {
         SomeMask::new(self.state1.bts.b_not().b_or(&self.state2.bts.b_not()))
     }
 
-    // Return a Mask of ones or X bits (which include one).
+    /// Return a Mask of ones or X bits (which include a one).
     pub fn high_mask(&self) -> SomeMask {
         SomeMask::new(self.state1.bts.b_or(&self.state2.bts))
     }
 
-    // Return a region with masked X-bits set to zeros
+    /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
         Self::new(
             &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
@@ -296,7 +303,7 @@ impl SomeRegion {
         )
     }
 
-    // Return a region with masked X-bits set to ones
+    /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
         Self::new(
             &SomeState::new(self.state1.bts.b_or(&msk.bts)),
@@ -304,7 +311,8 @@ impl SomeRegion {
         )
     }
 
-    // Return a region with masked X-bits set to zeros
+    /// Return a region with masked X-bits set to zeros.
+    /// The region states may not represent a samples state.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
         Self::new(
             &SomeState::new(self.state1.bts.b_or(&msk.bts)),
@@ -312,6 +320,7 @@ impl SomeRegion {
         )
     }
 
+    /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         SomeMask::new(
             self.state1
@@ -321,18 +330,20 @@ impl SomeRegion {
         )
     }
 
+    /// Return a mask of different (non-x) bits between two regions.
     pub fn diff_mask(&self, reg1: &SomeRegion) -> SomeMask {
         self.diff_mask_state(&reg1.state1)
             .m_and(&self.diff_mask_state(&reg1.state2))
     }
 
+    /// Return the number of different (non-x) bits with another region.
     pub fn distance(&self, reg1: &SomeRegion) -> usize {
         self.diff_mask_state(&reg1.state1)
             .m_and(&self.diff_mask_state(&reg1.state2))
             .num_one_bits()
     }
 
-    // Return states in region
+    /// Return states in a region, given a list of states.
     pub fn states_in(&self, stas: &StateStore) -> StateStore {
         let mut stsin = StateStore::new();
 
@@ -345,7 +356,7 @@ impl SomeRegion {
         stsin
     }
 
-    // Given two adjacent regions, return an overlapping region
+    /// Given two adjacent regions, return an overlapping region.
     pub fn overlapping_part(&self, other: &Self) -> Self {
         assert!(self.is_adjacent(&other));
 
@@ -362,6 +373,7 @@ impl SomeRegion {
     //        SomeState::new(other.bts.b_xor(&adj_bit.bts))
     //    }
 
+    /// Toggle non-x bits in a region, given a mask.
     pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
         let stxor = SomeState::new(tbits.bts.clone());
         Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
@@ -456,12 +468,13 @@ impl SomeRegion {
     //
     //        avec
     //    }
-    // Given a set of states (square keys), and a Pn value,
-    //
-    // Return a StateStore containing  pairs of states,
-    // found to encompas the region.
-    //
-    // Otherwise, return an empty StateSore.
+
+    /// Given a set of states (square keys),
+    ///
+    /// Return a StateStore containing  pairs of states,
+    /// found to encompas the region.
+    ///
+    /// An empty result is possible.
     pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
         // Initialize the StateStore
         let mut store = StateStore::new_with_capacity(2);
@@ -479,7 +492,7 @@ impl SomeRegion {
         store
     }
 
-    /// Return a Region from a string and hint as to the number of integers to use.
+    /// Return a Region from a string and a hint as to the number of integers to use.
     /// Left-most, consecutive, zeros can be omitted.
     ///
     /// if let Ok(regx) = <SomeDomain>.region_from_string(1, "r01x1")) {

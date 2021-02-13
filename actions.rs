@@ -1,4 +1,4 @@
-//! Actions to be taken, for an Unorthodox Expert System.
+//! Actions to be taken, creating samples for the UES.
 //!
 //! These actions are for testing and learning, they sould eventually be replaced
 //! by actions that make changes outside the program.
