@@ -40,7 +40,7 @@ pub struct SomeGroup {
     /// Mask of non-x bits to check for confirmation, that is the existence
     /// of a incompatible, adjacent, external square to the anchor.
     /// After a successful check, a 1 bit will be changed to 0.
-    pub edge_confirm: SomeMask,
+    //    pub edge_confirm: SomeMask,
     /// Mask of non-x bits to check for expansion.
     /// After a failed check, a 1 bit will be changed to 0.    
     pub edge_expand: SomeMask,
@@ -74,7 +74,7 @@ impl SomeGroup {
             active: true,
             confirmed: false,
             anchor: None,
-            edge_confirm: not_x.clone(),
+            //            edge_confirm: not_x.clone(),
             edge_expand: not_x,
             pair_needs: true,
         }
@@ -82,10 +82,10 @@ impl SomeGroup {
 
     /// Set a one bit in edge_confirm to zero.  A square adjacent to the
     /// anchor has been tested and found to be incompatible.
-    pub fn check_off_confirm_bit(&mut self, boff: &SomeMask) {
-        //println!("*** group {} checking off confirm bit {}", &self.region, &boff);
-        self.edge_confirm = self.edge_confirm.m_and(&boff.m_not());
-    }
+    //    pub fn check_off_confirm_bit(&mut self, boff: &SomeMask) {
+    //println!("*** group {} checking off confirm bit {}", &self.region, &boff);
+    //        self.edge_confirm = self.edge_confirm.m_and(&boff.m_not());
+    //    }
 
     /// Set a one bit in edge_expand to zero.  The group cannot
     /// expand on that edge.
@@ -95,9 +95,9 @@ impl SomeGroup {
     }
 
     /// Return true if a edge_confirm bit is set.
-    pub fn edge_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
-        return !self.edge_confirm.m_and(&bmsk).is_low();
-    }
+    //    pub fn edge_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
+    //        return !self.edge_confirm.m_and(&bmsk).is_low();
+    //    }
 
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {

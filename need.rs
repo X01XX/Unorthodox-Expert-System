@@ -106,10 +106,6 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} confirmed by {})", greg, sta1,),
-            SomeNeed::ClearEdgeConfirmBit {
-                group_region: greg,
-                mbit: mbitx,
-            } => format!("N(group {} clear confirm bit {})", greg, mbitx,),
             SomeNeed::ClearEdgeExpandBit {
                 group_region: greg,
                 mbit: mbitx,
@@ -185,11 +181,6 @@ pub enum SomeNeed {
     SetGroupConfirmed {
         group_region: SomeRegion,
         cstate: SomeState,
-    },
-    /// Housekeeping, set a edge confirm bit to zero.
-    ClearEdgeConfirmBit {
-        group_region: SomeRegion,
-        mbit: SomeMask,
     },
     /// Housekeeping, set a edge expand bit to zero.
     ClearEdgeExpandBit {
@@ -328,20 +319,6 @@ impl PartialEq for SomeNeed {
                     cstate: sta1x,
                 } => {
                     if greg == gregx && sta1 == sta1x {
-                        return true;
-                    }
-                }
-                _ => {}
-            },
-            SomeNeed::ClearEdgeConfirmBit {
-                group_region: greg,
-                mbit: mbitx,
-            } => match other {
-                SomeNeed::ClearEdgeConfirmBit {
-                    group_region: gregx,
-                    mbit: mbity,
-                } => {
-                    if greg == gregx && mbitx == mbity {
                         return true;
                     }
                 }

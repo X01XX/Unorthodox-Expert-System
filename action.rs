@@ -645,15 +645,15 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-                    SomeNeed::ClearEdgeConfirmBit {
-                        group_region: greg,
-                        mbit: mbitx,
-                    } => {
-                        try_again = true;
-                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                            grpx.check_off_confirm_bit(&mbitx);
-                        }
-                    }
+                    //                    SomeNeed::ClearEdgeConfirmBit {
+                    //                        group_region: greg,
+                    //                        mbit: mbitx,
+                    //                    } => {
+                    //                        try_again = true;
+                    //                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                    //                            grpx.check_off_confirm_bit(&mbitx);
+                    //                        }
+                    //                    }
                     SomeNeed::ClearEdgeExpandBit {
                         group_region: greg,
                         mbit: mbitx,
@@ -1160,7 +1160,8 @@ impl SomeAction {
                 continue;
             }
 
-            let edge_confirm = grpx.edge_confirm.m_and(&self.x_mask);
+            // Get mask of edge bits to use to confirm.
+            let edge_confirm = grpx.region.x_mask().m_not().m_and(&self.x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
             let edge_msks = edge_confirm.split();
@@ -1300,12 +1301,6 @@ impl SomeAction {
             for inx in 2..cfm_max.len() {
                 let adj_sta = &cfm_max[inx];
 
-                let a_bit_msk = SomeMask::new(adj_sta.bts.b_xor(&anchor_sta.bts));
-
-                if grpx.edge_confirm_bit_set(&a_bit_msk) == false {
-                    continue;
-                }
-
                 //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 
                 if let Some(adj_sqr) = self.squares.find(adj_sta) {
@@ -1315,12 +1310,6 @@ impl SomeAction {
                         if anchor_sqr.can_combine(&adj_sqr) == Combinable::True {
                             nds_grp_add.push(SomeNeed::AddGroup {
                                 group_region: SomeRegion::new(&anchor_sta, &adj_sta),
-                            });
-                        } else {
-                            // Set that bit off in the check mask
-                            grp_clear_bit.push(SomeNeed::ClearEdgeConfirmBit {
-                                group_region: greg.clone(),
-                                mbit: SomeMask::new(anchor_sta.bts.b_xor(&adj_sta.bts)),
                             });
                         }
                     } else {
@@ -1576,7 +1565,6 @@ impl SomeAction {
                         grp_reg: reg_grp.clone(),
                         far: sqry.state.clone(),
                     });
-
                 }
 
                 if sqry.pn() < sqrx.pn() {
@@ -1587,7 +1575,6 @@ impl SomeAction {
                         grp_reg: reg_grp.clone(),
                         far: sqrx.state.clone(),
                     });
-
                 }
                 inx += 2;
                 continue;
