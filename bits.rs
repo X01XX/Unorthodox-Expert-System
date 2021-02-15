@@ -7,7 +7,7 @@
 //!   Counting bits starts at the right-most bit of the right-most int,
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
-//! The integer type/size could be increased, search for and change "u8" references in this file,
+//! The integer type/size could be increased, search for and change "u8" and "08b" references in this file,
 //! test.rs, and change the constants, below, as needed.
 //!
 

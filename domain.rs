@@ -251,23 +251,36 @@ impl SomeDomain {
                 }
 
                 // Try re-plan to goal
-                println!(
-                    "Make new plan from {} to {}",
+                if let Some(planx) = self.make_plan(pln.result_region()) {
+                    println!(
+                        "\nChange [{} -{:02}> {}] unexpected, expected {}, new plan from {} to {} is {}",
+                        &prev_state,
+                        &stpx.act_num,
+                        &self.cur_state,
+                        &stpx,
+                        &self.cur_state,
+                        &pln.result_region(),
+                        &planx.str_terse()
+                        );					
+                    return self.run_plan2(&planx, recur + 1);
+                    //panic!("done");
+                }
+                 println!(
+                    "\nChange [{} -{:02}> {}] unexpected, expected {}, no plan from {} to {}, failed.",
+                    &prev_state,
+                    &stpx.act_num,
+                    &self.cur_state,
+                    &stpx,
                     &self.cur_state,
                     &pln.result_region()
                 );
-                if let Some(planx) = self.make_plan(pln.result_region()) {
-                    return self.run_plan2(&planx, recur + 1);
-                }
-                println!("plan failed");
                 return;
+                //panic!("done");
             } else {
-                println!(
-                    "step initial {} rule {} is not superset of the result found {}, plan failed",
+                panic!(
+                    "step initial {} rule {} is not superset of the result found {}, plan building failed",
                     &stpx.initial, &stpx.rule, &self.cur_state
                 );
-                println!("plan failed");
-                return;
             }
         } // next stpx
     } // end run_plan

@@ -779,8 +779,6 @@ fn usage() {
     println!(
         "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
     );
-
-    //println!("    gn                       - Get needs for all Domains.\n");
     println!("    pa                       - Print all actions.");
     println!("    pa <act num>             - Print an action.");
 
@@ -791,14 +789,14 @@ fn usage() {
     println!("    ss <act num> <state>                - Action to sample a given state.");
     println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
 
-    println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
+    println!("    to <region*>              - Change the current state to within a region, by calculating and executing a plan.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.\n");
     println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
-    println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.\n");
-
+    println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
+    println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    ld <path>                - Load data from a file.");
     println!("\n    sd <path>                - Store data to a file.\n");
 
