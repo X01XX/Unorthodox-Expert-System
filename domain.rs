@@ -213,7 +213,7 @@ impl SomeDomain {
     /// Run a plan.  Try to replan and run if a plan encounters an unexpected result.
     fn run_plan2(&mut self, pln: &SomePlan, recur: usize) {
         if recur > 3 {
-            //println!("run_plan2 recursion limit exceeded, plan failed");
+            println!("\nPlan {} failed", &pln);
             return;
         }
 
@@ -278,7 +278,7 @@ impl SomeDomain {
                 //panic!("done");
             } else {
                 panic!(
-                    "step initial {} rule {} is not superset of the result found {}, plan building failed",
+                    "step initial {} rule {} is not superset of the result found {}, plan building problem",
                     &stpx.initial, &stpx.rule, &self.cur_state
                 );
             }
