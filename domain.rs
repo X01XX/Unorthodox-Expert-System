@@ -385,7 +385,7 @@ impl SomeDomain {
 
         // Check for loop in the path so far
         for (fromx, tox) in reg_hist.iter() {
-            if *fromx == *from_reg && *tox == *goal_reg {
+            if fromx == from_reg && tox == goal_reg {
                 //println!(
                 //    "from reg {} and goal reg {} already in reg_hist, recur {}",
                 //    &from_reg,
@@ -401,15 +401,15 @@ impl SomeDomain {
         reg_hist.push((from_reg.clone(), goal_reg.clone()));
 
         // Create an aggregate change to represent the changes needed.
-        let achange = SomeChange::region_to_region(&from_reg, &goal_reg);
+        let required_change = SomeChange::region_to_region(&from_reg, &goal_reg);
 
         // println!(
         //    "find steps for from_reg {} to goal_reg {}, changes needed {}",
-        //     &from_reg, &goal_reg, &achange
+        //     &from_reg, &goal_reg, &required_change
         // );
 
         // Get steps that include at least one bit of the needed change masks.
-        let stpsx = self.actions.get_steps(&achange);
+        let stpsx = self.actions.get_steps(&required_change);
 
         if stpsx.len() == 0 {
             //if recur == 0 {
@@ -422,18 +422,16 @@ impl SomeDomain {
         //println!("steps found: {}", stpsx);
 
         // Create an initial change with no bits set to use for unions
-        let mut bchange = SomeChange::new_low(self.num_ints);
-        //let mut b01 = SomeMask::new(SomeBits::new_low(self.num_ints));
-        //let mut b10 = b01.clone();
+        let mut can_change = SomeChange::new_low(self.num_ints);
 
         // Get union of changes for each step
         for stpx in stpsx.iter() {
-            bchange.b01 = bchange.b01.m_or(&stpx.rule.b01);
-            bchange.b10 = bchange.b10.m_or(&stpx.rule.b10);
+            can_change.b01 = can_change.b01.m_or(&stpx.rule.b01);
+            can_change.b10 = can_change.b10.m_or(&stpx.rule.b10);
         }
 
         // Check if the changes found roughly satisfy the needed change
-        if achange.is_subset_of(&bchange) {
+        if required_change.is_subset_of(&can_change) {
             //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
             //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
@@ -441,7 +439,7 @@ impl SomeDomain {
         }
 
         // println!("{} steps found", stpsx.len());
-
+        
         // Look for one step that makes the whole change, single-result step preferred.
         let mut stp_vec = Vec::<SomeStep>::new();
         let mut stp_vec_2 = Vec::<SomeStep>::new();
@@ -479,8 +477,8 @@ impl SomeDomain {
             //println!("stp_vec: did not find a step to make the whole change");
         }
 
-        // Get steps sorted by change
-        let stp_cngs = self.sort_steps(&stpsx, &achange);
+        // Get steps inicies, sorted by step change.
+        let stp_cngs: Vec<Vec<usize>> = self.sort_steps(&stpsx, &required_change);
 
         // println!("{} stp_cngs steps", stp_cngs.len());
 
@@ -496,7 +494,7 @@ impl SomeDomain {
 
         // Make list of steps with initial regions farthest from goal.
         // if there is more than one step with the same change,
-        // use the one closest to the goal region.
+        // use the one with the initial region closest to the goal region.
         let mut max_diff = 0;
         let mut max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
 
@@ -513,7 +511,7 @@ impl SomeDomain {
                 let mut local_min = std::usize::MAX;
                 let mut min_diff_goal = Vec::<&SomeStep>::with_capacity(5);
 
-                // set single-result preference flag
+                // Set single-result state preference flag.
                 let mut sr_found = false;
 
                 // Scan for a single-result step
@@ -582,17 +580,17 @@ impl SomeDomain {
         //println!("Step chosen {}", &a_step);
 
         // Plan and return the next steps
-        if let Some(plnx) = self.plan_next_steps(&from_reg, &goal_reg, a_step.clone(), reg_hist) {
+        if let Some(plnx) = self.plan_next_step(&from_reg, &goal_reg, a_step.clone(), reg_hist) {
             //if reg_hist.len() == 0 {
             //    println!("plan from {} to {} found", &from_reg, &goal_reg);
             //}
-            Some(plnx)
-        } else {
-            //if reg_hist.len() == 0 {
-            //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            // }
-            None
+            return Some(plnx);
         }
+        //if reg_hist.len() == 0 {
+        //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
+        // }
+        None
+        
     } // end make_one_plan
 
     /// Process a possible step for translation of the from-region to the goal-region.
@@ -609,7 +607,7 @@ impl SomeDomain {
     /// Link sub plans together as needed.
     ///
     /// Return a plan.
-    fn plan_next_steps(
+    fn plan_next_step(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
@@ -618,10 +616,14 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         let mut bstep = astep.clone();
 
-        if astep.initial.is_superset_of(&from_reg) {
-            bstep = astep.restrict_initial_region(&from_reg);
+        // Check for step intial region is a superset of the from region.
+		if astep.initial.is_superset_of(&from_reg) {
+			if &astep.initial == from_reg {
+			} else {
+                bstep = astep.restrict_initial_region(&from_reg);
+			}
         }
-
+        
         //println!(
         //    "\nplan_next_steps: from {} to {} step {} recur {}",
         //     &from_reg, &goal_reg, &bstep, reg_hist.len()
@@ -631,8 +633,9 @@ impl SomeDomain {
         let mut aplan = SomePlan::new_step(bstep.clone());
 
         // Check plan initial region within from_reg
-        if aplan.initial_region().is_subset_of(&from_reg) {
-            // Check plan result region is within the goal region
+        if aplan.initial_region().is_superset_of(&from_reg) {
+			
+            // Check if the plan result region is within the goal region
             if aplan.result_region().is_subset_of(&goal_reg) {
                 return Some(aplan);
             }
@@ -692,7 +695,7 @@ impl SomeDomain {
         }
 
         return None;
-    } // end plan_next_steps
+    } // end plan_next_step 
 
     // Position to the optimal region
     //    pub fn to_optimal(&mut self) -> bool {
@@ -718,14 +721,18 @@ impl SomeDomain {
         }
     } // end to_region
 
-    /// Sort a list of steps, by change(s), into a vector of step stores.
-    pub fn sort_steps(&self, stpsx: &StepStore, achange: &SomeChange) -> Vec<Vec<usize>> {
+    /// Sort a list of steps, by change(s), into a vector of step stores of
+    /// steps that have the same change.
+    /// Filter out steps that make unneeded changes, if their needed changes are
+    /// satisfied by other steps.
+    pub fn sort_steps(&self, stpsx: &StepStore, required_change: &SomeChange) -> Vec<Vec<usize>> {
         let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stpsx.len());
 
-        // Check and store each step that is an exact subset of the needed changes.
+        // Check and store each step that has changes that are an exact subset of
+        // the needed changes.
         let mut inx = 0;
         for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&achange.b01) && stpx.rule.b10.is_subset_of(&achange.b10)
+            if stpx.rule.b01.is_subset_of(&required_change.b01) && stpx.rule.b10.is_subset_of(&required_change.b10)
             {
                 // Check for an existing vector of one or more changes of the same kind
                 // If found, push the step onto it.
@@ -755,18 +762,20 @@ impl SomeDomain {
         let mut inx = 0;
 
         for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&achange.b01) && stpx.rule.b10.is_subset_of(&achange.b10)
+            if stpx.rule.b01.is_subset_of(&required_change.b01) && stpx.rule.b10.is_subset_of(&required_change.b10)
             {
-            } else {
-                // Check for an existing vector of one or more changes of the same kind
+			} else {
+            
+                // Check for an existing vector of one or more changes of the same kind.
                 // If not found, save inx number.
 
                 // Get desired changes in step
-                let mut b01 = stpx.rule.b01.m_and(&achange.b01);
-                let mut b10 = stpx.rule.b10.m_and(&achange.b10);
+                let mut b01 = stpx.rule.b01.m_and(&required_change.b01);
+                let mut b10 = stpx.rule.b10.m_and(&required_change.b10);
 
                 // Check steps stored in stp_cngs to see if they satisfy the same needed changes.
                 for stp_cng in stp_cngs.iter_mut() {
+					
                     // Check a b01 needed change
                     let stpx01 = stpsx[stp_cng[0]].rule.b01.m_and(&b01);
                     if stpx01.is_not_low() {
@@ -785,7 +794,7 @@ impl SomeDomain {
                 if b01.is_not_low() || b10.is_not_low() {
                     stp_inx.push(inx);
                 }
-            } // end-else
+            } // end else
 
             inx += 1;
         } // next stpx

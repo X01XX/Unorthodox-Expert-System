@@ -867,7 +867,7 @@ fn load_data(path_str: &String) -> Result<DomainStore, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<(), String> {
+fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<bool, String> {
     let serialized_r = serde_yaml::to_string(&dmxs);
     match serialized_r {
         Ok(serialized) => {
@@ -879,7 +879,7 @@ fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<(), String> {
                 Err(why) => Err(format!("couldn't create {}: {}", display, why)),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
                     Err(why) => Err(format!("couldn't write to {}: {}", display, why)),
-                    Ok(_) => Ok(()),
+                    Ok(_) => Ok(true),
                 },
             }
         }
