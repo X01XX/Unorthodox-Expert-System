@@ -181,28 +181,23 @@ impl SomeAction {
 
             let sqrz = self.squares.find(&stax).unwrap();
 
-            // If an inbetween square had a Pn value greater than the defining pair,
-            // assuming the lower Pn square used is not <SomeSquare>.pnc() == true,
-            // the SomeSquare::can_combine function would return
-            // Combinable::MoreSamplesNeeded (for the lower Pn square).
-            if sqrz.pn() != sqrx.pn() {
-                if sqrz.pn() > sqrx.pn() {
-                    return Combinable::False;
-                }
-
-                if sqrx.pn() > sqrz.pn() {
-                    // must be Pn::Two vs Pn::One
-                    if sqrz.len_results() > 1 {
+            if sqrz.pn() == Pn::Unpredictable {
+                // sqrx.pn() cannot be Unpredictable at this point, so this invalidates
+                return Combinable::False;
+            } else {
+                if sqrz.pn() != sqrx.pn() {
+                    if sqrx.pn() == Pn::Two && sqrz.pn() == Pn::One && sqrz.len_results() > 1 {
+                        return Combinable::False;
+                    }
+                    if sqrz.pnc() {
                         return Combinable::False;
                     }
                 }
+                if sqrz.rules.is_subset_of(&rulsx) == false {
+                    return Combinable::False;
+                }
             }
-
-            if sqrz.rules.is_subset_of(&rulsx) {
-            } else {
-                return Combinable::False;
-            }
-        }
+        } // next stax
 
         cmbx
     }

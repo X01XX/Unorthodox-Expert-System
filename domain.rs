@@ -261,11 +261,11 @@ impl SomeDomain {
                         &self.cur_state,
                         &pln.result_region(),
                         &planx.str_terse()
-                        );					
+                        );
                     return self.run_plan2(&planx, recur + 1);
                     //panic!("done");
                 }
-                 println!(
+                println!(
                     "\nChange [{} -{:02}> {}] unexpected, expected {}, no plan from {} to {}, failed.",
                     &prev_state,
                     &stpx.act_num,
@@ -275,7 +275,7 @@ impl SomeDomain {
                     &pln.result_region()
                 );
                 return;
-                //panic!("done");
+            //panic!("done");
             } else {
                 panic!(
                     "step initial {} rule {} is not superset of the result found {}, plan building problem",
@@ -439,7 +439,7 @@ impl SomeDomain {
         }
 
         // println!("{} steps found", stpsx.len());
-        
+
         // Look for one step that makes the whole change, single-result step preferred.
         let mut stp_vec = Vec::<SomeStep>::new();
         let mut stp_vec_2 = Vec::<SomeStep>::new();
@@ -590,7 +590,6 @@ impl SomeDomain {
         //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
         // }
         None
-        
     } // end make_one_plan
 
     /// Process a possible step for translation of the from-region to the goal-region.
@@ -617,13 +616,13 @@ impl SomeDomain {
         let mut bstep = astep.clone();
 
         // Check for step intial region is a superset of the from region.
-		if astep.initial.is_superset_of(&from_reg) {
-			if &astep.initial == from_reg {
-			} else {
+        if astep.initial.is_superset_of(&from_reg) {
+            if &astep.initial == from_reg {
+            } else {
                 bstep = astep.restrict_initial_region(&from_reg);
-			}
+            }
         }
-        
+
         //println!(
         //    "\nplan_next_steps: from {} to {} step {} recur {}",
         //     &from_reg, &goal_reg, &bstep, reg_hist.len()
@@ -634,7 +633,6 @@ impl SomeDomain {
 
         // Check plan initial region within from_reg
         if aplan.initial_region().is_superset_of(&from_reg) {
-			
             // Check if the plan result region is within the goal region
             if aplan.result_region().is_subset_of(&goal_reg) {
                 return Some(aplan);
@@ -695,7 +693,7 @@ impl SomeDomain {
         }
 
         return None;
-    } // end plan_next_step 
+    } // end plan_next_step
 
     // Position to the optimal region
     //    pub fn to_optimal(&mut self) -> bool {
@@ -732,7 +730,8 @@ impl SomeDomain {
         // the needed changes.
         let mut inx = 0;
         for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&required_change.b01) && stpx.rule.b10.is_subset_of(&required_change.b10)
+            if stpx.rule.b01.is_subset_of(&required_change.b01)
+                && stpx.rule.b10.is_subset_of(&required_change.b10)
             {
                 // Check for an existing vector of one or more changes of the same kind
                 // If found, push the step onto it.
@@ -762,10 +761,10 @@ impl SomeDomain {
         let mut inx = 0;
 
         for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&required_change.b01) && stpx.rule.b10.is_subset_of(&required_change.b10)
+            if stpx.rule.b01.is_subset_of(&required_change.b01)
+                && stpx.rule.b10.is_subset_of(&required_change.b10)
             {
-			} else {
-            
+            } else {
                 // Check for an existing vector of one or more changes of the same kind.
                 // If not found, save inx number.
 
@@ -775,7 +774,6 @@ impl SomeDomain {
 
                 // Check steps stored in stp_cngs to see if they satisfy the same needed changes.
                 for stp_cng in stp_cngs.iter_mut() {
-					
                     // Check a b01 needed change
                     let stpx01 = stpsx[stp_cng[0]].rule.b01.m_and(&b01);
                     if stpx01.is_not_low() {
