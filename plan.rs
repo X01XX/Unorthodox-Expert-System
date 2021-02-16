@@ -99,16 +99,6 @@ impl SomePlan {
     //        self.steps.add(val);
     //    }
 
-    //    pub fn str_terse(&self) -> String {
-    //        let mut rc_str = String::from("[");
-    //
-    //        rc_str.push_str(&self.steps.str_terse());
-    //
-    //        rc_str.push(']');
-    //
-    //        rc_str
-    //    }
-
     /// Return a step iterator.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
@@ -206,35 +196,6 @@ impl SomePlan {
 
         if rc_steps.len() > 1 {
             rc_steps.reverse();
-        }
-
-        // Check for X->0 or X->1 bits,
-        // that result in 0->X, 1->X step bits
-        let mut last_step = &rc_steps[0];
-        let mut found = false;
-        for inx in 1..rc_steps.len() {
-            let stpx = &rc_steps[inx];
-
-            if last_step.result != stpx.initial {
-                if last_step.result.intersects(&stpx.initial) {
-                    found = true;
-                    println!("found - true! result {} and initial {}", &last_step, &stpx);
-                } else {
-                    panic!(
-                        "for steps {}, result {} does not equal {}",
-                        rc_steps, last_step.result, stpx.initial
-                    );
-                }
-            }
-
-            last_step = &stpx;
-        }
-
-        if found {
-            // Correct X->0 or X->1 bits,
-            // that result in 0->X, 1->X step bits, with restrict_initial
-            let regx = rc_steps[0].initial.clone();
-            return SomePlan { steps: rc_steps }.restrict_initial_region(&regx);
         }
 
         Some(Self::new(rc_steps))

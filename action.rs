@@ -137,7 +137,7 @@ impl SomeAction {
             return cmbx;
         }
 
-        // Get square keys for all squares in the region formed by the
+        // Get keys for all squares in the region formed by the
         // two given squares.
         let stas = self
             .squares
@@ -171,9 +171,6 @@ impl SomeAction {
         let rulsx = sqrx.rules.union(&sqry.rules).unwrap();
 
         // Check squares between for compatibility to the rules.
-        //
-        // Two squares, with one sample each, Pn::One, could have rules that are mutually incompatible,
-        // but both rules could be valid subsets of a Pn::Two pair of squares.
         for stax in stas.iter() {
             if *stax == sqrx.state || *stax == sqry.state {
                 continue;
@@ -184,18 +181,22 @@ impl SomeAction {
             if sqrz.pn() == Pn::Unpredictable {
                 // sqrx.pn() cannot be Unpredictable at this point, so this invalidates
                 return Combinable::False;
-            } else {
-                if sqrz.pn() != sqrx.pn() {
-                    if sqrx.pn() == Pn::Two && sqrz.pn() == Pn::One && sqrz.len_results() > 1 {
-                        return Combinable::False;
-                    }
-                    if sqrz.pnc() {
-                        return Combinable::False;
-                    }
-                }
-                if sqrz.rules.is_subset_of(&rulsx) == false {
+            }
+
+            if sqrz.pn() != sqrx.pn() {
+                if sqrz.pnc() {
                     return Combinable::False;
                 }
+                if sqrz.pn() > sqrx.pn() {
+                    return Combinable::False;
+                }
+                if sqrx.pn() == Pn::Two && sqrz.pn() == Pn::One && sqrz.len_results() > 1 {
+                    return Combinable::False;
+                }
+            }
+
+            if sqrz.rules.is_subset_of(&rulsx) == false {
+                return Combinable::False;
             }
         } // next stax
 
@@ -1255,6 +1256,8 @@ impl SomeAction {
                         //     &greg, &anchor, max_num
                         //  );
                         continue;
+                    } else {
+                        grpx.set_anchor_off();
                     }
                 }
             }

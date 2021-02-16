@@ -353,7 +353,11 @@ impl SomeRule {
             let b10: bool = self.b10.is_bit_set(i);
 
             if i != (num_bits - 1) {
-                strrc.push('/');
+                if (i + 1) % NUM_BITS_PER_INT == 0 {
+                    strrc.push('_');
+                } else {
+                    strrc.push('/');
+                }
             }
 
             if b00 && b01 == false && b11 && b10 == false {

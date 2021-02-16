@@ -37,10 +37,6 @@ pub struct SomeGroup {
     pub confirmed: bool,
     /// The state, in only one (this) group, used to confirm the group.
     pub anchor: Option<SomeState>,
-    /// Mask of non-x bits to check for confirmation, that is the existence
-    /// of a incompatible, adjacent, external square to the anchor.
-    /// After a successful check, a 1 bit will be changed to 0.
-    //    pub edge_confirm: SomeMask,
     /// Mask of non-x bits to check for expansion.
     /// After a failed check, a 1 bit will be changed to 0.    
     pub edge_expand: SomeMask,
@@ -65,8 +61,6 @@ impl SomeGroup {
             pnx = Pn::Two;
         }
 
-        let not_x = SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not());
-
         Self {
             region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
             pn: pnx,
@@ -74,18 +68,10 @@ impl SomeGroup {
             active: true,
             confirmed: false,
             anchor: None,
-            //            edge_confirm: not_x.clone(),
-            edge_expand: not_x,
+            edge_expand: SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not()),
             pair_needs: true,
         }
     }
-
-    /// Set a one bit in edge_confirm to zero.  A square adjacent to the
-    /// anchor has been tested and found to be incompatible.
-    //    pub fn check_off_confirm_bit(&mut self, boff: &SomeMask) {
-    //println!("*** group {} checking off confirm bit {}", &self.region, &boff);
-    //        self.edge_confirm = self.edge_confirm.m_and(&boff.m_not());
-    //    }
 
     /// Set a one bit in edge_expand to zero.  The group cannot
     /// expand on that edge.
@@ -93,11 +79,6 @@ impl SomeGroup {
         //println!("*** group {} checking off expand bit {}", &self.region, &boff);
         self.edge_expand = self.edge_expand.m_and(&boff.m_not());
     }
-
-    /// Return true if a edge_confirm bit is set.
-    //    pub fn edge_confirm_bit_set(&self, bmsk: &SomeMask) -> bool {
-    //        return !self.edge_confirm.m_and(&bmsk).is_low();
-    //    }
 
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
@@ -139,8 +120,8 @@ impl SomeGroup {
         }
 
         //        rc_str.push_str(&format!(
-        //            " nxe: {} nxc: {}",
-        //            &self.edge_expand, &self.edge_confirm
+        //            " nxe: {}",
+        //            &self.edge_expand
         //        ));
 
         rc_str.push_str(")");
@@ -203,7 +184,7 @@ impl SomeGroup {
         }
     }
 
-    /// Return true if a sample is compatible with a group
+    /// Return true if a sample is compatible with a group.
     pub fn sample_is_ok(&self, init: &SomeState, rslt: &SomeState) -> bool {
         let tmp_rul = SomeRule::new(&init, &rslt);
 
@@ -220,7 +201,8 @@ impl SomeGroup {
         }
     }
 
-    /// Clear the anchor, it is no longer only in one group.
+    /// Clear the anchor, it is no longer only in one group,
+    /// or is superceeded by a higher rated anchor.
     pub fn set_anchor_off(&mut self) {
         self.anchor = None;
         self.confirmed = false;
