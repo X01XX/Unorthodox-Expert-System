@@ -127,6 +127,10 @@ impl SomeMask {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('m')
     }
+
+    pub fn str2(&self) -> String {
+        self.bts.str2(' ')
+    }
 } // end SomeMask
 
 impl Clone for SomeMask {

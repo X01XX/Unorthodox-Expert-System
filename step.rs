@@ -44,7 +44,7 @@ impl SomeStep {
             initial: init_reg.clone(),
             act_num: self.act_num,
             result: self.rule.result_from_initial(&init_reg),
-            rule: self.rule.clone(),
+            rule: self.rule.restrict_initial_region(&init_reg),
             alt_rule: self.alt_rule,
             group_reg: self.group_reg.clone(),
         }

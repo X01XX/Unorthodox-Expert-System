@@ -258,6 +258,27 @@ impl SomePlan {
             rc_steps = rcx_steps;
         }
     } // end fn short_cuts
+
+    pub fn str2(&self) -> String {
+        let mut rc_str = String::new();
+        for stpx in self.steps.iter() {
+            let df = stpx.initial.diff_mask(&stpx.result);
+
+            rc_str.push_str(&format!(
+                "{} Action {:02} Group {} Rule {}\n{}\n",
+                &stpx.initial,
+                &stpx.act_num,
+                &stpx.group_reg,
+                &stpx.rule,
+                &df.str2()
+            ));
+        }
+        if self.steps.len() > 0 {
+            let x = self.steps.len() - 1;
+            rc_str.push_str(&format!("{}", &self.steps[x].result));
+        }
+        rc_str
+    }
 } // end impl SomePlan
 
 impl Clone for SomePlan {

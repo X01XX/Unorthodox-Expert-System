@@ -334,6 +334,26 @@ impl SomeBits {
         }
         astr
     }
+    pub fn str2(&self, prefix: char) -> String {
+        let mut astr = String::with_capacity(self.formatted_string_length());
+        astr.push(prefix);
+
+        let mut fil = 0;
+        for intx in self.ints.iter() {
+            if fil == 1 {
+                astr.push(' ');
+            }
+            for i in (0..NUM_BITS_PER_INT).rev() {
+                if (intx & ALL_BIT_MASKS[i]) == 0 {
+                    astr.push(' ');
+                } else {
+                    astr.push('v');
+                }
+            }
+            fil = 1;
+        }
+        astr
+    }
 } // end impl SomeBits
 
 impl Clone for SomeBits {

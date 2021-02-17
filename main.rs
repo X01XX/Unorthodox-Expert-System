@@ -120,14 +120,16 @@ fn main() {
 
         //let mut dmx = &mut dmxs[dom_num];
 
-        print!("\nCurrent Domain: {}", dom_num,);
+        print_domain(&dmxs, dom_num);
+
+        //        print!("\nCurrent Domain: {}", dom_num,);
 
         //        print!(
         //            " Predictable changes: {}",
         //            &dmxs[dom_num].x_mask,
         //        );
 
-        println!("\nActs: {}", &dmxs[dom_num].actions);
+        //        println!("\nActs: {}", &dmxs[dom_num].actions);
 
         // Vector for position = display index, val = need_plans index
         let mut need_can = Vec::<usize>::with_capacity(nds.len());
@@ -138,13 +140,6 @@ fn main() {
         let mut cant_do = 0;
 
         if nds.len() > 0 {
-            //            let mut inx = 0;
-            //            for ndx in nds.iter() {
-            //                println!("{:2} {}", inx, ndx);
-            //                inx += 1;
-            //            }
-            //println!("\nAction needs: {}", nds);
-
             // Check if each need can be done
             need_plans = dmxs.evaluate_needs(&nds);
 
@@ -197,25 +192,6 @@ fn main() {
             println!("\nAction needs: None");
         }
 
-        let mut in_opt = "Not in";
-
-        if dmxs[dom_num]
-            .optimal
-            .is_superset_of_state(&dmxs[dom_num].cur_state)
-        {
-            in_opt = "in";
-        }
-
-        println!(
-            "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-            &dmxs.step,
-            dom_num,
-            &dmxs[dom_num].cur_state,
-            &dmxs[dom_num].max_region,
-            &in_opt,
-            &dmxs[dom_num].optimal
-        );
-
         if nds.len() == 0 {
             if run > 0 {
                 run -= 1;
@@ -229,15 +205,7 @@ fn main() {
 
         if run > 0 {
         } else {
-            print!("\nPress Enter to continue: ");
-            io::stdout().flush().unwrap();
-
-            let mut guess = String::new();
-            io::stdin()
-                .read_line(&mut guess)
-                .expect("Failed to read line");
-
-            //println!("The command is: {} len {} char1: {:?}", guess, guess.len(), guess.chars());
+            let guess = pause_for_input("\nPress Enter or type a command: ");
 
             for word in guess.split_whitespace() {
                 //println!("word: {} is {}", word_count, word);
@@ -284,9 +252,9 @@ fn main() {
                 } else {
                     let optimal = dmxs[dom_num].optimal.clone();
                     if dmxs[dom_num].to_region(&optimal) {
-                        println!("Change to region succeeded");
+                        println!("\nChange to optimal region succeeded");
                     } else {
-                        println!("Change to region failed");
+                        println!("\nChange to optimal region failed");
                     }
                 }
             }
@@ -320,6 +288,37 @@ fn main() {
                     } else {
                         dom_num = d_num;
                     }
+                    continue;
+                } else if cmd[0] == "ppd" {
+                    let n_num = cmd[1].parse().unwrap_or_else(|err| {
+                        println!("Invalid Need Number: {}", err);
+                        999
+                    });
+                    if n_num == 999 {
+                        continue;
+                    }
+                    if n_num >= need_can.len() {
+                        println!("Invalid Need Number: {}", cmd[1]);
+                        continue;
+                    }
+
+                    let ndx = &nds[need_can[n_num]];
+
+                    // Chnage the displayed Domian, if needed
+                    if dom_num != ndx.dom_num() {
+                        dom_num = ndx.dom_num();
+                    }
+
+                    print_domain(&dmxs, dom_num);
+
+                    let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
+
+                    println!("\nNeed: {}", &ndx);
+
+                    println!("\nPlan: \n{}", &pln.str2());
+
+                    pause_for_input("\nPress Enter to continue: ");
+
                     continue;
                 } else if cmd[0] == "dn" {
                     let n_num = cmd[1].parse().unwrap_or_else(|err| {
@@ -456,21 +455,21 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             match region_r {
                 Ok(goal_region) => {
                     println!(
-                        "Change Current_state {} to region {}",
+                        "\nChange Current_state {} to region {}",
                         dm1.cur_state, goal_region
                     );
                     if goal_region.is_superset_of_state(&dm1.cur_state) {
                         println!(
-                            "current_state {} is already in region {}",
+                            "\nCurrent_state {} is already in region {}",
                             dm1.cur_state, goal_region
                         );
                         return false;
                     } else {
                         if dm1.to_region(&goal_region) {
-                            println!("Change to region succeeded");
+                            println!("\nChange to region succeeded");
                             return true;
                         } else {
-                            println!("Change to region failed");
+                            println!("\nChange to region failed");
                             return false;
                         }
                     }
@@ -756,6 +755,30 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     false
 } // end do_command
 
+fn print_domain(dmxs: &DomainStore, dom_num: usize) {
+    print!("\nCurrent Domain: {}", dom_num,);
+    println!("\nActs: {}", &dmxs[dom_num].actions);
+
+    let mut in_opt = "Not in";
+
+    if dmxs[dom_num]
+        .optimal
+        .is_superset_of_state(&dmxs[dom_num].cur_state)
+    {
+        in_opt = "in";
+    }
+
+    println!(
+        "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
+        &dmxs.step,
+        dom_num,
+        &dmxs[dom_num].cur_state,
+        &dmxs[dom_num].max_region,
+        &in_opt,
+        &dmxs[dom_num].optimal
+    );
+}
+
 /// Display usage options.
 fn usage() {
     println!("\nCommands:");
@@ -764,14 +787,14 @@ fn usage() {
     println!(
         "    Press Enter (no command) - Check for any Action needs, satisfy one need if possible."
     );
-    println!("                               If no needs, change the current state to the optimal region.\n");
-    println!("    aj <act num> <region>    - For an Action, print squares adjacent to a region.\n");
+    println!("                               If no needs can be done, try to change the current state to the optimal region.\n");
+    println!("    aj <act num> <region>    - For an Action, print Adjacent Squares to a region.\n");
     println!(
         "    cd <dom num>             - Change the displayed Domain to the given Domain number.\n"
     );
 
-    println!("    co <region>              - Change the optimal region to the given region.\n");
-    println!("    cs <state>               - Arbitrary change state.\n");
+    println!("    co <region>              - Change the Optimal region to the given region.\n");
+    println!("    cs <state>               - Arbitrary Change State.\n");
     println!("    dn <need number>         - Run a particular need from the need list.\n");
     println!(
         "    g1 <act num>             - For an Action, print squares that are only in one region."
@@ -779,17 +802,19 @@ fn usage() {
     println!(
         "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
     );
-    println!("    pa                       - Print all actions.");
-    println!("    pa <act num>             - Print an action.");
+    println!("    pa                       - Print all Actions.");
+    println!("    pa <act num>             - Print an Action.");
+    println!("\n    ppd <need number>        - Print the Plan Details for a given need.");
+    println!("\n    ps <act num>             - For an Action, Print all Squares.");
+    println!("    ps <act num> <region>    - For an Action, Print Squares in a region.\n");
 
-    println!("\n    ps <act num>             - For an Action, print all Squares.");
-    println!("    ps <act num> <region>    - For an Action, print Squares in a region.\n");
+    println!("    ss <act num>                        - Action to Sample the current State.");
+    println!("    ss <act num> <state>                - Action to Sample a given State.");
+    println!(
+        "    ss <act num> <state> <result-state> - Action to take an arbitrary State Sample.\n"
+    );
 
-    println!("    ss <act num>                        - Action to sample the current state.");
-    println!("    ss <act num> <state>                - Action to sample a given state.");
-    println!("    ss <act num> <state> <result-state> - Action to take an arbitrary sample.\n");
-
-    println!("    to <region*>              - Change the current state to within a region, by calculating and executing a plan.");
+    println!("    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.\n");
@@ -807,31 +832,15 @@ fn usage() {
 }
 
 ///Pause for input from user.
-pub fn pause_for_input(loc: &str) {
-    loop {
-        println!("{} Press c to continue: ", loc);
-        io::stdout().flush().unwrap();
-        let mut guess = String::new();
-        io::stdin()
-            .read_line(&mut guess)
-            .expect("Falied to read line");
-
-        for word in guess.split_whitespace() {
-            if word == "c" {
-                return;
-            }
-        } // end for
-    } // end loop
-}
-
-/// Pause execution until the Enter key is pressed.
-pub fn pause_for_enter(loc: &str) {
-    println!("{} Press Enter to continue: ", loc);
+pub fn pause_for_input(prompt: &str) -> String {
+    print!("{}", prompt);
     io::stdout().flush().unwrap();
-    let mut guess = String::new();
+    let mut in_str = String::new();
     io::stdin()
-        .read_line(&mut guess)
-        .expect("Falied to read line");
+        .read_line(&mut in_str)
+        .expect("Failed to read line");
+
+    in_str
 }
 
 /// Load data from a given path string.

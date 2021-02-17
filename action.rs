@@ -1810,8 +1810,7 @@ impl SomeAction {
                     // Find bit changes that are desired
                     if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
                     {
-                        let i_reg = rulx.initial_region();
-                        stps.push(SomeStep::new(self.num, rulx, false, i_reg));
+                        stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
                     }
                 }
                 Pn::Two => {
