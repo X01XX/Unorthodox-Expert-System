@@ -351,8 +351,13 @@ impl SomeDomain {
     ///
     /// Check if one step will do the change needed.
     ///
-    /// The initial-regions of the steps, representing the paths to the needed changes, will be
-    /// at different distances (number bit differences) from the goal-region.
+    /// Forward-chaining examples I have read assume that any rule is available under any context.
+    /// That can happen here.
+    /// But there will be some rules that require a particular context, so you must
+    /// forward-chain to that context before using the rule.
+    ///
+    /// For example, upon entering a room to retrieve an object, you may find that you
+    /// need to first turn on the light.
     ///
     /// The general rule is to use the step(s), with intial-regions
     /// furthest from the goal-region, then the next furthest step(s), until the goal-region
