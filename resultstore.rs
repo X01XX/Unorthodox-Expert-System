@@ -5,7 +5,7 @@
 use crate::pn::Pn;
 use crate::state::SomeState;
 
-const MAX_RESULTS: usize = 4; // Seems like the best. It certaily should be even, for two-result squares.
+pub const MAX_RESULTS: usize = 4; // Seems like the best. It certaily should be even, for two-result squares.
 
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -71,7 +71,7 @@ impl ResultStore {
 
         // calc, or recalc, pnc
         if self.pnc == false {
-            if self.astore.len() == MAX_RESULTS {
+            if self.astore.len() == MAX_RESULTS || self.pn == Pn::Unpredictable {
                 self.changed = true;
                 self.pnc = true;
             }
@@ -102,13 +102,8 @@ impl ResultStore {
     }
 
     /// Return the last result.
-    pub fn last_result(&self) -> SomeState {
-        self.astore[self.astore.len() - 1].clone()
-    }
-
-    /// Return the second to lat result.
-    pub fn second_last_result(&self) -> SomeState {
-        self.astore[self.astore.len() - 2].clone()
+    pub fn last_result(&self) -> &SomeState {
+        &self.astore[self.astore.len() - 1]
     }
 
     /// Calculate the Pattern Number.

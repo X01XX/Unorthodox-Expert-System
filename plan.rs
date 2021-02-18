@@ -260,19 +260,19 @@ impl SomePlan {
     } // end fn short_cuts
 
     pub fn str2(&self) -> String {
-		if self.steps.len() == 0 {
-			return String::from("Empty plan");
-		}
-		
+        if self.steps.len() == 0 {
+            return String::from("Empty plan");
+        }
+
         let mut rc_str = String::new();
         let inx_end = self.steps.len() - 1;
         for stpx in self.steps.iter() {
             let df = stpx.initial.diff_mask(&stpx.result);
-             
+
             let dif_bits = stpx.initial.diff_mask(&self.steps[inx_end].result);
 
             let dif_num = dif_bits.num_one_bits();
-            
+
             rc_str.push_str(&format!(
                 "{} Action {:02} Group {} Rule {} #dif: {} {}\n{}\n",
                 &stpx.initial,

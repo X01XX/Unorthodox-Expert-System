@@ -68,6 +68,11 @@ impl SquareStore {
 
     /// Add a square that is not currently in the store.
     pub fn insert(&mut self, sqrx: SomeSquare) {
+        println!(
+            "\nAdding square {} -> {}",
+            &sqrx.state,
+            &sqrx.first_result()
+        );
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 

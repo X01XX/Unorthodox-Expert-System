@@ -267,6 +267,9 @@ fn main() {
                         dmxs = init();
                     }
                     continue;
+                } else if cmd[0] == "so" {
+                    dmxs = init();
+                    continue;
                 }
             } else if cmd.len() == 2 {
                 if cmd[0] == "run" {
@@ -829,6 +832,7 @@ fn usage() {
     println!("    run <number times>       - Run a number of times.");
 
     println!("\n    q | exit | quit          - Quit program.");
+    println!("\n    so                       - Start Over.");
 }
 
 ///Pause for input from user.

@@ -2,7 +2,7 @@
 //!
 use crate::combinable::Combinable;
 use crate::pn::Pn;
-use crate::resultstore::ResultStore;
+use crate::resultstore::{ResultStore, MAX_RESULTS};
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
@@ -225,7 +225,20 @@ impl SomeSquare {
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
-        //println!("Adding result {} to square {}", st, self.str_terse());
+        let mut add_str = String::from(" ");
+        if self.len_results() < MAX_RESULTS {
+            add_str = format!(" {} ", self.len_results() + 1);
+        }
+
+        let mut str_info = String::from(&format!(
+            "\nSquare {} adding result{}{}",
+            self.str_terse(),
+            add_str,
+            &st
+        ));
+
+        let sav_pn = self.pn();
+        let sav_pnc = self.pnc();
 
         let rc = self.results.push_wrap(st);
 
@@ -235,6 +248,11 @@ impl SomeSquare {
                     self.rules = RuleStore::new();
                     self.rules
                         .push(SomeRule::new(&self.state, self.results.first()));
+                }
+                if self.len_results() == 2 {
+                    str_info.push_str(&format!(
+                        ", result the same as first, so not subest of any pn==2, since order matters"
+                    ));
                 }
             }
             Pn::Two => {
@@ -252,6 +270,21 @@ impl SomeSquare {
                 }
             }
         }
+        if sav_pn != self.pn() {
+            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.pn()));
+        } else {
+            str_info.push_str(&format!(", pn {}", &self.pn()));
+        }
+        if sav_pnc != self.pnc() {
+            str_info.push_str(&format!(
+                ", pnc changed from {} to {}",
+                &sav_pnc,
+                &self.pnc()
+            ));
+        } else {
+            str_info.push_str(&format!(", pnc {}", &self.pnc()));
+        }
+        println!("{}", &str_info);
         rc
     }
 
@@ -260,43 +293,18 @@ impl SomeSquare {
         self.results.len()
     }
 
-    /// Return the last result for the square.
-    pub fn last_result(&self) -> SomeState {
-        self.results.last_result()
+    /// Return the first result for the square.
+    pub fn first_result(&self) -> &SomeState {
+        self.results.first()
     }
 
     /// Return the second to last result for the square.
-    pub fn second_last_result(&self) -> SomeState {
-        self.results.second_last_result()
+    pub fn last_result(&self) -> &SomeState {
+        self.results.last_result()
     }
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
     pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
         self.state.is_adjacent(&other.state)
-    }
-
-    //    pub fn distance(&self, other: &SomeSquare) -> usize {
-    //        self.state.distance(&other.state)
-    //    }
-
-    /// Given a Pn::Two square, return the expected next result.
-    pub fn next_result(&self, ruls: &RuleStore) -> SomeState {
-        assert!(ruls.avec.len() == 2);
-
-        assert!(ruls[0].initial_region().is_superset_of_state(&self.state));
-
-        if self.len_results() > 1 {
-            return self.second_last_result();
-        }
-
-        let result = self.last_result();
-
-        let rulx = SomeRule::new(&self.state, &result);
-
-        if rulx.is_subset_of(&ruls.avec[0]) {
-            return ruls.avec[1].result_from_initial_state(&self.state);
-        }
-
-        ruls.avec[0].result_from_initial_state(&self.state)
     }
 } // end impl SomeSquare

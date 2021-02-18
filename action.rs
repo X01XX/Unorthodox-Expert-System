@@ -1824,12 +1824,10 @@ impl SomeAction {
                             for stax in stas.iter() {
                                 let sqrx = self.squares.find(&stax).unwrap();
 
-                                let next_result = sqrx.next_result(&grpx.rules);
-
                                 // Will include at least one bit change desired, but maybe others.
                                 let expected_result = rulx.result_from_initial_state(&stax);
 
-                                if next_result == expected_result {
+                                if sqrx.last_result() != &expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(
@@ -1851,7 +1849,7 @@ impl SomeAction {
                                 stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                             }
                         } // endif Some(rulx)
-                    } // next rulx
+                    } // next ruly
                 } // end match Two
                 Pn::Unpredictable => {}
             } // end match grpx.pn
