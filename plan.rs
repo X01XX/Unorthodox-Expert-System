@@ -269,14 +269,17 @@ impl SomePlan {
         for stpx in self.steps.iter() {
             let df = stpx.initial.diff_mask(&stpx.result);
              
-            let dif_bits = stpx.initial.diff_mask(&self.steps[inx_end].result).bts.num_one_bits();
+            let dif_bits = stpx.initial.diff_mask(&self.steps[inx_end].result);
 
+            let dif_num = dif_bits.num_one_bits();
+            
             rc_str.push_str(&format!(
-                "{} Action {:02} Group {} Rule {} #dif: {}\n{}\n",
+                "{} Action {:02} Group {} Rule {} #dif: {} {}\n{}\n",
                 &stpx.initial,
                 &stpx.act_num,
                 &stpx.group_reg,
                 &stpx.rule,
+                &dif_num,
                 &dif_bits,
                 &df.str2()
             ));
