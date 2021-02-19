@@ -607,10 +607,10 @@ impl SomeAction {
                             continue;
                         }
 
-                        println!(
-                            "AddGroup {} using {} and {}",
-                            &greg, &greg.state1, &greg.state2
-                        );
+                        //println!(
+                        //    "AddGroup {} using {} and {}",
+                        //    &greg, &greg.state1, &greg.state2
+                        //);
 
                         let sqrx = self.squares.find(&greg.state1).unwrap();
                         let sqry = self.squares.find(&greg.state2).unwrap();
@@ -1827,6 +1827,8 @@ impl SomeAction {
                                 // Will include at least one bit change desired, but maybe others.
                                 let expected_result = rulx.result_from_initial_state(&stax);
 
+                                // If a Pn::Two squares last result is not equal to what is wanted,
+                                // the next result should be.
                                 if sqrx.last_result() != &expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
