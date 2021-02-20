@@ -52,12 +52,12 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// The region formed by the union of all Current States experienced.    
     pub max_region: SomeRegion,
-    /// An optimal region that is sought if there ar eno needs.  This may be changed.    
+    /// An optimal region that is sought if there are no needs.  This may be changed.    
     pub optimal: SomeRegion,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     pub prev_state: SomeState,
     /// A store of possible, predictable, bit changes.
-    pub x_mask: SomeMask,
+    pub predictable_mask: SomeMask,
     /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
     vec_hash: Vec<HashMap<SomeState, usize>>,
     /// Hidden variable range, for testing.  0-max(exclusive).
@@ -84,7 +84,7 @@ impl SomeDomain {
             max_region: SomeRegion::new(&cur, &cur),
             optimal: opt,
             prev_state: cur.clone(),
-            x_mask: SomeMask::new_low(num_ints),
+            predictable_mask: SomeMask::new_low(num_ints),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -103,15 +103,27 @@ impl SomeDomain {
 
     /// Return needs gathers from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
-        self.x_mask = self.actions.get_x_mask(self.num_ints);
-
-        let mut nst = self.actions.get_needs(&self.cur_state, &self.x_mask);
+        let mut nst = self
+            .actions
+            .get_needs(&self.cur_state, &self.predictable_mask);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
         }
 
         nst
+    }
+
+    /// Check for changes in the predictable change mask
+    fn check_predictable_mask(&mut self) {
+        let sav_mask = self.predictable_mask.clone();
+
+        self.predictable_mask = self.actions.get_predictable_mask(self.num_ints);
+
+        if self.predictable_mask != sav_mask {
+            println!("\nOld Predictable Change mask {}", &sav_mask);
+            println!("New Predictable Change mask {}", &self.predictable_mask);
+        }
     }
 
     /// Return the total number of actions.
@@ -131,6 +143,8 @@ impl SomeDomain {
         // may break hv info, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state);
         self.set_cur_state(r_state.clone());
+
+        self.check_predictable_mask();
     }
 
     /// Take an action for a need, evaluate the resulting sample.
@@ -143,6 +157,8 @@ impl SomeDomain {
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate);
         self.set_cur_state(astate);
+
+        self.check_predictable_mask();
     }
 
     /// Set the current state.
@@ -154,8 +170,8 @@ impl SomeDomain {
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
             let new_max_region = self.max_region.union_state(&self.cur_state);
-            println!("\nOld max region {}", &self.max_region,);
-            println!("New max region {}", &new_max_region,);
+            println!("\nOld max region  {}", &self.max_region);
+            println!("New max region  {}", &new_max_region,);
             self.max_region = new_max_region;
         }
     }
@@ -176,7 +192,9 @@ impl SomeDomain {
     pub fn run_plan(&mut self, pln: &SomePlan) {
         self.check_async();
 
-        self.run_plan2(pln, 0) // return run_plan2, which uses a recursion count limit
+        self.run_plan2(pln, 0);
+
+        self.check_predictable_mask();
     }
 
     /// Get a hidden variable value, for testing purposes.

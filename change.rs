@@ -42,7 +42,7 @@ impl SomeChange {
     pub fn union(&self, other: &SomeChange) -> Self {
         SomeChange {
             b01: self.b01.m_or(&other.b01),
-            b10: self.b10.m_or(&other.b01),
+            b10: self.b10.m_or(&other.b10),
         }
     }
 

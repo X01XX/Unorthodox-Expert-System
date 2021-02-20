@@ -64,10 +64,6 @@ impl fmt::Display for SomeAction {
                     &cnt,
                 ));
 
-                //                if grpx.not_x_confirm.is_low() == false {
-                //                    rc_str.push_str(&format!(" cfm: {}", &grpx.not_x_confirm));
-                //                }
-
                 //                if grpx.not_x_expand.is_low() == false {
                 //                    rc_str.push_str(&format!(" exp: {}", &grpx.not_x_expand));
                 //                }
@@ -210,11 +206,6 @@ impl SomeAction {
         self.groups.changed = false;
 
         self.eval_need_sample2(initial, ndx, result);
-
-        // Update predictable bit change masks, for group expansion and confirmation.
-        if self.groups.changed {
-            self.predictable_bit_changes = self.possible_bit_changes();
-        }
     }
 
     pub fn eval_need_sample2(&mut self, initial: &SomeState, ndx: &SomeNeed, result: &SomeState) {
@@ -641,15 +632,6 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-                    //                    SomeNeed::ClearEdgeConfirmBit {
-                    //                        group_region: greg,
-                    //                        mbit: mbitx,
-                    //                    } => {
-                    //                        try_again = true;
-                    //                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                    //                            grpx.check_off_confirm_bit(&mbitx);
-                    //                        }
-                    //                    }
                     SomeNeed::ClearEdgeExpandBit {
                         group_region: greg,
                         mbit: mbitx,
@@ -682,6 +664,11 @@ impl SomeAction {
             } // next ndx
 
             if try_again == false {
+                // Update predictable bit change masks, for group expansion and confirmation.
+                if self.groups.changed {
+                    self.predictable_bit_changes = self.possible_bit_changes();
+                }
+
                 //println!("Act: {} get_needs: returning: {}", &self.num, &nds);
                 return nds;
             }
@@ -1838,10 +1825,6 @@ impl SomeAction {
                                         false,
                                         grpx.region.clone(),
                                     );
-                                    //println!(
-                                    //   "pn2 rul {} sqr {} next rslt {} found. making step {}",
-                                    //    &rulx, &stax, &next_result, &stpx
-                                    //);
                                     stps.push(stpx);
                                     found = true;
                                 } // end if
@@ -1859,16 +1842,6 @@ impl SomeAction {
 
         stps
     } // end get_steps
-
-    // Return true if a group exists and is active
-    //    pub fn group_exists_and_active(&self, group_reg: &SomeRegion) -> bool {
-    //        if let Some(grpx) = self.groups.find(group_reg) {
-    //            if grpx.active {
-    //                return true;
-    //            }
-    //        }
-    //        return false;
-    //    }
 
     /// Get a random choice of a number of unique numbers (num_results) to a
     /// given number of positions, 0, 1 .. -> the_len (exclusive).
@@ -1971,13 +1944,13 @@ impl SomeAction {
 
             match grpx.pn {
                 Pn::One => {
-                    // Find bit changes that are desired
-                    ret_cng.b10 = ret_cng.b01.m_or(&grpx.rules[0].b10);
+                    // Find bit changes that can happen
+                    ret_cng.b10 = ret_cng.b10.m_or(&grpx.rules[0].b10);
                     ret_cng.b01 = ret_cng.b01.m_or(&grpx.rules[0].b01);
                 }
                 Pn::Two => {
                     for rulx in &grpx.rules.avec {
-                        ret_cng.b10 = ret_cng.b01.m_or(&rulx.b10);
+                        ret_cng.b10 = ret_cng.b10.m_or(&rulx.b10);
                         ret_cng.b01 = ret_cng.b01.m_or(&rulx.b01);
                     } // next rulx
                 } // end match Two
@@ -1985,6 +1958,7 @@ impl SomeAction {
             } // end match pn
         } // next grpx
 
+        //println!("Act {} pbc: b01: {} b10: {}", &self.num, &ret_cng.b01, &ret_cng.b10);
         ret_cng
     }
 }

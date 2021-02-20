@@ -52,13 +52,15 @@ impl ActionStore {
         self.avec.push(actx);
     }
 
-    /// Get an x_mask for all actions.
+    /// Get an predictable_mask for all actions.
     /// Indicates bit position that can predictably change
-    pub fn get_x_mask(&self, num_ints: usize) -> SomeMask {
+    pub fn get_predictable_mask(&self, num_ints: usize) -> SomeMask {
         let mut cngx = SomeChange::new_low(num_ints);
 
         for actx in &self.avec {
+            //println!("act {} change {}", &actx.num, &actx.predictable_bit_changes);
             cngx = cngx.union(&actx.predictable_bit_changes);
+            //println!("cngx   change {}", &cngx);
         }
 
         cngx.x_mask()

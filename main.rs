@@ -408,7 +408,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
         }
 
         if cmd[0] == "pa" {
-            println!("\nActs: {}", dm1.actions);
+            //println!("\nActs: {}", dm1.actions);
             return true;
         }
 
@@ -772,13 +772,8 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     }
 
     println!(
-        "\nStep: {} Dom: {} Current State: {}  Max Region: {}  {} Optimal Region: {}",
-        &dmxs.step,
-        dom_num,
-        &dmxs[dom_num].cur_state,
-        &dmxs[dom_num].max_region,
-        &in_opt,
-        &dmxs[dom_num].optimal
+        "\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}",
+        &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, &dmxs[dom_num].optimal
     );
 }
 
@@ -805,8 +800,8 @@ fn usage() {
     println!(
         "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
     );
-    println!("    pa                       - Print all Actions.");
-    println!("    pa <act num>             - Print an Action.");
+    println!("    pa                       - Print all Actions of the current Domain.");
+    println!("    pa <act num>             - Print an Action of the current Domain.");
     println!("\n    ppd <need number>        - Print the Plan Details for a given need.");
     println!("\n    ps <act num>             - For an Action, Print all Squares.");
     println!("    ps <act num> <region>    - For an Action, Print Squares in a region.\n");
