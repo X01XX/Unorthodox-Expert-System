@@ -181,7 +181,7 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
 
 pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let num = 6;
-    let new_state = cur.toggle_bits(vec![2, 3]);
+    let new_state = cur.bits_to_1(vec![2, 3]);
     println!(
         "\nDom 0 Act {}  {} -> {} change: {}",
         num,

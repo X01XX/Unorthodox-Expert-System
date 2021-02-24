@@ -96,8 +96,6 @@ pub struct SomeAction {
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     seek_edge: RegionStore,
-    /// The results of all actions of a Domain indicate bit positions that can predictably change.
-    x_mask: SomeMask,
     /// The number of integers the Domain/Action uses to represent a bit pattern
     num_ints: usize,
     /// Aggregation of possible bit changes.
@@ -116,7 +114,6 @@ impl SomeAction {
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            x_mask: SomeMask::new(SomeBits::new_low(num_ints)),
             num_ints: num_ints,
             predictable_bit_changes: SomeChange::new_low(num_ints),
         }
@@ -504,8 +501,6 @@ impl SomeAction {
     pub fn get_needs(&mut self, cur_state: &SomeState, x_mask: &SomeMask) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
-        self.x_mask = x_mask.clone();
-
         // loop until no housekeeping need is returned.
         let mut nds = NeedStore::new();
         let mut cnt = 0;
@@ -561,7 +556,7 @@ impl SomeAction {
 
             // Check for squares in-one-group needs
             if nds.len() == 0 {
-                let mut ndx = self.confirm_groups_needs();
+                let mut ndx = self.confirm_groups_needs(&x_mask);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -569,7 +564,7 @@ impl SomeAction {
             }
 
             if nds.len() == 0 {
-                let mut ndx = self.expand_needs();
+                let mut ndx = self.expand_needs(&x_mask);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -983,7 +978,7 @@ impl SomeAction {
     } // end additional_group_state_samples
 
     /// Return expand needs for groups.
-    fn expand_needs(&mut self) -> NeedStore {
+    fn expand_needs(&mut self, x_mask: &SomeMask) -> NeedStore {
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -996,7 +991,7 @@ impl SomeAction {
             }
 
             // Check for edge bits under mask of all possible X bits.
-            let edge_expand = grpx.edge_expand.m_and(&self.x_mask);
+            let edge_expand = grpx.edge_expand.m_and(&x_mask);
 
             if edge_expand.is_low() {
                 continue;
@@ -1115,7 +1110,7 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    fn confirm_groups_needs(&mut self) -> NeedStore {
+    fn confirm_groups_needs(&mut self, x_mask: &SomeMask) -> NeedStore {
         //println!("confirm_groups_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -1144,7 +1139,7 @@ impl SomeAction {
             }
 
             // Get mask of edge bits to use to confirm.
-            let edge_confirm = grpx.region.x_mask().m_not().m_and(&self.x_mask);
+            let edge_confirm = grpx.region.x_mask().m_not().m_and(&x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
             let edge_msks = edge_confirm.split();
@@ -1209,7 +1204,7 @@ impl SomeAction {
                             cnt += sqrx.len_results();
                         }
                     }
-                } // next non_x_bit
+                } // next sta1
 
                 //println!("group {} anchor {} rating {}", &greg, &cfmx[0], cnt);
 

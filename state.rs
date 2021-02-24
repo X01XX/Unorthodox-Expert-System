@@ -66,10 +66,17 @@ impl SomeState {
     //        Self::new(self.bts.b_not())
     //    }
 
-    /// Togle the bits of a state, given a vector of numbers.
+    /// Toggle the bits of a state, given a vector of numbers.
     pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {
         SomeState {
             bts: self.bts.toggle_bits(nums),
+        }
+    }
+
+    /// Change the bits of a state, to 1, given a vector of numbers.
+    pub fn bits_to_1(&self, nums: Vec<usize>) -> Self {
+        SomeState {
+            bts: self.bts.bits_to_1(nums),
         }
     }
 

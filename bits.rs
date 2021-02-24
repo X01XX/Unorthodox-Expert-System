@@ -113,6 +113,27 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
+    /// Return a Bits struct with specified bit(s) changed, if needed, to ones.
+    pub fn bits_to_1(&self, bit_nums: Vec<usize>) -> Self {
+        let mut ary2 = self.ints.clone();
+
+        let num_ints = self.num_ints();
+        let num_bits = num_ints * NUM_BITS_PER_INT as usize;
+        let lsi = num_ints - 1; // least significant integer
+
+        for bit_num in bit_nums {
+            if bit_num >= num_bits {
+                panic!("bit num too large");
+            }
+
+            let bit_pos = bit_num % NUM_BITS_PER_INT;
+            let int_num = lsi - (bit_num / NUM_BITS_PER_INT);
+
+            ary2[int_num] = ary2[int_num] | ALL_BIT_MASKS[bit_pos];
+        }
+        Self { ints: ary2 }
+    }
+
     /// Return true if a bit is one at a given position.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
         let num_ints = self.num_ints();
