@@ -34,7 +34,13 @@ impl RegionStore {
 
     /// Return the length of the vector, of active and inactive regions.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        let mut cnt = 0;
+        for regx in &self.avec {
+            if regx.active {
+                cnt += 1;
+            }
+        }
+        cnt
     }
 
     /// Add a region to the vector.
@@ -141,15 +147,15 @@ impl RegionStore {
     }
 
     /// Find index to first inactive group, or return -1 if none found.
-    fn first_inactive_index(&self) -> i32 {
+    fn first_inactive_index(&self) -> Option<usize> {
         let mut cnt = 0;
         for regx in &self.avec {
             if regx.active == false {
-                return cnt;
+                return Some(cnt);
             }
             cnt += 1;
         }
-        -1
+        None
     }
 
     /// Return true if any region is active.
@@ -184,18 +190,10 @@ impl RegionStore {
         self.inactivate_subsets_of(&reg);
 
         // Get index to the first inactive region
-        let inx = self.first_inactive_index();
-
-        // If no inactive region found, push the new region
-        if inx < 0 {
-            // println!("adding region {}", reg.str());
-            self.avec.push(reg);
-        } else {
-            // Replace the inactive region with the new region
-            let inx = inx as usize;
-            //println!("deleting region {}", self.avec[inx]);
-            // println!("adding region {}", reg);
+        if let Some(inx) = self.first_inactive_index() {
             self.avec[inx] = reg;
+        } else {
+            self.avec.push(reg);
         }
 
         true
@@ -213,18 +211,10 @@ impl RegionStore {
         self.inactivate_supersets_of(&reg);
 
         // Get index to the first inactive region
-        let inx = self.first_inactive_index();
-
-        // If no inactive region found, push the new region
-        if inx < 0 {
-            // println!("adding region {}", reg.str());
-            self.avec.push(reg);
+        if let Some(inx) = self.first_inactive_index() {
+            self.avec[inx] = reg;
         } else {
-            // Replace the inactive region with the new region
-            //let inx = inx as usize;
-            //println!("deleting region {}", self.avec[inx]);
-            // println!("adding region {}", reg);
-            self.avec[inx as usize] = reg;
+            self.avec.push(reg);
         }
 
         true

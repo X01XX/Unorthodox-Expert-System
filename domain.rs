@@ -105,7 +105,7 @@ impl SomeDomain {
     pub fn get_needs(&mut self) -> NeedStore {
         let mut nst = self
             .actions
-            .get_needs(&self.cur_state, &self.predictable_mask);
+            .get_needs(&self.cur_state, &self.predictable_mask, self.num);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -121,8 +121,8 @@ impl SomeDomain {
         self.predictable_mask = self.actions.get_predictable_mask(self.num_ints);
 
         if self.predictable_mask != sav_mask {
-            println!("\nOld Predictable Change mask {}", &sav_mask);
-            println!("New Predictable Change mask {}", &self.predictable_mask);
+            println!("\n  Old Predictable Change mask {}", &sav_mask);
+            println!("  New Predictable Change mask {}", &self.predictable_mask);
         }
     }
 
@@ -141,7 +141,7 @@ impl SomeDomain {
         self.check_async();
 
         // may break hv info, so do not mix with take_action_need
-        self.actions[act_num].eval_arbitrary_sample(i_state, r_state);
+        self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
         self.set_cur_state(r_state.clone());
 
         self.check_predictable_mask();
@@ -155,7 +155,7 @@ impl SomeDomain {
 
         let hv = self.get_hv(act_num);
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
-        self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate);
+        self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
         self.set_cur_state(astate);
 
         self.check_predictable_mask();
@@ -170,8 +170,8 @@ impl SomeDomain {
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
             let new_max_region = self.max_region.union_state(&self.cur_state);
-            println!("\nOld max region  {}", &self.max_region);
-            println!("New max region  {}", &new_max_region,);
+            println!("\n  Old max region  {}", &self.max_region);
+            println!("  New max region  {}", &new_max_region,);
             self.max_region = new_max_region;
         }
     }
@@ -241,7 +241,7 @@ impl SomeDomain {
 
                 let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
 
-                self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate);
+                self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
                 let prev_state = self.cur_state.clone();
 
@@ -259,7 +259,7 @@ impl SomeDomain {
 
                     let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
 
-                    self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate);
+                    self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
                     self.set_cur_state(astate);
 

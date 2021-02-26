@@ -51,7 +51,7 @@ impl GroupStore {
 
     /// Check groups with a recently changed sqaure.
     /// Return the number of active groups inactivated by a square.
-    pub fn check_square(&mut self, sqrx: &SomeSquare) -> RegionStore {
+    pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
         for grpx in &mut self.avec {
@@ -63,7 +63,7 @@ impl GroupStore {
                             &sqrx.state, &sqrx.rules, &grpx.region, &grpx.rules
                         );
                         regs_invalid.push(grpx.region.clone());
-                        grpx.inactivate();
+                        grpx.inactivate(dom, act);
                     }
                 }
             }
@@ -108,7 +108,7 @@ impl GroupStore {
     }
 
     /// Find and make inactive any subset groups.
-    fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
+    fn inactivate_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {
         let mut fnd = false;
 
         for grpx in &mut self.avec {
@@ -119,7 +119,7 @@ impl GroupStore {
 
         for grpx in &mut self.avec {
             if grpx.active && grpx.region.is_subset_of(&reg) {
-                grpx.inactivate();
+                grpx.inactivate(dom, act);
                 // println!("Inactivating group {}", grpx.str_terse());
                 fnd = true;
             }
@@ -146,28 +146,32 @@ impl GroupStore {
     }
 
     /// Add a group.
-    pub fn push(&mut self, grp: SomeGroup) -> bool {
+    pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
-            println!("skipped adding group {}, a superset exists", grp.region);
+            let regs = self.supersets_of(&grp.region);
+            println!(
+                "Dom {} Act {} skipped adding group {}, a superset exists in {}",
+                &dom, &act, &grp.region, &regs
+            );
             return false;
         }
 
         // Mark any subset groups as inactive
-        self.inactivate_subsets_of(&grp.region);
+        self.inactivate_subsets_of(&grp.region, dom, act);
 
         // Get index to the first inactive group
         let inx = self.first_inactive_index();
 
         // If no inactive group found, push the new group
         if inx < 0 {
-            println!("\nAdding group {}", grp);
+            println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
             self.avec.push(grp);
         } else {
             // Replace the inactive group with the new group
             let inx = inx as usize;
             //println!("Deleting group {}", self.avec[inx].str_terse());
-            println!("\nAdding group {}", grp);
+            println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
             self.avec[inx] = grp;
         }
 
@@ -178,7 +182,13 @@ impl GroupStore {
 
     /// Check groups with a given sample.
     /// Return the number of active groups that are inactivated.
-    pub fn check_sample(&mut self, init: &SomeState, rslt: &SomeState) -> usize {
+    pub fn check_sample(
+        &mut self,
+        init: &SomeState,
+        rslt: &SomeState,
+        dom: usize,
+        act: usize,
+    ) -> usize {
         let mut num_grps = 0;
 
         for grpx in &mut self.avec {
@@ -186,7 +196,7 @@ impl GroupStore {
                 if grpx.region.is_superset_of_state(&init) {
                     if !grpx.sample_is_ok(&init, &rslt) {
                         num_grps += 1;
-                        grpx.inactivate();
+                        grpx.inactivate(dom, act);
                     }
                 }
             }
@@ -220,7 +230,13 @@ impl GroupStore {
 
     /// Return the length of the vector.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        let mut cnt = 0;
+        for grpx in &self.avec {
+            if grpx.active {
+                cnt += 1;
+            }
+        }
+        cnt
     }
 
     /// Find a group that matches a region, return a mutable reference.

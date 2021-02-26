@@ -231,7 +231,7 @@ impl SomeSquare {
         }
 
         let mut str_info = String::from(&format!(
-            "\nSquare {} adding result{}{}",
+            "\n  Square {} adding result{}{}",
             self.str_terse(),
             add_str,
             &st
@@ -251,7 +251,7 @@ impl SomeSquare {
                 }
                 if self.len_results() == 2 {
                     str_info.push_str(&format!(
-                        ", result the same as first, so not subest of any pn==2, since order matters"
+                        ", result the same as first, so not subset of any pn==2, since order matters"
                     ));
                 }
             }

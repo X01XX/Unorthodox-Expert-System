@@ -130,8 +130,13 @@ impl SomeGroup {
 
     /// Inactivate a group, rather than deleting it from a vector.
     /// It may be replaced by a new, active, group.
-    pub fn inactivate(&mut self) -> bool {
-        println!("\nDeleting group {}", self.region.formatted_string());
+    pub fn inactivate(&mut self, dom: usize, act: usize) -> bool {
+        println!(
+            "\nDom {} Act {} Deleting group {}",
+            dom,
+            act,
+            self.region.formatted_string()
+        );
         self.active = false;
         true
     }

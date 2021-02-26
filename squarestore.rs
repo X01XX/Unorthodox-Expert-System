@@ -67,9 +67,11 @@ impl SquareStore {
     }
 
     /// Add a square that is not currently in the store.
-    pub fn insert(&mut self, sqrx: SomeSquare) {
+    pub fn insert(&mut self, sqrx: SomeSquare, dom: usize, act: usize) {
         println!(
-            "\nAdding square {} -> {}",
+            "\nDom {} Act {} Adding square {} -> {}",
+            dom,
+            act,
             &sqrx.state,
             &sqrx.first_result()
         );
