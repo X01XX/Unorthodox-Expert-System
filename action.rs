@@ -746,65 +746,71 @@ impl SomeAction {
 
             let stas_in = self.squares.stas_in_reg(&regx);
 
-            // If no squares squares inbetween, check the squares that make the region.
-            // If squares are adjacent, seek pnc before eliminating the region.
-            if stas_in.len() == 2 {
-                let cnb1 = sqr1.can_combine(&sqr2);
+            // Check squares that define the region.
 
-                match cnb1 {
-                    // A group of Pn:One may be invalidated by more samples, leading to
-                    // the same group at Pn:+
-                    Combinable::True => {
-                        ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
+            let cnb1 = sqr1.can_combine(&sqr2);
+
+            match cnb1 {
+                // A group of Pn:One may be invalidated by more samples, leading to
+                // the same group at Pn:+
+                Combinable::True => {
+                    ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
+                    continue;
+                }
+                Combinable::MoreSamplesNeeded => {
+                    if sqr1.pn() < sqr2.pn() {
+                        ret_nds.push(SomeNeed::SeekEdge {
+                            dom_num: 0, // set this in domain get_needs
+                            act_num: self.num,
+                            targ_state: sqr1.state.clone(),
+                            in_group: regx.clone(),
+                        });
+                        continue;
+                    } else if sqr2.pn() < sqr1.pn() {
+                        ret_nds.push(SomeNeed::SeekEdge {
+                            dom_num: 0, // set this in domain get_needs
+                            act_num: self.num,
+                            targ_state: sqr2.state.clone(),
+                            in_group: regx.clone(),
+                        });
+                        continue;
+                    } else {
+                        panic!(
+                            "sqrpn {} {} == sqr pn {} {}",
+                            &sqr1.state,
+                            sqr1.pn(),
+                            &sqr2.state,
+                            sqr2.pn()
+                        );
                     }
-                    Combinable::MoreSamplesNeeded => {
-                        if sqr1.pn() < sqr2.pn() {
+                }
+                Combinable::False => {
+                    if sqr1.is_adjacent(&sqr2) {
+                        if sqr1.pnc() == false {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
                                 targ_state: sqr1.state.clone(),
                                 in_group: regx.clone(),
                             });
-                        } else if sqr2.pn() < sqr1.pn() {
+                            continue;
+                        } else if sqr2.pnc() == false {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
                                 targ_state: sqr2.state.clone(),
                                 in_group: regx.clone(),
                             });
+                            continue;
                         } else {
-                            panic!(
-                                "sqrpn {} {} == sqr pn {} {}",
-                                &sqr1.state,
-                                sqr1.pn(),
-                                &sqr2.state,
-                                sqr2.pn()
-                            );
+                            ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
+                            continue;
                         }
-                    }
-                    Combinable::False => {
-                        if sqr1.is_adjacent(&sqr2) {
-                            if sqr1.pnc() == false {
-                                ret_nds.push(SomeNeed::SeekEdge {
-                                    dom_num: 0, // set this in domain get_needs
-                                    act_num: self.num,
-                                    targ_state: sqr1.state.clone(),
-                                    in_group: regx.clone(),
-                                });
-                            } else if sqr2.pnc() == false {
-                                ret_nds.push(SomeNeed::SeekEdge {
-                                    dom_num: 0, // set this in domain get_needs
-                                    act_num: self.num,
-                                    targ_state: sqr2.state.clone(),
-                                    in_group: regx.clone(),
-                                });
-                            } else {
-                                ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
-                            }
-                        } // else seek_needs_edge2 will handle
-                    }
-                } // end match cnb1
+                    } // else seek_edge_need2 will look for states between
+                }
+            } // end match cnb1
 
+            if stas_in.len() == 2 {
                 continue;
             }
 
