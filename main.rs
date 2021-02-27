@@ -35,7 +35,7 @@ mod state;
 //use crate::state::SomeState;
 mod statestore;
 use need::SomeNeed;
-mod combinable;
+//mod combinable;
 mod domain;
 mod needstore;
 //use crate::needstore::NeedStore;
@@ -50,6 +50,7 @@ mod tests;
 use domainstore::DomainStore;
 mod inxplan;
 use crate::inxplan::InxPlan;
+mod truth;
 
 use std::io;
 use std::io::{Read, Write};

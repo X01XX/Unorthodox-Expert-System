@@ -1,11 +1,11 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 //!
-use crate::combinable::Combinable;
 use crate::pn::Pn;
 use crate::resultstore::{ResultStore, MAX_RESULTS};
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
+use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -95,7 +95,7 @@ impl SomeSquare {
     ///
     /// This returns three possible results: True, False or MoreSamplesNeeded.
     ///
-    pub fn can_combine(&self, other: &Self) -> Combinable {
+    pub fn can_combine(&self, other: &Self) -> Truth {
         match self.pn() {
             Pn::One => {
                 match other.pn() {
@@ -103,42 +103,42 @@ impl SomeSquare {
                         // self.pn == One, other.pn == One
                         // If the rules can be combined, the squares can be combined.
                         if let Some(_runx) = self.rules.union(&other.rules) {
-                            return Combinable::True;
+                            return Truth::T;
                         }
                         // else
-                        return Combinable::False;
+                        return Truth::F;
                     }
 
                     Pn::Two => {
                         // self.pn == One, other.pn == Two
                         // If the pn==One square has GT one sample, the squares cannot be combined.
                         if self.len_results() > 1 {
-                            return Combinable::False;
+                            return Truth::F;
                         }
 
                         // If the pn==One square rule is combinable with one of the
                         // pn==Two square rules, more samples are needed.
                         if self.rules[0].union(&other.rules[0]).is_valid_union() {
-                            return Combinable::MoreSamplesNeeded;
+                            return Truth::M;
                         }
 
                         if self.rules[0].union(&other.rules[1]).is_valid_union() {
-                            return Combinable::MoreSamplesNeeded;
+                            return Truth::M;
                         }
 
                         // else
-                        return Combinable::False;
+                        return Truth::F;
                     }
 
                     Pn::Unpredictable => {
                         // self.pn == One, other.pn == Unpredictable
                         // If the pn==One square is confirmed, the squares cannot be combined.
                         if self.pnc() {
-                            return Combinable::False;
+                            return Truth::F;
                         }
 
                         // The pn==One square needs more samples until it is confirmed.
-                        return Combinable::MoreSamplesNeeded;
+                        return Truth::M;
                     }
                 } // end match other.pn
             }
@@ -148,41 +148,41 @@ impl SomeSquare {
                         // self.pn == Two, other.pn == One
                         // If the pn==One square is has GT 1 sample, the squares cannot be combined.
                         if other.len_results() > 1 {
-                            return Combinable::False;
+                            return Truth::F;
                         }
 
                         // If the pn==one square has one sample, and
                         // its rule is combinable with one of the pn==Two square rules,
                         // more samples are needed.
                         if other.rules[0].union(&self.rules[0]).is_valid_union() {
-                            return Combinable::MoreSamplesNeeded;
+                            return Truth::M;
                         }
 
                         if other.rules[0].union(&self.rules[1]).is_valid_union() {
-                            return Combinable::MoreSamplesNeeded;
+                            return Truth::M;
                         }
 
                         // else
-                        return Combinable::False;
+                        return Truth::F;
                     }
                     Pn::Two => {
                         // self.pn == Two, other.pn == Two
                         // The pn values match, if the rules can be combined,
                         // the squares can be combined.
                         if let Some(_runx) = self.rules.union(&other.rules) {
-                            return Combinable::True;
+                            return Truth::T;
                         }
                         // else
-                        return Combinable::False;
+                        return Truth::F;
                     }
                     Pn::Unpredictable => {
                         // self.pn == Two, other = Unpredictable
                         // If the pn==Two square is not confirmed, more samples needed.
                         if self.pnc() == false {
-                            return Combinable::MoreSamplesNeeded;
+                            return Truth::M;
                         }
                         // else
-                        return Combinable::False;
+                        return Truth::F;
                     }
                 } // end match other.pn
             }
@@ -194,27 +194,27 @@ impl SomeSquare {
                         // If the pn==One square is confirmed,
                         // the squares cannot be combined.
                         if other.pnc() {
-                            return Combinable::False;
+                            return Truth::F;
                         }
 
                         // The pn==One square needs more samples until it is confirmed.
-                        return Combinable::MoreSamplesNeeded;
+                        return Truth::M;
                     }
                     Pn::Two => {
                         // self.pn == Unpredictable, other.pn == Two
                         // If the pn==Two square is confirmed, the squares cannot be combined.
                         if other.pnc() {
-                            return Combinable::False;
+                            return Truth::F;
                         }
 
                         // The smaller pn==Two square needs more samples until it is confirmed.
-                        return Combinable::MoreSamplesNeeded;
+                        return Truth::M;
                     }
                     Pn::Unpredictable => {
                         // self.pn == Unpredictable, other.pn == Unpredictable
                         // The pn values match, no rules exist to be checked,
                         // the squares can be combined.
-                        return Combinable::True;
+                        return Truth::T;
                     }
                 } // end match other.pn
             }

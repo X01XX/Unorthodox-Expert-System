@@ -6,7 +6,6 @@
 //!
 use crate::bits::SomeBits;
 use crate::change::SomeChange;
-use crate::combinable::Combinable;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
 use crate::mask::SomeMask;
@@ -23,6 +22,7 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::truth::Truth;
 
 use std::fmt;
 extern crate rand;
@@ -119,14 +119,14 @@ impl SomeAction {
         }
     }
 
-    /// Return Combinable enum for any two squares with the same Pn value.
+    /// Return Truth enum for any two squares with the same Pn value.
     /// Check squares inbetween for compatibility.
-    pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Combinable {
+    pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.pn() == sqry.pn());
 
         // Check the two squares
         let cmbx = sqrx.can_combine(&sqry);
-        if cmbx == Combinable::False {
+        if cmbx == Truth::F {
             return cmbx;
         }
 
@@ -153,11 +153,11 @@ impl SomeAction {
                 if sqrz.pn() == Pn::Unpredictable {
                 } else {
                     if sqrz.pnc() {
-                        return Combinable::False;
+                        return Truth::F;
                     }
                 }
             }
-            return Combinable::True;
+            return Truth::T;
         }
 
         // Get rules
@@ -173,23 +173,23 @@ impl SomeAction {
 
             if sqrz.pn() == Pn::Unpredictable {
                 // sqrx.pn() cannot be Unpredictable at this point, so this invalidates
-                return Combinable::False;
+                return Truth::F;
             }
 
             if sqrz.pn() != sqrx.pn() {
                 if sqrz.pnc() {
-                    return Combinable::False;
+                    return Truth::F;
                 }
                 if sqrz.pn() > sqrx.pn() {
-                    return Combinable::False;
+                    return Truth::F;
                 }
                 if sqrx.pn() == Pn::Two && sqrz.pn() == Pn::One && sqrz.len_results() > 1 {
-                    return Combinable::False;
+                    return Truth::F;
                 }
             }
 
             if sqrz.rules.is_subset_of(&rulsx) == false {
-                return Combinable::False;
+                return Truth::F;
             }
         } // next stax
 
@@ -236,8 +236,7 @@ impl SomeAction {
                 // If the squares are incompatible, or need more samples, skip action.
                 let sqrx = self.squares.find(&sta).unwrap();
                 if let Some(sqry) = self.squares.find(&far) {
-                    if sqrx.pn() == sqry.pn() && self.can_combine(&sqrx, &sqry) == Combinable::True
-                    {
+                    if sqrx.pn() == sqry.pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
                         if sqrx.pn() == Pn::Unpredictable {
                             if self.groups.any_superset_of(&for_reg) == false {
                                 self.groups.push(
@@ -294,7 +293,7 @@ impl SomeAction {
                 // If it needs more samples, skip, next need will increment the number samples.
                 let cnb1 = sqr3.can_combine(&sqr1);
                 match cnb1 {
-                    Combinable::False => {
+                    Truth::F => {
                         if sqr1.is_adjacent(&sqr3) {
                             self.seek_edge.inactivate(greg);
                         } else {
@@ -309,7 +308,7 @@ impl SomeAction {
                 // Should be different from state1 square or state2 square
                 let cnb2 = sqr3.can_combine(&sqr2);
                 match cnb2 {
-                    Combinable::False => {
+                    Truth::F => {
                         if sqr2.is_adjacent(&sqr3) {
                             self.seek_edge.inactivate(greg);
                         } else {
@@ -753,11 +752,11 @@ impl SomeAction {
             match cnb1 {
                 // A group of Pn:One may be invalidated by more samples, leading to
                 // the same group at Pn:+
-                Combinable::True => {
+                Truth::T => {
                     ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     continue;
                 }
-                Combinable::MoreSamplesNeeded => {
+                Truth::M => {
                     if sqr1.pn() < sqr2.pn() {
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
@@ -784,7 +783,7 @@ impl SomeAction {
                         );
                     }
                 }
-                Combinable::False => {
+                Truth::F => {
                     if sqr1.is_adjacent(&sqr2) {
                         if sqr1.pnc() == false {
                             ret_nds.push(SomeNeed::SeekEdge {
@@ -834,7 +833,7 @@ impl SomeAction {
                     let sqry = self.squares.find(&stay).unwrap();
 
                     match sqrx.can_combine(&sqry) {
-                        Combinable::False => {
+                        Truth::F => {
                             //  println!(
                             //      "sqr {} is not combinable with {}",
                             //      &stax, &sqry
@@ -866,7 +865,7 @@ impl SomeAction {
                     let sqry = self.squares.find(&stas_in[iny]).unwrap();
 
                     match sqrx.can_combine(&sqry) {
-                        Combinable::MoreSamplesNeeded => {
+                        Truth::M => {
                             //  println!(
                             //      "sqr {} msn with {}",
                             //      &stax, &sqry.state
@@ -942,57 +941,58 @@ impl SomeAction {
 
             //println!("seek edge in {} stas {}", &regx, &stas_in);
 
-            if stas_in.len() == 2 {
-                // No unsatisfied needs from seek_edge_needs1
-                // No square between region.state1 and region.state2, seek one
-
-                // Get list of one-bit masks representing the bits different of the
-                // two regions states.
-                let dif_bits = MaskStore {
-                    avec: regx.x_mask().split(),
-                };
-
-                // Select a random set of single-bit masks, up to one-half of the number of differences.
-                // So if the region states are 10 or 11 bits different, a state 5 bits different from
-                // one of the two states will be sought.  So the number of bit differences should go down
-                // 50% on each cycle.
-                let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
-
-                let mut dif_msk = SomeMask::new(SomeBits::new_low(self.num_ints));
-
-                let mut inx = 0;
-                for mskx in dif_bits.iter() {
-                    if indicies.contains(&inx) {
-                        dif_msk = dif_msk.m_or(mskx);
-                    }
-                    inx += 1;
-                }
-
-                // Randomly choose which state to use to calculate the target state from
-                let mut statex = &regx.state2;
-                let choice = rand::thread_rng().gen_range(0, 2);
-                if choice == 0 {
-                    statex = &regx.state1;
-                }
-
-                // Calculate the target inbetween
-                let seek_state = SomeState::new(statex.bts.b_xor(&dif_msk.bts));
-
-                // Make need for seek_state
-                ret_nds.push(SomeNeed::SeekEdge {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    targ_state: seek_state,
-                    in_group: regx.clone(),
-                });
+            if stas_in.len() != 2 {
                 continue;
             }
+
+            // No unsatisfied needs from seek_edge_needs1
+            // No square between region.state1 and region.state2, seek one
+
+            // Get list of one-bit masks representing the bits different of the
+            // two regions states.
+            let dif_bits = MaskStore {
+                avec: regx.x_mask().split(),
+            };
+
+            // Select a random set of single-bit masks, up to one-half of the number of differences.
+            // So if the region states are 10 or 11 bits different, a state 5 bits different from
+            // one of the two states will be sought.  So the number of bit differences should go down
+            // 50% on each cycle.
+            let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
+
+            let mut dif_msk = SomeMask::new(SomeBits::new_low(self.num_ints));
+
+            let mut inx = 0;
+            for mskx in dif_bits.iter() {
+                if indicies.contains(&inx) {
+                    dif_msk = dif_msk.m_or(mskx);
+                }
+                inx += 1;
+            }
+
+            // Randomly choose which state to use to calculate the target state from
+            let mut statex = &regx.state2;
+            let choice = rand::thread_rng().gen_range(0, 2);
+            if choice == 0 {
+                statex = &regx.state1;
+            }
+
+            // Calculate the target inbetween
+            let seek_state = SomeState::new(statex.bts.b_xor(&dif_msk.bts));
+
+            // Make need for seek_state
+            ret_nds.push(SomeNeed::SeekEdge {
+                dom_num: 0, // set this in domain get_needs
+                act_num: self.num,
+                targ_state: seek_state,
+                in_group: regx.clone(),
+            });
         } // next regx
 
         ret_nds
     } // end seek_edge_needs2
 
-    /// Get additional sample needs for the states that form a group
+    /// Get additional sample needs for the states that form a group.
     fn additional_group_state_samples(&self) -> NeedStore {
         //println!("additional_group_state_sample");
         let mut ret_nds = NeedStore::new();
@@ -1004,9 +1004,6 @@ impl SomeAction {
 
             let sqrx = self.squares.find(&grpx.region.state1).unwrap();
 
-            if sqrx.state != grpx.region.state1 {
-                panic!("{} ne {}", sqrx.state, grpx.region.state1);
-            }
             if sqrx.pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
@@ -1018,9 +1015,7 @@ impl SomeAction {
             }
 
             let sqrx = self.squares.find(&grpx.region.state2).unwrap();
-            if sqrx.state != grpx.region.state2 {
-                panic!("{} ne {}", sqrx.state, grpx.region.state2);
-            }
+
             if sqrx.pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
@@ -1036,12 +1031,11 @@ impl SomeAction {
     } // end additional_group_state_samples
 
     /// Return expand needs for groups.
+    /// Edges of each region under bit positions that can be changed,
+    /// from the point of view of the Domain (the x_mask), need to be checked.
     fn expand_needs(&mut self, x_mask: &SomeMask) -> NeedStore {
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
-
-        //        let regs = self.groups.regions();
-        //        let states_in_1 = self.squares.states_in_1_region(&regs);
 
         for grpx in self.groups.iter() {
             if grpx.active == false {
@@ -1060,10 +1054,8 @@ impl SomeAction {
 
             // Check for expansion, or single-bit adjacent external
             for edge_msk in edge_msks.iter() {
+                // Calc adjacent region
                 let reg_exp = grpx.region.toggle_bits(&edge_msk);
-
-                // At least two squares should be in the group, so in the expanded region
-                //let sqr_stas = self.squares.stas_in_reg(&reg_exp);
 
                 let reg_both = reg_exp.union(&grpx.region); // one bit so double the "area"
 
@@ -1362,7 +1354,7 @@ impl SomeAction {
                         //    &new_reg, &anchor_sta, &adj_sta
                         //);
 
-                        if anchor_sqr.can_combine(&adj_sqr) == Combinable::True {
+                        if anchor_sqr.can_combine(&adj_sqr) == Truth::T {
                             nds_grp_add.push(SomeNeed::AddGroup {
                                 group_region: new_reg,
                             });
@@ -1556,12 +1548,10 @@ impl SomeAction {
         }
 
         // See if a pair of squares defines the region
-        //let max_pn = self.squares.max_pn(&stas_in_reg);
-
         let pair_stas = reg_grp.defining_pairs(&stas_in_reg);
 
         if pair_stas.len() == 0 {
-            //println!("no defining pairs in {}", &pair_stas);
+            // More than one sample in the region, but no pair can form it.
             return self.far_needs(&reg_grp, &stas_in_reg);
         }
 
@@ -1611,7 +1601,7 @@ impl SomeAction {
             let cmbl = self.can_combine(&sqrx, &sqry);
             //println!("can {} combine with {}, {}", &sqrx, &sqry, &cmbl);
 
-            if cmbl == Combinable::MoreSamplesNeeded {
+            if cmbl == Truth::M {
                 if sqrx.pn() < sqry.pn() {
                     nds.push(SomeNeed::StateAdditionalSample {
                         dom_num: 0, // set this in domain get_needs
@@ -1635,7 +1625,7 @@ impl SomeAction {
                 continue;
             }
 
-            if cmbl == Combinable::True {
+            if cmbl == Truth::T {
                 nds = NeedStore::new();
                 let new_reg = SomeRegion::new(&sqrx.state, &sqry.state);
 
@@ -1652,7 +1642,7 @@ impl SomeAction {
                     });
                     return nds;
                 }
-            } else if cmbl == Combinable::False {
+            } else if cmbl == Truth::F {
                 return NeedStore::new();
             }
             inx += 2;
@@ -1981,7 +1971,7 @@ impl SomeAction {
                 continue;
             }
 
-            if self.can_combine(&sqrx, &sqry) == Combinable::True {
+            if self.can_combine(&sqrx, &sqry) == Truth::T {
                 rsx.push_nosubs(regx);
             }
         } // end for
