@@ -713,6 +713,38 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             println!("\nDid not understand region");
             return false;
         }
+
+        if cmd[0] == "gps" {
+            let act_num = cmd[1].parse().unwrap_or_else(|err| {
+                println!("Problem parsing Action number: {}", err);
+                999
+            });
+            if act_num == 999 {
+                return false;
+            }
+            if act_num >= dm1.num_actions() {
+                println!("\nInvalid action number");
+                return false;
+            }
+            if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
+                if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
+                    let sqr1 = dm1.actions[act_num]
+                        .squares
+                        .find(&grpx.region.state1)
+                        .unwrap();
+                    println!("Square 1: {}", &sqr1);
+                    let sqr2 = dm1.actions[act_num]
+                        .squares
+                        .find(&grpx.region.state2)
+                        .unwrap();
+                    println!("Square 2: {}", &sqr2);
+                } else {
+                }
+                return true;
+            }
+            println!("\nDid not understand region");
+            return false;
+        }
     } // end 3-word commands
 
     // Handle four-word commands
@@ -800,6 +832,9 @@ fn usage() {
     );
     println!(
         "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
+    );
+    println!(
+        "    gps <act num> <region>    - For an Action and region, print squares that define the region.\n"
     );
     println!("    pa                       - Print all Actions of the current Domain.");
     println!("    pa <act num>             - Print an Action of the current Domain.");

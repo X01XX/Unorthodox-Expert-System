@@ -52,13 +52,13 @@ mod tests {
         dm1.eval_sample_arbitrary(0, &sf, &se);
         dm1.eval_sample_arbitrary(0, &sf, &sf);
 
-        if let Some(_regx) = dm1.actions[0].groups._find(&rx1x1) {
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
             dm1.eval_sample_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dm1.actions[0].groups._find(&rx1x1) {
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
                 dm1.eval_sample_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
 
-                if let Some(_) = dm1.actions[0].groups._find(&rx1x1) {
+                if let Some(_) = dm1.actions[0].groups.find(&rx1x1) {
                     //println!("\nActs: {}", &dm1.actions[0]);
                     //println!(" {}", dm1.actions[0].squares);
                     return Err(String::from("failed, rx1x1 should have been deleted"));
@@ -116,15 +116,15 @@ mod tests {
         dm1.eval_sample_arbitrary(0, &sf, &sf);
         dm1.eval_sample_arbitrary(0, &sf, &s4);
 
-        if let Some(_regx) = dm1.actions[0].groups._find(&rx1x1) {
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
             //println!("\nActs: {}", &dm1.actions[0]);
             dm1.eval_sample_arbitrary(0, &s7, &s7);
             dm1.eval_sample_arbitrary(0, &s7, &s7);
             dm1.eval_sample_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dm1.actions[0].groups._find(&rx1x1) {
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
                 dm1.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
-                if let Some(_regx) = dm1.actions[0].groups._find(&rx1x1) {
+                if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
                     println!("\nActs: {}", &dm1.actions[0]);
                     println!(" {}", dm1.actions[0].squares);
                     return Err(String::from(
@@ -396,44 +396,6 @@ mod tests {
                 n1, n2, rs
             ));
         }
-
-        //        let mut btst = BitsStore { avec: vec![] };
-        //
-        //        let n1 = btst.formatted_string_length();
-        //        let rs = btst.formatted_string();
-        //        let n2 = rs.len();
-        //        if n1 != n2 {
-        //            return Err(format!(
-        //                "calculated len of empty BitsStore string {} NEQ real len {} {}",
-        //                n1, n2, rs
-        //            ));
-        //        }
-
-        //        btst = BitsStore {
-        //            avec: vec![SomeBits { ints: vec![12 as u8] }],
-        //        };
-        //        let n1 = btst.formatted_string_length();
-        //        let rs = btst.formatted_string();
-        //        let n2 = rs.len();
-        //        if n1 != n2 {
-        //            return Err(format!(
-        //                "calculated len of BitsStore len 1 string {} NEQ real len {} {}",
-        //                n1, n2, rs
-        //            ));
-        //        }
-
-        //        btst = BitsStore {
-        //            avec: vec![SomeBits { ints: vec![12 as u8] }, SomeBits { ints: vec![11 as u8] }],
-        //        };
-        //        let n1 = btst.formatted_string_length();
-        //        let rs = btst.formatted_string();
-        //        let n2 = rs.len();
-        //        if n1 != n2 {
-        //            return Err(format!(
-        //                "calculated len of BitsStore len 2 string {} NEQ real len {} {}",
-        //                n1, n2, rs
-        //            ));
-        //        }
 
         Ok(())
     }
@@ -893,26 +855,6 @@ mod tests {
 
         Ok(())
     }
-
-    //#[test]
-    //    fn change_string_length() -> Result<(), String> {
-    //        let from_reg = dm1.region_from_string("rx1x1").unwrap();
-    //        let goal_reg = dm1.region_from_string("rx1x1").unwrap();
-    //
-    //        let cngtst = SomeChange::region_to_region(&from_reg, &goal_reg);
-    //
-    //        let n1 = cngtst.formatted_string_length();
-    //        let rs = cngtst.formatted_string();
-    //        let n2 = rs.len();
-    //        if n1 != n2 {
-    //            return Err(format!(
-    //                "calculated len of one int SomeChange string {} NEQ real len {} {}",
-    //                n1, n2, rs
-    //            ));
-    //        }
-    //
-    //        Ok(())
-    //    }
 
     // Check two-result squares combination does not infer two changes
     // but one or the other.

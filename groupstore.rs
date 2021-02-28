@@ -250,7 +250,7 @@ impl GroupStore {
     }
 
     /// Find a group that matches a region, return a reference.
-    pub fn _find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
+    pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         for grpx in &self.avec {
             if grpx.active && grpx.region == *val {
                 return Some(grpx);

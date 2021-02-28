@@ -132,12 +132,12 @@ impl SomeSquare {
 
                     Pn::Unpredictable => {
                         // self.pn == One, other.pn == Unpredictable
-                        // If the pn==One square is confirmed, the squares cannot be combined.
+                        // If the pn==One square is pnc, the squares cannot be combined.
                         if self.pnc() {
                             return Truth::F;
                         }
 
-                        // The pn==One square needs more samples until it is confirmed.
+                        // The pn==One square needs more samples.
                         return Truth::M;
                     }
                 } // end match other.pn
@@ -177,7 +177,7 @@ impl SomeSquare {
                     }
                     Pn::Unpredictable => {
                         // self.pn == Two, other = Unpredictable
-                        // If the pn==Two square is not confirmed, more samples needed.
+                        // If the pn==Two square is not pnc, more samples needed.
                         if self.pnc() == false {
                             return Truth::M;
                         }
@@ -191,23 +191,23 @@ impl SomeSquare {
                     // self.pn == Unpredictable, other.pn == One
                     Pn::One => {
                         // self.pn == Unpredictable
-                        // If the pn==One square is confirmed,
+                        // If the pn==One square is pnc,
                         // the squares cannot be combined.
                         if other.pnc() {
                             return Truth::F;
                         }
 
-                        // The pn==One square needs more samples until it is confirmed.
+                        // The pn==One square needs more samples.
                         return Truth::M;
                     }
                     Pn::Two => {
                         // self.pn == Unpredictable, other.pn == Two
-                        // If the pn==Two square is confirmed, the squares cannot be combined.
+                        // If the pn==Two square is pnc, the squares cannot be combined.
                         if other.pnc() {
                             return Truth::F;
                         }
 
-                        // The smaller pn==Two square needs more samples until it is confirmed.
+                        // The smaller pn==Two square needs more samples.
                         return Truth::M;
                     }
                     Pn::Unpredictable => {

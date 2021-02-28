@@ -26,7 +26,7 @@ pub struct SomeGroup {
     /// All squares sampled in between are compatable.
     /// <SomeRegion>.state1 and .state2 are keys to the squares that formed the region.
     pub region: SomeRegion,
-    /// Pattern Number enum One, Two or Unpredictable
+    /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
     pub pn: Pn,
     /// Rules formed by two squares.
     pub rules: RuleStore,

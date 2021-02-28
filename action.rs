@@ -64,6 +64,10 @@ impl fmt::Display for SomeAction {
                     &cnt,
                 ));
 
+                //rc_str.push_str(&format!(" pnc: {}, ", self.group_pnc(&grpx)));
+
+                //rc_str.push_str(&format!("num r: {}", self.group_len_results(&grpx)));
+
                 //                if grpx.not_x_expand.is_low() == false {
                 //                    rc_str.push_str(&format!(" exp: {}", &grpx.not_x_expand));
                 //                }
@@ -697,12 +701,6 @@ impl SomeAction {
                             panic!("done");
                         }
                     }
-                    SomeNeed::ClearGroupPairNeeds { group_region: greg } => {
-                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                            try_again = true;
-                            grpx.pair_needs = false;
-                        }
-                    }
                     _ => {}
                 } // end match
             } // next ndx
@@ -1057,6 +1055,43 @@ impl SomeAction {
                 // Calc adjacent region
                 let reg_exp = grpx.region.toggle_bits(&edge_msk);
 
+                // Check squares compatibility with each other
+                let mut chk_stas = self.squares.stas_in_reg(&reg_exp);
+                let mut reject = false;
+
+                // Add region square states to be checked against others.
+                chk_stas.push(grpx.region.state1.clone());
+
+                chk_stas.push(grpx.region.state2.clone());
+
+                let mut inx = 1;
+                for stax in chk_stas.iter() {
+                    let sqrx = self.squares.find(stax).unwrap();
+
+                    for iny in inx..chk_stas.len() {
+                        let sqry = self.squares.find(&chk_stas[iny]).unwrap();
+
+                        if sqrx.can_combine(&sqry) == Truth::F {
+                            reject = true;
+                            break;
+                        }
+                    } // next iny
+
+                    if reject {
+                        break;
+                    }
+
+                    inx += 1;
+                } // next stax
+
+                if reject {
+                    ret_nds.push(SomeNeed::ClearEdgeExpandBit {
+                        group_region: grpx.region.clone(),
+                        mbit: edge_msk.clone(),
+                    });
+                    continue;
+                }
+
                 let reg_both = reg_exp.union(&grpx.region); // one bit so double the "area"
 
                 let mut ndsx = self.possible_group_needs(&reg_both, 1);
@@ -1074,7 +1109,7 @@ impl SomeAction {
                 } else {
                     ret_nds.append(&mut ndsx);
                 }
-            } // next bitx
+            } // next edge_msk
         } // next grpx
 
         ret_nds
@@ -1438,8 +1473,6 @@ impl SomeAction {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
 
-        let mut regs_done = RegionStore::new();
-
         // Check every pair of groups
         for inx in 0..self.groups.len() {
             let grpx = &self.groups[inx];
@@ -1447,8 +1480,6 @@ impl SomeAction {
             if grpx.active == false || grpx.pair_needs == false {
                 continue;
             }
-
-            let mut need_flag = false;
 
             // Pair grpx with every group after it in the GroupStore
             for iny in 0..self.groups.len() {
@@ -1463,32 +1494,19 @@ impl SomeAction {
                 }
 
                 if grpx.region.intersects(&grpy.region) {
-                    let regx = grpx.region.union(&grpy.region);
-                    if regs_done.contains(&regx) {
-                    } else {
-                        regs_done.push(regx);
-                        let mut ndx = self.group_pair_intersection_needs(&grpx, &grpy);
-                        if ndx.len() > 0 {
-                            need_flag = true;
-                            nds.append(&mut ndx);
-                        }
+                    let mut ndx = self.group_pair_intersection_needs(&grpx, &grpy);
+                    if ndx.len() > 0 {
+                        nds.append(&mut ndx);
                     }
                 } else if grpx.region.is_adjacent(&grpy.region) {
                     if grpx.pn == grpy.pn {
                         let mut ndx = self.group_pair_adjacent_needs(&grpx, &grpy);
                         if ndx.len() > 0 {
-                            need_flag = true;
                             nds.append(&mut ndx);
                         }
                     } // end if pn ==
                 } // end if regions adjacent
             } // next iny
-
-            if need_flag == false {
-                nds.push(SomeNeed::ClearGroupPairNeeds {
-                    group_region: grpx.region.clone(),
-                });
-            }
         } // next inx
 
         nds

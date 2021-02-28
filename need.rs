@@ -115,9 +115,6 @@ impl fmt::Display for SomeNeed {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
             }
             SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {}", &regx),
-            SomeNeed::ClearGroupPairNeeds { group_region: regx } => {
-                format!("N(Group: {} ClearGroupPairNeeds", &regx)
-            }
         }; // end match
 
         write!(f, "{}", rc_str)
@@ -191,8 +188,6 @@ pub enum SomeNeed {
     InactivateSeekEdge { reg: SomeRegion },
     /// Housekeeping, add a region to the seek_edge vector.
     AddSeekEdge { reg: SomeRegion },
-    /// Housekeeping, clear the flag that causes a group to be comapers to other groups.
-    ClearGroupPairNeeds { group_region: SomeRegion },
 }
 
 impl PartialEq for SomeNeed {
@@ -372,16 +367,6 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ClearGroupPairNeeds { group_region: greg } => match other {
-                SomeNeed::ClearGroupPairNeeds {
-                    group_region: gregx,
-                } => {
-                    if greg == gregx {
-                        return true;
-                    }
-                }
-                _ => {}
-            },
             // Add new needs here
         };
         false
@@ -432,7 +417,7 @@ impl SomeNeed {
                 for_group: _,
                 anchor: _,
             } => {
-                return 6;
+                return 5;
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
