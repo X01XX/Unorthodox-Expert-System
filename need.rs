@@ -15,6 +15,7 @@ use std::fmt;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pri = self.priority();
         let rc_str = match self {
             SomeNeed::AStateMakeGroup {
                 dom_num: dm,
@@ -24,16 +25,16 @@ impl fmt::Display for SomeNeed {
                 far,
                 num_x: nx,
             } => format!(
-                "N(Dom {} Act {} Sample State {}, far from {}, to make group {} nx: {})",
-                dm, an, sta, far, freg, nx
+                "N(Dom {} Act {} Pri {} Sample State {}, far from {}, to make group {} nx: {})",
+                dm, an, pri, sta, far, freg, nx
             ),
             SomeNeed::StateNotInGroup {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
             } => format!(
-                "N(Dom {} Act {} Sample State {}, Not in a group)",
-                dm, an, sta,
+                "N(Dom {} Act {} Pri {} Sample State {}, Not in a group)",
+                dm, an, pri, sta
             ),
             SomeNeed::ContradictoryIntersection {
                 dom_num: dm,
@@ -44,8 +45,8 @@ impl fmt::Display for SomeNeed {
                 group2: grp2,
                 ruls2,
             } => format!(
-                "N(Dom {} Act {} Sample Region {} intersection of {} {} and {} {}",
-                dm, an, &g_reg, &grp1, &ruls1, &grp2, &ruls2
+                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {}",
+                dm, an, pri, &g_reg, &grp1, &ruls1, &grp2, &ruls2
             ),
             SomeNeed::ConfirmGroup {
                 dom_num: dm,
@@ -57,19 +58,19 @@ impl fmt::Display for SomeNeed {
                 if greg.is_superset_of_state(&sta) {
                     if sta == anc_sta {
                         format!(
-                            "N(Dom {} Act {} Sample anchor State {}, to confirm group {})",
-                            dm, an, anc_sta, greg,
+                            "N(Dom {} Act {} Pri {} Sample anchor State {}, to confirm group {})",
+                            dm, an, pri, anc_sta, greg,
                         )
                     } else {
                         format!(
-                            "N(Dom {} Act {} Sample State {}, far from {} to confirm group {})",
-                            dm, an, sta, anc_sta, greg,
+                            "N(Dom {} Act {} Pri {} Sample State {}, far from {} to confirm group {})",
+                            dm, an, pri, sta, anc_sta, greg,
                         )
                     }
                 } else {
                     format!(
-                        "N(Dom {} Act {} Sample State {}, adj to {} to confirm group {})",
-                        dm, an, sta, anc_sta, greg,
+                        "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to confirm group {})",
+                        dm, an, pri, sta, anc_sta, greg,
                     )
                 }
             }
@@ -82,13 +83,13 @@ impl fmt::Display for SomeNeed {
             } => {
                 if farx == sta {
                     format!(
-                        "N(Dom {} Act {} Get additional sample of state {} for region {})",
-                        dm, an, &sta, &greg
+                        "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {})",
+                        dm, an, pri, &sta, &greg
                     )
                 } else {
                     format!(
-                        "N(Dom {} Act {} Get additional sample of state {} for region {} far {})",
-                        dm, an, &sta, &greg, &farx
+                        "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {} far {})",
+                        dm, an, pri, &sta, &greg, &farx
                     )
                 }
             }
@@ -98,8 +99,8 @@ impl fmt::Display for SomeNeed {
                 targ_state: sta,
                 in_group: greg,
             } => format!(
-                "N(Dom {} Act {} Sample State {}, between {} and {})",
-                dm, an, &sta, &greg.state1, &greg.state2
+                "N(Dom {} Act {} Pri {} Sample State {}, between {} and {})",
+                dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg,),
             SomeNeed::SetGroupConfirmed {
@@ -377,6 +378,7 @@ impl Eq for SomeNeed {}
 
 impl SomeNeed {
     /// Return a priority number for a need.  Lower is more important.
+    //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
@@ -387,7 +389,7 @@ impl SomeNeed {
                 far: _,
                 num_x: _,
             } => {
-                return 2;
+                return 3;
             } // end process for AStateMakeGroup
 
             SomeNeed::StateNotInGroup {
@@ -395,7 +397,7 @@ impl SomeNeed {
                 act_num: _,
                 targ_state: _,
             } => {
-                return 3;
+                return 4;
             } // end process for StateNotInGroup
 
             SomeNeed::ContradictoryIntersection {
@@ -407,7 +409,7 @@ impl SomeNeed {
                 group2: _,
                 ruls2: _,
             } => {
-                return 1;
+                return 2;
             } // end process for ContradictoryIntersection
 
             SomeNeed::ConfirmGroup {
@@ -417,7 +419,7 @@ impl SomeNeed {
                 for_group: _,
                 anchor: _,
             } => {
-                return 5;
+                return 6;
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
@@ -427,7 +429,7 @@ impl SomeNeed {
                 grp_reg: _,
                 far: _,
             } => {
-                return 4;
+                return 5;
             } // end process for StateAdditionalSample
             SomeNeed::SeekEdge {
                 dom_num: _,
@@ -435,7 +437,7 @@ impl SomeNeed {
                 targ_state: _,
                 in_group: _,
             } => {
-                return 0;
+                return 1;
             }
 
             _ => {

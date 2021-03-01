@@ -828,13 +828,13 @@ fn usage() {
     println!("    cs <state>               - Arbitrary Change State.\n");
     println!("    dn <need number>         - Run a particular need from the need list.\n");
     println!(
-        "    g1 <act num>             - For an Action, print squares that are only in one region."
+        "    g1 <act num>             - For an Action, print squares that are only in one group."
     );
     println!(
-        "    g1 <act num> <region>    - For an Action and region, print squares that are only in that region.\n"
+        "    g1 <act num> <region>    - For an Action and region, print squares that are only in the given region.\n"
     );
     println!(
-        "    gps <act num> <region>    - For an Action and region, print squares that define the region.\n"
+        "    gps <act num> <region>    - For an Action and region, print squares that define the group region.\n"
     );
     println!("    pa                       - Print all Actions of the current Domain.");
     println!("    pa <act num>             - Print an Action of the current Domain.");
