@@ -1079,7 +1079,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         <p>
         For each action:
         </p>
-	<p>Bootstapping:</p>
+	<p>Bootstrapping:</p>
         <p class="indent1">
      If the result of the current state cannot be predicted, sample it.
      </p>
@@ -1536,6 +1536,14 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     Then find a path from the result of the first step, to the goal (a recursion of the rule-path search).
     </p>
+    <p>
+    Two rules can be mutually exclusive if the changes of both must be undone to run the other.
+     e.g. XX00->XX01 and XX00->XX10
+    </p>
+    <p>
+    Two rules can imply an order of use, if the changes of one must be undone to run the other.
+    e.g. XX00->XX01 and XX01->XX11
+    </p>
 
  </div>
 
@@ -1578,7 +1586,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/29/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 05/09/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
