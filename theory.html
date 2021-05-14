@@ -1514,27 +1514,26 @@ For a state that always produces the same two results, alternating, a minimum of
  </li>
  </ul>
     <h3>Rule-path searches</h3>
-
     <p>
-    To go from the current state to a goal region, obvious required changes to the bits of the current state can be calculated.
+    To go from the current state to a goal region, obvious required changes (0->1 mask, 1->0 mask) to the bits of the current state can be calculated.
     </p>
     <p>
-    Rules that make the needed changes can be found.
+    Rules that make the needed changes can be found.  The aggregate changes of the rules found can be checked to insure they are a superst of the needed changes.
     </p>
     <p>
-    Each rule can be thought of as Initial-region -> action -> result-region.
+    The current state may not be in the initial-region of any desired rule.  And the result-region of one rule may not conveniently intersect the initial-region of another rule.
     </p>
     <p>
-    The current state may not be in the initial-region of any step.  And the result-region of one step may not conveniently intersect the intial-region of another step.
+    The intitial-region of a rule may need to be restricted.  In the rule XXXX->XXX1, the 0->1 change being desired, the desired initial region is XXX0, not XXXX or XXX1.
     </p>
     <p>
-    A rough path would be from the step with an initial-region farthest away from the goal-region, to the initial-region of the step closest to the goal-region.
+    A rough path would be from the rule with an initial-region farthest away from the goal-region, to the initial-region of the rule closest to the goal-region.
     </p>
     <p>
-    So you would find a path (a sub-rule-path search) from the current state to the initial-region of a step that is farthest from the goal-region.
+    If needed, find a path (a sub-rule-path search) from the current state to the initial-region of a rule that is farthest from the goal-region.
     </p>
     <p>
-    Then find a path from the result of the first step, to the goal (a recursion of the rule-path search).
+    Then find a path from the result of the first rule, to the goal (a recursion of the rule-path search).
     </p>
     <p>
     Two rules can be mutually exclusive if the changes of both must be undone to run the other.
@@ -1543,6 +1542,9 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
     e.g. XX00->XX01 and XX01->XX11
+    </p>
+    <p>
+    In RL, we find that a path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
     </p>
 
  </div>
@@ -1586,7 +1588,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 05/09/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 05/14/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
