@@ -298,7 +298,7 @@ p {
  It gets worse with each bit you add.
   </p>
   <p>
-   <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Gray_code">Grey Code</a>, used in a K-Map axis, works for one or two bits, but for higher numbers of bits, it is misleading.
+   <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Gray_code">Grey Code</a>, used in a K-Map axis, works for one or two bits, but for higher numbers of bits (the whole point of Grey Code), it is misleading.
   </p>
   <h2>Improving the definition of the Karnaugh Map</h2>
   <p>
@@ -321,7 +321,7 @@ p {
   <h2>So K-maps seem trivial if the maximum bits on an axis is two!</h2>
     <p>
  A bit pattern of any length can be thought of as being in a K-Map that has a 1-bit axis for each bit position.
- It may be hard to draw, but can be manipulated by a computer.
+ It may be hard to draw, but knowing that squares different by one bit are adjacent, it can be manipulated by a computer.
    </p>
 <p>
 I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pattern on a K-Map.
@@ -1609,7 +1609,7 @@ For a state that always produces the same two results, alternating, a minimum of
   <p>The region XXXX has no edges, so all squares might be thought of as being in the middle, but then none are on the edge.</p>
 <p>It was shown in the first section that you cannot add a bit to a 2-bit axis to draw a larger K-Map.<p>
 
-  <p>A 5-bit K-Map might be printed as multiple 4-bit maps, 0XXXX, 1XXXX, but you would need a special talent to visually make sense of multiple K-Maps.</p>
+  <p>A 5-bit K-Map might be printed as multiple 4-bit maps, 0XXXX, 1XXXX, but you would need a special talent, which I do not have, to visually make sense of multiple K-Maps.</p>
 
 <h3>Region Subtraction</h3>
   <p>
@@ -1732,7 +1732,7 @@ For a state that always produces the same two results, alternating, a minimum of
         </p>
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">
-	Below are the six ways. They are really a circles, not lines.
+	Below are the six ways. They are really circles, not lines.
         </p>
         <p class="indent1">
 	As a circle, they can start at any number, and can be read clockwise or counter-clockwise.
