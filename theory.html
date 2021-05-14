@@ -240,7 +240,7 @@ p {
   </tr>
  </table>
 
-<p>The 3-bit axis can be rearranged, 6 ways, and produce different results, another reason to be suspicious of a 1x3 map. Below, square 3 is adjacent to 7, but 6 is not.</p>
+<p>The 3-bit axis can be rearranged, 6 ways (see last addendum), and produce different results, another reason to be suspicious of a 1x3 map. Below, square 3 is adjacent to 7, but 6 is not.</p>
 
  <table class="indent1">
  <caption>Another 1-bit by 3-bit Karnaugh Map</caption>
@@ -377,8 +377,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
       <table class="indent1">
            <tr>
                 <th></th>
+                <th>Bit-0</th>
                 <th>Bit-1</th>
-                <th>Bit-2</th>
                 <th>Region Bit</th>
            </tr>
            <tr style="text-align:center;">
@@ -391,7 +391,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <th></th>
                 <td>0</td>
                 <td>1</td>
-                <td>X</td>
+                <td>x</td>
            </tr>
            <tr style="text-align:center;">
                 <th></th>
@@ -407,7 +407,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
    <p>
- I will represent a region as a list of bit patterns, like 0X1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
+ I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
     </p>
     <p>
     An analogy to a crystal:
@@ -422,7 +422,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      Each edge is the same length, 2 to the power of the number of X-bit positions.  The perimeter is the number of edges times the edge length.
      </p>
      <p class="indent1">
-     More than one edge indicates an intersection of edges, producing a face and vertex.
+     More than one edge indicates an intersection of edges, producing a vertex and (number edges - 1) faces.
      </p>
    <h3>Calculating various characteristics of a Region, or Regions</h3>
    <p class="indent1">
@@ -435,37 +435,37 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The X-mask for a region is: bits-0 ^ bits-1.
  </p>
  <p class="indent1">
- The X-mask of 0X1X, (0011, 0110) = 0011 ^ 0110 = 0101.
+ The X-mask of 0x1X, (0011, 0110) = 0011 ^ 0110 = 0101.
  </p>
  <p>
  The non-X-mask is: the complement of the X-mask.
  </p>
  <p class="indent1">
- The non-X-mask of 0X1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
+ The non-X-mask of 0x1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
  </p>
  <p>
  The ones-mask of a region is: bits-0 &amp; bits-1
  </p>
  <p class="indent1">
-     The ones-mask of 0X1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
+     The ones-mask of 0x1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
  </p>
  <p>
  The zeros-mask of a region is: ~bits-0 &amp; ~bits-1
  </p>
  <p class="indent1">
-     The zeros-mask of 0X1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
+     The zeros-mask of 0x1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
  </p>
  <p>
- The all-ones-mask of a region is: bits-0 + bits-1
+ The any-ones-mask of a region is: bits-0 + bits-1
  </p>
  <p class="indent1">
-     The all-ones-mask of 0X1X, (0011, 0110) = 0011 + 0110 = 0111.
+     The any-ones-mask of 0x1X, (0011, 0110) = 0011 + 0110 = 0111.
  </p>
  <p>
- The all-zeros-mask of a region is: ~bits-0 + ~bits-1
+ The any-zeros-mask of a region is: ~bits-0 + ~bits-1
  </p>
  <p class="indent1">
-     The all-zeros-mask of 0X1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
+     The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
  </p>
    <h3>Calculating a mask of different bits between two regions</h3>
  <p>
@@ -523,13 +523,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Two regions intersect if their different bits mask = all zeros.
         </p>
  <p>
- The intersection region is given by (r1.all-ones-mask &amp; r2.all-ones-mask, ~r1.all-zeros-mask + ~r2.all-zeros-mask).
+ The intersection region is given by (r1.any-ones-mask &amp; r2.any-ones-mask, ~r1.any-zeros-mask + ~r2.any-zeros-mask).
         </p>
       <p class="indent1">
-        Given 0XX1 = (0011, 0101) and X11X = (1111, 0110).
+        Given 0xX1 = (0011, 0101) and X11X = (1111, 0110).
         </p>
         <p class="indent1">
- The intersection of 0XX1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
+ The intersection of 0xX1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
         </p>
    <h3>Adjacent Regions</h3>
   <p>
@@ -585,18 +585,18 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 
   <h3>The Union of two Regions</h3>
   <p>
- If you have two regions, 0XX1 and 1XX1,
+ If you have two regions, 0xX1 and 1Xx1,
  the regions are adjacent and have corresponding X bits, they can be combined.
  The one different bit becomes an X in the result.
  Other equal, corresponding, bits will be the same value in the result.
  In this case the result would be XXX1.
   </p>
  <table class="indent1">
- <caption>0XX1 + 1XX1 = XXX1</caption>
+ <caption>0xX1 + 1Xx1 = XXX1</caption>
     <tr>
     <th>
  <table>
- <caption>0XX1, 1XX1</caption>
+ <caption>0xX1, 1Xx1</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -688,13 +688,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    </p>
    <p class="indent1">
  The union of two regions (r1, r2)
-        is given by (r1.all-ones-mask + r2.all-ones-mask, ~r1.all-zeros-mask &amp; ~r2.all-zeros-mask).
+        is given by (r1.any-ones-mask + r2.any-ones-mask, ~r1.any-zeros-mask &amp; ~r2.any-zeros-mask).
   </p>
    <p class="indent2">
- Given 0XX1 = (0011, 0101) and 1XX1 = (1101, 1011).
+ Given 0xX1 = (0011, 0101) and 1Xx1 = (1101, 1011).
   </p>
    <p class="indent2">
- The Union of 0XX1 and 1XX1 = (0111 + 1111, 0001 &amp; 1001) = (1111, 0001) = XXX1.
+ The Union of 0xX1 and 1Xx1 = (0111 + 1111, 0001 &amp; 1001) = (1111, 0001) = XXX1.
   </p>
    </p>
    <h3>Testing if a region is equal to another region</h3>
@@ -714,7 +714,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Adjacent regions, without all X bits corresponding, have an overlapping part that can be calculated.
         </p>
         <table class="indent1">
-        <caption>1X0X, X110</caption>
+        <caption>1X0x, X110</caption>
            <tr>
                 <th></th>
                 <th>00</th>
@@ -752,19 +752,19 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
             <p>
-        To calculate the overlapping part of 1X0X and X110, use the intersection logic, even though they do not intersect.
+        To calculate the overlapping part of 1X0x and X110, use the intersection logic, even though they do not intersect.
         </p>
-	<p>1X0X = (1100, 1001)</p>
+	<p>1X0x = (1100, 1001)</p>
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
-	AND the all-ones-masks: 1101 & 1110 = 1100
+	AND the any-ones-masks: 1101 & 1110 = 1100
 	</p>
 	<p>
-	OR the ~all-zeros-masks:   1000 + 0110 = 1110
+	OR the ~any-zeros-masks:   1000 + 0110 = 1110
 	</p>
 	<p>
-	Now make a region from the results, (1100, 1110) = 11X0 (C, E).
+	Now make a region from the results, (1100, 1110) = 11x0 (C, E).
 	</p>
     <h2>Sparse Karnaugh Maps</h2>
     <p>
@@ -786,13 +786,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <p>
  I would like to define a second kind of union that can be thought of as
  "Barring evidence to the contrary, the union could be true".
- This type of union is between two or more squares, uses the same calculation of a union,
+ This type of union is between two squares, it uses the same calculation of a union,
  given above, except that the squares do not need to be adjacent.
  Corresponding bits that are 1/0, or 0/1 will be X in the result. 
  Other equal, corresponding, bits will be the same value in the result.
   </p>
  <p class="indent1">
- 0011 + 0101 + 1111 = XXX1
+3+5 = 0XX1, 5+F = X1X1 
    </p>
     <p class="indent1">
  <table>
@@ -822,13 +822,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>C</td>
   <td class="bgg2">D</td>
   <td class="bgg">F</td>
-  <td class="bgr">E</td>
+  <td>E</td>
     </tr>
     <tr>
   <th>10</th>
   <td>8</td>
-  <td class="bgg2">9</td>
-  <td class="bgg2">B</td>
+  <td>9</td>
+  <td>B</td>
   <td>A</td>
     </tr>
  </table>
@@ -1518,33 +1518,39 @@ For a state that always produces the same two results, alternating, a minimum of
     To go from the current state to a goal region, obvious required changes (0->1 mask, 1->0 mask) to the bits of the current state can be calculated.
     </p>
     <p>
-    Rules that make the needed changes can be found.  The aggregate changes of the rules found can be checked to insure they are a superst of the needed changes.
+    Rules that make the needed changes can be found.  The aggregate changes of the rules found can be checked to insure they are a superset of the needed changes.
     </p>
     <p>
-    The current state may not be in the initial-region of any desired rule.  And the result-region of one rule may not conveniently intersect the initial-region of another rule.
+    The current state may not be in the initial-region of any desired rule.  And the result-region of one rule may not conveniently intersect the initial-region of another desired rule.
     </p>
     <p>
-    The intitial-region of a rule may need to be restricted.  In the rule XXXX->XXX1, the 0->1 change being desired, the desired initial region is XXX0, not XXXX or XXX1.
+    The intitial-region of a rule may need to be restricted.  In the rule XXXX->0XX1, the 0->1 change being desired, the desired initial region is XXX0, not XXXX or XXX1.
     </p>
     <p>
     A rough path would be from the rule with an initial-region farthest away from the goal-region, to the initial-region of the rule closest to the goal-region.
     </p>
     <p>
-    If needed, find a path (a sub-rule-path search) from the current state to the initial-region of a rule that is farthest from the goal-region.
+    If needed, find a path (recursion) from the current state to the initial-region of a rule that is farthest from the goal-region.
     </p>
     <p>
-    Then find a path from the result of the first rule, to the goal (a recursion of the rule-path search).
+    Then find a path (recursion) from the result of the farthest rule, to the goal.
     </p>
     <p>
     Two rules can be mutually exclusive if the changes of both must be undone to run the other.
      e.g. XX00->XX01 and XX00->XX10
     </p>
+    <p class="indent1">
+    The rule list can be split, one copy for each rule.  The aggregate changes for each list can be checked, discarding a deficient list.
+    </p>
     <p>
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
     e.g. XX00->XX01 and XX01->XX11
     </p>
+    <p class="indent1">
+    From the standpoint of "whats the next step", the second rule can be dropped from consideration.
+    </p>
     <p>
-    In RL, we find that a path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
+    IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
     </p>
 
  </div>
@@ -1726,7 +1732,7 @@ For a state that always produces the same two results, alternating, a minimum of
         </p>
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">
-	Below are the six ways. They are really a circle, not a line.
+	Below are the six ways. They are really a circles, not lines.
         </p>
         <p class="indent1">
 	As a circle, they can start at any number, and can be read clockwise or counter-clockwise.
