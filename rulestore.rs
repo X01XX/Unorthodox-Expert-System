@@ -105,6 +105,11 @@ impl RuleStore {
     /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
     /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+		
+		if self.initial_region().is_subset_of(&other.initial_region()) == false {
+			return false;
+		}
+		
         if self.len() == 1 {
             if other.len() == 1 {
                 return self.first().is_subset_of(&other.first());
@@ -121,15 +126,15 @@ impl RuleStore {
                 return false;
             }
 
-            if self.first().is_subset_of(&other.first())
-                && self.second().is_subset_of(&other.second())
-                || self.first().is_subset_of(&other.second())
-                    && self.second().is_subset_of(&other.first())
-            {
-                return true;
-            } else {
-                return false;
-            }
+            let reg_int = self.initial_region().intersection(&other.initial_region());
+            
+            let rules2 = other.restrict_initial_region(&reg_int);
+            
+            if let Some(_) = self.union(&rules2) {
+				return true;
+			} 
+
+            return false;
         }
 
         panic!("unexpected rulestore length!");
@@ -370,60 +375,32 @@ impl RuleStore {
             panic!("rulestore lengths not eq!");
         }
 
-        let mut ars = Self::new();
-        let mut ars2 = Self::new();
-
         if self.len() == 1 {
+		    let mut ars = Self::new();
+		    
             if self.avec[0]
                 .intersection(&other.avec[0])
                 .is_valid_intersection()
             {
                 ars.push(self.avec[0].intersection(&other.avec[0]));
                 return Some(ars);
-            } else {
-                return None;
             }
+            return None;
+            
         } else if self.len() == 2 {
-            if self.avec[0]
-                .intersection(&other.avec[0])
-                .is_valid_intersection()
-                && self.avec[1]
-                    .intersection(&other.avec[1])
-                    .is_valid_intersection()
-            {
-                ars.push(self.avec[0].intersection(&other.avec[0]));
-                ars.push(self.avec[1].intersection(&other.avec[1]));
-                // return Some(ars);
-            }
-
-            if self.avec[0]
-                .intersection(&other.avec[1])
-                .is_valid_intersection()
-                && self.avec[1]
-                    .intersection(&other.avec[0])
-                    .is_valid_intersection()
-            {
-                ars2.push(self.avec[0].intersection(&other.avec[1]));
-                ars2.push(self.avec[1].intersection(&other.avec[0]));
-                // return Some(ars);
-            }
-
-            if ars.len() > 0 && ars2.len() > 0 {
-                return ars.union(&ars2);
-            }
-
-            if ars.len() > 0 {
-                return Some(ars);
-            }
-
-            if ars2.len() > 0 {
-                return Some(ars2);
-            }
-
-            None
-        } else {
-            panic!("not ready for pn {}!", self.len());
+			
+			let regx = self.initial_region().intersection(&other.initial_region());
+			
+			let rs1 = self.restrict_initial_region(&regx);
+			let rs2 = other.restrict_initial_region(&regx);
+			
+			if let Some(rs12) = rs1.union(&rs2) {
+				return Some(rs12);
+			}
+			
+            return None;
         }
+        panic!("not ready for pn {}!", self.len());
     }
 
     /// Return the result of restricting the initial region of rules.
@@ -435,74 +412,6 @@ impl RuleStore {
         }
         rcrs
     }
-
-    /// Return the union of two RuleStores, pruned.
-    ///
-    ///  An invalid union might still include a subset valid union.
-    ///
-    ///  If a bit position contains (0->0 or 0->1, exclusive), and 1->0, 1->1,
-    ///  that bit position can be pruned to be just 0->0 or 0->1.
-    ///
-    ///  If a bit position contains (1->0 or 1->1, exclusive), and 0->0, 0->1,
-    ///  that bit position can be pruned to be just 1->0 or 1->1.    
-    pub fn union_prune(&self, other: &Self) -> Option<Self> {
-        if self.len() != other.len() {
-            return None;
-        }
-
-        let mut ars = Self::new();
-
-        if self.len() == 1 {
-            let rulx = self.avec[0].union(&other.avec[0]);
-
-            if rulx.is_valid_union() {
-                ars.push(rulx);
-                return Some(ars);
-            } else {
-                return None;
-            }
-        } else if self.len() == 2 {
-            let rulx = self.avec[0].union(&other.avec[0]);
-
-            if rulx.is_valid_union() {
-                let ruly = self.avec[1].union(&other.avec[1]);
-
-                if ruly.is_valid_union() {
-                    if rulx.initial_region() == ruly.initial_region() {
-                        ars.push(rulx);
-                        ars.push(ruly);
-                        return Some(ars);
-                    } else if rulx.initial_region().intersects(&ruly.initial_region()) {
-                        let regz = rulx.initial_region().intersection(&ruly.initial_region());
-                        ars.push(rulx.restrict_initial_region(&regz));
-                        ars.push(ruly.restrict_initial_region(&regz));
-                        return Some(ars);
-                    }
-                }
-            }
-
-            let rulx = self.avec[0].union(&other.avec[1]);
-
-            if rulx.is_valid_union() {
-                let ruly = self.avec[1].union(&other.avec[0]);
-
-                if ruly.is_valid_union() {
-                    if rulx.initial_region() == ruly.initial_region() {
-                        ars.push(rulx);
-                        ars.push(ruly);
-                        return Some(ars);
-                    } else if rulx.initial_region().intersects(&ruly.initial_region()) {
-                        let regz = rulx.initial_region().intersection(&ruly.initial_region());
-                        ars.push(rulx.restrict_initial_region(&regz));
-                        ars.push(ruly.restrict_initial_region(&regz));
-                        return Some(ars);
-                    }
-                }
-            }
-        } // end if
-
-        None
-    } // end union_prune
 
     /// Return the inital region of the first rule in the store.
     pub fn initial_region(&self) -> SomeRegion {

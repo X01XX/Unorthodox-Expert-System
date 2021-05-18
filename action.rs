@@ -1769,7 +1769,7 @@ impl SomeAction {
                 if let Some(rulesx) = grpx
                     .rules
                     .restrict_initial_region(&reg_ov)
-                    .union_prune(&grpy.rules.restrict_initial_region(&reg_ov))
+                    .union(&grpy.rules.restrict_initial_region(&reg_ov))
                 {
                     let regz = rulesx.initial_region();
 
