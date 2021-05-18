@@ -59,7 +59,7 @@ impl SomeRegion {
 
     /// Return a String representation of a Region without any prefix.
     pub fn formatted_string(&self) -> String {
-        let mut s1 = String::with_capacity(self.formatted_string_length());
+		let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
         let num_ints = self.state1.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
@@ -80,7 +80,7 @@ impl SomeRegion {
                 }
             } else {
                 if b1 {
-                    s1.push('X');
+                    s1.push('x');
                 } else {
                     s1.push('0');
                 }
@@ -94,49 +94,49 @@ impl SomeRegion {
     /// Return a string representation for a region,
     /// bit positions that toggle are signified by a lower case x,
     /// as in X->x or just Xx.
-    pub fn formatted_string_not_x(&self, msk: &SomeMask) -> String {
-        let mut s1 = String::with_capacity(
-            (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints(),
-        );
-        s1.push('r');
-        let num_ints = self.state1.num_ints();
-        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-        let mut inx = 0;
-        for valb in (0..num_bits).rev() {
-            if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
-                s1.push('_');
-            }
-
-            let b0 = self.state1.is_bit_set(valb);
-            let b1 = self.state2.is_bit_set(valb);
-
-            if b0 {
-                if b1 {
-                    s1.push('1');
-                } else {
-                    if msk.is_bit_set(valb) {
-                        s1.push('x');
-                    } else {
-                        s1.push('X');
-                    }
-                }
-            } else {
-                if b1 {
-                    if msk.is_bit_set(valb) {
-                        s1.push('x');
-                    } else {
-                        s1.push('X');
-                    }
-                } else {
-                    s1.push('0');
-                }
-            }
-            inx += 1;
-            // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
-        } // next valb
-        s1
-    }
+//    pub fn formatted_string_not_x(&self, msk: &SomeMask) -> String {
+//        let mut s1 = String::with_capacity(
+//            (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints(),
+//        );
+//        s1.push('r');
+//        let num_ints = self.state1.num_ints();
+//        let num_bits = num_ints * NUM_BITS_PER_INT;
+//
+//        let mut inx = 0;
+//        for valb in (0..num_bits).rev() {
+//            if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
+//                s1.push('_');
+//            }
+//
+//            let b0 = self.state1.is_bit_set(valb);
+//            let b1 = self.state2.is_bit_set(valb);
+//
+//            if b0 {
+//                if b1 {
+//                    s1.push('1');
+//                } else {
+//                    if msk.is_bit_set(valb) {
+//                        s1.push('x');
+//                    } else {
+//                        s1.push('X');
+//                    }
+//                }
+//            } else {
+//                if b1 {
+//                    if msk.is_bit_set(valb) {
+//                        s1.push('x');
+//                    } else {
+//                        s1.push('X');
+//                    }
+//                } else {
+//                    s1.push('0');
+//                }
+//            }
+//            inx += 1;
+//            // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
+//        } // next valb
+//        s1
+//    }
 
     /// Set a regions active indicator off, effectively deleting it from a
     /// vector without structural changes to the vector.
@@ -512,9 +512,9 @@ impl SomeRegion {
             inx += 1;
 
             if inx == 0 {
-                if ch == 'r' {
+                if ch == 'r' || ch == 'R' {
                     continue;
-                } else if ch == 's' {
+                } else if ch == 's' || ch == 'S' {
                     let state_r = SomeState::from_string(num_ints, &str);
                     match state_r {
                         Ok(a_state) => {
@@ -543,9 +543,12 @@ impl SomeRegion {
             } else if ch == '1' {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.push_1();
-            } else if ch == 'x' || ch == 'X' {
+            } else if ch == 'X' {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.shift_left();
+            } else if ch == 'x' {
+                bts_high = bts_high.shift_left();
+                bts_low = bts_low.push_1();
             } else if ch == '_' {
                 continue;
             } else {

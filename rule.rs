@@ -15,6 +15,7 @@ use crate::bits::NUM_BITS_PER_INT;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use crate::change::SomeChange;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -46,11 +47,6 @@ impl SomeRule {
             b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
         }
     }
-
-    // Return a mask of changes b01 or b10
-    //    pub fn change_mask(&self) -> SomeMask {
-    //        self.b01.m_or(&self.b10)
-    //    }
 
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
@@ -302,14 +298,6 @@ impl SomeRule {
     //        false
     //    }
 
-    //    pub fn dont_care_mask(&self) -> SomeMask {
-    //        self.b00
-    //            .m_or(&self.b10)
-    //            .m_or(&self.b11)
-    //            .m_or(&self.b10)
-    //            .m_not()
-    //    }
-
     // Set initial region X bits to one
     //    pub fn set_initial_to_ones(&self, msk: &SomeMask) -> Self {
     //        let nmsk = msk.m_not();
@@ -458,25 +446,12 @@ impl SomeRule {
         // Return a restricted rule
         Some(self.restrict_initial_region(&i_reg))
     }
+    
+    // Return a SomeChange struct instance
+    pub fn change(&self) -> SomeChange {
+		SomeChange { b01: self.b01.clone(), b10: self.b10.clone() }
+	}
 } // end SomeRule
-
-// Create an rule that represents a change from one region to another.
-//pub fn _region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-//    let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
-//    let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
-//
-//    let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-//    let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
-//
-//    let bxx = from.x_mask().m_and(&to.x_mask());
-//
-//    SomeRule {
-//        b00: f_zeros.m_and(&t_zeros),
-//        b01: f_zeros.m_and(&t_ones).m_xor(&bxx),
-//        b11: f_ones.m_and(&t_ones),
-//        b10: f_ones.m_and(&t_zeros).m_xor(&bxx),
-//    }
-//}
 
 impl Clone for SomeRule {
     fn clone(&self) -> Self {

@@ -17,7 +17,7 @@ impl RandomPick {
 
     /// Return a new instance of a RandomPick struct.
     /// If GT zero, the argument will fill the vector with that range of numbers.
-    pub fn new(nums: usize) -> Self {
+    pub fn _new(nums: usize) -> Self {
         let mut ret = RandomPick {
                    items: Vec::<usize>::new(),
                    length: 0,
@@ -34,7 +34,7 @@ impl RandomPick {
     }
 
     /// Return the current pseudo length of the vector.
-    pub fn len(&self) -> usize {
+    pub fn _len(&self) -> usize {
         return self.length;
     }
 
@@ -42,7 +42,7 @@ impl RandomPick {
     /// The pseudo length will be incremented.
     /// At least one number must be added before the first pick.
     /// A number, or numbers, can be added after a pick.
-    pub fn add(&mut self, newnum: usize) {
+    pub fn _add(&mut self, newnum: usize) {
         if self.length == self.items.len() {
             self.items.push(newnum);
         } else {
@@ -54,7 +54,7 @@ impl RandomPick {
     /// Pick a random item from a RandomPick vector.
     /// If the item chosen is not at the end, the value of the item at the 
     /// end will replace the chosen item.  The pseudo length will be decremented.
-    pub fn pick(&mut self) -> usize {
+    pub fn _pick(&mut self) -> usize {
 
         if self.length == 0 {
            println!("RandomPick::pick: The items vector is empty!"); 

@@ -51,6 +51,8 @@ use domainstore::DomainStore;
 mod inxplan;
 use crate::inxplan::InxPlan;
 mod truth;
+mod randompick;
+// use crate::randompick::RandomPick;
 
 use std::io;
 use std::io::{Read, Write};
@@ -105,14 +107,14 @@ fn init() -> DomainStore {
 /// User Interface
 fn main() {
     // Start a DomainStore, add a Domain
-
+    
     let mut dmxs = init();
 
     usage();
 
     let mut dom_num = 0;
     let mut run = 0;
-
+   
     loop {
         dmxs.step += 1;
 
@@ -139,7 +141,7 @@ fn main() {
 
         let mut can_do = 0;
         let mut cant_do = 0;
-
+        
         if nds.len() > 0 {
             // Check if each need can be done
             need_plans = dmxs.evaluate_needs(&nds);
@@ -177,9 +179,9 @@ fn main() {
                 let mut inx = 0;
                 let mut disp = 0;
                 for ndplnx in need_plans.iter() {
-                    if let Some(plnx) = &ndplnx.pln {
+                if let Some(plnx) = &ndplnx.pln {
                         if plnx.len() > 0 {
-                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
+                        println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
                         } else {
                             println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
                         }
@@ -210,7 +212,7 @@ fn main() {
 
             for word in guess.split_whitespace() {
                 //println!("word: {} is {}", word_count, word);
-                cmd.push(word.to_ascii_lowercase());
+                cmd.push(String::from(word));
             }
         }
 
@@ -333,7 +335,7 @@ fn main() {
                         continue;
                     }
                     if n_num >= need_can.len() {
-                        println!("Invalid Need Number: {}", cmd[1]);
+                    println!("Invalid Need Number: {}", cmd[1]);
                         continue;
                     }
 
@@ -430,6 +432,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         dm1.optimal, goal_region
                     );
                     dm1.optimal = goal_region;
+                    return true;
                 }
                 Err(error) => {
                     println!("\nDid not understand region, {}", error);

@@ -449,8 +449,7 @@ impl SomeDomain {
 
         // Get union of changes for each step
         for stpx in stpsx.iter() {
-            can_change.b01 = can_change.b01.m_or(&stpx.rule.b01);
-            can_change.b10 = can_change.b10.m_or(&stpx.rule.b10);
+			can_change = can_change.union(&stpx.rule.change());
         }
 
         // Check if the changes found roughly satisfy the needed change

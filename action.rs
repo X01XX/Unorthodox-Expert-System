@@ -1918,7 +1918,7 @@ impl SomeAction {
                                     found = true;
                                 } // end if
                             } // next stax
-
+ 
                             if found == false {
                                 stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                             }
@@ -1929,6 +1929,7 @@ impl SomeAction {
             } // end match grpx.pn
         } // next grpx
 
+        // println!("Steps: {}", &stps);
         stps
     } // end get_steps
 

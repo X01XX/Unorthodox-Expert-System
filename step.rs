@@ -25,6 +25,7 @@ impl SomeStep {
     /// Return a new Step struct instance.
     pub fn new(act_num: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
         let initial = rule.initial_region();
+        
         let result = rule.result_region();
         Self {
             initial,
@@ -75,11 +76,7 @@ impl SomeStep {
         rcstr.push('[');
         rcstr.push_str(&format!("{}", self.initial));
         rcstr.push_str(&format!(" -{:02}> ", self.act_num));
-        rcstr.push_str(
-            &self
-                .result
-                .formatted_string_not_x(&self.rule.b01.m_or(&self.rule.b10)),
-        );
+        rcstr.push_str(&format!("{}", self.result));
         rcstr.push(']');
         rcstr
     }

@@ -123,7 +123,7 @@ impl SomeState {
             inx += 1;
 
             if inx == 0 {
-                if ch == 's' {
+                if ch == 's' || ch == 'S' {
                     continue;
                 } else {
                     return Err(String::from("initial character should be s"));

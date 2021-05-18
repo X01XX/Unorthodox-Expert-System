@@ -8,7 +8,7 @@
 //! no X positions, the different results must different by one, or more,
 //! 1->X or 0->X bit positions.
 
-use crate::maskstore::MaskStore;
+// use crate::maskstore::MaskStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 
@@ -37,11 +37,29 @@ impl PartialEq for RuleStore {
             return self.avec[0] == other.avec[0];
         }
 
+        // A rulestore of [Xx, XX] is equal to [X0, X1] at the rule bit mask level.
+        // Xx = 0->1, 1->0, XX = 0->0, 1->1
+        // X1 = 0->1, 1->1, X0 = 0->0, 1->0
         if self.len() == 2 {
-            if self.avec[0] == other.avec[0] && self.avec[0] == other.avec[0] {
-                return true;
-            }
-            return self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0];
+			if self.avec[0].b00 != other.avec[0].b00 &&
+			   self.avec[0].b00 != other.avec[1].b00 {
+				   return false;
+			}
+			if self.avec[0].b01 != other.avec[0].b01 &&
+			   self.avec[0].b01 != other.avec[1].b01 {
+				   return false;
+			}
+			
+			if self.avec[0].b11 != other.avec[0].b11 &&
+			   self.avec[0].b11 != other.avec[1].b11 {
+				   return false;
+			}
+			if self.avec[0].b10 != other.avec[0].b10 &&
+			   self.avec[0].b10 != other.avec[1].b10 {
+				   return false;
+			}
+			
+			return true;
         }
 
         panic!("Unsupported RuleStore length {}", self.len());
@@ -137,7 +155,7 @@ impl RuleStore {
     /// Return the union of two RuleStores.
     /// May return None, if the union is invalid.
     ///
-    /// The rules will be from two squares, the possible combinations
+    /// If the rules will are from two squares, the possible combinations
     /// for each bit position are:
     ///
     /// 0->0, 0->0 = 0->0
@@ -155,7 +173,9 @@ impl RuleStore {
     /// 1->0, 1->0 = 1->0
     ///
     /// For two result rules, the rule order is not important.
-    /// The first union the does not result in a combination of changes not seen
+    /// A rulestore of [Xx, XX] is equal to [X0, X1] at the rule bit mask level.
+    /// Xx = 0->1, 1->0, XX = 0->0, 1->1
+    /// X1 = 0->1, 1->1, X0 = 0->0, 1->0
     /// in the original rule will be returned.
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", &self, &other);
@@ -182,72 +202,154 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-            // Avoid a combination or rules that combines changes that
-            // are not seen together in the source rules.
+			
+			// New start
+			let mut opt0 = 2;  // Invalid option
+			
+            let b00_opt0 = self.avec[0].b00.m_or(&other.avec[0].b00);
+            let b01_opt0 = self.avec[0].b01.m_or(&other.avec[0].b01);
+            let b00_opt1 = self.avec[1].b00.m_or(&other.avec[1].b00);
+            let b01_opt1 = self.avec[1].b01.m_or(&other.avec[1].b01);
+            if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
+				opt0 = 0; // For b00, b01, match rules self[0] and other[0], self[1] and other[1].
+			}
 
-            // Store b01 change patterns
-            let mut b01_cng_pats = MaskStore::new_with_capacity(4);
-            b01_cng_pats.push(self.avec[0].b01.clone());
-            b01_cng_pats.push(self.avec[1].b01.clone());
-            b01_cng_pats.push(other.avec[0].b01.clone());
-            b01_cng_pats.push(other.avec[1].b01.clone());
+            if opt0 == 2 {
+                let b00_opt0 = self.avec[0].b00.m_or(&other.avec[1].b00);
+                let b01_opt0 = self.avec[0].b01.m_or(&other.avec[1].b01);
+                let b00_opt1 = self.avec[1].b00.m_or(&other.avec[0].b00);
+                let b01_opt1 = self.avec[1].b01.m_or(&other.avec[0].b01);           
+                if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
+				    opt0 = 1; // For b00, b01, match rules self[0] and other[1], self[1] and other[0].
+			    }
+			}
+            
+            if opt0 == 2 {
+				return None;
+			}
+			
+			let mut opt1 = 2;  // Invalid option
+			
+            let b11_opt0 = self.avec[0].b11.m_or(&other.avec[0].b11);
+            let b10_opt0 = self.avec[0].b10.m_or(&other.avec[0].b10);
+            let b11_opt1 = self.avec[1].b11.m_or(&other.avec[1].b11);
+            let b10_opt1 = self.avec[1].b10.m_or(&other.avec[1].b10);           
+            if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
+				opt1 = 0; // For b11, b10, match rules self[0] and other[0], self[1] and other[1].
+			}
 
-            //  Store b10 change patterns
-            let mut b10_cng_pats = MaskStore::new_with_capacity(4);
-            b10_cng_pats.push(self.avec[0].b10.clone());
-            b10_cng_pats.push(self.avec[1].b10.clone());
-            b10_cng_pats.push(other.avec[0].b10.clone());
-            b10_cng_pats.push(other.avec[1].b10.clone());
+            if opt1 == 2 {
+                let b11_opt0 = self.avec[0].b11.m_or(&other.avec[1].b11);
+                let b10_opt0 = self.avec[0].b10.m_or(&other.avec[1].b10);
+                let b11_opt1 = self.avec[1].b11.m_or(&other.avec[0].b11);
+                let b10_opt1 = self.avec[1].b10.m_or(&other.avec[0].b10);           
+                if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
+				    opt1 = 1; // For b11, b10, match rules self[0] and other[1], self[1] and other[0].
+			    }
+			}
+			
+			if opt1 == 2 {
+				return None;
+			}
+            
+            let mut ret_store = Self::new();
 
-            // Attempt self[0]/other[0], self[1]/other[1] combination
-            let mut ars1 = Self::new();
+			if opt0 == 0 {
+				
+				let r0_b00 = self.avec[0].b00.m_or(&other.avec[0].b00);
+				let r0_b01 = self.avec[0].b01.m_or(&other.avec[0].b01);
+				let r1_b00 = self.avec[1].b00.m_or(&other.avec[1].b00);
+				let r1_b01 = self.avec[1].b01.m_or(&other.avec[1].b01);
+				
+			    if opt1 == 0 {
+					// opt0 == 0, opt1 == 0
+					
+					let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
+					let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
+					let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
+					let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
+					
+					ret_store.push(SomeRule {
+						b00: r0_b00,
+						b01: r0_b01,
+						b11: r0_b11,
+						b10: r0_b10,});
+					ret_store.push(SomeRule {
+						b00: r1_b00,
+						b01: r1_b01,
+						b11: r1_b11,
+						b10: r1_b10,});
+					return Some(ret_store);
 
-            let rulx = self.avec[0].union(&other.avec[0]);
+			    } else { // opt1 == 1
+					// opt0 == 0, opt1 == 1
+					let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
+					let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
+					let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
+					let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
+					
+					ret_store.push(SomeRule {
+						b00: r0_b00,
+						b01: r0_b01,
+						b11: r0_b11,
+						b10: r0_b10,
+						});
+					ret_store.push(SomeRule {
+						b00: r1_b00,
+						b01: r1_b01,
+						b11: r1_b11,
+						b10: r1_b10, });
+					return Some(ret_store);
+				}
+			} else { // opt0 == 1
+				
+				let r0_b00 = self.avec[0].b00.m_or(&other.avec[1].b00);
+				let r0_b01 = self.avec[0].b01.m_or(&other.avec[1].b01);
+				let r1_b00 = self.avec[1].b00.m_or(&other.avec[0].b00);
+				let r1_b01 = self.avec[1].b01.m_or(&other.avec[0].b01);
+				
+			    if opt1 == 0 {
+					// opt0 == 1, opt1 == 0
+					let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
+					let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
+					let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
+					let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
 
-            if rulx.is_valid_union()
-                && b01_cng_pats.contains(&rulx.b01)
-                && b10_cng_pats.contains(&rulx.b10)
-            {
-                let ruly = self.avec[1].union(&other.avec[1]);
+					ret_store.push(SomeRule {
+						b00: r0_b00,
+						b01: r0_b01,
+						b11: r0_b11,
+						b10: r0_b10,
+						});
+					ret_store.push(SomeRule {
+						b00: r1_b00,
+						b01: r1_b01,
+						b11: r1_b11,
+						b10: r1_b10, });
+					return Some(ret_store);
+					
+				} else { // opt1 == 1
+					// opt0 == 1, opt1 == 1
+					let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
+					let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
+					let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
+					let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
 
-                if ruly.is_valid_union()
-                    && b01_cng_pats.contains(&ruly.b01)
-                    && b10_cng_pats.contains(&ruly.b10)
-                {
-                    if rulx.initial_region() == ruly.initial_region() {
-                        ars1.push(rulx);
-                        ars1.push(ruly);
-                        return Some(ars1);
-                    }
-                }
-            }
-
-            // Attempt self[0]/other[1], self[1]/other[0] combination
-            let mut ars2 = Self::new();
-
-            let rulx = self.avec[0].union(&other.avec[1]);
-
-            if rulx.is_valid_union()
-                && b01_cng_pats.contains(&rulx.b01)
-                && b10_cng_pats.contains(&rulx.b10)
-            {
-                let ruly = self.avec[1].union(&other.avec[0]);
-
-                if ruly.is_valid_union()
-                    && b01_cng_pats.contains(&ruly.b01)
-                    && b10_cng_pats.contains(&ruly.b10)
-                {
-                    if rulx.initial_region() == ruly.initial_region() {
-                        ars2.push(rulx);
-                        ars2.push(ruly);
-                        return Some(ars2);
-                    }
-                }
-            }
-
-            //println!("rulestore union returns None\n");
-            return None;
-        } // end if
+					ret_store.push(SomeRule {
+						b00: r0_b00,
+						b01: r0_b01,
+						b11: r0_b11,
+						b10: r0_b10,
+						});
+					ret_store.push(SomeRule {
+						b00: r1_b00,
+						b01: r1_b01,
+						b11: r1_b11,
+						b10: r1_b10, });
+					return Some(ret_store);
+				}
+			}
+        } // end if self.len() == 2
 
         if self.len() == 0 {
             // needed?

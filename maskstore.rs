@@ -25,7 +25,7 @@ impl MaskStore {
     }
 
     /// Return a new, empty, MaskStore struct instance, with a given capacity.
-    pub fn new_with_capacity(num: usize) -> Self {
+    pub fn _new_with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeMask>::with_capacity(num),
         }
@@ -37,7 +37,7 @@ impl MaskStore {
     }
 
     /// Return true if the store contains a given mask.
-    pub fn contains(&self, amask: &SomeMask) -> bool {
+    pub fn _contains(&self, amask: &SomeMask) -> bool {
         for mskx in self.avec.iter() {
             if mskx == amask {
                 return true;
@@ -56,7 +56,7 @@ impl MaskStore {
     //    }
 
     /// Push a SomeMask instance onto the vector.
-    pub fn push(&mut self, val: SomeMask) {
+    pub fn _push(&mut self, val: SomeMask) {
         self.avec.push(val);
     }
 
