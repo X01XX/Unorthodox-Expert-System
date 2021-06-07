@@ -275,7 +275,7 @@ impl SomeDomain {
                         &prev_state,
                         &stpx.act_num,
                         &self.cur_state,
-                        &stpx,
+                        stpx,
                         &self.cur_state,
                         &pln.result_region(),
                         &planx.str_terse()
@@ -288,7 +288,7 @@ impl SomeDomain {
                     &prev_state,
                     &stpx.act_num,
                     &self.cur_state,
-                    &stpx,
+                    stpx,
                     &self.cur_state,
                     &pln.result_region()
                 );
@@ -403,6 +403,7 @@ impl SomeDomain {
         if reg_hist.len() >= (self.num_actions() * 2) {
             //println!("recursion limit exceeded by {}", reg_hist.len());
             //panic!("Done");
+            reg_hist.pop();
             return None;
         }
 
@@ -416,6 +417,7 @@ impl SomeDomain {
                 //    reg_hist.len()
                 //);
                 //panic!("Done");
+                reg_hist.pop();
                 return None;
             }
         }
@@ -439,6 +441,7 @@ impl SomeDomain {
             //    println!("No steps found for {} to {} not found", &from_reg, &goal_reg);
             //}
             //println!("No steps found");
+            reg_hist.pop();
             return None;
         }
 
@@ -457,6 +460,7 @@ impl SomeDomain {
             //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
         } else {
             //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
+            reg_hist.pop();
             return None;
         }
 
@@ -611,6 +615,7 @@ impl SomeDomain {
         //if reg_hist.len() == 0 {
         //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
         // }
+        reg_hist.pop();
         None
     } // end make_one_plan
 

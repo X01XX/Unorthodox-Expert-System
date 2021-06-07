@@ -174,6 +174,7 @@ fn main() {
 
             if can_do == 0 {
                 println!("\nNeeds that can be done: None");
+                run = 0;
             } else {
                 println!("\nNeeds that can be done:");
                 let mut inx = 0;
@@ -652,10 +653,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         psstr.push_str(",\n");
                     }
 
-                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&stax) {
+                    if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
                         psstr.push_str(&format!("{}", sqrx));
                     } else {
-                        println!("Square {} not found??", &stax);
+                        println!("Square {} not found??", stax);
                     }
 
                     flg = 1;
