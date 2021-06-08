@@ -51,7 +51,7 @@ impl fmt::Display for SomeAction {
                 // Count the number of states in a group that are also in only one region
                 let mut cnt = 0;
                 for stax in stas_in.iter() {
-                    if regs.state_in_1_region(&stax) {
+                    if regs.state_in_1_region(stax) {
                         cnt += 1;
                     }
                 }
@@ -153,7 +153,7 @@ impl SomeAction {
                     continue;
                 }
 
-                let sqrz = self.squares.find(&stax).unwrap();
+                let sqrz = self.squares.find(stax).unwrap();
                 if sqrz.pn() == Pn::Unpredictable {
                 } else {
                     if sqrz.pnc() {
@@ -173,7 +173,7 @@ impl SomeAction {
                 continue;
             }
 
-            let sqrz = self.squares.find(&stax).unwrap();
+            let sqrz = self.squares.find(stax).unwrap();
 
             if sqrz.pn() == Pn::Unpredictable {
                 // sqrx.pn() cannot be Unpredictable at this point, so this invalidates
@@ -235,6 +235,7 @@ impl SomeAction {
                 num_x: _,
             } => {
                 self.store_sample(&initial, &result, dom);
+                self.check_square_new_sample(&initial, dom);
 
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
@@ -470,8 +471,8 @@ impl SomeAction {
 
         for keyx in keys.iter() {
             // A later square may be in a group created by an earlier square
-            if self.groups.num_groups_state_in(&keyx) == 0 {
-                self.create_groups_from_square(&keyx, dom);
+            if self.groups.num_groups_state_in(keyx) == 0 {
+                self.create_groups_from_square(keyx, dom);
             }
         }
     } // end check_square_new_sample
@@ -1053,7 +1054,7 @@ impl SomeAction {
             // Check for expansion, or single-bit adjacent external
             for edge_msk in edge_msks.iter() {
                 // Calc adjacent region
-                let reg_exp = grpx.region.toggle_bits(&edge_msk);
+                let reg_exp = grpx.region.toggle_bits(edge_msk);
 
                 // Check squares compatibility with each other
                 let mut chk_stas = self.squares.stas_in_reg(&reg_exp);
@@ -1128,7 +1129,7 @@ impl SomeAction {
         let mut max_results = 0;
         let mut stas_max_results = StateStore::new();
         for stax in stas_in_reg.iter() {
-            let sqrx = self.squares.find(&stax).unwrap();
+            let sqrx = self.squares.find(stax).unwrap();
 
             let mut rslts_cnt = sqrx.len_results();
 
@@ -1151,9 +1152,9 @@ impl SomeAction {
         } // next stax
 
         for stax in stas_max_results.iter() {
-            let sta_far = aregion.far_state(&stax);
+            let sta_far = aregion.far_state(stax);
 
-            let sqrx = self.squares.find(&stax).unwrap();
+            let sqrx = self.squares.find(stax).unwrap();
 
             if let Some(sqry) = self.squares.find(&sta_far) {
                 if sqry.pn() < sqrx.pn() {
@@ -1250,7 +1251,7 @@ impl SomeAction {
                 let mut cnt = 1;
 
                 // Rate anchor
-                if let Some(sqrx) = self.squares.find(&sta1) {
+                if let Some(sqrx) = self.squares.find(sta1) {
                     if sqrx.pnc() {
                         cnt += 5;
                     } else {
@@ -1898,10 +1899,10 @@ impl SomeAction {
 
                             let mut found = false;
                             for stax in stas.iter() {
-                                let sqrx = self.squares.find(&stax).unwrap();
+                                let sqrx = self.squares.find(stax).unwrap();
 
                                 // Will include at least one bit change desired, but maybe others.
-                                let expected_result = rulx.result_from_initial_state(&stax);
+                                let expected_result = rulx.result_from_initial_state(stax);
 
                                 // If a Pn::Two squares last result is not equal to what is wanted,
                                 // the next result should be.
@@ -1909,7 +1910,7 @@ impl SomeAction {
                                     let stpx = SomeStep::new(
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(
-                                            &stax, &stax,
+                                            stax, stax,
                                         )),
                                         false,
                                         grpx.region.clone(),
