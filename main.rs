@@ -196,15 +196,6 @@ fn main() {
             println!("\nAction needs: None");
         }
 
-        if nds.len() == 0 {
-            if run > 0 {
-                run -= 1;
-                if run > 0 {
-                    dmxs = init();
-                }
-            }
-        }
-
         let mut cmd = Vec::<String>::with_capacity(10);
 
         if run > 0 {
@@ -259,6 +250,15 @@ fn main() {
                         println!("\nChange to optimal region succeeded");
                     } else {
                         println!("\nChange to optimal region failed");
+                    }
+                }
+            }
+
+            if nds.len() == 0 {
+                if run > 0 {
+                    run -= 1;
+                    if run > 0 {
+                        dmxs = init();
                     }
                 }
             }
