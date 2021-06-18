@@ -1,5 +1,6 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
+use crate::change::SomeChange;
 use crate::step::SomeStep;
 
 use std::fmt;
@@ -120,6 +121,60 @@ impl StepStore {
         rc_str.push(']');
 
         rc_str
+    }
+
+    /// Return a list of indicies representing change-step vectors that must be used after others.
+    /// Those change-steps can be ignored for the question of "Whats the next step?"
+    /// This can be less complex, and more definitive, when there is only one step in a change-step vector.
+    /// A step that makes more than one needed change can appear in two change-step vectors.  In that case
+    /// the two change-step vectors cannot require a order.
+    pub fn order_next_changes(
+        &self,
+        steps_by_change: &Vec<Vec<usize>>,
+        wanted: &SomeChange,
+    ) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::new();
+
+        for x in 0..steps_by_change.len() {
+            let changex = &steps_by_change[x];
+
+            for y in (x + 1)..steps_by_change.len() {
+                let changey = &steps_by_change[y];
+
+                let mut ord_ex1 = true;
+                let mut ord_ex2 = true;
+
+                for stepx in changex.iter() {
+                    for stepy in changey.iter() {
+                        if stepx == stepy {
+                            ord_ex1 = false;
+                            ord_ex2 = false;
+                        } else {
+                            if self[*stepx].rule.order_ok(&self[*stepy].rule, wanted) {
+                                ord_ex1 = false;
+                            }
+                            if self[*stepy].rule.order_ok(&self[*stepx].rule, wanted) {
+                                ord_ex2 = false;
+                            }
+                        }
+                    } // next step y
+                } // next stepx
+
+                if ord_ex1 && ord_ex2 == false {
+                    if ret_vec.contains(&x) == false {
+                        ret_vec.push(x);
+                    }
+                }
+                if ord_ex2 && ord_ex1 == false {
+                    if ret_vec.contains(&y) == false {
+                        ret_vec.push(y);
+                    }
+                }
+            } // next y
+        } // next x
+
+        //println!("*** order_next_changes: returns {:?}", ret_vec);
+        ret_vec
     }
 } // end impl StepStore
 

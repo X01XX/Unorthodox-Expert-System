@@ -1909,9 +1909,7 @@ impl SomeAction {
                                 if sqrx.last_result() != &expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
-                                        rulx.restrict_initial_region(&SomeRegion::new(
-                                            stax, stax,
-                                        )),
+                                        rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
                                         false,
                                         grpx.region.clone(),
                                     );
@@ -1919,7 +1917,7 @@ impl SomeAction {
                                     found = true;
                                 } // end if
                             } // next stax
- 
+
                             if found == false {
                                 stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                             }

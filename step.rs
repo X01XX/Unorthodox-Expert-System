@@ -25,7 +25,7 @@ impl SomeStep {
     /// Return a new Step struct instance.
     pub fn new(act_num: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
         let initial = rule.initial_region();
-        
+
         let result = rule.result_region();
         Self {
             initial,

@@ -452,7 +452,7 @@ impl SomeDomain {
 
         // Get union of changes for each step
         for stpx in stpsx.iter() {
-			can_change = can_change.union(&stpx.rule.change());
+            can_change = can_change.union(&stpx.rule.change());
         }
 
         // Check if the changes found roughly satisfy the needed change
@@ -517,6 +517,19 @@ impl SomeDomain {
         //    }
         //    println!("{}]", strx);
         // }
+
+        // Delete change-steps lists that wholly must be run after another list
+        let later_chgs = stpsx.order_next_changes(&stp_cngs, &required_change);
+        if later_chgs.len() > 0 {
+            // println!("later_chgs: {:?}", &later_chgs);
+            let stp_cngs2 = stp_cngs.clone();
+            let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stp_cngs2.len() - later_chgs.len());
+            for i in 0..stp_cngs2.len() {
+                if later_chgs.contains(&i) == false {
+                    stp_cngs.push(stp_cngs2[i].clone());
+                }
+            }
+        }
 
         // Make list of steps with initial regions farthest from goal.
         // if there is more than one step with the same change,

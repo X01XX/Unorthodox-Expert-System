@@ -240,15 +240,15 @@ impl RegionStore {
     //
     //            if regx.intersects(other) {
     //                if ret_regs.any_intersection_region(other) {
-    //                    //println!("regx {} intersects {} regs_before {}", &regx, other, &ret_regs);
-    //                    ret_regs = ret_regs.subtract_region(&regx);
+    //                    //println!("regx {} intersects {} regs_before {}", regx, other, &ret_regs);
+    //                    ret_regs = ret_regs.subtract_region(regx);
     //                    //println!("  regs after: {}", &ret_regs);
     //                }
     //            } else if regx.is_adjacent(other) {
     //                let regy = regx.adj_part(other);
     //
     //                if ret_regs.any_intersection_region(other) {
-    //                    //println!("regx {} is adjacent {} with adj_part {} regs_before {}", &regx, other, &regy, &ret_regs);
+    //                    //println!("regx {} is adjacent {} with adj_part {} regs_before {}", regx, other, &regy, &ret_regs);
     //                    ret_regs = ret_regs.subtract_region(&regy);
     //                    //println!("  regs after: {}", &ret_regs);
     //                }

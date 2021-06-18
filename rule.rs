@@ -12,10 +12,10 @@
 //! "backward chaining" (intitial_from_result).
 
 use crate::bits::NUM_BITS_PER_INT;
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::change::SomeChange;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -446,11 +446,57 @@ impl SomeRule {
         // Return a restricted rule
         Some(self.restrict_initial_region(&i_reg))
     }
-    
+
     // Return a SomeChange struct instance
     pub fn change(&self) -> SomeChange {
-		SomeChange { b01: self.b01.clone(), b10: self.b10.clone() }
-	}
+        SomeChange {
+            b01: self.b01.clone(),
+            b10: self.b10.clone(),
+        }
+    }
+
+    /// Return true if it is OK to run the target rule before rule2.
+    ///
+    /// To approve a given order,
+    ///
+    ///    A wanted 0->1 change in rule1 (self) should not correspond with a 0->.. in rule2.
+    ///
+    ///    A wanted 1->0 change in rule1 (self) should not correspond with a 1->.. in rule2.
+    ///
+    /// Run twice with different order, to determine
+    ///
+    ///    No order required.
+    ///
+    ///    Mutually exclusive rules.
+    ///
+    ///    An order is required.
+    ///
+    pub fn order_ok(&self, rule2: &SomeRule, wanted: &SomeChange) -> bool {
+        let reg2 = rule2.initial_region();
+
+        let sb01 = self.b01.m_and(&wanted.b01);
+        if sb01.is_not_low() {
+            let reg2_0 = SomeMask {
+                bts: reg2.state1.s_or(&reg2.state2).bts.b_not(),
+            };
+            let b01_0 = sb01.m_and(&reg2_0);
+            if b01_0.is_not_low() {
+                return false;
+            }
+        }
+
+        let sb10 = self.b10.m_and(&wanted.b10);
+        if sb10.is_not_low() {
+            let reg2_1 = SomeMask {
+                bts: reg2.state1.s_and(&reg2.state2).bts,
+            };
+            let b10_1 = sb10.m_and(&reg2_1);
+            if b10_1.is_not_low() {
+                return false;
+            }
+        }
+        true
+    }
 } // end SomeRule
 
 impl Clone for SomeRule {

@@ -41,25 +41,21 @@ impl PartialEq for RuleStore {
         // Xx = 0->1, 1->0, XX = 0->0, 1->1
         // X1 = 0->1, 1->1, X0 = 0->0, 1->0
         if self.len() == 2 {
-			if self.avec[0].b00 != other.avec[0].b00 &&
-			   self.avec[0].b00 != other.avec[1].b00 {
-				   return false;
-			}
-			if self.avec[0].b01 != other.avec[0].b01 &&
-			   self.avec[0].b01 != other.avec[1].b01 {
-				   return false;
-			}
-			
-			if self.avec[0].b11 != other.avec[0].b11 &&
-			   self.avec[0].b11 != other.avec[1].b11 {
-				   return false;
-			}
-			if self.avec[0].b10 != other.avec[0].b10 &&
-			   self.avec[0].b10 != other.avec[1].b10 {
-				   return false;
-			}
-			
-			return true;
+            if self.avec[0].b00 != other.avec[0].b00 && self.avec[0].b00 != other.avec[1].b00 {
+                return false;
+            }
+            if self.avec[0].b01 != other.avec[0].b01 && self.avec[0].b01 != other.avec[1].b01 {
+                return false;
+            }
+
+            if self.avec[0].b11 != other.avec[0].b11 && self.avec[0].b11 != other.avec[1].b11 {
+                return false;
+            }
+            if self.avec[0].b10 != other.avec[0].b10 && self.avec[0].b10 != other.avec[1].b10 {
+                return false;
+            }
+
+            return true;
         }
 
         panic!("Unsupported RuleStore length {}", self.len());
@@ -105,11 +101,10 @@ impl RuleStore {
     /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
     /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-		
-		if self.initial_region().is_subset_of(&other.initial_region()) == false {
-			return false;
-		}
-		
+        if self.initial_region().is_subset_of(&other.initial_region()) == false {
+            return false;
+        }
+
         if self.len() == 1 {
             if other.len() == 1 {
                 return self.first().is_subset_of(&other.first());
@@ -127,12 +122,12 @@ impl RuleStore {
             }
 
             let reg_int = self.initial_region().intersection(&other.initial_region());
-            
+
             let rules2 = other.restrict_initial_region(&reg_int);
-            
+
             if let Some(_) = self.union(&rules2) {
-				return true;
-			} 
+                return true;
+            }
 
             return false;
         }
@@ -207,159 +202,157 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-			
-			// New start
-			let mut opt0 = 2;  // Invalid option
-			
+            let mut opt0 = 2; // Invalid option
+
             let b00_opt0 = self.avec[0].b00.m_or(&other.avec[0].b00);
             let b01_opt0 = self.avec[0].b01.m_or(&other.avec[0].b01);
             let b00_opt1 = self.avec[1].b00.m_or(&other.avec[1].b00);
             let b01_opt1 = self.avec[1].b01.m_or(&other.avec[1].b01);
             if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
-				opt0 = 0; // For b00, b01, match rules self[0] and other[0], self[1] and other[1].
-			}
+                opt0 = 0; // For b00, b01, match rules self[0] and other[0], self[1] and other[1].
+            }
 
             if opt0 == 2 {
                 let b00_opt0 = self.avec[0].b00.m_or(&other.avec[1].b00);
                 let b01_opt0 = self.avec[0].b01.m_or(&other.avec[1].b01);
                 let b00_opt1 = self.avec[1].b00.m_or(&other.avec[0].b00);
-                let b01_opt1 = self.avec[1].b01.m_or(&other.avec[0].b01);           
+                let b01_opt1 = self.avec[1].b01.m_or(&other.avec[0].b01);
                 if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
-				    opt0 = 1; // For b00, b01, match rules self[0] and other[1], self[1] and other[0].
-			    }
-			}
-            
+                    opt0 = 1; // For b00, b01, match rules self[0] and other[1], self[1] and other[0].
+                }
+            }
+
             if opt0 == 2 {
-				return None;
-			}
-			
-			let mut opt1 = 2;  // Invalid option
-			
+                return None;
+            }
+
+            let mut opt1 = 2; // Invalid option
+
             let b11_opt0 = self.avec[0].b11.m_or(&other.avec[0].b11);
             let b10_opt0 = self.avec[0].b10.m_or(&other.avec[0].b10);
             let b11_opt1 = self.avec[1].b11.m_or(&other.avec[1].b11);
-            let b10_opt1 = self.avec[1].b10.m_or(&other.avec[1].b10);           
+            let b10_opt1 = self.avec[1].b10.m_or(&other.avec[1].b10);
             if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
-				opt1 = 0; // For b11, b10, match rules self[0] and other[0], self[1] and other[1].
-			}
+                opt1 = 0; // For b11, b10, match rules self[0] and other[0], self[1] and other[1].
+            }
 
             if opt1 == 2 {
                 let b11_opt0 = self.avec[0].b11.m_or(&other.avec[1].b11);
                 let b10_opt0 = self.avec[0].b10.m_or(&other.avec[1].b10);
                 let b11_opt1 = self.avec[1].b11.m_or(&other.avec[0].b11);
-                let b10_opt1 = self.avec[1].b10.m_or(&other.avec[0].b10);           
+                let b10_opt1 = self.avec[1].b10.m_or(&other.avec[0].b10);
                 if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
-				    opt1 = 1; // For b11, b10, match rules self[0] and other[1], self[1] and other[0].
-			    }
-			}
-			
-			if opt1 == 2 {
-				return None;
-			}
-            
+                    opt1 = 1; // For b11, b10, match rules self[0] and other[1], self[1] and other[0].
+                }
+            }
+
+            if opt1 == 2 {
+                return None;
+            }
+
             let mut ret_store = Self::new();
 
-			if opt0 == 0 {
-				
-				let r0_b00 = self.avec[0].b00.m_or(&other.avec[0].b00);
-				let r0_b01 = self.avec[0].b01.m_or(&other.avec[0].b01);
-				let r1_b00 = self.avec[1].b00.m_or(&other.avec[1].b00);
-				let r1_b01 = self.avec[1].b01.m_or(&other.avec[1].b01);
-				
-			    if opt1 == 0 {
-					// opt0 == 0, opt1 == 0
-					
-					let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
-					let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
-					let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
-					let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
-					
-					ret_store.push(SomeRule {
-						b00: r0_b00,
-						b01: r0_b01,
-						b11: r0_b11,
-						b10: r0_b10,});
-					ret_store.push(SomeRule {
-						b00: r1_b00,
-						b01: r1_b01,
-						b11: r1_b11,
-						b10: r1_b10,});
-					return Some(ret_store);
+            if opt0 == 0 {
+                let r0_b00 = self.avec[0].b00.m_or(&other.avec[0].b00);
+                let r0_b01 = self.avec[0].b01.m_or(&other.avec[0].b01);
+                let r1_b00 = self.avec[1].b00.m_or(&other.avec[1].b00);
+                let r1_b01 = self.avec[1].b01.m_or(&other.avec[1].b01);
 
-			    } else { // opt1 == 1
-					// opt0 == 0, opt1 == 1
-					let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
-					let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
-					let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
-					let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
-					
-					ret_store.push(SomeRule {
-						b00: r0_b00,
-						b01: r0_b01,
-						b11: r0_b11,
-						b10: r0_b10,
-						});
-					ret_store.push(SomeRule {
-						b00: r1_b00,
-						b01: r1_b01,
-						b11: r1_b11,
-						b10: r1_b10, });
-					return Some(ret_store);
-				}
-			} else { // opt0 == 1
-				
-				let r0_b00 = self.avec[0].b00.m_or(&other.avec[1].b00);
-				let r0_b01 = self.avec[0].b01.m_or(&other.avec[1].b01);
-				let r1_b00 = self.avec[1].b00.m_or(&other.avec[0].b00);
-				let r1_b01 = self.avec[1].b01.m_or(&other.avec[0].b01);
-				
-			    if opt1 == 0 {
-					// opt0 == 1, opt1 == 0
-					let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
-					let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
-					let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
-					let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
+                if opt1 == 0 {
+                    // opt0 == 0, opt1 == 0
 
-					ret_store.push(SomeRule {
-						b00: r0_b00,
-						b01: r0_b01,
-						b11: r0_b11,
-						b10: r0_b10,
-						});
-					ret_store.push(SomeRule {
-						b00: r1_b00,
-						b01: r1_b01,
-						b11: r1_b11,
-						b10: r1_b10, });
-					return Some(ret_store);
-					
-				} else { // opt1 == 1
-					// opt0 == 1, opt1 == 1
-					let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
-					let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
-					let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
-					let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
+                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
+                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
+                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
+                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
 
-					ret_store.push(SomeRule {
-						b00: r0_b00,
-						b01: r0_b01,
-						b11: r0_b11,
-						b10: r0_b10,
-						});
-					ret_store.push(SomeRule {
-						b00: r1_b00,
-						b01: r1_b01,
-						b11: r1_b11,
-						b10: r1_b10, });
-					return Some(ret_store);
-				}
-			}
+                    ret_store.push(SomeRule {
+                        b00: r0_b00,
+                        b01: r0_b01,
+                        b11: r0_b11,
+                        b10: r0_b10,
+                    });
+                    ret_store.push(SomeRule {
+                        b00: r1_b00,
+                        b01: r1_b01,
+                        b11: r1_b11,
+                        b10: r1_b10,
+                    });
+                    return Some(ret_store);
+                } else {
+                    // opt1 == 1
+                    // opt0 == 0, opt1 == 1
+                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
+                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
+                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
+                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
+
+                    ret_store.push(SomeRule {
+                        b00: r0_b00,
+                        b01: r0_b01,
+                        b11: r0_b11,
+                        b10: r0_b10,
+                    });
+                    ret_store.push(SomeRule {
+                        b00: r1_b00,
+                        b01: r1_b01,
+                        b11: r1_b11,
+                        b10: r1_b10,
+                    });
+                    return Some(ret_store);
+                }
+            } else {
+                // opt0 == 1
+
+                let r0_b00 = self.avec[0].b00.m_or(&other.avec[1].b00);
+                let r0_b01 = self.avec[0].b01.m_or(&other.avec[1].b01);
+                let r1_b00 = self.avec[1].b00.m_or(&other.avec[0].b00);
+                let r1_b01 = self.avec[1].b01.m_or(&other.avec[0].b01);
+
+                if opt1 == 0 {
+                    // opt0 == 1, opt1 == 0
+                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
+                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
+                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
+                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
+
+                    ret_store.push(SomeRule {
+                        b00: r0_b00,
+                        b01: r0_b01,
+                        b11: r0_b11,
+                        b10: r0_b10,
+                    });
+                    ret_store.push(SomeRule {
+                        b00: r1_b00,
+                        b01: r1_b01,
+                        b11: r1_b11,
+                        b10: r1_b10,
+                    });
+                    return Some(ret_store);
+                } else {
+                    // opt1 == 1
+                    // opt0 == 1, opt1 == 1
+                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
+                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
+                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
+                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
+
+                    ret_store.push(SomeRule {
+                        b00: r0_b00,
+                        b01: r0_b01,
+                        b11: r0_b11,
+                        b10: r0_b10,
+                    });
+                    ret_store.push(SomeRule {
+                        b00: r1_b00,
+                        b01: r1_b01,
+                        b11: r1_b11,
+                        b10: r1_b10,
+                    });
+                    return Some(ret_store);
+                }
+            }
         } // end if self.len() == 2
-
-        if self.len() == 0 {
-            // needed?
-            return Some(Self::new());
-        }
 
         panic!("unexpected RuleStore length");
     }
@@ -376,8 +369,8 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-		    let mut ars = Self::new();
-		    
+            let mut ars = Self::new();
+
             if self.avec[0]
                 .intersection(&other.avec[0])
                 .is_valid_intersection()
@@ -386,18 +379,16 @@ impl RuleStore {
                 return Some(ars);
             }
             return None;
-            
         } else if self.len() == 2 {
-			
-			let regx = self.initial_region().intersection(&other.initial_region());
-			
-			let rs1 = self.restrict_initial_region(&regx);
-			let rs2 = other.restrict_initial_region(&regx);
-			
-			if let Some(rs12) = rs1.union(&rs2) {
-				return Some(rs12);
-			}
-			
+            let regx = self.initial_region().intersection(&other.initial_region());
+
+            let rs1 = self.restrict_initial_region(&regx);
+            let rs2 = other.restrict_initial_region(&regx);
+
+            if let Some(rs12) = rs1.union(&rs2) {
+                return Some(rs12);
+            }
+
             return None;
         }
         panic!("not ready for pn {}!", self.len());

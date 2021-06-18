@@ -160,7 +160,7 @@ mod tests {
     //            for subx in subs.iter() {
     //                println!(
     //                    "sub: {} adj part {} is {}",
-    //                    &subx,
+    //                    subx,
     //                    &r1x0x,
     //                    &r1x0x.adj_part(&subx)
     //                );

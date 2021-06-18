@@ -21,7 +21,7 @@ impl fmt::Display for SquareStore {
             if flg == 1 {
                 rc_str.push_str(",\n");
             }
-            rc_str.push_str(&format!("{}", &sqrx));
+            rc_str.push_str(&format!("{}", sqrx));
             flg = 1;
         }
 
@@ -47,7 +47,7 @@ impl SquareStore {
         let mut rc_store = StateStore::new();
 
         for (key, _) in &self.ahash {
-            if areg.is_superset_of_state(&key) {
+            if areg.is_superset_of_state(key) {
                 rc_store.push(key.clone());
             }
         }
@@ -83,7 +83,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, _sqry) in &self.ahash {
-            if regs.any_superset_of_state(&key) == false {
+            if regs.any_superset_of_state(key) == false {
                 states.push(key.clone());
             }
         }
@@ -96,7 +96,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, _sqry) in &self.ahash {
-            if regs.state_in_1_region(&key) {
+            if regs.state_in_1_region(key) {
                 states.push(key.clone());
             }
         }
@@ -109,7 +109,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, _sqry) in &self.ahash {
-            if regx.is_adjacent_state(&key) {
+            if regx.is_adjacent_state(key) {
                 states.push(key.clone());
             }
         }
@@ -123,7 +123,7 @@ impl SquareStore {
     //
     //        for (key, _sqry) in &self.ahash {
     //            for regx in regsx.iter() {
-    //                if regx.is_superset_of_state(&key) {
+    //                if regx.is_superset_of_state(key) {
     //                    states.push(key.clone());
     //                    break;
     //                }
@@ -140,7 +140,7 @@ impl SquareStore {
     //        let mut max_pn = Pn::One;
     //
     //        for keyx in keys.iter() {
-    //            let sqrx = self.find(&keyx).unwrap();
+    //            let sqrx = self.find(keyx).unwrap();
     //            if sqrx.pn() > max_pn {
     //                max_pn = sqrx.pn();
     //            }
@@ -157,7 +157,7 @@ impl SquareStore {
     //        let mut not_found = true;
     //
     //        for keyx in keys.iter() {
-    //            let sqrx = self.find(&keyx).unwrap();
+    //            let sqrx = self.find(keyx).unwrap();
     //            if sqrx.pnc() {
     //                not_found = false;
     //                if sqrx.pn() < min_pnc {
@@ -176,7 +176,7 @@ impl SquareStore {
     // a square that has pnc set to true.
     //    pub fn any_pnc(&self, keys: &StateStore) -> bool {
     //        for keyx in keys.iter() {
-    //            let sqrx = self.find(&keyx).unwrap();
+    //            let sqrx = self.find(keyx).unwrap();
     //            if sqrx.pnc() {
     //                return true;
     //            }

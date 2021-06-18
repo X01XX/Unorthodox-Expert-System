@@ -50,8 +50,8 @@ mod tests;
 use domainstore::DomainStore;
 mod inxplan;
 use crate::inxplan::InxPlan;
-mod truth;
 mod randompick;
+mod truth;
 // use crate::randompick::RandomPick;
 
 use std::io;
@@ -107,14 +107,14 @@ fn init() -> DomainStore {
 /// User Interface
 fn main() {
     // Start a DomainStore, add a Domain
-    
+
     let mut dmxs = init();
 
     usage();
 
     let mut dom_num = 0;
     let mut run = 0;
-   
+
     loop {
         dmxs.step += 1;
 
@@ -141,7 +141,7 @@ fn main() {
 
         let mut can_do = 0;
         let mut cant_do = 0;
-        
+
         if nds.len() > 0 {
             // Check if each need can be done
             need_plans = dmxs.evaluate_needs(&nds);
@@ -180,9 +180,9 @@ fn main() {
                 let mut inx = 0;
                 let mut disp = 0;
                 for ndplnx in need_plans.iter() {
-                if let Some(plnx) = &ndplnx.pln {
+                    if let Some(plnx) = &ndplnx.pln {
                         if plnx.len() > 0 {
-                        println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
+                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
                         } else {
                             println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
                         }
@@ -254,7 +254,7 @@ fn main() {
                 }
             }
 
-            if nds.len() == 0 {
+            if can_do == 0 {
                 if run > 0 {
                     run -= 1;
                     if run > 0 {
@@ -336,7 +336,7 @@ fn main() {
                         continue;
                     }
                     if n_num >= need_can.len() {
-                    println!("Invalid Need Number: {}", cmd[1]);
+                        println!("Invalid Need Number: {}", cmd[1]);
                         continue;
                     }
 
