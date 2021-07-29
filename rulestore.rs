@@ -172,11 +172,17 @@ impl RuleStore {
     ///
     /// 1->0, 1->0 = 1->0
     ///
-    /// For two result rules, the rule order is not important.
-    /// A rulestore of [Xx, XX] is equal to [X0, X1] at the rule bit mask level.
-    /// Xx = 0->1, 1->0, XX = 0->0, 1->1
-    /// X1 = 0->1, 1->1, X0 = 0->0, 1->0
-    /// in the original rule will be returned.
+    /// For two result rules,
+    /// They may not be compatible.
+    /// They may be compatible in one way,
+    /// They may appear to be compatible in two ways, which indicates a problem, so they will be
+    /// considered to be incompatible.  Being compatible in two ways will produce either a
+    /// (X->1 or X->0) in a bit position of one union, an a (X->x or X->X) in the corresponding position
+    /// of another union.
+    /// For (X->1, X->x), 1->?
+    ///     (X->0, X->x), 0->?
+    ///     (X->1, X->X), 0->?
+    ///     (X->0, X->X), 1->?
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", &self, &other);
         if self.len() != other.len() {
@@ -202,156 +208,36 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-            let mut opt0 = 2; // Invalid option
-
-            let b00_opt0 = self.avec[0].b00.m_or(&other.avec[0].b00);
-            let b01_opt0 = self.avec[0].b01.m_or(&other.avec[0].b01);
-            let b00_opt1 = self.avec[1].b00.m_or(&other.avec[1].b00);
-            let b01_opt1 = self.avec[1].b01.m_or(&other.avec[1].b01);
-            if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
-                opt0 = 0; // For b00, b01, match rules self[0] and other[0], self[1] and other[1].
+            let mut ordera = false;
+            let rul0 = self.avec[0].union(&other.avec[0]);
+            let rul1 = self.avec[1].union(&other.avec[1]);
+            if rul0.is_valid_union() && rul1.is_valid_union() {
+                ordera = true;
             }
 
-            if opt0 == 2 {
-                let b00_opt0 = self.avec[0].b00.m_or(&other.avec[1].b00);
-                let b01_opt0 = self.avec[0].b01.m_or(&other.avec[1].b01);
-                let b00_opt1 = self.avec[1].b00.m_or(&other.avec[0].b00);
-                let b01_opt1 = self.avec[1].b01.m_or(&other.avec[0].b01);
-                if b00_opt0.m_and(&b01_opt0).is_low() && b00_opt1.m_and(&b01_opt1).is_low() {
-                    opt0 = 1; // For b00, b01, match rules self[0] and other[1], self[1] and other[0].
-                }
+            let mut orderb = false;
+            let rul2 = self.avec[0].union(&other.avec[1]);
+            let rul3 = self.avec[1].union(&other.avec[0]);
+            if rul2.is_valid_union() && rul3.is_valid_union() {
+                orderb = true;
             }
 
-            if opt0 == 2 {
-                return None;
-            }
-
-            let mut opt1 = 2; // Invalid option
-
-            let b11_opt0 = self.avec[0].b11.m_or(&other.avec[0].b11);
-            let b10_opt0 = self.avec[0].b10.m_or(&other.avec[0].b10);
-            let b11_opt1 = self.avec[1].b11.m_or(&other.avec[1].b11);
-            let b10_opt1 = self.avec[1].b10.m_or(&other.avec[1].b10);
-            if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
-                opt1 = 0; // For b11, b10, match rules self[0] and other[0], self[1] and other[1].
-            }
-
-            if opt1 == 2 {
-                let b11_opt0 = self.avec[0].b11.m_or(&other.avec[1].b11);
-                let b10_opt0 = self.avec[0].b10.m_or(&other.avec[1].b10);
-                let b11_opt1 = self.avec[1].b11.m_or(&other.avec[0].b11);
-                let b10_opt1 = self.avec[1].b10.m_or(&other.avec[0].b10);
-                if b11_opt0.m_and(&b10_opt0).is_low() && b11_opt1.m_and(&b10_opt1).is_low() {
-                    opt1 = 1; // For b11, b10, match rules self[0] and other[1], self[1] and other[0].
-                }
-            }
-
-            if opt1 == 2 {
+            if ordera && orderb {
                 return None;
             }
 
             let mut ret_store = Self::new();
-
-            if opt0 == 0 {
-                let r0_b00 = self.avec[0].b00.m_or(&other.avec[0].b00);
-                let r0_b01 = self.avec[0].b01.m_or(&other.avec[0].b01);
-                let r1_b00 = self.avec[1].b00.m_or(&other.avec[1].b00);
-                let r1_b01 = self.avec[1].b01.m_or(&other.avec[1].b01);
-
-                if opt1 == 0 {
-                    // opt0 == 0, opt1 == 0
-
-                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
-                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
-                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
-                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
-
-                    ret_store.push(SomeRule {
-                        b00: r0_b00,
-                        b01: r0_b01,
-                        b11: r0_b11,
-                        b10: r0_b10,
-                    });
-                    ret_store.push(SomeRule {
-                        b00: r1_b00,
-                        b01: r1_b01,
-                        b11: r1_b11,
-                        b10: r1_b10,
-                    });
-                    return Some(ret_store);
-                } else {
-                    // opt1 == 1
-                    // opt0 == 0, opt1 == 1
-                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
-                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
-                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
-                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
-
-                    ret_store.push(SomeRule {
-                        b00: r0_b00,
-                        b01: r0_b01,
-                        b11: r0_b11,
-                        b10: r0_b10,
-                    });
-                    ret_store.push(SomeRule {
-                        b00: r1_b00,
-                        b01: r1_b01,
-                        b11: r1_b11,
-                        b10: r1_b10,
-                    });
-                    return Some(ret_store);
-                }
-            } else {
-                // opt0 == 1
-
-                let r0_b00 = self.avec[0].b00.m_or(&other.avec[1].b00);
-                let r0_b01 = self.avec[0].b01.m_or(&other.avec[1].b01);
-                let r1_b00 = self.avec[1].b00.m_or(&other.avec[0].b00);
-                let r1_b01 = self.avec[1].b01.m_or(&other.avec[0].b01);
-
-                if opt1 == 0 {
-                    // opt0 == 1, opt1 == 0
-                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[0].b11);
-                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[0].b10);
-                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[1].b11);
-                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[1].b10);
-
-                    ret_store.push(SomeRule {
-                        b00: r0_b00,
-                        b01: r0_b01,
-                        b11: r0_b11,
-                        b10: r0_b10,
-                    });
-                    ret_store.push(SomeRule {
-                        b00: r1_b00,
-                        b01: r1_b01,
-                        b11: r1_b11,
-                        b10: r1_b10,
-                    });
-                    return Some(ret_store);
-                } else {
-                    // opt1 == 1
-                    // opt0 == 1, opt1 == 1
-                    let r0_b11 = self.avec[0].b11.m_or(&other.avec[1].b11);
-                    let r0_b10 = self.avec[0].b10.m_or(&other.avec[1].b10);
-                    let r1_b11 = self.avec[1].b11.m_or(&other.avec[0].b11);
-                    let r1_b10 = self.avec[1].b10.m_or(&other.avec[0].b10);
-
-                    ret_store.push(SomeRule {
-                        b00: r0_b00,
-                        b01: r0_b01,
-                        b11: r0_b11,
-                        b10: r0_b10,
-                    });
-                    ret_store.push(SomeRule {
-                        b00: r1_b00,
-                        b01: r1_b01,
-                        b11: r1_b11,
-                        b10: r1_b10,
-                    });
-                    return Some(ret_store);
-                }
+            if ordera {
+                ret_store.push(rul0);
+                ret_store.push(rul1);
+                return Some(ret_store);
+            } else if orderb {
+                ret_store.push(rul2);
+                ret_store.push(rul3);
+                return Some(ret_store);
             }
+
+            return None;
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");

@@ -15,7 +15,7 @@ mod tests {
     use crate::resultstore::ResultStore;
     use crate::rule::SomeRule;
     use crate::rulestore::RuleStore;
-    use crate::square::SomeSquare;
+    //use crate::square::SomeSquare;
     use crate::state::SomeState;
     use crate::statestore::StateStore;
     use crate::step::SomeStep;
@@ -219,79 +219,6 @@ mod tests {
     //    process::exit(0);
     //} // end test4
 
-    // Test the successful union of two two-result rulestores
-    #[test]
-    fn pn_2_rules_union() -> Result<(), String> {
-        let dm1 = SomeDomain::new(1, "s1", "r1");
-
-        let sta_5 = SomeState {
-            bts: SomeBits {
-                ints: vec![5 as u8],
-            },
-        };
-        let sta_4 = SomeState {
-            bts: SomeBits {
-                ints: vec![4 as u8],
-            },
-        };
-        let sta_f = SomeState {
-            bts: SomeBits {
-                ints: vec![15 as u8],
-            },
-        };
-        let sta_e = SomeState {
-            bts: SomeBits {
-                ints: vec![14 as u8],
-            },
-        };
-
-        // println!("sta_5 {} sta_4 {} sta_f {} sta_e {}", &sta_5, &sta_4, &sta_f, &sta_e);
-
-        let mut sqr_5 = SomeSquare::new(sta_5.clone(), sta_5.clone());
-        sqr_5.add_result(sta_4.clone());
-
-        let mut sqr_e = SomeSquare::new(sta_e.clone(), sta_e.clone());
-        sqr_e.add_result(sta_f.clone());
-
-        // println!("sqr_5: {}\nsqr_e: {}", &sqr_5, &sqr_e);
-
-        // XX / Xx
-        if let Some(rules_5e) = sqr_e.rules.union(&sqr_5.rules) {
-            //println!("union of sqr_5 rules and sqr_e rules is {}", &rules_5e);
-
-            let sta_8 = SomeState {
-                bts: SomeBits {
-                    ints: vec![8 as u8],
-                },
-            };
-            let sta_9 = SomeState {
-                bts: SomeBits {
-                    ints: vec![9 as u8],
-                },
-            };
-
-            let mut sqr_8 = SomeSquare::new(sta_8.clone(), sta_9.clone());
-            sqr_8.add_result(sta_8.clone());
-
-            if let Some(rules_58) = sqr_8.rules.union(&sqr_5.rules) {
-                //println!("union of sqr_5 rules and sqr_8 rules is {}", &rules_58);
-
-                if let Some(rules_int) = rules_5e.intersection(&rules_58) {
-                    //println!("rules_int {}", &rules_int);
-                    if let Ok(rx10x) = dm1.region_from_string("rx10x") {
-                        if rx10x == rules_int.initial_region() {
-                            return Ok(());
-                        }
-                    }
-                } else {
-                    return Err(String::from("rules intersection failed"));
-                }
-            } else {
-                return Err(String::from("cannot get union of 5 and 8"));
-            }
-        }
-        Err(String::from("failed, at end"))
-    } // end pn_2_rules_union
 
     //    #[test]
     //    fn region_to_region_test() -> Result<(), String> {
@@ -855,50 +782,6 @@ mod tests {
 
         Ok(())
     }
-
-    // Check two-result squares combination does not infer two changes
-    // but one or the other.
-    #[test]
-    fn two_result_rules_union() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", "r1");
-        dm1.push(SomeAction::new(1), 0);
-
-        let s0 = dm1.state_from_string("s0").unwrap();
-        let s2 = dm1.state_from_string("s10").unwrap();
-        let s4 = dm1.state_from_string("s100").unwrap();
-
-        dm1.eval_sample_arbitrary(0, &s0, &s2);
-        dm1.eval_sample_arbitrary(0, &s0, &s4);
-        dm1.eval_sample_arbitrary(0, &s0, &s2);
-        dm1.eval_sample_arbitrary(0, &s0, &s4);
-
-        let sf = dm1.state_from_string("s1111").unwrap();
-        let sb = dm1.state_from_string("s1011").unwrap();
-        let sd = dm1.state_from_string("s1101").unwrap();
-
-        dm1.eval_sample_arbitrary(0, &sf, &sb);
-        dm1.eval_sample_arbitrary(0, &sf, &sd);
-        dm1.eval_sample_arbitrary(0, &sf, &sb);
-        dm1.eval_sample_arbitrary(0, &sf, &sd);
-
-        //println!("act: 0 actions: {}", &dm1.actions);
-
-        //println!("sqrs: \n{}", &dm1.actions[0].squares);
-
-        let rx10x = dm1.region_from_string("rx10x").unwrap();
-        let rx01x = dm1.region_from_string("rx01x").unwrap();
-        let cngx = SomeChange::region_to_region(&rx10x, &rx01x);
-
-        println!("r-2-r rule: {}", &cngx);
-
-        let stps = dm1.actions.get_steps(&cngx);
-
-        if stps.len() != 1 {
-            return Err(format!("Number steps NEQ 1 {}", stps));
-        }
-
-        Ok(())
-    } // end two_result_region_rules
 
     #[test]
     fn change_region_to_region_test() -> Result<(), String> {
