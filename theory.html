@@ -1520,6 +1520,14 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     Rules that make the needed changes can be found.  The aggregate changes of the rules found can be checked to insure they are a superset of the needed changes.
     </p>
+    <p>Where only one rule changes a particular bit, that rule willbe in any possible rule-path.
+    </p>
+    <p>Where there is more than one rule that changes a particular bit, one of the rules must be in any possible rule-path.
+    </p>
+    <p>
+    Two rules can imply an order of use, if the changes of one must be undone to run the other.
+    e.g. XX00->XX01, then XX00->....
+    </p>
     <p>
     The current state may not be in the initial-region of any desired rule.  And the result-region of one rule may not conveniently intersect the initial-region of another desired rule.
     </p>
@@ -1535,16 +1543,8 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     Then find a path (recursion) from the result of the farthest rule, to the goal.
     </p>
-    <p>
-    Two rules can be mutually exclusive if the changes of both must be undone to run the other.
-     e.g. XX00->XX01 and XX00->XX10
-    </p>
     <p class="indent1">
     The rule list can be split, one copy for each rule.  The aggregate changes for each list can be checked, discarding a deficient list.
-    </p>
-    <p>
-    Two rules can imply an order of use, if the changes of one must be undone to run the other.
-    e.g. XX00->XX01 and XX01->XX11
     </p>
     <p class="indent1">
     From the standpoint of "whats the next step", the second rule can be dropped from consideration.
@@ -1552,7 +1552,22 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
     </p>
-
+    <p>
+    Another possible method is:
+    </p>
+    <p class="indent1">
+    Find all possible combinations of required rules.
+    </p>
+    <p class="indent1">
+    Find all possible valid orders of rules for each combination.
+    </p>
+    <p class="indent1">
+    Check possible rule paths starting with the lowest total number of bit changes in the gaps from the initial state to the first rule,
+    each rule to the next, and the last rule to the goal.
+    </p>
+    <p class="indent1">
+    Use recursion to fill the gaps.
+    </p>
  </div>
 
 
@@ -1594,7 +1609,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 06/02/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/31/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
