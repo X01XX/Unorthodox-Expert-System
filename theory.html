@@ -1527,12 +1527,22 @@ For a state that always produces the same two results, alternating, a minimum of
     </p>
     <p>
     If only one rule exists for a needed change, and that rules initial-region is outside of (initial-state union goal-state),
-    neither forward-chaining nor backward-chaining will work.
+    forward-chaining will not work.
     </p>
     <p>
-    In that case, the search problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
+    If only one rule exists for a needed change, and that rules result-region is outside of (initial-state union goal-state),
+    backward-chaining will not work.
     </p>
-
+    <p>
+    If only one rule exists for a needed change, and that rules initial-region and result-region are outside of (initial-state union goal-state),
+    neither forward-chaining nor backward-chaining will not work.
+    </p>
+    <p>
+    In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
+    </p>
+    <p>
+    The backward-chaining problem needs to be broken up into (goal to rule-result-region) and (rule-initial-region to initial-state).
+    </p>
     <h3>Rule-path searches</h3>
     <p>
     To go from the current state to a goal region, obvious required changes (0->1 mask, 1->0 mask) to the bits of the current state can be calculated.
