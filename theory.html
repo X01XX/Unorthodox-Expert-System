@@ -1513,6 +1513,26 @@ For a state that always produces the same two results, alternating, a minimum of
  </p>
  </li>
  </ul>
+    <h3>Asymetrical chaining</h3>
+    <p>
+    Going from an initial state to a goal state/region, is often called forward-chaining.  
+    </p>
+    <p>
+    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is often called
+    backward-chaining.
+    </p>
+    <p>
+    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
+    This could be thought of as traversing the region of (initial-state union goal-state).
+    </p>
+    <p>
+    If only one rule exists for a needed change, and that rules initial-region is outside of (initial-state union goal-state),
+    neither forward-chaining nor backward-chaining will work.
+    </p>
+    <p>
+    In that case, the search problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
+    </p>
+
     <h3>Rule-path searches</h3>
     <p>
     To go from the current state to a goal region, obvious required changes (0->1 mask, 1->0 mask) to the bits of the current state can be calculated.
@@ -1609,7 +1629,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 07/31/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 08/10/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
