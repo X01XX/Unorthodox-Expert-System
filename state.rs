@@ -38,14 +38,6 @@ impl SomeState {
         self.bts.is_bit_set(b)
     }
 
-    // Return true if a state is between two other states
-    //    pub fn is_between(&self, sta1: &SomeState, sta2: &SomeState) -> bool {
-    //        self.bts
-    //            .b_xor(&sta1.bts)
-    //            .b_and(&self.bts.b_xor(&sta2.bts))
-    //            .is_low()
-    //    }
-
     /// Return a state and another state.
     pub fn s_and(&self, other: &Self) -> Self {
         Self::new(self.bts.b_and(&other.bts))
@@ -60,11 +52,6 @@ impl SomeState {
     pub fn s_xor(&self, other: &Self) -> Self {
         Self::new(self.bts.b_xor(&other.bts))
     }
-
-    // Return the not of a state
-    //    pub fn s_not(&self) -> Self {
-    //        Self::new(self.bts.b_not())
-    //    }
 
     /// Toggle the bits of a state, given a vector of numbers.
     pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {

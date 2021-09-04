@@ -89,19 +89,15 @@ impl SomeChange {
         strrc
     }
 
-    /// Create a change for translating one region to another.
-    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
-        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
+    /// Create a change for translating a state to a region.
+    pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> Self {
 
-        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
-
-        let bxx = from.x_mask().m_and(&to.x_mask());
+        let t_ones = to.state1.bts.b_and(&to.state2.bts);
+        let t_zeros = to.state1.bts.b_or(&to.state2.bts).b_not();
 
         SomeChange {
-            b01: f_zeros.m_and(&t_ones).m_xor(&bxx),
-            b10: f_ones.m_and(&t_zeros).m_xor(&bxx),
+            b01: SomeMask::new(from.bts.b_not().b_and(&t_ones)),
+            b10: SomeMask::new(from.bts.b_and(&t_zeros)),
         }
     }
 } // end impl SomeChange

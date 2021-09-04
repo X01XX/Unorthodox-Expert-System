@@ -1867,6 +1867,110 @@ impl SomeAction {
         }
     } // end cont_int_region_needs
 
+    /// Get steps that for rules that have an intial region that is a superset of a given state,
+    /// and have a result that is closer to a goal region than the given state.
+    pub fn steps_to(&self, astate: &SomeState, agoal: &SomeRegion) -> StepStore {
+        let mut stps = StepStore::new();
+
+        for grpx in &self.groups.avec {
+            if grpx.active == false {
+                continue;
+            }
+
+            match grpx.pn {
+                Pn::One => {
+                    let rulx = &grpx.rules[0]; 
+                    if rulx.initial_region().is_superset_of_state(astate) {
+
+                        let next_state = rulx.result_from_initial_state(astate);
+
+                        // Check if closer to goal
+                        let cur_dist = agoal.distance_state(astate);
+                        let next_dist = agoal.distance_state(&next_state);
+                        if next_dist >= cur_dist {
+                            continue;
+                        }
+                        stps.push(SomeStep::new(self.num, rulx.restrict_initial_region(&SomeRegion::new(astate, astate)), true, grpx.region.clone()));
+                    }
+                }
+                Pn::Two => {
+                    for rulx in &grpx.rules.avec {
+
+                        // See if an existing square is ready to produce the desired result
+                        if rulx.initial_region().is_superset_of_state(astate) {
+
+                            let next_state = rulx.result_from_initial_state(astate);
+
+                            // Check if closer to goal
+                            let cur_dist = agoal.distance_state(astate);
+                            let next_dist = agoal.distance_state(&next_state);
+                            if next_dist >= cur_dist {
+                                continue;
+                            }
+                            stps.push(SomeStep::new(self.num, rulx.restrict_initial_region(&SomeRegion::new(astate, astate)), true, grpx.region.clone()));
+                        } // endif rulx...
+
+                    } // next ruly
+                } // end match Two
+                Pn::Unpredictable => {}
+            } // end match grpx.pn
+        } // next grpx
+
+        stps
+    } // end steps_to
+
+    /// Get steps that for rules that have a result region that intersects a given goal,
+    /// and has an inplied intiial region that is closer to a given state than the goal is.
+    pub fn steps_from(&self, agoal: &SomeRegion, astate: &SomeState) -> StepStore {
+        let mut stps = StepStore::new();
+
+        for grpx in &self.groups.avec {
+            if grpx.active == false {
+                continue;
+            }
+
+            match grpx.pn {
+                Pn::One => {
+                    let rulx = &grpx.rules[0]; 
+                    if rulx.result_region().intersects(agoal) {
+
+                        let prev_reg = rulx.initial_from_result(agoal);
+
+                        // Check if closer to goal
+                        let cur_dist = agoal.distance_state(astate);
+                        let next_dist = prev_reg.distance_state(astate);
+                        if next_dist >= cur_dist {
+                            continue;
+                        }
+                        stps.push(SomeStep::new(self.num, rulx.restrict_result_region(agoal), true, grpx.region.clone()));
+                    }
+                }
+                Pn::Two => {
+                    for rulx in &grpx.rules.avec {
+
+                        // See if an existing square is ready to produce the desired result
+                        if rulx.result_region().intersects(agoal) {
+
+                            let prev_reg = rulx.initial_from_result(agoal);
+
+                            // Check if closer to goal
+                            let cur_dist = agoal.distance_state(astate);
+                            let next_dist = prev_reg.distance_state(astate);
+                            if next_dist >= cur_dist {
+                                continue;
+                            }
+                            stps.push(SomeStep::new(self.num, rulx.restrict_result_region(agoal), true, grpx.region.clone()));
+                        } // endif rulx...
+
+                    } // next ruly
+                } // end match Two
+                Pn::Unpredictable => {}
+            } // end match grpx.pn
+        } // next grpx
+
+        stps
+    } // end steps_from
+
     /// Get possible steps that can be used to make at least part of a
     /// given change.
     ///

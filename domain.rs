@@ -14,7 +14,7 @@ use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 //use crate::regionstore::RegionStore;
 use crate::state::SomeState;
-use crate::step::SomeStep;
+//use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
 use std::collections::HashMap;
@@ -303,6 +303,213 @@ impl SomeDomain {
         } // next stpx
     } // end run_plan
 
+    pub fn make_plan2(&self, from_state: &SomeState, goal_reg: &SomeRegion) -> Option<SomePlan> {
+        if let Some(steps) = self.make_plan3(from_state, goal_reg, 0) {
+            return Some(SomePlan::new(steps));
+        }
+        None
+    }
+
+    pub fn make_plan3(&self, from_state: &SomeState, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
+
+        // Check if from_state is at the goal
+        if goal_reg.is_superset_of_state(from_state) {
+            return Some(StepStore::new());
+        }
+
+        // Check if change is possible
+
+        // Calculate the minimum bit changes needed.
+        let required_change = SomeChange::state_to_region(from_state, goal_reg);
+        // println!("make_plan3: required_change {}", &required_change);
+
+        // Get a vector of steps (from rules) that make part of the needed changes.
+        let steps_str = self.actions.get_steps(&required_change);
+        // println!("\nmake_plan3: steps_str steps {}", steps_str.formatted_string(" "));
+
+        // Check that the steps roughly encompass all needed changes, else return None.
+        let mut can_change = SomeChange::new_low(required_change.b01.num_ints());
+        for stpx in steps_str.iter() {
+            can_change = can_change.union(&stpx.rule.change());
+        }
+
+        if required_change.is_subset_of(&can_change) {
+        } else {
+            // println!("make_plan3: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+            return None;
+        }
+
+        // Check if one step makes the required change.
+        for stepx in steps_str.iter() {
+            if stepx.initial.is_superset_of_state(from_state) {
+
+                let rslt = stepx.result_from_initial_state(from_state);
+
+                if goal_reg.is_superset_of_state(&rslt) {
+                    
+                    let bstep = stepx.restrict_initial_region_to_state(from_state);
+
+//                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_state, goal_reg);
+                    let mut stpstr = StepStore::new_with_capacity(1);
+                    stpstr.push(bstep);
+                    return Some(stpstr);
+                }
+            }
+        }
+
+        // Run a number of depth-first forward chaining 
+        let num_tries = 3;
+        let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
+
+        for _ in 0..num_tries {
+            if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_state, goal_reg) {
+                step_options.push(poss_steps);
+            }
+        } // next try
+
+        if step_options.len() > 0 {
+//            println!("forward chaining worked!");
+            let inx = choose_one(&step_options);
+            return Some(step_options[inx].clone());
+        }
+
+        // Run a number of depth-first backward chaining 
+//        println!("Try random depth-first backward chaining");
+        for _ in 0..num_tries {
+            if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_state, goal_reg) {
+                step_options.push(poss_steps);
+            }
+        } // next try
+
+        if step_options.len() > 0 {
+//            println!("backward chaining worked!");
+            let inx = choose_one(&step_options);
+            return Some(step_options[inx].clone());
+        }
+
+        // Check recursion depth
+        if depth > 2 {
+//            println!("recursion depth maximum exceeded");
+            return None;
+        }
+
+        // Try Asymetrical chaining
+
+        let mut ret_steps = Vec::<StepStore>::new();
+
+        // Sort the steps by each bit change they make. (some actions may change more than on bit, so will appear more than once)
+        let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
+
+        // Check if any changes are mutually exclusive
+        if any_mutually_exclusive_changes(&steps_str, &steps_by_change_vov, &required_change) {
+//            println!("make_plan3: mutually exclusive change rules found");
+            return None;
+        }
+
+        let agg_reg = goal_reg.union_state(&from_state);
+//        let mut nm = 0;
+        let mut min_dist_from = 9999;
+        let mut async_steps = Vec::<usize>::new();
+
+        for lstx in &steps_by_change_vov {
+//           if nm > 0 {
+//                print!(", ");
+//            }
+//            print!("[");
+//            let mut nm2 = 0;
+            let mut min_dist_agg = 9999;
+            for inx in lstx {
+//                if nm2 > 0 {
+//                    print!(", ");
+//                }
+
+                let dist = steps_str[*inx].initial.distance(&agg_reg);
+                if dist < min_dist_agg {
+                    min_dist_agg = dist;
+                }
+//                print!("{}<{}>", inx, dist);
+
+//                nm2 += 1;
+            } // next inx
+
+//            print!("]");
+//            nm += 1;
+
+            // If the only option is one, or more, async steps, check the distance to from_state
+            // accumulate indexes for min distance
+            if min_dist_agg > 0 {
+                for inx in lstx {
+                    let dist = steps_str[*inx].initial.distance(&agg_reg);
+                    if dist < min_dist_from {
+                        min_dist_from = dist;
+                        async_steps = Vec::<usize>::new();
+                    }
+                    if dist == min_dist_from {
+                        async_steps.push(*inx);
+                    }
+                } // next inx
+            }
+        } // next lstx
+//        println!("] ");
+
+        if async_steps.len() > 0 {
+//            print!("agg {} min_dist_from {} is {}, async_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
+            for inx in &async_steps {
+                //print!(" {}", steps_str[*inx]);
+                
+                if let Some(gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
+
+                    // println!("gap steps from {} to {} are {}", from_state, &steps_str[*inx].initial, gap_steps);
+
+                    let mut ret_stepsx = StepStore::new_with_capacity(gap_steps.len() + 1);
+
+                    let rslt = gap_steps.result_from_state(from_state).unwrap();
+                    // println!("gap_steps result from state {} is {}", from_state, &rslt);
+
+                    ret_stepsx.append(gap_steps);
+                    // println!("new ret_stepsx: {}", &ret_stepsx);
+
+                    let stepb = steps_str[*inx].restrict_initial_region_to_state(&rslt);
+
+                    let rslt2 = steps_str[*inx].result_from_initial_state(&rslt);
+                    
+                    let mut stepsb = StepStore::new();
+                    stepsb.push(stepb);
+
+                    if let Some(ret_steps2) = ret_stepsx.link(&stepsb) {
+                    
+                        // println!("gap_plan: updated steps3: {}", ret_steps2.formatted_string(" "));
+
+                        let rslt3 = ret_steps2.result_from_state(from_state).unwrap();
+                        if goal_reg.is_superset_of_state(&rslt3) {
+                            ret_steps.push(ret_steps2);
+                        } else {
+                            if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
+                         
+                                if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
+
+                                    // println!("gap_steps: updated steps4: {}", ret_stepsx.formatted_string(" "));
+                                    ret_steps.push(ret_steps3);
+                                }
+
+                            } // endif gap_steps2
+                        }
+                    } // endif ret_steps2
+                }
+            } // next inx
+            // println!(" ");
+        }
+
+        // Return a plan found so far, if any
+        if ret_steps.len() > 0 {
+            let chosen = choose_one(&ret_steps);
+//            println!("make_plan3: async chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+            return Some(ret_steps[chosen].clone());
+        }
+        None
+    } // end make_plan3
+
+
     /// Make a plan from a region to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_one_plan more than once.
@@ -314,431 +521,17 @@ impl SomeDomain {
             return Some(SomePlan::new(StepStore::new()));
         }
 
-        // Try to find a plan
-        let from_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
-
-        // Try make_one_plan up to two times, to allow for some random choices
         for _ in 0..2 {
-            let mut reg_hist = Vec::<(SomeRegion, SomeRegion)>::new();
-            if let Some(planz) = self.make_one_plan(&from_reg, &goal_reg, &mut reg_hist) {
-                if from_reg.is_subset_of(planz.initial_region()) {
-                } else {
-                    //println!(
-                    //    "make_plan: from reg {} does not intersect {}",
-                    //    &from_reg, &planz
-                    //);
-                    continue;
-                }
 
-                if let Some(planx) = planz.short_cuts() {
-                    if from_reg.is_subset_of(planx.initial_region()) {
-                    } else {
-                        //println!(
-                        //    "make_plan: short_cuts from reg {} does not intersect {}",
-                        //    &from_reg, &planz
-                        //);
-                        continue;
-                    }
+            if let Some(planz) = self.make_plan2(&self.cur_state, &goal_reg) {
+                // println!("make_plan2 worked!");
+                return Some(planz);
+            }
 
-                    if planx.result_region().is_subset_of(&goal_reg) {
-                        return Some(planx);
-                    } else {
-                        //println!("Short cut failed to match the goal region");
-                        continue;
-                    }
-                }
+        }
 
-                if planz.result_region().is_subset_of(&goal_reg) {
-                    //println!("plan from {} to {} found", &from_reg, &goal_reg);
-                    return Some(planz);
-                } else {
-                    //println!("Plan failed to match the goal region");
-                    continue;
-                }
-            } else {
-                //println!("plan from {} to {} not found", &from_reg, &goal_reg);
-            } // end if let planz
-        } // end loop
         None
     } // end make plan
-
-    /// Given a from-region and a goal-region, then calculate the required bit-changes.
-    ///
-    /// Get a list of from-action-to steps that will roughly produce all the desired changes.
-    ///     else return None.
-    ///
-    /// Check if one step will do the change needed.
-    ///
-    /// Forward-chaining examples I have read assume that any rule is available under any context.
-    /// That can happen here.
-    /// But there will be some rules that require a particular context, so you must
-    /// forward-chain to that context before using the rule.
-    ///
-    /// For example, upon entering a room to retrieve an object, you may find that you
-    /// need to first turn on the light.
-    ///
-    /// The general rule is to use the step(s), with intial-regions
-    /// furthest from the goal-region, then the next furthest step(s), until the goal-region
-    /// is attained.
-    ///
-    /// Figure one step, then call recursively with history of from/to regions.
-    fn make_one_plan(
-        &self,
-        from_reg: &SomeRegion,
-        goal_reg: &SomeRegion,
-        reg_hist: &mut Vec<(SomeRegion, SomeRegion)>,
-    ) -> Option<SomePlan> {
-        //println!(
-        //    "make_one_plan: from {} to {} recur {}",
-        //    &from_reg, &goal_reg, reg_hist.len()
-        // );
-
-        // Check for from region already being a subset of the goal region.
-        if from_reg.is_subset_of(&goal_reg) {
-            println!("zero len plan returned");
-            return Some(SomePlan::new(StepStore::new()));
-        }
-
-        // Check for path becoming too long
-        if reg_hist.len() >= (self.num_actions() * 2) {
-            //println!("recursion limit exceeded by {}", reg_hist.len());
-            //panic!("Done");
-            reg_hist.pop();
-            return None;
-        }
-
-        // Check for loop in the path so far
-        for (fromx, tox) in reg_hist.iter() {
-            if fromx == from_reg && tox == goal_reg {
-                //println!(
-                //    "from reg {} and goal reg {} already in reg_hist, recur {}",
-                //    &from_reg,
-                //    &goal_reg,
-                //    reg_hist.len()
-                //);
-                //panic!("Done");
-                reg_hist.pop();
-                return None;
-            }
-        }
-
-        // Update path history
-        reg_hist.push((from_reg.clone(), goal_reg.clone()));
-
-        // Create an aggregate change to represent the changes needed.
-        let required_change = SomeChange::region_to_region(&from_reg, &goal_reg);
-
-        // println!(
-        //    "find steps for from_reg {} to goal_reg {}, changes needed {}",
-        //     &from_reg, &goal_reg, &required_change
-        // );
-
-        // Get steps that include at least one bit of the needed change masks.
-        let stpsx = self.actions.get_steps(&required_change);
-
-        if stpsx.len() == 0 {
-            //if recur == 0 {
-            //    println!("No steps found for {} to {} not found", &from_reg, &goal_reg);
-            //}
-            //println!("No steps found");
-            reg_hist.pop();
-            return None;
-        }
-
-        //println!("steps found: {}", stpsx);
-
-        // Create an initial change with no bits set to use for unions
-        let mut can_change = SomeChange::new_low(self.num_ints);
-
-        // Get union of changes for each step
-        for stpx in stpsx.iter() {
-            can_change = can_change.union(&stpx.rule.change());
-        }
-
-        // Check if the changes found roughly satisfy the needed change
-        if required_change.is_subset_of(&can_change) {
-            //println!("changes found b01: {} b10: {} are equal to, or superset of, the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
-        } else {
-            //println!("changes found b01: {} b10: {} are NOT equal, or superset, of the desired changes b01: {} b10: {}", b01, b10, rule_agg.b01, rule_agg.b10);
-            reg_hist.pop();
-            return None;
-        }
-
-        // println!("{} steps found", stpsx.len());
-
-        // Look for one step that makes the whole change, single-result step preferred.
-        let mut stp_vec = Vec::<SomeStep>::new();
-        let mut stp_vec_2 = Vec::<SomeStep>::new();
-
-        for stpx in stpsx.iter() {
-            if stpx.initial.is_superset_of(&from_reg) {
-                let stpy = stpx.restrict_initial_region(&from_reg);
-
-                if stpy.result.is_subset_of(&goal_reg) {
-                    if stpy.alt_rule {
-                        stp_vec_2.push(stpy);
-                    } else {
-                        stp_vec.push(stpy);
-                    }
-                } // end if step.result
-            } // end if stpx.initial
-        } // next vecx
-
-        // Return step found
-        if stp_vec.len() > 0 {
-            let mut inx = 0;
-            if stp_vec.len() > 1 {
-                inx = rand::thread_rng().gen_range(0, stp_vec.len());
-            }
-            //println!("stp_vec: found {}", &stp_vec[0]);
-            return Some(SomePlan::new_step(stp_vec[inx].clone())); // done in one step, often the end stage of recursion
-        } else if stp_vec_2.len() > 0 {
-            let mut inx = 0;
-            if stp_vec_2.len() > 1 {
-                inx = rand::thread_rng().gen_range(0, stp_vec_2.len());
-            }
-            //println!("stp_vec_2: found {}", &stp_vec_2[0]);
-            return Some(SomePlan::new_step(stp_vec_2[inx].clone())); // done in one step, often the end stage of recursion
-        } else {
-            //println!("stp_vec: did not find a step to make the whole change");
-        }
-
-        // Get steps inicies, sorted by step change.
-        let stp_cngs: Vec<Vec<usize>> = self.sort_steps(&stpsx, &required_change);
-
-        // println!("{} stp_cngs steps", stp_cngs.len());
-
-        // Print step vector
-        //println!("stp_cngs:");
-        //for vecx in stp_cngs.iter() {
-        //   let mut strx = String::from("  [");
-        //  for stpx in vecx.iter() {
-        //        strx.push_str(&format!("{}, ", stpx));
-        //    }
-        //    println!("{}]", strx);
-        // }
-
-        // Delete change-steps lists that wholly must be run after another list
-        let later_chgs = stpsx.order_next_changes(&stp_cngs, &required_change);
-        if later_chgs.len() > 0 {
-            // println!("later_chgs: {:?}", &later_chgs);
-            let stp_cngs2 = stp_cngs.clone();
-            let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stp_cngs2.len() - later_chgs.len());
-            for i in 0..stp_cngs2.len() {
-                if later_chgs.contains(&i) == false {
-                    stp_cngs.push(stp_cngs2[i].clone());
-                }
-            }
-        }
-
-        // Make list of steps with initial regions farthest from goal.
-        // if there is more than one step with the same change,
-        // use the one with the initial region closest to the goal region.
-        let mut max_diff = 0;
-        let mut max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
-
-        for vecx in stp_cngs.iter() {
-            //println!("One vecx:\n");
-            //for stpx in vecx.iter() {
-            //   println!("    {}", &stpx);
-            //}
-            // Select a step
-            let mut astep = &stpsx[vecx[0]];
-
-            if vecx.len() > 1 {
-                // Get a vector of steps that have an initial region closest to the goal-region
-                let mut local_min = std::usize::MAX;
-                let mut min_diff_goal = Vec::<&SomeStep>::with_capacity(5);
-
-                // Set single-result state preference flag.
-                let mut sr_found = false;
-
-                // Scan for a single-result step
-                for inx in vecx.iter() {
-                    let stpx = &stpsx[*inx];
-                    if stpx.alt_rule == false {
-                        sr_found = true;
-                    }
-                }
-
-                for inx in vecx.iter() {
-                    let stpx = &stpsx[*inx];
-
-                    if stpx.alt_rule {
-                        if sr_found {
-                            continue;
-                        }
-                    }
-
-                    let tmp_diff = stpx.initial.distance(&goal_reg);
-
-                    if tmp_diff < local_min {
-                        local_min = tmp_diff;
-                        min_diff_goal = Vec::<&SomeStep>::with_capacity(5);
-                    }
-                    if tmp_diff == local_min {
-                        min_diff_goal.push(&stpx);
-                    }
-                }
-
-                // Get one of the closest to goal steps
-                if min_diff_goal.len() == 1 {
-                    astep = min_diff_goal[0];
-                } else {
-                    astep = min_diff_goal[rand::thread_rng().gen_range(0, min_diff_goal.len())];
-                }
-                //println!("    local closest to {} is: {}", &from_reg, astep);
-            } // end vecx.len
-
-            // A step has been selected
-            let tmp_diff = astep.initial.distance(&goal_reg);
-
-            if tmp_diff > max_diff {
-                max_diff = tmp_diff;
-                max_diff_goal = Vec::<&SomeStep>::with_capacity(5);
-            }
-
-            if tmp_diff == max_diff {
-                max_diff_goal.push(astep);
-            }
-        } // next vecx
-
-        // Print steps selected
-        //let mut strx = String::from("Steps selected for max diff from goal: ");
-        //strx.push_str(&format!("{} [", &goal_reg));
-        //  for stpx in max_diff_goal.iter() {
-        //     strx.push_str(&format!("{}, ", stpx));
-        // }
-        //println!("{}]", strx);
-
-        // Pick a step
-        let mut a_step = max_diff_goal[0];
-        if max_diff_goal.len() > 1 {
-            a_step = max_diff_goal[rand::thread_rng().gen_range(0, max_diff_goal.len())];
-        }
-        //println!("Step chosen {}", &a_step);
-
-        // Plan and return the next steps
-        if let Some(plnx) = self.plan_next_step(&from_reg, &goal_reg, a_step.clone(), reg_hist) {
-            //if reg_hist.len() == 0 {
-            //    println!("plan from {} to {} found", &from_reg, &goal_reg);
-            //}
-            return Some(plnx);
-        }
-        //if reg_hist.len() == 0 {
-        //    println!("plan from {} to {} not found", &from_reg, &goal_reg);
-        // }
-        reg_hist.pop();
-        None
-    } // end make_one_plan
-
-    /// Process a possible step for translation of the from-region to the goal-region.
-    ///
-    /// If the given step translates the from-region to the goal-region.
-    /// return a one-step plan.
-    ///
-    /// If needed, get a plan from the from-region to the step initial-region,
-    /// else return None.
-    ///
-    /// If needed, get a plan from the step result-region to the goal-region,
-    /// else return None.
-    ///
-    /// Link sub plans together as needed.
-    ///
-    /// Return a plan.
-    fn plan_next_step(
-        &self,
-        from_reg: &SomeRegion,
-        goal_reg: &SomeRegion,
-        astep: SomeStep,
-        reg_hist: &mut Vec<(SomeRegion, SomeRegion)>,
-    ) -> Option<SomePlan> {
-        let mut bstep = astep.clone();
-
-        // Check for step intial region is a superset of the from region.
-        if astep.initial.is_superset_of(&from_reg) {
-            if &astep.initial == from_reg {
-            } else {
-                bstep = astep.restrict_initial_region(&from_reg);
-            }
-        }
-
-        //println!(
-        //    "\nplan_next_steps: from {} to {} step {} recur {}",
-        //     &from_reg, &goal_reg, &bstep, reg_hist.len()
-        // );
-
-        // Make a plan out of the step.  This is so plan (step list) linking logic can be used.
-        let mut aplan = SomePlan::new_step(bstep.clone());
-
-        // Check plan initial region within from_reg
-        if aplan.initial_region().is_superset_of(&from_reg) {
-            // Check if the plan result region is within the goal region
-            if aplan.result_region().is_subset_of(&goal_reg) {
-                return Some(aplan);
-            }
-
-            // Plan result region is not within the goal region, find a path
-            if let Some(planx) = self.make_one_plan(&aplan.result_region(), &goal_reg, reg_hist) {
-                if let Some(plany) = aplan.link(&planx) {
-                    return Some(plany);
-                } else {
-                    // println!("plan_next_steps: failed at 0");
-                    return None;
-                }
-            } else {
-                return None;
-            }
-        }
-
-        // Get a plan for from-region to step initial-region
-        if let Some(planx) = self.make_one_plan(&from_reg, &aplan.initial_region(), reg_hist) {
-            if let Some(plany) = planx.link(&aplan) {
-                // println!(
-                //    "make plan from {} to {} giving {}",
-                //    &from_reg,
-                //    &aplan.initial_region(),
-                //    &plany
-                // );
-                aplan = plany;
-            } else {
-                // println!(
-                //      "plan_next_steps, failed at 3, linking {} to {}",
-                //      &aplan, &planx
-                //  );
-                return None;
-            }
-        } else {
-            // println!(
-            //     "plan_next_steps, failed at 4 {} to {}",
-            //    &from_reg,
-            //     &aplan.initial_region()
-            // );
-            return None;
-        }
-
-        // Check if plan result region is with the goal region
-        if aplan.result_region().is_subset_of(&goal_reg) {
-            return Some(aplan);
-        }
-
-        // Get a plan for plan result region to goal region
-        if let Some(planw) = self.make_one_plan(&aplan.result_region(), &goal_reg, reg_hist) {
-            if let Some(planz) = aplan.link(&planw) {
-                return Some(planz); // done
-            } else {
-                //println!("plan_next_steps, failed at 6");
-                return None;
-            }
-        }
-
-        return None;
-    } // end plan_next_step
-
-    // Position to the optimal region
-    //    pub fn to_optimal(&mut self) -> bool {
-    //        self.to_region(&self.optimal.clone())
-    //    }
 
     /// Change the current state to be within a given region.
     pub fn to_region(&mut self, goal_region: &SomeRegion) -> bool {
@@ -759,111 +552,6 @@ impl SomeDomain {
         }
     } // end to_region
 
-    /// Sort a list of steps, by change(s), into a vector of step stores of
-    /// steps that have the same change.
-    /// Filter out steps that make unneeded changes, if their needed changes are
-    /// satisfied by other steps.
-    pub fn sort_steps(&self, stpsx: &StepStore, required_change: &SomeChange) -> Vec<Vec<usize>> {
-        let mut stp_cngs = Vec::<Vec<usize>>::with_capacity(stpsx.len());
-
-        // Check and store each step that has changes that are an exact subset of
-        // the needed changes.
-        let mut inx = 0;
-        for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&required_change.b01)
-                && stpx.rule.b10.is_subset_of(&required_change.b10)
-            {
-                // Check for an existing vector of one or more changes of the same kind
-                // If found, push the step onto it.
-                let mut add_new_vec = true;
-
-                for stp_cng in stp_cngs.iter_mut() {
-                    if stpx.rule.b01 == stpsx[stp_cng[0]].rule.b01
-                        && stpx.rule.b10 == stpsx[stp_cng[0]].rule.b10
-                    {
-                        stp_cng.push(inx);
-                        add_new_vec = false;
-                        break;
-                    }
-                }
-
-                // If no vector of similar step changes found, add one.
-                if add_new_vec {
-                    stp_cngs.push(vec![inx]);
-                }
-            }
-            inx += 1;
-        } // next stpx
-
-        // Check each step that is not an exact subset of the needed changes,
-        // Save index if it should be stored.
-        let mut stp_inx = Vec::<usize>::new();
-        let mut inx = 0;
-
-        for stpx in stpsx.iter() {
-            if stpx.rule.b01.is_subset_of(&required_change.b01)
-                && stpx.rule.b10.is_subset_of(&required_change.b10)
-            {
-            } else {
-                // Check for an existing vector of one or more changes of the same kind.
-                // If not found, save inx number.
-
-                // Get desired changes in step
-                let mut b01 = stpx.rule.b01.m_and(&required_change.b01);
-                let mut b10 = stpx.rule.b10.m_and(&required_change.b10);
-
-                // Check steps stored in stp_cngs to see if they satisfy the same needed changes.
-                for stp_cng in stp_cngs.iter_mut() {
-                    // Check a b01 needed change
-                    let stpx01 = stpsx[stp_cng[0]].rule.b01.m_and(&b01);
-                    if stpx01.is_not_low() {
-                        b01 = b01.m_xor(&stpx01);
-                    }
-
-                    // Check a b10 needed change
-                    let stpx10 = stpsx[stp_cng[0]].rule.b10.m_and(&b10);
-                    if stpx10.is_not_low() {
-                        b10 = b10.m_xor(&stpx10);
-                    }
-                } // next stp_cng
-
-                // If no steps, or combination of steps, satisfies the same
-                // needed changes, save the index to the step.
-                if b01.is_not_low() || b10.is_not_low() {
-                    stp_inx.push(inx);
-                }
-            } // end else
-
-            inx += 1;
-        } // next stpx
-
-        // Add steps that have an unrequired change with a still required change
-        for inx in stp_inx.iter() {
-            let stpx = &stpsx[*inx];
-
-            // Check for an existing vector of one or more changes of the same kind
-            // If found, push the step onto it.
-            let mut add_new_vec = true;
-
-            for stp_cng in stp_cngs.iter_mut() {
-                if stpx.rule.b01 == stpsx[stp_cng[0]].rule.b01
-                    && stpx.rule.b10 == stpsx[stp_cng[0]].rule.b10
-                {
-                    stp_cng.push(*inx);
-                    add_new_vec = false;
-                    break;
-                }
-            }
-
-            // If no vector of similar step changes found, add one.
-            if add_new_vec {
-                stp_cngs.push(vec![*inx]);
-            }
-        } // next inx
-
-        stp_cngs
-    } // end sort_steps
-
     /// Return a Region from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
@@ -875,4 +563,170 @@ impl SomeDomain {
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
         SomeState::from_string(self.num_ints, &str)
     } // end state_from_string
+
+    // Return a plan using random depth-first backward chaining from a goal to a state.
+    fn random_depth_first_backward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
+    
+        //println!("random_depth_first_backward_chaining2: to {} from {}", cur_state.formatted_string(), goal_reg.formatted_string());
+    
+        // Get steps that have a result region that intersects the goal region
+        let next_steps = self.actions.steps_from(goal_reg, cur_state);
+        if next_steps.len() == 0 {
+            return None;
+        }
+
+        // Randomly pick a step index from the options.
+        let mut step_inx = 0;
+        if next_steps.len() > 1 {
+            step_inx = rand::thread_rng().gen_range(0, next_steps.len());
+        }
+
+        // Calculate the next goal from the step
+        let next_goal = next_steps[step_inx].initial_from_result(goal_reg);
+
+        // Calculate the current step restricted to the goal intersection
+        let cur_step = next_steps[step_inx].restrict_result_region(goal_reg);
+
+        // Return step if it has intersected the cur_state
+        if next_goal.is_superset_of_state(cur_state) {
+            let mut ret_stps = StepStore::new_with_capacity(1);
+            ret_stps.push(cur_step);
+            if let Some(ret_stps2) = ret_stps.restrict_initial_region(&SomeRegion::new(cur_state, cur_state)) {
+                return Some(ret_stps2);
+            } else {
+                return None;
+            }
+        }
+
+        // Try recursion for more steps
+        if let Some(next_steps) = self.random_depth_first_backward_chaining(cur_state, &next_goal) {
+
+            let mut ret_stps = StepStore::new_with_capacity(next_steps.len() + 1);
+            ret_stps.append(next_steps);
+            ret_stps.push(cur_step);
+            if let Some(ret_stps2) = ret_stps.restrict_initial_region(&SomeRegion::new(cur_state, cur_state)) {
+                return Some(ret_stps2);
+            } else {
+                return None;
+            }
+        }
+        None
+    } // end random_depth_first_backward_chaining
+    
+    // Return a plan from random depth-first forward chaining to goal.
+    fn random_depth_first_forward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
+    
+        // Get steps that have a result region that intersects the goal region
+        let next_steps = self.actions.steps_to(cur_state, goal_reg);
+        if next_steps.len() == 0 {
+            return None;
+        }
+
+        // Randomly pick a step index from the options.
+        let mut step_inx = 0;
+        if next_steps.len() > 1 {
+            step_inx = rand::thread_rng().gen_range(0, next_steps.len());
+        }
+
+        // Calculate the next state from the step
+        let next_state = next_steps[step_inx].result_from_initial_state(cur_state);
+
+        // Return step if it has intersected the goal
+        if goal_reg.is_superset_of_state(&next_state) {
+            let mut ret_stp = StepStore::new_with_capacity(1);
+            ret_stp.push(next_steps[step_inx].clone());
+            return Some(ret_stp);
+        }
+
+        // Use recursion to get next steps
+        if let Some(more_steps) = self.random_depth_first_forward_chaining(&next_state, goal_reg) {
+
+            let mut store_ret = StepStore::new_with_capacity(more_steps.len() + 1);
+            store_ret.push(next_steps[step_inx].clone());
+            store_ret.append_validate(&more_steps);
+            return Some(store_ret);
+        }
+    
+        None
+    } // end random_depth_first_forward_chaining
+
 } // end impl SomeDomain
+
+/// Return true if any step pairs are all mutually exclusive
+fn any_mutually_exclusive_changes(store: &StepStore, by_change: &Vec<Vec<usize>>, wanted: &SomeChange) -> bool {
+    
+    for inx in 0..(by_change.len() - 1) {
+        for iny in (inx+1)..by_change.len() {
+            
+            let mut exclusive = true;
+            //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
+            for numx in &by_change[inx] {
+                for numy in &by_change[iny] {
+                    if *numx == *numy {
+                        exclusive = false;
+                        continue;
+                    }
+                    if store[*numx].mutually_exclusive(&store[*numy], wanted) {
+                        //println!("step {} mutually exclusive to step {}", store[*numx], store[*numy]);
+                    } else {
+                        exclusive = false;
+                        //break;
+                    }
+                } //next numy
+                //if exclusive == false {
+                //    break;
+                //}
+
+            } // next numx
+            //println!(" ex: {}", exclusive);
+            if exclusive {
+                return true;
+            }
+            
+        } // next iny
+    } // next inx
+
+    false
+}
+
+// Return the index value of a chosen StepStore
+fn choose_one(ret_steps: &Vec::<StepStore>) -> usize {
+    assert!(ret_steps.len() > 0);
+
+    if ret_steps.len() == 1 {
+        return 0;
+    }
+
+    let mut min_len = 9999;
+    let mut max_len = 0;
+    for rets in ret_steps.iter() {
+        if rets.len() < min_len {
+            min_len = rets.len();
+        }
+        if rets.len() > max_len {
+            max_len = rets.len();
+        }
+    } // next rets
+
+    //println!("ret_steps len = {} min {} max {}", ret_steps.len(), &min_len, &max_len);
+    let mut chosen = 0;
+    if ret_steps.len() > 1 {
+        // Choose step, TODO better criteria, maybe total of least rule "cost", or negative/positive effects.
+        let mut inx_ary = Vec::<usize>::new();
+        let mut inx = 0;
+        for rets in ret_steps.iter() {
+            if rets.len() == min_len {
+                inx_ary.push(inx);
+            }
+            inx += 1;
+        }
+        if inx_ary.len() == 1 {
+            chosen = inx_ary[0];
+        } else {
+            chosen = inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
+        }
+    }
+    chosen
+} // end choose_one
+
+

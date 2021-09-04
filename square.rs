@@ -63,10 +63,6 @@ impl SomeSquare {
         self.results.changed
     }
 
-    //    pub fn is_new(&self) -> bool {
-    //        1 == self.results.len()
-    //    }
-
     /// Return a string representing a square.
     pub fn str_terse(&self) -> String {
         self.state.bts.formatted_string('S')

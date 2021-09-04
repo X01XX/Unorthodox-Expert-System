@@ -39,12 +39,6 @@ impl NeedStore {
         }
     }
 
-    //    pub fn new_with_capacity(num: usize) -> Self {
-    //        Self {
-    //            avec: Vec::<SomeNeed>::with_capacity(num),
-    //        }
-    //    }
-
     /// Return the length of the SomeNeed vector.
     pub fn len(&self) -> usize {
         self.avec.len()
@@ -73,53 +67,11 @@ impl NeedStore {
         self.avec.append(&mut other.avec);
     }
 
-    //    pub fn iter(&self) -> Iter<SomeNeed> {
-    //        self.avec.iter()
-    //    }
-
     /// Return a mutable iterator.
     pub fn iter_mut(&mut self) -> IterMut<SomeNeed> {
         self.avec.iter_mut()
     }
 
-    //    /// Return the lowest need priority number, gt a given number,
-    //    /// and the number of needs with that priority.
-    //    pub fn lowest_priority_gt(&self, pri: usize) -> (usize, usize) {
-    //
-    //		let mut minp: usize = 9999;
-    //		let mut num: usize = 0;
-    //
-    //		for ndx in self.avec.iter() {
-    //			let prx = ndx.priority();
-    //
-    //			if prx < minp {
-    //				if prx > pri {
-    //					minp = prx;
-    //					num = 1;
-    //				}
-    //			} else if prx == minp {
-    //				num += 1;
-    //			}
-    //		} // next ndx
-    //
-    //		(minp, num)
-    //	}
-
-    //    /// Return a vector of inicies of needs with a given priority.
-    //    pub fn inx_pri_eq(&self, pri: usize) -> Vec<usize> {
-    //
-    //		let mut avec = Vec::<usize>::new();
-    //
-    //		let mut inx = 0;
-    //		for ndx in self.avec.iter() {
-    //			if ndx.priority() == pri {
-    //                avec.push(inx);
-    //			}
-    //			inx += 1;
-    //		} // next ndx
-    //
-    //		avec
-    //	}
 } // end impl NeedStore
 
 impl Index<usize> for NeedStore {

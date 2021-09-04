@@ -12,10 +12,10 @@
 //! "backward chaining" (intitial_from_result).
 
 use crate::bits::NUM_BITS_PER_INT;
-use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use crate::change::SomeChange;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -91,28 +91,6 @@ impl SomeRule {
         }
     }
 
-    // Return true if a invalid union rule can be pruned
-    //    pub fn can_be_pruned(&self) -> bool {
-    //        let reg_x = self.initial_region().x_mask();
-    //
-    //        let onex = self.b10.m_and(&self.b11);
-    //
-    //        let zerox = self.b00.m_and(&self.b01);
-    //
-    //        if onex.m_and(&zerox).is_not_low() {
-    //            return false;
-    //        }
-    //
-    //        if onex.m_and(&reg_x) != onex {
-    //            return false;
-    //        }
-    //
-    //        if zerox.m_and(&reg_x) != zerox {
-    //            return false;
-    //        }
-    //        true
-    //    }
-
     /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Self {
         Self {
@@ -122,17 +100,6 @@ impl SomeRule {
             b10: self.b10.m_and(&other.b10),
         }
     }
-
-    // Return the expected result of running a rule on a state
-    // Assumes the state is a subset of the rule initial region
-    //    pub fn result_of_state(&self, sta: &SomeState) -> SomeState {
-    //        let sta_msk = SomeMask::new(sta.bts);
-    //
-    //        let b01 = self.b01.m_and(&sta_msk.m_not());
-    //        let b10 = self.b10.m_and(&sta_msk);
-    //
-    //        SomeState::new(sta_msk.m_xor(&b01).m_xor(&b10).bts)
-    //    }
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
@@ -150,20 +117,6 @@ impl SomeRule {
         SomeRegion::new(&st_high, &st_low)
     }
 
-    // Return a mask of zero-bit changes for a rule.
-    // For an aggregate rule (SomeState -> SomeRegion), the
-    // 1->X bits are don't cares.
-    //    pub fn zero_change_mask(&self) -> SomeMask {
-    //        self.b01.m_xor(&self.b01.m_and(&self.b10))
-    //    }
-
-    // Return a mask of one-bit changes for a rule.
-    // For an aggregate rule (SomeState -> SomeRegion), the
-    // 1->X bits are don't cares.
-    //    pub fn one_change_mask(&self) -> SomeMask {
-    //        self.b10.m_xor(&self.b01.m_and(&self.b10))
-    //    }
-
     /// Return the result region after applying an initial region to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial(&self, reg: &SomeRegion) -> SomeRegion {
@@ -172,6 +125,16 @@ impl SomeRule {
         }
 
         self.restrict_initial_region(reg).result_region()
+    }
+
+    /// Return the initial region after applying a result region to a rule.
+    /// This could be called "backward chaining".
+    pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
+        if reg.intersects(&self.result_region()) == false {
+            panic!("initial_from_result: {} does not intersect the rules result region {}", &reg, &self.initial_region());
+        }
+
+        self.restrict_result_region(reg).initial_region()
     }
 
     /// Return the result region after applying an initial state to a rule.
@@ -189,16 +152,6 @@ impl SomeRule {
             bts: sta.bts.b_xor(&toggle),
         }
     }
-
-    // Return the initial region after applying a result region to a rule.
-    // This could be called "backward chaining".
-    //    pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
-    //        if reg.intersects(&self.result_region()) == false {
-    //            panic!("initial_from_result: given region does not intersect the ruls result region");
-    //        }
-    //
-    //        self.restrict_result_region(reg).initial_region()
-    //    }
 
     /// Restrict the initial region to an intersection of the
     /// given region.  Assuming the region given is not a superset
@@ -226,10 +179,27 @@ impl SomeRule {
         }
     }
 
-    // Return true if the rule does not change anything
-    //    pub fn no_change(&self) -> bool {
-    //        self.b01.is_low() && self.b10.is_low()
-    //    }
+    /// Restrict the initial region to a intersectng state.
+    pub fn restrict_initial_region_to_state(&self, stax: &SomeState) -> Self {
+        let init_reg = self.initial_region();
+
+        if init_reg.is_superset_of_state(stax) == false {
+            panic!(
+                "{} is not a subset of rule initial region {}",
+                stax, init_reg
+            );
+        }
+
+        let zeros = SomeMask { bts: stax.bts.b_not() };
+        let ones =  SomeMask { bts: stax.bts.clone() };
+
+        Self {
+            b00: self.b00.m_and(&zeros),
+            b01: self.b01.m_and(&zeros),
+            b11: self.b11.m_and(&ones),
+            b10: self.b10.m_and(&ones),
+        }
+    }
 
     /// Restrict the result region to an intersection of the
     /// given region.  Assuming the region given is not a superset
@@ -270,57 +240,6 @@ impl SomeRule {
         //println!(" giving {} with intial {}", rc_rul, rc_rul.initial_region());
         rc_rul
     }
-
-    // Return true if the change masks of two rules are equal
-    //    pub fn changes_equal(&self, other: &Self) -> bool {
-    //        if self.b01 == other.b01 && self.b10 == other.b10 {
-    //            //println!("{} eq {} and {} eq {} = true", self.b01, other.b01, self.b10, other.b10);
-    //            return true;
-    //        }
-    //        //println!("{} eq {} and {} eq {} = false", self.b01, other.b01, self.b10, other.b10);
-    //        false
-    //    }
-
-    // Return true if two rule changes exactly cancel each other.
-    // If there are no changes in one rule, this function should
-    // probably not be called, but the rules would not actively cancel
-    // each other.
-    //    pub fn changes_cancel(&self, other: &Self) -> bool {
-    //        if self.b01.is_low() && self.b10.is_low() {
-    //            return false;
-    //        }
-    //
-    //        // At least one of the elements will be not-low
-    //        if self.b01 == other.b10 && self.b10 == other.b01 {
-    //            return true;
-    //        }
-    //
-    //        false
-    //    }
-
-    // Set initial region X bits to one
-    //    pub fn set_initial_to_ones(&self, msk: &SomeMask) -> Self {
-    //        let nmsk = msk.m_not();
-    //
-    //        Self {
-    //            b00: self.b00.m_and(&nmsk),
-    //            b01: self.b01.m_and(&nmsk),
-    //            b11: self.b11.clone(),
-    //            b10: self.b10.clone(),
-    //        }
-    //    }
-
-    // Set initial region X bits to zero
-    //    pub fn set_initial_to_zeros(&self, msk: &SomeMask) -> Self {
-    //        let nmsk = msk.m_not();
-    //
-    //        Self {
-    //            b00: self.b00.clone(),
-    //            b01: self.b01.clone(),
-    //            b11: self.b11.m_and(&nmsk),
-    //            b10: self.b10.m_and(&nmsk),
-    //        }
-    //    }
 
     /// Return the expected length of a string representation of SomeRule.
     pub fn formatted_string_length(&self) -> usize {
@@ -446,56 +365,51 @@ impl SomeRule {
         // Return a restricted rule
         Some(self.restrict_initial_region(&i_reg))
     }
-
+    
     // Return a SomeChange struct instance
     pub fn change(&self) -> SomeChange {
-        SomeChange {
-            b01: self.b01.clone(),
-            b10: self.b10.clone(),
-        }
+        SomeChange { b01: self.b01.clone(), b10: self.b10.clone() }
     }
 
-    /// Return true if it is OK to run the target rule before rule2.
+    /// Return true if two rules are mutually exclusive
+    pub fn mutually_exclusive(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
+        if self.order_bad(other, wanted) {
+            if other.order_bad(self, wanted) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return true if the target rule should not be run before the second.
     ///
-    /// To approve a given order,
+    ///    If a wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///
-    ///    A wanted 0->1 change in rule1 (self) should not correspond with a 0->.. in rule2.
+    ///    If a wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
     ///
-    ///    A wanted 1->0 change in rule1 (self) should not correspond with a 1->.. in rule2.
-    ///
-    /// Run twice with different order, to determine
-    ///
-    ///    No order required.
-    ///
-    ///    Mutually exclusive rules.
-    ///
-    ///    An order is required.
-    ///
-    pub fn order_ok(&self, rule2: &SomeRule, wanted: &SomeChange) -> bool {
-        let reg2 = rule2.initial_region();
+    pub fn order_bad(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
+
+        // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
         let sb01 = self.b01.m_and(&wanted.b01);
         if sb01.is_not_low() {
-            let reg2_0 = SomeMask {
-                bts: reg2.state1.s_or(&reg2.state2).bts.b_not(),
-            };
-            let b01_0 = sb01.m_and(&reg2_0);
-            if b01_0.is_not_low() {
-                return false;
+            // println!("order_bad: sb01 {} step2 zero pos {}", &sb01, &step2.initial.zero_bit_positions());
+            if sb01.m_and(&other.b10.m_or(&other.b11).m_not()).is_not_low() {
+                // println!("order_bad: returning true");
+                return true;
             }
         }
 
         let sb10 = self.b10.m_and(&wanted.b10);
         if sb10.is_not_low() {
-            let reg2_1 = SomeMask {
-                bts: reg2.state1.s_and(&reg2.state2).bts,
-            };
-            let b10_1 = sb10.m_and(&reg2_1);
-            if b10_1.is_not_low() {
-                return false;
+
+            if sb10.m_and(&other.b01.m_or(&other.b00).m_not()).is_not_low() {
+                // println!("order_bad: returning true");
+                return true;
             }
         }
-        true
+        // println!("order_bad: returning false");
+        false
     }
 } // end SomeRule
 

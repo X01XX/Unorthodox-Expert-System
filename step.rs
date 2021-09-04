@@ -3,6 +3,9 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+use crate::state::SomeState;
+use crate::change::SomeChange;
+
 use std::fmt;
 
 impl fmt::Display for SomeStep {
@@ -34,6 +37,25 @@ impl SomeStep {
             rule,
             alt_rule,
             group_reg,
+        }
+    }
+
+    /// Return a new step, by taking a given step and restricting the initial region.
+    pub fn restrict_initial_region_to_state(&self, stax: &SomeState) -> Self {
+        let init_reg = SomeRegion::new(stax, stax);
+
+        if self.initial.is_superset_of_state(stax) {
+        } else {
+            println!("step:restrict_initial_region_to_state: error {} is not in {}", stax, &self.initial);
+        }
+
+        Self {
+            initial: init_reg.clone(),
+            act_num: self.act_num,
+            result: self.rule.result_from_initial(&init_reg),
+            rule: self.rule.restrict_initial_region_to_state(stax),
+            alt_rule: self.alt_rule,
+            group_reg: self.group_reg.clone(),
         }
     }
 
@@ -80,7 +102,21 @@ impl SomeStep {
         rcstr.push(']');
         rcstr
     }
-}
+
+    pub fn result_from_initial_state(&self, astate: &SomeState) -> SomeState {
+        self.rule.result_from_initial_state(astate)
+    }
+
+    pub fn initial_from_result(&self, aregion: &SomeRegion) -> SomeRegion {
+        self.rule.initial_from_result(aregion)
+    }
+
+    pub fn mutually_exclusive(&self, other: &SomeStep, wanted: &SomeChange) -> bool {
+
+        self.rule.mutually_exclusive(&other.rule, wanted)
+    }
+
+} // end impl SomeStep
 
 impl Clone for SomeStep {
     fn clone(&self) -> Self {

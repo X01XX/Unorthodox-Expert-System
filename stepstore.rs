@@ -1,7 +1,11 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
-use crate::change::SomeChange;
+// use crate::bits::SomeBits;
+use crate::mask::SomeMask;
+use crate::state::SomeState;
+use crate::region::SomeRegion;
 use crate::step::SomeStep;
+use crate::change::SomeChange;
 
 use std::fmt;
 use std::ops::Index;
@@ -49,45 +53,87 @@ impl StepStore {
         self.avec.append(&mut val.avec); // empties val.avec
     }
 
+    /// Link two stepstores together, return Some(StepStore).
+    pub fn link(&self, other: &Self) -> Option<Self> {
+        //println!("stepstore:link: {} and {}", self, other);
+
+        let end_inx = self.len() - 1;
+
+        if self.avec[end_inx].result == other.avec[0].initial {
+            let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
+
+            for stp1 in self.iter() {
+                rc_steps.push(stp1.clone());
+            }
+
+            for stp2 in other.iter() {
+                rc_steps.push(stp2.clone());
+            }
+
+            return Some(rc_steps);
+        }
+
+        if self.avec[end_inx]
+            .result
+            .intersects(&other.avec[0].initial)
+        {
+            let regx = self.avec[end_inx]
+                .result
+                .intersection(&other.avec[0].initial);
+
+            if let Some(steps1) = self.restrict_result_region(&regx) {
+                if let Some(steps2) = other.restrict_initial_region(&regx) {
+
+                    let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
+
+                    for stp1 in steps1.iter() {
+                        rc_steps.push(stp1.clone());
+                    }
+
+                    for stp2 in steps2.iter() {
+                        rc_steps.push(stp2.clone());
+                    }
+
+                    return Some(rc_steps);
+                }
+            }
+        }
+        None
+    } // end link
+
+    /// Append a StepStore to a StepStore.
+    pub fn append_validate(&mut self, other: &StepStore) {
+        if other.len() == 0 {
+            return;
+        }
+        
+        let mut alen = self.len();
+        
+        let mut lastrslt = &other[0].result;
+        if alen > 0 {
+            lastrslt = &self[alen - 1].result;
+        }
+        
+        for stepx in other.iter() {
+            if alen > 0 {
+                assert!(stepx.initial == *lastrslt);
+            }
+            
+            self.avec.push(stepx.clone());
+            lastrslt = &stepx.result;
+            
+            alen += 1;
+        }
+    }
+
     /// Return an immutable iterator for a StepStore.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.avec.iter()
     }
 
-    //    pub fn reverse(&self) -> Self {
-    //		let mut rc_steps = StepStore { avec:  Vec::<SomeStep>::with_capacity(self.len()) };
-    //
-    //        for inx in (0..self.len()).rev() {
-    //			rc_steps.add(self.avec[inx]);
-    //		}
-    //
-    //		rc_steps
-    //	}
-
     /// Reverse the order of steps in a StepStore.
     pub fn reverse(&mut self) {
         self.avec.reverse();
-    }
-
-    /// Return a vector with indices of two steps with the same initial region,
-    /// else return an empty vector.
-    pub fn same_intitial(&self) -> Vec<usize> {
-        let mut ret_vec = Vec::<usize>::new();
-
-        let mut x = 0;
-        for stpx in self.avec.iter() {
-            for y in (x + 1)..self.len() {
-                if stpx.initial == self.avec[y].initial {
-                    ret_vec.push(x);
-                    ret_vec.push(y);
-                    return ret_vec;
-                }
-            }
-
-            x = x + 1;
-        }
-
-        ret_vec
     }
 
     /// Return the expected length of a string representing a StepStore.
@@ -123,58 +169,132 @@ impl StepStore {
         rc_str
     }
 
-    /// Return a list of indicies representing change-step vectors that must be used after others.
-    /// Those change-steps can be ignored for the question of "Whats the next step?"
-    /// This can be less complex, and more definitive, when there is only one step in a change-step vector.
-    /// A step that makes more than one needed change can appear in two change-step vectors.  In that case
-    /// the two change-step vectors cannot require a order.
-    pub fn order_next_changes(
-        &self,
-        steps_by_change: &Vec<Vec<usize>>,
-        wanted: &SomeChange,
-    ) -> Vec<usize> {
-        let mut ret_vec = Vec::<usize>::new();
+    // Given a number of steps, and a required change, return a vector of vectors
+    // where the sub-vectors indicate a single bit change that is required.
+    // Note that a step that changes more than one bit may end up in more than one sub-vector.
+    pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<usize>> {
 
-        for x in 0..steps_by_change.len() {
-            let changex = &steps_by_change[x];
+        let mut b01 = Vec::<SomeMask>::new();
 
-            for y in (x + 1)..steps_by_change.len() {
-                let changey = &steps_by_change[y];
+        if required_change.b01.is_not_low() {
+            b01 = required_change.b01.split();
+        }
 
-                let mut ord_ex1 = true;
-                let mut ord_ex2 = true;
+        let mut b10 = Vec::<SomeMask>::new();
 
-                for stepx in changex.iter() {
-                    for stepy in changey.iter() {
-                        if stepx == stepy {
-                            ord_ex1 = false;
-                            ord_ex2 = false;
-                        } else {
-                            if self[*stepx].rule.order_ok(&self[*stepy].rule, wanted) {
-                                ord_ex1 = false;
-                            }
-                            if self[*stepy].rule.order_ok(&self[*stepx].rule, wanted) {
-                                ord_ex2 = false;
-                            }
-                        }
-                    } // next step y
-                } // next stepx
+        if required_change.b10.is_not_low() {
+            b10 = required_change.b10.split();
+        }
 
-                if ord_ex1 && ord_ex2 == false {
-                    if ret_vec.contains(&x) == false {
-                        ret_vec.push(x);
-                    }
+        let b01_len = b01.len();
+        let b10_len = b10.len();
+        let tot_len = b01_len + b10_len;
+
+        let mut ret_vec = Vec::<Vec<usize>>::with_capacity(tot_len);
+
+        // Populate ret-vec with empty vectors
+        // Some will end up with only one number, indicating a rule that must be used.
+        // Some will end up with more than one number, indicating a range from witch one must be picked.
+        // Note that a rule might change more than one bit, so it may appear in more than one ret-vec sub-vectors.
+        for _ in 0..tot_len {
+            ret_vec.push(Vec::<usize>::new());
+        }
+
+        // Add step index numbers to the return vector.
+        let mut step_inx = 0;
+        for stepx in self.avec.iter() {
+
+            // Check for matching b01 changes
+            let mut b01_inx = 0;
+            for b01x in b01.iter() {
+
+                if stepx.rule.b01.m_and(b01x).is_not_low() {
+                    ret_vec[b01_inx].push(step_inx);
                 }
-                if ord_ex2 && ord_ex1 == false {
-                    if ret_vec.contains(&y) == false {
-                        ret_vec.push(y);
-                    }
-                }
-            } // next y
-        } // next x
 
-        //println!("*** order_next_changes: returns {:?}", ret_vec);
+                b01_inx += 1;
+            } // next b01x
+
+            // Check for matching b10 changes
+            let mut b10_inx = b01_len;
+            for b10x in b10.iter() {
+
+                if stepx.rule.b10.m_and(b10x).is_not_low() {
+                    ret_vec[b10_inx].push(step_inx);
+                }
+
+                b10_inx += 1;
+            } // next b01x
+
+            step_inx += 1;
+        } // next stepx
+
         ret_vec
+    } // end steps_bt_change_bit
+
+    /// Return the result of running steps on an into state
+    pub fn result_from_state(&self, from_state: &SomeState) -> Option<SomeState> {
+        let mut cur_state = from_state.clone();
+
+        for stpx in self.iter() {
+            if stpx.initial.is_superset_of_state(&cur_state) {
+                cur_state = stpx.result_from_initial_state(&cur_state);
+            } else {
+                return None;
+            }
+        }
+        Some(cur_state)    
+    }
+
+    /// Return a new Some(StepStore) after restricting the initial region.
+    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
+
+        let mut rc_steps = StepStore::new_with_capacity(self.len());
+
+        let mut regy = regx.clone();
+
+        for stpx in self.iter() {
+            if regy.intersects(&stpx.initial) {
+                let stpy = stpx.restrict_initial_region(&regy);
+                regy = stpy.result.clone();
+
+                rc_steps.push(stpy);
+            } else {
+                return None;
+            }
+        } //next stepx
+
+        Some(rc_steps)
+    }
+
+    /// Return a new Some(StepStore) after restricting the result region.
+    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
+
+        let mut rc_steps = StepStore::new_with_capacity(self.len());
+
+        let mut regy = regx.clone();
+
+        for inx in (0..self.len()).rev() {
+            let stpx = &self.avec[inx];
+
+            if regy.intersects(&stpx.result) {
+                let stpy = stpx.restrict_result_region(&regy);
+
+                regy = stpy.initial.clone();
+                //println!("stepstore pushing {}  regy {}", stpy, regy);
+                rc_steps.push(stpy);
+            //println!("push worked");
+            } else {
+                //println!("stepstore restrict result {} does not intersect {}", regy, stpx.result);
+                return None;
+            }
+        } //next stepx
+
+        if rc_steps.len() > 1 {
+            rc_steps.reverse();
+        }
+
+        Some(rc_steps)
     }
 } // end impl StepStore
 

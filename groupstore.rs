@@ -224,10 +224,6 @@ impl GroupStore {
         self.avec.iter()
     }
 
-    //    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
-    //        self.avec.iter_mut()
-    //    }
-
     /// Return the length of the vector.
     pub fn len(&self) -> usize {
         let mut cnt = 0;

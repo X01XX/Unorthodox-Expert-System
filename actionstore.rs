@@ -7,6 +7,7 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
+use crate::region::SomeRegion;
 use crate::stepstore::StepStore;
 
 use serde::{Deserialize, Serialize};
@@ -71,7 +72,7 @@ impl ActionStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
-            .par_iter_mut() // par_iter_mut for parallel, .iter for easier reading of diagnostic messages
+            .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|actx| actx.get_needs(cur, x_mask, dom))
             .collect::<Vec<NeedStore>>();
 
@@ -96,6 +97,34 @@ impl ActionStore {
         //println!("possible steps: {}", stps.str());
         stps
     }
+
+    /// Return steps that change a given state to a state closer
+    /// to a goal region.
+    pub fn steps_to(&self, astate: &SomeState, agoal: &SomeRegion) -> StepStore {
+
+        let mut stps = StepStore::new();
+
+        for actx in &self.avec {
+            stps.append(actx.steps_to(astate, agoal));
+        }
+
+        //println!("possible steps: {}", stps.str());
+        stps
+    }
+
+    /// Return steps that change a region closer to a state to a goal
+    pub fn steps_from(&self, agoal: &SomeRegion, astate: &SomeState) -> StepStore {
+
+        let mut stps = StepStore::new();
+
+        for actx in &self.avec {
+            stps.append(actx.steps_from(agoal, astate));
+        }
+
+        //println!("possible steps: {}", stps.str());
+        stps
+    }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
