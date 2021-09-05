@@ -1,5 +1,5 @@
 //! The GroupStore struct, a vector of SomeGroup structs.
-//!
+
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;

@@ -1,7 +1,5 @@
 //! The SquareStore struct.  A HashMap of SomeSquare structs.
-//!
 
-//use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;

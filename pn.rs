@@ -21,7 +21,7 @@
 //!
 //! Repeated sampling can cause the Pn value to change back and forth, its contingent.
 //! Just like a ball drops when you let go of it, until is doesn't.
-//!
+
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
@@ -102,9 +102,9 @@ impl PartialEq for Pn {
 pub enum Pn {
     /// Only one result for a state.
     One,
-    // Two predictable results (order matters) for a state.
+    /// Two predictable results (order matters) for a state.
     Two,
-    // Unpredicable results.
+    /// Unpredicable results.
     Unpredictable,
 }
 

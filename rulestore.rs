@@ -8,7 +8,6 @@
 //! no X positions, the different results must different by one, or more,
 //! 1->X or 0->X bit positions.
 
-// use crate::maskstore::MaskStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 

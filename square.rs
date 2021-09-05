@@ -1,5 +1,5 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
-//!
+
 use crate::pn::Pn;
 use crate::resultstore::{ResultStore, MAX_RESULTS};
 use crate::rule::SomeRule;

@@ -1,20 +1,17 @@
 //! The SomeDomain struct, representing a pseudo Karnaugh Map with a specific number of bits.
 //!
 //! Contains a vector of Action structs, the current state, and a few other fields.
-//!
+
 use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
-//use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
-//use crate::regionstore::RegionStore;
 use crate::state::SomeState;
-//use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
 use std::collections::HashMap;
@@ -293,7 +290,7 @@ impl SomeDomain {
                     &pln.result_region()
                 );
                 return;
-            //panic!("done");
+
             } else {
                 panic!(
                     "step initial {} rule {} is not superset of the result found {}, plan building problem",
@@ -303,6 +300,7 @@ impl SomeDomain {
         } // next stpx
     } // end run_plan
 
+    /// Get the steps of a plan, wrap the steps into a plan, return Some(SomePlan).
     pub fn make_plan2(&self, from_state: &SomeState, goal_reg: &SomeRegion) -> Option<SomePlan> {
         if let Some(steps) = self.make_plan3(from_state, goal_reg, 0) {
             return Some(SomePlan::new(steps));
@@ -310,6 +308,7 @@ impl SomeDomain {
         None
     }
 
+    /// Return the steps of a plan to go from a given state to a given region.
     pub fn make_plan3(&self, from_state: &SomeState, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
 
         // Check if from_state is at the goal
@@ -331,6 +330,15 @@ impl SomeDomain {
         let mut can_change = SomeChange::new_low(required_change.b01.num_ints());
         for stpx in steps_str.iter() {
             can_change = can_change.union(&stpx.rule.change());
+
+            // Testing, check for unwanted changes
+            // Unwanted changes may not be significant if the corresponding goal bit position is X.
+//          let chg_not = &required_change.change_not();
+//          let chg_dif = stpx.rule.change().change_and(&chg_not);
+//          if chg_dif.is_low() {
+//          } else {
+//              println!("chg {} dif chg {} is {}", &stpx.rule.change(), &required_change, &chg_dif);
+//          }
         }
 
         if required_change.is_subset_of(&can_change) {
@@ -409,7 +417,7 @@ impl SomeDomain {
         let agg_reg = goal_reg.union_state(&from_state);
 //        let mut nm = 0;
         let mut min_dist_from = 9999;
-        let mut async_steps = Vec::<usize>::new();
+        let mut asym_steps = Vec::<usize>::new();
 
         for lstx in &steps_by_change_vov {
 //           if nm > 0 {
@@ -442,19 +450,19 @@ impl SomeDomain {
                     let dist = steps_str[*inx].initial.distance(&agg_reg);
                     if dist < min_dist_from {
                         min_dist_from = dist;
-                        async_steps = Vec::<usize>::new();
+                        asym_steps = Vec::<usize>::new();
                     }
                     if dist == min_dist_from {
-                        async_steps.push(*inx);
+                        asym_steps.push(*inx);
                     }
                 } // next inx
             }
         } // next lstx
 //        println!("] ");
 
-        if async_steps.len() > 0 {
-//            print!("agg {} min_dist_from {} is {}, async_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
-            for inx in &async_steps {
+        if asym_steps.len() > 0 {
+//            print!("agg {} min_dist_from {} is {}, asym_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
+            for inx in &asym_steps {
                 //print!(" {}", steps_str[*inx]);
                 
                 if let Some(gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
@@ -564,7 +572,7 @@ impl SomeDomain {
         SomeState::from_string(self.num_ints, &str)
     } // end state_from_string
 
-    // Return a plan using random depth-first backward chaining from a goal to a state.
+    /// Return a plan using random depth-first backward chaining from a goal to a state.
     fn random_depth_first_backward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
     
         //println!("random_depth_first_backward_chaining2: to {} from {}", cur_state.formatted_string(), goal_reg.formatted_string());
@@ -613,7 +621,7 @@ impl SomeDomain {
         None
     } // end random_depth_first_backward_chaining
     
-    // Return a plan from random depth-first forward chaining to goal.
+    /// Return a plan from random depth-first forward chaining to goal.
     fn random_depth_first_forward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
     
         // Get steps that have a result region that intersects the goal region
@@ -689,7 +697,7 @@ fn any_mutually_exclusive_changes(store: &StepStore, by_change: &Vec<Vec<usize>>
     false
 }
 
-// Return the index value of a chosen StepStore
+/// Return the index value of a chosen StepStore
 fn choose_one(ret_steps: &Vec::<StepStore>) -> usize {
     assert!(ret_steps.len() > 0);
 

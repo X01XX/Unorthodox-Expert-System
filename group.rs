@@ -2,7 +2,7 @@
 //!
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
-//!
+
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;

@@ -1,14 +1,16 @@
 //! Actions to be taken, creating samples for the UES.
 //!
-//! These actions are for testing and learning, they sould eventually be replaced
+//! These actions are for testing and learning, they should eventually be replaced
 //! by actions that make changes outside the program.
-//!
+
 use crate::change::SomeChange;
 use crate::state::SomeState;
 
 // The number of bits is set by the line of code that creates
 // the first current state, with 1, or more, integers.
 
+/// Take an action given the action number and state.
+/// The hv argument is a kludge to support multiple result actions. 
 pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: usize) -> SomeState {
     if dom_num == 0 {
         if act_num == 0 {
@@ -45,8 +47,8 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: us
     }
 }
 
-// Domain 0 actions
-
+/// Domain 0, act 0, actions, given the current state.
+/// The hv argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
     if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
         || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
@@ -124,6 +126,8 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
     }
 } // end action0
 
+/// Domain 0, act 1, actions, given the current state.
+/// Toggle bit 1.
 pub fn dom0_act1(cur: &SomeState, _hv: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![1]);
     println!(
@@ -135,6 +139,8 @@ pub fn dom0_act1(cur: &SomeState, _hv: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 0, act 2, actions, given the current state.
+/// Toggle bit 2.
 pub fn dom0_act2(cur: &SomeState, _hv: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![2]);
     println!(
@@ -146,6 +152,8 @@ pub fn dom0_act2(cur: &SomeState, _hv: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 0, act 3, actions, given the current state.
+/// Toggle bit 3.
 pub fn dom0_act3(cur: &SomeState, _hv: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![3]);
     println!(
@@ -157,6 +165,8 @@ pub fn dom0_act3(cur: &SomeState, _hv: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 0, act 4, actions, given the current state.
+/// Toggle bit 4.
 pub fn dom0_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![4]);
     println!(
@@ -168,6 +178,8 @@ pub fn dom0_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 0, act 5, actions, given the current state.
+/// Toggle bit 5.
 pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![5]);
     println!(
@@ -179,8 +191,10 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 0, act 6, actions, given the current state.
+/// Toggle bit 6.
 pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.bits_to_1(vec![2, 3]);
+    let new_state = cur.toggle_bits(vec![2, 3]);
     println!(
         "\nDom 0 Act 6 {} -> {} change: {}",
         cur,
@@ -192,6 +206,8 @@ pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
 
 // Domain 1 actions
 
+/// Domain 1, act 0, actions, given the current state.
+/// Toggle bit 6.
 pub fn dom1_act0(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![6]);
     println!(
@@ -203,6 +219,8 @@ pub fn dom1_act0(cur: &SomeState, _num_seen: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 1, act 1, actions, given the current state.
+/// Toggle bit 7.
 pub fn dom1_act1(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![7]);
     println!(
@@ -214,6 +232,8 @@ pub fn dom1_act1(cur: &SomeState, _num_seen: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 1, act 2, actions, given the current state.
+/// Toggle bit 8.
 pub fn dom1_act2(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![8]);
     println!(
@@ -225,6 +245,8 @@ pub fn dom1_act2(cur: &SomeState, _num_seen: usize) -> SomeState {
     return new_state;
 }
 
+/// Domain 1, act 3, actions, given the current state.
+/// Toggle bit 9.
 pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![9]);
     println!(

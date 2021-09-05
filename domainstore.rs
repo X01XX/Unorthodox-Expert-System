@@ -22,7 +22,7 @@
  */
 
 //! The DomainStore struct, a vector of SomeDomain structs.
-//!
+
 use crate::domain::SomeDomain;
 use crate::inxplan::InxPlan;
 use crate::need::SomeNeed;
@@ -58,7 +58,7 @@ impl fmt::Display for DomainStore {
 
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
-    /// Vecto of SomeDomain structs.
+    /// Vector of SomeDomain structs.
     pub avec: Vec<SomeDomain>,
     /// Current step number of the user interface.
     pub step: usize, // The current step number in the UI.
@@ -122,45 +122,6 @@ impl DomainStore {
     /// Return a vector of InxPlan structs, in no order, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
-        // Make a vector of need position indicies.
-
-        // Get lowest priority number where at least one plan can be made.
-        // Priority values are assumed to be 1-n, not 0.
-        //        let mut min_pri = 0;
-        //        let mut inxpln = Vec::<InxPlan>::new();
-        //
-        //        loop {
-        //
-        //            let (next_pri, num) = nds.lowest_priority_gt(min_pri);
-        //
-        //            if num == 0 {
-        //				break;
-        //			}
-        //
-        //            println!("evaluate_needs: next_pri {} number {}", next_pri, num);
-        //            let nds_inx_vec = nds.inx_pri_eq(next_pri);
-        //            println!("    inx vec: {:?}", nds_inx_vec);
-        //
-        //            let mut num_plans = 0;
-        //            for inx in nds_inx_vec.iter() {
-        //
-        //				if let Some(plnx) = self.avec[nds[*inx].dom_num()].make_plan(&nds[*inx].target().clone()) {
-        //			        println!("  Need {} plan: {}", &nds[*inx], &plnx.str_terse() );
-        //			        num_plans += 1;
-        //			        inxpln.push(InxPlan { inx: *inx, pln: Some(plnx) });
-        //				} else {
-        //					println!("  Need {} plan: None", &nds[*inx]);
-        //			        inxpln.push(InxPlan { inx: *inx, pln: None });
-        //				}
-        //			}
-        //
-        //            if num_plans > 0 {
-        //				break;
-        //			}
-        //
-        //            min_pri = next_pri;
-        //            inxpln = Vec::<InxPlan>::new();
-        //	    } // end loop
 
         let avec: Vec<usize> = (0..nds.len()).collect();
 

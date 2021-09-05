@@ -1,5 +1,5 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
-//!
+
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -36,6 +36,30 @@ impl SomeChange {
             b01: SomeMask::new(SomeBits::new_low(num_ints)),
             b10: SomeMask::new(SomeBits::new_low(num_ints)),
         }
+    }
+
+    /// Return the logical bitwize and of two changes
+    pub fn _change_and(&self, other: &SomeChange) -> SomeChange {
+        Self {
+            b01: self.b01.m_and(&other.b01),
+            b10: self.b10.m_and(&other.b10),
+        }
+    }
+
+    /// Return the logical bitwize not od a change
+    pub fn _change_not(&self) -> SomeChange {
+        Self {
+            b01: self.b01.m_not(),
+            b10: self.b10.m_not(),
+        }
+    }
+
+    /// Return true if no bits are set
+    pub fn _is_low(&self) -> bool {
+        if self.b01.is_low() == false {
+            return false;
+        }
+        self.b10.is_low()
     }
 
     /// Return the union of two SomeChange instances.
@@ -85,6 +109,10 @@ impl SomeChange {
                 strrc.push_str(&format!("/bit{}:1->0", &i));
             }
         } // next i
+
+        if strrc.len() == 0 {
+            strrc.push_str(&format!("(none)"));
+        }
 
         strrc
     }

@@ -5,7 +5,7 @@
 //! If the initial region of two groups intersect, and intersection of their rules can be taken,
 //! which may be valid, invalid, or partially valid.
 //!
-//! In combining rules, 0->X and 1->X bit positions are disallowed, since
+//! In combining rules, the results 0->X and 1->X for a bit position are disallowed, since
 //! there has to be some limit on combination that leaves a rule with predictive power.
 //!
 //! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
@@ -299,7 +299,7 @@ impl SomeRule {
     }
 
     /// Of the changes in a rule, the rule initial region may be manipulated to
-    /// focus in on desired changes, and avoid undesired changes.
+    /// focus in on the desired changes.
     ///
     /// The arguments b01 and b10 are masks of changes that are sought.
     ///
@@ -309,8 +309,6 @@ impl SomeRule {
     /// It is expected that b01 and b10 are not both all zeros, otherwise
     /// no change would be sought.
     ///
-    /// Any other change in the rule is to be avoided, if possible.
-    ///
     /// For changes that are sought, for bit positions that are X->1, X->0, or X->x,
     /// the X value can be changed to focus on the desired change.
     //
@@ -318,45 +316,28 @@ impl SomeRule {
     /// X->0 is 0->0 and 1->0, the X can be changed to 1.
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
-    /// For changes that are not sought,
-    ///
-    /// X->1, the X bit position can be changed to 1, to avoid 0->1.
-    /// X->0, the X bit position can be changed to 0, to avoid 1->0.
-    ///
-    /// Changing the X bit positions of a rules' initial region increases the
-    /// non-X bit position requirements that the current state must match in
-    /// order to use the rule.
     pub fn parse_for_changes(&self, b01: &SomeMask, b10: &SomeMask) -> Option<Self> {
         let ones = self.b10.m_and(&b10);
         let zeros = self.b01.m_and(&b01);
 
         if ones.is_low() && zeros.is_low() {
+            // No change, or no change is needed
             return None;
         }
-
-        // Get unwanted changes, except when there are two
-        // in the same position, that is 1->0 and 0->1.
-        let mut ones_not = self.b10.m_xor(&ones);
-        let mut zeros_not = self.b01.m_xor(&zeros);
-
-        // Filter out two-change bit positions.
-        let both_not = ones_not.m_and(&zeros_not);
-        ones_not = ones_not.m_xor(&both_not);
-        zeros_not = zeros_not.m_xor(&both_not);
 
         // Get rule initial region and x mask.
         let mut i_reg = self.initial_region();
         let i_reg_xes = i_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = ones.m_or(&zeros_not).m_and(&i_reg_xes);
+        let to_ones = ones.m_and(&i_reg_xes);
 
         if to_ones.is_not_low() {
             i_reg = i_reg.set_to_ones(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = zeros.m_or(&ones_not).m_and(&i_reg_xes);
+        let to_zeros = zeros.m_and(&i_reg_xes);
 
         if to_zeros.is_not_low() {
             i_reg = i_reg.set_to_zeros(&to_zeros);
@@ -366,7 +347,7 @@ impl SomeRule {
         Some(self.restrict_initial_region(&i_reg))
     }
     
-    // Return a SomeChange struct instance
+    /// Return a SomeChange struct instance
     pub fn change(&self) -> SomeChange {
         SomeChange { b01: self.b01.clone(), b10: self.b10.clone() }
     }

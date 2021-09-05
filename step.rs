@@ -1,5 +1,4 @@
 //! The SomeStep struct.  Indicates an initial region, and action, and a result region..
-//!
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -103,14 +102,20 @@ impl SomeStep {
         rcstr
     }
 
+    /// Return the result of a step when applied to a given initial state.
+    /// The given initial state must intersect the step initial region.
     pub fn result_from_initial_state(&self, astate: &SomeState) -> SomeState {
         self.rule.result_from_initial_state(astate)
     }
 
+    /// Return the implied intial region from a given result region.
+    /// The given region must intersect the step result region.
     pub fn initial_from_result(&self, aregion: &SomeRegion) -> SomeRegion {
         self.rule.initial_from_result(aregion)
     }
 
+    /// Return true if two steps are mutually exclusive.  That is the change of either
+    /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &SomeStep, wanted: &SomeChange) -> bool {
 
         self.rule.mutually_exclusive(&other.rule, wanted)

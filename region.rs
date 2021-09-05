@@ -6,7 +6,6 @@
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
-//use crate::maskstore::MaskStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
@@ -162,8 +161,8 @@ impl SomeRegion {
         assert!(ok_x_msk.is_subset_of(&int_x_msk));
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
-        // by changing reg_int X over ok_reg 1 to X over 0, or reg_int X over ok_reg 0 to X over 1
-        let cng_bits = int_x_msk.m_xor(&ok_x_msk);
+        // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
+        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not());
 
         SomeRegion::new(
             &SomeState::new(other.state1.bts.b_xor(&cng_bits.bts)),

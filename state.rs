@@ -10,7 +10,7 @@
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
 //! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
-//!
+
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -61,11 +61,11 @@ impl SomeState {
     }
 
     /// Change the bits of a state, to 1, given a vector of numbers.
-    pub fn bits_to_1(&self, nums: Vec<usize>) -> Self {
-        SomeState {
-            bts: self.bts.bits_to_1(nums),
-        }
-    }
+//  pub fn bits_to_1(&self, nums: Vec<usize>) -> Self {
+//      SomeState {
+//          bts: self.bts.bits_to_1(nums),
+//      }
+//  }
 
     /// Return the number of integers used to represent a state.
     pub fn num_ints(&self) -> usize {
@@ -77,7 +77,7 @@ impl SomeState {
         self.s_xor(&other).bts.just_one_bit()
     }
 
-    // /Return the number of one bits that are different between two states.
+    /// Return the number of one bits that are different between two states.
     pub fn distance(&self, other: &SomeState) -> usize {
         self.bts.distance(&other.bts)
     }
@@ -100,7 +100,6 @@ impl SomeState {
     /// } else {
     ///    panic!("Invalid State");
     /// }
-    ///
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
         let mut bts = SomeBits::new_low(num_ints);
 

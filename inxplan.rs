@@ -2,7 +2,6 @@
 //!
 //! A Vec<T> is needed as a collector for parallel processing of needs to find plans,
 //! but a tuple, or array, does not qualify as a "T".
-//!
 
 use crate::plan::SomePlan;
 

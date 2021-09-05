@@ -1,6 +1,5 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
-// use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::region::SomeRegion;
@@ -169,9 +168,9 @@ impl StepStore {
         rc_str
     }
 
-    // Given a number of steps, and a required change, return a vector of vectors
-    // where the sub-vectors indicate a single bit change that is required.
-    // Note that a step that changes more than one bit may end up in more than one sub-vector.
+    /// Given a number of steps, and a required change, return a vector of vectors
+    /// where the sub-vectors indicate a single bit change that is required.
+    /// Note that a step that changes more than one bit may end up in more than one sub-vector.
     pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<usize>> {
 
         let mut b01 = Vec::<SomeMask>::new();

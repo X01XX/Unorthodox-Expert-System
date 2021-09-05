@@ -785,6 +785,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     false
 } // end do_command
 
+/// Print a domain
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {}", dom_num,);
     println!("\nActs: {}", &dmxs[dom_num].actions);

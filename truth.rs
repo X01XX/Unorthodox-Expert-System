@@ -3,7 +3,7 @@
 //! The allowable values are T (True), F (False), and M (Maybe, or More Samples Needed).
 //!
 //! Kind of like Boolean True/False, plus Maybe.
-//!
+
 use std::fmt;
 
 impl fmt::Display for Truth {

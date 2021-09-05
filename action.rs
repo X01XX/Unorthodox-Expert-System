@@ -2,8 +2,8 @@
 //!
 //! This stores initial->result samples, generates needs for more samples, and
 //! represents the current best-guess rules of the expected responses
-//! of executing an action for a given region or state.
-//!
+//! of executing an action for a given state.
+
 use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
@@ -76,12 +76,6 @@ impl fmt::Display for SomeAction {
             }
         }
 
-        //rc_str.push_str(&format!("{}", self.groups));
-
-        //        rc_str.push_str("),\n       Sqrs: (");
-
-        //        rc_str.push_str(&format!("{}", &self.squares));
-
         rc_str.push_str("))");
 
         write!(f, "{}", rc_str)
@@ -92,7 +86,7 @@ impl fmt::Display for SomeAction {
 pub struct SomeAction {
     /// Action number, index/key into parent ActionStore vector.
     pub num: usize,
-    /// Groups of compatible-change squares.
+    /// Store for groups of compatible-change squares.
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
     pub squares: SquareStore,
@@ -108,8 +102,9 @@ pub struct SomeAction {
 }
 
 impl SomeAction {
-    /// Return a new SomeAction struct, given the number integers used in the SomeBits struct,
-    /// and the Action number, an index into SomeDomain::ActionStore which contains it.
+    /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
+    /// The action number, an index into the ActionStore that will contina it, is set to zero and
+    /// changed later.
     pub fn new(num_ints: usize) -> Self {
         assert!(num_ints > 0);
 
@@ -202,7 +197,7 @@ impl SomeAction {
 
     /// Evaluate a sample taken to satisfy a need.
     ///
-    /// If the GroupStore has changed, recalcualte the predictable change mask.
+    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_need_sample(
         &mut self,
         initial: &SomeState,
@@ -211,18 +206,6 @@ impl SomeAction {
         dom: usize,
     ) {
         self.groups.changed = false;
-
-        self.eval_need_sample2(initial, ndx, result, dom);
-    }
-
-    pub fn eval_need_sample2(
-        &mut self,
-        initial: &SomeState,
-        ndx: &SomeNeed,
-        result: &SomeState,
-        dom: usize,
-    ) {
-        // println!("take_action_need2 {}", &ndx);
 
         // Process each kind of need
         match ndx {
@@ -363,7 +346,7 @@ impl SomeAction {
 
     /// Evaluate the sample taken for a step in a plan.
     ///
-    /// If the GroupStore has changed, recalcualte the predictable change mask.
+    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
         self.groups.changed = false;
 
@@ -375,6 +358,7 @@ impl SomeAction {
         }
     }
 
+    /// A continuation of the eval_step_sample logic
     pub fn eval_step_sample2(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
         // If square exists, update it, check square, return
         if let Some(sqrx) = self.squares.find_mut(cur) {
@@ -726,7 +710,6 @@ impl SomeAction {
     /// the number of possible replacement groups will be greatly decreased if the
     /// new sample can be used to find an adjacent, dissimilar pair of squares
     /// within the invalidated group.
-    ///
     pub fn seek_edge_needs1(&self) -> NeedStore {
         //println!("seek_edge_needs1");
         let mut ret_nds = NeedStore::new();
@@ -1867,7 +1850,7 @@ impl SomeAction {
         }
     } // end cont_int_region_needs
 
-    /// Get steps that for rules that have an intial region that is a superset of a given state,
+    /// Get steps for rules that have an initial region that is a superset of a given state,
     /// and have a result that is closer to a goal region than the given state.
     pub fn steps_to(&self, astate: &SomeState, agoal: &SomeRegion) -> StepStore {
         let mut stps = StepStore::new();
@@ -1919,8 +1902,8 @@ impl SomeAction {
         stps
     } // end steps_to
 
-    /// Get steps that for rules that have a result region that intersects a given goal,
-    /// and has an inplied intiial region that is closer to a given state than the goal is.
+    /// Get steps for rules that have a result region that intersects a given goal,
+    /// and has an implied initial region that is closer to a given state than the goal is.
     pub fn steps_from(&self, agoal: &SomeRegion, astate: &SomeState) -> StepStore {
         let mut stps = StepStore::new();
 

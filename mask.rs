@@ -1,6 +1,6 @@
 //! The SomeMask struct, a mask of bits.
 //!
-//! The SomeState struct is exactly the same, the difference is in the intended use.
+//! The SomeState struct is very similar, the difference is in the intended use, and the xor operation.
 //!
 //! A Mask of differences between two states would be calculated like:
 //!
@@ -9,6 +9,11 @@
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
 //! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
+//!
+//! Since ones matter in a mask, and zeros are place-holders, the xor operation only works as
+//! expected if one mask is a superset of the other.
+//!
+//! Instead of xor, you probably should use <1>.m_and(<2>.not()) to find ones in <1> that are not in <2>.
 
 use crate::bits::SomeBits;
 use serde::{Deserialize, Serialize};
@@ -39,10 +44,9 @@ impl SomeMask {
         }
     }
 
-    /// Return the xor or of two masks.
-    pub fn m_xor(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_xor(&other.bts))
-    }
+//  pub fn m_xor(&self, other: &Self) -> Self {
+//      Self::new(self.bts.b_xor(&other.bts))
+//  }
 
     /// Return the or of two maks.
     pub fn m_or(&self, other: &Self) -> Self {
@@ -79,7 +83,7 @@ impl SomeMask {
         self.bts.is_bit_set(b)
     }
 
-    // Return true if a mask is a subset of a second mask.
+    /// Return true if a mask is a subset of a second mask.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         self.bts.is_subset_of(&other.bts)
     }

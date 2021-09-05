@@ -42,7 +42,7 @@ impl ActionStore {
         }
     }
 
-    /// Return the length of the store.
+    /// Return the length of an ActionStore.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
@@ -67,7 +67,7 @@ impl ActionStore {
         cngx.x_mask()
     }
 
-    /// Get needs for all actions.
+    /// Get needs for all actions in the store.
     pub fn get_needs(&mut self, cur: &SomeState, x_mask: &SomeMask, dom: usize) -> NeedStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
