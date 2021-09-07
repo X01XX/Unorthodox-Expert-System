@@ -126,7 +126,7 @@ p {
  Around 1979, I took a class in college about computer "organization", i.e. gates, ALU, microcode
         and so on.
  Part of the class covered Karnaugh Maps.
- My professor liked to draw K-Maps with three bits on each axis.
+ I was somewhat familiar with 2-bit by 2-bit K-Maps, but my professor liked to draw K-Maps with three bits on each axis.
  Then he showed us problems that were solved with the K-Map.
  Outside of class, I tried some problems on my own.
  I was able to get a few problems to work, but most did not.
@@ -240,7 +240,7 @@ p {
   </tr>
  </table>
 
-<p>The 3-bit axis can be rearranged, 6 ways (see last addendum), and produce different results, another reason to be suspicious of a 1x3 map. Below, square 3 is adjacent to 7, but 6 is not.</p>
+<p>The 3-bit axis can be rearranged, 6 ways (see last addendum), and produce different results, another reason to be suspicious of a 3-bit axis. Below, square 3 is adjacent to 7, but 6 is not.</p>
 
  <table class="indent1">
  <caption>Another 1-bit by 3-bit Karnaugh Map</caption>
@@ -283,9 +283,9 @@ p {
  A 1-bit by 3-bit K-Map contains 4 bits on its axes.
  Having the same number of bits, they should be equivalent.
  You can see in the 2x2 K-Map, above, that the squares F, 6, 5 and 3 are adjacent to square 7.
- In the 1x3 K-Map, above, squares F, 6 and 5 are adjacent to square 7, but square 3 is not.
+ In the 1x3 K-Maps, above, square square 7 is only adjacent to three squares, with one left out.
  Neither horizontal nor vertical wrap-around will bring them together.
- So you can draw the union of 7 and 3 on the 2x2 K-Map, but not on the 1x3 K-Map.
+ So you can draw the union of 7 and the left out square on the 2x2 K-Map, but not on the 1x3 K-Map.
  A similar situation can be shown for each of the 16 squares.
  <i>The two K-Maps are not equivalent</i>.
  The 2x2 K-Map is superior to the 1x3 K-Map because it allows you to
@@ -308,21 +308,19 @@ p {
  but the 2-bit axis works and the 3-bit axis only partially works.
   </p>
   <p>
+  In addition, how do you tell which squares are adjacent in the 1X3 K-Maps, without looking at them or knowing the arrangement of the axis?
+  </p>
+  <p>
  It is more accurate to say <i>All bit patterns different by one bit must be adjacent</i>,
  to allow drawing their union.
  The 2-bit axis satisfies this requirement and works, the 3-bit axis does not satisfy this requirement
  and only partially works.
   </p> 
+  <h2>So K-maps seem trivial if the maximum bits on an axis is two!</h2>
   <p>
- We look at a drawn K-Map and visually decide that squares are adjacent or not.
  The improved definition of the K-Map gives a computer program an easy test for determining if two squares
  are adjacent, or measuring the degree of separation, by counting the number of different bits.
   </p> 
-  <h2>So K-maps seem trivial if the maximum bits on an axis is two!</h2>
-    <p>
- A bit pattern of any length can be thought of as being in a K-Map that has a 1-bit axis for each bit position.
- It may be hard to draw, but knowing that squares different by one bit are adjacent, it can be manipulated by a computer.
-   </p>
 <p>
 I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pattern on a K-Map.
  On a K-Map, groups of squares can be formed that have 2<sup>n</sup> squares, where n is one or greater.
@@ -346,7 +344,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    <p>
  For some operations, the
   <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>
- can be used to count the number of one bits in an integer.
+ can be used to efficiently count the number of one bits in an integer.
  The Count Bits Algorithm goes through one cycle for each bit that is set to one, no cycles for
         bits that are set to zero.
     </p>
@@ -355,6 +353,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      A <i>Split-Bits</i> algorithm, to isolate each bit in a bit mask, e.g. producing (0100, 0010) from 0110 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>):
   </p>
   <p class="indent1">
+      // Initialize a list of bit objects.<br />
       while (val > 0)<br />
       {
   </p>
@@ -362,7 +361,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
           minus1 = val - 1; <br />              
           valLess1 = val &amp; minus1 &nbsp;&nbsp;&nbsp; // remove one bit from val, put into valLess1 <br />
           oneBit = val ^ valLess1; &nbsp;&nbsp;&nbsp; // isolate the removed bit <br />
-   // Here, store oneBit into a new Bits object, add the Bits object to a list<br />
+   // Store oneBit into a new Bits object, add the Bits object to the list.<br />
           val = valLess1;
   </p>
   <p class="indent1">
@@ -467,7 +466,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p class="indent1">
      The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
  </p>
-   <h3>Calculating a mask of different bits between two regions</h3>
+   <h3>Calculating a different bits mask of two regions</h3>
  <p>
  To calculate a mask of corresponding bits that are different, 1/0 or 0/1, between two regions, r1 and r2,
  use: mask = (r1.ones-mask &amp; r2.zeros-mask) + (r1.zeros-mask &amp; r2.ones-mask).
@@ -475,12 +474,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p class="indent1">
  </p>
    <h3>Intersecting Regions</h3>
-  <p>
- If two regions have no corresponding bits that are 0/1 or 1/0, they intersect.
- To find the intersection of two regions, simply translate corresponding X/0 and 0/X bits to 0,
- translate corresponding X/1 and 1/X bits to 1.
- Other equal, corresponding, bits will be the same value in the result.
-  </p>
+ <p>
+ Two regions intersect if their different bits mask = all zeros.
+        </p>
  <table class="indent1">
  <caption>0XX1 &amp; X11X = 0111 (7)</caption>
     <tr>
@@ -520,9 +516,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </tr>
  </table>
  <p>
- Two regions intersect if their different bits mask = all zeros.
-        </p>
- <p>
  The intersection region is given by (r1.any-ones-mask &amp; r2.any-ones-mask, ~r1.any-zeros-mask + ~r2.any-zeros-mask).
         </p>
       <p class="indent1">
@@ -533,7 +526,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         </p>
    <h3>Adjacent Regions</h3>
   <p>
- If two regions have exactly one corresponding bit position that is 0/1 or 1/0, they are adjacent.
+ If the different bits mask of two regions has exactly one bit set to 1, they are adjacent.
   </p>
  <table class="indent1">
  <caption>1100, 0XX1, 1X1X</caption>
@@ -574,13 +567,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </tr>
  </table>
  <p class="indent1">
- The regions 0XX1 and 1X1X are different by only one bit, the left-most, and are adjacent.
+ The regions 0XX1 and 1X1X are different by one bit, the left-most, and are adjacent.
         </p>
  <p class="indent1">
  The regions C (1100) and 0XX1 are different by more than one bit, the left-most and the right-most, and are not adjacent.
         </p>
    <p class="indent1">
- Given a mask that is an array of integers, if only one integer is greater than zero, the mask has one bit set to one if: int &amp; (int - 1) = 0 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>).
+ Given a mask that is an array of integers, if only one integer is greater than zero, the mask has one bit set to one if: int &amp; (int - 1) = 0, this is more efficient than counting all the bits set to one and then testing for 0. (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>).
    </p>
 
   <h3>The Union of two Regions</h3>
@@ -688,14 +681,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    </p>
    <p class="indent1">
  The union of two regions (r1, r2)
-        is given by (r1.any-ones-mask + r2.any-ones-mask, ~r1.any-zeros-mask &amp; ~r2.any-zeros-mask).
+        is given by ("or" all states, "and" all states).
   </p>
    <p class="indent2">
  Given 0xX1 = (0011, 0101) and 1Xx1 = (1101, 1011).
   </p>
    <p class="indent2">
- The Union of 0xX1 and 1Xx1 = (0111 + 1111, 0001 &amp; 1001) = (1111, 0001) = XXX1.
-  </p>
+ The Union = (0011 + 0101 + 1101 + 1011, 0011 & 0101 & 1101 & 1011) = (1111, 0001) = XXX1.
    </p>
    <h3>Testing if a region is equal to another region</h3>
   <p>
@@ -847,9 +839,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The concept of a scientific theory being assumed to be true, until it is falsified, seems to imply an Optimistic Union.
  </p>
 <p>
- Check that there is no dissimilar pair of squares in the region.
+ Check that there are no squares in the region that are dissimilar to the original two squares used to form the region.
  <p>
- Any new sample for a square that is in the region may invalidate the region.
+ Any new sample for a square that is in the region, including the two squares used to form the region, can invalidate the region.
  </p>
  <h4>Adjacent, dissimilar, squares</h4>
         <p>
@@ -858,7 +850,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         <p>
         So no Optimistic Union can be a superset of F + E = 111X.
         </p>
-  <h3>Contradictory intersections</h3>
+  <h3>Contradictory intersections indicate a needed sampl indicate a needed samplee</h3>
   <p>
  If a region is formed by the squares (and samples) 5 and 3, and another is formed by the squares (and samples) F and 6,
   </p>
@@ -905,7 +897,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  </table>
    <h3>Confirming an Optimistic Union</h3>
     <p>
- In a solved K-Map, of the regions that are completely overlapped by other regions, any one of them, sometimes more, can be discarded.
+ In a solved K-Map, it is common practice to remove regions that are completely overlapped by other regions.
   </p>
   <p>
     Those regions that cannot be discarded, that therefore <i>define</i> the solution, have at least one square that is not overlapped by any other region (before discarding regions), therefore at least one square that is only in one region.
@@ -921,7 +913,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  that is adjacent to s1.
             </p>
         <p class="indent2">
-          s2 can be calculated by: non-X bit position mask ^ s1.
+          s2 can be calculated by: an isolated single bit of the region non-X bit position mask ^ s1.
     </p>
         <p class="indent1">
  If s1 is similar to s2, then the two squares form a region and s1 is in two regions, and the K-Map was not solved as previously thought.
@@ -933,57 +925,28 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
       <i>This allows us to predict that a square is in only one region, therefore a defining region, without having a complete solution!</i>
     </p>
     <p class="indent1">
-        If a prediction is wrong, the are multiple subregions of the predicted region. There is a dissimilar pair of squares within the predicted region.
+        If a new sample shows the prediction to be wrong, there will be multiple subregions of the predicted region and s1 will be in more than one region.
     </p>
     <p class="indent1">
     A large, sparse, K-Map, is never really "solved".
     </p>
     <p class="indent1">
-    If there are squares in a region that are in two regions, discarding the region will make it appear that those squares are only in one region. 
-    If one of the overlapping regions is invalidated, there may be a square in the overlapped region that becomes a square in one region.
-    </p>
-  <h4>Implementation</h4>
-    <p>
- A region formed by an Optimistic Union can be thought of as being confirmed as a defining part of a solution, if it has:
-    </p>
-    <ul class="indent1">
-    <li>
-    <p>
- A sampled square, s1, that is only in one region.
-    </p>
-    </li>
-    <li>
-    <p>
- All squares adjacent to s1, outside of the region, are dissimilar to s1.
+    If there are squares in both of two overlapping regions, discarding one region will make it appear that those squares are only in one region. 
     </p>
     <p class="indent1">
- To identify these squares, use the Split-Bits algorithm on the region non-X-mask, then XOR each isolated bit with s1.
+ So keep all valid regions, even those that are completely overlapped by other regions.
     </p>
-    </li>
-    <li>
-    <p>
- Square s1 has a far, similar, square, s2, within the region.  s2 = s1 ^ region.X-mask.
-    </p>
-    <p class="indent1">
-     This is a somewhat reliable way to avoid checking every square adjacent to 5 inside the region.
-    </p>
-    </li>
-    <li>
-    <p>
- No two squares within the region are dissimilar.
-    </p>
-    </li>
     </ul>
-    <p class="indent2">
+    <p class="indent1">
  In the K-Map, below, assuming square 5 is in only one region, 0X0X:
     </p>
-    <p class="indent3">
+    <p class="indent2">
     Square 5 has dissimilar adjacent squares D and 7, external to 0X0X.
     </p>
-    <p class="indent3">
+    <p class="indent2">
     Square 5 has a similar square, 0, the farthest square from 5 in 0X0X. 
     </p>
- <table class="indent2">
+ <table class="indent1">
  <caption>0X0X Confirmed</caption>
     <tr>
   <th></th>
@@ -1021,10 +984,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table> 
-   <p class="indent2">
+   <p class="indent1">
         If the region contains no dissimilar squares, it is valid &quot;to the best of our knowledge&quot;.
     </p>
-    <p>
+    <p class="indent1">
  With multiple confirmed regions, there is the opportunity/problem of minimizing the number of squares needed to confirm the regions.
     </p>
     <p class="indent1">
