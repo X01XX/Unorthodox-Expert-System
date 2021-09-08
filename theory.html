@@ -1159,7 +1159,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Identify and resolve contradictory intersections.
         </p>
      <p class="indent1">
-        Contradictory intersections can be identified by reviewing the intersections of newly created regions.
+        Contradictory intersections can be identified by reviewing the intersections of a newly created region with existing regions.
         </p>
         <p>
         Use squares that appear to be in only one region to confirm regions.
@@ -1183,6 +1183,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    </div>
    <div id="rules">
     <h2>State-Change Rules</h2>
+      <p>
+       Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in the this section will relate to/extend ideas in the previous sections.
+      </p>
     <p> 
  State-Change Rules attempt to make sense of how a state or region changes when an activity or action can be executed that may result in a state change.
  State-Change Rules are a working point-in-time understanding of logic based on a limited number of recent samples.
@@ -1221,21 +1224,21 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <li>0 &#8594; 0, 1 &#8594; 1 = X &#8594; X</li>
  <li>0 &#8594; 0, 1 &#8594; 0 = X &#8594; 0</li>
  <li>0 &#8594; 1, 1 &#8594; 1 = X &#8594; 1</li>
- <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; <span class="not">X</span></li>
+ <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; <span class="not">x</span></li>
  <li>1 &#8594; 1, 1 &#8594; 0 = 1 &#8594; X (disallowed)</li>
     </ul>
     <p>
- Most of the combinations are by similar changes (or lack of change) and/or similar results.
+ The allowed combinations are by similar changes (or lack of change) and/or similar results.
     </p>
     <p>
- The combinations that result in 0&#8594;X and 1&#8594;X, having dissimilar changes, dissimilar results and no predictive value, are disallowed.
+ The combinations that result in 0&#8594;X and 1&#8594;X, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
     </p>
       <p>
-        The bit-changes 0&#8594;0 and 0&#8594;1 are a <i>dissimilarity</i>,
+        The bit-change 0&#8594;0 paired with 0&#8594;1, by having corresponding bit positions, is a <i>dissimilarity</i>,
         preventing the union of rules  with these characteristics.
     </p>
     <p>
-        The bit-changes 1&#8594;0 and 1&#8594;1 is a second <i>dissimilarity</i>,
+        The bit-change 1&#8594;0 paired with 1&#8594;1, by having corresponding bit positions, is a second <i>dissimilarity</i>,
         preventing the union of rules with these characteristics.
     </p>
     <p>
@@ -1244,9 +1247,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p>
  The combined rules on the right side of the equals sign, above, can start and end with 0, 1 or X.
       So <i>the initial and result states of the rules can describe K-Map squares and regions</i>.  
-    </p>
-      <p>
-        Dissimilar squares can be used to discover defining regions of State-Change Rules.
     </p>
     <h3>Multiple bit State-Change Rules</h3>
     <p>
@@ -1277,11 +1277,14 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  State 0110, with a result state of 0100 produces the State-Change rule: (0&#8594;0, 1&#8594;1, 1&#8594;0, 0&#8594;0).
     </p>
     <p>
-     In the State-Change rules for states 0010 and 0101, above, in the second position from the left, there are two bit changes, 0&#8594;1 and 1&#8594;0.
+     In the State-Change rules for states 0010 and 0101, above, in the third position from the right, there are two bit changes, 0&#8594;1 and 1&#8594;0.
     </p>
     <p>
  The State-Change rule for state 0110 adds a third kind of change in the second position, 1&#8594;1.
  The bit rules 1&#8594;1 and 1&#8594;0 invalidate the Optimistic Union. 
+    </p>
+      <p>
+        Dissimilar squares, are used to define the boundaries of regions of State-Change Rules.
     </p>
     <h3>Implementation</h3>
    <p>
@@ -1322,7 +1325,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Where these masks are non-zero, they identify a dissimilarity and can be useful.
     </p>
       <p class="indent2">
-         If a rule union with an initial region of 1X0X includes a 1&#8594;X bit in the second position,
+         If a rule union with an initial region of 1X0X includes a 1&#8594;X bit in the third position from the right,
         that indicates that 110X is invalid, while 101X may be valid.
     </p>
       <p>
@@ -1407,16 +1410,28 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     If two rules intersect, the intersection of the two rules can be calculated.
     </p>
     <p>
-    If the resulting rule is an invalid intersection, the intersection of the initial regions of the two rules can be a target for sampling.
+    If the intersection is more than one square, that is its x-mask is non-zero, the region may be a contradictory intersection.
+    </p>
+    <p>
+   The intersection region can be used to restrict each of the two rules.
+    </p>
+    <p>
+    If the two resulting rules are not equal, the intersection is a target for sampling.
+    </p>
+    <p>
+    Take the intersection of the two restricted rules.
+    </p>
+    <p>
+    If the resulting rule is invalid:
+    </p>
+    <p class="indent1">
+    Seek any sample in the intersection.
     </p>
     <p>
     If the resulting rule is valid:
     </p>
     <p class="indent1">
-    If the initial region of the resulting rule equals the original intersecting region, the intersection is valid.
-    </p>
-    <p class="indent1">
-    Otherwise, the initial region of the resulting rule is the part of the original intersection that is valid.
+    The initial region of the resulting rule is the part of the original intersection that is valid.  Seek a sample in the intersection that is not in the valid part.
     </p>
     <h3>Multiple Result States</h3>
     <p>
@@ -1424,14 +1439,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      </p>
     <p>
  I am tempted to say that a state that produces more than one result can simply be called unpredictable and combined with other such states
- to produce unpredictable regions.  These regions would be invalidated by an included state that is predictable. But I feel that simple patterns like
-  (0, 1, 0, 1, 0) should be accommodated. 
+ to produce unpredictable regions.  These regions would be invalidated by an included state that is predictable.
+  </p>
+  <p>
+  Due to my previously mentioned "infrequent perceptions", I feel that simple patterns like (0, 1, 0, 1, 0) should be accommodated.  This is unfortunate, because its the biggest pain of this whole project.
     </p>
     <p>
  A pattern can be defined as a sequence of results that is seen at least twice in the result list.
     </p>
     <p>
- For a state that always produces the same result, it can be considered to be predictable after 3 samples.
+ For a state that always produces the same result, it can be considered to be predictable after at least two samples.
     </p>
     <p class="indent1">
      This may be combined with a state that also produces a single result, if a valid rule can be formed from the two.
@@ -1443,12 +1460,12 @@ For a state that always produces the same two results, alternating, a minimum of
  Combining the state with each result in a result pattern list creates a State-Change Rule list.  A union can be formed from two State-Change Rule lists, from different states.
  The union may be valid if, in a sequence that may start at different positions in the two lists, each make a valid union (no 0&#8594;X or 1&#8594;X bits).
     </p>
+    <p class="indent1">
+    If two two-result states can be combined in two ways, something is wrong and the two states should not form a region.
+    </p>
     <p>
  If a state has two different results that do not alternate, or more than two different results, the state with that result list can be marked as being unpredictable.
     </p>
-     <p class="indent1">
-    This is a form of <i>dissimilarity</i>, preventing the union of rules with these differing characteristics.
-   </p>
      <p class="indent1">
    When a predictable region intersects an unpredictable region, the intersection region can be considered to be contradictory.
    </p>
@@ -1472,7 +1489,10 @@ For a state that always produces the same two results, alternating, a minimum of
         The first regions must be formed from samples that are poorly sampled, but not-incompatible.
     </p>
      <p class="indent1">
-        Using the first regions to build rule-paths will often produce unexpected changes, but each unexpected change can be learned from.  Failure rates should decrease with more samples from both rule-path failures and rule-path successes (the needed sample is found and taken).
+        Using the first regions to build rule-paths will often produce unexpected changes, but each unexpected change can be learned from.
+    </p>
+     <p class="indent1">
+  Failure rates should decrease with more samples from both rule-path failures and rule-path successes (the needed sample is found and taken).
     </p>
   </div>
   <div id="combex">
@@ -1483,7 +1503,7 @@ For a state that always produces the same two results, alternating, a minimum of
  Because of this, even supercomputers can get bogged down.
  There are always tricks to cut out some combinations, but they tend to be specific to the problem being solved.
  Regardless of the tricks used to make a given search faster,
- if the next search requires a few more rules, the computer will get bogged down again.
+ if the next search requires a few more steps, the computer will get bogged down again.
  It is hard to overstate the difficulty of this problem.
     </p>
     <p>
@@ -1542,7 +1562,12 @@ For a state that always produces the same two results, alternating, a minimum of
  <li>
  <p>
  There are regions that have more than one State-Change rule. You might need to run an action more than once to get the desired change for a state.
- If the rule changes other bits you may need to make and run a return-to-previous-state plan to rerun the action.
+ </p>
+ <p class="indent1">
+ If the alternate rule changes other bits you, may need to make, and run, a return-to-previous-state plan to rerun the action.  Or plan a new path to goal.
+ </p>
+ <p class="indent1">
+    You could look at existing sampled states, and choose one that will have the desired change next, as a sub-target of the rule-path.
  </p>
  </li>
  </ul>
@@ -1568,10 +1593,10 @@ For a state that always produces the same two results, alternating, a minimum of
  </ul>
     <h3>Asymmetrical chaining</h3>
     <p>
-    Going from an initial state to a goal state/region, is often called forward-chaining.  
+    Going from an initial state to a goal state/region, is called forward-chaining.  
     </p>
     <p>
-    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is often called
+    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
     backward-chaining.
     </p>
     <p>
@@ -1587,50 +1612,14 @@ For a state that always produces the same two results, alternating, a minimum of
     backward-chaining will not work.
     </p>
     <p>
-    If only one rule exists for a needed change, and that rules initial-region and result-region are outside of (initial-state union goal-state),
-    neither forward-chaining nor backward-chaining will not work.
-    </p>
-    <p>
     In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
     </p>
     <p>
     The backward-chaining problem needs to be broken up into (goal to rule-result-region) and (rule-initial-region to initial-state).
     </p>
-    <h3>Rule-path searches</h3>
-    <p>
-    To go from the current state to a goal region, obvious required changes (0->1 mask, 1->0 mask) to the bits of the current state can be calculated.
-    </p>
-    <p>
-    Rules that make the needed changes can be found.  The aggregate changes of the rules found can be checked to insure they are a superset of the needed changes.
-    </p>
-    <p>Where only one rule changes a particular bit, that rule will be in any possible rule-path.
-    </p>
-    <p>Where there is more than one rule that changes a particular bit, one of the rules must be in any possible rule-path.
-    </p>
     <p>
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
     e.g. XX00->XX01, then XX00->....
-    </p>
-    <p>
-    The current state may not be in the initial-region of any desired rule.  And the result-region of one rule may not conveniently intersect the initial-region of another desired rule.
-    </p>
-    <p>
-    The intitial-region of a rule may need to be restricted.  In the rule XXXX->0XX1, the 0->1 change being desired, the desired initial region is XXX0, not XXXX or XXX1.
-    </p>
-    <p>
-    A rough path would be from the rule with an initial-region farthest away from the goal-region, to the initial-region of the rule closest to the goal-region.
-    </p>
-    <p>
-    If needed, find a path (recursion) from the current state to the initial-region of a rule that is farthest from the goal-region.
-    </p>
-    <p>
-    Then find a path (recursion) from the result of the farthest rule, to the goal.
-    </p>
-    <p class="indent1">
-    The rule list can be split, one copy for each rule.  The aggregate changes for each list can be checked, discarding a deficient list.
-    </p>
-    <p class="indent1">
-    From the standpoint of "whats the next step", the second rule can be dropped from consideration.
     </p>
     <p>
     IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
@@ -1661,6 +1650,9 @@ For a state that always produces the same two results, alternating, a minimum of
  Due to poor planning, a poorly chosen initial state, or damage to a system, some bits in the system state will
  not change, or will stop changing.
  </p>
+<p class="indent1">
+   It is inefficient to constantly generate a need for a bit change that will never happen.
+</p>
  <p>
  The program would have actions it can take, and each action would change the state bits.
  Without feedback, there can be no State-Change rules.
