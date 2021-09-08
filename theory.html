@@ -369,7 +369,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   </p>
    <h3>Representing a region</h3>
    <p>
-  A region can be represented in a computer is by using any two bit patterns.
+   I have identified three ways to represent a region.  The choice affects the equations used to manipulate regions.
+   I have used each method and have some preference for number 1, below.
+   <p>
+  1) A region can be represented in a computer is by using any two bit patterns.
   A region can also be formed by one bit pattern, used twice.
    </p> 
         <p>Interpretation of region bits:</p>
@@ -408,8 +411,95 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    <p>
  I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
     </p>
+   <p>
+   This choice allows you to know the states that were used to form the region.
+   </p>
     <p>
-    An analogy to a crystal:
+    2) Another possible representation of a region is maximum 1-bits and maximum 0-bits, or highest/lowest.
+    </p>
+    <p>
+    Given two states, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 & 0110 = 0010.
+    </p>
+        <p>Interpretation of region bits:</p>
+      <table class="indent1">
+           <tr>
+                <th></th>
+                <th>Highest</th>
+                <th>Lowest</th>
+                <th>Region Bit</th>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>0</td>
+                <td>0</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>1</td>
+                <td>Invalid</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>1</td>
+                <td>1</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>0</td>
+                <td>X</td>
+           </tr>
+        </table>
+    <p>
+   With this choice, two regions are equal if the two bit patterns forming them are equal.
+   </p>
+        <p>
+        3) Another possible representation is to use a mask for ones and a mask for zeros.
+        </p>
+    <p>
+    Given two states, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is ~(1010 & 0110) = 1101.
+    </p>
+        <p>Interpretation of region bits:</p>
+      <table class="indent1">
+           <tr>
+                <th></th>
+                <th>Mask-1</th>
+                <th>Mask-0</th>
+                <th>Region Bit</th>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>0</td>
+                <td>Invalid</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>1</td>
+                <td>0</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>1</td>
+                <td>X</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>0</td>
+                <td>1</td>
+           </tr>
+        </table>
+    <p>
+    <p>
+   With this choice, a mask of the bits in play are Mask-1 + Mask-0, so no problems with the effects of a not operation when not using all available bits in an integer.
+   </p>
+    <h4>An analogy to a crystal:</h4>
     </p>
     <p class="indent1">
     Every non-X bit position of a region is an "edge".  Each edge has a zero side and a one side.
@@ -850,7 +940,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         <p>
         So no Optimistic Union can be a superset of F + E = 111X.
         </p>
-  <h3>Contradictory intersections indicate a needed sampl indicate a needed samplee</h3>
+  <h3>Contradictory intersections indicate the need for a sample</h3>
   <p>
  If a region is formed by the squares (and samples) 5 and 3, and another is formed by the squares (and samples) F and 6,
   </p>
@@ -1583,7 +1673,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/03/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/08/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
