@@ -85,7 +85,7 @@ impl DomainStore {
     pub fn get_needs(&mut self) -> NeedStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
-            .par_iter_mut() // .par_iter_mut for prallel, .iter_mut for easier reading of diagnostic messages
+            .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
             .collect::<Vec<NeedStore>>();
 

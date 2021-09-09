@@ -46,6 +46,24 @@ impl SomeChange {
         }
     }
 
+    /// Return the logical bitwize and of a change and a mask
+    /// The mask is the not-x-mask of a goal, so changes that are 
+    /// important to consider.
+    pub fn _change_and_mask(&self, msk: &SomeMask) -> SomeChange {
+        Self {
+            b01: self.b01.m_and(msk),
+            b10: self.b10.m_and(msk),
+        }
+    }
+
+    /// Return the reverse change to a given change
+    pub fn _change_reverse(&self) -> SomeChange {
+        Self {
+            b01: self.b10.clone(),
+            b10: self.b01.clone(),
+        }
+    }
+
     /// Return the logical bitwize not od a change
     pub fn _change_not(&self) -> SomeChange {
         Self {
@@ -115,6 +133,16 @@ impl SomeChange {
         }
 
         strrc
+    }
+
+    /// Restrict a change to an initial region
+    pub fn _restrict_to_initial_region(&self, areg: &SomeRegion) -> Self {
+        let ones = SomeMask::new(areg.state1.s_and(&areg.state2).bts);
+        
+        SomeChange {
+            b01: self.b01.m_and(&ones.m_not()),
+            b10: self.b10.m_and(&ones),
+        }
     }
 
     /// Create a change for translating a state to a region.

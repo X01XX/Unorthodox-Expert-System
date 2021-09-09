@@ -329,35 +329,31 @@ impl SomeDomain {
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let mut can_change = SomeChange::new_low(required_change.b01.num_ints());
-        let care_chg_mask = goal_reg.x_mask().m_not();
+//        let care_chg_mask = goal_reg.x_mask().m_not();
 
         for stpx in steps_str.iter() {
             can_change = can_change.union(&stpx.rule.change());
 
             // Testing, check for unwanted changes
             // Unwanted changes are not significant if the corresponding goal bit position is X.
-            let chg_not = &required_change.change_not();
-            let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask).change_reverse();
-            if chg_dif.is_low() {
-            } else {
-                // Get steps that may reverse unwanted changes
-                let steps_rev = self.actions.get_steps(&chg_dif);
-                let mut steps_rev2 = StepStore::new_with_capacity(steps_rev.len());
-                for stepx in steps_rev.iter() {
-                    if stepx.initial.intersects(&stpx.result) {
-                        let stp_tmp = stepx.restrict_initial_region(&stpx.result);
-                        println!("goal {} stp_tmp {} change {} dif chg {}", goal_reg, &stp_tmp, &stp_tmp.rule.change(), &chg_dif);
-                        if stp_tmp.rule.change() == chg_dif { 
-                            steps_rev2.push(stp_tmp);
-                        }
-                    }
-                }
-
-                //let rslt = stpx.result_from_initial_state(from_state);
-                
-                
-                println!("step {} chg {} dif chg {} is {} reverse steps? {}", &stpx, &stpx.rule.change(), &required_change, &chg_dif, &steps_rev2);
-            }
+//            let chg_not = &required_change.change_not();
+//            let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask).change_reverse();
+//            if chg_dif.is_low() {
+//            } else {
+//                // Get steps that may reverse unwanted changes
+//                let steps_rev = self.actions.get_steps(&chg_dif);
+//                let mut steps_rev2 = StepStore::new_with_capacity(steps_rev.len());
+//                for stepx in steps_rev.iter() {
+//                    if stepx.initial.intersects(&stpx.result) {
+//                        let stp_tmp = stepx.restrict_initial_region(&stpx.result);
+//                        //println!("goal {} stp_tmp {} change {} dif chg {}", goal_reg, &stp_tmp, &stp_tmp.rule.change(), &chg_dif);
+//                        if stp_tmp.rule.change() == chg_dif { 
+//                            steps_rev2.push(stp_tmp);
+//                        }
+//                    }
+//                }
+//                //println!("step {} chg {} dif chg {} is {} reverse steps? {}", &stpx, &stpx.rule.change(), &required_change, &chg_dif, &steps_rev2);
+//            }
         }
 
         if required_change.is_subset_of(&can_change) {
@@ -415,12 +411,12 @@ impl SomeDomain {
         }
 
         // Check recursion depth
-        if depth > 2 {
+        if depth > 0 {
 //            println!("recursion depth maximum exceeded");
             return None;
         }
 
-        // Try Asymmetric chaining
+        // Try Asymmetric forward chaining
 
         let mut ret_steps = Vec::<StepStore>::new();
 
@@ -435,7 +431,7 @@ impl SomeDomain {
 
         let agg_reg = goal_reg.union_state(&from_state);
 //        let mut nm = 0;
-        let mut min_dist_from = 9999;
+        let mut min_dist_agg = 9999;
         let mut asym_steps = Vec::<usize>::new();
 
         for lstx in &steps_by_change_vov {
@@ -444,16 +440,20 @@ impl SomeDomain {
 //            }
 //            print!("[");
 //            let mut nm2 = 0;
-            let mut min_dist_agg = 9999;
+            //let mut min_dist_agg = 9999;
             for inx in lstx {
 //                if nm2 > 0 {
 //                    print!(", ");
 //                }
 
                 let dist = steps_str[*inx].initial.distance(&agg_reg);
-                if dist < min_dist_agg {
+                if dist > 0 && dist < min_dist_agg {
                     min_dist_agg = dist;
+                    if min_dist_agg == 1 {
+                        break;
+                    }
                 }
+                
 //                print!("{}<{}>", inx, dist);
 
 //                nm2 += 1;
@@ -464,16 +464,17 @@ impl SomeDomain {
 
             // If the only option is one, or more, async steps, check the distance to from_state
             // accumulate indexes for min distance
-            if min_dist_agg > 0 {
+            
+            //println!("min_dist_agg = {}", &min_dist_agg);
+            //let mut regs_tot = Vec::<SomeRegion>::new();
+            if min_dist_agg < 9999 {
                 for inx in lstx {
+
                     let dist = steps_str[*inx].initial.distance(&agg_reg);
-                    if dist < min_dist_from {
-                        min_dist_from = dist;
-                        asym_steps = Vec::<usize>::new();
-                    }
-                    if dist == min_dist_from {
+                    if dist == min_dist_agg {
                         asym_steps.push(*inx);
                     }
+
                 } // next inx
             }
         } // next lstx
@@ -512,7 +513,7 @@ impl SomeDomain {
                             ret_steps.push(ret_steps2);
                         } else {
                             if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
-                         
+
                                 if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
 
                                     // println!("gap_steps: updated steps4: {}", ret_stepsx.formatted_string(" "));
@@ -530,7 +531,7 @@ impl SomeDomain {
         // Return a plan found so far, if any
         if ret_steps.len() > 0 {
             let chosen = choose_one(&ret_steps);
-//            println!("make_plan3: async chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+            //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
             return Some(ret_steps[chosen].clone());
         }
         None
