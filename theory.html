@@ -103,16 +103,6 @@ p {
   color: red
     }   
   </style>
-  <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-50379532-1', 'google.com');
-  ga('send', 'pageview');
-
-</script>
 </head>
   <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
   <meta name="description" content="A radically different approach to an Expert System" />
@@ -298,7 +288,7 @@ p {
  It gets worse with each bit you add.
   </p>
   <p>
-   <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Gray_code">Grey Code</a>, used in a K-Map axis, works for one or two bits, but for higher numbers of bits (the whole point of Grey Code), it is misleading.
+   <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Gray_code">Grey Code</a>, used to generate a greater than 2-bit axis for a K-Map, is misleading.
   </p>
   <h2>Improving the definition of the Karnaugh Map</h2>
   <p>
@@ -393,7 +383,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <th></th>
                 <td>0</td>
                 <td>1</td>
-                <td>x</td>
+                <td><span class="not">x</span></td>
            </tr>
            <tr style="text-align:center;">
                 <th></th>
@@ -412,7 +402,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
     </p>
    <p>
-   This choice allows you to know the states that were used to form the region.
+   This choice allows you to know the states that were used to form a region.
    </p>
     <p>
     2) Another possible representation of a region is maximum 1-bits and maximum 0-bits, or highest/lowest.
@@ -455,6 +445,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         </table>
     <p>
    With this choice, two regions are equal if the two bit patterns forming them are equal.
+   </p>
+   <p>
+   When calculating regions, like intersections, I will use this representation.
    </p>
         <p>
         3) Another possible representation is to use a mask for ones and a mask for zeros.
@@ -508,7 +501,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Every bit-value/square/state in a region is on every edge of the region.
     </p>
      <p class="indent1">
-     Each edge is the same length, 2 to the power of the number of X-bit positions.  The perimeter is the number of edges times the edge length.
+     Each edge is the same length, 2 to the power of the number of X-bit positions.
      </p>
      <p class="indent1">
      More than one edge indicates an intersection of edges, producing a vertex and (number edges - 1) faces.
@@ -791,9 +784,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <p>
         A region is a superset of another region they intersect and the first region X-bit mask is a superset of the second region X-bit mask.
    </p>
-        <h3>Overlapping part of adjacent regions</h3>
+        <h3>Overlapping part of adjacent, similar, regions</h3>
         <p>
-        Adjacent regions, without all X bits corresponding, have an overlapping part that can be calculated.
+        Adjacent, similar, regions, without all X bits corresponding, have an overlapping part that can be calculated.
         </p>
         <table class="indent1">
         <caption>1X0x, X110</caption>
@@ -1175,16 +1168,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	where edges intersect.
         </p>
       <p>
-        Overlapping, or adjacent regions may be combined.
+        Overlapping, or adjacent, similar, regions may be combined, if verified by two similar squares spanning the combination.
         </p>
       <p>
-        Adjacent regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
+        Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
         </p>
    </div>
    <div id="rules">
     <h2>State-Change Rules</h2>
       <p>
-       Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in the this section will relate to/extend ideas in the previous sections.
+       Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in this section will relate to/extend ideas in the previous sections.
       </p>
     <p> 
  State-Change Rules attempt to make sense of how a state or region changes when an activity or action can be executed that may result in a state change.
@@ -1544,7 +1537,7 @@ For a state that always produces the same two results, alternating, a minimum of
  There are rules that change more than one bit at a time.
  Your current state may be one bit away from your goal state, but all the available rules change two bits at a time.
  Combinations of rules might have the effect of changing one bit.
-        Finding such a combination may involve a Combinatorial Explosion, but once found, such a combination can be used any number of times.
+        Finding such a combination may involve a Combinatorial Explosion, but once found, such a combination can be used any number of times. (not yet in code)
  </p>
  </li>
  <li>
@@ -1591,7 +1584,7 @@ For a state that always produces the same two results, alternating, a minimum of
  </p>
  </li>
  </ul>
-    <h3>Asymmetrical chaining</h3>
+    <h3>Asymmetric chaining</h3>
     <p>
     Going from an initial state to a goal state/region, is called forward-chaining.  
     </p>
@@ -1615,7 +1608,7 @@ For a state that always produces the same two results, alternating, a minimum of
     In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
     </p>
     <p>
-    The backward-chaining problem needs to be broken up into (goal to rule-result-region) and (rule-initial-region to initial-state).
+    The backward-chaining problem needs to be broken up into (goal to rule-result-region) and (rule-initial-region to initial-state). (not yet in code)
     </p>
     <p>
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
@@ -1665,7 +1658,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/08/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/09/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

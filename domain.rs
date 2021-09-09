@@ -12,6 +12,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+//use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
 use std::collections::HashMap;
@@ -323,22 +324,40 @@ impl SomeDomain {
         // println!("make_plan3: required_change {}", &required_change);
 
         // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str = self.actions.get_steps(&required_change);
+        let steps_str : StepStore = self.actions.get_steps(&required_change);
         // println!("\nmake_plan3: steps_str steps {}", steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let mut can_change = SomeChange::new_low(required_change.b01.num_ints());
+        let care_chg_mask = goal_reg.x_mask().m_not();
+
         for stpx in steps_str.iter() {
             can_change = can_change.union(&stpx.rule.change());
 
             // Testing, check for unwanted changes
-            // Unwanted changes may not be significant if the corresponding goal bit position is X.
-//          let chg_not = &required_change.change_not();
-//          let chg_dif = stpx.rule.change().change_and(&chg_not);
-//          if chg_dif.is_low() {
-//          } else {
-//              println!("chg {} dif chg {} is {}", &stpx.rule.change(), &required_change, &chg_dif);
-//          }
+            // Unwanted changes are not significant if the corresponding goal bit position is X.
+            let chg_not = &required_change.change_not();
+            let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask).change_reverse();
+            if chg_dif.is_low() {
+            } else {
+                // Get steps that may reverse unwanted changes
+                let steps_rev = self.actions.get_steps(&chg_dif);
+                let mut steps_rev2 = StepStore::new_with_capacity(steps_rev.len());
+                for stepx in steps_rev.iter() {
+                    if stepx.initial.intersects(&stpx.result) {
+                        let stp_tmp = stepx.restrict_initial_region(&stpx.result);
+                        println!("goal {} stp_tmp {} change {} dif chg {}", goal_reg, &stp_tmp, &stp_tmp.rule.change(), &chg_dif);
+                        if stp_tmp.rule.change() == chg_dif { 
+                            steps_rev2.push(stp_tmp);
+                        }
+                    }
+                }
+
+                //let rslt = stpx.result_from_initial_state(from_state);
+                
+                
+                println!("step {} chg {} dif chg {} is {} reverse steps? {}", &stpx, &stpx.rule.change(), &required_change, &chg_dif, &steps_rev2);
+            }
         }
 
         if required_change.is_subset_of(&can_change) {
@@ -401,7 +420,7 @@ impl SomeDomain {
             return None;
         }
 
-        // Try Asymetrical chaining
+        // Try Asymmetric chaining
 
         let mut ret_steps = Vec::<StepStore>::new();
 

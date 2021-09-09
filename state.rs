@@ -28,7 +28,7 @@ impl fmt::Display for SomeState {
 }
 
 impl SomeState {
-    /// Return a new SOmeState instance, given a SommeBits instance.
+    /// Return a new SomeState instance, given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
     }
