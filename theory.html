@@ -447,7 +447,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    With this choice, two regions are equal if the two bit patterns forming them are equal.
    </p>
    <p>
-   When calculating regions, like intersections, I will use this representation.
+   When calculating regions, like intersections and unions, the needed sampled states will often not be available, so I will use this representation.
    </p>
         <p>
         3) Another possible representation is to use a mask for ones and a mask for zeros.
@@ -507,12 +507,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      More than one edge indicates an intersection of edges, producing a vertex and (number edges - 1) faces.
      </p>
    <h3>Calculating various characteristics of a Region, or Regions</h3>
-   <p class="indent1">
- For efficiency, you want to avoid scanning a bit pattern bit-by-bit.
- Some Operations can be done on more than one bit at a time by doing operations on an array of unsigned integers.
- After some operations, validation tests can produce a bit pattern that can be efficiently checked for all integers being equal to zero,
-     or all integers equal to the maximum value.
-   </p>
  <p>
  The X-mask for a region is: bits-0 ^ bits-1.
  </p>
@@ -543,11 +537,17 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p class="indent1">
      The any-ones-mask of 0x1X, (0011, 0110) = 0011 + 0110 = 0111.
  </p>
+ <p class="indent1">
+     Or the ones-mask + x-mask.
+ </p>
  <p>
  The any-zeros-mask of a region is: ~bits-0 + ~bits-1
  </p>
  <p class="indent1">
      The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
+ </p>
+ <p class="indent1">
+     Or the zeros-mask + x-mask.
  </p>
    <h3>Calculating a different bits mask of two regions</h3>
  <p>
@@ -1206,7 +1206,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  rule 1 &#8594; 0.
     </p>
     <p>
- There are ten possible ways to combine two rules:
+ There are ten possible ways to combine two one-bit rules:
     </p>
     <ul class="indent1">
  <li>0 &#8594; 0, 0 &#8594; 0 = 0 &#8594; 0</li>
@@ -1225,14 +1225,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p>
  The combinations that result in 0&#8594;X and 1&#8594;X, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
-    </p>
-      <p>
-        The bit-change 0&#8594;0 paired with 0&#8594;1, by having corresponding bit positions, is a <i>dissimilarity</i>,
-        preventing the union of rules  with these characteristics.
-    </p>
-    <p>
-        The bit-change 1&#8594;0 paired with 1&#8594;1, by having corresponding bit positions, is a second <i>dissimilarity</i>,
-        preventing the union of rules with these characteristics.
     </p>
     <p>
  Combinations of more than two different 1-bit rules will always combine to one of 0&#8594;X and/or 1&#8594;X, and are disallowed.
@@ -1403,9 +1395,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     If two rules intersect, the intersection of the two rules can be calculated.
     </p>
     <p>
-    If the intersection is more than one square, that is its x-mask is non-zero, the region may be a contradictory intersection.
-    </p>
-    <p>
    The intersection region can be used to restrict each of the two rules.
     </p>
     <p>
@@ -1426,6 +1415,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
     The initial region of the resulting rule is the part of the original intersection that is valid.  Seek a sample in the intersection that is not in the valid part.
     </p>
+    <p>
+    Its unlikley, but sampling a contradictory region could invalidate both regions.
+    </p>
     <h3>Multiple Result States</h3>
     <p>
  Taking multiple samples of the same state can produce different results.
@@ -1435,7 +1427,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  to produce unpredictable regions.  These regions would be invalidated by an included state that is predictable.
   </p>
   <p>
-  Due to my previously mentioned "infrequent perceptions", I feel that simple patterns like (0, 1, 0, 1, 0) should be accommodated.  This is unfortunate, because its the biggest pain of this whole project.
+  Due to my previously mentioned "infrequent perceptions", I feel that simple patterns like (0, 1, 0, 1, 0) should be accommodated.  This is unfortunate, because its the biggest pain of the whole project.
     </p>
     <p>
  A pattern can be defined as a sequence of results that is seen at least twice in the result list.
@@ -1451,13 +1443,16 @@ For a state that always produces the same two results, alternating, a minimum of
     </p>
     <p class="indent1">
  Combining the state with each result in a result pattern list creates a State-Change Rule list.  A union can be formed from two State-Change Rule lists, from different states.
- The union may be valid if, in a sequence that may start at different positions in the two lists, each make a valid union (no 0&#8594;X or 1&#8594;X bits).
+ The union may be valid if, in a sequence that may start at different positions in the two lists, each may make a valid union (no 0&#8594;X or 1&#8594;X bits).
     </p>
     <p class="indent1">
-    If two two-result states can be combined in two ways, something is wrong and the two states should not form a region.
+    If two two-result states can be combined in two ways, producing a rule with X->1 and/or X->0 and corresponding X-><span class="not">x</span> and/or X->X, something is wrong and the two states should not form a region.
     </p>
     <p>
- If a state has two different results that do not alternate, or more than two different results, the state with that result list can be marked as being unpredictable.
+ If a state has two different results that do not alternate predictably, or more than two different results, the state can be marked as being unpredictable.
+    </p>
+     <p class="indent1">
+    A region can be made from two unpredictable states, if other states in the region are either unpredictable or more samples needed.
     </p>
      <p class="indent1">
    When a predictable region intersects an unpredictable region, the intersection region can be considered to be contradictory.
@@ -1467,10 +1462,10 @@ For a state that always produces the same two results, alternating, a minimum of
    </p>
     <p>
  There is always the possibility that continued sampling, with the oldest samples being dropped to conserve memory,
- could change a state between being predictable and unpredictable.
+ could change a state between being predictable and unpredictable, or between one result and two results.
     </p>
     <p class="indent1">
-    What you think you know is always contingent on the next sample.
+    What you think you know is always contingent on the next sample.  Multiple, consecutive, samples that meet expectations, decrease the probablility of an unexpected sample.
     </p>
    <p>
         Two states that have not established a result pattern, and have not become unpredictable, may appear to be compatible, but it might be better to say that they are not-incompatible.
@@ -1658,7 +1653,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/09/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/10/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
