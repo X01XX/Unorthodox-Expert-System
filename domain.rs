@@ -430,103 +430,92 @@ impl SomeDomain {
         }
 
         let agg_reg = goal_reg.union_state(&from_state);
-//        let mut nm = 0;
-        let mut min_dist_agg = 9999;
-        let mut asym_steps = Vec::<usize>::new();
 
-        for lstx in &steps_by_change_vov {
-//           if nm > 0 {
-//                print!(", ");
-//            }
-//            print!("[");
-//            let mut nm2 = 0;
-            //let mut min_dist_agg = 9999;
-            for inx in lstx {
-//                if nm2 > 0 {
-//                    print!(", ");
-//                }
+        let mut min_dist_from = 9999;
 
-                let dist = steps_str[*inx].initial.distance(&agg_reg);
-                if dist > 0 && dist < min_dist_agg {
-                    min_dist_agg = dist;
-                    if min_dist_agg == 1 {
-                        break;
-                    }
-                }
-                
-//                print!("{}<{}>", inx, dist);
+        // Find min distance of step initial regions, that are external from agg_reg, to the from_state
+        for stepx in steps_str.iter() {
 
-//                nm2 += 1;
-            } // next inx
-
-//            print!("]");
-//            nm += 1;
-
-            // If the only option is one, or more, async steps, check the distance to from_state
-            // accumulate indexes for min distance
-            
-            //println!("min_dist_agg = {}", &min_dist_agg);
-            //let mut regs_tot = Vec::<SomeRegion>::new();
-            if min_dist_agg < 9999 {
-                for inx in lstx {
-
-                    let dist = steps_str[*inx].initial.distance(&agg_reg);
-                    if dist == min_dist_agg {
-                        asym_steps.push(*inx);
-                    }
-
-                } // next inx
+            if stepx.initial.intersects(&agg_reg) {
+                continue;
             }
-        } // next lstx
-//        println!("] ");
 
-        if asym_steps.len() > 0 {
-//            print!("agg {} min_dist_from {} is {}, asym_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
-            for inx in &asym_steps {
-                //print!(" {}", steps_str[*inx]);
-                
-                if let Some(gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
-
-                    // println!("gap steps from {} to {} are {}", from_state, &steps_str[*inx].initial, gap_steps);
-
-                    let mut ret_stepsx = StepStore::new_with_capacity(gap_steps.len() + 1);
-
-                    let rslt = gap_steps.result_from_state(from_state).unwrap();
-                    // println!("gap_steps result from state {} is {}", from_state, &rslt);
-
-                    ret_stepsx.append(gap_steps);
-                    // println!("new ret_stepsx: {}", &ret_stepsx);
-
-                    let stepb = steps_str[*inx].restrict_initial_region_to_state(&rslt);
-
-                    let rslt2 = steps_str[*inx].result_from_initial_state(&rslt);
-                    
-                    let mut stepsb = StepStore::new();
-                    stepsb.push(stepb);
-
-                    if let Some(ret_steps2) = ret_stepsx.link(&stepsb) {
-                    
-                        // println!("gap_plan: updated steps3: {}", ret_steps2.formatted_string(" "));
-
-                        let rslt3 = ret_steps2.result_from_state(from_state).unwrap();
-                        if goal_reg.is_superset_of_state(&rslt3) {
-                            ret_steps.push(ret_steps2);
-                        } else {
-                            if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
-
-                                if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
-
-                                    // println!("gap_steps: updated steps4: {}", ret_stepsx.formatted_string(" "));
-                                    ret_steps.push(ret_steps3);
-                                }
-
-                            } // endif gap_steps2
-                        }
-                    } // endif ret_steps2
+            let dist = stepx.initial.distance_state(from_state);
+            if dist < min_dist_from {
+                min_dist_from = dist;
+                if min_dist_from == 1 {
+                    break;
                 }
-            } // next inx
-            // println!(" ");
+            }
+        } // next stepx
+
+        if min_dist_from == 9999 {
+            return None;
         }
+        //println!("min_dist_from = {}", &min_dist_from);
+
+        // Accumulate indicies to steps found to be external to agg_reg and closest to from_state
+        let mut asym_steps = Vec::<usize>::new();
+        let mut inx = 0;
+        for stepx in steps_str.iter() {
+
+            if stepx.initial.intersects(&agg_reg) == false {
+
+                let dist = stepx.initial.distance_state(from_state);
+                if dist == min_dist_from {
+                    asym_steps.push(inx);
+                }
+            }
+
+            inx += 1;
+        } // next step
+
+
+//            print!("agg {} min_dist_from {} is {}, asym_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
+        for inx in &asym_steps {
+            //print!(" {}", steps_str[*inx]);
+
+            if let Some(gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
+
+                // println!("gap steps from {} to {} are {}", from_state, &steps_str[*inx].initial, gap_steps);
+
+                let mut ret_stepsx = StepStore::new_with_capacity(gap_steps.len() + 1);
+
+                let rslt = gap_steps.result_from_state(from_state).unwrap();
+                // println!("gap_steps result from state {} is {}", from_state, &rslt);
+
+                ret_stepsx.append(gap_steps);
+                // println!("new ret_stepsx: {}", &ret_stepsx);
+
+                let stepb = steps_str[*inx].restrict_initial_region_to_state(&rslt);
+
+                let rslt2 = steps_str[*inx].result_from_initial_state(&rslt);
+
+                let mut stepsb = StepStore::new();
+                stepsb.push(stepb);
+
+                if let Some(ret_steps2) = ret_stepsx.link(&stepsb) {
+
+                    // println!("gap_plan: updated steps3: {}", ret_steps2.formatted_string(" "));
+
+                    let rslt3 = ret_steps2.result_from_state(from_state).unwrap();
+                    if goal_reg.is_superset_of_state(&rslt3) {
+                        ret_steps.push(ret_steps2);
+                    } else {
+                        if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
+
+                            if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
+
+                                // println!("gap_steps: updated steps4: {}", ret_stepsx.formatted_string(" "));
+                                ret_steps.push(ret_steps3);
+                            }
+
+                        } // endif gap_steps2
+                    }
+                } // endif ret_steps2
+            }
+        } // next inx
+        // println!(" ");
 
         // Return a plan found so far, if any
         if ret_steps.len() > 0 {

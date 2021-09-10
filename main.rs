@@ -104,6 +104,8 @@ fn main() {
 
     let mut dom_num = 0;
     let mut run = 0;
+    let mut run_count = 0;
+    let mut running = 0;
    
     loop {
         dmxs.step += 1;
@@ -160,7 +162,7 @@ fn main() {
                 }
             }
 
-            // Print needs that can be done.
+            // Print needs that can and cannot be done.
 
             if can_do == 0 {
                 println!("\nNeeds that can be done: None");
@@ -190,6 +192,11 @@ fn main() {
 
         if run > 0 {
         } else {
+            if running > 0 {
+                println!("Completely ran {} times", &run_count);
+                run_count = 0;
+                running = 0;
+            }
             let guess = pause_for_input("\nPress Enter or type a command: ");
 
             for word in guess.split_whitespace() {
@@ -245,10 +252,15 @@ fn main() {
             }
 
             if can_do == 0 {
-                if run > 0 {
-                    run -= 1;
+                if cant_do > 0 {
+                    run = 0;
+                } else {
                     if run > 0 {
-                        dmxs = init();
+                        run_count += 1;
+                        run -= 1;
+                        if run > 0 {
+                            dmxs = init();
+                        }
                     }
                 }
             }
@@ -257,6 +269,8 @@ fn main() {
             if cmd.len() == 1 {
                 if cmd[0] == "run" {
                     run = 1;
+                    run_count = 0;
+                    running = 1;
                     if nds.len() == 0 {
                         dmxs = init();
                     }
@@ -272,6 +286,8 @@ fn main() {
                         0
                     });
                     run = r_num;
+                    run_count = 0;
+                    running = 1;
                 } else if cmd[0] == "cd" {
                     let d_num = cmd[1].parse().unwrap_or_else(|err| {
                         println!("Invalid Domain Number: {}", err);
@@ -855,7 +871,7 @@ fn usage() {
     println!("\n    sd <path>                - Store data to a file.\n");
 
     println!("    run                      - Run until no needs left.");
-    println!("    run <number times>       - Run a number of times.");
+    println!("    run <number times>       - Run a number of times, stop when done or a need cannot be done.");
 
     println!("\n    q | exit | quit          - Quit program.");
     println!("\n    so                       - Start Over.");
