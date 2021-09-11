@@ -581,7 +581,7 @@ impl SomeDomain {
         SomeState::from_string(self.num_ints, &str)
     } // end state_from_string
 
-    /// Return a plan using random depth-first backward chaining from a goal to a state.
+    /// Return a plan using random depth-first backward chaining to a state from a goal.
     fn random_depth_first_backward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
     
         //println!("random_depth_first_backward_chaining2: to {} from {}", cur_state.formatted_string(), goal_reg.formatted_string());
