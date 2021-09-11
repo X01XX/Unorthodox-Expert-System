@@ -109,7 +109,7 @@ p {
   <meta name="keywords" content="Karnaugh Map,Automated Learning,Combinatorial Explosion,Grey Code,Expert System" />
   <meta name="author" content="Earl Dukerschein" />
 <body>
-  <h1><a id="KM"></a>Some thoughts on Karnaugh Maps, Sparse Karnaugh Maps, Automated Learning and Experimentation, State-Change Rules and the Combinatorial Explosion</h1>
+  <h1><a name="KM"></a>Some thoughts on Karnaugh Maps, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a> and the <a href="#CE">Combinatorial Explosion</a></h1>
   <h2>Background</h2>
   <div id="intro">
   <p>
@@ -298,7 +298,7 @@ p {
  but the 2-bit axis works and the 3-bit axis only partially works.
   </p>
   <p>
-  In addition, how do you tell which squares are adjacent in the 1X3 K-Maps, without looking at them or knowing the arrangement of the axis?
+  In addition, how do you tell which squares are adjacent in the 1x3 K-Maps, without looking at them or knowing the arrangement of the axis?
   </p>
   <p>
  It is more accurate to say <i>All bit patterns different by one bit must be adjacent</i>,
@@ -399,7 +399,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
    <p>
- I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
+ I will represent a region as a list of bit patterns, like 0<span class="not">x</span>1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
     </p>
    <p>
    This choice allows you to know the states that were used to form a region.
@@ -511,31 +511,31 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The X-mask for a region is: bits-0 ^ bits-1.
  </p>
  <p class="indent1">
- The X-mask of 0x1X, (0011, 0110) = 0011 ^ 0110 = 0101.
+ The X-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 ^ 0110 = 0101.
  </p>
  <p>
  The non-X-mask is: the complement of the X-mask.
  </p>
  <p class="indent1">
- The non-X-mask of 0x1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
+ The non-X-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
  </p>
  <p>
  The ones-mask of a region is: bits-0 &amp; bits-1
  </p>
  <p class="indent1">
-     The ones-mask of 0x1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
+     The ones-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
  </p>
  <p>
  The zeros-mask of a region is: ~bits-0 &amp; ~bits-1
  </p>
  <p class="indent1">
-     The zeros-mask of 0x1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
+     The zeros-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
  </p>
  <p>
  The any-ones-mask of a region is: bits-0 + bits-1
  </p>
  <p class="indent1">
-     The any-ones-mask of 0x1X, (0011, 0110) = 0011 + 0110 = 0111.
+     The any-ones-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 + 0110 = 0111.
  </p>
  <p class="indent1">
      Or the ones-mask + x-mask.
@@ -544,7 +544,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The any-zeros-mask of a region is: ~bits-0 + ~bits-1
  </p>
  <p class="indent1">
-     The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
+     The any-zeros-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
  </p>
  <p class="indent1">
      Or the zeros-mask + x-mask.
@@ -602,10 +602,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The intersection region is given by (r1.any-ones-mask &amp; r2.any-ones-mask, ~r1.any-zeros-mask + ~r2.any-zeros-mask).
         </p>
       <p class="indent1">
-        Given 0xX1 = (0011, 0101) and X11X = (1111, 0110).
+        Given 0<span class="not">x</span>X1 = (0011, 0101) and X11X = (1111, 0110).
         </p>
         <p class="indent1">
- The intersection of 0xX1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
+ The intersection of 0<span class="not">x</span>X1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
         </p>
    <h3>Adjacent Regions</h3>
   <p>
@@ -661,18 +661,18 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 
   <h3>The Union of two Regions</h3>
   <p>
- If you have two regions, 0xX1 and 1Xx1,
+ If you have two regions, 0<span class="not">x</span>X1 and 1X<span class="not">x</span>1,
  the regions are adjacent and have corresponding X bits, they can be combined.
  The one different bit becomes an X in the result.
  Other equal, corresponding, bits will be the same value in the result.
  In this case the result would be XXX1.
   </p>
  <table class="indent1">
- <caption>0xX1 + 1Xx1 = XXX1</caption>
+ <caption>0<span class="not">x</span>X1 + 1X<span class="not">x</span>1 = XXX1</caption>
     <tr>
     <th>
  <table>
- <caption>0xX1, 1Xx1</caption>
+ <caption>0<span class="not">x</span>X1, 1X<span class="not">x</span>1</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -767,7 +767,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         is given by ("or" all states, "and" all states).
   </p>
    <p class="indent2">
- Given 0xX1 = (0011, 0101) and 1Xx1 = (1101, 1011).
+ Given 0<span class="not">x</span>X1 = (0011, 0101) and 1X<span class="not">x</span>1 = (1101, 1011).
   </p>
    <p class="indent2">
  The Union = (0011 + 0101 + 1101 + 1011, 0011 & 0101 & 1101 & 1011) = (1111, 0001) = XXX1.
@@ -789,7 +789,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Adjacent, similar, regions, without all X bits corresponding, have an overlapping part that can be calculated.
         </p>
         <table class="indent1">
-        <caption>1X0x, X110</caption>
+        <caption>1X0<span class="not">x</span>, X110</caption>
            <tr>
                 <th></th>
                 <th>00</th>
@@ -827,9 +827,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
             <p>
-        To calculate the overlapping part of 1X0x and X110, use the intersection logic, even though they do not intersect.
+        To calculate the overlapping part of 1X0<span class="not">x</span> and X110, use the intersection logic, even though they do not intersect.
         </p>
-	<p>1X0x = (1100, 1001)</p>
+	<p>1X0<span class="not">x</span> = (1100, 1001)</p>
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
@@ -839,9 +839,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	OR the ~any-zeros-masks:   1000 + 0110 = 1110
 	</p>
 	<p>
-	Now make a region from the results, (1100, 1110) = 11x0 (C, E).
+	Now make a region from the results, (1100, 1110) = 11<span class="not">x</span>0 (C, E).
 	</p>
-    <h2>Sparse Karnaugh Maps</h2>
+<a name="SKM"></a><h2>Sparse Karnaugh Maps <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
     <p>
      In class we learn how to use K-Maps starting with all the squares filled in.
  It occurred to me that a K-Map without all squares filled in might be interesting.
@@ -1078,7 +1078,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
   </div>
  <div id="learning">
-    <h2>Automated Learning and Experimentation</h2>
+ <a name="AL"></a>
+    <h2>Automated Learning and Experimentation <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
     <p>
  There have been a few times, even before I knew anything about computers, when it seemed like I could sense what was changing in my mind when
  solving a problem.  This could be called "connecting the dots" or "changing the bits".  These
@@ -1173,9 +1174,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
       <p>
         Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
         </p>
+      <p>
+      Generating needs can be done in parallel, per action.  Likely without any shared memory, just aggregate the results.
+     </p>
    </div>
    <div id="rules">
-    <h2>State-Change Rules</h2>
+    <a name="SCR"></a>
+    <h2>State-Change Rules <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
       <p>
        Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in this section will relate to/extend ideas in the previous sections.
       </p>
@@ -1484,7 +1489,8 @@ For a state that always produces the same two results, alternating, a minimum of
     </p>
   </div>
   <div id="combex">
-    <h2>The Combinatorial Explosion, defeated!</h2>
+    <a name="CE"></a>
+    <h2>The Combinatorial Explosion, defeated! <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CL">Conclusion</a>)</span></h2>
     <p>
  Expert systems sometimes churn through millions of possible rule combinations
  to predict what rules can be used, and in what order, to reach a goal.
@@ -1614,7 +1620,11 @@ For a state that always produces the same two results, alternating, a minimum of
     </p>
  </div>
   <div id="conclude">
- <h2>Conclusion</h2>
+    	<a name="CL"></a>
+	<h2>Conclusion
+<span style="font-size: 60%">
+    (<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>)
+</span></h2>
  <p>
  It should be possible to write a program that creates rules through experience, improves rules by experimentation, uses rules to attain goals, and avoids the Combinatorial Explosion.
  </p>
@@ -1653,7 +1663,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/10/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/11/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
