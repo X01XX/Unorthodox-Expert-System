@@ -467,7 +467,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <th></th>
                 <td>0</td>
                 <td>0</td>
-                <td>Invalid</td>
+                <td>No bit</td>
            </tr>
            <tr style="text-align:center;">
                 <th></th>
@@ -561,7 +561,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Two regions intersect if their different bits mask = all zeros.
         </p>
  <table class="indent1">
- <caption>0XX1 &amp; X11X = 0111 (7)</caption>
+ <caption>0<span class="not">x</span>X1 &amp; X11X = 0111 (7)</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1595,14 +1595,14 @@ For a state that always produces the same two results, alternating, a minimum of
     </p>
     <p>
     In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
-    This could be thought of as traversing the region of (initial-state union goal-state).
+    This could be thought of as traversing the region of (initial-state union goal-state) (IUG).
     </p>
     <p>
-    If only one rule exists for a needed change, and that rules initial-region is outside of (initial-state union goal-state),
+    If only one rule exists for a needed change, and that rules initial-region is outside of IUG,
     forward-chaining will not work.
     </p>
     <p>
-    If only one rule exists for a needed change, and that rules result-region is outside of (initial-state union goal-state),
+    If only one rule exists for a needed change, and that rules result-region is outside of IUG,
     backward-chaining will not work.
     </p>
     <p>
@@ -1614,6 +1614,9 @@ For a state that always produces the same two results, alternating, a minimum of
     <p>
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
     e.g. XX00->XX01, then XX00->....
+    </p>
+    <p>
+    Two rules can be mutually exclusive, that is neither order works. XX00->XX01, XX00->XX10.
     </p>
     <p>
     IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
