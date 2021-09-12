@@ -475,7 +475,7 @@ impl SomeDomain {
         for inx in &asym_steps {
             //print!(" {}", steps_str[*inx]);
 
-            if let Some(gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
+            if let Some(mut gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
 
                 // println!("gap steps from {} to {} are {}", from_state, &steps_str[*inx].initial, gap_steps);
 
@@ -484,7 +484,7 @@ impl SomeDomain {
                 let rslt = gap_steps.result_from_state(from_state).unwrap();
                 // println!("gap_steps result from state {} is {}", from_state, &rslt);
 
-                ret_stepsx.append(gap_steps);
+                ret_stepsx.append(&mut gap_steps);
                 // println!("new ret_stepsx: {}", &ret_stepsx);
 
                 let stepb = steps_str[*inx].restrict_initial_region_to_state(&rslt);
@@ -540,7 +540,7 @@ impl SomeDomain {
 
         for _ in 0..2 {
 
-            if let Some(planz) = self.make_plan2(&self.cur_state, &goal_reg) {
+            if let Some(planz) = self.make_plan2(&self.cur_state.clone(), &goal_reg) {
                 // println!("make_plan2 worked!");
                 return Some(planz);
             }
@@ -616,10 +616,10 @@ impl SomeDomain {
         }
 
         // Try recursion for more steps
-        if let Some(next_steps) = self.random_depth_first_backward_chaining(cur_state, &next_goal) {
+        if let Some(mut next_steps) = self.random_depth_first_backward_chaining(cur_state, &next_goal) {
 
             let mut ret_stps = StepStore::new_with_capacity(next_steps.len() + 1);
-            ret_stps.append(next_steps);
+            ret_stps.append(&mut next_steps);
             ret_stps.push(cur_step);
             if let Some(ret_stps2) = ret_stps.restrict_initial_region(&SomeRegion::new(cur_state, cur_state)) {
                 return Some(ret_stps2);

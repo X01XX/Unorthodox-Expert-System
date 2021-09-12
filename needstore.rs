@@ -64,7 +64,7 @@ impl NeedStore {
 
     /// Append a Needstore.
     pub fn append(&mut self, other: &mut NeedStore) {
-        self.avec.append(&mut other.avec);
+        self.avec.append(&mut other.avec);  // empties other.avec
     }
 
     /// Return a mutable iterator.

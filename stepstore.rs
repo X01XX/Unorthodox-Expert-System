@@ -48,7 +48,7 @@ impl StepStore {
     }
 
     /// Append a StepStore to a StepStore.
-    pub fn append(&mut self, mut val: StepStore) {
+    pub fn append(&mut self, val: &mut StepStore) {
         self.avec.append(&mut val.avec); // empties val.avec
     }
 

@@ -88,41 +88,67 @@ impl ActionStore {
 
     /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
-        let mut stps = StepStore::new();
 
-        for actx in &self.avec {
-            stps.append(actx.get_steps(achange));
+        // Run a get_needs thread for each action
+        let mut stps: Vec<StepStore> = self
+            .avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|actx| actx.get_steps(achange))
+            .collect::<Vec<StepStore>>();
+
+        // Aggregate the results into one NeedStore
+        let mut stps_agg = StepStore::new();
+
+        for stp in stps.iter_mut() {
+            stps_agg.append(stp);
         }
 
-        //println!("possible steps: {}", stps.str());
-        stps
+        //println!("actionstore:get_steps possible steps: {}", stps.str());
+        stps_agg
     }
 
     /// Return steps that change a given state to a state closer
     /// to a goal region.
     pub fn steps_to(&self, astate: &SomeState, agoal: &SomeRegion) -> StepStore {
 
-        let mut stps = StepStore::new();
+        // Run a get_needs thread for each action
+        let mut stps: Vec<StepStore> = self
+            .avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|actx| actx.steps_to(astate, agoal))
+            .collect::<Vec<StepStore>>();
 
-        for actx in &self.avec {
-            stps.append(actx.steps_to(astate, agoal));
+        // Aggregate the results into one NeedStore
+        let mut stps_agg = StepStore::new();
+
+        for stp in stps.iter_mut() {
+            stps_agg.append(stp);
         }
 
-        //println!("possible steps: {}", stps.str());
-        stps
+        //println!("actionstore:steps_to possible steps: {}", stps.str());
+        stps_agg
     }
 
     /// Return steps that change a region closer to a state to a goal
     pub fn steps_from(&self, agoal: &SomeRegion, astate: &SomeState) -> StepStore {
 
-        let mut stps = StepStore::new();
+        // Run a get_needs thread for each action
+        let mut stps: Vec<StepStore> = self
+            .avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|actx| actx.steps_from(agoal, astate))
+            .collect::<Vec<StepStore>>();
 
-        for actx in &self.avec {
-            stps.append(actx.steps_from(agoal, astate));
+        // Aggregate the results into one NeedStore
+        let mut stps_agg = StepStore::new();
+
+        for stp in stps.iter_mut() {
+            stps_agg.append(stp);
         }
 
-        //println!("possible steps: {}", stps.str());
-        stps
+        //println!("actionstore:steps_from possible steps: {}", stps.str());
+        stps_agg
+        
     }
 
 } // end impl ActionStore
