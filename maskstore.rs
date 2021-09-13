@@ -24,31 +24,9 @@ impl MaskStore {
         }
     }
 
-    /// Return a new, empty, MaskStore struct instance, with a given capacity.
-    pub fn _new_with_capacity(num: usize) -> Self {
-        Self {
-            avec: Vec::<SomeMask>::with_capacity(num),
-        }
-    }
-
     /// Return the length of the store.
     pub fn len(&self) -> usize {
         self.avec.len()
-    }
-
-    /// Return true if the store contains a given mask.
-    pub fn _contains(&self, amask: &SomeMask) -> bool {
-        for mskx in self.avec.iter() {
-            if mskx == amask {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Push a SomeMask instance onto the vector.
-    pub fn _push(&mut self, val: SomeMask) {
-        self.avec.push(val);
     }
 
     /// Return a vector interator.

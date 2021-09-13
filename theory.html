@@ -1401,6 +1401,54 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
         Then calculate the initial region of the restricted rule.
     </p>
+    <p>Asymmetric-Chaining</p>
+    <p class="indent1">
+    Going from an initial state to a goal state/region, is called forward-chaining.  
+    </p>
+    <p class="indent1">
+    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
+    backward-chaining.
+    </p>
+    <p class="indent1">
+    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
+    This could be thought of as traversing the region of (initial-state union goal-state) (IUG).
+    </p>
+    <p class="indent1">
+    If only one rule exists for a needed change, and that rules initial-region is outside of IUG,
+    forward-chaining will not work.
+    </p>
+    <p class="indent1">
+    If only one rule exists for a needed change, and that rules result-region is outside of IUG,
+    backward-chaining will not work.
+    </p>
+    <p class="indent1">
+    In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
+    </p>
+    <p class="indent1">
+    The backward-chaining problem needs to be broken up into (goal from rule-result-region) and (rule-initial-region from initial-state).
+    </p>
+   <p>
+    Rule order
+    </p>
+    <p class="indent1">
+    Two rules can imply an order of use, if the changes of one must be undone to run the other.
+    e.g. 0X00->0X01, later 1X00->.... 
+    </p>
+    <p class="indent1">
+    Two rules can be mutually exclusive, that is neither order works.
+    </p>
+    <p class="indent2">
+    Assuming a current state of 0000, and the wish to change to the state 0011:
+    </p>
+    <p class="indent2">
+    With the rule XXXX-><span class="not">x</span>XXXX available to switch the leftmost bit.
+    </p>
+    <p class="indent2">
+    Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
+    </p
+    <p class="indent1">
+    IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
+    </p>
     <h3>Contradictory Intersections</h3>
     <p>
     If two rules intersect, the intersection of the two rules can be calculated.
@@ -1591,42 +1639,6 @@ For a state that always produces the same two results, alternating, a minimum of
  </p>
  </li>
  </ul>
-    <h3>Asymmetric chaining</h3>
-    <p>
-    Going from an initial state to a goal state/region, is called forward-chaining.  
-    </p>
-    <p>
-    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
-    backward-chaining.
-    </p>
-    <p>
-    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
-    This could be thought of as traversing the region of (initial-state union goal-state) (IUG).
-    </p>
-    <p>
-    If only one rule exists for a needed change, and that rules initial-region is outside of IUG,
-    forward-chaining will not work.
-    </p>
-    <p>
-    If only one rule exists for a needed change, and that rules result-region is outside of IUG,
-    backward-chaining will not work.
-    </p>
-    <p>
-    In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
-    </p>
-    <p>
-    The backward-chaining problem needs to be broken up into (goal to rule-result-region) and (rule-initial-region to initial-state). (not yet in code)
-    </p>
-    <p>
-    Two rules can imply an order of use, if the changes of one must be undone to run the other.
-    e.g. 0X00->0X01, later 1X00->.... 
-    </p>
-    <p>
-    Two rules can be mutually exclusive, that is neither order works. 0X00->0X01, 1X00->1X10.
-    </p>
-    <p>
-    IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
-    </p>
  </div>
   <div id="conclude">
     	<a name="CL"></a>
@@ -1672,7 +1684,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/12/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/13/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

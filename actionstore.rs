@@ -109,13 +109,13 @@ impl ActionStore {
 
     /// Return steps that change a given state to a state closer
     /// to a goal region.
-    pub fn steps_to(&self, astate: &SomeState, agoal: &SomeRegion) -> StepStore {
+    pub fn steps_to(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> StepStore {
 
         // Run a get_needs thread for each action
         let mut stps: Vec<StepStore> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.steps_to(astate, agoal))
+            .map(|actx| actx.steps_to(from_reg, goal_reg))
             .collect::<Vec<StepStore>>();
 
         // Aggregate the results into one NeedStore
@@ -130,13 +130,13 @@ impl ActionStore {
     }
 
     /// Return steps that change a region closer to a state to a goal
-    pub fn steps_from(&self, agoal: &SomeRegion, astate: &SomeState) -> StepStore {
+    pub fn steps_from(&self, goal_reg: &SomeRegion, from_reg: &SomeRegion) -> StepStore {
 
         // Run a get_needs thread for each action
         let mut stps: Vec<StepStore> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.steps_from(agoal, astate))
+            .map(|actx| actx.steps_from(goal_reg, from_reg))
             .collect::<Vec<StepStore>>();
 
         // Aggregate the results into one NeedStore

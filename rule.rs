@@ -119,7 +119,7 @@ impl SomeRule {
 
     /// Return the result region after applying an initial region to a rule.
     /// This could be called "forward chaining".
-    pub fn result_from_initial(&self, reg: &SomeRegion) -> SomeRegion {
+    pub fn result_from_initial_region(&self, reg: &SomeRegion) -> SomeRegion {
         if reg.intersects(&self.initial_region()) == false {
             panic!("result_from_initial: given region does not intersect the ruls initial region");
         }
@@ -170,28 +170,6 @@ impl SomeRule {
 
         let zeros = reg_int.low_mask();
         let ones = reg_int.high_mask();
-
-        Self {
-            b00: self.b00.m_and(&zeros),
-            b01: self.b01.m_and(&zeros),
-            b11: self.b11.m_and(&ones),
-            b10: self.b10.m_and(&ones),
-        }
-    }
-
-    /// Restrict the initial region to a intersectng state.
-    pub fn restrict_initial_region_to_state(&self, stax: &SomeState) -> Self {
-        let init_reg = self.initial_region();
-
-        if init_reg.is_superset_of_state(stax) == false {
-            panic!(
-                "{} is not a subset of rule initial region {}",
-                stax, init_reg
-            );
-        }
-
-        let zeros = SomeMask { bts: stax.bts.b_not() };
-        let ones =  SomeMask { bts: stax.bts.clone() };
 
         Self {
             b00: self.b00.m_and(&zeros),

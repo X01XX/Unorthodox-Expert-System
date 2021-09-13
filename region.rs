@@ -268,14 +268,14 @@ impl SomeRegion {
     }
 
     /// Return the number of different (non-x) bits with another region.
-    pub fn _distance(&self, reg1: &SomeRegion) -> usize {
+    pub fn distance(&self, reg1: &SomeRegion) -> usize {
         self.diff_mask_state(&reg1.state1)
             .m_and(&self.diff_mask_state(&reg1.state2))
             .num_one_bits()
     }
 
     /// Return the number of different (non-x) bits with a state.
-    pub fn distance_state(&self, sta1: &SomeState) -> usize {
+    pub fn _distance_state(&self, sta1: &SomeState) -> usize {
         self.diff_mask_state(&sta1).num_one_bits()
     }
 

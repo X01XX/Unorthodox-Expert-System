@@ -135,25 +135,20 @@ impl SomeChange {
         strrc
     }
 
-    /// Restrict a change to an initial region
-    pub fn _restrict_to_initial_region(&self, areg: &SomeRegion) -> Self {
-        let ones = SomeMask::new(areg.state1.s_and(&areg.state2).bts);
-        
+    /// Create a change for translating one region to another.
+    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
+        let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
+        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
+
+        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
+
+        let to_not_x = to.x_mask().m_not();
+
         SomeChange {
-            b01: self.b01.m_and(&ones.m_not()),
-            b10: self.b10.m_and(&ones),
+            b01: f_zeros.m_and(&t_ones).m_and(&to_not_x),
+            b10: f_ones.m_and(&t_zeros).m_and(&to_not_x),
         }
     }
 
-    /// Create a change for translating a state to a region.
-    pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> Self {
-
-        let t_ones = to.state1.bts.b_and(&to.state2.bts);
-        let t_zeros = to.state1.bts.b_or(&to.state2.bts).b_not();
-
-        SomeChange {
-            b01: SomeMask::new(from.bts.b_not().b_and(&t_ones)),
-            b10: SomeMask::new(from.bts.b_and(&t_zeros)),
-        }
-    }
 } // end impl SomeChange

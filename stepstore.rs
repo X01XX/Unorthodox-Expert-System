@@ -1,7 +1,7 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
 use crate::mask::SomeMask;
-use crate::state::SomeState;
+//use crate::state::SomeState;
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::change::SomeChange;
@@ -99,31 +99,6 @@ impl StepStore {
         }
         None
     } // end link
-
-    /// Append a StepStore to a StepStore.
-    pub fn append_validate(&mut self, other: &StepStore) {
-        if other.len() == 0 {
-            return;
-        }
-        
-        let mut alen = self.len();
-        
-        let mut lastrslt = &other[0].result;
-        if alen > 0 {
-            lastrslt = &self[alen - 1].result;
-        }
-        
-        for stepx in other.iter() {
-            if alen > 0 {
-                assert!(stepx.initial == *lastrslt);
-            }
-            
-            self.avec.push(stepx.clone());
-            lastrslt = &stepx.result;
-            
-            alen += 1;
-        }
-    }
 
     /// Return an immutable iterator for a StepStore.
     pub fn iter(&self) -> Iter<SomeStep> {
@@ -231,20 +206,23 @@ impl StepStore {
         ret_vec
     } // end steps_bt_change_bit
 
-    /// Return the result of running steps on an into state
-    pub fn result_from_state(&self, from_state: &SomeState) -> Option<SomeState> {
-        let mut cur_state = from_state.clone();
+    /// Return the result of running steps from an initial region
+    pub fn result_from_initial_region(&self, from_reg: &SomeRegion) -> Option<SomeRegion> {
+
+        let mut cur_reg = from_reg.clone();
 
         for stpx in self.iter() {
-            if stpx.initial.is_superset_of_state(&cur_state) {
-                cur_state = stpx.result_from_initial_state(&cur_state);
+            if cur_reg.intersects(&stpx.initial) {
+                let stpy = stpx.restrict_initial_region(&cur_reg);
+                cur_reg = stpy.result.clone();
             } else {
                 return None;
             }
-        }
-        Some(cur_state)    
-    }
+        } //next stpx
 
+        Some(cur_reg)
+    }
+    
     /// Return a new Some(StepStore) after restricting the initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
 

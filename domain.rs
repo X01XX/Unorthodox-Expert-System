@@ -302,25 +302,25 @@ impl SomeDomain {
     } // end run_plan
 
     /// Get the steps of a plan, wrap the steps into a plan, return Some(SomePlan).
-    pub fn make_plan2(&self, from_state: &SomeState, goal_reg: &SomeRegion) -> Option<SomePlan> {
-        if let Some(steps) = self.make_plan3(from_state, goal_reg, 0) {
+    pub fn make_plan2(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<SomePlan> {
+        if let Some(steps) = self.make_plan3(from_reg, goal_reg, 0) {
             return Some(SomePlan::new(steps));
         }
         None
     }
 
     /// Return the steps of a plan to go from a given state to a given region.
-    pub fn make_plan3(&self, from_state: &SomeState, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
+    pub fn make_plan3(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
 
-        // Check if from_state is at the goal
-        if goal_reg.is_superset_of_state(from_state) {
+        // Check if from_reg is at the goal
+        if goal_reg.intersects(from_reg) {
             return Some(StepStore::new());
         }
 
         // Check if change is possible
 
         // Calculate the minimum bit changes needed.
-        let required_change = SomeChange::state_to_region(from_state, goal_reg);
+        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
         // println!("make_plan3: required_change {}", &required_change);
 
         // Get a vector of steps (from rules) that make part of the needed changes.
@@ -364,15 +364,15 @@ impl SomeDomain {
 
         // Check if one step makes the required change.
         for stepx in steps_str.iter() {
-            if stepx.initial.is_superset_of_state(from_state) {
+            if stepx.initial.intersects(from_reg) {
 
-                let rslt = stepx.result_from_initial_state(from_state);
+                let rslt = stepx.result_from_initial_region(from_reg);
 
-                if goal_reg.is_superset_of_state(&rslt) {
+                if goal_reg.intersects(&rslt) {
                     
-                    let bstep = stepx.restrict_initial_region_to_state(from_state);
+                    let bstep = stepx.restrict_initial_region(from_reg);
 
-//                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_state, goal_reg);
+//                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_reg, goal_reg);
                     let mut stpstr = StepStore::new_with_capacity(1);
                     stpstr.push(bstep);
                     return Some(stpstr);
@@ -385,7 +385,7 @@ impl SomeDomain {
         let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
 
         for _ in 0..num_tries {
-            if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_state, goal_reg) {
+            if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg) {
                 step_options.push(poss_steps);
             }
         } // next try
@@ -399,7 +399,7 @@ impl SomeDomain {
         // Run a number of depth-first backward chaining 
 //        println!("Try random depth-first backward chaining");
         for _ in 0..num_tries {
-            if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_state, goal_reg) {
+            if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg) {
                 step_options.push(poss_steps);
             }
         } // next try
@@ -418,8 +418,6 @@ impl SomeDomain {
 
         // Try Asymmetric forward chaining
 
-        let mut ret_steps = Vec::<StepStore>::new();
-
         // Sort the steps by each bit change they make. (some actions may change more than on bit, so will appear more than once)
         let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
 
@@ -429,23 +427,49 @@ impl SomeDomain {
             return None;
         }
 
-        let agg_reg = goal_reg.union_state(&from_state);
+    
+        if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
+
+            // Return a plan found so far, if any
+            if ret_steps.len() > 0 {
+                let chosen = choose_one(&ret_steps);
+                //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+                return Some(ret_steps[chosen].clone());
+            }
+        }
+
+        if let Some(ret_steps) = self.asymmetric_backward_chaining(from_reg, goal_reg, &steps_str, depth) {
+
+            // Return a plan found so far, if any
+            if ret_steps.len() > 0 {
+                let chosen = choose_one(&ret_steps);
+                //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+                return Some(ret_steps[chosen].clone());
+            }
+        }
+        
+        None
+    } // end make_plan3
+
+    /// Try Asymmetric forward chaining
+    fn asymmetric_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
+
+        let mut ret_steps = Vec::<StepStore>::new();
+        
+        let agg_reg = goal_reg.union(from_reg);
 
         let mut min_dist_from = 9999;
-
-        // Find min distance of step initial regions, that are external from agg_reg, to the from_state
+        
+        // Find min distance of step initial regions, that are external from agg_reg, to the from_reg
         for stepx in steps_str.iter() {
 
             if stepx.initial.intersects(&agg_reg) {
                 continue;
             }
 
-            let dist = stepx.initial.distance_state(from_state);
+            let dist = stepx.initial.distance(from_reg);
             if dist < min_dist_from {
                 min_dist_from = dist;
-                if min_dist_from == 1 {
-                    break;
-                }
             }
         } // next stepx
 
@@ -454,14 +478,14 @@ impl SomeDomain {
         }
         //println!("min_dist_from = {}", &min_dist_from);
 
-        // Accumulate indicies to steps found to be external to agg_reg and closest to from_state
+        // Accumulate indicies to steps found to be external to agg_reg and closest to from_reg
         let mut asym_steps = Vec::<usize>::new();
         let mut inx = 0;
         for stepx in steps_str.iter() {
 
             if stepx.initial.intersects(&agg_reg) == false {
 
-                let dist = stepx.initial.distance_state(from_state);
+                let dist = stepx.initial.distance(from_reg);
                 if dist == min_dist_from {
                     asym_steps.push(inx);
                 }
@@ -471,25 +495,25 @@ impl SomeDomain {
         } // next step
 
 
-//            print!("agg {} min_dist_from {} is {}, asym_steps: ", agg_reg.formatted_string(), from_state, &min_dist_from);
+//      print!("agg {} min_dist_from {} is {}, asym_steps: ", agg_reg.formatted_string(), from_reg, &min_dist_from);
         for inx in &asym_steps {
             //print!(" {}", steps_str[*inx]);
 
-            if let Some(mut gap_steps) = self.make_plan3(from_state, &steps_str[*inx].initial, depth + 1) {
+            if let Some(mut gap_steps) = self.make_plan3(from_reg, &steps_str[*inx].initial, depth + 1) {
 
-                // println!("gap steps from {} to {} are {}", from_state, &steps_str[*inx].initial, gap_steps);
+                // println!("gap steps from {} to {} are {}", from_reg, &steps_str[*inx].initial, gap_steps);
 
                 let mut ret_stepsx = StepStore::new_with_capacity(gap_steps.len() + 1);
 
-                let rslt = gap_steps.result_from_state(from_state).unwrap();
-                // println!("gap_steps result from state {} is {}", from_state, &rslt);
+                let rslt = gap_steps.result_from_initial_region(from_reg).unwrap();
+                // println!("gap_steps result from state {} is {}", from_reg, &rslt);
 
                 ret_stepsx.append(&mut gap_steps);
                 // println!("new ret_stepsx: {}", &ret_stepsx);
 
-                let stepb = steps_str[*inx].restrict_initial_region_to_state(&rslt);
+                let stepb = steps_str[*inx].restrict_initial_region(&rslt);
 
-                let rslt2 = steps_str[*inx].result_from_initial_state(&rslt);
+                let rslt2 = steps_str[*inx].result_from_initial_region(&rslt);
 
                 let mut stepsb = StepStore::new();
                 stepsb.push(stepb);
@@ -498,34 +522,129 @@ impl SomeDomain {
 
                     // println!("gap_plan: updated steps3: {}", ret_steps2.formatted_string(" "));
 
-                    let rslt3 = ret_steps2.result_from_state(from_state).unwrap();
-                    if goal_reg.is_superset_of_state(&rslt3) {
+                    let rslt3 = ret_steps2.result_from_initial_region(from_reg).unwrap();
+                    if goal_reg.intersects(&rslt3) {
                         ret_steps.push(ret_steps2);
-                    } else {
-                        if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
-
-                            if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
-
-                                // println!("gap_steps: updated steps4: {}", ret_stepsx.formatted_string(" "));
-                                ret_steps.push(ret_steps3);
-                            }
-
-                        } // endif gap_steps2
+                        return Some(ret_steps);
                     }
+                    if let Some(gap_steps2) = self.make_plan3(&rslt2, goal_reg, depth + 1) {
+
+                        if let Some(ret_steps3) = ret_steps2.link(&gap_steps2) {
+
+                            // println!("asymmetric_forward_chaining: returning {}", &ret_steps3.formatted_string(" "));
+                            ret_steps.push(ret_steps3);
+                            return Some(ret_steps);
+                        }
+
+                    } // endif gap_steps2
+                    
                 } // endif ret_steps2
             }
         } // next inx
         // println!(" ");
 
-        // Return a plan found so far, if any
-        if ret_steps.len() > 0 {
-            let chosen = choose_one(&ret_steps);
-            //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
-            return Some(ret_steps[chosen].clone());
-        }
-        None
-    } // end make_plan3
+       None
+   } // end asymmetric_forward_chaining
 
+    /// Try Asymmetric backward chaining
+    fn asymmetric_backward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
+
+        //let mut ret_steps = Vec::<StepStore>::new();
+        
+        let agg_reg = goal_reg.union(from_reg);
+
+        let mut min_dist_goal = 9999;
+        
+        // Find min distance of step result regions, that are external from agg_reg, to the goal_reg
+        for stepx in steps_str.iter() {
+
+            if stepx.result.intersects(&agg_reg) {
+                continue;
+            }
+
+            let dist = stepx.result.distance(goal_reg);
+            if dist < min_dist_goal {
+                min_dist_goal = dist;
+            }
+        } // next stepx
+
+        if min_dist_goal == 9999 {
+            return None;
+        }
+        //println!("min_dist_goal = {}", &min_dist_goal);
+
+        // Accumulate indicies to steps found to be external to agg_reg and closest to goal_reg
+        let mut asym_steps = Vec::<usize>::new();
+        let mut inx = 0;
+        for stepx in steps_str.iter() {
+
+            if stepx.result.intersects(&agg_reg) == false {
+
+                let dist = stepx.result.distance(goal_reg);
+                if dist == min_dist_goal {
+                    asym_steps.push(inx);
+                }
+            }
+
+            inx += 1;
+        } // next step
+
+
+//      print!("agg {} min_dist_goal {} is {}, asym_steps: ", agg_reg.formatted_string(), from_reg, &min_dist_goal);
+        for inx in &asym_steps {
+            //print!(" {}", steps_str[*inx]);
+
+            if let Some(gap_steps) = self.make_plan3(&steps_str[*inx].result, goal_reg, depth + 1) {
+
+                // println!("gap steps from {} to {} are {}", &steps_str[*inx].result, goal_reg, gap_steps);
+
+                let mut ret_steps = StepStore::new_with_capacity(gap_steps.len() + 1);
+
+                let stepb = steps_str[*inx].restrict_result_region(&gap_steps[0].initial);
+                // println!("gap_steps result from state {} is {}", from_reg, &rslt);
+
+                ret_steps.push(stepb);
+
+                if let Some(ret_steps2) = ret_steps.link(&gap_steps) {
+
+                    let init2 = &ret_steps2[0].initial;
+
+                    // println!("gap_plan: updated steps2: {}", ret_steps2.formatted_string(" "));
+                    if from_reg.intersects(init2) {
+                        if let Some(ret_steps3) = ret_steps2.restrict_initial_region(from_reg) {
+                            return Some(vec![ret_steps3]);
+                        } else {
+                            //println!("for {} to {}, failed 3 to restict {} to from", from_reg, goal_reg, ret_steps2.formatted_string(" "));
+                            return None;
+                        }
+                    }
+
+                    if let Some(gap_steps2) = self.make_plan3(from_reg, init2, depth + 1) {
+
+                        if let Some(ret_steps3) = gap_steps2.link(&ret_steps2) {
+
+                            if let Some(ret_steps4) = ret_steps3.restrict_initial_region(from_reg) {
+                                //println!("asymmetric_backward_chaining: returning {}", &ret_steps4.formatted_string(" "));
+                                return Some(vec![ret_steps4]);
+                            } else {
+                                //println!("for {} to {}, failed 4 to restict {} to from", from_reg, goal_reg, ret_steps3.formatted_string(" "));
+                                return None;
+                            }
+                        }
+                        //println!("for {} to {}, failed link 2 {} to {}", from_reg, goal_reg, ret_steps2.formatted_string(" "), gap_steps2.formatted_string(" "));
+                    } else {
+                            
+                    } // endif gap_steps2
+                    
+                } else {
+                    //println!("failed link 1 {} to {}", ret_steps.formatted_string(" "), gap_steps.formatted_string(" "));
+                } // endif ret_steps2
+            }
+        } // next inx
+        // println!(" ");
+
+       None
+   } // end asymmetric_backward_chaining
 
     /// Make a plan from a region to another region.
     /// Since there are some random choices, it may be useful to try
@@ -540,7 +659,7 @@ impl SomeDomain {
 
         for _ in 0..2 {
 
-            if let Some(planz) = self.make_plan2(&self.cur_state.clone(), &goal_reg) {
+            if let Some(planz) = self.make_plan2(&SomeRegion::new(&self.cur_state, &self.cur_state), &goal_reg) {
                 // println!("make_plan2 worked!");
                 return Some(planz);
             }
@@ -582,12 +701,12 @@ impl SomeDomain {
     } // end state_from_string
 
     /// Return a plan using random depth-first backward chaining to a state from a goal.
-    fn random_depth_first_backward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
+    fn random_depth_first_backward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<StepStore> {
     
-        //println!("random_depth_first_backward_chaining2: to {} from {}", cur_state.formatted_string(), goal_reg.formatted_string());
+        //println!("random_depth_first_backward_chaining2: to {} from {}", from_reg.formatted_string(), goal_reg.formatted_string());
     
         // Get steps that have a result region that intersects the goal region
-        let next_steps = self.actions.steps_from(goal_reg, cur_state);
+        let next_steps = self.actions.steps_from(goal_reg, from_reg);
         if next_steps.len() == 0 {
             return None;
         }
@@ -604,11 +723,11 @@ impl SomeDomain {
         // Calculate the current step restricted to the goal intersection
         let cur_step = next_steps[step_inx].restrict_result_region(goal_reg);
 
-        // Return step if it has intersected the cur_state
-        if next_goal.is_superset_of_state(cur_state) {
+        // Return step if it has intersected the from_reg
+        if next_goal.intersects(from_reg) {
             let mut ret_stps = StepStore::new_with_capacity(1);
             ret_stps.push(cur_step);
-            if let Some(ret_stps2) = ret_stps.restrict_initial_region(&SomeRegion::new(cur_state, cur_state)) {
+            if let Some(ret_stps2) = ret_stps.restrict_initial_region(from_reg) {
                 return Some(ret_stps2);
             } else {
                 return None;
@@ -616,12 +735,12 @@ impl SomeDomain {
         }
 
         // Try recursion for more steps
-        if let Some(mut next_steps) = self.random_depth_first_backward_chaining(cur_state, &next_goal) {
+        if let Some(mut next_steps) = self.random_depth_first_backward_chaining(from_reg, &next_goal) {
 
             let mut ret_stps = StepStore::new_with_capacity(next_steps.len() + 1);
             ret_stps.append(&mut next_steps);
             ret_stps.push(cur_step);
-            if let Some(ret_stps2) = ret_stps.restrict_initial_region(&SomeRegion::new(cur_state, cur_state)) {
+            if let Some(ret_stps2) = ret_stps.restrict_initial_region(from_reg) {
                 return Some(ret_stps2);
             } else {
                 return None;
@@ -631,10 +750,10 @@ impl SomeDomain {
     } // end random_depth_first_backward_chaining
     
     /// Return a plan from random depth-first forward chaining to goal.
-    fn random_depth_first_forward_chaining(&self, cur_state: &SomeState, goal_reg: &SomeRegion) -> Option<StepStore> {
+    fn random_depth_first_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<StepStore> {
     
         // Get steps that have a result region that intersects the goal region
-        let next_steps = self.actions.steps_to(cur_state, goal_reg);
+        let next_steps = self.actions.steps_to(from_reg, goal_reg);
         if next_steps.len() == 0 {
             return None;
         }
@@ -646,22 +765,23 @@ impl SomeDomain {
         }
 
         // Calculate the next state from the step
-        let next_state = next_steps[step_inx].result_from_initial_state(cur_state);
+        let next_reg = next_steps[step_inx].result_from_initial_region(from_reg);
 
         // Return step if it has intersected the goal
-        if goal_reg.is_superset_of_state(&next_state) {
+        if goal_reg.intersects(&next_reg) {
             let mut ret_stp = StepStore::new_with_capacity(1);
             ret_stp.push(next_steps[step_inx].clone());
             return Some(ret_stp);
         }
 
         // Use recursion to get next steps
-        if let Some(more_steps) = self.random_depth_first_forward_chaining(&next_state, goal_reg) {
+        if let Some(more_steps) = self.random_depth_first_forward_chaining(&next_reg, goal_reg) {
 
             let mut store_ret = StepStore::new_with_capacity(more_steps.len() + 1);
             store_ret.push(next_steps[step_inx].clone());
-            store_ret.append_validate(&more_steps);
-            return Some(store_ret);
+            if let Some(ret_steps2) = store_ret.link(&more_steps) {
+                return Some(ret_steps2);
+            }
         }
     
         None

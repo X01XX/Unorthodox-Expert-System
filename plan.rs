@@ -76,13 +76,6 @@ impl SomePlan {
         rs
     }
 
-    /// Return a plan with one step.
-    pub fn _new_step(stpx: SomeStep) -> Self {
-        let mut stps = StepStore::new_with_capacity(1);
-        stps.push(stpx);
-        Self { steps: stps }
-    }
-
     /// Return the number of steps in a plan.
     pub fn len(&self) -> usize {
         self.steps.len()
@@ -91,108 +84,6 @@ impl SomePlan {
     /// Return a step iterator.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
-    }
-
-    /// Link two Plans together, return Some(SomePlan).
-    /// Return None if the link fails.
-    pub fn _link(&self, other: &Self) -> Option<Self> {
-        let end_inx = self.len() - 1;
-
-        if self.steps[end_inx].result == other.steps[0].initial {
-            let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
-
-            for stp1 in self.steps.iter() {
-                rc_steps.push(stp1.clone());
-            }
-
-            for stp2 in other.steps.iter() {
-                rc_steps.push(stp2.clone());
-            }
-
-            return Some(SomePlan::new(rc_steps));
-        }
-
-        if self.steps[end_inx]
-            .result
-            .intersects(&other.steps[0].initial)
-        {
-            let regx = self.steps[end_inx]
-                .result
-                .intersection(&other.steps[0].initial);
-
-            if let Some(plan1) = self._restrict_result_region(&regx) {
-                if let Some(plan2) = other._restrict_initial_region(&regx) {
-                    let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
-
-                    for stp1 in plan1.steps.iter() {
-                        rc_steps.push(stp1.clone());
-                    }
-
-                    for stp2 in plan2.steps.iter() {
-                        rc_steps.push(stp2.clone());
-                    }
-
-                    return Some(SomePlan::new(rc_steps));
-                }
-            }
-        }
-        None
-    }
-
-    /// Return a new Some(SomePlan) after restricting the initial region.
-    /// Return None if the restriction fails.
-    pub fn _restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
-        let mut rc_steps = StepStore::new_with_capacity(self.len());
-
-        let mut regy = regx.clone();
-
-        for stpx in self.steps.iter() {
-            if regy.intersects(&stpx.initial) {
-                let stpy = stpx.restrict_initial_region(&regy);
-                regy = stpy.result.clone();
-
-                rc_steps.push(stpy);
-            } else {
-                return None;
-            }
-        } //next stepx
-
-        Some(Self::new(rc_steps))
-    }
-
-    /// Return a new Some(SomePlan) after restricting the result region.
-    /// Return None if the restriction fails.
-    pub fn _restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
-        let mut rc_steps = StepStore::new_with_capacity(self.len());
-
-        let mut regy = regx.clone();
-
-        for inx in (0..self.len()).rev() {
-            let stpx = &self.steps[inx];
-
-            if regy.intersects(&stpx.result) {
-                let stpy = stpx.restrict_result_region(&regy);
-
-                regy = stpy.initial.clone();
-                //println!("stepstore pushing {}  regy {}", stpy, regy);
-                rc_steps.push(stpy);
-            //println!("push worked");
-            } else {
-                //println!("stepstore restrict result {} does not intersect {}", regy, stpx.result);
-                return None;
-            }
-        } //next stepx
-
-        if rc_steps.len() > 1 {
-            rc_steps.reverse();
-        }
-
-        Some(Self::new(rc_steps))
-    }
-
-    /// Return the initial region of a plan that contains at least one step.
-    pub fn _initial_region(&self) -> &SomeRegion {
-        return &self.steps[0].initial;
     }
 
     /// Return the result region of a plan that contains at least one step.

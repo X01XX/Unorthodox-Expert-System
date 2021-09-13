@@ -2,7 +2,7 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::state::SomeState;
+//use crate::state::SomeState;
 use crate::change::SomeChange;
 
 use std::fmt;
@@ -40,32 +40,13 @@ impl SomeStep {
     }
 
     /// Return a new step, by taking a given step and restricting the initial region.
-    pub fn restrict_initial_region_to_state(&self, stax: &SomeState) -> Self {
-        let init_reg = SomeRegion::new(stax, stax);
-
-        if self.initial.is_superset_of_state(stax) {
-        } else {
-            println!("step:restrict_initial_region_to_state: error {} is not in {}", stax, &self.initial);
-        }
-
-        Self {
-            initial: init_reg.clone(),
-            act_num: self.act_num,
-            result: self.rule.result_from_initial(&init_reg),
-            rule: self.rule.restrict_initial_region_to_state(stax),
-            alt_rule: self.alt_rule,
-            group_reg: self.group_reg.clone(),
-        }
-    }
-
-    /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         let init_reg = self.initial.intersection(&reg);
 
         Self {
             initial: init_reg.clone(),
             act_num: self.act_num,
-            result: self.rule.result_from_initial(&init_reg),
+            result: self.rule.result_from_initial_region(&init_reg),
             rule: self.rule.restrict_initial_region(&init_reg),
             alt_rule: self.alt_rule,
             group_reg: self.group_reg.clone(),
@@ -102,12 +83,11 @@ impl SomeStep {
         rcstr
     }
 
-    /// Return the result of a step when applied to a given initial state.
-    /// The given initial state must intersect the step initial region.
-    pub fn result_from_initial_state(&self, astate: &SomeState) -> SomeState {
-        self.rule.result_from_initial_state(astate)
+    /// Return the result of a step when applied to a given initial region.
+    /// The given initial region must intersect the step initial region.
+    pub fn result_from_initial_region(&self, i_reg: &SomeRegion) -> SomeRegion {
+        self.rule.result_from_initial_region(i_reg)
     }
-
     /// Return the implied intial region from a given result region.
     /// The given region must intersect the step result region.
     pub fn initial_from_result(&self, aregion: &SomeRegion) -> SomeRegion {
