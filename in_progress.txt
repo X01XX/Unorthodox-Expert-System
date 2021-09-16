@@ -1,5 +1,5 @@
-It is possible to take a step that has one change you want, and one you do not want, then find a step to reverse the
-unwanted change.
+It is possible to take a step that has one change you want, and one you do not want (this would be missed because its not getting closer to the target),
+then find a step to reverse the unwanted change.
 
 testing: required_change /bit2:1->0/bit1:0->1 step chg: /bit3:1->0/bit2:1->0 unneeded chg: /bit3:1->0
 testing: rev steps found: [[r00XX0XXX -03> r00XX1XXX], [r00XX0XXX -06> r00XX1XXX]]
