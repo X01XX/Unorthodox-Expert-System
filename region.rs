@@ -426,6 +426,15 @@ impl SomeRegion {
 //        ret_vec
 //    }
 
+   /// Return the mask of one-bit positions
+   pub fn _ones_mask(&self) -> SomeMask {
+       SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
+   }
+
+   /// Return the mask of zero-bit positions
+   pub fn _zeros_mask(&self) -> SomeMask {
+       SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
+   }
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {

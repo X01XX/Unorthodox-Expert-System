@@ -85,7 +85,7 @@ impl SomeStep {
 
     /// Return the result of a step when applied to a given initial region.
     /// The given initial region must intersect the step initial region.
-    pub fn result_from_initial_region(&self, i_reg: &SomeRegion) -> SomeRegion {
+    pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
         self.rule.result_from_initial_region(i_reg)
     }
     /// Return the implied intial region from a given result region.
@@ -101,6 +101,11 @@ impl SomeStep {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 
+    // Return the change struct for a step
+    pub fn change(&self) -> SomeChange {
+        self.rule.change()
+    }
+    
 } // end impl SomeStep
 
 impl Clone for SomeStep {

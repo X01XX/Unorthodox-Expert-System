@@ -224,8 +224,13 @@ impl GroupStore {
         self.avec.iter()
     }
 
-    /// Return the length of the vector.
+    /// Return the number of active, and inactive, groups.
     pub fn len(&self) -> usize {
+        self.avec.len()
+    }
+    
+    /// Return the number of active groups.
+    pub fn num_active(&self) -> usize {
         let mut cnt = 0;
         for grpx in &self.avec {
             if grpx.active {

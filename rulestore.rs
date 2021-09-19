@@ -36,25 +36,16 @@ impl PartialEq for RuleStore {
             return self.avec[0] == other.avec[0];
         }
 
-        // A rulestore of [Xx, XX] is equal to [X0, X1] at the rule bit mask level.
-        // Xx = 0->1, 1->0, XX = 0->0, 1->1
-        // X1 = 0->1, 1->1, X0 = 0->0, 1->0
+        // For two rules, order does not matter
         if self.len() == 2 {
-            if self.avec[0].b00 != other.avec[0].b00 && self.avec[0].b00 != other.avec[1].b00 {
-                return false;
-            }
-            if self.avec[0].b01 != other.avec[0].b01 && self.avec[0].b01 != other.avec[1].b01 {
-                return false;
+            if self.avec[0] == other.avec[0] && self.avec[1] == other.avec[1] {
+                return true;
             }
 
-            if self.avec[0].b11 != other.avec[0].b11 && self.avec[0].b11 != other.avec[1].b11 {
-                return false;
+            if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
+                return true;
             }
-            if self.avec[0].b10 != other.avec[0].b10 && self.avec[0].b10 != other.avec[1].b10 {
-                return false;
-            }
-
-            return true;
+            return false;
         }
 
         panic!("Unsupported RuleStore length {}", self.len());

@@ -370,6 +370,22 @@ impl SomeRule {
         // println!("order_bad: returning false");
         false
     }
+    
+    /// Return a rule that represents the aggregate of a sequence
+    /// of rule, self then other.
+    pub fn _aggregate(&self, other: &SomeRule) -> SomeRule {
+        assert!(self.result_region().intersects(&other.initial_region()));
+
+        Self {
+            b00: self.b00.m_and(&other.b00).m_or(&self.b01.m_and(&other.b10)),
+            
+            b01: self.b01.m_and(&other.b11).m_or(&self.b00.m_and(&other.b01)),
+            
+            b11: self.b11.m_and(&other.b11).m_or(&self.b10.m_and(&other.b01)),
+            
+            b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
+        }
+    }
 } // end SomeRule
 
 impl Clone for SomeRule {

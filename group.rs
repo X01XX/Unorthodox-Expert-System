@@ -124,7 +124,7 @@ impl SomeGroup {
         //            &self.edge_expand
         //        ));
 
-        rc_str.push_str(")");
+        rc_str.push_str(&format!("){}", self.active));
         rc_str
     }
 

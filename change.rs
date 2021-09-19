@@ -39,7 +39,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize and of two changes
-    pub fn _change_and(&self, other: &SomeChange) -> SomeChange {
+    pub fn change_and(&self, other: &SomeChange) -> SomeChange {
         Self {
             b01: self.b01.m_and(&other.b01),
             b10: self.b10.m_and(&other.b10),
@@ -49,7 +49,7 @@ impl SomeChange {
     /// Return the logical bitwize and of a change and a mask
     /// The mask is the not-x-mask of a goal, so changes that are 
     /// important to consider.
-    pub fn _change_and_mask(&self, msk: &SomeMask) -> SomeChange {
+    pub fn change_and_mask(&self, msk: &SomeMask) -> SomeChange {
         Self {
             b01: self.b01.m_and(msk),
             b10: self.b10.m_and(msk),
@@ -57,7 +57,7 @@ impl SomeChange {
     }
 
     /// Return the reverse change to a given change
-    pub fn _change_reverse(&self) -> SomeChange {
+    pub fn change_reverse(&self) -> SomeChange {
         Self {
             b01: self.b10.clone(),
             b10: self.b01.clone(),
@@ -65,7 +65,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize not od a change
-    pub fn _change_not(&self) -> SomeChange {
+    pub fn change_not(&self) -> SomeChange {
         Self {
             b01: self.b01.m_not(),
             b10: self.b10.m_not(),
@@ -73,13 +73,18 @@ impl SomeChange {
     }
 
     /// Return true if no bits are set
-    pub fn _is_low(&self) -> bool {
+    pub fn is_low(&self) -> bool {
         if self.b01.is_low() == false {
             return false;
         }
         self.b10.is_low()
     }
 
+    /// Return true if a change is not low
+    pub fn is_not_low(&self) -> bool {
+        !self.is_low()
+    }
+    
     /// Return the union of two SomeChange instances.
     pub fn union(&self, other: &SomeChange) -> Self {
         SomeChange {
@@ -151,4 +156,13 @@ impl SomeChange {
         }
     }
 
+    // Return true if a change intersects another
+    pub fn intersects(&self, other: &SomeChange) -> bool {
+        if self.b01.m_and(&other.b01).is_not_low() {
+            return true;
+        }
+
+        self.b10.m_and(&other.b10).is_not_low()
+    }
+    
 } // end impl SomeChange

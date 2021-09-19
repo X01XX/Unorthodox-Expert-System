@@ -192,7 +192,7 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
 }
 
 /// Domain 0, act 6, actions, given the current state.
-/// Toggle bit 6.
+/// Toggle bit 6.00XX1X10
 pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![2, 3]);
     println!(

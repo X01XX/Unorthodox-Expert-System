@@ -32,8 +32,13 @@ impl RegionStore {
         }
     }
 
-    /// Return the length of the vector, of active and inactive regions.
+    /// Return the number of active, and inactive, regions.
     pub fn len(&self) -> usize {
+        self.avec.len()
+    }
+    
+    /// Return the number active regions.
+    pub fn num_active(&self) -> usize {
         let mut cnt = 0;
         for regx in &self.avec {
             if regx.active {
