@@ -274,11 +274,6 @@ impl SomeRegion {
             .num_one_bits()
     }
 
-    /// Return the number of different (non-x) bits with a state.
-    pub fn _distance_state(&self, sta1: &SomeState) -> usize {
-        self.diff_mask_state(&sta1).num_one_bits()
-    }
-
     /// Return states in a region, given a list of states.
     pub fn states_in(&self, stas: &StateStore) -> StateStore {
         let mut stsin = StateStore::new();
@@ -426,15 +421,6 @@ impl SomeRegion {
 //        ret_vec
 //    }
 
-   /// Return the mask of one-bit positions
-   pub fn _ones_mask(&self) -> SomeMask {
-       SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
-   }
-
-   /// Return the mask of zero-bit positions
-   pub fn _zeros_mask(&self) -> SomeMask {
-       SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
-   }
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {

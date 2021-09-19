@@ -88,11 +88,6 @@ impl SomeStep {
     pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
         self.rule.result_from_initial_region(i_reg)
     }
-    /// Return the implied intial region from a given result region.
-    /// The given region must intersect the step result region.
-    pub fn initial_from_result(&self, aregion: &SomeRegion) -> SomeRegion {
-        self.rule.initial_from_result(aregion)
-    }
 
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.

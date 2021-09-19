@@ -18,8 +18,8 @@ pub const NUM_BITS_PER_INT: usize = 8;
 const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
 
 /// Masks, powers of 2, to isolate any bit-position of a single integer.
-/// Isolate bit 0 with: integer & ALL_BIT_MASKS[0]
-/// Isolate bit 5 with: integer & ALL_BIT_MASKS[5];
+/// Isolate bit 0 with: integer & ALL_BIT_MASKS\[0\]
+/// Isolate bit 5 with: integer & ALL_BIT_MASKS\[5\];
 const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128];
 
 /// The highest bit position in an integer.

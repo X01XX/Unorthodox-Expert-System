@@ -127,16 +127,6 @@ impl SomeRule {
         self.restrict_initial_region(reg).result_region()
     }
 
-    /// Return the initial region after applying a result region to a rule.
-    /// This could be called "backward chaining".
-    pub fn initial_from_result(&self, reg: &SomeRegion) -> SomeRegion {
-        if reg.intersects(&self.result_region()) == false {
-            panic!("initial_from_result: {} does not intersect the rules result region {}", &reg, &self.initial_region());
-        }
-
-        self.restrict_result_region(reg).initial_region()
-    }
-
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
@@ -370,22 +360,7 @@ impl SomeRule {
         // println!("order_bad: returning false");
         false
     }
-    
-    /// Return a rule that represents the aggregate of a sequence
-    /// of rule, self then other.
-    pub fn _aggregate(&self, other: &SomeRule) -> SomeRule {
-        assert!(self.result_region().intersects(&other.initial_region()));
 
-        Self {
-            b00: self.b00.m_and(&other.b00).m_or(&self.b01.m_and(&other.b10)),
-            
-            b01: self.b01.m_and(&other.b11).m_or(&self.b00.m_and(&other.b01)),
-            
-            b11: self.b11.m_and(&other.b11).m_or(&self.b10.m_and(&other.b01)),
-            
-            b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
-        }
-    }
 } // end SomeRule
 
 impl Clone for SomeRule {

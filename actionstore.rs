@@ -7,7 +7,7 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
-use crate::region::SomeRegion;
+//use crate::region::SomeRegion;
 use crate::stepstore::StepStore;
 
 use serde::{Deserialize, Serialize};
@@ -105,50 +105,6 @@ impl ActionStore {
 
         //println!("actionstore:get_steps possible steps: {}", stps.str());
         stps_agg
-    }
-
-    /// Return steps that change a given state to a state closer
-    /// to a goal region.
-    pub fn _steps_to(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> StepStore {
-
-        // Run a get_needs thread for each action
-        let mut stps: Vec<StepStore> = self
-            .avec
-            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx._steps_to(from_reg, goal_reg))
-            .collect::<Vec<StepStore>>();
-
-        // Aggregate the results into one NeedStore
-        let mut stps_agg = StepStore::new();
-
-        for stp in stps.iter_mut() {
-            stps_agg.append(stp);
-        }
-
-        //println!("actionstore:steps_to possible steps: {}", stps.str());
-        stps_agg
-    }
-
-    /// Return steps that change a region closer to a state to a goal
-    pub fn steps_from(&self, goal_reg: &SomeRegion, from_reg: &SomeRegion) -> StepStore {
-
-        // Run a get_needs thread for each action
-        let mut stps: Vec<StepStore> = self
-            .avec
-            .iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.steps_from(goal_reg, from_reg))
-            .collect::<Vec<StepStore>>();
-
-        // Aggregate the results into one NeedStore
-        let mut stps_agg = StepStore::new();
-
-        for stp in stps.iter_mut() {
-            stps_agg.append(stp);
-        }
-
-        //println!("actionstore:steps_from possible steps: {}", stps.str());
-        stps_agg
-        
     }
 
 } // end impl ActionStore

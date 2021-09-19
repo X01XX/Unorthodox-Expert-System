@@ -5,7 +5,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::change::SomeChange;
-use crate::rule::SomeRule;
+//use crate::rule::SomeRule;
 
 use std::fmt;
 use std::ops::Index;
@@ -207,43 +207,6 @@ impl StepStore {
         ret_vec
     } // end steps_bt_change_bit
 
-    /// Return the result region after running steps from a given initial region
-    pub fn _result_from_initial(&self, init_reg: &SomeRegion) -> Option<SomeRegion> {
-
-        let mut cur_reg = init_reg.clone();
-
-        for stpx in self.iter() {
-            if cur_reg.intersects(&stpx.initial) {
-                let stpy = stpx.restrict_initial_region(&cur_reg);
-                cur_reg = stpy.result.clone();
-            } else {
-                return None;
-            }
-        } //next stpx
-
-        Some(cur_reg)
-    }
-
-    /// Return the initial region by running steps from a given result region
-    pub fn _initial_from_result(&self, rslt_reg: &SomeRegion) -> Option<SomeRegion> {
-
-        let mut cur_reg = rslt_reg.clone();
-
-        let mut inx = self.len();
-        while inx > 0 {
-            inx -= 1;
-            let stpx = &self.avec[inx];
-            if cur_reg.intersects(&stpx.result) {
-                let stpy = stpx.restrict_result_region(&cur_reg);
-                cur_reg = stpy.initial.clone();
-            } else {
-                return None;
-            }
-        } //next inx
-         
-        Some(cur_reg)
-    }
-
     /// Return a new Some(StepStore) after restricting the initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
 
@@ -303,76 +266,6 @@ impl StepStore {
     pub fn result(&self) -> SomeRegion {
         assert!(self.len() > 0);
         self[self.len() - 1].result.clone()
-    }
-
-    /// Return true if two stepstores are mutually exclusive.  That is the change of either
-    /// must be reversed to use (intersect the initial region) of the other.
-    pub fn _mutually_exclusive(&self, other: &StepStore, wanted: &SomeChange) -> bool {
-
-        assert!(self.len() > 0);
-        assert!(other.len() > 0);
-        
-        let self_rule  = self._agg_rule();
-        let other_rule = other._agg_rule();
-        
-        if self_rule.order_bad(&other_rule, wanted) {
-            if other_rule.order_bad(&self_rule, wanted) {
-                return true;
-            }
-        }
-        
-        false
-    }
-
-    /// Return true if the steps in a StepStore are all correctly linked,
-    /// result-region to initial-region
-    pub fn _valid_sequence(&self) -> bool {
-        assert!(self.len() > 0);
-        
-        let mut prev_inx = 0;
-        
-        for inx in 1..self.len() {
-            if self[prev_inx].result != self[inx].initial {
-                return false;
-            }
-            prev_inx += 1;
-        }
-        true
-    }
-    
-    /// Return a aggregate rule representing the changes in a stepstore
-    pub fn _agg_rule(&self) -> SomeRule {
-
-        assert!(self.len() > 0);
-        assert!(self._valid_sequence());
-
-        let initial = self.initial();
-        let i_0 = initial._zeros_mask();
-        let i_1 = initial._ones_mask();
-        let i_x = initial.x_mask();
-        
-        let result  = self.result();
-        let r_0 = result._zeros_mask();
-        let r_1 = result._ones_mask();
-        let r_x = result.x_mask();
-
-        let b00 = i_0.m_and(&r_0);
-        let b01 = i_0.m_and(&r_1);
-        let b11 = i_1.m_and(&r_1);
-        let b10 = i_1.m_and(&r_0);
-        let bx0 = i_x.m_and(&r_0);
-        let bx1 = i_x.m_and(&r_1);
-        let bxx = i_x.m_and(&r_x);
-        
-        SomeRule {
-            b00: b00.m_or(&bx0).m_or(&bxx),
-
-            b01: b01.m_or(&bx1),
-
-            b11: b11.m_or(&bx1).m_or(&bxx),
-
-            b10: b10.m_or(&bx0),
-        }
     }
 
 } // end impl StepStore
