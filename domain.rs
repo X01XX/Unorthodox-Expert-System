@@ -774,24 +774,21 @@ impl SomeDomain {
         let mut inx = 0;
         for stpstrx in &steps_rev2 {
             if stpstrx.initial().intersects(from_reg) {
-                if let Some(steps2) = stpstrx.restrict_initial_region(from_reg) {
-                    if steps2.result().intersects(goal_reg) {
-                        next_steps.push(inx);
-                    }
-                }
+                next_steps.push(inx);
             }
             inx += 1;
         }
 
-        // Randomly pick a solution stepstore, if there are any
-        if next_steps.len() > 0 {
-            let mut step_inx_inx = 0;
-            if next_steps.len() > 1 {
-                step_inx_inx = rand::thread_rng().gen_range(0, next_steps.len());
+        // Pick a solution stepstore that works, if there are any
+        for inx in &next_steps {
+            if steps_rev2[*inx].initial().intersects(from_reg) {
+                if let Some(steps2) = steps_rev2[*inx].restrict_initial_region(from_reg) {
+                    if steps2.result() .intersects(goal_reg) {
+                        return Some(steps2);
+                    }
+                }
             }
-            let step_inx = next_steps[step_inx_inx];
-            return Some(steps_rev2[step_inx].clone());
-        }
+        } // next stpstrx
 
         // Randomly pick a step index from the options.
         let step_inx = rand::thread_rng().gen_range(0, steps_rev2.len());

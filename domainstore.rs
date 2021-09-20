@@ -123,21 +123,68 @@ impl DomainStore {
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
 
-        let avec: Vec<usize> = (0..nds.len()).collect();
+        let mut last_priority = 0;
 
-        // Scan needs to see what can be achieved with a plan
-        // Parallel make_plans for needs
-        // It likes to collect a structure, in this case InxPlan,
-        // instead of a tuple or array
-        let ndsinx_plan = avec
-            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|nd_inx| InxPlan {
-                inx: *nd_inx,
-                pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
-            })
-            .collect::<Vec<InxPlan>>();
+        //let avec: Vec<usize> = (0..nds.len()).collect();
+        loop {
 
-        ndsinx_plan
+            // find next lowest priority needs
+            let mut avec = Vec::<usize>::new();
+            let mut least_priority = 9999;
+
+            for ndsx in nds.iter() {
+                if ndsx.priority() > last_priority {
+                    if ndsx.priority() < least_priority {
+                        least_priority = ndsx.priority();
+                    }
+                }
+            }
+
+            if least_priority == 9999 {
+                return Vec::<InxPlan>::new();
+            }
+
+            last_priority = least_priority;
+
+            // Load avec with indicies
+            let mut inx = 0;
+            for ndsx in nds.iter() {
+
+                if ndsx.priority() == least_priority {
+                    avec.push(inx);
+                    if avec.len() > 4 {
+                        break;
+                    }
+                }
+                inx += 1;
+            }
+
+            // Scan needs to see what can be achieved with a plan
+            // Parallel make_plans for needs
+            // It likes to collect a structure, in this case InxPlan,
+            // instead of a tuple or array
+            let ndsinx_plan = avec
+                .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                .map(|nd_inx| InxPlan {
+                    inx: *nd_inx,
+                    pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
+                })
+                .collect::<Vec<InxPlan>>();
+
+            let mut try_again = true;
+            for inxplnx in ndsinx_plan.iter() {
+                if let Some(_) = inxplnx.pln {
+                    try_again = false;
+                    break;
+                }
+            }
+
+            if try_again {
+            } else {
+                return ndsinx_plan;
+            }
+
+        } // end loop
     }
 
     /// Choose a need, given a vector of needs,
