@@ -366,6 +366,15 @@ impl SomeDomain {
             }
         }
 
+        // Sort the steps by each bit change they make. (some actions may change more than on bit, so will appear more than once)
+        let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
+
+        // Check if any changes are mutually exclusive
+        if any_mutually_exclusive_changes(&steps_str, &steps_by_change_vov, &required_change) {
+//            println!("make_plan3: mutually exclusive change rules found");
+            return None;
+        }
+
         // Initalization for chaining
         let num_tries = 3;
         let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
@@ -404,8 +413,6 @@ impl SomeDomain {
                 } else {
                     println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
                 }
-            
-                //step_options.push(poss_steps);
             }
         } // next try
 
@@ -422,16 +429,6 @@ impl SomeDomain {
         }
 
         // Try Asymmetric forward chaining
-
-        // Sort the steps by each bit change they make. (some actions may change more than on bit, so will appear more than once)
-        let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
-
-        // Check if any changes are mutually exclusive
-        if any_mutually_exclusive_changes(&steps_str, &steps_by_change_vov, &required_change) {
-//            println!("make_plan3: mutually exclusive change rules found");
-            return None;
-        }
-
         if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
             // Return a plan found so far, if any
@@ -442,6 +439,7 @@ impl SomeDomain {
             }
         }
 
+        // Try Asymmetric backward chaining
         if let Some(ret_steps) = self.asymmetric_backward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
             // Return a plan found so far, if any
@@ -616,7 +614,7 @@ impl SomeDomain {
     /// running make_one_plan more than once.
     pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
         // Check if a need can be achieved, if so store index and Option<plan>.
-        // Higher priority needs that can be reached will superceed lower prioriyt needs.
+        // Higher priority needs that can be reached will superceed lower priority needs.
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             return Some(SomePlan::new(StepStore::new()));
