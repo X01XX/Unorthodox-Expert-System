@@ -366,11 +366,11 @@ impl SomeDomain {
             }
         }
 
-        // Run a number of depth-first forward chaining 
+        // Initalization for chaining
         let num_tries = 3;
         let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
 
-        // Testing new forward chaining
+        // Run a number of depth-first forward chaining
         for _ in 0..num_tries {
             if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str) {
                 if poss_steps.initial().intersects(from_reg) {
@@ -410,8 +410,8 @@ impl SomeDomain {
         } // next try
 
         if step_options.len() > 0 {
-            //println!("backward chaining worked!");
             let inx = choose_one(&step_options);
+            //println!("backward chaining worked! {}", &step_options[inx].clone());
             return Some(step_options[inx].clone());
         }
 
@@ -685,25 +685,24 @@ impl SomeDomain {
         // If so, try to develop an option for getting closer to the from_reg, from the goal_reg.
         for stpy in steps_str.iter() {
 
-            if stpy.result.intersects(goal_reg) {
-            } else {
-                continue;
-            }
-
-            // Restrict step to non-X bits in the from region
-            let stpx = stpy.restrict_result_region(goal_reg);
-
             // Get the changes in the step that are not required, that are unwanted, and
             // do not correspond with an X-bit in the goal.
             let chg_not = &required_change.change_not();
-            let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask);
+            let chg_dif = stpy.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask);
 
             if chg_dif.is_low() {
                 // No unwanted changes
+                
+                if stpy.result.intersects(goal_reg) {
+                } else {
+                    continue;
+                }
+
                 let mut stpstr = StepStore::new_with_capacity(1);
-                stpstr.push(stpx.clone());
+                stpstr.push(stpy.restrict_result_region(goal_reg));
                 //println!("testing: adding1 stepstore {}", &stpstr);
                 steps_rev2.push(stpstr);
+
             } else {
 
                 // Unwanted changes found
@@ -720,19 +719,20 @@ impl SomeDomain {
                 // the current steps result region and exact change needed.
                 for stp_revx in steps_rev.iter() {
 
-                    if stp_revx.result.intersects(&stpx.initial) {
+                    if stpy.result.intersects(&stp_revx.initial) {
                     } else {
                         continue;
                     }
 
                     // Restrict the second step to synchronize with the first step.
-                    let stp2 = stp_revx.restrict_result_region(&stpx.initial);
+                    let stp2 = stp_revx.restrict_initial_region(&stpy.result);
 
                     // Check for exact match to the needed reverse change(s)
-                    if stp2.change() == chg_rev {
+                    // Check for intersection with the goal region.
+                    if stp2.change() == chg_rev && stp2.result.intersects(goal_reg) {
 
                         // Sync the intersection backward to the first step
-                        let stp1 = stpx.restrict_initial_region(&stp2.result);
+                        let stp1 = stpy.restrict_result_region(&stp2.initial);
 
                         // Check that all changes are not lost.
                         if stp1.change().is_not_low() {
@@ -743,17 +743,14 @@ impl SomeDomain {
                                 // If the required change is in the step, it must be closer to the from_reg
                                 
                                 // Check if the unwanted change has been lost
-                                if stp2.change().intersects(&chg_rev) {
+                                if stp2.change() == chg_rev {
                                     let mut stpstr = StepStore::new_with_capacity(2);
-                                    stpstr.push(stp2);
                                     stpstr.push(stp1);
-                                    //println!("back testing: adding2 stepstore {}", &stpstr);
+                                    stpstr.push(stp2);
+                                    //println!("back testing: adding2 stepstore {} goal {}", &stpstr, goal_reg);
                                     steps_rev2.push(stpstr);
                                 } else {
-                                    let mut stpstr = StepStore::new_with_capacity(1);
-                                    stpstr.push(stp1);
-                                    //println!("back testing: adding3 stepstore {}", &stpstr);
-                                    steps_rev2.push(stpstr);
+                                    continue;
                                 }
                             } else {
                                 //println!("back glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
@@ -893,17 +890,14 @@ impl SomeDomain {
                                 // If the required change is in the step, it must be closer to the goal_reg
                                 
                                 // Check if the unwanted change has been lost
-                                if stp2.change().intersects(&chg_rev) {
+                                if stp2.change() == chg_rev {
                                     let mut stpstr = StepStore::new_with_capacity(2);
                                     stpstr.push(stp1);
                                     stpstr.push(stp2);
                                     //println!("testing: adding2 stepstore {}", &stpstr);
                                     steps_rev2.push(stpstr);
                                 } else {
-                                    let mut stpstr = StepStore::new_with_capacity(1);
-                                    stpstr.push(stp1);
-                                    //println!("testing: adding3 stepstore {}", &stpstr);
-                                    steps_rev2.push(stpstr);
+                                    continue;
                                 }
                             } else {
                                 //println!("glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
