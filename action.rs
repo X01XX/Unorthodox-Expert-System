@@ -1129,6 +1129,8 @@ impl SomeAction {
             }
         } // next stax
 
+        let mut max_results2 = 0;
+        let mut stas_max_far = StateStore::new();
         for stax in stas_max_results.iter() {
             let sta_far = aregion.far_state(stax);
 
@@ -1137,19 +1139,26 @@ impl SomeAction {
                 if stay.pnc() {
                     return NeedStore::new();
                 }
+                if stay.len_results() > max_results2 {
+                    max_results2 = stay.len_results();
+                    stas_max_far = StateStore::new();
+                }
+            }
+
+            if max_results2 == max_results2 && stas_max_far.len() < 5 {
+                stas_max_far.push(sta_far);
             }
         } // next stax
-        
-        for stax in stas_max_results.iter() {
-            let sta_far = aregion.far_state(stax);
 
-            // far square not found
+        for stay in stas_max_far.iter() {
+
+            // Get more samples
             ret_nds.push(SomeNeed::AStateMakeGroup {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
-                targ_state: sta_far.clone(),
+                targ_state: stay.clone(),
                 for_reg: aregion.clone(),
-                far: stax.clone(),
+                far: aregion.far_state(stay),
                 num_x: aregion.num_x(),
             });
         }

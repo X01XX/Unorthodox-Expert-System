@@ -395,31 +395,31 @@ impl SomeRegion {
         ))
     } // end from_string
 
-    // Given a region, and a second region, return the
-    // first region - the second
-//    pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
-//        let mut ret_vec = Vec::<Self>::new();
-//
-//        if self.intersects(&other) == false {
-//            ret_vec.push(self.clone());
-//            return ret_vec;
-//        }
-//
-//        let reg_int = self.intersection(&other);
-//
-//        let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
-//
-//        for mskx in x_over_not_xs.iter() {
-//            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
-//                // reg_int has a 0 bit in that position
-//                ret_vec.push(self.set_to_ones(mskx));
-//            } else {
-//                // reg_int has a 1 in that bit position
-//                ret_vec.push(self.set_to_zeros(mskx));
-//            }
-//        }
-//        ret_vec
-//    }
+    /// Given a region, and a second region, return the
+    /// first region - the second
+    pub fn _subtract(&self, other: &SomeRegion) -> Vec<Self> {
+        let mut ret_vec = Vec::<Self>::new();
+
+        if self.intersects(&other) == false {
+            ret_vec.push(self.clone());
+            return ret_vec;
+        }
+
+        let reg_int = self.intersection(&other);
+
+        let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
+
+        for mskx in x_over_not_xs.iter() {
+            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
+                // reg_int has a 0 bit in that position
+                ret_vec.push(self.set_to_ones(mskx));
+            } else {
+                // reg_int has a 1 in that bit position
+                ret_vec.push(self.set_to_zeros(mskx));
+            }
+        }
+        ret_vec
+    }
 
 } // end impl SomeRegion
 
