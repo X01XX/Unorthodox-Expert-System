@@ -1428,6 +1428,21 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     The backward-chaining problem needs to be broken up into (goal from rule-result-region) and (rule-initial-region from initial-state).
     </p>
    <p>
+    Intelligent rule selection
+    </p>
+    </p>
+    <p class="indent1">
+    Calculate the needed bit changes between the current state and the goal.
+    </p>
+    <p class="indent1">
+    Make one pass though the rules and select any rule that elicits at least one bit that matches the needed changes.
+    </p> 
+    <p class="indent1">
+    You now have a list of rules that will contain what you need, if some (probably subset) rules, can be ordered correctly.
+   <p>
+    <p class="indent1">
+    If there are no easy solutions, Travelling Salesman logic might be used, traveling from the result region of one rule to the initial region of another.
+   <p>
     Rule order
     </p>
     <p class="indent1">
@@ -1683,7 +1698,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/22/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/23/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
