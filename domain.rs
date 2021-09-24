@@ -12,7 +12,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-//use crate::step::SomeStep;
+use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
 use std::collections::HashMap;
@@ -349,6 +349,7 @@ impl SomeDomain {
         }
 
         // Check if one step makes the required change.
+        // The ultimate end-point of any path search.
         for stepx in steps_str.iter() {
             if stepx.initial.intersects(from_reg) {
 
@@ -366,7 +367,13 @@ impl SomeDomain {
             }
         }
 
-        // Sort the steps by each bit change they make. (some actions may change more than on bit, so will appear more than once)
+        // Check recursion depth
+        if depth > 1 {
+//            println!("recursion depth maximum exceeded");
+            return None;
+        }
+        
+        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
         let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
 
         // Check if any changes are mutually exclusive
@@ -375,6 +382,40 @@ impl SomeDomain {
             return None;
         }
 
+        // Check for bit change vector with all steps outside of the glide path.
+        // Accumulate a vector of all step indicies in such vectors.
+        let agg_reg = goal_reg.union(from_reg);
+        let mut asym_stps = Vec::<usize>::new();
+        for inx in 0..steps_by_change_vov.len() {
+
+            let mut all_external = true;
+            
+            for stp_inx in &steps_by_change_vov[inx] {
+                if steps_str[*stp_inx].initial.intersects(&agg_reg) ||
+                   steps_str[*stp_inx].result.intersects(&agg_reg) {
+                       all_external = false;
+                       break;
+                   }
+            } // next stp_inx
+
+            if all_external {
+                for stp_inx in &steps_by_change_vov[inx] {
+                    //println!("Asym chaining required {} to {} agg {} step {}", from_reg, goal_reg, &agg_reg, &steps_str[*stp_inx]);
+                    asym_stps.push(*stp_inx);
+                }
+            }
+        } // next inx
+
+        // Try asymmetric chaining for each external step
+        for stp_inx in &asym_stps {
+            // Try Asymmetric forward chaining
+            if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*stp_inx], depth) {
+                // Return a plan found so far, if any
+                //println!("make_plan3: asym single step forced returns steps {}", ret_steps.formatted_string(" "));
+                return Some(ret_steps);
+            }
+        }
+        
         // Initalization for chaining
         let num_tries = 3;
         let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
@@ -422,12 +463,6 @@ impl SomeDomain {
             return Some(step_options[inx].clone());
         }
 
-        // Check recursion depth
-        if depth > 0 {
-//            println!("recursion depth maximum exceeded");
-            return None;
-        }
-
         // Try Asymmetric forward chaining
         if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
@@ -453,15 +488,43 @@ impl SomeDomain {
         None
     } // end make_plan3
 
+    /// Asymmetric chaining for a given step
+    fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
+        let mut ret_stepsx = StepStore::new();
+
+        // Part one
+        if let Some(mut gap_steps1) = self.make_plan3(from_reg, &stepx.initial, depth + 1) {
+            ret_stepsx.append(&mut gap_steps1);
+            ret_stepsx.push(stepx.restrict_initial_region(&ret_stepsx.result()));
+        } else {
+            return None;
+        }
+
+        // Part two
+        let result1 = ret_stepsx.result();
+
+        if result1.intersects(goal_reg) {
+            return Some(ret_stepsx);
+        }
+
+        if let Some(gap_steps2) = self.make_plan3(&result1, goal_reg, depth + 1) {
+
+            if let Some(ret_steps3) = ret_stepsx.link(&gap_steps2) {
+                return Some(ret_steps3);
+            }
+        }
+        None
+    }
+    
     /// Try Asymmetric forward chaining
     fn asymmetric_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
 
         let mut ret_steps = Vec::<StepStore>::new();
-        
+
         let agg_reg = goal_reg.union(from_reg);
 
         let mut min_dist_from = 9999;
-        
+
         // Find min distance of step initial regions, that are external from agg_reg, to the from_reg
         for stepx in steps_str.iter() {
 
@@ -497,29 +560,8 @@ impl SomeDomain {
 
         for inx in &asym_steps {
 
-            let mut ret_stepsx = StepStore::new();
-
-            // Part one
-            if let Some(mut gap_steps1) = self.make_plan3(from_reg, &steps_str[*inx].initial, depth + 1) {
-                ret_stepsx.append(&mut gap_steps1);
-                ret_stepsx.push(steps_str[*inx].restrict_initial_region(&ret_stepsx.result()));
-            } else {
-                continue;
-            }
-
-            // Part two
-            let result1 = ret_stepsx.result();
-
-            if result1.intersects(goal_reg) {
+            if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
                 ret_steps.push(ret_stepsx);
-                continue;
-            }
-
-            if let Some(gap_steps2) = self.make_plan3(&result1, goal_reg, depth + 1) {
-
-                if let Some(ret_steps3) = ret_stepsx.link(&gap_steps2) {
-                    ret_steps.push(ret_steps3);
-                }
             }
         } // next inx
 
@@ -575,28 +617,8 @@ impl SomeDomain {
 
         for inx in &asym_steps {
 
-            let mut ret_stepsx = StepStore::new();
-
-            // Part one
-            if from_reg.intersects(&steps_str[*inx].initial) {
-                ret_stepsx.push(steps_str[*inx].restrict_initial_region(from_reg));
-            } else {
-                if let Some(mut gap_steps1) = self.make_plan3(from_reg, &steps_str[*inx].initial, depth + 1) {
-                    ret_stepsx.append(&mut gap_steps1);
-                    ret_stepsx.push(steps_str[*inx].restrict_initial_region(&ret_stepsx.result()));
-                } else {
-                    continue;
-                }
-            }
-
-            // Part two
-            let result1 = ret_stepsx.result();
-
-            if let Some(gap_steps2) = self.make_plan3(&result1, goal_reg, depth + 1) {
-
-                if let Some(ret_steps3) = ret_stepsx.link(&gap_steps2) {
-                    ret_steps.push(ret_steps3);
-                }
+            if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
+                ret_steps.push(ret_stepsx);
             }
 
         } // next inx

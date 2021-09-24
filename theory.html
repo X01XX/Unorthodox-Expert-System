@@ -1401,47 +1401,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
         Then calculate the initial region of the restricted rule.
     </p>
-    <p>Asymmetric-Chaining</p>
-    <p class="indent1">
-    Going from an initial state to a goal state/region, is called forward-chaining.  
-    </p>
-    <p class="indent1">
-    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
-    backward-chaining.
-    </p>
-    <p class="indent1">
-    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
-    This could be thought of as traversing the region of (initial-state union goal-state) (IUG).
-    </p>
-    <p class="indent1">
-    If only one rule exists for a needed change, and that rules initial-region is outside of IUG,
-    forward-chaining will not work.
-    </p>
-    <p class="indent1">
-    If only one rule exists for a needed change, and that rules result-region is outside of IUG,
-    backward-chaining will not work.
-    </p>
-    <p class="indent1">
-    In that case, the forward-chaining problem needs to be broken up into (initial-state to rule-initial-region) and (rule-result-region to goal).
-    </p>
-    <p class="indent1">
-    The backward-chaining problem needs to be broken up into (goal from rule-result-region) and (rule-initial-region from initial-state).
-    </p>
-   <p>
-    Intelligent rule selection
-    </p>
-    </p>
-    <p class="indent1">
-    Calculate the needed bit changes between the current state and the goal.
-    </p>
-    <p class="indent1">
-    Make one pass though the rules and select any rule that elicits at least one bit that matches the needed changes.
-    </p> 
-    <p class="indent1">
-    You now have a list of rules that will contain what you need, if some (probably subset) rules, can be ordered correctly.
-   <p>
-    <p class="indent1">
-    If there are no easy solutions, Travelling Salesman logic might be used, traveling from the result region of one rule to the initial region of another.
    <p>
     Rule order
     </p>
@@ -1460,7 +1419,49 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p class="indent2">
     Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
-    </p
+    </p>
+    <p>Asymmetric-Chaining</p>
+    <p class="indent1">
+    Planning a path, using rules, from an initial state to a goal state/region, is called forward-chaining.  
+    </p>
+    <p class="indent1">
+    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
+    backward-chaining.
+    </p>
+    <p class="indent1">
+    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
+    This could be thought of as traversing the region of (initial-state union goal-region) (IUG).
+    </p>
+    <p class="indent1">
+    If all rules for a needed bit change, and that rules result-region is outside of IUG,
+    backward-chaining will not work.
+    </p>
+    <p class="indent1">
+    In that case, the chaining problem needs to be broken up into (initial-state to/from rule-initial-region) and (rule-result-region to/from goal).
+    </p>
+   <p>
+    Intelligent rule selection
+    </p>
+    </p>
+    <p class="indent1">
+    Calculate the needed bit changes between the current state and the goal.
+    </p>
+    <p class="indent1">
+    Make one pass though the rules and select any rule that elicits at least one bit change that matches the needed changes.
+    </p> 
+    <p class="indent1">
+    The aggregate changes of the rules found should be a superset of the changes needed, or no path will be found.
+    </p> 
+    <p class="indent1">
+    All the rules for any two needed bit changes should not be mutually exclusive. If a rule makes more than one needed bit change, those pairs are not mutually exclusive.
+    </p> 
+    <p class="indent1">
+    You now have a list of rules that will contain what you need, if some (probably subset) rules, can be ordered correctly.
+   </p>
+    <p class="indent1">
+    If the rule(s) for one particular bit change are all outside the IUG, Asymmetric chaining will have to be tried for each rule.
+    </p> 
+
     <p class="indent1">
     IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
     </p>
@@ -1698,7 +1699,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/23/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/24/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
