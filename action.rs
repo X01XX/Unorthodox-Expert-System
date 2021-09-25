@@ -1743,6 +1743,12 @@ impl SomeAction {
                 if ok_reg == reg_int {
                     nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
                 } else {
+                    if grpx.pn == Pn::Two {
+                        if rulsx.is_subset_of(&rulsy) { // multiple combinations noticed by intersection instead of combining two squares
+                                                        // groups probably both invalid, will fall later.
+                            return nds;
+                        }
+                    }
                     // to avoid subtraction, use the far sub-region
                     let regy = reg_int.far_reg(&ok_reg);
                     nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
@@ -1963,6 +1969,75 @@ impl SomeAction {
         // println!("Steps: {}", &stps);
         stps
     } // end get_steps
+
+    /// Get possible steps that can be used to make a given change.
+    ///
+    /// For each rule, prune the rule X bit positions to favor desired changes.
+    ///
+    /// For a two-result group, see if there is an existing square that is expected to
+    /// produce the desired change.
+    pub fn get_steps_exact(&self, achange: &SomeChange) -> StepStore {
+        let mut stps = StepStore::new();
+
+        for grpx in &self.groups.avec {
+            if grpx.active == false {
+                continue;
+            }
+
+            match grpx.pn {
+                Pn::One => {
+                    // Find bit changes that are desired
+                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    {
+                        if rulx.change() == *achange {
+                            stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
+                        }
+                    }
+                }
+                Pn::Two => {
+                    for ruly in &grpx.rules.avec {
+                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                            
+                            if rulx.change() == *achange {
+                                // See if an existing square is ready to produce the desired result
+                                let i_reg = rulx.initial_region();
+                                let stas = self.squares.stas_in_reg(&i_reg);
+
+                                let mut found = false;
+                                for stax in stas.iter() {
+                                    let sqrx = self.squares.find(stax).unwrap();
+
+                                    // Will include at least one bit change desired, but maybe others.
+                                    let expected_result = rulx.result_from_initial_state(stax);
+
+                                    // If a Pn::Two squares last result is not equal to what is wanted,
+                                    // the next result should be.
+                                    if sqrx.last_result() != &expected_result {
+                                        let stpx = SomeStep::new(
+                                            self.num,
+                                            rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
+                                            false,
+                                            grpx.region.clone(),
+                                        );
+                                        stps.push(stpx);
+                                        found = true;
+                                    } // end if
+                                } // next stax
+
+                                if found == false {
+                                    stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
+                                }
+                            } // endif Some(rulx)
+                        } // endif == achange
+                    } // next ruly
+                } // end match Two
+                Pn::Unpredictable => {}
+            } // end match grpx.pn
+        } // next grpx
+
+        // println!("Steps: {}", &stps);
+        stps
+    } // end get_steps_exact
 
     /// Get a random choice of a number of unique numbers (num_results) to a
     /// given number of positions, 0, 1 .. -> the_len (exclusive).

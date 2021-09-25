@@ -107,6 +107,27 @@ impl ActionStore {
         stps_agg
     }
 
+    /// Return steps that make a needed bit change.
+    pub fn get_steps_exact(&self, achange: &SomeChange) -> StepStore {
+
+        // Run a get_needs thread for each action
+        let mut stps: Vec<StepStore> = self
+            .avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|actx| actx.get_steps_exact(achange))
+            .collect::<Vec<StepStore>>();
+
+        // Aggregate the results into one NeedStore
+        let mut stps_agg = StepStore::new();
+
+        for stp in stps.iter_mut() {
+            stps_agg.append(stp);
+        }
+
+        //println!("actionstore:get_steps possible steps: {}", stps.str());
+        stps_agg
+    }
+    
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

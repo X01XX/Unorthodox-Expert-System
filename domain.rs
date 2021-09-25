@@ -360,8 +360,7 @@ impl SomeDomain {
                     let bstep = stepx.restrict_initial_region(from_reg);
 
 //                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_reg, goal_reg);
-                    let mut stpstr = StepStore::new_with_capacity(1);
-                    stpstr.push(bstep);
+                    let stpstr = StepStore::new_with_step(bstep);
                     return Some(stpstr);
                 }
             }
@@ -401,6 +400,8 @@ impl SomeDomain {
             if all_external {
                 for stp_inx in &steps_by_change_vov[inx] {
                     //println!("Asym chaining required {} to {} agg {} step {}", from_reg, goal_reg, &agg_reg, &steps_str[*stp_inx]);
+                    //assert!(steps_str[*stp_inx].initial.intersects(&agg_reg) == false);
+                    //assert!(steps_str[*stp_inx].result.intersects(&agg_reg) == false);
                     asym_stps.push(*stp_inx);
                 }
             }
@@ -416,6 +417,29 @@ impl SomeDomain {
             }
         }
         
+        // Evaluate glide path
+        // Some steps may intersect both the from region and goal region witout
+        // being a single step solution
+        let mut steps_from = Vec::<StepStore>::new();
+        let mut steps_goal = Vec::<StepStore>::new();
+        for stpx in steps_str.iter() {
+            if stpx.initial.intersects(from_reg) {
+                let stpy = stpx.restrict_initial_region(from_reg);
+                let stpsy = StepStore::new_with_step(stpy);
+                steps_from.push(stpsy);
+            }
+            if stpx.result.intersects(goal_reg) {
+                let stpy = stpx.restrict_result_region(goal_reg);
+                let stpsy = StepStore::new_with_step(stpy);
+                steps_goal.push(stpsy);
+            }
+        }
+
+        if steps_from.len() == 0 || steps_goal.len() == 0 {
+            return None;
+        }
+
+
         // Initalization for chaining
         let num_tries = 3;
         let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
@@ -492,6 +516,9 @@ impl SomeDomain {
     fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
         let mut ret_stepsx = StepStore::new();
 
+        assert!(from_reg.intersects(goal_reg) == false);
+        assert!(from_reg.intersects(&stepx.initial) == false);
+
         // Part one
         if let Some(mut gap_steps1) = self.make_plan3(from_reg, &stepx.initial, depth + 1) {
             ret_stepsx.append(&mut gap_steps1);
@@ -559,6 +586,16 @@ impl SomeDomain {
         } // next step
 
         for inx in &asym_steps {
+            if steps_str[*inx].initial.intersects(goal_reg) {
+                ret_steps.push(StepStore::new_with_step(steps_str[*inx].restrict_result_region(goal_reg)));
+            }
+        }
+
+        if ret_steps.len() > 0 {
+            return Some(ret_steps);
+        }
+
+        for inx in &asym_steps {
 
             if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
                 ret_steps.push(ret_stepsx);
@@ -610,13 +647,23 @@ impl SomeDomain {
                 if dist == min_dist_goal {
                     asym_steps.push(inx);
                 }
+
             }
 
             inx += 1;
         } // next step
 
         for inx in &asym_steps {
+            if steps_str[*inx].initial.intersects(from_reg) {
+                ret_steps.push(StepStore::new_with_step(steps_str[*inx].restrict_initial_region(from_reg)));
+            }
+        }
 
+        if ret_steps.len() > 0 {
+            return Some(ret_steps);
+        }
+
+        for inx in &asym_steps {
             if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
                 ret_steps.push(ret_stepsx);
             }
@@ -718,8 +765,7 @@ impl SomeDomain {
                     continue;
                 }
 
-                let mut stpstr = StepStore::new_with_capacity(1);
-                stpstr.push(stpy.restrict_result_region(goal_reg));
+                let stpstr = StepStore::new_with_step(stpy.restrict_result_region(goal_reg));
                 //println!("testing: adding1 stepstore {}", &stpstr);
                 steps_rev2.push(stpstr);
 
@@ -732,7 +778,7 @@ impl SomeDomain {
                 let chg_rev = chg_dif.change_reverse();
 
                 // Get a vector of steps that may accomplish the reversal.
-                let steps_rev : StepStore = self.actions.get_steps(&chg_rev);
+                let steps_rev : StepStore = self.actions.get_steps_exact(&chg_rev);
                 //println!("testing: rev steps found: {}", &steps_rev);
 
                 // Check each possible reverse step for intersection with
@@ -764,8 +810,7 @@ impl SomeDomain {
                                 
                                 // Check if the unwanted change has been lost
                                 if stp2.change() == chg_rev {
-                                    let mut stpstr = StepStore::new_with_capacity(2);
-                                    stpstr.push(stp1);
+                                    let mut stpstr = StepStore::new_with_step(stp1);
                                     stpstr.push(stp2);
                                     //println!("back testing: adding2 stepstore {} goal {}", &stpstr, goal_reg);
                                     steps_rev2.push(stpstr);
@@ -857,16 +902,15 @@ impl SomeDomain {
 
             // Restrict step to non-X bits in the from region
             let stpx = stpy.restrict_initial_region(from_reg);
-            
+
             // Get the changes in the step that are not required, that are unwanted, and
             // do not correspond with an X-bit in the goal.
             let chg_not = &required_change.change_not();
             let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask);
-            
+
             if chg_dif.is_low() {
                 // No unwanted changes
-                let mut stpstr = StepStore::new_with_capacity(1);
-                stpstr.push(stpx.clone());
+                let stpstr = StepStore::new_with_step(stpx);
                 //println!("testing: adding1 stepstore {}", &stpstr);
                 steps_rev2.push(stpstr);
             } else {
@@ -877,7 +921,7 @@ impl SomeDomain {
                 let chg_rev = chg_dif.change_reverse();
 
                 // Get a vector of steps that may accomplish the reversal.
-                let steps_rev : StepStore = self.actions.get_steps(&chg_rev);
+                let steps_rev : StepStore = self.actions.get_steps_exact(&chg_rev);
                 //println!("testing: rev steps found: {}", &steps_rev);
 
                 // Check each possible reverse step for intersection with
@@ -908,8 +952,7 @@ impl SomeDomain {
                                 
                                 // Check if the unwanted change has been lost
                                 if stp2.change() == chg_rev {
-                                    let mut stpstr = StepStore::new_with_capacity(2);
-                                    stpstr.push(stp1);
+                                    let mut stpstr = StepStore::new_with_step(stp1);
                                     stpstr.push(stp2);
                                     //println!("testing: adding2 stepstore {}", &stpstr);
                                     steps_rev2.push(stpstr);

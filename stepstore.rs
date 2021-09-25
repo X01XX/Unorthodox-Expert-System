@@ -31,6 +31,14 @@ impl StepStore {
         }
     }
 
+    pub fn new_with_step(astep: SomeStep) -> Self {
+        let mut vecx = Vec::<SomeStep>::with_capacity(2);
+        vecx.push(astep);
+        Self {
+            avec: vecx,
+        }
+    }
+
     /// Return a new StepStore, empty, with an expected capacity.
     pub fn new_with_capacity(num: usize) -> Self {
         Self {
