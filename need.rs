@@ -48,6 +48,14 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {}",
                 dm, an, pri, &g_reg, &grp1, &ruls1, &grp2, &ruls2
             ),
+            SomeNeed::ToRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: g_reg,
+            } => format!(
+                "N(Dom {} Pri {} To Region {}",
+                dm, pri, &g_reg,
+            ),
             SomeNeed::ConfirmGroup {
                 dom_num: dm,
                 act_num: an,
@@ -172,6 +180,12 @@ pub enum SomeNeed {
         targ_state: SomeState,
         in_group: SomeRegion,
     },
+    /// Move current state to a given region.
+    ToRegion {
+        dom_num: usize,
+        act_num: usize,
+        goal_reg: SomeRegion,
+    },
     /// Housekeeping, add a group.
     AddGroup { group_region: SomeRegion },
     /// Housekeeping, set a group to confirmed, using a state
@@ -251,6 +265,22 @@ impl PartialEq for SomeNeed {
                     ruls2: _,
                 } => {
                     if dm == dmx && an == anx && *g_reg == *g_regx {
+                        return true;
+                    }
+                }
+                _ => {}
+            },
+            SomeNeed::ToRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: g_reg,
+            } => match other {
+                SomeNeed::ToRegion {
+                    dom_num: dmx,
+                    act_num: _,
+                    goal_reg: g_regx,
+                } => {
+                    if dm == dmx && *g_reg == *g_regx {
                         return true;
                     }
                 }
@@ -412,6 +442,14 @@ impl SomeNeed {
                 return 2;
             } // end process for ContradictoryIntersection
 
+            SomeNeed::ToRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: _,
+            } => {
+                return 9;
+            } // end process for ToRegion
+            
             SomeNeed::ConfirmGroup {
                 dom_num: _,
                 act_num: _,
@@ -486,6 +524,16 @@ impl SomeNeed {
                 }
                 return false;
             } // end process ContradictoryIntersection
+            SomeNeed::ToRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: g_reg,
+            } => {
+                if g_reg.is_superset_of_state(&cur_state) {
+                    return true;
+                }
+                return false;
+            } // end process ToRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -556,6 +604,13 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process ContradictoryIntersection
+            SomeNeed::ToRegion {
+                dom_num: _,
+                act_num: an,
+                goal_reg: _,
+            } => {
+                return *an;
+            } // end process ToRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: an,
@@ -617,6 +672,13 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process ContradictoryIntersection
+            SomeNeed::ToRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+            } => {
+                return *dm;
+            } // end process ToRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
                 act_num: _,
@@ -678,6 +740,13 @@ impl SomeNeed {
             } => {
                 return g_reg.clone();
             }
+            SomeNeed::ToRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: g_reg,
+            } => {
+                return g_reg.clone();
+            }
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -734,6 +803,13 @@ impl SomeNeed {
                 ruls1: _,
                 group2: _,
                 ruls2: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::ToRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
             } => {
                 *dm = num;
             }

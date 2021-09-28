@@ -30,7 +30,12 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
         rc_str.push_str(&format!(", Maximum Region: {}", &self.max_region));
-        rc_str.push_str(&format!(", Optimal Region: {}", &self.optimal));
+        if self.is_optimal_set() {
+            let areg = self.get_optimal();
+            rc_str.push_str(&format!(", Optimal Region: {}", &areg));
+        } else {
+            rc_str.push_str(&format!(", Optimal Region: None"));
+        }
 
         rc_str.push_str(")");
 
@@ -51,7 +56,7 @@ pub struct SomeDomain {
     /// The region formed by the union of all Current States experienced.    
     pub max_region: SomeRegion,
     /// An optimal region that is sought if there are no needs.  This may be changed.    
-    pub optimal: SomeRegion,
+    pub optimal: Option<SomeRegion>,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     pub prev_state: SomeState,
     /// A store of possible, predictable, bit changes.
@@ -66,12 +71,12 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, and strings for the
     /// initial state, the optimal state, and index into the DomainStore struct.
-    pub fn new(num_ints: usize, start_state: &str, optimal: &str) -> Self {
+    pub fn new(num_ints: usize, start_state: &str, optimal: Option<SomeRegion>) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
 
         // Convert the optimal region from string to SomeRegion.
-        let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
+        //let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
@@ -80,7 +85,7 @@ impl SomeDomain {
             actions: ActionStore::new(),
             cur_state: cur.clone(),
             max_region: SomeRegion::new(&cur, &cur),
-            optimal: opt,
+            optimal: optimal,
             prev_state: cur.clone(),
             predictable_mask: SomeMask::new_low(num_ints),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
@@ -88,6 +93,23 @@ impl SomeDomain {
         };
     }
 
+    /// Return true is the optimal region is set
+    pub fn is_optimal_set(&self) -> bool {
+        if let Some(_) = self.optimal {
+            return true;
+        }
+        false
+    }
+    
+    //. Get the optimal region, is a prior call to is_optimal_set == true
+    pub fn get_optimal(&self) -> SomeRegion {
+        if let Some(areg) = &self.optimal {
+            return areg.clone();
+        }
+        assert!(1 == 2);
+        self.max_region.clone()
+    }
+    
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, mut actx: SomeAction, hv: usize) {
         actx.num = self.actions.len();
@@ -109,6 +131,19 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
+        if nst.len() == 0 {
+            if self.is_optimal_set() {
+                let r = self.get_optimal();
+                if r.is_superset_of_state(&self.cur_state) {
+                } else {
+                    nst.push(SomeNeed::ToRegion {
+                        dom_num: self.num, // set this in domain get_needs
+                        act_num: 0,
+                        goal_reg: r,
+                    });
+                }
+            }
+        }
         nst
     }
 
@@ -360,14 +395,13 @@ impl SomeDomain {
                     let bstep = stepx.restrict_initial_region(from_reg);
 
 //                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_reg, goal_reg);
-                    let stpstr = StepStore::new_with_step(bstep);
-                    return Some(stpstr);
+                    return Some(StepStore::new_with_step(bstep));
                 }
             }
         }
 
         // Check recursion depth
-        if depth > 1 {
+        if depth > 2 {
 //            println!("recursion depth maximum exceeded");
             return None;
         }
@@ -407,38 +441,41 @@ impl SomeDomain {
             }
         } // next inx
 
-        // Try asymmetric chaining for each external step
-        for stp_inx in &asym_stps {
-            // Try Asymmetric forward chaining
-            if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*stp_inx], depth) {
-                // Return a plan found so far, if any
-                //println!("make_plan3: asym single step forced returns steps {}", ret_steps.formatted_string(" "));
-                return Some(ret_steps);
-            }
-        }
+        if asym_stps.len() == 0 {
+    
+//        // Try asymmetric chaining for each external step
+//        for stp_inx in &asym_stps {
+//            // Try Asymmetric forward chaining
+//            if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*stp_inx], depth) {
+//                // Return a plan found so far, if any
+//                //println!("make_plan3: asym single step forced returns steps {}", ret_steps.formatted_string(" "));
+//                return Some(ret_steps);
+//            }
+//        }
         
         // Evaluate glide path
         // Some steps may intersect both the from region and goal region witout
         // being a single step solution
-        let mut steps_from = Vec::<StepStore>::new();
-        let mut steps_goal = Vec::<StepStore>::new();
+        let mut steps_from = false;
+        let mut steps_goal = false;
         for stpx in steps_str.iter() {
-            if stpx.initial.intersects(from_reg) {
-                let stpy = stpx.restrict_initial_region(from_reg);
-                let stpsy = StepStore::new_with_step(stpy);
-                steps_from.push(stpsy);
+            if steps_from == false && stpx.initial.intersects(from_reg) {
+                //let stpy = stpx.restrict_initial_region(from_reg);
+                //let stpsy = StepStore::new_with_step(stpy);
+                //steps_from.push(stpsy);
+                steps_from = true;
             }
-            if stpx.result.intersects(goal_reg) {
-                let stpy = stpx.restrict_result_region(goal_reg);
-                let stpsy = StepStore::new_with_step(stpy);
-                steps_goal.push(stpsy);
+            if steps_goal == false && stpx.result.intersects(goal_reg) {
+                //let stpy = stpx.restrict_result_region(goal_reg);
+                //let stpsy = StepStore::new_with_step(stpy);
+                //steps_goal.push(stpsy);
+                steps_goal = true;
             }
         }
 
-        if steps_from.len() == 0 || steps_goal.len() == 0 {
+        if steps_from == false || steps_goal == false {
             return None;
         }
-
 
         // Initalization for chaining
         let num_tries = 3;
@@ -487,6 +524,8 @@ impl SomeDomain {
             return Some(step_options[inx].clone());
         }
 
+    } // endif asym_stps.len() == 0
+    
         // Try Asymmetric forward chaining
         if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
@@ -522,7 +561,13 @@ impl SomeDomain {
         // Part one
         if let Some(mut gap_steps1) = self.make_plan3(from_reg, &stepx.initial, depth + 1) {
             ret_stepsx.append(&mut gap_steps1);
-            ret_stepsx.push(stepx.restrict_initial_region(&ret_stepsx.result()));
+            if ret_stepsx.result().intersects(&stepx.initial) {
+                ret_stepsx.push(stepx.restrict_initial_region(&ret_stepsx.result()));
+            } else {
+                //println!("xx for from {} to {} step {}", from_reg, goal_reg, stepx);
+                //println!("plan {} result does not intersect {}", &ret_stepsx, &stepx.initial);
+                //assert!(1 == 2);
+            }
         } else {
             return None;
         }
@@ -586,17 +631,18 @@ impl SomeDomain {
         } // next step
 
         for inx in &asym_steps {
-            if steps_str[*inx].initial.intersects(goal_reg) {
-                ret_steps.push(StepStore::new_with_step(steps_str[*inx].restrict_result_region(goal_reg)));
+
+            if steps_str[*inx].result.intersects(goal_reg) {
+                let ret_steps1 = StepStore::new_with_step(steps_str[*inx].restrict_result_region(goal_reg));
+
+                if let Some(ret_steps2) = self.make_plan3(from_reg, &ret_steps1.initial(), depth + 1) {
+                    if let Some(ret_steps3) = ret_steps2.link(&ret_steps1) {
+                        ret_steps.push(ret_steps3);
+                    }
+                }
+                continue;
             }
-        }
-
-        if ret_steps.len() > 0 {
-            return Some(ret_steps);
-        }
-
-        for inx in &asym_steps {
-
+            
             if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
                 ret_steps.push(ret_stepsx);
             }
@@ -654,18 +700,22 @@ impl SomeDomain {
         } // next step
 
         for inx in &asym_steps {
+
             if steps_str[*inx].initial.intersects(from_reg) {
-                ret_steps.push(StepStore::new_with_step(steps_str[*inx].restrict_initial_region(from_reg)));
+
+                let ret_steps1 = StepStore::new_with_step(steps_str[*inx].restrict_initial_region(from_reg));
+
+                if let Some(ret_steps2) = self.make_plan3(&ret_steps1.result(), goal_reg, depth + 1) {
+
+                    if let Some(ret_steps3) = ret_steps1.link(&ret_steps2) {
+                        ret_steps.push(ret_steps3);
+                    }
+                }
+                continue;
             }
-        }
-
-        if ret_steps.len() > 0 {
-            return Some(ret_steps);
-        }
-
-        for inx in &asym_steps {
-            if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
-                ret_steps.push(ret_stepsx);
+            
+            if let Some(ret_steps3) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
+                ret_steps.push(ret_steps3);
             }
 
         } // next inx
@@ -737,97 +787,24 @@ impl SomeDomain {
     
         //println!("random_depth_first_backward_chaining2: to {} from {}", from_reg.formatted_string(), goal_reg.formatted_string());
 
-        // Get the bit changes required to go from from_reg to goal_reg.
-        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
-
         // Initialize vector for possible options.
         // Most StepStores will contain one step.  Some will contain two steps, due
         // to undoing an unwanted change.
         let mut steps_rev2 = Vec::<StepStore>::with_capacity(steps_str.len());
 
-        // Bits in the from_reg that correspond to X-bits in the goal, can change in any way.
-        let care_chg_mask = goal_reg.x_mask().m_not();
-
         // Check each step result region for intersection with the goal_reg.
         // If so, try to develop an option for getting closer to the from_reg, from the goal_reg.
         for stpy in steps_str.iter() {
 
-            // Get the changes in the step that are not required, that are unwanted, and
-            // do not correspond with an X-bit in the goal.
-            let chg_not = &required_change.change_not();
-            let chg_dif = stpy.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask);
-
-            if chg_dif.is_low() {
-                // No unwanted changes
-                
-                if stpy.result.intersects(goal_reg) {
-                } else {
-                    continue;
-                }
-
-                let stpstr = StepStore::new_with_step(stpy.restrict_result_region(goal_reg));
-                //println!("testing: adding1 stepstore {}", &stpstr);
-                steps_rev2.push(stpstr);
-
+            if stpy.result.intersects(goal_reg) {
             } else {
+                continue;
+            }
 
-                // Unwanted changes found
-                //println!("testing: required_change {} step chg: {} unneeded chg: {}", &required_change, stpx.rule.change(), &chg_dif);
+            let stpstr = StepStore::new_with_step(stpy.restrict_result_region(goal_reg));
+            //println!("testing: adding1 stepstore {}", &stpstr);
+            steps_rev2.push(stpstr);
 
-                // Calc the changes that will reverse the unwanted changes
-                let chg_rev = chg_dif.change_reverse();
-
-                // Get a vector of steps that may accomplish the reversal.
-                let steps_rev : StepStore = self.actions.get_steps_exact(&chg_rev);
-                //println!("testing: rev steps found: {}", &steps_rev);
-
-                // Check each possible reverse step for intersection with
-                // the current steps result region and exact change needed.
-                for stp_revx in steps_rev.iter() {
-
-                    if stpy.result.intersects(&stp_revx.initial) {
-                    } else {
-                        continue;
-                    }
-
-                    // Restrict the second step to synchronize with the first step.
-                    let stp2 = stp_revx.restrict_initial_region(&stpy.result);
-
-                    // Check for exact match to the needed reverse change(s)
-                    // Check for intersection with the goal region.
-                    if stp2.change() == chg_rev && stp2.result.intersects(goal_reg) {
-
-                        // Sync the intersection backward to the first step
-                        let stp1 = stpy.restrict_result_region(&stp2.initial);
-
-                        // Check that all changes are not lost.
-                        if stp1.change().is_not_low() {
-
-                            // Check that the required change is not lost
-                            if stp1.change().intersects(&required_change) {
-                                
-                                // If the required change is in the step, it must be closer to the from_reg
-                                
-                                // Check if the unwanted change has been lost
-                                if stp2.change() == chg_rev {
-                                    let mut stpstr = StepStore::new_with_step(stp1);
-                                    stpstr.push(stp2);
-                                    //println!("back testing: adding2 stepstore {} goal {}", &stpstr, goal_reg);
-                                    steps_rev2.push(stpstr);
-                                } else {
-                                    continue;
-                                }
-                            } else {
-                                //println!("back glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
-                            }
-                        } else {
-                            //println!("back glitch2");
-                        }
-                    } else {
-                        //println!("back glitch1 stp2 chg {} not eq rev chg needed {}", &stp2.change(), &chg_rev);
-                    }
-                }  // next stp_revx
-            } //end if
         } // next stpy
 
         if steps_rev2.len() == 0 {
@@ -849,7 +826,7 @@ impl SomeDomain {
             if steps_rev2[*inx].initial().intersects(from_reg) {
                 if let Some(steps2) = steps_rev2[*inx].restrict_initial_region(from_reg) {
                     if steps2.result() .intersects(goal_reg) {
-                        return Some(steps2);
+                        return Some(steps2.restrict_result_region(goal_reg).unwrap());
                     }
                 }
             }

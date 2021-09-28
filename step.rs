@@ -41,6 +41,8 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
+        assert!(self.initial.intersects(&reg));
+
         let init_reg = self.initial.intersection(&reg);
 
         Self {
@@ -55,6 +57,8 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the result region
     pub fn restrict_result_region(&self, reg: &SomeRegion) -> Self {
+        assert!(self.result.intersects(&reg));
+
         let rulx = self.rule.restrict_result_region(reg);
 
         Self {
@@ -86,6 +90,8 @@ impl SomeStep {
     /// Return the result of a step when applied to a given initial region.
     /// The given initial region must intersect the step initial region.
     pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
+        assert!(self.initial.intersects(&i_reg));
+
         self.rule.result_from_initial_region(i_reg)
     }
 

@@ -9,6 +9,7 @@
 //  unused_mut
 )]
 
+use std::env;
 mod action;
 use crate::action::SomeAction;
 mod actionstore;
@@ -19,6 +20,7 @@ mod mask;
 mod maskstore;
 mod need;
 mod region;
+use region::SomeRegion;
 mod change;
 mod regionstore;
 mod resultstore;
@@ -41,12 +43,11 @@ mod domainstore;
 mod tests;
 use domainstore::DomainStore;
 mod inxplan;
-use crate::inxplan::InxPlan;
+//use crate::inxplan::InxPlan;
 mod truth;
-
 use std::io;
 use std::io::{Read, Write};
-use std::process;
+//use std::process;
 extern crate rand;
 use rand::Rng;
 use std::fs::File;
@@ -64,7 +65,7 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}", inx);
 
     let num_ints = 1;
-    let mut dom1 = SomeDomain::new(num_ints, inx_str, "r101X");
+    let mut dom1 = SomeDomain::new(num_ints, inx_str, Some(SomeRegion::from_string(num_ints, "r101X").unwrap()));
 
     dom1.push(SomeAction::new(num_ints), 6);
     dom1.push(SomeAction::new(num_ints), 0);
@@ -82,7 +83,7 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}000000", inx);
 
     let num_ints = 2;
-    let mut dom2 = SomeDomain::new(num_ints, inx_str, "r10_1X00_0000");
+    let mut dom2 = SomeDomain::new(num_ints, inx_str, Some(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap()));
 
     dom2.push(SomeAction::new(num_ints), 0);
     dom2.push(SomeAction::new(num_ints), 0);
@@ -97,47 +98,59 @@ fn init() -> DomainStore {
 /// User Interface
 fn main() {
     // Start a DomainStore, add a Domain
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+
+    let mut run_to_end = false;
+    let mut run_left = 1;
+    if args.len() > 1 {
+        run_left = args[1].to_string().parse::<usize>().unwrap_or_else(|err| {
+        println!("Invalid Run Number: {}", err); 1 });
+        run_to_end = true;
+    }
     
-    let mut dmxs = init();
-
     usage();
+    //let mut run_left = 1;
+    let mut run_count = 1;
+    let run_max = run_left;
 
+    while run_left > 0 {
+        do_session(run_to_end, run_count, run_max);
+
+        run_left -= 1;
+        run_count += 1;
+
+    } // end while
+} // end main
+
+/// DO one session of finding and using rules
+pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
+
+    let mut to_end = run_to_end;
+    let mut dmxs = init();
     let mut dom_num = 0;
-    let mut run = 0;
-    let mut run_count = 0;
-    let mut running = 0;
-   
+    
     loop {
         dmxs.step += 1;
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
 
-        //let mut dmx = &mut dmxs[dom_num];
-
         print_domain(&dmxs, dom_num);
-
-        //        print!("\nCurrent Domain: {}", dom_num,);
-
-        //        print!(
-        //            " Predictable changes: {}",
-        //            &dmxs[dom_num].x_mask,
-        //        );
-
-        //        println!("\nActs: {}", &dmxs[dom_num].actions);
 
         // Vector for position = display index, val = need_plans index
         let mut need_can = Vec::<usize>::with_capacity(nds.len());
 
-        let mut need_plans = Vec::<InxPlan>::with_capacity(1);
+        //let mut need_plans = Vec::<InxPlan>::with_capacity(1);
 
         let mut can_do = 0;
         let mut cant_do = 0;
-        
-        if nds.len() > 0 {
-            // Check if each need can be done
-            need_plans = dmxs.evaluate_needs(&nds);
 
+       //if nds.len() > 0 {
+            // Check if each need can be done
+        let need_plans = dmxs.evaluate_needs(&nds);
+
+        if need_plans.len() > 0 {
             // Get count of needs that can, and cannot, be done.
 
             for ndplnx in need_plans.iter() {
@@ -149,6 +162,7 @@ fn main() {
             }
 
             println!(" ");
+            
             // Print needs that cannot be done.
             if cant_do == 0 {
                 println!("Needs that cannot be done: None");
@@ -162,19 +176,18 @@ fn main() {
                 }
             }
 
-            // Print needs that can and cannot be done.
+            // Print needs that can be done.
 
             if can_do == 0 {
                 println!("\nNeeds that can be done: None");
-                run = 0;
             } else {
                 println!("\nNeeds that can be done:");
                 let mut inx = 0;
                 let mut disp = 0;
                 for ndplnx in need_plans.iter() {
-                if let Some(plnx) = &ndplnx.pln {
+                    if let Some(plnx) = &ndplnx.pln {
                         if plnx.len() > 0 {
-                        println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
+                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
                         } else {
                             println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
                         }
@@ -182,21 +195,28 @@ fn main() {
                         disp += 1;
                     }
                     inx += 1;
-                }
+                } // next ndplnx
             }
+
+            // Stop running for this condition
+            if cant_do > 1 && can_do == 0 {
+               to_end = false;
+            }
+            
         } else {
-            println!("\nAction needs: None");
+            println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
+            if to_end {
+                if run_count < run_max {
+                    return;
+                }
+                to_end = false;
+            }
         }
+
 
         let mut cmd = Vec::<String>::with_capacity(10);
 
-        if run > 0 {
-        } else {
-            if running > 0 {
-                println!("Completely ran {} times", &run_count);
-                run_count = 0;
-                running = 0;
-            }
+        if to_end == false || (cant_do > 0 && can_do == 0) {
             let guess = pause_for_input("\nPress Enter or type a command: ");
 
             for word in guess.split_whitespace() {
@@ -230,101 +250,91 @@ fn main() {
 
                 if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
                     // println!("doing dmx.take_action_need");
-                    dmxs.take_action_need(dom_num, &ndx);
+
+                    match ndx {
+                        SomeNeed::ToRegion {
+                            dom_num: _,
+                            act_num: _,
+                            goal_reg: _,
+                            } => {},
+                        _ => {
+                            dmxs.take_action_need(dom_num, &ndx);
+                            },
+                            // Add new needs here
+                        }
                 } else {
                     // println!("NOT doing dmx.take_action_need");
                 }
-            } else {
-                dmxs[dom_num].check_async();
-                // If no needs, change the state to an optimal state if needed
-                if dmxs[dom_num]
-                    .optimal
-                    .is_superset_of_state(&dmxs[dom_num].cur_state)
-                {
-                } else {
-                    let optimal = dmxs[dom_num].optimal.clone();
-                    if dmxs[dom_num].to_region(&optimal) {
-                        println!("\nChange to optimal region succeeded");
-                    } else {
-                        println!("\nChange to optimal region failed");
-                    }
-                }
+                continue;
             }
 
             if can_do == 0 {
                 if cant_do > 0 {
-                    run = 0;
-                } else {
-                    if run > 0 {
-                        run_count += 1;
-                        run -= 1;
-                        if run > 0 {
-                            dmxs = init();
-                        }
-                    }
+                    //stop = true;
                 }
             }
             continue;
-        } else {
-            if cmd.len() == 1 {
-                if cmd[0] == "run" {
-                    run = 1;
-                    run_count = 0;
-                    running = 1;
-                    if nds.len() == 0 {
-                        dmxs = init();
-                    }
-                    continue;
-                } else if cmd[0] == "so" {
-                    dmxs = init();
+        } // end if cmd.len() == 0
+
+        if cmd.len() == 1 {
+            // Quit with q , exit, quit
+            if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
+                println!("Done");
+                return;
+            } else if cmd[0] == "run" {
+                to_end = true;
+                continue;
+            } else if cmd[0] == "so" {
+                dmxs = init();
+                //stop = true;
+                continue;
+            }
+        }
+
+        if cmd.len() == 2 {
+//            if cmd[0] == "run" {
+//                let r_num = cmd[1].parse().unwrap_or_else(|err| {
+//                    println!("Invalid Run Number: {}", err);
+//                    0
+//                });
+//                return r_num;
+//            } else
+            if cmd[0] == "cd" {
+                let d_num = cmd[1].parse().unwrap_or_else(|err| {
+                    println!("Invalid Domain Number: {}", err);
+                    999
+                });
+                if d_num == 999 {
                     continue;
                 }
-            } else if cmd.len() == 2 {
-                if cmd[0] == "run" {
-                    let r_num = cmd[1].parse().unwrap_or_else(|err| {
-                        println!("Invalid Run Number: {}", err);
-                        0
-                    });
-                    run = r_num;
-                    run_count = 0;
-                    running = 1;
-                } else if cmd[0] == "cd" {
-                    let d_num = cmd[1].parse().unwrap_or_else(|err| {
-                        println!("Invalid Domain Number: {}", err);
-                        999
-                    });
-                    if d_num == 999 {
-                        continue;
-                    }
-                    if d_num >= dmxs.num_domains() {
-                        println!("\nInvalid Domain number");
-                    } else {
-                        dom_num = d_num;
-                    }
+                if d_num >= dmxs.num_domains() {
+                    println!("\nInvalid Domain number");
+                } else {
+                    dom_num = d_num;
+                }
+                continue;
+            } else if cmd[0] == "ppd" {
+                let n_num = cmd[1].parse().unwrap_or_else(|err| {
+                    println!("Invalid Need Number: {}", err);
+                    999
+                });
+                if n_num == 999 {
                     continue;
-                } else if cmd[0] == "ppd" {
-                    let n_num = cmd[1].parse().unwrap_or_else(|err| {
-                        println!("Invalid Need Number: {}", err);
-                        999
-                    });
-                    if n_num == 999 {
-                        continue;
-                    }
-                    if n_num >= need_can.len() {
-                        println!("Invalid Need Number: {}", cmd[1]);
-                        continue;
-                    }
+                }
+                if n_num >= need_can.len() {
+                    println!("Invalid Need Number: {}", cmd[1]);
+                    continue;
+                }
+                let ndx = &nds[need_can[n_num]];
 
-                    let ndx = &nds[need_can[n_num]];
+                // Chnage the displayed Domian, if needed
+                if dom_num != ndx.dom_num() {
+                    dom_num = ndx.dom_num();
+                }
 
-                    // Chnage the displayed Domian, if needed
-                    if dom_num != ndx.dom_num() {
-                        dom_num = ndx.dom_num();
-                    }
+                print_domain(&dmxs, dom_num);
 
-                    print_domain(&dmxs, dom_num);
-
-                    let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
+                let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
 
                     println!("\nNeed: {}", &ndx);
 
@@ -333,84 +343,82 @@ fn main() {
                     pause_for_input("\nPress Enter to continue: ");
 
                     continue;
-                } else if cmd[0] == "dn" {
-                    let n_num = cmd[1].parse().unwrap_or_else(|err| {
-                        println!("Invalid Need Number: {}", err);
-                        999
-                    });
-                    if n_num == 999 {
-                        continue;
-                    }
-                    if n_num >= need_can.len() {
+            } else if cmd[0] == "dn" {
+                let n_num = cmd[1].parse().unwrap_or_else(|err| {
+                    println!("Invalid Need Number: {}", err);
+                    999
+                });
+                if n_num == 999 {
+                    continue;
+                }
+                if n_num >= need_can.len() {
                     println!("Invalid Need Number: {}", cmd[1]);
-                        continue;
-                    }
-
-                    let ndx = &nds[need_can[n_num]];
-
-                    let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
-
-                    println!("\nNeed chosen: {} {} {}\n", &n_num, &ndx, &pln.str_terse());
-
-                    dom_num = ndx.dom_num();
-
-                    //println!("need {}, plan {}", &ndx, &pln);
-
-                    if pln.len() > 0 {
-                        //println!("doing dmx.run_plan");
-                        dmxs.run_plan(dom_num, &pln);
-                    } else {
-                        //println!("NOT doing dmx.run_plan");
-                    }
-
-                    if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                        // println!("doing dmx.take_action_need");
-                        dmxs.take_action_need(dom_num, &ndx);
-                    } else {
-                        // println!("NOT doing dmx.take_action_need");
-                    }
-
                     continue;
-                } else if cmd[0] == "ld" {
-                    match load_data(&cmd[1]) {
-                        Err(why) => {
-                            println!("couldn't read {}: {}", &cmd[1], why);
-                        }
-                        Ok(new_dmxs) => {
-                            print!("Data loaded");
-                            dmxs = new_dmxs;
-                            dmxs.step -= 1;
-                        }
-                    } // end match load_data
+                }
 
-                    continue;
-                } else if cmd[0] == "sd" {
-                    match store_data(&dmxs, &cmd[1]) {
-                        Err(why) => {
-                            println!("couldn't write {}: {}", &cmd[1], why);
-                        }
-                        Ok(_) => {
-                            print!("Data written");
-                        }
+                let ndx = &nds[need_can[n_num]];
+
+                let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
+
+                println!("\nNeed chosen: {} {} {}\n", &n_num, &ndx, &pln.str_terse());
+
+                dom_num = ndx.dom_num();
+
+                //println!("need {}, plan {}", &ndx, &pln);
+
+                if pln.len() > 0 {
+                    //println!("doing dmx.run_plan");
+                    dmxs.run_plan(dom_num, &pln);
+                } else {
+                    //println!("NOT doing dmx.run_plan");
+                }
+
+                if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                    // println!("doing dmx.take_action_need");
+                    dmxs.take_action_need(dom_num, &ndx);
+                } else {
+                    // println!("NOT doing dmx.take_action_need");
+                }
+
+                continue;
+            } else if cmd[0] == "ld" {
+                match load_data(&cmd[1]) {
+                    Err(why) => {
+                        println!("couldn't read {}: {}", &cmd[1], why);
                     }
+                    Ok(new_dmxs) => {
+                        print!("Data loaded");
+                        dmxs = new_dmxs;
+                        dmxs.step -= 1;
+                    }
+                } // end match load_data
 
-                    continue;
-                } // end command sd
-            }
-            do_command(&mut dmxs[dom_num], &cmd);
-        }
+                continue;
+            } else if cmd[0] == "sd" {
+                match store_data(&dmxs, &cmd[1]) {
+                    Err(why) => {
+                        println!("couldn't write {}: {}", &cmd[1], why);
+                    }
+                Ok(_) => {
+                        print!("Data written");
+                    }
+                }
+
+                continue;
+            } // end command sd
+        } // end if cmd.len() == 2
+
+        // Do other commands
+        do_command(&mut dmxs[dom_num], &cmd);
+
     } // end loop
-} // end main
+} // end do_session
+
 
 /// Do most commands entered by the user.
 fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
     // Handle one-word commands
     if cmd.len() == 1 {
-        // Quit with q , exit, quit
-        if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
-            println!("Done");
-            process::exit(0);
-        }
 
         if cmd[0] == "h" || cmd[0] == "help" {
             usage();
@@ -434,11 +442,13 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             let region_r = dm1.region_from_string(&cmd[1]);
             match region_r {
                 Ok(goal_region) => {
-                    println!(
-                        "Change Optimal regionfrom {} to {}",
-                        dm1.optimal, goal_region
-                    );
-                    dm1.optimal = goal_region;
+                    if dm1.is_optimal_set() {
+                        let areg = dm1.get_optimal();
+                        println!("Change Optimal region from {} to {}", areg, goal_region);
+                    } else {
+                        println!("Change Optimal region from None to {}", goal_region);
+                    }
+                    dm1.optimal = Some(goal_region);
                     return true;
                 }
                 Err(error) => {
@@ -806,19 +816,20 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {}", dom_num,);
     println!("\nActs: {}", &dmxs[dom_num].actions);
 
-    let mut in_opt = "Not in";
-
-    if dmxs[dom_num]
-        .optimal
-        .is_superset_of_state(&dmxs[dom_num].cur_state)
-    {
-        in_opt = "in";
+    if dmxs[dom_num].is_optimal_set() {
+        let areg = dmxs[dom_num].get_optimal();
+        let mut in_opt = "Not in";
+        let optstr = areg.formatted_string();
+        if areg.is_superset_of_state(&dmxs[dom_num].cur_state) {
+            in_opt = "in";
+        }
+        println!("\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr);
+    } else {
+        println!("\nStep: {} Dom: {} Current State: {}",&dmxs.step, dom_num, &dmxs[dom_num].cur_state);
     }
-
-    println!(
-        "\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}",
-        &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, &dmxs[dom_num].optimal
-    );
+    if dmxs.step > 300 {
+        assert!(1 == 2);
+    }
 }
 
 /// Display usage options.
@@ -871,7 +882,7 @@ fn usage() {
     println!("\n    sd <path>                - Store data to a file.\n");
 
     println!("    run                      - Run until no needs left.");
-    println!("    run <number times>       - Run a number of times, stop when done or a need cannot be done.");
+    println!("    cargo run <number times> - Run a number of times, stop when done or a need cannot be done.");
 
     println!("\n    q | exit | quit          - Quit program.");
     println!("\n    so                       - Start Over.");

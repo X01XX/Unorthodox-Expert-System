@@ -223,7 +223,7 @@ impl SomeAction {
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
                 let sqrx = self.squares.find(&sta).unwrap();
-                println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.pn(), sqrx.pnc());
+                //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.pn(), sqrx.pnc());
                 if let Some(sqry) = self.squares.find(&far) {
                     if sqrx.pn() == sqry.pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
                         if sqrx.pn() == Pn::Unpredictable {
@@ -1730,6 +1730,10 @@ impl SomeAction {
             return nds;
         }
 
+        if grpx.pn == Pn::Two {
+            return nds;
+        }
+        
         let rulsx = grpx.rules.restrict_initial_region(&reg_int);
         let rulsy = grpy.rules.restrict_initial_region(&reg_int);
 
@@ -1740,19 +1744,9 @@ impl SomeAction {
                 // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
                 let ok_reg = rulsxy.initial_region();
 
-                if ok_reg == reg_int {
-                    nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
-                } else {
-                    if grpx.pn == Pn::Two {
-                        if rulsx.is_subset_of(&rulsy) { // multiple combinations noticed by intersection instead of combining two squares
-                                                        // groups probably both invalid, will fall later.
-                            return nds;
-                        }
-                    }
-                    // to avoid subtraction, use the far sub-region
-                    let regy = reg_int.far_reg(&ok_reg);
-                    nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
-                }
+                // to avoid subtraction, use the far sub-region
+                let regy = reg_int.far_reg(&ok_reg);
+                nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
             } else {
                 nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             }

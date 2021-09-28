@@ -119,7 +119,7 @@ impl DomainStore {
         self.avec.len()
     }
 
-    /// Return a vector of InxPlan structs, in no order, given a NeedStore.
+    /// Return a vector of InxPlan structs, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
 
@@ -152,9 +152,6 @@ impl DomainStore {
 
                 if ndsx.priority() == least_priority {
                     avec.push(inx);
-                    if avec.len() > 4 {
-                        break;
-                    }
                 }
                 inx += 1;
             }
@@ -163,29 +160,54 @@ impl DomainStore {
             // Parallel make_plans for needs
             // It likes to collect a structure, in this case InxPlan,
             // instead of a tuple or array
-            let ndsinx_plan = avec
-                .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-                .map(|nd_inx| InxPlan {
-                    inx: *nd_inx,
-                    pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
-                })
-                .collect::<Vec<InxPlan>>();
+            //
+            // To avoid the cycles required to make plans for many needs,
+            //   Process needs by groups of the same, decreasing priority, until at least one has a plan
+            //   Split groups into vectors of 3 at the most. 
 
-            let mut try_again = true;
-            for inxplnx in ndsinx_plan.iter() {
-                if let Some(_) = inxplnx.pln {
-                    try_again = false;
-                    break;
+            let span = 3;
+            let mut start = 0;
+            let limit = avec.len();
+
+            while start < limit { 
+
+                let mut end = start + span; 
+
+                if end > limit { 
+                    end = limit;
                 }
-            }
 
-            if try_again {
-            } else {
-                return ndsinx_plan;
-            }
+                let mut avec2 = Vec::<usize>::with_capacity(span);
 
+                for inx in start..end {
+                    avec2.push(avec[inx]);
+                }
+
+                let ndsinx_plan = avec2
+                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                    .map(|nd_inx| InxPlan {
+                        inx: *nd_inx,
+                        pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
+                    })
+                    .collect::<Vec<InxPlan>>();
+
+                let mut try_again = true;
+                for inxplnx in ndsinx_plan.iter() {
+                    if let Some(_) = inxplnx.pln {
+                        try_again = false;
+                        break;
+                    }
+                }
+
+                if try_again {
+                } else {
+                    return ndsinx_plan;
+                }
+
+                start = start + span;
+            } // end while
         } // end loop
-    }
+    } // end evaluate_needs
 
     /// Choose a need, given a vector of needs,
     /// a vector of InxPlans Vec::<{ inx: need vector index, pln: Some(plan}>
