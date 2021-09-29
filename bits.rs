@@ -242,18 +242,11 @@ impl SomeBits {
     pub fn num_one_bits(&self) -> usize {
         let mut cnt = 0;
 
-        for int_inx in 0..self.num_ints() {
-            if self.ints[int_inx] > 0 {
-                let mut tmpint = self.ints[int_inx];
+        for intx in self.ints.iter() {
+            cnt += intx.count_ones();
+        }
 
-                while tmpint > 0 {
-                    let tmp2 = tmpint - 1;
-                    tmpint = tmpint & tmp2;
-                    cnt += 1;
-                }
-            }
-        } // end for int_inx
-        cnt
+        cnt as usize
     }
 
     /// Return the number of bits that are different.
