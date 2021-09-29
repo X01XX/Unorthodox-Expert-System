@@ -12,13 +12,15 @@
 //! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
 
 use crate::bits::SomeBits;
+use crate::mask::SomeMask;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeState {
-    pub bts: SomeBits,
+    bts: SomeBits,
 }
 
 impl fmt::Display for SomeState {
@@ -33,6 +35,11 @@ impl SomeState {
         Self { bts }
     }
 
+    /// Accessor, get read-only reference to the bts field
+    pub fn get_bts(&self) -> &SomeBits {
+        &self.bts
+    }
+
     /// Return true is a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
@@ -43,6 +50,11 @@ impl SomeState {
         Self::new(self.bts.b_and(&other.bts))
     }
 
+    /// Return the result of a not operation.
+    pub fn s_not(&self) -> Self {
+        Self::new(self.bts.b_not())
+    }
+    
     /// Return a state or another state.
     pub fn s_or(&self, other: &Self) -> Self {
         Self::new(self.bts.b_or(&other.bts))
@@ -133,6 +145,12 @@ impl SomeState {
 
         Ok(SomeState::new(bts))
     } // end from_string
+    
+    /// Return a mask given a state
+    pub fn to_mask(&self) -> SomeMask {
+        SomeMask::new(self.bts.clone())
+    }
+
 } // end impl SomeState
 
 impl Clone for SomeState {

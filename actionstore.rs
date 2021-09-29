@@ -31,7 +31,7 @@ impl fmt::Display for ActionStore {
 #[derive(Serialize, Deserialize)]
 pub struct ActionStore {
     /// A vector of SomeAction structs
-    pub avec: Vec<SomeAction>,
+    avec: Vec<SomeAction>,
 }
 
 impl ActionStore {
@@ -49,7 +49,7 @@ impl ActionStore {
 
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, mut actx: SomeAction) {
-        actx.num = self.avec.len();
+        actx.set_num(self.avec.len());
         self.avec.push(actx);
     }
 
@@ -60,7 +60,7 @@ impl ActionStore {
 
         for actx in &self.avec {
             //println!("act {} change {}", &actx.num, &actx.predictable_bit_changes);
-            cngx = cngx.union(&actx.predictable_bit_changes);
+            cngx = cngx.union(&actx.get_predictable_bit_changes());
             //println!("cngx   change {}", &cngx);
         }
 

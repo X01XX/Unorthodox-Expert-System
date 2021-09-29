@@ -22,13 +22,13 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
-    pub b00: SomeMask,
+    b00: SomeMask,
     /// A mask for bit change 0->1
-    pub b01: SomeMask,
+    b01: SomeMask,
     /// A mask for bit change 1->1
-    pub b11: SomeMask,
+    b11: SomeMask,
     /// A mask for bit change 1->0
-    pub b10: SomeMask,
+    b10: SomeMask,
 }
 
 impl fmt::Display for SomeRule {
@@ -41,11 +41,21 @@ impl SomeRule {
     /// Return a new SomeRule instance given an initial state and the corresponding result state.
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         Self {
-            b00: SomeMask::new(initial.bts.b_not().b_and(&result.bts.b_not())),
-            b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
-            b11: SomeMask::new(initial.bts.b_and(&result.bts)),
-            b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
+            b00: initial.s_not().s_and(&result.s_not()).to_mask(),
+            b01: initial.s_not().s_and(&result).to_mask(),
+            b11: initial.s_and(&result).to_mask(),
+            b10: initial.s_and(&result.s_not()).to_mask(),
         }
+    }
+
+    /// Accessor, return a read-only reference to the b01 field.
+    pub fn get_b01(&self) -> &SomeMask {
+        &self.b01
+    }
+
+    /// Accessor, return a read-only reference to the b10 field.
+    pub fn get_b10(&self) -> &SomeMask {
+        &self.b10
     }
 
     /// Return true if a rule is a subset of another.
@@ -103,16 +113,16 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = SomeState::new(self.b11.bts.b_or(&self.b10.bts));
-        let st_low = SomeState::new(self.b00.bts.b_or(&self.b01.bts).b_not());
+        let st_high = self.b11.m_or(&self.b10).to_state();
+        let st_low = self.b00.m_or(&self.b01).m_not().to_state();
 
         SomeRegion::new(&st_high, &st_low)
     }
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = SomeState::new(self.b11.bts.b_or(&self.b01.bts));
-        let st_low = SomeState::new(self.b00.bts.b_or(&self.b10.bts).b_not());
+        let st_high = self.b11.m_or(&self.b01).to_state();
+        let st_low = SomeState::new(self.b00.get_bts().b_or(self.b10.get_bts()).b_not());
 
         SomeRegion::new(&st_high, &st_low)
     }
@@ -136,11 +146,8 @@ impl SomeRule {
             );
         }
 
-        let mut toggle = self.b01.bts.b_and(&sta.bts.b_not());
-        toggle = toggle.b_or(&self.b10.bts.b_and(&sta.bts));
-        SomeState {
-            bts: sta.bts.b_xor(&toggle),
-        }
+        let toggle = self.b01.to_state().s_and(&sta.s_not());
+        toggle.s_or(&self.b10.to_state().s_and(sta))
     }
 
     /// Restrict the initial region to an intersection of the
@@ -211,7 +218,7 @@ impl SomeRule {
 
     /// Return the expected length of a string representation of SomeRule.
     pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.b00.bts.len() * 3) - 1
+        (NUM_BITS_PER_INT * self.b00.get_bts().len() * 3) - 1
     }
 
     /// Return a string representation of SomeRule.
@@ -317,7 +324,7 @@ impl SomeRule {
     
     /// Return a SomeChange struct instance
     pub fn change(&self) -> SomeChange {
-        SomeChange { b01: self.b01.clone(), b10: self.b10.clone() }
+        SomeChange::new(&self.b01, &self.b10)
     }
 
     /// Return true if two rules are mutually exclusive
@@ -340,7 +347,7 @@ impl SomeRule {
 
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
-        let sb01 = self.b01.m_and(&wanted.b01);
+        let sb01 = self.b01.m_and(&wanted.get_b01());
         if sb01.is_not_low() {
             // println!("order_bad: sb01 {} step2 zero pos {}", &sb01, &step2.initial.zero_bit_positions());
             if sb01.m_and(&other.b10.m_or(&other.b11).m_not()).is_not_low() {
@@ -349,7 +356,7 @@ impl SomeRule {
             }
         }
 
-        let sb10 = self.b10.m_and(&wanted.b10);
+        let sb10 = self.b10.m_and(&wanted.get_b10());
         if sb10.is_not_low() {
 
             if sb10.m_and(&other.b01.m_or(&other.b00).m_not()).is_not_low() {

@@ -14,12 +14,12 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeRegion {
     /// First state defining a region, it represents a sempled state.
-    pub state1: SomeState,
+    state1: SomeState,
     /// Second state defining a region, it represents a sempled state.
     /// It may be the same as the first state, for a region with no X-bit positions.
-    pub state2: SomeState,
+    state2: SomeState,
     /// To do less vector copying, inactivated regions should be ignored and may be overwritten.
-    pub active: bool,
+    active: bool,
 }
 
 impl fmt::Display for SomeRegion {
@@ -49,6 +49,21 @@ impl SomeRegion {
             state2: sta2.clone(),
             active: true, // Used to decrease vector copying.
         }
+    }
+
+    /// Accessor, return a read-only reference to the state1 field
+    pub fn get_state1(&self) -> &SomeState {
+        &self.state1
+    }
+
+    /// Accessor, return a read-only reference to the state2 field
+    pub fn get_state2(&self) -> &SomeState {
+        &self.state2
+    }
+
+    /// Accessor, return the value of the active field
+    pub fn get_active(&self) -> bool {
+        self.active
     }
 
     /// Return the expected length of a string representing a region, for string alloaction.
@@ -119,8 +134,8 @@ impl SomeRegion {
     /// to X.
     pub fn intersection(&self, other: &Self) -> Self {
         Self::new(
-            &SomeState::new(self.high_mask().bts.b_and(&other.high_mask().bts)),
-            &SomeState::new(self.low_mask().bts.b_and(&other.low_mask().bts).b_not()),
+            &self.high_mask().m_and(&other.high_mask()).to_state(),
+            &self.low_mask().m_and(&other.low_mask()).m_not().to_state(),
         )
     }
 
@@ -128,16 +143,15 @@ impl SomeRegion {
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
         let t1 = self
             .state1
-            .bts
-            .b_xor(&a_state.bts)
-            .b_and(&self.state2.bts.b_xor(&a_state.bts));
+            .s_xor(&a_state)
+            .s_and(&self.state2.s_xor(&a_state)).to_mask();
 
         t1.is_low()
     }
 
     /// Return mask of x bits.
     pub fn x_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
+        self.state1.s_xor(&self.state2).to_mask()
     }
 
     /// Return the number of X bits in a region.
@@ -147,7 +161,7 @@ impl SomeRegion {
 
     /// Given a state in a region, return the far state in the region.
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
-        SomeState::new(self.state1.bts.b_xor(&self.state2.bts).b_xor(&sta.bts))
+        self.state1.s_xor(&self.state2).s_xor(&sta)
     }
 
     /// Given a region, and a proper subset region, return the
@@ -162,11 +176,11 @@ impl SomeRegion {
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
-        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not());
+        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not()).to_state();
 
         SomeRegion::new(
-            &SomeState::new(other.state1.bts.b_xor(&cng_bits.bts)),
-            &SomeState::new(other.state2.bts.b_xor(&cng_bits.bts)),
+            &other.state1.s_xor(&cng_bits),
+            &other.state2.s_xor(&cng_bits),
         )
     }
 
@@ -218,47 +232,45 @@ impl SomeRegion {
 
     /// Return a Mask of zero or X bits (which include a zero).
     pub fn low_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_not().b_or(&self.state2.bts.b_not()))
+        self.state1.s_not().s_or(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of ones or X bits (which include a one).
     pub fn high_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_or(&self.state2.bts))
+        self.state1.s_or(&self.state2).to_mask()
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
+        let smsk = msk.to_state();
         Self::new(
-            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
-            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+            &self.state1.s_and(&smsk.s_not()),
+            &self.state2.s_and(&smsk.s_not()),
         )
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
+        let smsk = msk.to_state();
         Self::new(
-            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
+            &self.state1.s_or(&smsk),
+            &self.state2.s_or(&smsk),
         )
     }
 
     /// Return a region with masked X-bits set to zeros.
     /// The region states may not represent a samples state.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+        let smsk = msk.to_state();
         Self::new(
-            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
-        )
+            &self.state1.s_or(&smsk),
+            &self.state2.s_and(&smsk.s_not()),
+            )
     }
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        SomeMask::new(
-            self.state1
-                .bts
-                .b_xor(&sta1.bts)
-                .b_and(&self.state2.bts.b_xor(&sta1.bts)),
-        )
+            self.state1.s_xor(&sta1).s_and(&self.state2.s_xor(&sta1)).to_mask()
     }
 
     /// Return a mask of different (non-x) bits between two regions.
@@ -298,7 +310,7 @@ impl SomeRegion {
 
     /// Toggle non-x bits in a region, given a mask.
     pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
-        let stxor = SomeState::new(tbits.bts.clone());
+        let stxor = SomeState::new(tbits.get_bts().clone());
         Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
     }
 
@@ -410,7 +422,7 @@ impl SomeRegion {
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
+            if mskx.m_and(&reg_int.state1.to_mask()).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {

@@ -59,9 +59,9 @@ impl fmt::Display for DomainStore {
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
-    pub avec: Vec<SomeDomain>,
+    avec: Vec<SomeDomain>,
     /// Current step number of the user interface.
-    pub step: usize, // The current step number in the UI.
+    step: usize, // The current step number in the UI.
 }
 
 impl DomainStore {
@@ -73,9 +73,19 @@ impl DomainStore {
         }
     }
 
+    /// Accessor, return the value of the step field.
+    pub fn get_step(&self) -> usize {
+        self.step
+    }
+    
+    /// Accessor, set the setp field.
+    pub fn set_step(&mut self, anum: usize) {
+        self.step = anum;
+    }
+    
     /// Add a Domain struct to the store.
     pub fn push(&mut self, mut domx: SomeDomain) {
-        domx.num = self.avec.len();
+        domx.set_num(self.avec.len());
         self.avec.push(domx);
     }
 
@@ -111,7 +121,7 @@ impl DomainStore {
 
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        &self.avec[dmxi].cur_state
+        &self.avec[dmxi].get_cur_state()
     }
 
     /// Return the number of domains

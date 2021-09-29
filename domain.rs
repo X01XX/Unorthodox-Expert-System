@@ -30,8 +30,7 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
         rc_str.push_str(&format!(", Maximum Region: {}", &self.max_region));
-        if self.is_optimal_set() {
-            let areg = self.get_optimal();
+        if let Some(areg) = &self.optimal {
             rc_str.push_str(&format!(", Optimal Region: {}", &areg));
         } else {
             rc_str.push_str(&format!(", Optimal Region: None"));
@@ -46,21 +45,21 @@ impl fmt::Display for SomeDomain {
 #[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
     /// Domain number.  Index into a DomainStore.
-    pub num: usize,
+    num: usize,
     /// Number integers making up a bits struct.    
-    pub num_ints: usize,
+    num_ints: usize,
     /// Actions the Domain can take.    
-    pub actions: ActionStore,
+    actions: ActionStore,
     /// The Current State.    
-    pub cur_state: SomeState,
+    cur_state: SomeState,
     /// The region formed by the union of all Current States experienced.    
-    pub max_region: SomeRegion,
+    max_region: SomeRegion,
     /// An optimal region that is sought if there are no needs.  This may be changed.    
-    pub optimal: Option<SomeRegion>,
+    optimal: Option<SomeRegion>,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
-    pub prev_state: SomeState,
+    prev_state: SomeState,
     /// A store of possible, predictable, bit changes.
-    pub predictable_mask: SomeMask,
+    predictable_mask: SomeMask,
     /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
     vec_hash: Vec<HashMap<SomeState, usize>>,
     /// Hidden variable range, for testing.  0-max(exclusive).
@@ -74,9 +73,6 @@ impl SomeDomain {
     pub fn new(num_ints: usize, start_state: &str, optimal: Option<SomeRegion>) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
-
-        // Convert the optimal region from string to SomeRegion.
-        //let opt = SomeRegion::from_string(num_ints, &optimal).unwrap();
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
@@ -93,27 +89,44 @@ impl SomeDomain {
         };
     }
 
-    /// Return true is the optimal region is set
-    pub fn is_optimal_set(&self) -> bool {
-        if let Some(_) = self.optimal {
-            return true;
-        }
-        false
+    /// Accessor, return the value of the num field.
+    pub fn get_num(&self) -> usize {
+        self.num
     }
-    
-    //. Get the optimal region, is a prior call to is_optimal_set == true
-    pub fn get_optimal(&self) -> SomeRegion {
-        if let Some(areg) = &self.optimal {
-            return areg.clone();
-        }
-        assert!(1 == 2);
-        self.max_region.clone()
+
+    /// Accessor, return a read-only reference to the actions field.
+    pub fn get_actions(&self) -> &ActionStore {
+        &self.actions
+    }
+
+    /// Accessor, return a read-only reference to an action in the actions field.
+    pub fn get_action(&self, inx: usize) -> &SomeAction {
+        &self.actions[inx]
+    }
+
+    /// Accessor, set the value of the num field
+    pub fn set_num(&mut self, anum: usize) {
+        self.num = anum;
+    }
+
+    /// Accessor, return a read-only reference to the cur_state field.
+    pub fn get_cur_state(&self) -> &SomeState {
+        &self.cur_state
+    }
+
+    /// Accessor, set the optimal field
+    pub fn set_optimal(&mut self, areg: Option<SomeRegion>) {
+        self.optimal = areg;
+    }
+
+    /// Accessor, return a read-only reference to the optimal field
+    pub fn get_optimal(&self) -> &Option<SomeRegion> {
+        &self.optimal
     }
     
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, mut actx: SomeAction, hv: usize) {
-        actx.num = self.actions.len();
-        //actx.num_ints = self.num_ints;
+        actx.set_num(self.actions.len());
         self.actions.push(actx);
 
         // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
@@ -132,14 +145,13 @@ impl SomeDomain {
         }
 
         if nst.len() == 0 {
-            if self.is_optimal_set() {
-                let r = self.get_optimal();
-                if r.is_superset_of_state(&self.cur_state) {
+            if let Some(areg) = &self.optimal {
+                if areg.is_superset_of_state(&self.cur_state) {
                 } else {
                     nst.push(SomeNeed::ToRegion {
                         dom_num: self.num, // set this in domain get_needs
                         act_num: 0,
-                        goal_reg: r,
+                        goal_reg: areg.clone(),
                     });
                 }
             }
@@ -175,7 +187,7 @@ impl SomeDomain {
 
         // may break hv info, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
-        self.set_cur_state(r_state.clone());
+        self.set_cur_state(&r_state);
 
         self.check_predictable_mask();
     }
@@ -189,16 +201,16 @@ impl SomeDomain {
         let hv = self.get_hv(act_num);
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
-        self.set_cur_state(astate);
+        self.set_cur_state(&astate);
 
         self.check_predictable_mask();
     }
 
-    /// Set the current state.
-    fn set_cur_state(&mut self, new_state: SomeState) {
+    /// Accessor, set the cur_state field.
+    pub fn set_cur_state(&mut self, new_state: &SomeState) {
         self.prev_state = new_state.clone();
 
-        self.cur_state = new_state;
+        self.cur_state = new_state.clone();
 
         if self.max_region.is_superset_of_state(&self.cur_state) {
         } else {
@@ -278,7 +290,7 @@ impl SomeDomain {
 
                 let prev_state = self.cur_state.clone();
 
-                self.set_cur_state(astate);
+                self.set_cur_state(&astate);
 
                 if stpx.result.is_superset_of_state(&self.cur_state) {
                     continue;
@@ -294,7 +306,7 @@ impl SomeDomain {
 
                     self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
-                    self.set_cur_state(astate);
+                    self.set_cur_state(&astate);
 
                     if stpx.result.is_superset_of_state(&self.cur_state) {
                         continue;
@@ -371,7 +383,7 @@ impl SomeDomain {
         // println!("\nmake_plan3: steps_str steps {}", steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        let mut can_change = SomeChange::new_low(required_change.b01.num_ints());
+        let mut can_change = SomeChange::new_low(self.num_ints);
 
         for stpx in steps_str.iter() {
             can_change = can_change.union(&stpx.rule.change());
@@ -434,25 +446,13 @@ impl SomeDomain {
             if all_external {
                 for stp_inx in &steps_by_change_vov[inx] {
                     //println!("Asym chaining required {} to {} agg {} step {}", from_reg, goal_reg, &agg_reg, &steps_str[*stp_inx]);
-                    //assert!(steps_str[*stp_inx].initial.intersects(&agg_reg) == false);
-                    //assert!(steps_str[*stp_inx].result.intersects(&agg_reg) == false);
                     asym_stps.push(*stp_inx);
                 }
             }
         } // next inx
 
         if asym_stps.len() == 0 {
-    
-//        // Try asymmetric chaining for each external step
-//        for stp_inx in &asym_stps {
-//            // Try Asymmetric forward chaining
-//            if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*stp_inx], depth) {
-//                // Return a plan found so far, if any
-//                //println!("make_plan3: asym single step forced returns steps {}", ret_steps.formatted_string(" "));
-//                return Some(ret_steps);
-//            }
-//        }
-        
+
         // Evaluate glide path
         // Some steps may intersect both the from region and goal region witout
         // being a single step solution
@@ -460,15 +460,9 @@ impl SomeDomain {
         let mut steps_goal = false;
         for stpx in steps_str.iter() {
             if steps_from == false && stpx.initial.intersects(from_reg) {
-                //let stpy = stpx.restrict_initial_region(from_reg);
-                //let stpsy = StepStore::new_with_step(stpy);
-                //steps_from.push(stpsy);
                 steps_from = true;
             }
             if steps_goal == false && stpx.result.intersects(goal_reg) {
-                //let stpy = stpx.restrict_result_region(goal_reg);
-                //let stpsy = StepStore::new_with_step(stpy);
-                //steps_goal.push(stpsy);
                 steps_goal = true;
             }
         }

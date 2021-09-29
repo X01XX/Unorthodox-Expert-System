@@ -16,13 +16,15 @@
 //! Instead of xor, you probably should use <1>.m_and(<2>.not()) to find ones in <1> that are not in <2>.
 
 use crate::bits::SomeBits;
+use crate::state::SomeState;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeMask {
     /// Bits set to one are significant.
-    pub bts: SomeBits,
+    bts: SomeBits,
 }
 
 impl fmt::Display for SomeMask {
@@ -42,6 +44,16 @@ impl SomeMask {
         Self {
             bts: SomeBits::new_low(num_ints),
         }
+    }
+
+    /// Accessor, return a read-onlu reference to the bts field
+    pub fn get_bts(&self) -> &SomeBits {
+        &self.bts
+    }
+
+    /// Convert a mask into astate
+    pub fn to_state(&self) -> SomeState {
+        SomeState::new(self.bts.clone())
     }
 
 //  pub fn m_xor(&self, other: &Self) -> Self {

@@ -21,7 +21,7 @@ impl fmt::Display for RegionStore {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegionStore {
     /// A vector of regions.
-    pub avec: Vec<SomeRegion>,
+    avec: Vec<SomeRegion>,
 }
 
 impl RegionStore {
@@ -41,7 +41,7 @@ impl RegionStore {
     pub fn num_active(&self) -> usize {
         let mut cnt = 0;
         for regx in &self.avec {
-            if regx.active {
+            if regx.get_active() {
                 cnt += 1;
             }
         }
@@ -61,7 +61,7 @@ impl RegionStore {
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if reg.active && regx.is_superset_of(&reg) {
+            if reg.get_active() && regx.is_superset_of(&reg) {
                 return true;
             }
         }
@@ -71,7 +71,7 @@ impl RegionStore {
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if regx.active && regx.is_subset_of(&reg) {
+            if regx.get_active() && regx.is_subset_of(&reg) {
                 return true;
             }
         }
@@ -81,7 +81,7 @@ impl RegionStore {
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.get_active() && regx.is_superset_of_state(&sta) {
                 return true;
             }
         }
@@ -93,7 +93,7 @@ impl RegionStore {
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if reg.active && regx == reg {
+            if reg.get_active() && regx == reg {
                 return true;
             }
         }
@@ -105,7 +105,7 @@ impl RegionStore {
         let mut cnt = 0;
 
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.get_active() && regx.is_superset_of_state(&sta) {
                 cnt += 1;
             }
         }
@@ -116,7 +116,7 @@ impl RegionStore {
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
-            if regx.active && regx.is_subset_of(&reg) {
+            if regx.get_active() && regx.is_subset_of(&reg) {
                 regx.inactivate();
                 //println!("Inactivated region {}", regx);
                 fnd = true;
@@ -129,7 +129,7 @@ impl RegionStore {
     fn inactivate_supersets_of(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
-            if regx.active && regx.is_superset_of(&reg) {
+            if regx.get_active() && regx.is_superset_of(&reg) {
                 regx.inactivate();
                 //println!("Inactivated region {}", regx);
                 fnd = true;
@@ -142,7 +142,7 @@ impl RegionStore {
     pub fn inactivate(&mut self, reg: &SomeRegion) -> bool {
         let mut fnd = false;
         for regx in &mut self.avec {
-            if regx.active && regx == reg {
+            if regx.get_active() && regx == reg {
                 regx.inactivate();
                 //println!("Inactivated region {}", regx);
                 fnd = true;
@@ -155,7 +155,7 @@ impl RegionStore {
     fn first_inactive_index(&self) -> Option<usize> {
         let mut cnt = 0;
         for regx in &self.avec {
-            if regx.active == false {
+            if regx.get_active() == false {
                 return Some(cnt);
             }
             cnt += 1;
@@ -166,7 +166,7 @@ impl RegionStore {
     /// Return true if any region is active.
     pub fn any_active(&self) -> bool {
         for regx in &self.avec {
-            if regx.active {
+            if regx.get_active() {
                 return true;
             }
         }
@@ -221,7 +221,7 @@ impl RegionStore {
 
         let mut alen = 0;
         for regx in &self.avec {
-            if regx.active {
+            if regx.get_active() {
                 alen += 1;
             }
         }
@@ -243,7 +243,7 @@ impl RegionStore {
         rc_str.push('[');
 
         for regx in &self.avec {
-            if regx.active == false {
+            if regx.get_active() == false {
                 continue;
             }
 

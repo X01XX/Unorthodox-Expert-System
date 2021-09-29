@@ -25,25 +25,25 @@ pub struct SomeGroup {
     /// Region the group covers.  Formed by two Pn equal squares.
     /// All squares sampled in between are compatable.
     /// <SomeRegion>.state1 and .state2 are keys to the squares that formed the region.
-    pub region: SomeRegion,
+    region: SomeRegion,
     /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
-    pub pn: Pn,
+    pn: Pn,
     /// Rules formed by two squares.
-    pub rules: RuleStore,
+    rules: RuleStore,
     /// Set to false to "delete" the group from the parent DomainStore vector.
     /// To minimize vector copying.
-    pub active: bool,
+    active: bool,
     /// Set to true when a state only in the group has all adjacent states checked    
-    pub confirmed: bool,
+    confirmed: bool,
     /// The state, in only one (this) group, used to confirm the group.
-    pub anchor: Option<SomeState>,
+    anchor: Option<SomeState>,
     /// Mask of non-x bits to check for expansion.
     /// After a failed check, a 1 bit will be changed to 0.    
-    pub edge_expand: SomeMask,
+    edge_expand: SomeMask,
     /// Flag used to check for other groups that are close.
     /// So a new group is checked against all others, until no
     /// more needs are generated.
-    pub pair_needs: bool,
+    pair_needs: bool,
 }
 
 impl SomeGroup {
@@ -68,9 +68,44 @@ impl SomeGroup {
             active: true,
             confirmed: false,
             anchor: None,
-            edge_expand: SomeMask::new(sta1.bts.b_xor(&sta2.bts).b_not()),
+            edge_expand: sta1.s_xor(&sta2).s_not().to_mask(),
             pair_needs: true,
         }
+    }
+
+    /// Accessor, return a read-only reference to the region field.
+    pub fn get_region(&self) -> &SomeRegion {
+        &self.region
+    }
+    
+    /// Accessor, return a read-only reference to the pn field.
+    pub fn get_pn(&self) -> &Pn {
+        &self.pn
+    }
+
+    /// Accessor, return a read-only reference to the rules field.
+    pub fn get_rules(&self) -> &RuleStore {
+        &self.rules
+    }
+
+    /// Accessor, return the value of the active field.
+    pub fn get_active(&self) -> bool {
+        self.active
+    }
+
+    /// Accessor, return the value of the confirmed field.
+    pub fn get_confirmed(&self) -> bool {
+        self.confirmed
+    }
+
+    /// Accessor, return a read-only reference to the anchor field.
+    pub fn get_anchor(&self) -> &Option<SomeState> {
+        &self.anchor
+    }
+
+    /// Accessor, return a read-only reference to the edge_expand field.
+    pub fn get_edge_expand(&self) -> &SomeMask {
+        &self.edge_expand
     }
 
     /// Set a one bit in edge_expand to zero.  The group cannot
@@ -149,7 +184,7 @@ impl SomeGroup {
             Pn::One => match sqrx.pn() {
                 Pn::One => {
                     //println!("square_is_ok at One One");
-                    return sqrx.rules.is_subset_of(&self.rules);
+                    return sqrx.get_rules().is_subset_of(&self.rules);
                 }
                 _ => {
                     //println!("square_is_ok at One Other");
@@ -162,11 +197,11 @@ impl SomeGroup {
                     if sqrx.len_results() > 1 {
                         return false;
                     }
-                    return sqrx.rules.is_subset_of(&self.rules);
+                    return sqrx.get_rules().is_subset_of(self.get_rules());
                 }
                 Pn::Two => {
                     //println!("square_is_ok at Two Two");
-                    return sqrx.rules.is_subset_of(&self.rules);
+                    return sqrx.get_rules().is_subset_of(&self.rules);
                 }
                 _ => {
                     //println!("square_is_ok at Two Other");

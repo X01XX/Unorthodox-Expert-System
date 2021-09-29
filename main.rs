@@ -131,7 +131,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
     let mut dom_num = 0;
     
     loop {
-        dmxs.step += 1;
+        dmxs.set_step(dmxs.get_step() + 1);
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
@@ -389,7 +389,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                     Ok(new_dmxs) => {
                         print!("Data loaded");
                         dmxs = new_dmxs;
-                        dmxs.step -= 1;
+                        dmxs.set_step(dmxs.get_step() - 1);
                     }
                 } // end match load_data
 
@@ -434,6 +434,16 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             println!("\nActs: {}", dm1.get_needs());
             return true;
         }
+        
+        if cmd[0] == "co" {
+            if let Some(areg) = &dm1.get_optimal() {
+                println!("Change Optimal region from {} to None", areg);
+            } else {
+                println!("Change Optimal region from None to None");
+            }
+            dm1.set_optimal(None);
+            return true;
+        } //end command co
     } // end one-word commands
 
     // Handle two-word commands
@@ -442,13 +452,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             let region_r = dm1.region_from_string(&cmd[1]);
             match region_r {
                 Ok(goal_region) => {
-                    if dm1.is_optimal_set() {
-                        let areg = dm1.get_optimal();
+                    if let Some(areg) = &dm1.get_optimal() {
                         println!("Change Optimal region from {} to {}", areg, goal_region);
                     } else {
                         println!("Change Optimal region from None to {}", goal_region);
                     }
-                    dm1.optimal = Some(goal_region);
+                    dm1.set_optimal(Some(goal_region));
                     return true;
                 }
                 Err(error) => {
@@ -464,7 +473,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             match state_r {
                 Ok(a_state) => {
                     println!("Change state to {}", a_state);
-                    dm1.cur_state = a_state.clone();
+                    dm1.set_cur_state(&a_state);
                     return true;
                 }
                 Err(error) => {
@@ -480,12 +489,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 Ok(goal_region) => {
                     println!(
                         "\nChange Current_state {} to region {}",
-                        dm1.cur_state, goal_region
+                        dm1.get_cur_state(), goal_region
                     );
-                    if goal_region.is_superset_of_state(&dm1.cur_state) {
+                    if goal_region.is_superset_of_state(&dm1.get_cur_state()) {
                         println!(
                             "\nCurrent_state {} is already in region {}",
-                            dm1.cur_state, goal_region
+                            dm1.get_cur_state(), goal_region
                         );
                         return false;
                     } else {
@@ -518,14 +527,14 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
 
-            let ndx = &dm1.actions[act_num].seek_edge_needs1();
+            let ndx = &dm1.get_action(act_num).seek_edge_needs1();
 
             if ndx.len() > 0 {
                 println!("Seek Edge Needs are {}", &ndx);
                 return true;
             }
 
-            let ndx = &dm1.actions[act_num].seek_edge_needs2();
+            let ndx = &dm1.get_action(act_num).seek_edge_needs2();
 
             println!("Seek Edge Needs are {}", &ndx);
             return true;
@@ -544,11 +553,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
 
-            println!("Act {} sample State {}", act_num, dm1.cur_state);
+            println!("Act {} sample State {}", act_num, dm1.get_cur_state());
             dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                dom_num: dm1.num,
+                dom_num: dm1.get_num(),
                 act_num: act_num,
-                targ_state: dm1.cur_state.clone(),
+                targ_state: dm1.get_cur_state().clone(),
             });
             return true;
         }
@@ -565,7 +574,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 println!("\nInvalid action number");
                 return false;
             }
-            println!("{}", &dm1.actions[act_num]);
+            println!("{}", &dm1.get_action(act_num));
             return true;
         }
 
@@ -582,9 +591,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
 
-            let sqrs = dm1.actions[act_num]
-                .squares
-                .states_in_1_region(&dm1.actions[act_num].groups.regions());
+            let sqrs = dm1.get_action(act_num)
+                .get_squares()
+                .states_in_1_region(&dm1.get_action(act_num).get_groups().regions());
 
             println!("Act {} State in one group {}", act_num, &sqrs);
             return true;
@@ -604,7 +613,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             }
             println!(
                 "Squares of Action {} are:\n{}\n",
-                &act_num, &dm1.actions[act_num].squares
+                &act_num, &dm1.get_action(act_num).get_squares()
             );
             return true;
         }
@@ -628,9 +637,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
             match state_r {
                 Ok(a_state) => {
                     println!("Act {} sample State {}", act_num, a_state);
-                    dm1.cur_state = a_state.clone();
+                    dm1.set_cur_state(&a_state);
                     dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                        dom_num: dm1.num,
+                        dom_num: dm1.get_num(),
                         act_num: act_num,
                         targ_state: a_state,
                     });
@@ -660,7 +669,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                     "Squares of Action {} in region {} are:\n",
                     &act_num, &aregion
                 ));
-                let stas = dm1.actions[act_num].squares.stas_in_reg(&aregion);
+                let stas = dm1.get_action(act_num).get_squares().stas_in_reg(&aregion);
 
                 let mut flg = 0;
 
@@ -669,7 +678,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                         psstr.push_str(",\n");
                     }
 
-                    if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
+                    if let Some(sqrx) = dm1.get_action(act_num).get_squares().find(stax) {
                         psstr.push_str(&format!("{}", sqrx));
                     } else {
                         println!("Square {} not found??", stax);
@@ -698,7 +707,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
             if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
+                let stas = dm1.get_action(act_num).get_squares().stas_adj_reg(&aregion);
                 println!("Squares adj to {} are {}", &aregion, &stas);
                 return true;
             }
@@ -719,9 +728,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
             if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                let sta_1s = dm1.actions[act_num]
-                    .squares
-                    .states_in_1_region(&dm1.actions[act_num].groups.regions());
+                let sta_1s = dm1.get_action(act_num)
+                    .get_squares()
+                    .states_in_1_region(&dm1.get_action(act_num).get_groups().regions());
 
                 println!(
                     "Squares in one region, in {} are {}",
@@ -747,15 +756,15 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
                 return false;
             }
             if let Ok(aregion) = dm1.region_from_string(&cmd[2]) {
-                if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
-                    let sqr1 = dm1.actions[act_num]
-                        .squares
-                        .find(&grpx.region.state1)
+                if let Some(grpx) = dm1.get_action(act_num).get_groups().find(&aregion) {
+                    let sqr1 = dm1.get_action(act_num)
+                        .get_squares()
+                        .find(&grpx.get_region().get_state1())
                         .unwrap();
                     println!("Square 1: {}", &sqr1);
-                    let sqr2 = dm1.actions[act_num]
-                        .squares
-                        .find(&grpx.region.state2)
+                    let sqr2 = dm1.get_action(act_num)
+                        .get_squares()
+                        .find(&grpx.get_region().get_state2())
                         .unwrap();
                     println!("Square 2: {}", &sqr2);
                 } else {
@@ -814,20 +823,19 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> bool {
 /// Print a domain
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {}", dom_num,);
-    println!("\nActs: {}", &dmxs[dom_num].actions);
+    println!("\nActs: {}", &dmxs[dom_num].get_actions());
 
-    if dmxs[dom_num].is_optimal_set() {
-        let areg = dmxs[dom_num].get_optimal();
+    if let Some(areg) = &dmxs[dom_num].get_optimal() {
         let mut in_opt = "Not in";
         let optstr = areg.formatted_string();
-        if areg.is_superset_of_state(&dmxs[dom_num].cur_state) {
+        if areg.is_superset_of_state(&dmxs[dom_num].get_cur_state()) {
             in_opt = "in";
         }
-        println!("\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr);
+        println!("\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}", &dmxs.get_step(), dom_num, &dmxs[dom_num].get_cur_state(), &in_opt, optstr);
     } else {
-        println!("\nStep: {} Dom: {} Current State: {}",&dmxs.step, dom_num, &dmxs[dom_num].cur_state);
+        println!("\nStep: {} Dom: {} Current State: {}",&dmxs.get_step(), dom_num, &dmxs[dom_num].get_cur_state());
     }
-    if dmxs.step > 300 {
+    if dmxs.get_step() > 300 {
         assert!(1 == 2);
     }
 }
@@ -845,8 +853,8 @@ fn usage() {
     println!(
         "    cd <dom num>             - Change the displayed Domain to the given Domain number.\n"
     );
-
-    println!("    co <region>              - Change the Optimal region to the given region.\n");
+    println!("    co                       - Change the current domain optimal region to None.\n");
+    println!("    co <region>              - Change the current domain optimal region to the given region.\n");
     println!("    cs <state>               - Arbitrary Change State.\n");
     println!("    dn <need number>         - Run a particular need from the need list.\n");
     println!(

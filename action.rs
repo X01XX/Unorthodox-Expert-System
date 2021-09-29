@@ -45,8 +45,8 @@ impl fmt::Display for SomeAction {
 
         let mut fil = String::from(",\n       Grps: (");
         for grpx in self.groups.iter() {
-            if grpx.active {
-                let stas_in = self.squares.stas_in_reg(&grpx.region);
+            if grpx.get_active() {
+                let stas_in = self.squares.stas_in_reg(grpx.get_region());
 
                 // Count the number of states in a group that are also in only one region
                 let mut cnt = 0;
@@ -85,11 +85,11 @@ impl fmt::Display for SomeAction {
 #[derive(Serialize, Deserialize)]
 pub struct SomeAction {
     /// Action number, index/key into parent ActionStore vector.
-    pub num: usize,
+    num: usize,
     /// Store for groups of compatible-change squares.
-    pub groups: GroupStore,
+    groups: GroupStore,
     /// A store of squares sampled for an action.
-    pub squares: SquareStore,
+    squares: SquareStore,
     /// Regions of invalidated groups indicate a new edge of the solution.
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
@@ -98,7 +98,7 @@ pub struct SomeAction {
     num_ints: usize,
     /// Aggregation of possible bit changes.
     /// For group expansion and confirmation.
-    pub predictable_bit_changes: SomeChange,
+    predictable_bit_changes: SomeChange,
 }
 
 impl SomeAction {
@@ -118,6 +118,26 @@ impl SomeAction {
         }
     }
 
+    /// Accessor, return a read-only reference to the groups field.
+    pub fn get_groups(&self) -> &GroupStore {
+        &self.groups
+    }
+
+    /// Accessor, return a read-only reference to the squares field.
+    pub fn get_squares(&self) -> &SquareStore {
+        &self.squares
+    }
+    
+    /// Accessor, return a read-only reference to the predictable_bit_changes field.
+    pub fn get_predictable_bit_changes(&self) -> &SomeChange {
+        &self.predictable_bit_changes
+    }
+    
+    /// Set the action number
+    pub fn set_num(&mut self, anum: usize) {
+        self.num = anum;
+    }
+    
     /// Return Truth enum for any two squares with the same Pn value.
     /// Check squares inbetween for compatibility.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
@@ -133,7 +153,7 @@ impl SomeAction {
         // two given squares.
         let stas = self
             .squares
-            .stas_in_reg(&SomeRegion::new(&sqrx.state, &sqry.state));
+            .stas_in_reg(&SomeRegion::new(&sqrx.get_state(), &sqry.get_state()));
 
         // If there are no squares inbetween, done.
         if stas.len() == 2 {
@@ -144,7 +164,7 @@ impl SomeAction {
         if sqrx.pn() == Pn::Unpredictable {
             // Check each inbetween square
             for stax in stas.iter() {
-                if *stax == sqrx.state || *stax == sqry.state {
+                if stax == sqrx.get_state() || stax == sqry.get_state() {
                     continue;
                 }
 
@@ -160,11 +180,11 @@ impl SomeAction {
         }
 
         // Get rules
-        let rulsx = sqrx.rules.union(&sqry.rules).unwrap();
+        let rulsx = sqrx.get_rules().union(sqry.get_rules()).unwrap();
 
         // Check squares between for compatibility to the rules.
         for stax in stas.iter() {
-            if *stax == sqrx.state || *stax == sqry.state {
+            if stax == sqrx.get_state() || stax == sqry.get_state() {
                 continue;
             }
 
@@ -187,7 +207,7 @@ impl SomeAction {
                 }
             }
 
-            if sqrz.rules.is_subset_of(&rulsx) == false {
+            if sqrz.get_rules().is_subset_of(&rulsx) == false {
                 return Truth::F;
             }
         } // next stax
@@ -205,7 +225,7 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-        self.groups.changed = false;
+        self.groups.set_changed(false);
 
         // Process each kind of need
         match ndx {
@@ -229,7 +249,7 @@ impl SomeAction {
                         if sqrx.pn() == Pn::Unpredictable {
                             if self.groups.any_superset_of(&for_reg) == false {
                                 self.groups.push(
-                                    SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new()),
+                                    SomeGroup::new(sqrx.get_state(), sqry.get_state(), RuleStore::new()),
                                     dom,
                                     self.num,
                                 );
@@ -241,7 +261,7 @@ impl SomeAction {
                                 );
                             }
                         } else {
-                            let rulsxy = sqrx.rules.union(&sqry.rules).unwrap();
+                            let rulsxy = sqrx.get_rules().union(sqry.get_rules()).unwrap();
 
                             //println!("Adding group   {}", &rulsxy[0].initial_region());
                             if self.groups.any_superset_of(&rulsxy[0].initial_region()) {
@@ -252,7 +272,7 @@ impl SomeAction {
                                 //);
                             } else {
                                 self.groups.push(
-                                    SomeGroup::new(&sqrx.state, &sqry.state, rulsxy),
+                                    SomeGroup::new(sqrx.get_state(), sqry.get_state(), rulsxy),
                                     dom,
                                     self.num,
                                 );
@@ -272,8 +292,8 @@ impl SomeAction {
                 self.check_square_new_sample(&initial, dom);
 
                 // Form the rules, make the group
-                let sqr1 = self.squares.find(&greg.state1).unwrap();
-                let sqr2 = self.squares.find(&greg.state2).unwrap();
+                let sqr1 = self.squares.find(greg.get_state1()).unwrap();
+                let sqr2 = self.squares.find(greg.get_state2()).unwrap();
                 let sqr3 = self.squares.find(&sta).unwrap();
 
                 // Process next sample of square in-between for new square and state1 square.
@@ -286,7 +306,7 @@ impl SomeAction {
                         if sqr1.is_adjacent(&sqr3) {
                             self.seek_edge.inactivate(greg);
                         } else {
-                            let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
+                            let even_closer_reg = SomeRegion::new(sqr1.get_state(), sqr3.get_state());
                             self.seek_edge.push_nosups(even_closer_reg);
                         }
                     }
@@ -301,7 +321,7 @@ impl SomeAction {
                         if sqr2.is_adjacent(&sqr3) {
                             self.seek_edge.inactivate(greg);
                         } else {
-                            let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
+                            let even_closer_reg = SomeRegion::new(sqr2.get_state(), sqr3.get_state());
                             self.seek_edge.push_nosups(even_closer_reg);
                         }
                     }
@@ -336,13 +356,13 @@ impl SomeAction {
             init_state, rslt_state
         );
 
-        self.groups.changed = false;
+        self.groups.set_changed(false);
 
         self.store_sample(&init_state, &rslt_state, dom);
         self.check_square_new_sample(&init_state, dom);
 
         // Update predictable bit change masks, for group expansion and confirmation.
-        if self.groups.changed {
+        if self.groups.get_changed() {
             self.predictable_bit_changes = self.possible_bit_changes();
         }
     }
@@ -351,12 +371,12 @@ impl SomeAction {
     ///
     /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
-        self.groups.changed = false;
+        self.groups.set_changed(false);
 
         self.eval_step_sample2(cur, new_state, dom);
 
         // Update predictable bit change masks, for group expansion and confirmation.
-        if self.groups.changed {
+        if self.groups.get_changed() {
             self.predictable_bit_changes = self.possible_bit_changes();
         }
     }
@@ -473,7 +493,7 @@ impl SomeAction {
         let sqrx = self.squares.find(&key).unwrap();
 
         // Get num active groups in
-        let num_grps_in = self.groups.num_groups_state_in(&sqrx.state);
+        let num_grps_in = self.groups.num_groups_state_in(sqrx.get_state());
         println!(
             "\nDom {} Act {} Square {} in {} groups",
             dom,
@@ -494,7 +514,7 @@ impl SomeAction {
         if rsx.num_active() == 0 {
             // Make a single-square group
             self.groups.push(
-                SomeGroup::new(&sqrx.state, &sqrx.state, sqrx.rules.clone()),
+                SomeGroup::new(sqrx.get_state(), sqrx.get_state(), sqrx.get_rules().clone()),
                 dom,
                 self.num,
             );
@@ -503,23 +523,23 @@ impl SomeAction {
 
         // println!("Regions for new groups {}", rsx.str());
         for regx in rsx.iter() {
-            if regx.active {
+            if regx.get_active() {
             } else {
                 continue;
             }
             if sqrx.pn() == Pn::Unpredictable {
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &regx.state2, RuleStore::new()),
+                    SomeGroup::new(sqrx.get_state(), regx.get_state2(), RuleStore::new()),
                     dom,
                     self.num,
                 );
             } else {
-                let sqry = self.squares.find(&regx.state2).unwrap();
-                let ruls = sqrx.rules.union(&sqry.rules).unwrap();
+                let sqry = self.squares.find(regx.get_state2()).unwrap();
+                let ruls = sqrx.get_rules().union(sqry.get_rules()).unwrap();
                 //println!("Squares with states {}, {} produce ruls {}", &sqrx.state, &sqry.state, ruls);
 
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &sqry.state, ruls),
+                    SomeGroup::new(sqrx.get_state(), sqry.get_state(), ruls),
                     dom,
                     self.num,
                 );
@@ -543,7 +563,7 @@ impl SomeAction {
             // Check if current state is in any groups
             let mut in_grp = false;
             for grpx in self.groups.iter() {
-                if grpx.active && grpx.region.is_superset_of_state(cur_state) {
+                if grpx.get_active() && grpx.get_region().is_superset_of_state(cur_state) {
                     in_grp = true;
                     break;
                 }
@@ -632,26 +652,26 @@ impl SomeAction {
 
                         println!(
                             "Dom {} Act {} AddGroup {} using {} and {}",
-                            dom, self.num, &greg, &greg.state1, &greg.state2
+                            dom, self.num, &greg, greg.get_state1(), greg.get_state2()
                         );
 
-                        let sqrx = self.squares.find(&greg.state1).unwrap();
-                        let sqry = self.squares.find(&greg.state2).unwrap();
+                        let sqrx = self.squares.find(greg.get_state1()).unwrap();
+                        let sqry = self.squares.find(greg.get_state2()).unwrap();
 
                         assert!(sqrx.pn() == sqry.pn());
 
                         if sqrx.pn() == Pn::Unpredictable {
                             self.groups.push(
-                                SomeGroup::new(&greg.state1, &greg.state2, RuleStore::new()),
+                                SomeGroup::new(greg.get_state1(), &greg.get_state2(), RuleStore::new()),
                                 dom,
                                 self.num,
                             );
                         } else {
                             self.groups.push(
                                 SomeGroup::new(
-                                    &greg.state1,
-                                    &greg.state2,
-                                    sqrx.rules.union(&sqry.rules).unwrap(),
+                                    greg.get_state1(),
+                                    greg.get_state2(),
+                                    sqrx.get_rules().union(sqry.get_rules()).unwrap(),
                                 ),
                                 dom,
                                 self.num,
@@ -695,7 +715,7 @@ impl SomeAction {
 
             if try_again == false {
                 // Update predictable bit change masks, for group expansion and confirmation.
-                if self.groups.changed {
+                if self.groups.get_changed() {
                     self.predictable_bit_changes = self.possible_bit_changes();
                 }
 
@@ -720,13 +740,13 @@ impl SomeAction {
         let mut new_regs = RegionStore::new();
 
         for regx in self.seek_edge.iter() {
-            if regx.active == false {
+            if regx.get_active() == false {
                 continue;
             }
 
             // Get the squares represented by the states that form the region
-            let sqr1 = self.squares.find(&regx.state1).unwrap();
-            let sqr2 = self.squares.find(&regx.state2).unwrap();
+            let sqr1 = self.squares.find(regx.get_state1()).unwrap();
+            let sqr2 = self.squares.find(regx.get_state2()).unwrap();
 
             let stas_in = self.squares.stas_in_reg(&regx);
 
@@ -746,7 +766,7 @@ impl SomeAction {
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
-                            targ_state: sqr1.state.clone(),
+                            targ_state: sqr1.get_state().clone(),
                             in_group: regx.clone(),
                         });
                         continue;
@@ -754,16 +774,16 @@ impl SomeAction {
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
-                            targ_state: sqr2.state.clone(),
+                            targ_state: sqr2.get_state().clone(),
                             in_group: regx.clone(),
                         });
                         continue;
                     } else {
                         panic!(
                             "sqrpn {} {} == sqr pn {} {}",
-                            &sqr1.state,
+                            sqr1.get_state(),
                             sqr1.pn(),
-                            &sqr2.state,
+                            sqr2.get_state(),
                             sqr2.pn()
                         );
                     }
@@ -774,7 +794,7 @@ impl SomeAction {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
-                                targ_state: sqr1.state.clone(),
+                                targ_state: sqr1.get_state().clone(),
                                 in_group: regx.clone(),
                             });
                             continue;
@@ -782,7 +802,7 @@ impl SomeAction {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
-                                targ_state: sqr2.state.clone(),
+                                targ_state: sqr2.get_state().clone(),
                                 in_group: regx.clone(),
                             });
                             continue;
@@ -841,7 +861,7 @@ impl SomeAction {
                 let sqrx = self.squares.find(&stas_in[inx]).unwrap();
 
                 for iny in (inx + 1)..stas_in.len() {
-                    let regy = SomeRegion::new(&sqrx.state, &stas_in[iny]);
+                    let regy = SomeRegion::new(sqrx.get_state(), &stas_in[iny]);
 
                     if &regy == regx {
                         continue;
@@ -859,7 +879,7 @@ impl SomeAction {
                                 ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
                                     act_num: self.num,
-                                    targ_state: sqrx.state.clone(),
+                                    targ_state: sqrx.get_state().clone(),
                                     in_group: regx.clone(),
                                 });
                                 found = true;
@@ -867,7 +887,7 @@ impl SomeAction {
                                 ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
                                     act_num: self.num,
-                                    targ_state: sqry.state.clone(),
+                                    targ_state: sqry.get_state().clone(),
                                     in_group: regx.clone(),
                                 });
                                 found = true;
@@ -889,7 +909,7 @@ impl SomeAction {
         if new_regs.any_active() {
             //ret_nds = NeedStore::new();
             for regx in new_regs.iter() {
-                if regx.active {
+                if regx.get_active() {
                     ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
                 }
             }
@@ -907,19 +927,19 @@ impl SomeAction {
 
         // Get seek edge needs, scan the action seek_edge RegionStore.
         for regx in self.seek_edge.iter() {
-            if regx.active == false {
+            if regx.get_active() == false {
                 continue;
             }
 
-            if regx.state1.is_adjacent(&regx.state2) {
+            if regx.get_state1().is_adjacent(&regx.get_state2()) {
                 panic!(
                     "region states {} {} are adjacent",
-                    &regx.state1, &regx.state2
+                    regx.get_state1(), regx.get_state2()
                 );
             }
 
-            if regx.state1 == regx.state2 {
-                panic!("region states {} {} are equal", &regx.state1, &regx.state2);
+            if regx.get_state1() == regx.get_state2() {
+                panic!("region states {} {} are equal", regx.get_state1(), regx.get_state2());
             }
 
             let stas_in = self.squares.stas_in_reg(&regx);
@@ -935,9 +955,7 @@ impl SomeAction {
 
             // Get list of one-bit masks representing the bits different of the
             // two regions states.
-            let dif_bits = MaskStore {
-                avec: regx.x_mask().split(),
-            };
+            let dif_bits = MaskStore::new(regx.x_mask().split());
 
             // Select a random set of single-bit masks, up to one-half of the number of differences.
             // So if the region states are 10 or 11 bits different, a state 5 bits different from
@@ -956,14 +974,14 @@ impl SomeAction {
             }
 
             // Randomly choose which state to use to calculate the target state from
-            let mut statex = &regx.state2;
+            let mut statex = regx.get_state2().clone();
             let choice = rand::thread_rng().gen_range(0, 2);
             if choice == 0 {
-                statex = &regx.state1;
+                statex = regx.get_state1().clone();
             }
 
             // Calculate the target inbetween
-            let seek_state = SomeState::new(statex.bts.b_xor(&dif_msk.bts));
+            let seek_state = statex.s_xor(&dif_msk.to_state());
 
             // Make need for seek_state
             ret_nds.push(SomeNeed::SeekEdge {
@@ -983,31 +1001,31 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
+            if grpx.get_active() == false {
                 continue;
             }
 
-            let sqrx = self.squares.find(&grpx.region.state1).unwrap();
+            let sqrx = self.squares.find(grpx.get_region().get_state1()).unwrap();
 
             if sqrx.pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqrx.state.clone(),
-                    grp_reg: grpx.region.clone(),
-                    far: grpx.region.state2.clone(),
+                    targ_state: sqrx.get_state().clone(),
+                    grp_reg: grpx.get_region().clone(),
+                    far: grpx.get_region().get_state2().clone(),
                 });
             }
 
-            let sqrx = self.squares.find(&grpx.region.state2).unwrap();
+            let sqrx = self.squares.find(&grpx.get_region().get_state2()).unwrap();
 
             if sqrx.pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqrx.state.clone(),
-                    grp_reg: grpx.region.clone(),
-                    far: grpx.region.state1.clone(),
+                    targ_state: sqrx.get_state().clone(),
+                    grp_reg: grpx.get_region().clone(),
+                    far: grpx.get_region().get_state1().clone(),
                 });
             }
         } // next grpx
@@ -1023,12 +1041,12 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
+            if grpx.get_active() == false {
                 continue;
             }
 
             // Check for edge bits under mask of all possible X bits.
-            let edge_expand = grpx.edge_expand.m_and(&x_mask);
+            let edge_expand = grpx.get_edge_expand().m_and(&x_mask);
 
             if edge_expand.is_low() {
                 continue;
@@ -1040,16 +1058,16 @@ impl SomeAction {
             // Check for expansion, or single-bit adjacent external
             for edge_msk in edge_msks.iter() {
                 // Calc adjacent region
-                let reg_exp = grpx.region.toggle_bits(edge_msk);
+                let reg_exp = grpx.get_region().toggle_bits(edge_msk);
 
                 // Check squares compatibility with each other
                 let mut chk_stas = self.squares.stas_in_reg(&reg_exp);
                 let mut reject = false;
 
                 // Add region square states to be checked against others.
-                chk_stas.push(grpx.region.state1.clone());
+                chk_stas.push(grpx.get_region().get_state1().clone());
 
-                chk_stas.push(grpx.region.state2.clone());
+                chk_stas.push(grpx.get_region().get_state2().clone());
 
                 let mut inx = 1;
                 for stax in chk_stas.iter() {
@@ -1073,13 +1091,13 @@ impl SomeAction {
 
                 if reject {
                     ret_nds.push(SomeNeed::ClearEdgeExpandBit {
-                        group_region: grpx.region.clone(),
+                        group_region: grpx.get_region().clone(),
                         mbit: edge_msk.clone(),
                     });
                     continue;
                 }
 
-                let reg_both = reg_exp.union(&grpx.region); // one bit so double the "area"
+                let reg_both = reg_exp.union(&grpx.get_region()); // one bit so double the "area"
 
                 let mut ndsx = self.possible_group_needs(&reg_both, 1);
 
@@ -1090,7 +1108,7 @@ impl SomeAction {
 
                 if ndsx.len() == 0 {
                     ret_nds.push(SomeNeed::ClearEdgeExpandBit {
-                        group_region: grpx.region.clone(),
+                        group_region: grpx.get_region().clone(),
                         mbit: edge_msk.clone(),
                     });
                 } else {
@@ -1196,7 +1214,7 @@ impl SomeAction {
 
             // println!("Act {} Group {} States {}", self.num, greg, stsin);
 
-            if let Some(stax) = &grpx.anchor {
+            if let Some(stax) = grpx.get_anchor() {
                 if stsin.contains(&stax) == false {
                     grpx.set_anchor_off();
                 }
@@ -1207,7 +1225,7 @@ impl SomeAction {
             }
 
             // Get mask of edge bits to use to confirm.
-            let edge_confirm = grpx.region.x_mask().m_not().m_and(&x_mask);
+            let edge_confirm = grpx.get_region().x_mask().m_not().m_and(&x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
             let edge_msks = edge_confirm.split();
@@ -1252,7 +1270,7 @@ impl SomeAction {
 
                 // Rate adjacent external states
                 for edge_bit in edge_msks.iter() {
-                    let sta_adj = SomeState::new(sta1.bts.b_xor(&edge_bit.bts));
+                    let sta_adj = sta1.s_xor(&edge_bit.to_state());
                     //println!(
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg
@@ -1289,8 +1307,8 @@ impl SomeAction {
 
             // Check if a confirmed group anchor is still rated the best
             // If so, skip further processing.
-            if grpx.confirmed {
-                if let Some(anchor) = &grpx.anchor {
+            if grpx.get_confirmed() {
+                if let Some(anchor) = &grpx.get_anchor() {
                     // handle the rare case of anchors with the same rating
                     let mut in_flag = false;
                     for crfx in cfmv_max.iter() {
@@ -1463,7 +1481,7 @@ impl SomeAction {
 
             let grpx = &self.groups[inx];
 
-            if grpx.active == false {
+            if grpx.get_active() == false {
                 continue;
             }
 
@@ -1472,17 +1490,17 @@ impl SomeAction {
 
                 let grpy = &self.groups[iny];
 
-                if grpy.active == false {
+                if grpy.get_active() == false {
                     continue;
                 }
 
-                if grpx.region.intersects(&grpy.region) {
+                if grpx.get_region().intersects(grpy.get_region()) {
                     let mut ndx = self.group_pair_intersection_needs(&grpx, &grpy);
                     if ndx.len() > 0 {
                         nds.append(&mut ndx);
                     }
-                } else if grpx.region.is_adjacent(&grpy.region) {
-                    if grpx.pn == grpy.pn {
+                } else if grpx.get_region().is_adjacent(grpy.get_region()) {
+                    if grpx.get_pn() == grpy.get_pn() {
                         let mut ndx = self.group_pair_adjacent_needs(&grpx, &grpy);
                         if ndx.len() > 0 {
                             nds.append(&mut ndx);
@@ -1507,8 +1525,8 @@ impl SomeAction {
         // If no squares, seek the highest and lowest squares
         if stas_in_reg.len() == 0 {
             //println!("possible_group_needs 1");
-            let sta1 = reg_grp.state1.s_or(&reg_grp.state2); // highest square key
-            let sta2 = reg_grp.state1.s_and(&reg_grp.state2); // lowest square key
+            let sta1 = reg_grp.get_state1().s_or(reg_grp.get_state2()); // highest square key
+            let sta2 = reg_grp.get_state1().s_and(reg_grp.get_state2()); // lowest square key
 
             nds.push(SomeNeed::AStateMakeGroup {
                 // nds should be empty so far
@@ -1588,7 +1606,7 @@ impl SomeAction {
             if sqrx.pnc() && sqry.pnc() {
                 if self.can_combine(&sqrx, &sqry) == Truth::T {
                     nds.push(SomeNeed::AddGroup {
-                        group_region: SomeRegion::new(&sqrx.state, &sqry.state),
+                        group_region: SomeRegion::new(sqrx.get_state(), sqry.get_state()),
                     });
                 }
                 return nds;
@@ -1633,9 +1651,9 @@ impl SomeAction {
                         nds.push(SomeNeed::StateAdditionalSample {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
-                            targ_state: sqry.state.clone(),
+                            targ_state: sqry.get_state().clone(),
                             grp_reg: reg_grp.clone(),
-                            far: sqrx.state.clone(),
+                            far: sqrx.get_state().clone(),
                         });
                     }
                 } else if sqry.pnc() {
@@ -1643,9 +1661,9 @@ impl SomeAction {
                         nds.push(SomeNeed::StateAdditionalSample {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
-                            targ_state: sqrx.state.clone(),
+                            targ_state: sqrx.get_state().clone(),
                             grp_reg: reg_grp.clone(),
-                            far: sqry.state.clone(),
+                            far: sqry.get_state().clone(),
                         });
                     }
                 }
@@ -1683,9 +1701,9 @@ impl SomeAction {
                 nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqry.state.clone(),
+                    targ_state: sqry.get_state().clone(),
                     grp_reg: reg_grp.clone(),
-                    far: sqrx.state.clone(),
+                    far: sqrx.get_state().clone(),
                 });
             }
 
@@ -1693,9 +1711,9 @@ impl SomeAction {
                 nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqrx.state.clone(),
+                    targ_state: sqrx.get_state().clone(),
                     grp_reg: reg_grp.clone(),
-                    far: sqry.state.clone(),
+                    far: sqry.get_state().clone(),
                 });
             }
             inx += 2;
@@ -1715,27 +1733,27 @@ impl SomeAction {
 
         let mut nds = NeedStore::new();
 
-        let reg_both = grpx.region.union(&grpy.region);
+        let reg_both = grpx.get_region().union(grpy.get_region());
 
-        if grpx.pn == Pn::Unpredictable && grpy.pn == Pn::Unpredictable {
+        if *grpx.get_pn() == Pn::Unpredictable && *grpy.get_pn() == Pn::Unpredictable {
             return self.possible_group_needs(&reg_both, 2);
         }
 
-        let reg_int = grpx.region.intersection(&grpy.region);
+        let reg_int = grpx.get_region().intersection(grpy.get_region());
 
-        if grpx.pn != grpy.pn {
+        if grpx.get_pn() != grpy.get_pn() {
             //println!("pn != !");
             let mut nds = NeedStore::new();
             nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             return nds;
         }
 
-        if grpx.pn == Pn::Two {
+        if *grpx.get_pn() == Pn::Two {
             return nds;
         }
         
-        let rulsx = grpx.rules.restrict_initial_region(&reg_int);
-        let rulsy = grpy.rules.restrict_initial_region(&reg_int);
+        let rulsx = grpx.get_rules().restrict_initial_region(&reg_int);
+        let rulsy = grpy.get_rules().restrict_initial_region(&reg_int);
 
         // If contradictory, return needs to resolve
         if rulsx != rulsy {
@@ -1765,19 +1783,19 @@ impl SomeAction {
         //);
         let nds = NeedStore::new();
 
-        if grpx.pn != grpy.pn {
+        if grpx.get_pn() != grpy.get_pn() {
             return nds;
         }
 
-        match grpx.pn {
+        match grpx.get_pn() {
             Pn::Unpredictable => {
                 // If the regions have the same X-bit pattern, they can be combined
-                if grpx.region.x_mask() == grpy.region.x_mask() {
-                    let regx = grpx.region.union(&grpy.region);
+                if grpx.get_region().x_mask() == grpy.get_region().x_mask() {
+                    let regx = grpx.get_region().union(grpy.get_region());
                     return self.possible_group_needs(&regx, 4);
                 }
 
-                let regz = grpx.region.overlapping_part(&grpy.region);
+                let regz = grpx.get_region().overlapping_part(grpy.get_region());
 
                 if self.groups.any_superset_of(&regz) {
                     return nds;
@@ -1789,24 +1807,24 @@ impl SomeAction {
             _ => {
                 // If the regions have the same X-bit pattern, the overlapping part may be a superset
                 // of both.
-                if grpx.region.x_mask() == grpy.region.x_mask() {
-                    if let Some(_) = grpx.rules.union(&grpy.rules) {
-                        let regx = grpx.region.union(&grpy.region);
+                if grpx.get_region().x_mask() == grpy.get_region().x_mask() {
+                    if let Some(_) = grpx.get_rules().union(grpy.get_rules()) {
+                        let regx = grpx.get_region().union(grpy.get_region());
                         return self.possible_group_needs(&regx, 6);
                     }
                 }
 
                 // Check if any valid rules can be found in the overlapping region.
-                let reg_ov = grpx.region.overlapping_part(&grpy.region);
+                let reg_ov = grpx.get_region().overlapping_part(grpy.get_region());
 
                 if let Some(rulesx) = grpx
-                    .rules
+                    .get_rules()
                     .restrict_initial_region(&reg_ov)
-                    .union(&grpy.rules.restrict_initial_region(&reg_ov))
+                    .union(&grpy.get_rules().restrict_initial_region(&reg_ov))
                 {
                     let regz = rulesx.initial_region();
 
-                    if regz.intersects(&grpx.region) && regz.intersects(&grpy.region) {
+                    if regz.intersects(&grpx.get_region()) && regz.intersects(&grpy.get_region()) {
                         if self.groups.any_superset_of(&regz) {
                             return nds;
                         }
@@ -1821,7 +1839,7 @@ impl SomeAction {
                         if xx.len() > 0 {
                             println!(
                                 "overlap for act {} grp {} grp {} region {} rules {}",
-                                self.num, grpx.region, grpy.region, regz, rulesx
+                                self.num, grpx.get_region(), grpy.get_region(), regz, rulesx
                             );
                         }
                         return xx;
@@ -1851,10 +1869,10 @@ impl SomeAction {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 goal_reg: regx.clone(),
-                group1: grpx.region.clone(),
-                ruls1: grpx.rules.restrict_initial_region(regx),
-                group2: grpy.region.clone(),
-                ruls2: grpy.rules.restrict_initial_region(regx),
+                group1: grpx.get_region().clone(),
+                ruls1: grpx.get_rules().restrict_initial_region(regx),
+                group2: grpy.get_region().clone(),
+                ruls2: grpy.get_rules().restrict_initial_region(regx),
             };
         }
 
@@ -1879,7 +1897,7 @@ impl SomeAction {
             }
 
             if sqrz.len_results() == max_rslts {
-                stas_check.push(sqrz.state.clone());
+                stas_check.push(sqrz.get_state().clone());
             }
         }
 
@@ -1892,10 +1910,10 @@ impl SomeAction {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
             goal_reg: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
-            group1: grpx.region.clone(),
-            ruls1: grpx.rules.restrict_initial_region(regx),
-            group2: grpy.region.clone(),
-            ruls2: grpy.rules.restrict_initial_region(regx),
+            group1: grpx.get_region().clone(),
+            ruls1: grpx.get_rules().restrict_initial_region(regx),
+            group2: grpy.get_region().clone(),
+            ruls2: grpy.get_rules().restrict_initial_region(regx),
         }
     } // end cont_int_region_needs
 
@@ -1909,22 +1927,22 @@ impl SomeAction {
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 
-        for grpx in &self.groups.avec {
-            if grpx.active == false {
+        for grpx in self.groups.iter() {
+            if grpx.get_active() == false {
                 continue;
             }
 
-            match grpx.pn {
+            match grpx.get_pn() {
                 Pn::One => {
                     // Find bit changes that are desired
-                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    if let Some(rulx) = grpx.get_rules()[0].parse_for_changes(&achange.get_b01(), &achange.get_b10())
                     {
-                        stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
+                        stps.push(SomeStep::new(self.num, rulx, false, grpx.get_region().clone()));
                     }
                 }
                 Pn::Two => {
-                    for ruly in &grpx.rules.avec {
-                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                    for ruly in grpx.get_rules().iter() {
+                        if let Some(rulx) = ruly.parse_for_changes(&achange.get_b01(), &achange.get_b10()) {
                             // See if an existing square is ready to produce the desired result
                             let i_reg = rulx.initial_region();
                             let stas = self.squares.stas_in_reg(&i_reg);
@@ -1943,7 +1961,7 @@ impl SomeAction {
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
                                         false,
-                                        grpx.region.clone(),
+                                        grpx.get_region().clone(),
                                     );
                                     stps.push(stpx);
                                     found = true;
@@ -1951,7 +1969,7 @@ impl SomeAction {
                             } // next stax
 
                             if found == false {
-                                stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
+                                stps.push(SomeStep::new(self.num, rulx, true, grpx.get_region().clone()));
                             }
                         } // endif Some(rulx)
                     } // next ruly
@@ -1973,24 +1991,24 @@ impl SomeAction {
     pub fn get_steps_exact(&self, achange: &SomeChange) -> StepStore {
         let mut stps = StepStore::new();
 
-        for grpx in &self.groups.avec {
-            if grpx.active == false {
+        for grpx in self.groups.iter() {
+            if grpx.get_active() == false {
                 continue;
             }
 
-            match grpx.pn {
+            match grpx.get_pn() {
                 Pn::One => {
                     // Find bit changes that are desired
-                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    if let Some(rulx) = grpx.get_rules()[0].parse_for_changes(&achange.get_b01(), &achange.get_b10())
                     {
                         if rulx.change() == *achange {
-                            stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
+                            stps.push(SomeStep::new(self.num, rulx, false, grpx.get_region().clone()));
                         }
                     }
                 }
                 Pn::Two => {
-                    for ruly in &grpx.rules.avec {
-                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                    for ruly in grpx.get_rules().iter() {
+                        if let Some(rulx) = ruly.parse_for_changes(&achange.get_b01(), &achange.get_b10()) {
                             
                             if rulx.change() == *achange {
                                 // See if an existing square is ready to produce the desired result
@@ -2011,7 +2029,7 @@ impl SomeAction {
                                             self.num,
                                             rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
                                             false,
-                                            grpx.region.clone(),
+                                            grpx.get_region().clone(),
                                         );
                                         stps.push(stpx);
                                         found = true;
@@ -2019,7 +2037,7 @@ impl SomeAction {
                                 } // next stax
 
                                 if found == false {
-                                    stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
+                                    stps.push(SomeStep::new(self.num, rulx, true, grpx.get_region().clone()));
                                 }
                             } // endif Some(rulx)
                         } // endif == achange
@@ -2071,7 +2089,7 @@ impl SomeAction {
 
         // Collect possible region, deleting subset regions
         for (key, sqry) in &self.squares.ahash {
-            if *key == sqrx.state {
+            if key == sqrx.get_state() {
                 continue;
             }
 
@@ -2080,7 +2098,7 @@ impl SomeAction {
             }
 
             // Create region, sqrx.state becomes regx.state1
-            let regx = SomeRegion::new(&sqrx.state, &sqry.state);
+            let regx = SomeRegion::new(sqrx.get_state(), sqry.get_state());
 
             if self.groups.any_superset_of(&regx) {
                 continue;
@@ -2097,25 +2115,25 @@ impl SomeAction {
 
         // Print possible regions
         for regx in rsx.iter() {
-            if regx.active == false {
+            if regx.get_active() == false {
                 continue;
             }
 
-            let sqry = self.squares.find(&regx.state2).unwrap();
+            let sqry = self.squares.find(regx.get_state2()).unwrap();
             if sqry.pn() == Pn::Unpredictable {
                 println!(
                     "\n  Square {} [Unpredictable] can combine with\n  Square {} [Unpredictable]\n  giving {} [Unpredictable]",
-                    &sqrx.state, &sqry.state, regx
+                    sqrx.get_state(), sqry.get_state(), regx
                 );
             } else {
                 println!(
                     "\n  Square {} {} can combine with\n  Square {} {}\n  giving {} {}",
-                    &sqrx.state,
-                    &sqrx.rules,
-                    &sqry.state,
-                    &sqry.rules,
+                    sqrx.get_state(),
+                    sqrx.get_rules(),
+                    sqry.get_state(),
+                    sqry.get_rules(),
                     regx,
-                    &sqrx.rules.union(&sqry.rules).unwrap()
+                    &sqrx.get_rules().union(sqry.get_rules()).unwrap()
                 );
             }
         }
@@ -2129,30 +2147,31 @@ impl SomeAction {
     /// of possible bits changes.  Some changes, like going from
     /// predictable to unpredictable, could decrease them.
     pub fn possible_bit_changes(&self) -> SomeChange {
-        let mut ret_cng = SomeChange::new_low(self.num_ints);
-
-        for grpx in &self.groups.avec {
-            if grpx.active == false {
+        let mut b01 = SomeMask::new_low(self.num_ints);
+        let mut b10 = SomeMask::new_low(self.num_ints);
+        
+        for grpx in self.groups.iter() {
+            if grpx.get_active() == false {
                 continue;
             }
 
-            match grpx.pn {
+            match grpx.get_pn() {
                 Pn::One => {
                     // Find bit changes that can happen
-                    ret_cng.b10 = ret_cng.b10.m_or(&grpx.rules[0].b10);
-                    ret_cng.b01 = ret_cng.b01.m_or(&grpx.rules[0].b01);
+                    b10 = b10.m_or(grpx.get_rules()[0].get_b10());
+                    b01 = b01.m_or(grpx.get_rules()[0].get_b01());
                 }
                 Pn::Two => {
-                    for rulx in &grpx.rules.avec {
-                        ret_cng.b10 = ret_cng.b10.m_or(&rulx.b10);
-                        ret_cng.b01 = ret_cng.b01.m_or(&rulx.b01);
+                    for rulx in grpx.get_rules().iter() {
+                        b10 = b10.m_or(rulx.get_b10());
+                        b01 = b01.m_or(rulx.get_b01());
                     } // next rulx
                 } // end match Two
                 Pn::Unpredictable => {}
             } // end match pn
         } // next grpx
 
-        //println!("Act {} pbc: b01: {} b10: {}", &self.num, &ret_cng.b01, &ret_cng.b10);
-        ret_cng
+        //println!("Act {} pbc: b01: {} b10: {}", &self.num, &b01, &b10);
+        SomeChange::new(&b01, &b10)
     }
 }

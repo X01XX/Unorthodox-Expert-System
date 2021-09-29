@@ -61,7 +61,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
             "\nDom 0 Act 0 {} -> {} change: {}",
             cur,
             new_state,
-            SomeChange::new(&cur, &new_state)
+            SomeChange::new_from_to(&cur, &new_state)
         );
         return new_state;
     }
@@ -79,7 +79,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
                 "\nDom 0 Act 0 {} -> {} change: {}",
                 cur,
                 new_state,
-                SomeChange::new(&cur, &new_state)
+                SomeChange::new_from_to(&cur, &new_state)
             );
             return new_state;
         } else {
@@ -88,7 +88,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
                 "\nDom 0 Act 0 {} -> {} change: {}",
                 cur,
                 new_state,
-                SomeChange::new(&cur, &new_state)
+                SomeChange::new_from_to(&cur, &new_state)
             );
             return new_state;
         }
@@ -101,7 +101,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
                 "\nDom 0 Act 0 {} -> {} change: {}",
                 cur,
                 new_state,
-                SomeChange::new(&cur, &new_state)
+                SomeChange::new_from_to(&cur, &new_state)
             );
             return new_state;
         } else if hv % 3 == 1 {
@@ -110,7 +110,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
                 "\nDom 0 Act 0 {} -> {} change: {}",
                 cur,
                 new_state,
-                SomeChange::new(&cur, &new_state)
+                SomeChange::new_from_to(&cur, &new_state)
             );
             return new_state;
         } else {
@@ -119,7 +119,7 @@ pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
                 "\nDom 0 Act 0 {} -> {} change: {}",
                 cur,
                 new_state,
-                SomeChange::new(&cur, &new_state)
+                SomeChange::new_from_to(&cur, &new_state)
             );
             return new_state;
         }
@@ -134,7 +134,7 @@ pub fn dom0_act1(cur: &SomeState, _hv: usize) -> SomeState {
         "\nDom 0 Act 1 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -147,7 +147,7 @@ pub fn dom0_act2(cur: &SomeState, _hv: usize) -> SomeState {
         "\nDom 0 Act 2 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -160,7 +160,7 @@ pub fn dom0_act3(cur: &SomeState, _hv: usize) -> SomeState {
         "\nDom 0 Act 3 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -173,7 +173,7 @@ pub fn dom0_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 0 Act 4 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -186,7 +186,7 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 0 Act 5 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -199,7 +199,7 @@ pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 0 Act 6 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -214,7 +214,7 @@ pub fn dom1_act0(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 1 Act 0 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -227,7 +227,7 @@ pub fn dom1_act1(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 1 Act 1 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -240,7 +240,7 @@ pub fn dom1_act2(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 1 Act 2 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }
@@ -253,7 +253,7 @@ pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
         "\nDom 1 Act 3 {} -> {} change: {}",
         cur,
         new_state,
-        SomeChange::new(&cur, &new_state)
+        SomeChange::new_from_to(&cur, &new_state)
     );
     return new_state;
 }

@@ -20,7 +20,7 @@ impl fmt::Display for StepStore {
 #[derive(Debug)]
 pub struct StepStore {
     /// A vector for steps.
-    pub avec: Vec<SomeStep>,
+    avec: Vec<SomeStep>,
 }
 
 impl StepStore {
@@ -159,14 +159,14 @@ impl StepStore {
 
         let mut b01 = Vec::<SomeMask>::new();
 
-        if required_change.b01.is_not_low() {
-            b01 = required_change.b01.split();
+        if required_change.get_b01().is_not_low() {
+            b01 = required_change.get_b01().split();
         }
 
         let mut b10 = Vec::<SomeMask>::new();
 
-        if required_change.b10.is_not_low() {
-            b10 = required_change.b10.split();
+        if required_change.get_b10().is_not_low() {
+            b10 = required_change.get_b10().split();
         }
 
         let b01_len = b01.len();
@@ -191,7 +191,7 @@ impl StepStore {
             let mut b01_inx = 0;
             for b01x in b01.iter() {
 
-                if stepx.rule.b01.m_and(b01x).is_not_low() {
+                if stepx.rule.get_b01().m_and(b01x).is_not_low() {
                     ret_vec[b01_inx].push(step_inx);
                 }
 
@@ -202,7 +202,7 @@ impl StepStore {
             let mut b10_inx = b01_len;
             for b10x in b10.iter() {
 
-                if stepx.rule.b10.m_and(b10x).is_not_low() {
+                if stepx.rule.get_b10().m_and(b10x).is_not_low() {
                     ret_vec[b10_inx].push(step_inx);
                 }
 

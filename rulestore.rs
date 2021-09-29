@@ -18,7 +18,7 @@ use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RuleStore {
-    pub avec: Vec<SomeRule>,
+    avec: Vec<SomeRule>,
 }
 impl fmt::Display for RuleStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

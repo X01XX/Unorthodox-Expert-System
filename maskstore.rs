@@ -13,14 +13,14 @@ impl fmt::Display for MaskStore {
 
 pub struct MaskStore {
     /// A vector for storing SomeMask stucts instances.
-    pub avec: Vec<SomeMask>,
+    avec: Vec<SomeMask>,
 }
 
 impl MaskStore {
     /// Return a new, empty, MaskStore struct instance.
-    pub fn _new() -> Self {
+    pub fn new(mvec: Vec::<SomeMask>) -> Self {
         Self {
-            avec: Vec::<SomeMask>::new(),
+            avec: mvec,
         }
     }
 

@@ -40,7 +40,7 @@ pub struct SomeBits {
     /// Vector of one, or more, unsigned integers.
     /// This structure sets the type of integer.
     /// Each Domain sets the number of integers.
-    pub ints: Vec<u8>,
+    ints: Vec<u8>,
 }
 
 impl SomeBits {
