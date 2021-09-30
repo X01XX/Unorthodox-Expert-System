@@ -141,12 +141,22 @@ impl SomeAction {
     /// Return Truth enum for any two squares with the same Pn value.
     /// Check squares inbetween for compatibility.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
-        assert!(sqrx.pn() == sqry.pn());
+        assert!(sqrx.get_pn() == sqry.get_pn());
 
         // Check the two squares
-        let cmbx = sqrx.can_combine(&sqry);
+        let mut cmbx = sqrx.can_combine(&sqry);
         if cmbx == Truth::F {
             return cmbx;
+        }
+
+        if sqrx.get_pn() == Pn::One || sqrx.get_pnc() {
+        } else {
+            cmbx = Truth::M;
+        }
+
+        if sqry.get_pn() == Pn::One || sqry.get_pnc() {
+        } else {
+            cmbx = Truth::M;
         }
 
         // Get keys for all squares in the region formed by the
@@ -161,7 +171,7 @@ impl SomeAction {
         }
 
         // Handle Pn::Unpredictable squares
-        if sqrx.pn() == Pn::Unpredictable {
+        if sqrx.get_pn() == Pn::Unpredictable {
             // Check each inbetween square
             for stax in stas.iter() {
                 if stax == sqrx.get_state() || stax == sqry.get_state() {
@@ -169,14 +179,14 @@ impl SomeAction {
                 }
 
                 let sqrz = self.squares.find(stax).unwrap();
-                if sqrz.pn() == Pn::Unpredictable {
+                if sqrz.get_pn() == Pn::Unpredictable {
                 } else {
-                    if sqrz.pnc() {
+                    if sqrz.get_pnc() {
                         return Truth::F;
                     }
                 }
             }
-            return Truth::T;
+            return cmbx;
         }
 
         // Get rules
@@ -190,19 +200,19 @@ impl SomeAction {
 
             let sqrz = self.squares.find(stax).unwrap();
 
-            if sqrz.pn() == Pn::Unpredictable {
-                // sqrx.pn() cannot be Unpredictable at this point, so this invalidates
+            if sqrz.get_pn() == Pn::Unpredictable {
+                // sqrx.get_pn() cannot be Unpredictable at this point, so this invalidates
                 return Truth::F;
             }
 
-            if sqrz.pn() != sqrx.pn() {
-                if sqrz.pnc() {
+            if sqrz.get_pn() != sqrx.get_pn() {
+                if sqrz.get_pnc() {
                     return Truth::F;
                 }
-                if sqrz.pn() > sqrx.pn() {
+                if sqrz.get_pn() > sqrx.get_pn() {
                     return Truth::F;
                 }
-                if sqrx.pn() == Pn::Two && sqrz.pn() == Pn::One && sqrz.len_results() > 1 {
+                if sqrx.get_pn() == Pn::Two && sqrz.get_pn() == Pn::One && sqrz.len_results() > 1 {
                     return Truth::F;
                 }
             }
@@ -243,10 +253,10 @@ impl SomeAction {
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
                 let sqrx = self.squares.find(&sta).unwrap();
-                //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.pn(), sqrx.pnc());
+                //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.get_pn(), sqrx.get_pnc());
                 if let Some(sqry) = self.squares.find(&far) {
-                    if sqrx.pn() == sqry.pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
-                        if sqrx.pn() == Pn::Unpredictable {
+                    if sqrx.get_pn() == sqry.get_pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
+                        if sqrx.get_pn() == Pn::Unpredictable {
                             if self.groups.any_superset_of(&for_reg) == false {
                                 self.groups.push(
                                     SomeGroup::new(sqrx.get_state(), sqry.get_state(), RuleStore::new()),
@@ -492,6 +502,12 @@ impl SomeAction {
         // Square should exist
         let sqrx = self.squares.find(&key).unwrap();
 
+        // Check if square can be used to create groups
+        if sqrx.get_pn() == Pn::One || sqrx.get_pnc() {
+        } else {
+            return;
+        }
+        
         // Get num active groups in
         let num_grps_in = self.groups.num_groups_state_in(sqrx.get_state());
         println!(
@@ -527,7 +543,7 @@ impl SomeAction {
             } else {
                 continue;
             }
-            if sqrx.pn() == Pn::Unpredictable {
+            if sqrx.get_pn() == Pn::Unpredictable {
                 self.groups.push(
                     SomeGroup::new(sqrx.get_state(), regx.get_state2(), RuleStore::new()),
                     dom,
@@ -658,9 +674,9 @@ impl SomeAction {
                         let sqrx = self.squares.find(greg.get_state1()).unwrap();
                         let sqry = self.squares.find(greg.get_state2()).unwrap();
 
-                        assert!(sqrx.pn() == sqry.pn());
+                        assert!(sqrx.get_pn() == sqry.get_pn());
 
-                        if sqrx.pn() == Pn::Unpredictable {
+                        if sqrx.get_pn() == Pn::Unpredictable {
                             self.groups.push(
                                 SomeGroup::new(greg.get_state1(), &greg.get_state2(), RuleStore::new()),
                                 dom,
@@ -762,7 +778,7 @@ impl SomeAction {
                     continue;
                 }
                 Truth::M => {
-                    if sqr1.pn() < sqr2.pn() {
+                    if sqr1.get_pn() < sqr2.get_pn() {
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
@@ -770,7 +786,7 @@ impl SomeAction {
                             in_group: regx.clone(),
                         });
                         continue;
-                    } else if sqr2.pn() < sqr1.pn() {
+                    } else if sqr2.get_pn() < sqr1.get_pn() {
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
@@ -782,15 +798,15 @@ impl SomeAction {
                         panic!(
                             "sqrpn {} {} == sqr pn {} {}",
                             sqr1.get_state(),
-                            sqr1.pn(),
+                            sqr1.get_pn(),
                             sqr2.get_state(),
-                            sqr2.pn()
+                            sqr2.get_pn()
                         );
                     }
                 }
                 Truth::F => {
                     if sqr1.is_adjacent(&sqr2) {
-                        if sqr1.pnc() == false {
+                        if sqr1.get_pnc() == false {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
@@ -798,7 +814,7 @@ impl SomeAction {
                                 in_group: regx.clone(),
                             });
                             continue;
-                        } else if sqr2.pnc() == false {
+                        } else if sqr2.get_pnc() == false {
                             ret_nds.push(SomeNeed::SeekEdge {
                                 dom_num: 0, // set this in domain get_needs
                                 act_num: self.num,
@@ -875,7 +891,7 @@ impl SomeAction {
                             //      "sqr {} msn with {}",
                             //      &stax, &sqry.state
                             //  );
-                            if sqrx.pn() < sqry.pn() {
+                            if sqrx.get_pn() < sqry.get_pn() {
                                 ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
                                     act_num: self.num,
@@ -883,7 +899,7 @@ impl SomeAction {
                                     in_group: regx.clone(),
                                 });
                                 found = true;
-                            } else if sqry.pn() < sqrx.pn() {
+                            } else if sqry.get_pn() < sqrx.get_pn() {
                                 ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
                                     act_num: self.num,
@@ -1007,7 +1023,7 @@ impl SomeAction {
 
             let sqrx = self.squares.find(grpx.get_region().get_state1()).unwrap();
 
-            if sqrx.pnc() == false {
+            if sqrx.get_pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
@@ -1019,7 +1035,7 @@ impl SomeAction {
 
             let sqrx = self.squares.find(&grpx.get_region().get_state2()).unwrap();
 
-            if sqrx.pnc() == false {
+            if sqrx.get_pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
@@ -1154,7 +1170,7 @@ impl SomeAction {
 
             // Check if it exists and is pnc
             if let Some(stay) = self.squares.find(&sta_far) {
-                if stay.pnc() {
+                if stay.get_pnc() {
                     return NeedStore::new();
                 }
                 if stay.len_results() > max_results2 {
@@ -1250,7 +1266,7 @@ impl SomeAction {
 
                 // Rate anchor
                 if let Some(sqrx) = self.squares.find(sta1) {
-                    if sqrx.pnc() {
+                    if sqrx.get_pnc() {
                         cnt += 5;
                     } else {
                         cnt += sqrx.len_results();
@@ -1261,7 +1277,7 @@ impl SomeAction {
 
                 // Rate far state
                 if let Some(sqrx) = self.squares.find(&cfmx[1]) {
-                    if sqrx.pnc() {
+                    if sqrx.get_pnc() {
                         cnt += 5;
                     } else {
                         cnt += sqrx.len_results();
@@ -1284,7 +1300,7 @@ impl SomeAction {
                     cfmx.push(sta_adj);
 
                     if let Some(sqrx) = self.squares.find(&sta1) {
-                        if sqrx.pnc() {
+                        if sqrx.get_pnc() {
                             cnt += 5;
                         } else {
                             cnt += sqrx.len_results();
@@ -1345,7 +1361,7 @@ impl SomeAction {
             let anchor_sta = &cfm_max[0];
 
             let anchor_sqr = self.squares.find(anchor_sta).unwrap();
-            if anchor_sqr.pnc() {
+            if anchor_sqr.get_pnc() {
                 // println!("group {} anchor {} pnc", &greg, &anchor_sta);
             } else {
                 // Get additional samples of the anchor
@@ -1370,7 +1386,7 @@ impl SomeAction {
                 //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 
                 if let Some(adj_sqr) = self.squares.find(adj_sta) {
-                    if adj_sqr.pnc() {
+                    if adj_sqr.get_pnc() {
                         let new_reg = SomeRegion::new(&anchor_sta, &adj_sta);
 
                         if new_group_regs.any_superset_of(&new_reg)
@@ -1437,7 +1453,7 @@ impl SomeAction {
             // Fairly cheap, quick, somewhat accurate, method of establishing a region,
             // instead of checking all states adjacent-internal to the anchor.
             if let Some(sqrf) = self.squares.find(&cfm_max[1]) {
-                if sqrf.pnc() {
+                if sqrf.get_pnc() {
                     // Set the group confirmed
                     ret_nds.push(SomeNeed::SetGroupConfirmed {
                         group_region: greg.clone(),
@@ -1572,8 +1588,8 @@ impl SomeAction {
         let mut a_pn = Pn::One;
         for stax in stas_in_reg.iter() {
             let sqrx = self.squares.find(&stax).unwrap();
-            if sqrx.pnc() {
-                a_pn = sqrx.pn();
+            if sqrx.get_pnc() {
+                a_pn = sqrx.get_pn();
                 break;
             }
         }
@@ -1581,10 +1597,12 @@ impl SomeAction {
         // Check all other pns are equal
         for stax in stas_in_reg.iter() {
             let sqrx = self.squares.find(&stax).unwrap();
-            if sqrx.pnc() {
-                if sqrx.pn() != a_pn {
+            if sqrx.get_pnc() {
+                if sqrx.get_pn() != a_pn {
                     return nds;
                 }
+            } else if sqrx.get_pn() > a_pn {
+                return nds;
             }
         }
 
@@ -1603,7 +1621,7 @@ impl SomeAction {
             let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
             let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-            if sqrx.pnc() && sqry.pnc() {
+            if sqrx.get_pnc() && sqry.get_pnc() {
                 if self.can_combine(&sqrx, &sqry) == Truth::T {
                     nds.push(SomeNeed::AddGroup {
                         group_region: SomeRegion::new(sqrx.get_state(), sqry.get_state()),
@@ -1612,7 +1630,7 @@ impl SomeAction {
                 return nds;
             }
 
-            if sqrx.pnc() || sqry.pnc() {
+            if sqrx.get_pnc() || sqry.get_pnc() {
                 a_pnc = true;
             }
             inx += 2;
@@ -1628,11 +1646,11 @@ impl SomeAction {
                 let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
                 let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-                if sqrx.pnc() {
+                if sqrx.get_pnc() {
                     if sqry.len_results() > max_samples {
                         max_samples = sqry.len_results();
                     }
-                } else if sqry.pnc() {
+                } else if sqry.get_pnc() {
                     if sqrx.len_results() > max_samples {
                         max_samples = sqrx.len_results();
                     }
@@ -1646,7 +1664,7 @@ impl SomeAction {
                 let sqrx = self.squares.find(&pair_stas[inx]).unwrap();
                 let sqry = self.squares.find(&pair_stas[inx + 1]).unwrap();
 
-                if sqrx.pnc() {
+                if sqrx.get_pnc() {
                     if sqry.len_results() == max_samples {
                         nds.push(SomeNeed::StateAdditionalSample {
                             dom_num: 0, // set this in domain get_needs
@@ -1656,7 +1674,7 @@ impl SomeAction {
                             far: sqrx.get_state().clone(),
                         });
                     }
-                } else if sqry.pnc() {
+                } else if sqry.get_pnc() {
                     if sqrx.len_results() == max_samples {
                         nds.push(SomeNeed::StateAdditionalSample {
                             dom_num: 0, // set this in domain get_needs
@@ -1748,26 +1766,41 @@ impl SomeAction {
             return nds;
         }
 
-        if *grpx.get_pn() == Pn::Two {
-            return nds;
-        }
+//        if *grpx.get_pn() == Pn::Two {
+//            return nds;
+//        }
         
         let rulsx = grpx.get_rules().restrict_initial_region(&reg_int);
         let rulsy = grpy.get_rules().restrict_initial_region(&reg_int);
 
         // If contradictory, return needs to resolve
         if rulsx != rulsy {
+            
+            if *grpx.get_pn() == Pn::Two {
+                //println!("pn2 {} intersects {} at {} giving rules {} and {}", grpx.get_rules().formatted_string(), grpy.get_rules().formatted_string(), &reg_int, 
+                //rulsx.formatted_string(), rulsy.formatted_string());
+            }
+            
             // Check if a valid sub-region of the intersection exists
             if let Some(rulsxy) = rulsx.intersection(&rulsy) {
                 // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
                 let ok_reg = rulsxy.initial_region();
 
                 // to avoid subtraction, use the far sub-region
+                
                 let regy = reg_int.far_reg(&ok_reg);
+                
+                if *grpx.get_pn() == Pn::Two {
+                    //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
+                }
                 nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
             } else {
+                if *grpx.get_pn() == Pn::Two {
+                    //println!("pn2 whole intersection is bad");
+                }
                 nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             }
+            
             return nds;
         }
 
@@ -1805,49 +1838,10 @@ impl SomeAction {
                 return self.possible_group_needs(&regz, 5);
             }
             _ => {
-                // If the regions have the same X-bit pattern, the overlapping part may be a superset
-                // of both.
-                if grpx.get_region().x_mask() == grpy.get_region().x_mask() {
-                    if let Some(_) = grpx.get_rules().union(grpy.get_rules()) {
-                        let regx = grpx.get_region().union(grpy.get_region());
-                        return self.possible_group_needs(&regx, 6);
-                    }
-                }
-
-                // Check if any valid rules can be found in the overlapping region.
-                let reg_ov = grpx.get_region().overlapping_part(grpy.get_region());
-
-                if let Some(rulesx) = grpx
-                    .get_rules()
-                    .restrict_initial_region(&reg_ov)
-                    .union(&grpy.get_rules().restrict_initial_region(&reg_ov))
-                {
-                    let regz = rulesx.initial_region();
-
-                    if regz.intersects(&grpx.get_region()) && regz.intersects(&grpy.get_region()) {
-                        if self.groups.any_superset_of(&regz) {
-                            return nds;
-                        }
-
-                        //println!(
-                        //    "overlap for act {} grp {} grp {} region {} rules {}",
-                        //    self.num, grpx.region, grpy.region, regz, rulesx
-                        //);
-
-                        let xx = self.possible_group_needs(&regz, 7);
-                        //println!("poss grp needs: {}", &xx);
-                        if xx.len() > 0 {
-                            println!(
-                                "overlap for act {} grp {} grp {} region {} rules {}",
-                                self.num, grpx.get_region(), grpy.get_region(), regz, rulesx
-                            );
-                        }
-                        return xx;
-                    }
-                } // end if let Some
+                let regx = grpx.get_region().union(grpy.get_region());
+                return self.possible_group_needs(&regx, 6);
             } // end match pn default
         } // end match pn for adjacent regions
-        nds
     } // end group_pair_adjacent_needs
 
     /// For a contradictory intersection, return a need for more samples.
@@ -1863,6 +1857,11 @@ impl SomeAction {
         //println!("cont_int_region_needs {} for grp {} and grp {} ", &regx, &grpx.region, &grpy.region);
         // Check for any squares in the region
         let stas_in = self.squares.stas_in_reg(regx);
+        
+        //if *grpx.get_pn() == Pn::Two && *grpy.get_pn() == Pn::Two {
+            //println!("pn2 cont_int_region_needs {} for grp {} and grp {} ", &regx, &grpx.get_region(), &grpy.get_region());
+            //println!("pn2 cont_int_region_needs squares in {} are {}", &regx, stas_in.formatted_string());
+        //}
 
         if stas_in.len() == 0 {
             return SomeNeed::ContradictoryIntersection {
@@ -1884,7 +1883,7 @@ impl SomeAction {
         let mut stas_check = StateStore::new();
         for stax in stas_in.iter() {
             let sqrz = self.squares.find(stax).unwrap();
-            if sqrz.pnc() {
+            if sqrz.get_pnc() {
                 panic!(
                     "Square {} is pnc in contradictory intersection {}\n  of group {}\n and group {}",
                     &sqrz, &regx, &grpx, &grpy
@@ -2093,7 +2092,7 @@ impl SomeAction {
                 continue;
             }
 
-            if sqrx.pn() != sqry.pn() {
+            if sqrx.get_pn() != sqry.get_pn() {
                 continue;
             }
 
@@ -2120,7 +2119,7 @@ impl SomeAction {
             }
 
             let sqry = self.squares.find(regx.get_state2()).unwrap();
-            if sqry.pn() == Pn::Unpredictable {
+            if sqry.get_pn() == Pn::Unpredictable {
                 println!(
                     "\n  Square {} [Unpredictable] can combine with\n  Square {} [Unpredictable]\n  giving {} [Unpredictable]",
                     sqrx.get_state(), sqry.get_state(), regx

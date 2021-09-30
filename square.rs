@@ -14,8 +14,8 @@ impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rc_str = String::from("S[");
         rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.pn()));
-        rc_str.push_str(&format!(", pnc: {}", &self.pnc()));
+        rc_str.push_str(&format!(", pn: {}", &self.get_pn()));
+        rc_str.push_str(&format!(", pnc: {}", &self.get_pnc()));
         rc_str.push_str(&format!(", ch: {}", &self.changed()));
         rc_str.push_str(&format!(", rslts: {}", &self.results));
 
@@ -59,12 +59,12 @@ impl SomeSquare {
     }
 
     /// Return the Pn value for a square.
-    pub fn pn(&self) -> Pn {
+    pub fn get_pn(&self) -> Pn {
         self.results.pn
     }
 
     /// Return the pnc (Pattern Number Confirmed) value for a square.
-    pub fn pnc(&self) -> bool {
+    pub fn get_pnc(&self) -> bool {
         self.results.pnc
     }
 
@@ -102,9 +102,9 @@ impl SomeSquare {
     /// This returns three possible results: True, False or MoreSamplesNeeded.
     ///
     pub fn can_combine(&self, other: &Self) -> Truth {
-        match self.pn() {
+        match self.get_pn() {
             Pn::One => {
-                match other.pn() {
+                match other.get_pn() {
                     Pn::One => {
                         // self.pn == One, other.pn == One
                         // If the rules can be combined, the squares can be combined.
@@ -139,7 +139,7 @@ impl SomeSquare {
                     Pn::Unpredictable => {
                         // self.pn == One, other.pn == Unpredictable
                         // If the pn==One square is pnc, the squares cannot be combined.
-                        if self.pnc() {
+                        if self.get_pnc() {
                             return Truth::F;
                         }
 
@@ -149,7 +149,7 @@ impl SomeSquare {
                 } // end match other.pn
             }
             Pn::Two => {
-                match other.pn() {
+                match other.get_pn() {
                     Pn::One => {
                         // self.pn == Two, other.pn == One
                         // If the pn==One square is has GT 1 sample, the squares cannot be combined.
@@ -184,7 +184,7 @@ impl SomeSquare {
                     Pn::Unpredictable => {
                         // self.pn == Two, other = Unpredictable
                         // If the pn==Two square is not pnc, more samples needed.
-                        if self.pnc() == false {
+                        if self.get_pnc() == false {
                             return Truth::M;
                         }
                         // else
@@ -193,13 +193,13 @@ impl SomeSquare {
                 } // end match other.pn
             }
             Pn::Unpredictable => {
-                match other.pn() {
+                match other.get_pn() {
                     // self.pn == Unpredictable, other.pn == One
                     Pn::One => {
                         // self.pn == Unpredictable
                         // If the pn==One square is pnc,
                         // the squares cannot be combined.
-                        if other.pnc() {
+                        if other.get_pnc() {
                             return Truth::F;
                         }
 
@@ -209,7 +209,7 @@ impl SomeSquare {
                     Pn::Two => {
                         // self.pn == Unpredictable, other.pn == Two
                         // If the pn==Two square is pnc, the squares cannot be combined.
-                        if other.pnc() {
+                        if other.get_pnc() {
                             return Truth::F;
                         }
 
@@ -243,8 +243,8 @@ impl SomeSquare {
             &st
         ));
 
-        let sav_pn = self.pn();
-        let sav_pnc = self.pnc();
+        let sav_pn = self.get_pn();
+        let sav_pnc = self.get_pnc();
 
         let rc = self.results.push_wrap(st);
 
@@ -276,19 +276,19 @@ impl SomeSquare {
                 }
             }
         }
-        if sav_pn != self.pn() {
-            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.pn()));
+        if sav_pn != self.get_pn() {
+            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.get_pn()));
         } else {
-            str_info.push_str(&format!(", pn {}", &self.pn()));
+            str_info.push_str(&format!(", pn {}", &self.get_pn()));
         }
-        if sav_pnc != self.pnc() {
+        if sav_pnc != self.get_pnc() {
             str_info.push_str(&format!(
                 ", pnc changed from {} to {}",
                 &sav_pnc,
-                &self.pnc()
+                &self.get_pnc()
             ));
         } else {
-            str_info.push_str(&format!(", pnc {}", &self.pnc()));
+            str_info.push_str(&format!(", pnc {}", &self.get_pnc()));
         }
         println!("{}", &str_info);
         rc

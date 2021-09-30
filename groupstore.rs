@@ -5,6 +5,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+use crate::pn::Pn;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -68,10 +69,17 @@ impl GroupStore {
             if grpx.get_active() {
                 if grpx.get_region().is_superset_of_state(sqrx.get_state()) {
                     if grpx.square_is_ok(&sqrx) == false {
+                        if *grpx.get_pn() == Pn::Two {
+                        println!(
+                            "\npn2 sqr {} {} invalidates group {} {}",
+                            sqrx.get_state(), sqrx.get_rules().formatted_string(), grpx.get_region(), grpx.get_rules().formatted_string()
+                        );
+                        } else {
                         println!(
                             "\nsqr {} {} invalidates group {} {}",
-                            sqrx.get_state(), sqrx.get_rules(), grpx.get_region(), grpx.get_rules()
+                            sqrx.get_state(), sqrx.get_rules().formatted_string() , grpx.get_region(), grpx.get_rules().formatted_string()
                         );
+                        }
                         regs_invalid.push(grpx.get_region().clone());
                         grpx.inactivate(dom, act);
                     }

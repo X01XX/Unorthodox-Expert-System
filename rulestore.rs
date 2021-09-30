@@ -32,19 +32,34 @@ impl PartialEq for RuleStore {
             return false;
         }
 
+        if self.initial_region() != other.initial_region() {
+            return false;
+        }
+        
         if self.len() == 1 {
             return self.avec[0] == other.avec[0];
         }
 
         // For two rules, order does not matter
         if self.len() == 2 {
-            if self.avec[0] == other.avec[0] && self.avec[1] == other.avec[1] {
-                return true;
+            if self.initial_region().x_mask().is_low() {
+                if self.avec[0] == other.avec[0] && self.avec[1] == other.avec[1] {
+                    return true;
+                }
+
+                if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
+                    return true;
+                }
+                
+                return false;
             }
 
-            if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
-                return true;
+            if let Some(rulesx) = self.intersection(&other) {
+                if rulesx.initial_region() == self.initial_region() {
+                    return true;
+                }
             }
+
             return false;
         }
 
@@ -111,14 +126,16 @@ impl RuleStore {
                 return false;
             }
 
-            let reg_int = self.initial_region().intersection(&other.initial_region());
-
-            let rules2 = other.restrict_initial_region(&reg_int);
-
-            if let Some(_) = self.union(&rules2) {
+            if self.first().is_subset_of(&other.first())
+                    && self.second().is_subset_of(&other.second()) {
                 return true;
             }
 
+            if self.first().is_subset_of(&other.second())
+                    && self.second().is_subset_of(&other.first()) {
+                return true;
+            }
+            
             return false;
         }
 
@@ -198,6 +215,9 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
+            assert!(self.initial_region().x_mask().is_low());
+            assert!(other.initial_region().x_mask().is_low());
+
             let mut ordera = false;
             let rul0 = self.avec[0].union(&other.avec[0]);
             let rul1 = self.avec[1].union(&other.avec[1]);
@@ -212,9 +232,9 @@ impl RuleStore {
                 orderb = true;
             }
 
-            if ordera && orderb {
-                return None;
-            }
+//            if ordera && orderb {
+//                return None;
+//            }
 
             let mut ret_store = Self::new();
             if ordera {
@@ -247,24 +267,71 @@ impl RuleStore {
         if self.len() == 1 {
             let mut ars = Self::new();
 
-            if self.avec[0]
-                .intersection(&other.avec[0])
-                .is_valid_intersection()
-            {
-                ars.push(self.avec[0].intersection(&other.avec[0]));
+            let int1 = self[0].intersection(&other[0]);
+            if int1.is_valid_intersection() {
+                ars.push(int1);
                 return Some(ars);
             }
             return None;
+
         } else if self.len() == 2 {
-            let regx = self.initial_region().intersection(&other.initial_region());
 
-            let rs1 = self.restrict_initial_region(&regx);
-            let rs2 = other.restrict_initial_region(&regx);
+            // Intersect by order1
+            let mut order1 = true;
 
-            if let Some(rs12) = rs1.union(&rs2) {
-                return Some(rs12);
+            let int00 = self[0].intersection(&other[0]);
+            let int11 = self[1].intersection(&other[1]);
+            
+            if int00.is_valid_intersection() == false {
+                order1 = false;
+            } else {
+                if int11.is_valid_intersection() == false {
+                    order1 = false;
+                }
             }
 
+            // Intersect by order2
+            let mut order2 = true;
+
+            let int01 = self[0].intersection(&other[1]);
+            let int10 = self[1].intersection(&other[0]);
+
+            if int01.is_valid_intersection() == false {
+                order2 = false;
+            } else {
+                if int10.is_valid_intersection() == false {
+                    order2 = false;
+                }
+            }
+
+            // Act on results of intersections
+            if order1 && order2 {
+                let mut ord1 = Self::new();
+                ord1.push(int00);
+                ord1.push(int11);
+                
+                let mut ord2 = Self::new();
+                ord2.push(int01);
+                ord2.push(int10);
+
+                let ord12 = ord1.union(&ord2).unwrap();
+                //println!("pn3 intersection of {} and {} is12 {}", self, other, ord2);
+                return Some(ord12);
+
+            } else if order1 {
+                let mut ord1 = Self::new();
+                ord1.push(int00);
+                ord1.push(int11);
+                //println!("pn3 intersection of {} and {} is1 {}", self, other, ord1);
+                return Some(ord1);
+            } else if order2 {
+                let mut ord2 = Self::new();
+                ord2.push(int01);
+                ord2.push(int10);
+                //println!("pn3 intersection of {} and {} is2 {}", self, other, ord2);
+                return Some(ord2);
+            }
+            //println!("pn3 intersection of {} and {} failed", self, other);
             return None;
         }
         panic!("not ready for pn {}!", self.len());

@@ -171,7 +171,6 @@ impl SomeRegion {
 
         let ok_x_msk = other.x_mask();
 
-        assert!(int_x_msk != ok_x_msk);
         assert!(ok_x_msk.is_subset_of(&int_x_msk));
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg

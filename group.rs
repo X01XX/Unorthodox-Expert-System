@@ -181,7 +181,7 @@ impl SomeGroup {
     pub fn square_is_ok(&self, sqrx: &SomeSquare) -> bool {
         //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
         match self.pn {
-            Pn::One => match sqrx.pn() {
+            Pn::One => match sqrx.get_pn() {
                 Pn::One => {
                     //println!("square_is_ok at One One");
                     return sqrx.get_rules().is_subset_of(&self.rules);
@@ -191,9 +191,9 @@ impl SomeGroup {
                     return false;
                 }
             },
-            Pn::Two => match sqrx.pn() {
+            Pn::Two => match sqrx.get_pn() {
                 Pn::One => {
-                    //println!("square_is_ok at Two One");
+                    //println!("square_is_ok at Two One len = {}", sqrx.len_results());
                     if sqrx.len_results() > 1 {
                         return false;
                     }
@@ -208,14 +208,14 @@ impl SomeGroup {
                     return false;
                 }
             },
-            Pn::Unpredictable => match sqrx.pn() {
+            Pn::Unpredictable => match sqrx.get_pn() {
                 Pn::Unpredictable => {
                     //println!("square_is_ok at U U");
                     return true;
                 }
                 _ => {
                     //println!("square_is_ok at U Other");
-                    if sqrx.pnc() {
+                    if sqrx.get_pnc() {
                         return false;
                     } else {
                         return true;
