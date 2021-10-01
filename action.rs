@@ -228,6 +228,21 @@ impl SomeAction {
     /// Evaluate a sample taken to satisfy a need.
     ///
     /// If the GroupStore has changed, recalculate the predictable change mask.
+    pub fn eval_sample(
+        &mut self,
+        initial: &SomeState,
+        result: &SomeState,
+        dom: usize,
+    ) {
+        self.groups.set_changed(false);
+
+        self.store_sample(&initial, &result, dom);
+        self.check_square_new_sample(&initial, dom);
+      }
+
+    /// Evaluate a sample taken to satisfy a need.
+    ///
+    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_need_sample(
         &mut self,
         initial: &SomeState,
@@ -2173,4 +2188,5 @@ impl SomeAction {
         //println!("Act {} pbc: b01: {} b10: {}", &self.num, &b01, &b10);
         SomeChange::new(&b01, &b10)
     }
-}
+
+} // end impl SomeAction

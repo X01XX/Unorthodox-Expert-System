@@ -119,6 +119,11 @@ impl DomainStore {
         self.avec[dmxi].take_action_need(ndx);
     }
 
+    /// Take an action to satisfy a need
+    pub fn take_action(&mut self, dmxi: usize, actx: usize) {
+        self.avec[dmxi].take_action(actx);
+    }
+    
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         &self.avec[dmxi].get_cur_state()
@@ -408,6 +413,24 @@ impl DomainStore {
 
         can_nds_pln[can_do2[cd2_inx]].1
     } // end choose_need
+    
+    /// Get a domain number from a string.
+    pub fn domain_num_from_string(&self, num_str: &str) -> Result<usize, String> {
+
+        match num_str.parse() {
+            Ok(d_num) => {
+                if d_num >= self.num_domains() {
+                    return Err(format!("\nDomain number too large, {}", d_num));
+                } else {
+                    return Ok(d_num);
+                }
+            }
+            Err(error) => {
+                return Err(format!("Did not understand domain number, {}", error));
+                }
+            } // end match
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

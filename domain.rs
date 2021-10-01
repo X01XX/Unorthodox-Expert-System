@@ -144,7 +144,7 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
-        if nst.len() == 0 {
+        //if nst.len() == 0 {
             if let Some(areg) = &self.optimal {
                 if areg.is_superset_of_state(&self.cur_state) {
                 } else {
@@ -155,7 +155,7 @@ impl SomeDomain {
                     });
                 }
             }
-        }
+        //}
         nst
     }
 
@@ -206,6 +206,18 @@ impl SomeDomain {
         self.check_predictable_mask();
     }
 
+    /// Take an action with the current state.
+    pub fn take_action(&mut self, act_num: usize) {
+        self.check_async();
+
+        let hv = self.get_hv(act_num);
+        let astate = take_action(self.num, act_num, &self.cur_state, hv);
+        self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
+        self.set_cur_state(&astate);
+
+        self.check_predictable_mask();
+    }
+    
     /// Accessor, set the cur_state field.
     pub fn set_cur_state(&mut self, new_state: &SomeState) {
         self.prev_state = new_state.clone();
@@ -938,6 +950,9 @@ impl SomeDomain {
                         }
                     } else {
                         //println!("glitch1 stp2 chg {} not eq rev chg needed {}", &stp2.change(), &chg_rev);
+                        let stpstr = StepStore::new_with_step(stpx.clone());
+                        //println!("testing: adding1 stepstore {}", &stpstr);
+                        steps_rev2.push(stpstr);
                     }
                 } // next stp_revx
             } //end if
@@ -984,6 +999,29 @@ impl SomeDomain {
         None
     } // end random_depth_first_forward_chaining_test
 
+    /// Return a Action number from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// if let Ok(sta) = SomeState::state_from_string(1, "0101")) {
+    ///    println!("State {}", &sta);
+    /// } else {
+    ///    panic!("Invalid State");
+    /// }
+    pub fn act_num_from_string(&self, str_num: &str) -> Result<usize, String> {
+
+        match str_num.parse() {
+            Ok(act_num) => {
+                if act_num >= self.num_actions() {
+                    return Err(format!("Action number too large {}", act_num));
+                }
+                return Ok(act_num);
+            }
+            Err(error) => {
+                return Err(format!("\nDid not understand action number, {}", error));
+            }
+        }
+    } // end act_num_from_string
+    
 } // end impl SomeDomain
 
 /// Return true if any step pairs are all mutually exclusive

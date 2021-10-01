@@ -104,6 +104,11 @@ impl SomeState {
         self.bts.formatted_string('s')
     }
 
+    /// Return a mask given a state
+    pub fn to_mask(&self) -> SomeMask {
+        SomeMask::new(self.bts.clone())
+    }
+
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
@@ -145,11 +150,6 @@ impl SomeState {
 
         Ok(SomeState::new(bts))
     } // end from_string
-    
-    /// Return a mask given a state
-    pub fn to_mask(&self) -> SomeMask {
-        SomeMask::new(self.bts.clone())
-    }
 
 } // end impl SomeState
 

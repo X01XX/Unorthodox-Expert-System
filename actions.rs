@@ -27,6 +27,8 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: us
             return dom0_act5(cur_state, hv);
         } else if act_num == 6 {
             return dom0_act6(cur_state, hv);
+        } else if act_num == 7 {
+            return dom0_act7(cur_state, hv);
         } else {
             panic!("Dom 0, Uknown Action number {}", act_num);
         }
@@ -39,6 +41,8 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: us
             return dom1_act2(cur_state, hv);
         } else if act_num == 3 {
             return dom1_act3(cur_state, hv);
+        } else if act_num == 4 {
+            return dom1_act4(cur_state, hv);
         } else {
             panic!("Dom 1, Uknown Action number {}", act_num);
         }
@@ -192,11 +196,24 @@ pub fn dom0_act5(cur: &SomeState, _num_seen: usize) -> SomeState {
 }
 
 /// Domain 0, act 6, actions, given the current state.
-/// Toggle bit 6.00XX1X10
+/// Toggle bit 2,3 .00XX1X10
 pub fn dom0_act6(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![2, 3]);
     println!(
         "\nDom 0 Act 6 {} -> {} change: {}",
+        cur,
+        new_state,
+        SomeChange::new_from_to(&cur, &new_state)
+    );
+    return new_state;
+}
+
+/// Domain 0, act 7, actions, given the current state.
+/// Toggle bit 6 and 7, .XX......
+pub fn dom0_act7(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![7, 6]);
+    println!(
+        "\nDom 0 Act 7 {} -> {} change: {}",
         cur,
         new_state,
         SomeChange::new_from_to(&cur, &new_state)
@@ -251,6 +268,18 @@ pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
     let new_state = cur.toggle_bits(vec![9]);
     println!(
         "\nDom 1 Act 3 {} -> {} change: {}",
+        cur,
+        new_state,
+        SomeChange::new_from_to(&cur, &new_state)
+    );
+    return new_state;
+}
+/// Domain 1, act 3, actions, given the current state.
+/// Toggle all bits
+pub fn dom1_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
+    let new_state = cur.toggle_bits(vec![15, 14, 13, 12, 11, 10, 5, 4, 3, 1, 0]);
+    println!(
+        "\nDom 1 Act 4 {} -> {} change: {}",
         cur,
         new_state,
         SomeChange::new_from_to(&cur, &new_state)

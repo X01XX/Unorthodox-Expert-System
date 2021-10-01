@@ -102,7 +102,7 @@ impl SomeBits {
 
         for bit_num in bit_nums {
             if bit_num >= num_bits {
-                panic!("bit num too large");
+                panic!("bit num {} is too large", &bit_num);
             }
 
             let bit_pos = bit_num % NUM_BITS_PER_INT;
