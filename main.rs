@@ -343,8 +343,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                         if n_num >= need_can.len() {
                             println!("Invalid Need Number: {}", cmd[1]);
                         } else {
-                        
-                            let ndx = &nds[need_can[n_num]];
+
+                            let ndx = &nds[need_plans[need_can[n_num]].inx];
 
                             // Change the displayed Domain, if needed
                             if dom_num != ndx.dom_num() {
@@ -834,6 +834,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
     } // end 4-word commands
 
     println!("\nDid not understand command: {:?}", cmd);
+    pause_for_input("\nPress Enter to continue: ");
     0
 } // end do_command
 
