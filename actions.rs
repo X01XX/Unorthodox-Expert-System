@@ -277,7 +277,7 @@ pub fn dom1_act3(cur: &SomeState, _num_seen: usize) -> SomeState {
 /// Domain 1, act 3, actions, given the current state.
 /// Toggle all bits
 pub fn dom1_act4(cur: &SomeState, _num_seen: usize) -> SomeState {
-    let new_state = cur.toggle_bits(vec![15, 14, 13, 12, 11, 10, 5, 4, 3, 1, 0]);
+    let new_state = cur.toggle_bits(vec![15, 14, 13, 12, 11, 10, 5, 4, 3, 2, 1, 0]);
     println!(
         "\nDom 1 Act 4 {} -> {} change: {}",
         cur,

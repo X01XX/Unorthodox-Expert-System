@@ -6,7 +6,7 @@ use crate::action::SomeAction;
 use crate::actions::take_action;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
+//use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -29,7 +29,6 @@ impl fmt::Display for SomeDomain {
         rc_str.push_str(&self.num.to_string());
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
-        rc_str.push_str(&format!(", Maximum Region: {}", &self.max_region));
         if let Some(areg) = &self.optimal {
             rc_str.push_str(&format!(", Optimal Region: {}", &areg));
         } else {
@@ -52,14 +51,10 @@ pub struct SomeDomain {
     actions: ActionStore,
     /// The Current State.    
     cur_state: SomeState,
-    /// The region formed by the union of all Current States experienced.    
-    max_region: SomeRegion,
     /// An optimal region that is sought if there are no needs.  This may be changed.    
     optimal: Option<SomeRegion>,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     prev_state: SomeState,
-    /// A store of possible, predictable, bit changes.
-    predictable_mask: SomeMask,
     /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
     vec_hash: Vec<HashMap<SomeState, usize>>,
     /// Hidden variable range, for testing.  0-max(exclusive).
@@ -80,10 +75,8 @@ impl SomeDomain {
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
-            max_region: SomeRegion::new(&cur, &cur),
             optimal: optimal,
             prev_state: cur.clone(),
-            predictable_mask: SomeMask::new_low(num_ints),
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -136,39 +129,30 @@ impl SomeDomain {
 
     /// Return needs gathers from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
+        
+        let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
+        //println!("aggregate changes are {}", &agg_chgs);
+
         let mut nst = self
             .actions
-            .get_needs(&self.cur_state, &self.predictable_mask, self.num);
+            .get_needs(&self.cur_state, &agg_chgs, self.num);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
         }
 
-        //if nst.len() == 0 {
-            if let Some(areg) = &self.optimal {
-                if areg.is_superset_of_state(&self.cur_state) {
-                } else {
-                    nst.push(SomeNeed::ToRegion {
-                        dom_num: self.num, // set this in domain get_needs
-                        act_num: 0,
-                        goal_reg: areg.clone(),
-                    });
-                }
+        if let Some(areg) = &self.optimal {
+            if areg.is_superset_of_state(&self.cur_state) {
+            } else {
+                nst.push(SomeNeed::ToRegion {
+                    dom_num: self.num, // set this in domain get_needs
+                    act_num: 0,
+                    goal_reg: areg.clone(),
+                });
             }
-        //}
-        nst
-    }
-
-    /// Check for changes in the predictable change mask
-    fn check_predictable_mask(&mut self) {
-        let sav_mask = self.predictable_mask.clone();
-
-        self.predictable_mask = self.actions.get_predictable_mask(self.num_ints);
-
-        if self.predictable_mask != sav_mask {
-            println!("\n  Old Predictable Change mask {}", &sav_mask);
-            println!("  New Predictable Change mask {}", &self.predictable_mask);
         }
+
+        nst
     }
 
     /// Return the total number of actions.
@@ -188,8 +172,6 @@ impl SomeDomain {
         // may break hv info, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
         self.set_cur_state(&r_state);
-
-        self.check_predictable_mask();
     }
 
     /// Take an action for a need, evaluate the resulting sample.
@@ -202,8 +184,6 @@ impl SomeDomain {
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
         self.set_cur_state(&astate);
-
-        self.check_predictable_mask();
     }
 
     /// Take an action with the current state.
@@ -214,8 +194,6 @@ impl SomeDomain {
         let astate = take_action(self.num, act_num, &self.cur_state, hv);
         self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
         self.set_cur_state(&astate);
-
-        self.check_predictable_mask();
     }
     
     /// Accessor, set the cur_state field.
@@ -223,14 +201,6 @@ impl SomeDomain {
         self.prev_state = new_state.clone();
 
         self.cur_state = new_state.clone();
-
-        if self.max_region.is_superset_of_state(&self.cur_state) {
-        } else {
-            let new_max_region = self.max_region.union_state(&self.cur_state);
-            println!("\n  Old max region  {}", &self.max_region);
-            println!("  New max region  {}", &new_max_region,);
-            self.max_region = new_max_region;
-        }
     }
 
     /// Check for a state change between sampling.
@@ -250,8 +220,6 @@ impl SomeDomain {
         self.check_async();
 
         self.run_plan2(pln, 0);
-
-        self.check_predictable_mask();
     }
 
     /// Get a hidden variable value, for testing purposes.
@@ -889,7 +857,7 @@ impl SomeDomain {
             // Get the changes in the step that are not required, that are unwanted, and
             // do not correspond with an X-bit in the goal.
             let chg_not = &required_change.change_not();
-            let chg_dif = stpx.rule.change().change_and(&chg_not).change_and_mask(&care_chg_mask);
+            let chg_dif = stpx.rule.change().bitwise_and(&chg_not).bitwise_and_mask(&care_chg_mask);
 
             if chg_dif.is_low() {
                 // No unwanted changes

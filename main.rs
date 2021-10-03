@@ -314,7 +314,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                     }
                     Err(error) => {
                         println!("\n{}", error);
-                        pause_for_input("\nPress Enter to continue: ");
+                        pause_for_input("\nWaiting, press Enter to continue: ");
                     }
                 } // end match
                 continue;
@@ -325,11 +325,11 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                 match dmxs[dom_num].act_num_from_string(&cmd[1]) {
                     Ok(a_num) => {
                         dmxs.take_action(dom_num, a_num); 
-                        pause_for_input("\nPress Enter to continue: ");
+                        pause_for_input("\nWaiting, press Enter to continue: ");
                     }
                     Err(error) => {
                         println!("\n{}", error);
-                        pause_for_input("\nPress Enter to continue: ");
+                        pause_for_input("\nWaiting, press Enter to continue: ");
                         step_inc = 0;
                     }
                 } // end match
@@ -351,13 +351,17 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                                 dom_num = ndx.dom_num();
                             }
 
-                            print_domain(&dmxs, dom_num);
+                            //print_domain(&dmxs, dom_num);
 
                             let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
 
-                            println!("\nNeed: {}", &ndx);
+                            println!("\n{} Need: {}", &n_num, &ndx);
 
-                            println!("\nPlan: \n{}", &pln.str2());
+                            if ndx.satisfied_by(&dmxs[dom_num].get_cur_state()) {
+                                println!("\nPlan: current state satisfies need, just take the action");
+                            } else {
+                                println!("\nPlan: \n{}", &pln.str2());
+                            }
                         }
 
                     }
@@ -365,7 +369,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                         println!("\n{}", error);
                     }
                 }
-                pause_for_input("\nPress Enter to continue: ");
+                pause_for_input("\nWaiting, press Enter to continue: ");
                 continue;
             } else if cmd[0] == "dn" {
                 
@@ -406,7 +410,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                         println!("\n{}", error);
                     }
                 }
-                pause_for_input("\nPress Enter to continue: ");
+                pause_for_input("\nWaiting, press Enter to continue: ");
                 continue;
             } else if cmd[0] == "ld" {
                 match load_data(&cmd[1]) {
@@ -418,7 +422,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                         dmxs = new_dmxs;
                     }
                 } // end match load_data
-                pause_for_input("\nPress Enter to continue: ");
+                pause_for_input("\nWaiting, press Enter to continue: ");
                 step_inc = 0;
                 continue;
             } else if cmd[0] == "sd" {
@@ -430,7 +434,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
                         print!("Data written");
                     }
                 }
-                pause_for_input("\nPress Enter to continue: ");
+                pause_for_input("\nWaiting, press Enter to continue: ");
                 step_inc = 0;
                 continue;
             } // end command sd
@@ -452,7 +456,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "h" || cmd[0] == "help" {
             usage();
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -463,7 +467,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 println!("Change Optimal region from None to None");
             }
             dm1.set_optimal(None);
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         } //end command co
     } // end one-word commands
@@ -484,7 +488,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\nDid not understand region, {}", error);
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0
         } //end command co
 
@@ -495,12 +499,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 Ok(a_state) => {
                     println!("Changed state to {}", a_state);
                     dm1.set_cur_state(&a_state);
-                    pause_for_input("\nPress Enter to continue: ");
+                    pause_for_input("\nWaiting, press Enter to continue: ");
                     return 1;
                 }
                 Err(error) => {
                     println!("\nDid not understand state, {}", error);
-                    pause_for_input("\nPress Enter to continue: ");
+                    pause_for_input("\nWaiting, press Enter to continue: ");
                     return 0;
                 }
             } // end match
@@ -533,7 +537,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match region_r
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         } //end command to
 
@@ -561,7 +565,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -583,7 +587,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         }
 
@@ -601,7 +605,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -619,7 +623,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
     } // end two-word commands
@@ -653,7 +657,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         }
 
@@ -700,7 +704,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 }
             } // end match act_num
 
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -723,7 +727,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -753,7 +757,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -789,7 +793,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
     } // end 3-word commands
@@ -828,13 +832,13 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nPress Enter to continue: ");
+            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         } // end command ss
     } // end 4-word commands
 
     println!("\nDid not understand command: {:?}", cmd);
-    pause_for_input("\nPress Enter to continue: ");
+    pause_for_input("\nWaiting, press Enter to continue: ");
     0
 } // end do_command
 

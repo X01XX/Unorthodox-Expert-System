@@ -40,7 +40,7 @@ impl SomeMask {
     }
 
     /// Return a new mask set to all zeros.
-    pub fn new_low(num_ints: usize) -> Self {
+    pub fn _new_low(num_ints: usize) -> Self {
         Self {
             bts: SomeBits::new_low(num_ints),
         }

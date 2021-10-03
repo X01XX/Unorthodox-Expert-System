@@ -58,17 +58,25 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize and of two changes
-    pub fn change_and(&self, other: &SomeChange) -> SomeChange {
+    pub fn bitwise_and(&self, other: &SomeChange) -> SomeChange {
         Self {
             b01: self.b01.m_and(&other.b01),
             b10: self.b10.m_and(&other.b10),
         }
     }
 
+    /// Return the logical bitwize or of two changes
+    pub fn bitwise_or(&self, other: &SomeChange) -> SomeChange {
+        Self {
+            b01: self.b01.m_or(&other.b01),
+            b10: self.b10.m_or(&other.b10),
+        }
+    }
+    
     /// Return the logical bitwize and of a change and a mask
     /// The mask is the not-x-mask of a goal, so changes that are 
     /// important to consider.
-    pub fn change_and_mask(&self, msk: &SomeMask) -> SomeChange {
+    pub fn bitwise_and_mask(&self, msk: &SomeMask) -> SomeChange {
         Self {
             b01: self.b01.m_and(msk),
             b10: self.b10.m_and(msk),
@@ -113,7 +121,7 @@ impl SomeChange {
     }
 
     /// Return a mask of all bit positions that are one in both masks.
-    pub fn x_mask(&self) -> SomeMask {
+    pub fn _x_mask(&self) -> SomeMask {
         self.b01.m_and(&self.b10)
     }
 

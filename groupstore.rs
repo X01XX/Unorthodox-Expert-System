@@ -36,8 +36,6 @@ pub struct GroupStore {
     /// Vector of SomeGroup structs.
     avec: Vec<SomeGroup>,
     /// If a group is added or deleted, the changed flag is set to true.
-    /// The change mask of possible, predictable, bit changes is rebuilt,
-    /// the change flag is set to false.
     changed: bool,
 }
 
@@ -50,11 +48,6 @@ impl GroupStore {
         }
     }
 
-    /// Accessor, return the value of the changed field.
-    pub fn get_changed(&self) -> bool {
-        self.changed
-    }
-        
     /// Accessor, set the value of the changed field.
     pub fn set_changed(&mut self, aval: bool ) {
         self.changed = aval;

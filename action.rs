@@ -64,14 +64,6 @@ impl fmt::Display for SomeAction {
                     &cnt,
                 ));
 
-                //rc_str.push_str(&format!(" pnc: {}, ", self.group_pnc(&grpx)));
-
-                //rc_str.push_str(&format!("num r: {}", self.group_len_results(&grpx)));
-
-                //                if grpx.not_x_expand.is_low() == false {
-                //                    rc_str.push_str(&format!(" exp: {}", &grpx.not_x_expand));
-                //                }
-
                 fil = String::from(",\n              ");
             }
         }
@@ -96,9 +88,8 @@ pub struct SomeAction {
     seek_edge: RegionStore,
     /// The number of integers the Domain/Action uses to represent a bit pattern
     num_ints: usize,
-    /// Aggregation of possible bit changes.
-    /// For group expansion and confirmation.
-    predictable_bit_changes: SomeChange,
+    /// Changes that the rule can do
+    aggregate_changes: SomeChange
 }
 
 impl SomeAction {
@@ -114,7 +105,7 @@ impl SomeAction {
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             num_ints: num_ints,
-            predictable_bit_changes: SomeChange::new_low(num_ints),
+            aggregate_changes: SomeChange::new_low(num_ints),
         }
     }
 
@@ -127,10 +118,10 @@ impl SomeAction {
     pub fn get_squares(&self) -> &SquareStore {
         &self.squares
     }
-    
-    /// Accessor, return a read-only reference to the predictable_bit_changes field.
-    pub fn get_predictable_bit_changes(&self) -> &SomeChange {
-        &self.predictable_bit_changes
+
+    /// Accessor, return the max_reachable_region
+    pub fn get_aggregate_changes(&self) -> &SomeChange {
+        &self.aggregate_changes
     }
     
     /// Set the action number
@@ -226,8 +217,6 @@ impl SomeAction {
     }
 
     /// Evaluate a sample taken to satisfy a need.
-    ///
-    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_sample(
         &mut self,
         initial: &SomeState,
@@ -241,8 +230,6 @@ impl SomeAction {
       }
 
     /// Evaluate a sample taken to satisfy a need.
-    ///
-    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_need_sample(
         &mut self,
         initial: &SomeState,
@@ -360,7 +347,6 @@ impl SomeAction {
                 self.check_square_new_sample(&initial, dom);
             }
         } // end match ndx00XX1X10
-        
 
     } // End take_action_need2
 
@@ -368,8 +354,6 @@ impl SomeAction {
     /// Its best to start a session and proceed with:
     ///   all user-specified samples, or
     ///   no user-specified samples.
-    ///
-    /// If the GroupStore has changed, recalcualte the predictable change mask.
     pub fn eval_arbitrary_sample(
         &mut self,
         init_state: &SomeState,
@@ -385,25 +369,13 @@ impl SomeAction {
 
         self.store_sample(&init_state, &rslt_state, dom);
         self.check_square_new_sample(&init_state, dom);
-
-        // Update predictable bit change masks, for group expansion and confirmation.
-        if self.groups.get_changed() {
-            self.predictable_bit_changes = self.possible_bit_changes();
-        }
     }
 
     /// Evaluate the sample taken for a step in a plan.
-    ///
-    /// If the GroupStore has changed, recalculate the predictable change mask.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
         self.groups.set_changed(false);
 
         self.eval_step_sample2(cur, new_state, dom);
-
-        // Update predictable bit change masks, for group expansion and confirmation.
-        if self.groups.get_changed() {
-            self.predictable_bit_changes = self.possible_bit_changes();
-        }
     }
 
     /// A continuation of the eval_step_sample logic
@@ -462,8 +434,11 @@ impl SomeAction {
     /// Add a group for the square if the square is in no valid group.
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
+    /// Update max_reachable_region, if any groups are added or deleted.
     fn check_square_new_sample(&mut self, key: &SomeState, dom: usize) {
         //println!("check_square_new_sample");
+
+        let sav_len = self.groups.len();
 
         let sqrx = self.squares.find(&key).unwrap();
 
@@ -482,6 +457,10 @@ impl SomeAction {
         if regs_invalid.len() == 0 {
             if self.groups.num_groups_state_in(&key) == 0 {
                 self.create_groups_from_square(&key, dom);
+
+                if self.groups.len() > sav_len {
+                    self.aggregate_changes = self.calc_aggregate_changes();
+                }
             }
             return;
         }
@@ -507,6 +486,8 @@ impl SomeAction {
                 self.create_groups_from_square(keyx, dom);
             }
         }
+        
+        self.aggregate_changes = self.calc_aggregate_changes();
     } // end check_square_new_sample
 
     /// Check groups due to a new, or updated, square.
@@ -518,11 +499,13 @@ impl SomeAction {
         let sqrx = self.squares.find(&key).unwrap();
 
         // Check if square can be used to create groups
+        // Allowing a square to make a group with a single sample is needed
+        // for group bootstrapping.
         if sqrx.get_pn() == Pn::One || sqrx.get_pnc() {
         } else {
             return;
         }
-        
+
         // Get num active groups in
         let num_grps_in = self.groups.num_groups_state_in(sqrx.get_state());
         println!(
@@ -578,12 +561,32 @@ impl SomeAction {
         } // end for regx
     } // end create_groups_from_square
 
+    /// Return the aggregate changes for an action
+    fn calc_aggregate_changes(&self) -> SomeChange {
+        let mut ret_cngs = SomeChange::new_low(self.num_ints);
+
+        for grpx in self.groups.iter() {
+
+            if *grpx.get_pn() == Pn::One {
+                let rules = grpx.get_rules();
+
+                for rulex in rules.iter() {
+                    ret_cngs = ret_cngs.bitwise_or(&rulex.change());
+                }
+            }
+        }
+
+        ret_cngs
+    }
+
     /// Get needs for an Action, to improve understanding of the result pattern(s).
     /// When most needs are satisfied, needs for group confirmation are generated.
     /// If housekeeping needs are generated, they are processed and needs
     /// are checked again.
-    pub fn get_needs(&mut self, cur_state: &SomeState, x_mask: &SomeMask, dom: usize) -> NeedStore {
+    pub fn get_needs(&mut self, cur_state: &SomeState, agg_chgs: &SomeChange, dom: usize) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
+
+        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
 
         // loop until no housekeeping need is returned.
         let mut nds = NeedStore::new();
@@ -745,11 +748,6 @@ impl SomeAction {
             } // next ndx
 
             if try_again == false {
-                // Update predictable bit change masks, for group expansion and confirmation.
-                if self.groups.get_changed() {
-                    self.predictable_bit_changes = self.possible_bit_changes();
-                }
-
                 //println!("Act: {} get_needs: returning: {}", &self.num, &nds);
                 return nds;
             }
@@ -1781,38 +1779,25 @@ impl SomeAction {
             return nds;
         }
 
-//        if *grpx.get_pn() == Pn::Two {
-//            return nds;
-//        }
-        
         let rulsx = grpx.get_rules().restrict_initial_region(&reg_int);
         let rulsy = grpy.get_rules().restrict_initial_region(&reg_int);
 
         // If contradictory, return needs to resolve
         if rulsx != rulsy {
-            
-            if *grpx.get_pn() == Pn::Two {
-                //println!("pn2 {} intersects {} at {} giving rules {} and {}", grpx.get_rules().formatted_string(), grpy.get_rules().formatted_string(), &reg_int, 
-                //rulsx.formatted_string(), rulsy.formatted_string());
-            }
-            
+
             // Check if a valid sub-region of the intersection exists
             if let Some(rulsxy) = rulsx.intersection(&rulsy) {
                 // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
                 let ok_reg = rulsxy.initial_region();
 
                 // to avoid subtraction, use the far sub-region
-                
                 let regy = reg_int.far_reg(&ok_reg);
                 
-                if *grpx.get_pn() == Pn::Two {
-                    //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
-                }
+                //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
+
                 nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
             } else {
-                if *grpx.get_pn() == Pn::Two {
-                    //println!("pn2 whole intersection is bad");
-                }
+                //println!("pn2 whole intersection is bad");
                 nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             }
             
@@ -1872,11 +1857,6 @@ impl SomeAction {
         //println!("cont_int_region_needs {} for grp {} and grp {} ", &regx, &grpx.region, &grpy.region);
         // Check for any squares in the region
         let stas_in = self.squares.stas_in_reg(regx);
-        
-        //if *grpx.get_pn() == Pn::Two && *grpy.get_pn() == Pn::Two {
-            //println!("pn2 cont_int_region_needs {} for grp {} and grp {} ", &regx, &grpx.get_region(), &grpy.get_region());
-            //println!("pn2 cont_int_region_needs squares in {} are {}", &regx, stas_in.formatted_string());
-        //}
 
         if stas_in.len() == 0 {
             return SomeNeed::ContradictoryIntersection {
@@ -2155,38 +2135,5 @@ impl SomeAction {
         //println!("regions for new groups {}", &rsx);
         rsx
     } // end possible_regions_from_square
-
-    /// Aggregate all predictable bit changes that are possible.
-    /// Repeated sampling of squares will tend to increase the number
-    /// of possible bits changes.  Some changes, like going from
-    /// predictable to unpredictable, could decrease them.
-    pub fn possible_bit_changes(&self) -> SomeChange {
-        let mut b01 = SomeMask::new_low(self.num_ints);
-        let mut b10 = SomeMask::new_low(self.num_ints);
-        
-        for grpx in self.groups.iter() {
-            if grpx.get_active() == false {
-                continue;
-            }
-
-            match grpx.get_pn() {
-                Pn::One => {
-                    // Find bit changes that can happen
-                    b10 = b10.m_or(grpx.get_rules()[0].get_b10());
-                    b01 = b01.m_or(grpx.get_rules()[0].get_b01());
-                }
-                Pn::Two => {
-                    for rulx in grpx.get_rules().iter() {
-                        b10 = b10.m_or(rulx.get_b10());
-                        b01 = b01.m_or(rulx.get_b01());
-                    } // next rulx
-                } // end match Two
-                Pn::Unpredictable => {}
-            } // end match pn
-        } // next grpx
-
-        //println!("Act {} pbc: b01: {} b10: {}", &self.num, &b01, &b10);
-        SomeChange::new(&b01, &b10)
-    }
 
 } // end impl SomeAction

@@ -4,7 +4,7 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
+//use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
 //use crate::region::SomeRegion;
@@ -53,27 +53,13 @@ impl ActionStore {
         self.avec.push(actx);
     }
 
-    /// Get an predictable_mask for all actions.
-    /// Indicates bit position that can predictably change
-    pub fn get_predictable_mask(&self, num_ints: usize) -> SomeMask {
-        let mut cngx = SomeChange::new_low(num_ints);
-
-        for actx in &self.avec {
-            //println!("act {} change {}", &actx.num, &actx.predictable_bit_changes);
-            cngx = cngx.union(&actx.get_predictable_bit_changes());
-            //println!("cngx   change {}", &cngx);
-        }
-
-        cngx.x_mask()
-    }
-
     /// Get needs for all actions in the store.
-    pub fn get_needs(&mut self, cur: &SomeState, x_mask: &SomeMask, dom: usize) -> NeedStore {
+    pub fn get_needs(&mut self, cur: &SomeState, agg_chgs: &SomeChange, dom: usize) -> NeedStore {
         // Run a get_needs thread for each action
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, x_mask, dom))
+            .map(|actx| actx.get_needs(cur, agg_chgs, dom))
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
@@ -127,7 +113,20 @@ impl ActionStore {
         //println!("actionstore:get_steps possible steps: {}", stps.str());
         stps_agg
     }
-    
+
+    /// Return the maximum reachable region for all actions
+    pub fn get_aggregate_changes(&self, num_ints: usize) -> SomeChange {
+
+        let mut agg_chg = SomeChange::new_low(num_ints);
+   
+        // Or each action change
+        for actx in self.avec.iter() {
+            agg_chg = agg_chg.bitwise_or(actx.get_aggregate_changes());
+        }
+
+        agg_chg
+    }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

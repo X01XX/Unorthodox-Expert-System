@@ -221,7 +221,7 @@ impl SomeRegion {
     }
 
     /// Return the union of a region and a state.
-    pub fn union_state(&self, other: &SomeState) -> Self {
+    pub fn _union_state(&self, other: &SomeState) -> Self {
         let st_low = self.state1.s_and(&self.state2).s_and(&other);
 
         let st_high = self.state1.s_or(&self.state2).s_or(&other);
