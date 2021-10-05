@@ -80,9 +80,7 @@ impl ResultStore {
         // For pn =1, a second sample proves its not pn = 2
         // so it could invalidate a pn=2 group
         if self.pn == Pn::One {
-            if self.len() == 2 {
-                self.changed = true;
-            } else if self.len() > 2 {
+            if self.len() > 1 {
                 self.changed = true;
                 self.pnc = true;
             }

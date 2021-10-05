@@ -127,7 +127,7 @@ fn main() {
     let run_max = run_left;
 
     while run_left > 0 {
-        do_session(run_to_end, run_count, run_max);
+        run_left += do_session(run_to_end, run_count, run_max);
 
         run_left -= 1;
         run_count += 1;
@@ -136,7 +136,7 @@ fn main() {
 } // end main
 
 /// DO one session of finding and using rules
-pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
+pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
     let mut to_end = run_to_end;
     let mut dmxs = init();
@@ -221,7 +221,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
             println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
             if to_end {
                 if run_count < run_max {
-                    return;
+                    return 0;
                 }
                 to_end = false;
             }
@@ -292,14 +292,15 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) {
             // Quit with q , exit, quit
             if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
                 println!("Done");
-                return;
+                return 0;
             } else if cmd[0] == "run" {
                 to_end = true;
                 step_inc = 0;
                 continue;
             } else if cmd[0] == "so" {
-                dmxs = init();
-                continue;
+                return 1;
+                //dmxs = init();
+                //continue;
             }
         }
 
@@ -857,7 +858,7 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     } else {
         println!("\nStep: {} Dom: {} Current State: {}",&dmxs.get_step(), dom_num, &dmxs[dom_num].get_cur_state());
     }
-    if dmxs.get_step() > 300 {
+    if dmxs.get_step() > 500 {
         assert!(1 == 2);
     }
 }

@@ -203,9 +203,6 @@ impl SomeAction {
                 if sqrz.get_pn() > sqrx.get_pn() {
                     return Truth::F;
                 }
-                if sqrx.get_pn() == Pn::Two && sqrz.get_pn() == Pn::One && sqrz.len_results() > 1 {
-                    return Truth::F;
-                }
             }
 
             if sqrz.get_rules().is_subset_of(&rulsx) == false {
@@ -444,12 +441,19 @@ impl SomeAction {
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
-        let regs_invalid = self.groups.check_square(&sqrx, dom, self.num);
+        let regs_invalid: RegionStore = self.groups.check_square(&sqrx, dom, self.num);
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
+
             if regx.x_mask().num_one_bits() > 1 {
-                self.seek_edge.push_nosubs(regx.clone());
+
+                let sqr1 = self.squares.find(regx.get_state1()).unwrap();
+                let sqr2 = self.squares.find(regx.get_state2()).unwrap();
+
+                if sqr1.get_pnc() && sqr2.get_pnc() {
+                    self.seek_edge.push_nosubs(regx.clone());
+                }
             }
         }
 
@@ -467,14 +471,10 @@ impl SomeAction {
 
         // Check squares that may not be in a group
 
-        if regs_invalid.num_active() == 1 {
-            println!("\n1 group invalidated, checking for any square in no groups");
-        } else {
-            println!(
-                "\n{} groups invalidated, checking for any square in no groups",
-                regs_invalid
-            );
-        }
+//        if regs_invalid.len() > 0 {
+//            println!(
+//                "\n{} groups invalidated, checking for any square in no groups", &regs_invalid);
+//        }
 
         let regs = self.groups.regions();
 
@@ -586,8 +586,6 @@ impl SomeAction {
     pub fn get_needs(&mut self, cur_state: &SomeState, agg_chgs: &SomeChange, dom: usize) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
-        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
-
         // loop until no housekeeping need is returned.
         let mut nds = NeedStore::new();
         let mut cnt = 0;
@@ -610,6 +608,23 @@ impl SomeAction {
                     act_num: self.num,
                     targ_state: cur_state.clone(),
                 });
+            }
+
+            // Look for a pn > 1, pnc == false, not in group squares
+            // Extra samples are needed to gain pnc, then the first group.
+            let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
+            for stax in sqrs_pngt1.iter() {
+                if self.groups.any_superset_of_state(&stax) {
+                } else {
+                    let new_need = SomeNeed::StateNotInGroup {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: stax.clone()};
+                    if nds.contains(&new_need) {
+                    } else {
+                        nds.push(new_need);
+                    }
+                }
             }
 
             // Look for needs to find a new edge in an invalidated group
@@ -643,7 +658,7 @@ impl SomeAction {
 
             // Check for squares in-one-group needs
             if nds.len() == 0 {
-                let mut ndx = self.confirm_groups_needs(&x_mask);
+                let mut ndx = self.confirm_groups_needs(agg_chgs);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -651,7 +666,7 @@ impl SomeAction {
             }
 
             if nds.len() == 0 {
-                let mut ndx = self.expand_needs(&x_mask);
+                let mut ndx = self.expand_needs(agg_chgs);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -1025,6 +1040,7 @@ impl SomeAction {
     } // end seek_edge_needs2
 
     /// Get additional sample needs for the states that form a group.
+    /// Should only affect groups with Pn::One
     fn additional_group_state_samples(&self) -> NeedStore {
         //println!("additional_group_state_sample");
         let mut ret_nds = NeedStore::new();
@@ -1065,7 +1081,10 @@ impl SomeAction {
     /// Return expand needs for groups.
     /// Edges of each region under bit positions that can be changed,
     /// from the point of view of the Domain (the x_mask), need to be checked.
-    fn expand_needs(&mut self, x_mask: &SomeMask) -> NeedStore {
+    fn expand_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
+
+        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
+
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -1223,8 +1242,11 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    fn confirm_groups_needs(&mut self, x_mask: &SomeMask) -> NeedStore {
+    fn confirm_groups_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
         //println!("confirm_groups_needs");
+
+        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
+
         let mut ret_nds = NeedStore::new();
 
         let regs = self.groups.regions();
@@ -2135,5 +2157,110 @@ impl SomeAction {
         //println!("regions for new groups {}", &rsx);
         rsx
     } // end possible_regions_from_square
+
+    /// Given a group, calculate the possible regions it may expand to by applying 
+    /// squares outside of the group that are incompatible.
+    pub fn _possible_regions_for_group(&self, grpx: &SomeGroup) -> RegionStore {
+        
+        let reg_xs = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
+        let mut regs = RegionStore::new();
+        regs.push(reg_xs.clone());
+        
+        let g_rules = grpx.get_rules();
+        let g_reg   = grpx.get_region();
+        let g_pn    = *grpx.get_pn();
+
+        let g_ones  = g_reg._ones();
+        let g_zeros = g_reg._zeros();
+
+        for (key, sqry) in &self.squares.ahash {
+
+            // If a square is in the group region, skip it
+            if g_reg.is_superset_of_state(&key) {
+                continue;
+            }
+
+            // If a square is not in the current possible regions, skip it.
+            if regs.any_superset_of_state(&key) {
+            } else {
+                continue;
+            }
+
+            // If the square rule(s) are compatible, or unknown, with the group rule(s), skip it
+            let sqry_pn = sqry.get_pn();
+
+            if sqry_pn == g_pn {
+                // If both are unpredictable, they are combinable
+                if sqry_pn == Pn::Unpredictable {
+                    continue;
+                }
+                // If a union can be made, they are compatible
+                if let Some(_) = sqry.get_rules().union(g_rules) {
+                    continue;
+                }
+            } else { // sqry_pn NE g_pn
+                // Check incompatible pn/pnc values
+                if sqry_pn > g_pn || sqry.get_pnc() {
+                } else {
+                    // Check sqry pn == One, samples== 1 vs group pn == Two
+                    // sqry can be incompatible or compatible
+                    if sqry_pn == Pn::One && g_pn == Pn::Two {
+                        if sqry.len_results() == 1 {
+                            if sqry.get_rules()[0].union(&g_rules[0]).is_valid_union() {
+                                continue;
+                            }
+                            if sqry.get_rules()[0].union(&g_rules[1]).is_valid_union() {
+                                continue;
+                            }
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+            }
+
+            // sqry rules are incompatible with the group rules
+
+            let key_m = key.to_mask();
+            let dif_01 = key_m.m_not().m_and(&g_ones);
+            let dif_10 = key_m.m_and(&g_zeros);
+            println!("sqry {} incompatable with group {} d01 {} d10 {}", &key, &g_reg, &dif_01, &dif_10);
+            
+            let mut sqry_regs = RegionStore::new();
+
+            if dif_01.is_not_low() {
+                let difs: Vec<SomeMask> = dif_01.split();
+                println!("difs 01 {:?}", difs); 
+                for mskx in &difs {
+                    let regx = reg_xs.set_to_ones(mskx);
+                    //println!(" regx {}", &regx);
+                    sqry_regs.push(regx);
+                }
+            }
+
+            if dif_10.is_not_low() {
+                let difs: Vec<SomeMask> = dif_10.split();
+                println!("difs 10 {:?}", difs);
+                for mskx in &difs {
+                    let regx = reg_xs.set_to_zeros(mskx);
+                    //println!(" regx {}", &regx);
+                    sqry_regs.push(regx);
+                }
+            }
+
+            println!("regs before {}", &regs);
+            println!("sqry not regs: {}", &sqry_regs);
+            regs = regs._intersection(&sqry_regs);
+            println!("regs after {}", &regs);
+
+
+
+
+
+
+        } // next key, sqry
+
+        regs
+    }
 
 } // end impl SomeAction

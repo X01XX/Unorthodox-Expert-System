@@ -123,6 +123,9 @@ impl RuleStore {
 
         if self.len() == 2 {
             if other.len() == 1 {
+                if self.first().is_subset_of(&other.first())
+                    || self.first().is_subset_of(&other.second()) {
+                    return true; }
                 return false;
             }
 
@@ -273,8 +276,9 @@ impl RuleStore {
                 return Some(ars);
             }
             return None;
+        }
 
-        } else if self.len() == 2 {
+        if self.len() == 2 {
 
             // Intersect by order1
             let mut order1 = true;
@@ -317,14 +321,17 @@ impl RuleStore {
                 let ord12 = ord1.union(&ord2).unwrap();
                 //println!("pn3 intersection of {} and {} is12 {}", self, other, ord2);
                 return Some(ord12);
+            }
 
-            } else if order1 {
+            if order1 {
                 let mut ord1 = Self::new();
                 ord1.push(int00);
                 ord1.push(int11);
                 //println!("pn3 intersection of {} and {} is1 {}", self, other, ord1);
                 return Some(ord1);
-            } else if order2 {
+            }
+
+            if order2 {
                 let mut ord2 = Self::new();
                 ord2.push(int01);
                 ord2.push(int10);

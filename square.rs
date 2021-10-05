@@ -117,12 +117,11 @@ impl SomeSquare {
 
                     Pn::Two => {
                         // self.pn == One, other.pn == Two
-                        // If the pn==One square has GT one sample, the squares cannot be combined.
-                        if self.len_results() > 1 {
+                        if self.get_pnc() {
                             return Truth::F;
                         }
 
-                        // If the pn==One square rule is combinable with one of the
+                        // If the pn==One, samples==1 square rule is combinable with one of the
                         // pn==Two square rules, more samples are needed.
                         if self.rules[0].union(&other.rules[0]).is_valid_union() {
                             return Truth::M;
@@ -153,11 +152,11 @@ impl SomeSquare {
                     Pn::One => {
                         // self.pn == Two, other.pn == One
                         // If the pn==One square is has GT 1 sample, the squares cannot be combined.
-                        if other.len_results() > 1 {
+                        if other.get_pnc() {
                             return Truth::F;
                         }
 
-                        // If the pn==one square has one sample, and
+                        // If the pn==one, samles==1, square has one sample, and
                         // its rule is combinable with one of the pn==Two square rules,
                         // more samples are needed.
                         if other.rules[0].union(&self.rules[0]).is_valid_union() {
@@ -194,33 +193,19 @@ impl SomeSquare {
             }
             Pn::Unpredictable => {
                 match other.get_pn() {
-                    // self.pn == Unpredictable, other.pn == One
-                    Pn::One => {
-                        // self.pn == Unpredictable
-                        // If the pn==One square is pnc,
-                        // the squares cannot be combined.
-                        if other.get_pnc() {
-                            return Truth::F;
-                        }
-
-                        // The pn==One square needs more samples.
-                        return Truth::M;
-                    }
-                    Pn::Two => {
-                        // self.pn == Unpredictable, other.pn == Two
-                        // If the pn==Two square is pnc, the squares cannot be combined.
-                        if other.get_pnc() {
-                            return Truth::F;
-                        }
-
-                        // The smaller pn==Two square needs more samples.
-                        return Truth::M;
-                    }
                     Pn::Unpredictable => {
                         // self.pn == Unpredictable, other.pn == Unpredictable
                         // The pn values match, no rules exist to be checked,
                         // the squares can be combined.
                         return Truth::T;
+                    }
+                    _ => {
+                        if other.get_pnc() {
+                            return Truth::F;
+                        }
+
+                        // Needs more samples
+                        return Truth::M;
                     }
                 } // end match other.pn
             }
@@ -254,11 +239,6 @@ impl SomeSquare {
                     self.rules = RuleStore::new();
                     self.rules
                         .push(SomeRule::new(&self.state, self.results.first()));
-                }
-                if self.len_results() == 2 {
-                    str_info.push_str(&format!(
-                        ", result the same as first, so not subset of any pn==2, since order matters"
-                    ));
                 }
             }
             Pn::Two => {

@@ -121,7 +121,6 @@ mod tests {
         if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
             println!("\nActs: {}", &dm1.get_actions()[0]);
             dm1.eval_sample_arbitrary(0, &s7, &s7);
-            dm1.eval_sample_arbitrary(0, &s7, &s7);
 
             if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
                 dm1.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
@@ -161,7 +160,7 @@ mod tests {
             regs.push(regx.clone());
         }
 
-        if regs.len() != 2 {
+        if regs.num_active() != 2 {
             return Err(format!("{} minus {} = {} ??", &reg0, &reg1, &regs.formatted_string()));
         }
 
@@ -177,5 +176,61 @@ mod tests {
 
         Ok(())
     }
-    
+
+    #[test]
+    fn possible_regions_for_group_by_elimination() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(1, "s1", Some(SomeRegion::from_string(1, "r1").unwrap()));
+        dm0.push(SomeAction::new(1), 0);
+
+
+        let reg_xxxx = dm0.region_from_string("rXXXX").unwrap();
+        let reg_110x = dm0.region_from_string("r110x").unwrap();
+        
+        let s0 = dm0.state_from_string("s0").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
+
+
+        let sa = dm0.state_from_string("s1010").unwrap();
+
+        let s7 = dm0.state_from_string("s111").unwrap();
+
+        let sc = dm0.state_from_string("s1100").unwrap();
+
+        let sd = dm0.state_from_string("s1101").unwrap();
+
+        dm0.eval_sample_arbitrary(0, &sd, &s0);
+        dm0.eval_sample_arbitrary(0, &sc, &s0);  // Group r110x
+
+        dm0.eval_sample_arbitrary(0, &sa, &sa);  // Group r1010
+        dm0.eval_sample_arbitrary(0, &s7, &sf);  // Group r0111
+
+        if dm0.get_actions()[0].get_groups().regions().contains(&reg_110x) {
+            println!("Region r110x found");
+        } else {
+            return Err(format!("Region r110x not created?"));
+        }
+
+        let mut regs = RegionStore::new();
+        regs.push(reg_xxxx);
+
+        let grpx = dm0.get_actions()[0].get_groups().find(&reg_110x).unwrap();
+
+        let regs_new = dm0.get_actions()[0]._possible_regions_for_group(&grpx);
+
+        if regs_new.num_active() != 2 {
+            return Err(format!("possible regions for {} given {} and {} is ? {}", &grpx.get_region(),  &s7, &sa, &regs_new.formatted_string()));
+        }
+
+        if regs_new.contains(&dm0.region_from_string("rXXXX11XX").unwrap()) {
+        } else {
+            return Err(format!("Region rXXXX11XX not found in {} ??", &regs_new.formatted_string()));
+        }
+
+        if regs_new.contains(&dm0.region_from_string("rXXXXXX0X").unwrap()) {
+        } else {
+            return Err(format!("Region rXXXXXX0X not found in {} ??", &regs_new.formatted_string()));
+        }
+
+        Ok(())
+    }
 } // end mod tests

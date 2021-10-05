@@ -5,6 +5,7 @@ use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+use crate::pn::Pn;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -83,6 +84,20 @@ impl SquareStore {
         for (key, _sqry) in &self.ahash {
             if regs.any_superset_of_state(key) == false {
                 states.push(key.clone());
+            }
+        }
+
+        states
+    }
+
+    /// Return a list of square states no in a list of regions.
+    pub fn pn_gt1_no_pnc(&self) -> StateStore {
+        let mut states = StateStore::new();
+
+        for (key, sqry) in &self.ahash {
+            if sqry.get_pn() != Pn::One &&
+               sqry.get_pnc() == false {
+                   states.push(key.clone());
             }
         }
 

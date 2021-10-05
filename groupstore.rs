@@ -54,7 +54,7 @@ impl GroupStore {
     }
     
     /// Check groups with a recently changed sqaure.
-    /// Return the number of active groups inactivated by a square.
+    /// Return the references to groups that are inactivated by a square.
     pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
@@ -64,15 +64,16 @@ impl GroupStore {
                     if grpx.square_is_ok(&sqrx) == false {
                         if *grpx.get_pn() == Pn::Two {
                         println!(
-                            "\npn2 sqr {} {} invalidates group {} {}",
+                            "\nsquare {} {} invalidates\ngroup  {} {}",
                             sqrx.get_state(), sqrx.get_rules().formatted_string(), grpx.get_region(), grpx.get_rules().formatted_string()
                         );
                         } else {
                         println!(
-                            "\nsqr {} {} invalidates group {} {}",
+                            "\nsquare {} {} invalidates\ngroup  {} {}",
                             sqrx.get_state(), sqrx.get_rules().formatted_string() , grpx.get_region(), grpx.get_rules().formatted_string()
                         );
                         }
+                        //regs_invalid.push(grpx.get_region().clone());
                         regs_invalid.push(grpx.get_region().clone());
                         grpx.inactivate(dom, act);
                     }
@@ -100,6 +101,16 @@ impl GroupStore {
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
             if grpx.get_active() && reg.is_subset_of(&grpx.get_region()) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return true if any group is a superset, or equal, to a region.
+    pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
+        for grpx in &self.avec {
+            if grpx.get_active() && grpx.get_region().is_superset_of_state(stax) {
                 return true;
             }
         }

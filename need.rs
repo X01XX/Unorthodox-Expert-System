@@ -439,7 +439,7 @@ impl SomeNeed {
                 group2: _,
                 ruls2: _,
             } => {
-                return 2;
+                return 1;
             } // end process for ContradictoryIntersection
 
             SomeNeed::ToRegion {
@@ -457,7 +457,7 @@ impl SomeNeed {
                 for_group: _,
                 anchor: _,
             } => {
-                return 6;
+                return 8;
             } // end process for ConfirmGroup
 
             SomeNeed::StateAdditionalSample {
@@ -475,7 +475,7 @@ impl SomeNeed {
                 targ_state: _,
                 in_group: _,
             } => {
-                return 1;
+                return 2;
             }
 
             _ => {

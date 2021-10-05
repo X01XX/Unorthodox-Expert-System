@@ -55,6 +55,16 @@ impl SomeBits {
         }
     }
 
+    pub fn _new_high(num_ints: usize) -> SomeBits {
+        let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
+        for _ in 0..num_ints {
+            ints_vec.push(0);
+        }
+        SomeBits {
+            ints: vec![u8::MAX; num_ints],
+        }
+    }
+
     /// Return the number of integers in a SomeBits struct.
     pub fn len(&self) -> usize {
         self.ints.len()

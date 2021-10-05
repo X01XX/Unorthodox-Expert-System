@@ -148,7 +148,16 @@ impl SomeRegion {
 
         t1.is_low()
     }
+    
+    /// Return a Mask of zero bits.
+    pub fn _zeros(&self) -> SomeMask {
+        self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
+    }
 
+    /// Return a Mask of one bits.
+    pub fn _ones (&self) -> SomeMask {
+        self.state1.s_and(&self.state2).to_mask()
+    }
     /// Return mask of x bits.
     pub fn x_mask(&self) -> SomeMask {
         self.state1.s_xor(&self.state2).to_mask()

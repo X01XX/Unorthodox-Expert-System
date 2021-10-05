@@ -258,6 +258,21 @@ impl RegionStore {
 
         rc_str
     }
+    
+    /// Return the result of intersectong two region stores
+    pub fn _intersection(&self, other: &RegionStore) -> Self {
+        let mut ret_store = Self::new();
+        
+        for regx in self.iter() {
+            for regy in other.iter() {
+                if regx.intersects(&regy) {
+                    ret_store.push_nosubs(regx.intersection(&regy));
+                }
+            }
+        }
+        ret_store
+    }
+    
 } // end impl RegionStore
 
 impl Index<usize> for RegionStore {
