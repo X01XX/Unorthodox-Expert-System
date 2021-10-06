@@ -6,7 +6,7 @@
 //! Samples to confirm a group.
 //! Housekeeping needs, like confirming a group.
 
-use crate::mask::SomeMask;
+//use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
@@ -115,10 +115,10 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} confirmed by {})", greg, sta1,),
-            SomeNeed::ClearEdgeExpandBit {
-                group_region: greg,
-                mbit: mbitx,
-            } => format!("N(group {} clear expand bit {})", greg, mbitx,),
+//            SomeNeed::ClearEdgeExpandBit {
+//                group_region: greg,
+//                mbit: mbitx,
+//            } => format!("N(group {} clear expand bit {})", greg, mbitx,),
 
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
@@ -195,10 +195,10 @@ pub enum SomeNeed {
         cstate: SomeState,
     },
     /// Housekeeping, set a edge expand bit to zero.
-    ClearEdgeExpandBit {
-        group_region: SomeRegion,
-        mbit: SomeMask,
-    },
+//    ClearEdgeExpandBit {
+//        group_region: SomeRegion,
+//        mbit: SomeMask,
+//    },
     /// Housekeeping, inactivate a region in the seek_edge vector.
     InactivateSeekEdge { reg: SomeRegion },
     /// Housekeeping, add a region to the seek_edge vector.
@@ -350,20 +350,20 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ClearEdgeExpandBit {
-                group_region: greg,
-                mbit: mbitx,
-            } => match other {
-                SomeNeed::ClearEdgeExpandBit {
-                    group_region: gregx,
-                    mbit: mbity,
-                } => {
-                    if greg == gregx && mbitx == mbity {
-                        return true;
-                    }
-                }
-                _ => {}
-            },
+//            SomeNeed::ClearEdgeExpandBit {
+//                group_region: greg,
+//                mbit: mbitx,
+//            } => match other {
+//                SomeNeed::ClearEdgeExpandBit {
+//                    group_region: gregx,
+//                    mbit: mbity,
+//                } => {
+//                    if greg == gregx && mbitx == mbity {
+//                        return true;
+//                    }
+//                }
+//                _ => {}
+//            },
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
@@ -477,7 +477,17 @@ impl SomeNeed {
             } => {
                 return 2;
             }
-
+//            SomeNeed::ClearEdgeExpandBit {
+//                group_region: _,
+//                mbit: _,
+//            } => {
+//                return 2;
+//            }
+            SomeNeed::AddGroup {
+                group_region: _,
+            } => {
+                return 99;
+            }
             _ => {
                 panic!("priority: Need not in match!");
             }

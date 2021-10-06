@@ -260,7 +260,7 @@ impl RegionStore {
     }
     
     /// Return the result of intersectong two region stores
-    pub fn _intersection(&self, other: &RegionStore) -> Self {
+    pub fn intersection(&self, other: &RegionStore) -> Self {
         let mut ret_store = Self::new();
         
         for regx in self.iter() {

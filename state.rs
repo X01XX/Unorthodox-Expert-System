@@ -112,7 +112,7 @@ impl SomeState {
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(sta) = SomeState::state_from_string(1, "0101")) {
+    /// if let Ok(sta) = SomeState::from_string(1, "0101")) {
     ///    println!("State {}", &sta);
     /// } else {
     ///    panic!("Invalid State");

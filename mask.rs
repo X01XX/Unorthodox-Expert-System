@@ -46,6 +46,13 @@ impl SomeMask {
         }
     }
 
+    /// Return a new mask set to all zeros.
+    pub fn _new_high(num_ints: usize) -> Self {
+        Self {
+            bts: SomeBits::_new_high(num_ints),
+        }
+    }
+    
     /// Accessor, return a read-onlu reference to the bts field
     pub fn get_bts(&self) -> &SomeBits {
         &self.bts
@@ -147,6 +154,49 @@ impl SomeMask {
     pub fn str2(&self) -> String {
         self.bts.str2(' ')
     }
+
+    /// Return a Mask from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// if let Ok(msk) = SomeMask::from_string(1, "0101")) {
+    ///    println!("Mask {}", &msk);
+    /// } else {
+    ///    panic!("Invalid Mask");
+    /// }
+    pub fn _from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
+        let mut bts = SomeBits::new_low(num_ints);
+
+        let mut inx = -1;
+
+        for ch in str.chars() {
+            inx += 1;
+
+            if inx == 0 {
+                if ch == 'm' || ch == 'M' {
+                    continue;
+                } else {
+                    return Err(String::from("initial character should be s"));
+                }
+            }
+
+            if bts.high_bit_set() {
+                return Err(String::from("too long"));
+            }
+
+            if ch == '0' {
+                bts = bts.shift_left();
+            } else if ch == '1' {
+                bts = bts.push_1();
+            } else if ch == '_' {
+                continue;
+            } else {
+                return Err(String::from("invalid character"));
+            }
+        } // end for ch
+
+        Ok(SomeMask::new(bts))
+    } // end from_string
+
 } // end SomeMask
 
 impl Clone for SomeMask {

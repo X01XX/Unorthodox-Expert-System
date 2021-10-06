@@ -3,7 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::mask::SomeMask;
+//use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -39,7 +39,7 @@ pub struct SomeGroup {
     anchor: Option<SomeState>,
     /// Mask of non-x bits to check for expansion.
     /// After a failed check, a 1 bit will be changed to 0.    
-    edge_expand: SomeMask,
+//    edge_expand: SomeMask,
     /// Flag used to check for other groups that are close.
     /// So a new group is checked against all others, until no
     /// more needs are generated.
@@ -68,7 +68,7 @@ impl SomeGroup {
             active: true,
             confirmed: false,
             anchor: None,
-            edge_expand: sta1.s_xor(&sta2).s_not().to_mask(),
+//            edge_expand: sta1.s_xor(&sta2).s_not().to_mask(),
             pair_needs: true,
         }
     }
@@ -104,16 +104,21 @@ impl SomeGroup {
     }
 
     /// Accessor, return a read-only reference to the edge_expand field.
-    pub fn get_edge_expand(&self) -> &SomeMask {
-        &self.edge_expand
-    }
-
+//    pub fn get_edge_expand(&self) -> &SomeMask {
+//        &self.edge_expand
+//    }
+    
+    /// Accessor, set the edge_expand field.
+//    pub fn set_edge_expand(&mut self, amask: &SomeMask) {
+//        self.edge_expand = amask.clone();
+//    }
+    
     /// Set a one bit in edge_expand to zero.  The group cannot
     /// expand on that edge.
-    pub fn check_off_expand_bit(&mut self, boff: &SomeMask) {
-        //println!("*** group {} checking off expand bit {}", &self.region, &boff);
-        self.edge_expand = self.edge_expand.m_and(&boff.m_not());
-    }
+//    pub fn check_off_expand_bit(&mut self, boff: &SomeMask) {
+//        //println!("*** group {} checking off expand bit {}", &self.region, &boff);
+//        self.edge_expand = self.edge_expand.m_and(&boff.m_not());
+//    }
 
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {

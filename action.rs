@@ -646,6 +646,14 @@ impl SomeAction {
                 nds.append(&mut ndx);
             }
 
+            if nds.len() == 0 {
+                let mut ndx = self.expand_needs(agg_chgs);
+
+                if ndx.len() > 0 {
+                    nds.append(&mut ndx);
+                }
+            }
+            
             // Check any two groups for:
             // Overlapping regions that may be combined.
             // Overlapping groups that form a contradictory intersection.
@@ -665,13 +673,13 @@ impl SomeAction {
                 }
             }
 
-            if nds.len() == 0 {
-                let mut ndx = self.expand_needs(agg_chgs);
+//            if nds.len() == 0 {
+//                let mut ndx = self.expand_needs(agg_chgs);
 
-                if ndx.len() > 0 {
-                    nds.append(&mut ndx);
-                }
-            }
+//                if ndx.len() > 0 {
+//                    nds.append(&mut ndx);
+//                }
+//            }
 
             //println!("needs: {}", nds);
             if cnt > 20 {
@@ -737,15 +745,15 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-                    SomeNeed::ClearEdgeExpandBit {
-                        group_region: greg,
-                        mbit: mbitx,
-                    } => {
-                        try_again = true;
-                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                            grpx.check_off_expand_bit(&mbitx);
-                        }
-                    }
+//                    SomeNeed::ClearEdgeExpandBit {
+//                        group_region: greg,
+//                        mbit: mbitx,
+//                    } => {
+//                        try_again = true;
+//                        if let Some(grpx) = self.groups.find_mut(&greg) {
+//                            grpx.check_off_expand_bit(&mbitx);
+//                        }
+//                    }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         try_again = true;
                         self.seek_edge.inactivate(&regx);
@@ -1083,8 +1091,6 @@ impl SomeAction {
     /// from the point of view of the Domain (the x_mask), need to be checked.
     fn expand_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
 
-        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
-
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
 
@@ -1093,78 +1099,27 @@ impl SomeAction {
                 continue;
             }
 
-            // Check for edge bits under mask of all possible X bits.
-            let edge_expand = grpx.get_edge_expand().m_and(&x_mask);
-
-            if edge_expand.is_low() {
+            if grpx.get_confirmed() {
                 continue;
             }
 
-            // Get a vector of one-bit masks
-            let edge_msks = edge_expand.split();
-
-            // Check for expansion, or single-bit adjacent external
-            for edge_msk in edge_msks.iter() {
-                // Calc adjacent region
-                let reg_exp = grpx.get_region().toggle_bits(edge_msk);
-
-                // Check squares compatibility with each other
-                let mut chk_stas = self.squares.stas_in_reg(&reg_exp);
-                let mut reject = false;
-
-                // Add region square states to be checked against others.
-                chk_stas.push(grpx.get_region().get_state1().clone());
-
-                chk_stas.push(grpx.get_region().get_state2().clone());
-
-                let mut inx = 1;
-                for stax in chk_stas.iter() {
-                    let sqrx = self.squares.find(stax).unwrap();
-
-                    for iny in inx..chk_stas.len() {
-                        let sqry = self.squares.find(&chk_stas[iny]).unwrap();
-
-                        if sqrx.can_combine(&sqry) == Truth::F {
-                            reject = true;
-                            break;
+            let greg = grpx.get_region();
+            let regs_new: RegionStore = self.possible_regions_for_group(&grpx, agg_chgs);
+            //println!("test for group {} possible regs: {}", greg, &regs_new);
+            if regs_new.len() == 1 && regs_new[0] == *grpx.get_region() {
+            } else {
+                for regx in regs_new.iter() {
+                    if regx == greg {
+                    } else {
+                        let mut gnds = self.possible_group_needs(regx, 33);
+                        if gnds.len() > 0 {
+                            //println!("expand_needs: for group {} found needs {}", greg, &gnds);
+                            ret_nds.append(&mut gnds);
                         }
-                    } // next iny
-
-                    if reject {
-                        break;
                     }
-
-                    inx += 1;
-                } // next stax
-
-                if reject {
-                    ret_nds.push(SomeNeed::ClearEdgeExpandBit {
-                        group_region: grpx.get_region().clone(),
-                        mbit: edge_msk.clone(),
-                    });
-                    continue;
                 }
-
-                let reg_both = reg_exp.union(&grpx.get_region()); // one bit so double the "area"
-
-                let mut ndsx = self.possible_group_needs(&reg_both, 1);
-
-                // println!(
-                //     "expand_needs, act {}, check reg {} needs {} for expansion of group {}",
-                //     &self.num, &reg_both, &ndsx, &grpx.region
-                // );
-
-                if ndsx.len() == 0 {
-                    ret_nds.push(SomeNeed::ClearEdgeExpandBit {
-                        group_region: grpx.get_region().clone(),
-                        mbit: edge_msk.clone(),
-                    });
-                } else {
-                    ret_nds.append(&mut ndsx);
-                }
-            } // next edge_msk
-        } // next grpx
-
+            }
+        }
         ret_nds
     }
 
@@ -1789,6 +1744,7 @@ impl SomeAction {
         let reg_both = grpx.get_region().union(grpy.get_region());
 
         if *grpx.get_pn() == Pn::Unpredictable && *grpy.get_pn() == Pn::Unpredictable {
+            //return nds;
             return self.possible_group_needs(&reg_both, 2);
         }
 
@@ -1822,12 +1778,15 @@ impl SomeAction {
                 //println!("pn2 whole intersection is bad");
                 nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
             }
-            
+
             return nds;
+        } else {
+            return self.possible_group_needs(&reg_both, 2);
         }
 
         // Rules are the same, see if the two groups can be combined
-        self.possible_group_needs(&reg_both, 3)
+        //self.possible_group_needs(&reg_both, 3)
+        //nds
     } // end group_pair_intersection_needs
 
     /// Get needs for two adjacent groups, with the same pn rating.
@@ -1845,10 +1804,10 @@ impl SomeAction {
         match grpx.get_pn() {
             Pn::Unpredictable => {
                 // If the regions have the same X-bit pattern, they can be combined
-                if grpx.get_region().x_mask() == grpy.get_region().x_mask() {
-                    let regx = grpx.get_region().union(grpy.get_region());
-                    return self.possible_group_needs(&regx, 4);
-                }
+//                if grpx.get_region().x_mask() == grpy.get_region().x_mask() {
+//                    let regx = grpx.get_region().union(grpy.get_region());
+//                    return self.possible_group_needs(&regx, 4);
+//                }
 
                 let regz = grpx.get_region().overlapping_part(grpy.get_region());
 
@@ -1860,10 +1819,59 @@ impl SomeAction {
                 return self.possible_group_needs(&regz, 5);
             }
             _ => {
-                let regx = grpx.get_region().union(grpy.get_region());
-                return self.possible_group_needs(&regx, 6);
+                let regz = grpx.get_region().overlapping_part(grpy.get_region());
+
+                if self.groups.any_superset_of(&regz) {
+                    return nds;
+                }
+                //let rulsx = grpx.get_rules().restrict_initial_region(&regz);
+                //let rulsy = grpy.get_rules().restrict_initial_region(&regz);
+                //if let Some(_) = rulsx.union(&rulsy) {
+                
+                //let regx = grpx.get_region().union(grpy.get_region());
+                //return self.possible_group_needs(&regz, 6);
+                //}
+                //return nds;
+                let stax1 = grpx.get_region().get_state1();
+                let stax2 = grpx.get_region().get_state2();
+                let stay1 = grpy.get_region().get_state1();
+                let stay2 = grpy.get_region().get_state2();
+
+                let sqrx1 = self.squares.find(stax1).unwrap();
+                let sqrx2 = self.squares.find(stax2).unwrap();
+                let sqry1 = self.squares.find(stay1).unwrap();
+                let sqry2 = self.squares.find(stay2).unwrap();
+
+                if SomeRegion::new(&stax1, &stay1).is_superset_of(&regz) {
+                    if sqrx1.can_combine(&sqry1) == Truth::T {
+                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
+                        return self.possible_group_needs(&regz, 199);
+                    }
+                }
+
+                if SomeRegion::new(&stax1, &stay2).is_superset_of(&regz) {
+                    if sqrx1.can_combine(&sqry2) == Truth::T {
+                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
+                        return self.possible_group_needs(&regz, 299);
+                    }
+                }
+
+                if SomeRegion::new(&stax2, &stay1).is_superset_of(&regz) {
+                    if sqrx2.can_combine(&sqry1) == Truth::T {
+                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
+                        return self.possible_group_needs(&regz, 399);
+                    }
+                }
+
+                if SomeRegion::new(&stax2, &stay2).is_superset_of(&regz) {
+                    if sqrx2.can_combine(&sqry2) == Truth::T {
+                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
+                        return self.possible_group_needs(&regz, 499);
+                    }
+                }
             } // end match pn default
         } // end match pn for adjacent regions
+        nds
     } // end group_pair_adjacent_needs
 
     /// For a contradictory intersection, return a need for more samples.
@@ -2160,18 +2168,32 @@ impl SomeAction {
 
     /// Given a group, calculate the possible regions it may expand to by applying 
     /// squares outside of the group that are incompatible.
-    pub fn _possible_regions_for_group(&self, grpx: &SomeGroup) -> RegionStore {
-        
-        let reg_xs = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
+    pub fn possible_regions_for_group(&self, grpx: &SomeGroup, agg_chgs: &SomeChange) -> RegionStore {
+
+        // Init return RegionStore
         let mut regs = RegionStore::new();
-        regs.push(reg_xs.clone());
+
+        // Init possible regions from group region and aggregate changes
+        let chg_mask = grpx.get_region().ones().m_and(&agg_chgs.get_b10());
+        let chg_mask = chg_mask.m_or(&grpx.get_region().zeros().m_and(&agg_chgs.get_b01()));
         
+        if chg_mask.is_low() {
+            regs.push(grpx.get_region().clone());
+            return regs;
+        }
+
+        let reg_chg = grpx.get_region().set_to_x(&chg_mask);
+        regs.push(reg_chg.clone());
+        //println!("Possible max region is {}", &regs);
+
+        let all_x = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
+
         let g_rules = grpx.get_rules();
         let g_reg   = grpx.get_region();
         let g_pn    = *grpx.get_pn();
 
-        let g_ones  = g_reg._ones();
-        let g_zeros = g_reg._zeros();
+        let g_ones  = g_reg.ones();
+        let g_zeros = g_reg.zeros();
 
         for (key, sqry) in &self.squares.ahash {
 
@@ -2194,9 +2216,18 @@ impl SomeAction {
                 if sqry_pn == Pn::Unpredictable {
                     continue;
                 }
-                // If a union can be made, they are compatible
-                if let Some(_) = sqry.get_rules().union(g_rules) {
-                    continue;
+                if sqry_pn == Pn::Two {
+                    if let Some(_) = sqry.get_rules().union(self.squares.find(grpx.get_region().get_state1()).unwrap().get_rules()) {
+                        if let Some(_) = sqry.get_rules().union(self.squares.find(grpx.get_region().get_state2()).unwrap().get_rules()) {
+                           continue;
+                       }
+                    }
+                } else {
+                    // If a union can be made, they are compatible
+                    //println!("grules {} sqry rules {}", &g_rules, sqry.get_rules());
+                    if let Some(_) = sqry.get_rules().union(g_rules) {
+                        continue;
+                    }
                 }
             } else { // sqry_pn NE g_pn
                 // Check incompatible pn/pnc values
@@ -2213,8 +2244,6 @@ impl SomeAction {
                                 continue;
                             }
                         }
-                    } else {
-                        continue;
                     }
                 }
             }
@@ -2224,15 +2253,15 @@ impl SomeAction {
             let key_m = key.to_mask();
             let dif_01 = key_m.m_not().m_and(&g_ones);
             let dif_10 = key_m.m_and(&g_zeros);
-            println!("sqry {} incompatable with group {} d01 {} d10 {}", &key, &g_reg, &dif_01, &dif_10);
+//            println!("sqry {} incompatable with group {} d01 {} d10 {}", &key, &g_reg, &dif_01, &dif_10);
             
             let mut sqry_regs = RegionStore::new();
 
             if dif_01.is_not_low() {
                 let difs: Vec<SomeMask> = dif_01.split();
-                println!("difs 01 {:?}", difs); 
+//                println!("difs 01 {:?}", difs); 
                 for mskx in &difs {
-                    let regx = reg_xs.set_to_ones(mskx);
+                    let regx = all_x.set_to_ones(mskx);
                     //println!(" regx {}", &regx);
                     sqry_regs.push(regx);
                 }
@@ -2240,27 +2269,23 @@ impl SomeAction {
 
             if dif_10.is_not_low() {
                 let difs: Vec<SomeMask> = dif_10.split();
-                println!("difs 10 {:?}", difs);
+//                println!("difs 10 {:?}", difs);
                 for mskx in &difs {
-                    let regx = reg_xs.set_to_zeros(mskx);
+                    let regx = all_x.set_to_zeros(mskx);
                     //println!(" regx {}", &regx);
                     sqry_regs.push(regx);
                 }
             }
 
-            println!("regs before {}", &regs);
-            println!("sqry not regs: {}", &sqry_regs);
-            regs = regs._intersection(&sqry_regs);
-            println!("regs after {}", &regs);
-
-
-
-
-
+//            println!("regs before {}", &regs);
+//            println!("sqry not regs: {}", &sqry_regs);
+            regs = regs.intersection(&sqry_regs);
+//            println!("regs after {}", &regs);
 
         } // next key, sqry
 
+        //println!("possible_regions_for_group {} returning {}", grpx.get_region(), &regs);
         regs
-    }
+    } // end possible_regions_for_group
 
 } // end impl SomeAction

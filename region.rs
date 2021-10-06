@@ -150,12 +150,12 @@ impl SomeRegion {
     }
     
     /// Return a Mask of zero bits.
-    pub fn _zeros(&self) -> SomeMask {
+    pub fn zeros(&self) -> SomeMask {
         self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of one bits.
-    pub fn _ones (&self) -> SomeMask {
+    pub fn ones (&self) -> SomeMask {
         self.state1.s_and(&self.state2).to_mask()
     }
     /// Return mask of x bits.
@@ -317,10 +317,10 @@ impl SomeRegion {
     }
 
     /// Toggle non-x bits in a region, given a mask.
-    pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
-        let stxor = SomeState::new(tbits.get_bts().clone());
-        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
-    }
+//    pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
+//        let stxor = SomeState::new(tbits.get_bts().clone());
+//        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
+//    }
 
     /// Given a set of states (square keys),
     ///
