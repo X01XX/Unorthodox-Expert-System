@@ -673,14 +673,6 @@ impl SomeAction {
                 }
             }
 
-//            if nds.len() == 0 {
-//                let mut ndx = self.expand_needs(agg_chgs);
-
-//                if ndx.len() > 0 {
-//                    nds.append(&mut ndx);
-//                }
-//            }
-
             //println!("needs: {}", nds);
             if cnt > 20 {
                 println!("needs: {}", &nds);
@@ -745,15 +737,15 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-//                    SomeNeed::ClearEdgeExpandBit {
-//                        group_region: greg,
-//                        mbit: mbitx,
-//                    } => {
-//                        try_again = true;
-//                        if let Some(grpx) = self.groups.find_mut(&greg) {
-//                            grpx.check_off_expand_bit(&mbitx);
-//                        }
-//                    }
+                    SomeNeed::SetEdgeExpand {
+                        group_region: greg,
+                        edge_mask: mbitx,
+                    } => {
+                        try_again = true;
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            grpx.set_edge_expand(&mbitx);
+                        }
+                    }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         try_again = true;
                         self.seek_edge.inactivate(&regx);
@@ -1103,10 +1095,18 @@ impl SomeAction {
                 continue;
             }
 
+            let chg_mask = grpx.get_region().ones().m_and(&agg_chgs.get_b10());
+            let chg_mask = chg_mask.m_or(&grpx.get_region().zeros().m_and(&agg_chgs.get_b01()));
+            
+            if chg_mask == *grpx.get_edge_expand() {
+                continue;
+            }
+            
             let greg = grpx.get_region();
-            let regs_new: RegionStore = self.possible_regions_for_group(&grpx, agg_chgs);
+            let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
             //println!("test for group {} possible regs: {}", greg, &regs_new);
             if regs_new.len() == 1 && regs_new[0] == *grpx.get_region() {
+                ret_nds.push(SomeNeed::SetEdgeExpand { group_region: grpx.get_region().clone(), edge_mask: chg_mask.clone() });
             } else {
                 for regx in regs_new.iter() {
                     if regx == greg {
@@ -1200,7 +1200,7 @@ impl SomeAction {
     fn confirm_groups_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
         //println!("confirm_groups_needs");
 
-        let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
+        //let x_mask = agg_chgs.get_b01().m_or(agg_chgs.get_b10());
 
         let mut ret_nds = NeedStore::new();
 
@@ -1231,7 +1231,9 @@ impl SomeAction {
             }
 
             // Get mask of edge bits to use to confirm.
-            let edge_confirm = grpx.get_region().x_mask().m_not().m_and(&x_mask);
+            let mut edge_confirm = grpx.get_region().ones().m_and(&agg_chgs.get_b10());
+            edge_confirm = edge_confirm.m_or(&grpx.get_region().zeros().m_and(&agg_chgs.get_b01()));
+            //let edge_confirm = grpx.get_region().x_mask().m_not().m_and(&x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
             let edge_msks = edge_confirm.split();
@@ -2168,15 +2170,11 @@ impl SomeAction {
 
     /// Given a group, calculate the possible regions it may expand to by applying 
     /// squares outside of the group that are incompatible.
-    pub fn possible_regions_for_group(&self, grpx: &SomeGroup, agg_chgs: &SomeChange) -> RegionStore {
+    pub fn possible_regions_for_group(&self, grpx: &SomeGroup, chg_mask: &SomeMask) -> RegionStore {
 
         // Init return RegionStore
         let mut regs = RegionStore::new();
 
-        // Init possible regions from group region and aggregate changes
-        let chg_mask = grpx.get_region().ones().m_and(&agg_chgs.get_b10());
-        let chg_mask = chg_mask.m_or(&grpx.get_region().zeros().m_and(&agg_chgs.get_b01()));
-        
         if chg_mask.is_low() {
             regs.push(grpx.get_region().clone());
             return regs;

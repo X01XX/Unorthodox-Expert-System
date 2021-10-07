@@ -246,6 +246,11 @@ impl GroupStore {
         self.avec.iter()
     }
 
+    /// Return an iterator
+//    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
+//        self.avec.iter_mut()
+//    }
+
     /// Return the number of active, and inactive, groups.
     pub fn len(&self) -> usize {
         self.avec.len()
