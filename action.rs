@@ -741,7 +741,7 @@ impl SomeAction {
                         group_region: greg,
                         edge_mask: mbitx,
                     } => {
-                        try_again = true;
+                        try_again = true; // needed to at least get need out of the need list on the next pass
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             grpx.set_edge_expand(&mbitx);
                         }

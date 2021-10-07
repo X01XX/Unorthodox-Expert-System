@@ -145,7 +145,7 @@ impl SomeDomain {
             if areg.is_superset_of_state(&self.cur_state) {
             } else {
                 nst.push(SomeNeed::ToRegion {
-                    dom_num: self.num, // set this in domain get_needs
+                    dom_num: self.num,
                     act_num: 0,
                     goal_reg: areg.clone(),
                 });

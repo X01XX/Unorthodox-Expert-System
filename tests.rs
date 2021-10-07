@@ -5,7 +5,7 @@
 mod tests {
 //    use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
-    use crate::change::SomeChange;
+//    use crate::change::SomeChange;
     use crate::mask::SomeMask;
 //    use crate::maskstore::MaskStore;
     use crate::action::SomeAction;
@@ -201,12 +201,7 @@ mod tests {
         if let Some(grpx) = dm0.get_actions()[0].get_groups().find(&reg_1110x) {
             println!("Region r1110x found");
 
-            let chg_mask10 = SomeMask::_from_string(1, "m100").unwrap();
-            let chg_mask01 = SomeMask::_from_string(1, "m11").unwrap();
-
-            let agg_chgs = SomeChange::new(&chg_mask01, &chg_mask10);
-
-            let regs_new = dm0.get_actions()[0].possible_regions_for_group(&grpx, &agg_chgs);
+            let regs_new = dm0.get_actions()[0].possible_regions_for_group(&grpx, &SomeMask::_from_string(1, "m110").unwrap());
 
             if regs_new.num_active() != 2 {
                 return Err(format!("possible regions for {} given {} is ? {}", &grpx.get_region(), &s1a, &regs_new.formatted_string()));

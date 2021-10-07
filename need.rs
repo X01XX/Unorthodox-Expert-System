@@ -477,12 +477,12 @@ impl SomeNeed {
             } => {
                 return 2;
             }
-//            SomeNeed::ClearEdgeExpandBit {
-//                group_region: _,
-//                mbit: _,
-//            } => {
-//                return 2;
-//            }
+            SomeNeed::SetEdgeExpand {
+                group_region: _,
+                edge_mask: _,
+            } => {
+                return 2;
+            }
             SomeNeed::AddGroup {
                 group_region: _,
             } => {
