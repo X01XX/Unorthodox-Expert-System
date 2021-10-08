@@ -409,73 +409,73 @@ impl SomeDomain {
 
         if asym_stps.len() == 0 {
 
-        // Evaluate glide path
-        // Some steps may intersect both the from region and goal region witout
-        // being a single step solution
-        let mut steps_from = false;
-        let mut steps_goal = false;
-        for stpx in steps_str.iter() {
-            if steps_from == false && stpx.initial.intersects(from_reg) {
-                steps_from = true;
-            }
-            if steps_goal == false && stpx.result.intersects(goal_reg) {
-                steps_goal = true;
-            }
-        }
-
-        if steps_from == false || steps_goal == false {
-            return None;
-        }
-
-        // Initalization for chaining
-        let num_tries = 3;
-        let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
-
-        // Run a number of depth-first forward chaining
-        for _ in 0..num_tries {
-            if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str) {
-                if poss_steps.initial().intersects(from_reg) {
-                    if poss_steps.result().intersects(goal_reg) {
-                        step_options.push(poss_steps);
-                    } else {
-                        println!("problem1: result {} not in steps {}", goal_reg, &poss_steps);
-                    }
-                } else {
-                    println!("problem2: initial {} not in steps {}", from_reg, &poss_steps);
+            // Evaluate glide path
+            // Some steps may intersect both the from region and goal region witout
+            // being a single step solution
+            let mut steps_from = false;
+            let mut steps_goal = false;
+            for stpx in steps_str.iter() {
+                if steps_from == false && stpx.initial.intersects(from_reg) {
+                    steps_from = true;
+                }
+                if steps_goal == false && stpx.result.intersects(goal_reg) {
+                    steps_goal = true;
                 }
             }
-        } // next try
 
-        if step_options.len() > 0 {
-            let inx = choose_one(&step_options);
-            //println!("forward chaining test worked! {}", &step_options[inx]);
-            return Some(step_options[inx].clone());
-        }
-
-        // Run a number of depth-first backward chaining 
-        for _ in 0..num_tries {
-            if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg, &steps_str) {
-    
-                if poss_steps.initial().intersects(from_reg) {
-                    if poss_steps.result().intersects(goal_reg) {
-                        step_options.push(poss_steps);
-                    } else {
-                        println!("problem3: result {} not in steps {}", goal_reg, &poss_steps);
-                    }
-                } else {
-                    println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
-                }
+            if steps_from == false || steps_goal == false {
+                return None;
             }
-        } // next try
 
-        if step_options.len() > 0 {
-            let inx = choose_one(&step_options);
-            //println!("backward chaining worked! {}", &step_options[inx].clone());
-            return Some(step_options[inx].clone());
-        }
+            // Initalization for chaining
+            let num_tries = 3;
+            let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
 
-    } // endif asym_stps.len() == 0
-    
+            // Run a number of depth-first forward chaining
+            for _ in 0..num_tries {
+                if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str) {
+                    if poss_steps.initial().intersects(from_reg) {
+                        if poss_steps.result().intersects(goal_reg) {
+                            step_options.push(poss_steps);
+                        } else {
+                            println!("problem1: result {} not in steps {}", goal_reg, &poss_steps);
+                        }
+                    } else {
+                        println!("problem2: initial {} not in steps {}", from_reg, &poss_steps);
+                    }
+                }
+            } // next try
+
+            if step_options.len() > 0 {
+                let inx = choose_one(&step_options);
+                //println!("forward chaining test worked! {}", &step_options[inx]);
+                return Some(step_options[inx].clone());
+            }
+
+            // Run a number of depth-first backward chaining 
+            for _ in 0..num_tries {
+                if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg, &steps_str) {
+
+                    if poss_steps.initial().intersects(from_reg) {
+                        if poss_steps.result().intersects(goal_reg) {
+                            step_options.push(poss_steps);
+                        } else {
+                            println!("problem3: result {} not in steps {}", goal_reg, &poss_steps);
+                        }
+                    } else {
+                        println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
+                    }
+                }
+            } // next try
+
+            if step_options.len() > 0 {
+                let inx = choose_one(&step_options);
+                //println!("backward chaining worked! {}", &step_options[inx].clone());
+                return Some(step_options[inx].clone());
+            }
+
+        } // endif asym_stps.len() == 0
+
         // Try Asymmetric forward chaining
         if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
 

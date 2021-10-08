@@ -194,7 +194,7 @@ pub enum SomeNeed {
         group_region: SomeRegion,
         cstate: SomeState,
     },
-    /// Housekeeping, set a edge expand bit to zero.
+    /// Housekeeping, set an edge expand mask.
     SetEdgeExpand {
         group_region: SomeRegion,
         edge_mask: SomeMask,
@@ -483,11 +483,11 @@ impl SomeNeed {
             } => {
                 return 2;
             }
-            SomeNeed::AddGroup {
-                group_region: _,
-            } => {
-                return 99;
-            }
+//            SomeNeed::AddGroup {
+//                group_region: _,
+//            } => {
+//                return 99;
+//            }
             _ => {
                 panic!("priority: Need not in match!");
             }

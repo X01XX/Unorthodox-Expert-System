@@ -24,6 +24,7 @@ use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
 
+//use rayon::prelude::*;
 use std::fmt;
 extern crate rand;
 use rand::Rng;
@@ -1074,41 +1075,71 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
+            let mut nds_tmp = self.expand_needs_group(grpx, agg_chgs);
+            ret_nds.append(&mut nds_tmp);
+        }
+
+        ret_nds
+
+        // Run a get_needs thread for each action
+//        let mut vecx: Vec<NeedStore> = self
+//            .groups.avec
+//            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+//            .map(|grpx| self.expand_needs_group(grpx, agg_chgs))
+//            .collect::<Vec<NeedStore>>();
+
+        // Aggregate the results into one NeedStore
+//        let mut nds_agg = NeedStore::new();
+
+//        for mut nst in vecx.iter_mut() {
+//            nds_agg.append(&mut nst);
+//        }
+
+//        nds_agg
+    }
+
+    /// Return the expand need for a gorup
+    pub fn expand_needs_group(&self, grpx: &SomeGroup, agg_chgs: &SomeChange) -> NeedStore {
+
+        let mut ret_nds = NeedStore::new();
+
+        if grpx.active == false {
+            return ret_nds;
+        }
+
+        if grpx.confirmed {
+            return ret_nds;
+        }
+
+        let chg_mask = grpx.region.ones().m_and(&agg_chgs.b10);
+        let chg_mask = chg_mask.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
+
+        if chg_mask == grpx.edge_expand {
+            return ret_nds;
+        }
+
+        let g_reg = &grpx.region;
+        let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
+        //println!("test for group {} possible regs: {}", greg, &regs_new);
+        for regx in regs_new.iter() {
+
+            if regx.active == false {
                 continue;
             }
 
-            if grpx.confirmed {
-                continue;
+            if regx == g_reg {
+                ret_nds = NeedStore::new();
+                ret_nds.push(SomeNeed::SetEdgeExpand { group_region: g_reg.clone(), edge_mask: chg_mask });
+                return ret_nds;
             }
 
-            let chg_mask = grpx.region.ones().m_and(&agg_chgs.b10);
-            let chg_mask = chg_mask.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
-            
-            if chg_mask == grpx.edge_expand {
-                continue;
-            }
-            
-            let g_reg = &grpx.region;
-            let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
-            //println!("test for group {} possible regs: {}", greg, &regs_new);
-            for regx in regs_new.iter() {
-                if regx.active == false {
-                    continue;
-                }
-                if regx == g_reg {
-                    ret_nds = NeedStore::new();
-                    ret_nds.push(SomeNeed::SetEdgeExpand { group_region: g_reg.clone(), edge_mask: chg_mask });
-                    return ret_nds;
-                }
-
-                let mut gnds = self.possible_group_needs(regx, 33);
-                if gnds.len() > 0 {
-                    //println!("expand_needs: for group {} found needs {}", greg, &gnds);
-                    ret_nds.append(&mut gnds);
-                }
+            let mut gnds = self.possible_group_needs(regx, 33);
+            if gnds.len() > 0 {
+                //println!("expand_needs: for group {} found needs {}", greg, &gnds);
+                ret_nds.append(&mut gnds);
             }
         }
+
         ret_nds
     }
 
@@ -1189,8 +1220,6 @@ impl SomeAction {
     fn confirm_groups_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
         //println!("confirm_groups_needs");
 
-        //let x_mask = agg_chgs.b01.m_or(agg_chgs.b10);
-
         let mut ret_nds = NeedStore::new();
 
         let regs = self.groups.regions();
@@ -1222,7 +1251,6 @@ impl SomeAction {
             // Get mask of edge bits to use to confirm.
             let mut edge_confirm = grpx.region.ones().m_and(&agg_chgs.b10);
             edge_confirm = edge_confirm.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
-            //let edge_confirm = grpx.get_region().x_mask().m_not().m_and(&x_mask);
 
             // Get the bit masks on non-X bit-positions in greg
             let edge_msks = edge_confirm.split();
@@ -2157,8 +2185,10 @@ impl SomeAction {
     } // end possible_regions_from_square
 
     /// Given a group, calculate the possible regions it may expand to by applying 
-    /// squares outside of the group that are incompatible.
+    /// squares outside of the group that are incompatible, within the limits of 
+    /// the changes roughly allowed by the current rules, given by a mask.
     pub fn possible_regions_for_group(&self, grpx: &SomeGroup, chg_mask: &SomeMask) -> RegionStore {
+        //println!("possible_regions_for_group {}", &grpx.region);
 
         // Init return RegionStore
         let mut regs = RegionStore::new();
@@ -2168,22 +2198,14 @@ impl SomeAction {
             return regs;
         }
 
-        let reg_chg = grpx.region.set_to_x(&chg_mask);
-        regs.push(reg_chg.clone());
+        let most_x = grpx.region.set_to_x(&chg_mask);
+        regs.push(most_x.clone());
         //println!("Possible max region is {}", &regs);
-
-        let all_x = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
-
-        let g_rules = &grpx.rules;
-        let g_reg   = &grpx.region;
-
-        let g_ones  = g_reg.ones();
-        let g_zeros = g_reg.zeros();
 
         for (key, sqry) in &self.squares.ahash {
 
             // If a square is in the group region, skip it
-            if g_reg.is_superset_of_state(&key) {
+            if grpx.region.is_superset_of_state(&key) {
                 continue;
             }
 
@@ -2210,7 +2232,7 @@ impl SomeAction {
                 } else {
                     // If a union can be made, they are compatible
                     //println!("grules {} sqry rules {}", &g_rules, sqry.rules);
-                    if let Some(_) = sqry.rules.union(g_rules) {
+                    if let Some(_) = sqry.rules.union(&grpx.rules) {
                         continue;
                     }
                 }
@@ -2222,10 +2244,10 @@ impl SomeAction {
                     // sqry can be incompatible or compatible
                     if sqry_pn == Pn::One && grpx.pn == Pn::Two {
                         if sqry.len_results() == 1 {
-                            if sqry.rules[0].union(&g_rules[0]).is_valid_union() {
+                            if sqry.rules[0].union(&grpx.rules[0]).is_valid_union() {
                                 continue;
                             }
-                            if sqry.rules[0].union(&g_rules[1]).is_valid_union() {
+                            if sqry.rules[0].union(&grpx.rules[1]).is_valid_union() {
                                 continue;
                             }
                         }
@@ -2236,17 +2258,16 @@ impl SomeAction {
             // sqry rules are incompatible with the group rules
 
             let key_m = key.to_mask();
-            let dif_01 = key_m.m_not().m_and(&g_ones);
-            let dif_10 = key_m.m_and(&g_zeros);
+            let dif_01 = key_m.m_not().m_and(&grpx.region.ones()).m_and(chg_mask);
+            let dif_10 = key_m.m_and(&grpx.region.zeros()).m_and(chg_mask);
 //            println!("sqry {} incompatable with group {} d01 {} d10 {}", &key, &g_reg, &dif_01, &dif_10);
             
             let mut sqry_regs = RegionStore::new();
 
             if dif_01.is_not_low() {
                 let difs: Vec<SomeMask> = dif_01.split();
-//                println!("difs 01 {:?}", difs); 
                 for mskx in &difs {
-                    let regx = all_x.set_to_ones(mskx);
+                    let regx = most_x.set_to_ones(mskx);
                     //println!(" regx {}", &regx);
                     sqry_regs.push(regx);
                 }
@@ -2254,9 +2275,8 @@ impl SomeAction {
 
             if dif_10.is_not_low() {
                 let difs: Vec<SomeMask> = dif_10.split();
-//                println!("difs 10 {:?}", difs);
                 for mskx in &difs {
-                    let regx = all_x.set_to_zeros(mskx);
+                    let regx = most_x.set_to_zeros(mskx);
                     //println!(" regx {}", &regx);
                     sqry_regs.push(regx);
                 }

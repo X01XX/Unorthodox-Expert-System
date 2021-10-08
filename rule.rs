@@ -113,7 +113,7 @@ impl SomeRule {
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
         let st_high = self.b11.m_or(&self.b01).to_state();
-        let st_low = SomeState::new(self.b00.bts.b_or(&self.b10.bts).b_not());
+        let st_low = self.b00.m_or(&self.b10).m_not().to_state();
 
         SomeRegion::new(&st_high, &st_low)
     }
@@ -209,7 +209,7 @@ impl SomeRule {
 
     /// Return the expected length of a string representation of SomeRule.
     pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.b00.bts.len() * 3) - 1
+        (NUM_BITS_PER_INT * self.b00.num_ints() * 3) - 1
     }
 
     /// Return a string representation of SomeRule.

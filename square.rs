@@ -66,7 +66,7 @@ impl SomeSquare {
 
     /// Return a string representing a square.
     pub fn str_terse(&self) -> String {
-        self.state.bts.formatted_string('S')
+        self.state.formatted_string()
     }
 
     /// Can two squares be combined?

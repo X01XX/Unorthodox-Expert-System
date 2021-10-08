@@ -36,7 +36,7 @@ impl fmt::Display for GroupStore {
 #[derive(Serialize, Deserialize)]
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
-    avec: Vec<SomeGroup>,
+    pub avec: Vec<SomeGroup>,
     /// If a group is added or deleted, the changed flag is set to true.
     changed: bool,
 }

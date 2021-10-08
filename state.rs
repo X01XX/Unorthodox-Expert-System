@@ -21,7 +21,7 @@ use std::hash::Hash;
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeState {
-    pub bts: SomeBits,
+    bts: SomeBits,
 }
 
 impl fmt::Display for SomeState {

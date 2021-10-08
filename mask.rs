@@ -25,7 +25,7 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeMask {
     /// Bits set to one are significant.
-    pub bts: SomeBits,
+    bts: SomeBits,
 }
 
 impl fmt::Display for SomeMask {
