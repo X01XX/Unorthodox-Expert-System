@@ -55,29 +55,29 @@ mod tests {
         dm1.eval_sample_arbitrary(0, &sf, &se);
         dm1.eval_sample_arbitrary(0, &sf, &sf);
 
-        if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
             dm1.eval_sample_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
                 dm1.eval_sample_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
 
-                if let Some(_) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
-                    //println!("\nActs: {}", &dm1.get_actions()[0]);
-                    //println!(" {}", dm1.get_actions()[0].get_squares());
+                if let Some(_) = dm1.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dm1.actions[0]);
+                    //println!(" {}", dm1.actions[0].squares);
                     return Err(String::from("failed, rx1x1 should have been deleted"));
                 } else {
-                    //println!("\nActs: {}", &dm1.get_actions()[0]);
-                    //println!("       Sqrs: ({})", dm1.get_actions()[0].get_squares());
+                    //println!("\nActs: {}", &dm1.actions[0]);
+                    //println!("       Sqrs: ({})", dm1.actions[0].squares);
                     return Ok(());
                 }
             } else {
-                //println!("\nActs: {}", &dm1.get_actions()[0]);
-                //println!("       Sqrs: ({})", dm1.get_actions()[0].get_squares());
+                //println!("\nActs: {}", &dm1.actions[0]);
+                //println!("       Sqrs: ({})", dm1.actions[0].squares);
                 //println!("Group deleted too soon!");
                 return Err(String::from("failed, rx1x1 deleted too soon"));
             }
         } else {
-            //println!("\nActs: {}", &dm1.get_actions()[0]);
+            //println!("\nActs: {}", &dm1.actions[0]);
             return Err(String::from(
                 "failed, group rx1x1 was not formed by two squares",
             ));
@@ -119,15 +119,15 @@ mod tests {
         dm1.eval_sample_arbitrary(0, &sf, &sf);
         dm1.eval_sample_arbitrary(0, &sf, &s4);
 
-        if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
-            println!("\nActs: {}", &dm1.get_actions()[0]);
+        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+            println!("\nActs: {}", &dm1.actions[0]);
             dm1.eval_sample_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
+            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
                 dm1.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
-                if let Some(_regx) = dm1.get_actions()[0].get_groups().find(&rx1x1) {
-                    //println!("\nActs: {}", &dm1.get_actions()[0]);
-                    //println!(" {}", dm1.get_actions()[0].get_squares());
+                if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dm1.actions[0]);
+                    //println!(" {}", dm1.actions[0].get_squares());
                     return Err(String::from(
                         "Four samples for s7 failed to invalidate group xx1x1",
                     ));
@@ -135,12 +135,12 @@ mod tests {
                     return Ok(());
                 }
             } else {
-                 //println!("\nActs: {}", &dm1.get_actions()[0]);
-                 //println!("       Sqrs: ({})", dm1.get_actions()[0].get_squares());
+                 //println!("\nActs: {}", &dm1.actions[0]);
+                 //println!("       Sqrs: ({})", dm1.actions[0].get_squares());
                 return Err(String::from("Group deleted too soon"));
             }
         } else {
-            //println!("\nActs: {}", &dm1.get_actions()[0]);
+            //println!("\nActs: {}", &dm1.actions[0]);
             return Err(String::from("group rx1x1 was not formed by two squares!"));
         }
     } // end group_pn_u_union_then_invalidation
@@ -198,13 +198,13 @@ mod tests {
 
         dm0.eval_sample_arbitrary(0, &s1a, &s1a.s_not());  // Group r0010
 
-        if let Some(grpx) = dm0.get_actions()[0].get_groups().find(&reg_1110x) {
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1110x) {
             println!("Region r1110x found");
 
-            let regs_new = dm0.get_actions()[0].possible_regions_for_group(&grpx, &SomeMask::_from_string(1, "m110").unwrap());
+            let regs_new = dm0.actions[0].possible_regions_for_group(&grpx, &SomeMask::_from_string(1, "m110").unwrap());
 
             if regs_new.num_active() != 2 {
-                return Err(format!("possible regions for {} given {} is ? {}", &grpx.get_region(), &s1a, &regs_new.formatted_string()));
+                return Err(format!("possible regions for {} given {} is ? {}", &grpx.region, &s1a, &regs_new.formatted_string()));
             }
 
             if regs_new.contains(&dm0.region_from_string("r111XX").unwrap()) {
@@ -217,7 +217,7 @@ mod tests {
                 return Err(format!("Region r1XX0X not found in {} ??", &regs_new.formatted_string()));
             }
         } else {
-            return Err(format!("Region r1110x not created? {}", dm0.get_actions()[0]));
+            return Err(format!("Region r1110x not created? {}", dm0.actions[0]));
         }
         
         Ok(())

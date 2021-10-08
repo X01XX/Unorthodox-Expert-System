@@ -18,9 +18,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeState {
-    bts: SomeBits,
+    pub bts: SomeBits,
 }
 
 impl fmt::Display for SomeState {
@@ -33,11 +34,6 @@ impl SomeState {
     /// Return a new SomeState instance, given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
-    }
-
-    /// Accessor, get read-only reference to the bts field
-    pub fn get_bts(&self) -> &SomeBits {
-        &self.bts
     }
 
     /// Return true is a given bit in a state is set to one.

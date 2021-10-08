@@ -126,7 +126,7 @@ impl DomainStore {
     
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        &self.avec[dmxi].get_cur_state()
+        &self.avec[dmxi].cur_state
     }
 
     /// Return the number of domains

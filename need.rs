@@ -108,7 +108,7 @@ impl fmt::Display for SomeNeed {
                 in_group: greg,
             } => format!(
                 "N(Dom {} Act {} Pri {} Sample State {}, between {} and {})",
-                dm, an, pri, &sta, greg.get_state1(), greg.get_state2()
+                dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg,),
             SomeNeed::SetGroupConfirmed {

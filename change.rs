@@ -7,12 +7,13 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
-    b01: SomeMask,
+    pub b01: SomeMask,
     /// A mask for 1->0 changes.
-    b10: SomeMask,
+    pub b10: SomeMask,
 }
 
 impl fmt::Display for SomeChange {
@@ -45,16 +46,6 @@ impl SomeChange {
             b01: SomeMask::new(SomeBits::new_low(num_ints)),
             b10: SomeMask::new(SomeBits::new_low(num_ints)),
         }
-    }
-
-    /// Accessor, return a read-only reference to the b01 field.
-    pub fn get_b01(&self) -> &SomeMask {
-        &self.b01
-    }
-
-    /// Accessor, return a read-only reference to the b01 field.
-    pub fn get_b10(&self) -> &SomeMask {
-        &self.b10
     }
 
     /// Return the logical bitwize and of two changes
@@ -169,11 +160,11 @@ impl SomeChange {
 
     /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones  = from.get_state1().s_or(&from.get_state2()).to_mask();
-        let f_zeros = from.get_state1().s_not().s_or(&from.get_state2().s_not()).to_mask();
+        let f_ones  = from.state1.s_or(&from.state2).to_mask();
+        let f_zeros = from.state1.s_not().s_or(&from.state2.s_not()).to_mask();
 
-        let t_ones  = to.get_state1().s_or(&to.get_state2()).to_mask();
-        let t_zeros = to.get_state1().s_not().s_or(&to.get_state2().s_not()).to_mask();
+        let t_ones  = to.state1.s_or(&to.state2).to_mask();
+        let t_zeros = to.state1.s_not().s_or(&to.state2.s_not()).to_mask();
 
         let to_not_x = to.x_mask().m_not();
 

@@ -11,15 +11,17 @@ use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeRegion {
     /// First state defining a region, it represents a sempled state.
-    state1: SomeState,
+    pub state1: SomeState,
     /// Second state defining a region, it represents a sempled state.
     /// It may be the same as the first state, for a region with no X-bit positions.
-    state2: SomeState,
+    pub state2: SomeState,
     /// To do less vector copying, inactivated regions should be ignored and may be overwritten.
-    active: bool,
+//    #[readonly]
+    pub active: bool,
 }
 
 impl fmt::Display for SomeRegion {
@@ -49,21 +51,6 @@ impl SomeRegion {
             state2: sta2.clone(),
             active: true, // Used to decrease vector copying.
         }
-    }
-
-    /// Accessor, return a read-only reference to the state1 field
-    pub fn get_state1(&self) -> &SomeState {
-        &self.state1
-    }
-
-    /// Accessor, return a read-only reference to the state2 field
-    pub fn get_state2(&self) -> &SomeState {
-        &self.state2
-    }
-
-    /// Accessor, return the value of the active field
-    pub fn get_active(&self) -> bool {
-        self.active
     }
 
     /// Return the expected length of a string representing a region, for string alloaction.
@@ -318,7 +305,7 @@ impl SomeRegion {
 
     /// Toggle non-x bits in a region, given a mask.
 //    pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
-//        let stxor = SomeState::new(tbits.get_bts().clone());
+//        let stxor = tbits.to_state();
 //        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
 //    }
 
@@ -452,3 +439,4 @@ impl Clone for SomeRegion {
         }
     }
 }
+

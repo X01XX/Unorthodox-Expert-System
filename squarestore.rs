@@ -71,10 +71,10 @@ impl SquareStore {
             "\nDom {} Act {} Adding square {} -> {}",
             dom,
             act,
-            sqrx.get_state(),
+            sqrx.state,
             &sqrx.first_result()
         );
-        self.ahash.insert(sqrx.get_state().clone(), sqrx);
+        self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 
     /// Return a list of square states no in a list of regions.

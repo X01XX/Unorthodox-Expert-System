@@ -41,20 +41,21 @@ impl fmt::Display for SomeDomain {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
     /// Domain number.  Index into a DomainStore.
-    num: usize,
+    pub num: usize,
     /// Number integers making up a bits struct.    
-    num_ints: usize,
+    pub num_ints: usize,
     /// Actions the Domain can take.    
-    actions: ActionStore,
+    pub actions: ActionStore,
     /// The Current State.    
-    cur_state: SomeState,
+    pub cur_state: SomeState,
     /// An optimal region that is sought if there are no needs.  This may be changed.    
-    optimal: Option<SomeRegion>,
+    pub optimal: Option<SomeRegion>,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
-    prev_state: SomeState,
+    pub prev_state: SomeState,
     /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
     vec_hash: Vec<HashMap<SomeState, usize>>,
     /// Hidden variable range, for testing.  0-max(exclusive).
@@ -82,29 +83,9 @@ impl SomeDomain {
         };
     }
 
-    /// Accessor, return the value of the num field.
-    pub fn get_num(&self) -> usize {
-        self.num
-    }
-
-    /// Accessor, return a read-only reference to the actions field.
-    pub fn get_actions(&self) -> &ActionStore {
-        &self.actions
-    }
-
-    /// Accessor, return a read-only reference to an action in the actions field.
-    pub fn get_action(&self, inx: usize) -> &SomeAction {
-        &self.actions[inx]
-    }
-
     /// Accessor, set the value of the num field
     pub fn set_num(&mut self, anum: usize) {
         self.num = anum;
-    }
-
-    /// Accessor, return a read-only reference to the cur_state field.
-    pub fn get_cur_state(&self) -> &SomeState {
-        &self.cur_state
     }
 
     /// Accessor, set the optimal field
@@ -112,11 +93,6 @@ impl SomeDomain {
         self.optimal = areg;
     }
 
-    /// Accessor, return a read-only reference to the optimal field
-    pub fn get_optimal(&self) -> &Option<SomeRegion> {
-        &self.optimal
-    }
-    
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, mut actx: SomeAction, hv: usize) {
         actx.set_num(self.actions.len());

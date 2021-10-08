@@ -27,11 +27,12 @@ impl fmt::Display for SomeSquare {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeSquare {
-    state: SomeState,     // State that an action was taken on.
-    results: ResultStore, // Circular list of results.
-    rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
+    pub state: SomeState,     // State that an action was taken on.
+    pub results: ResultStore, // Circular list of results.
+    pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
 }
 
 impl SomeSquare {
@@ -46,16 +47,6 @@ impl SomeSquare {
         rcsqr.rules.push(SomeRule::new(&state, &result_state));
         //println!("New square {}", rcsqr);
         rcsqr
-    }
-
-    /// Accessor, return a read-only reference to the state field.
-    pub fn get_state(&self) -> &SomeState {
-        &self.state
-    }
-
-    /// Accessor, return a read-only reference to the rules field.
-    pub fn get_rules(&self) -> &RuleStore {
-        &self.rules
     }
 
     /// Return the Pn value for a square.
@@ -75,7 +66,7 @@ impl SomeSquare {
 
     /// Return a string representing a square.
     pub fn str_terse(&self) -> String {
-        self.state.get_bts().formatted_string('S')
+        self.state.bts.formatted_string('S')
     }
 
     /// Can two squares be combined?

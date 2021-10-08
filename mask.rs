@@ -21,10 +21,11 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeMask {
     /// Bits set to one are significant.
-    bts: SomeBits,
+    pub bts: SomeBits,
 }
 
 impl fmt::Display for SomeMask {
@@ -51,11 +52,6 @@ impl SomeMask {
         Self {
             bts: SomeBits::_new_high(num_ints),
         }
-    }
-    
-    /// Accessor, return a read-onlu reference to the bts field
-    pub fn get_bts(&self) -> &SomeBits {
-        &self.bts
     }
 
     /// Convert a mask into astate

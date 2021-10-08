@@ -18,13 +18,15 @@ impl fmt::Display for GroupStore {
         let mut rc_str = String::new();
 
         for grpx in &self.avec {
-            if grpx.get_active() {
-                if flg == 1 {
-                    rc_str.push_str(",\n              ");
-                }
-                rc_str.push_str(&format!("{}", &grpx.formatted_string()));
-                flg = 1;
+            if grpx.active == false {
+                continue;
             }
+
+            if flg == 1 {
+                rc_str.push_str(",\n              ");
+            }
+            rc_str.push_str(&format!("{}", &grpx.formatted_string()));
+            flg = 1;
         }
 
         write!(f, "{}", rc_str)
@@ -59,24 +61,26 @@ impl GroupStore {
         let mut regs_invalid = RegionStore::new();
 
         for grpx in &mut self.avec {
-            if grpx.get_active() {
-                if grpx.get_region().is_superset_of_state(sqrx.get_state()) {
-                    if grpx.square_is_ok(&sqrx) == false {
-                        if *grpx.get_pn() == Pn::Two {
-                        println!(
-                            "\nsquare {} {} invalidates\ngroup  {} {}",
-                            sqrx.get_state(), sqrx.get_rules().formatted_string(), grpx.get_region(), grpx.get_rules().formatted_string()
-                        );
-                        } else {
-                        println!(
-                            "\nsquare {} {} invalidates\ngroup  {} {}",
-                            sqrx.get_state(), sqrx.get_rules().formatted_string() , grpx.get_region(), grpx.get_rules().formatted_string()
-                        );
-                        }
-                        //regs_invalid.push(grpx.get_region().clone());
-                        regs_invalid.push(grpx.get_region().clone());
-                        grpx.inactivate(dom, act);
+            if grpx.active == false {
+                continue;
+            }
+
+            if grpx.region.is_superset_of_state(&sqrx.state) {
+                if grpx.square_is_ok(&sqrx) == false {
+                    if grpx.pn == Pn::Two {
+                    println!(
+                        "\nsquare {} {} invalidates\ngroup  {} {}",
+                        sqrx.state, sqrx.rules.formatted_string(), &grpx.region, &grpx.rules.formatted_string()
+                    );
+                    } else {
+                    println!(
+                        "\nsquare {} {} invalidates\ngroup  {} {}",
+                        sqrx.state, sqrx.rules.formatted_string() , &grpx.region, grpx.rules.formatted_string()
+                    );
                     }
+                    //regs_invalid.push(grpx.get_region().clone());
+                    regs_invalid.push(grpx.region.clone());
+                    grpx.inactivate(dom, act);
                 }
             }
         }
@@ -88,8 +92,8 @@ impl GroupStore {
         let mut num_grps = 0;
 
         for grpx in &self.avec {
-            if grpx.get_active() {
-                if grpx.get_region().is_superset_of_state(stax) {
+            if grpx.active {
+                if grpx.region.is_superset_of_state(stax) {
                     num_grps += 1;
                 }
             }
@@ -100,7 +104,7 @@ impl GroupStore {
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
-            if grpx.get_active() && reg.is_subset_of(&grpx.get_region()) {
+            if grpx.active && reg.is_subset_of(&grpx.region) {
                 return true;
             }
         }
@@ -110,7 +114,7 @@ impl GroupStore {
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
         for grpx in &self.avec {
-            if grpx.get_active() && grpx.get_region().is_superset_of_state(stax) {
+            if grpx.active && grpx.region.is_superset_of_state(stax) {
                 return true;
             }
         }
@@ -122,8 +126,8 @@ impl GroupStore {
         let mut rs = RegionStore::new();
 
         for grpx in &self.avec {
-            if grpx.get_active() && reg.is_subset_of(grpx.get_region()) {
-                rs.push(grpx.get_region().clone());
+            if grpx.active && reg.is_subset_of(&grpx.region) {
+                rs.push(grpx.region.clone());
             }
         }
         rs
@@ -134,13 +138,13 @@ impl GroupStore {
         let mut fnd = false;
 
         for grpx in &mut self.avec {
-            if grpx.get_active() && grpx.get_region().is_superset_of(&reg) {
-                println!("Active Superset of {} found in {}", &reg, grpx.get_region());
+            if grpx.active && grpx.region.is_superset_of(&reg) {
+                println!("Active Superset of {} found in {}", &reg, &grpx.region);
             }
         }
 
         for grpx in &mut self.avec {
-            if grpx.get_active() && grpx.get_region().is_subset_of(&reg) {
+            if grpx.active && grpx.region.is_subset_of(&reg) {
                 grpx.inactivate(dom, act);
                 // println!("Inactivating group {}", grpx.str_terse());
                 fnd = true;
@@ -158,7 +162,7 @@ impl GroupStore {
     fn first_inactive_index(&mut self) -> i32 {
         let mut cnt = 0;
         for grpx in &mut self.avec {
-            if grpx.get_active() == false {
+            if grpx.active == false {
                 return cnt;
             }
             cnt += 1;
@@ -170,17 +174,17 @@ impl GroupStore {
     /// Add a group.
     pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
         // Check for supersets, which probably is an error
-        if self.any_superset_of(grp.get_region()) {
-            let regs = self.supersets_of(grp.get_region());
+        if self.any_superset_of(&grp.region) {
+            let regs = self.supersets_of(&grp.region);
             println!(
                 "Dom {} Act {} skipped adding group {}, a superset exists in {}",
-                &dom, &act, &grp.get_region(), &regs
+                &dom, &act, &grp.region, &regs
             );
             return false;
         }
 
         // Mark any subset groups as inactive
-        self.inactivate_subsets_of(grp.get_region(), dom, act);
+        self.inactivate_subsets_of(&grp.region, dom, act);
 
         // Get index to the first inactive group
         let inx = self.first_inactive_index();
@@ -214,8 +218,8 @@ impl GroupStore {
         let mut num_grps = 0;
 
         for grpx in &mut self.avec {
-            if grpx.get_active() {
-                if grpx.get_region().is_superset_of_state(&init) {
+            if grpx.active {
+                if grpx.region.is_superset_of_state(&init) {
                     if !grpx.sample_is_ok(&init, &rslt) {
                         num_grps += 1;
                         grpx.inactivate(dom, act);
@@ -234,8 +238,8 @@ impl GroupStore {
         let mut regs = RegionStore::new();
 
         for grpx in &self.avec {
-            if grpx.get_active() {
-                regs.push(grpx.get_region().clone());
+            if grpx.active {
+                regs.push(grpx.region.clone());
             }
         }
         regs
@@ -260,7 +264,7 @@ impl GroupStore {
     pub fn num_active(&self) -> usize {
         let mut cnt = 0;
         for grpx in &self.avec {
-            if grpx.get_active() {
+            if grpx.active {
                 cnt += 1;
             }
         }
@@ -270,7 +274,7 @@ impl GroupStore {
     /// Find a group that matches a region, return a mutable reference.
     pub fn find_mut(&mut self, val: &SomeRegion) -> Option<&mut SomeGroup> {
         for grpx in &mut self.avec {
-            if grpx.get_active() && grpx.get_region() == val {
+            if grpx.active && grpx.region == *val {
                 return Some(grpx);
             }
         }
@@ -280,7 +284,7 @@ impl GroupStore {
     /// Find a group that matches a region, return a reference.
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         for grpx in &self.avec {
-            if grpx.get_active() && grpx.get_region() == val {
+            if grpx.active && grpx.region == *val {
                 return Some(grpx);
             }
         }
