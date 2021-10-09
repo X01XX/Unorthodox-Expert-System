@@ -1592,7 +1592,7 @@ impl SomeAction {
         }
 
         // Num squares GT 1, check for any bad pn pairs
-        
+
         // Get a pn
         let mut a_pn = Pn::One;
         for stax in stas_in_reg.iter() {
@@ -1602,8 +1602,8 @@ impl SomeAction {
                 break;
             }
         }
-        
-        // Check all other pns are equal
+
+        // Check all other pns are equal, pn LE
         for stax in stas_in_reg.iter() {
             let sqrx = self.squares.find(&stax).unwrap();
             if sqrx.get_pnc() {

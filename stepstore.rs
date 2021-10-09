@@ -152,69 +152,6 @@ impl StepStore {
         rc_str
     }
 
-    /// Given a number of steps, and a required change, return a vector of vectors
-    /// where the sub-vectors indicate a single bit change that is required.
-    /// Note that a step that changes more than one bit may end up in more than one sub-vector.
-    pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<usize>> {
-
-        let mut b01 = Vec::<SomeMask>::new();
-
-        if required_change.b01.is_not_low() {
-            b01 = required_change.b01.split();
-        }
-
-        let mut b10 = Vec::<SomeMask>::new();
-
-        if required_change.b10.is_not_low() {
-            b10 = required_change.b10.split();
-        }
-
-        let b01_len = b01.len();
-        let b10_len = b10.len();
-        let tot_len = b01_len + b10_len;
-
-        let mut ret_vec = Vec::<Vec<usize>>::with_capacity(tot_len);
-
-        // Populate ret-vec with empty vectors
-        // Some will end up with only one number, indicating a rule that must be used.
-        // Some will end up with more than one number, indicating a range from witch one must be picked.
-        // Note that a rule might change more than one bit, so it may appear in more than one ret-vec sub-vectors.
-        for _ in 0..tot_len {
-            ret_vec.push(Vec::<usize>::new());
-        }
-
-        // Add step index numbers to the return vector.
-        let mut step_inx = 0;
-        for stepx in self.avec.iter() {
-
-            // Check for matching b01 changes
-            let mut b01_inx = 0;
-            for b01x in b01.iter() {
-
-                if stepx.rule.b01.m_and(b01x).is_not_low() {
-                    ret_vec[b01_inx].push(step_inx);
-                }
-
-                b01_inx += 1;
-            } // next b01x
-
-            // Check for matching b10 changes
-            let mut b10_inx = b01_len;
-            for b10x in b10.iter() {
-
-                if stepx.rule.b10.m_and(b10x).is_not_low() {
-                    ret_vec[b10_inx].push(step_inx);
-                }
-
-                b10_inx += 1;
-            } // next b01x
-
-            step_inx += 1;
-        } // next stepx
-
-        ret_vec
-    } // end steps_bt_change_bit
-
     /// Return a new Some(StepStore) after restricting the initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
 
@@ -275,6 +212,67 @@ impl StepStore {
         assert!(self.len() > 0);
         self[self.len() - 1].result.clone()
     }
+
+    /// Given a number of steps, and a required change, return a vector of vectors
+    /// where the sub-vectors indicate a single bit change that is required.
+    /// Note that a step that changes more than one bit may end up in more than one sub-vector.
+    pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
+
+        let mut b01 = Vec::<SomeMask>::new();
+
+        if required_change.b01.is_not_low() {
+            b01 = required_change.b01.split();
+        }
+
+        let mut b10 = Vec::<SomeMask>::new();
+
+        if required_change.b10.is_not_low() {
+            b10 = required_change.b10.split();
+        }
+
+        let b01_len = b01.len();
+        let b10_len = b10.len();
+        let tot_len = b01_len + b10_len;
+
+        let mut ret_vec = Vec::<Vec<&SomeStep>>::with_capacity(tot_len);
+
+        // Populate ret-vec with empty vectors
+        // Some will end up with only one number, indicating a rule that must be used.
+        // Some will end up with more than one number, indicating a range from witch one must be picked.
+        // Note that a rule might change more than one bit, so it may appear in more than one ret-vec sub-vectors.
+        for _ in 0..tot_len {
+            ret_vec.push(Vec::<&SomeStep>::new());
+        }
+
+        // Add step index numbers to the return vector.
+        for stepx in self.avec.iter() {
+
+            // Check for matching b01 changes
+            let mut b01_inx = 0;
+            for b01x in b01.iter() {
+
+                if stepx.rule.b01.m_and(b01x).is_not_low() {
+                    ret_vec[b01_inx].push(stepx);
+                }
+
+                b01_inx += 1;
+            } // next b01x
+
+            // Check for matching b10 changes
+            let mut b10_inx = b01_len;
+            for b10x in b10.iter() {
+
+                if stepx.rule.b10.m_and(b10x).is_not_low() {
+                    ret_vec[b10_inx].push(stepx);
+                }
+
+                b10_inx += 1;
+            } // next b01x
+
+        } // next stepx
+
+        ret_vec
+    } // end steps_bt_change_bit2
 
 } // end impl StepStore
 

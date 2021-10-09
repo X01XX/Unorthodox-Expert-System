@@ -375,10 +375,10 @@ impl SomeDomain {
         }
         
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let steps_by_change_vov: Vec<Vec<usize>> = steps_str.steps_by_change_bit(&required_change);
+        let steps_by_change_vov: Vec<Vec<&SomeStep>> = steps_str.steps_by_change_bit(&required_change);
 
         // Check if any changes are mutually exclusive
-        if any_mutually_exclusive_changes(&steps_str, &steps_by_change_vov, &required_change) {
+        if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
 //            println!("make_plan3: mutually exclusive change rules found");
             return None;
         }
@@ -386,28 +386,29 @@ impl SomeDomain {
         // Check for bit change vector with all steps outside of the glide path.
         // Accumulate a vector of all step indicies in such vectors.
         let agg_reg = goal_reg.union(from_reg);
-        let mut asym_stps = Vec::<usize>::new();
+        let mut asym_stps = false;
         for inx in 0..steps_by_change_vov.len() {
 
             let mut all_external = true;
             
-            for stp_inx in &steps_by_change_vov[inx] {
-                if steps_str[*stp_inx].initial.intersects(&agg_reg) ||
-                   steps_str[*stp_inx].result.intersects(&agg_reg) {
+            for stpx in &steps_by_change_vov[inx] {
+                if stpx.initial.intersects(&agg_reg) ||
+                   stpx.result.intersects(&agg_reg) {
                        all_external = false;
                        break;
                    }
             } // next stp_inx
 
             if all_external {
-                for stp_inx in &steps_by_change_vov[inx] {
+                //for stp_inx in &steps_by_change_vov2[inx] {
                     //println!("Asym chaining required {} to {} agg {} step {}", from_reg, goal_reg, &agg_reg, &steps_str[*stp_inx]);
-                    asym_stps.push(*stp_inx);
-                }
+                    asym_stps = true;
+                    break;
+                //}
             }
         } // next inx
 
-        if asym_stps.len() == 0 {
+        if asym_stps == false {
 
             // Evaluate glide path
             // Some steps may intersect both the from region and goal region witout
@@ -547,7 +548,7 @@ impl SomeDomain {
 
         let mut min_dist_from = 9999;
 
-        // Find min distance of step initial regions, that are external from agg_reg, to the from_reg
+        // Find min distahttps://github.com/rust-lang/rfcs/issues/1155nce of step initial regions, that are external from agg_reg, to the from_reg
         for stepx in steps_str.iter() {
 
             if stepx.initial.intersects(&agg_reg) {
@@ -968,22 +969,26 @@ impl SomeDomain {
     
 } // end impl SomeDomain
 
+/// Return true if two references are identical, thanks to
+/// https://github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
+fn ptr_eq<T>(a: *const T, b: *const T) -> bool { a == b }
+
 /// Return true if any step pairs are all mutually exclusive
-fn any_mutually_exclusive_changes(store: &StepStore, by_change: &Vec<Vec<usize>>, wanted: &SomeChange) -> bool {
+fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
     
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx+1)..by_change.len() {
             
             let mut exclusive = true;
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
-            for numx in &by_change[inx] {
-                for numy in &by_change[iny] {
-                    if *numx == *numy {
+            for refx in by_change[inx].iter() {
+                for refy in by_change[iny].iter() {
+                    if ptr_eq(refx, refy) {
                         exclusive = false;
                         continue;
                     }
-                    if store[*numx].mutually_exclusive(&store[*numy], wanted) {
-                        //println!("step {} mutually exclusive to step {}", store[*numx], store[*numy]);
+                    if refx.mutually_exclusive(refy, wanted) {
+                        //println!("step {} mutually exclusive to step {}", refx, refy);
                     } else {
                         exclusive = false;
                         //break;
