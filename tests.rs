@@ -9,7 +9,7 @@ mod tests {
     use crate::mask::SomeMask;
 //    use crate::maskstore::MaskStore;
     use crate::action::SomeAction;
-    use crate::region::SomeRegion;
+//    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 //    use crate::resultstore::ResultStore;
 //    use crate::rule::SomeRule;
@@ -30,7 +30,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", Some(SomeRegion::from_string(1, "r1").unwrap()));
+        let mut dm1 = SomeDomain::new(1, "s1", RegionStore::new());
         dm1.push(SomeAction::new(1), 0);
 
         let s5 = dm1.state_from_string("s101").unwrap();
@@ -92,7 +92,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(1, "s1", Some(SomeRegion::from_string(1, "r1").unwrap()));
+        let mut dm1 = SomeDomain::new(1, "s1", RegionStore::new());
         dm1.push(SomeAction::new(1), 0);
 
         let s5 = dm1.state_from_string("s101").unwrap();
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn region_subtraction() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(1, "s1", Some(SomeRegion::from_string(1, "r1").unwrap()));
+        let mut dm0 = SomeDomain::new(1, "s1", RegionStore::new());
         dm0.push(SomeAction::new(1), 0);
 
         let reg0 = dm0.region_from_string("rX10X").unwrap();
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn possible_regions_for_group_by_elimination() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(1, "s1", Some(SomeRegion::from_string(1, "r1").unwrap()));
+        let mut dm0 = SomeDomain::new(1, "s1", RegionStore::new());
         dm0.push(SomeAction::new(1), 0);
 
         let reg_1110x = dm0.region_from_string("r1110x").unwrap();

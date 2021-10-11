@@ -56,12 +56,13 @@ impl fmt::Display for DomainStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
-    avec: Vec<SomeDomain>,
+    pub avec: Vec<SomeDomain>,
     /// Current step number of the user interface.
-    step: usize, // The current step number in the UI.
+    pub step: usize, // The current step number in the UI.
 }
 
 impl DomainStore {
@@ -74,9 +75,9 @@ impl DomainStore {
     }
 
     /// Accessor, return the value of the step field.
-    pub fn get_step(&self) -> usize {
-        self.step
-    }
+//    pub fn get_step(&self) -> usize {
+//        self.step
+//    }
     
     /// Accessor, set the setp field.
     pub fn set_step(&mut self, anum: usize) {

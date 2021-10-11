@@ -11,6 +11,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -29,10 +30,10 @@ impl fmt::Display for SomeDomain {
         rc_str.push_str(&self.num.to_string());
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
-        if let Some(areg) = &self.optimal {
-            rc_str.push_str(&format!(", Optimal Region: {}", &areg));
+        if self.optimal.len() > 0 {
+            rc_str.push_str(&format!(", Optimal Regions: {}", &self.optimal));
         } else {
-            rc_str.push_str(&format!(", Optimal Region: None"));
+            rc_str.push_str(&format!(", Optimal Regions: None"));
         }
 
         rc_str.push_str(")");
@@ -52,10 +53,12 @@ pub struct SomeDomain {
     pub actions: ActionStore,
     /// The Current State.    
     pub cur_state: SomeState,
-    /// An optimal region that is sought if there are no needs.  This may be changed.    
-    pub optimal: Option<SomeRegion>,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     pub prev_state: SomeState,
+    /// A counter to indicate number of cycles the previous state is equal to the current state
+    pub boredom: usize,
+    /// An optimal region that is sought if there are no needs.  This may be changed. 
+    pub optimal: RegionStore,
     /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
     vec_hash: Vec<HashMap<SomeState, usize>>,
     /// Hidden variable range, for testing.  0-max(exclusive).
@@ -66,7 +69,7 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, and strings for the
     /// initial state, the optimal state, and index into the DomainStore struct.
-    pub fn new(num_ints: usize, start_state: &str, optimal: Option<SomeRegion>) -> Self {
+    pub fn new(num_ints: usize, start_state: &str, optimal: RegionStore) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
 
@@ -76,8 +79,9 @@ impl SomeDomain {
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
-            optimal: optimal,
             prev_state: cur.clone(),
+            boredom: 0,
+            optimal: optimal,
             vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
             vec_hvr: Vec::<usize>::new(),
         };
@@ -88,9 +92,14 @@ impl SomeDomain {
         self.num = anum;
     }
 
-    /// Accessor, set the optimal field
-    pub fn set_optimal(&mut self, areg: Option<SomeRegion>) {
-        self.optimal = areg;
+    /// Used to add a region, no subsets, to the optimal region store
+    pub fn add_optimal(&mut self, areg: SomeRegion) -> bool {
+        self.optimal.push_nosubs(areg)
+    }
+
+    /// Used to delete a region from the optimal region store
+    pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
+        self.optimal.inactivate(areg)
     }
 
     /// Add a SomeAction struct to the store.
@@ -117,21 +126,38 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
-        if let Some(areg) = &self.optimal {
-            if areg.is_superset_of_state(&self.cur_state) {
-                //println!("at 1 is superset");
-            } else {
-                
-                nst.push(SomeNeed::ToRegion {
-                    dom_num: self.num,
-                    act_num: 0,
-                    goal_reg: areg.clone(),
-                });
-                //println!("at 2 pushing ToRegion need {}", &nst);
+        if self.optimal.len() > 0 {
+            self.boredom += 1;
+            if let Some(aneed) = self.check_optimal() {
+                nst.push(aneed);
             }
         }
 
         nst
+    }
+
+    // Do functions related to being in an optimum region
+    fn check_optimal(&self) -> Option<SomeNeed> {
+
+        let sups = self.optimal.supersets_of_state(&self.cur_state);
+        if sups.len() == 0 {
+            let inx = rand::thread_rng().gen_range(0, self.optimal.len());
+            return Some(SomeNeed::ToRegion {
+                    dom_num: self.num,
+                    act_num: 0,
+                    goal_reg: self.optimal[inx].clone(),
+                });
+        } else {
+            //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
+            if self.boredom > 3 && self.optimal.len() > 1 && self.optimal.len() != sups.len() {
+                let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
+                println!("\nDomain {}: I'm bored lets move to {}", self.num, &notsups);
+
+                let inx = rand::thread_rng().gen_range(0, notsups.len());
+                return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
+            }
+        }
+        None
     }
 
     /// Return the total number of actions.
@@ -177,7 +203,12 @@ impl SomeDomain {
     
     /// Accessor, set the cur_state field.
     pub fn set_cur_state(&mut self, new_state: &SomeState) {
-        self.prev_state = new_state.clone();
+        if self.prev_state == *new_state {
+            self.boredom += 1;
+        } else {
+            self.boredom = 0;
+            self.prev_state = new_state.clone();
+        }
 
         self.cur_state = new_state.clone();
     }
@@ -382,7 +413,7 @@ impl SomeDomain {
 
         // Check if any changes are mutually exclusive
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
-            println!("make_plan3: mutually exclusive change rules found");
+            //println!("make_plan3: mutually exclusive change rules found");
             return None;
         }
 

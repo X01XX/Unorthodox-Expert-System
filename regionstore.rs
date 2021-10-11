@@ -32,6 +32,13 @@ impl RegionStore {
         }
     }
 
+    /// Return a new RegionStore instance, empty, with a specified capacity.
+    pub fn new_with_capacity(num: usize) -> Self {
+        Self {
+            avec: Vec::<SomeRegion>::with_capacity(num),
+        }
+    }
+
     /// Return the number of active, and inactive, regions.
     pub fn len(&self) -> usize {
         self.avec.len()
@@ -50,6 +57,7 @@ impl RegionStore {
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
+        assert!(val.active);
         self.avec.push(val);
     }
 
@@ -60,8 +68,9 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         for regx in &self.avec {
-            if reg.active && regx.is_superset_of(&reg) {
+            if regx.active && regx.is_superset_of(&reg) {
                 return true;
             }
         }
@@ -70,6 +79,7 @@ impl RegionStore {
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         for regx in &self.avec {
             if regx.active && regx.is_subset_of(&reg) {
                 return true;
@@ -88,10 +98,36 @@ impl RegionStore {
         false
     }
 
+    /// Return a RegionStore of supersets of a state.
+    pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
+        let mut ret_store = Self::new();
+
+        for regx in &self.avec {
+            if regx.active && regx.is_superset_of_state(&sta) {
+                ret_store.push(regx.clone());
+            }
+        }
+        ret_store
+    }
+
+    /// Return a RegionStore of not supersets of a state.
+    pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
+        let mut ret_store = Self::new();
+
+        for regx in &self.avec {
+            if regx.active && regx.is_superset_of_state(&sta) {
+            } else {
+                ret_store.push(regx.clone());
+            }
+        }
+        ret_store
+    }
+
     /// Return true if a RegionStore contains a region.
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         for regx in &self.avec {
             if reg.active && regx == reg {
                 return true;
@@ -114,6 +150,7 @@ impl RegionStore {
 
     /// Find and make inactive any subset regions.
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         let mut fnd = false;
         for regx in &mut self.avec {
             if regx.active && regx.is_subset_of(&reg) {
@@ -127,6 +164,7 @@ impl RegionStore {
 
     /// Find and make inactive any superset regions.
     fn inactivate_supersets_of(&mut self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         let mut fnd = false;
         for regx in &mut self.avec {
             if regx.active && regx.is_superset_of(&reg) {
@@ -140,6 +178,7 @@ impl RegionStore {
 
     /// Find and make inactive a given region.
     pub fn inactivate(&mut self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         let mut fnd = false;
         for regx in &mut self.avec {
             if regx.active && regx == reg {
@@ -175,9 +214,10 @@ impl RegionStore {
 
     /// Add a region, inactivating subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
+        assert!(reg.active);
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
-            // println!("skipped adding region {}, a superset exists", reg.str());
+            //println!("skipped adding region {}, a superset exists", reg);
             return false;
         }
 
@@ -196,6 +236,7 @@ impl RegionStore {
 
     /// Add a region, inactivating superset regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
+        assert!(reg.active);
         // Check for subsets, which probably is an error
         if self.any_subset_of(&reg) {
             // println!("skipped adding region {}, a superset exists", reg.str());
@@ -261,6 +302,7 @@ impl RegionStore {
     
     /// Return the result of intersectong two region stores
     pub fn intersection(&self, other: &RegionStore) -> Self {
+
         let mut ret_store = Self::new();
         
         for regx in self.iter() {

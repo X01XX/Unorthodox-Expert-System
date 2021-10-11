@@ -23,6 +23,7 @@ mod region;
 use region::SomeRegion;
 mod change;
 mod regionstore;
+use regionstore::RegionStore;
 mod resultstore;
 mod rule;
 mod rulestore;
@@ -66,7 +67,10 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}", inx);
 
     let num_ints = 1;
-    let mut dom1 = SomeDomain::new(num_ints, inx_str, Some(SomeRegion::from_string(num_ints, "r101X").unwrap()));
+    let mut regstr = RegionStore::new_with_capacity(1);
+    regstr.push(SomeRegion::from_string(num_ints, "r101X").unwrap());
+    regstr.push(SomeRegion::from_string(num_ints, "r10X").unwrap());
+    let mut dom1 = SomeDomain::new(num_ints, inx_str, regstr);
 
     dom1.push(SomeAction::new(num_ints), 6);
     dom1.push(SomeAction::new(num_ints), 0);
@@ -85,7 +89,9 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}000000", inx);
 
     let num_ints = 2;
-    let mut dom2 = SomeDomain::new(num_ints, inx_str, Some(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap()));
+    let mut regstr = RegionStore::new_with_capacity(1);
+    regstr.push(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap());
+    let mut dom2 = SomeDomain::new(num_ints, inx_str, regstr);
 
     dom2.push(SomeAction::new(num_ints), 0);
     dom2.push(SomeAction::new(num_ints), 0);
@@ -121,7 +127,7 @@ fn main() {
     }
 
     usage();
-    
+
     //let mut run_left = 1;
     let mut run_count = 1;
     let run_max = run_left;
@@ -144,76 +150,117 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut step_inc = 1; // amount to increment the step in the next loop
     
     loop {
-        dmxs.set_step(dmxs.get_step() + step_inc);
+        dmxs.set_step(dmxs.step + step_inc);
         step_inc = 1;
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
+        //println!("main {} needs {}", nds.len(), &nds);
+
+        let need_plans = dmxs.evaluate_needs(&nds);
+
+        // Check if all needs are for the same domain, change domain number if needed
+        if nds.len() > 0 {
+
+            let mut need_domain = nds[0].dom_num();
+            let mut same_domain = true;
+
+            if need_plans.len() > 0 {
+                need_domain = nds[need_plans[0].inx].dom_num();
+                for ndx in need_plans.iter() {
+                    if nds[ndx.inx].dom_num() != need_domain {
+                        same_domain = false;
+                        break;
+                    }
+                }
+            } else {
+                
+                for ndx in nds.iter() {
+                    if ndx.dom_num() != need_domain {
+                        same_domain = false;
+                        break;
+                    }
+                }
+            }
+
+            if same_domain {
+                if dom_num != need_domain {
+                    //println!("changing domain from {} to {}", &dom_num, &need_domain);
+                    dom_num = need_domain;
+                }
+            }
+
+        } // endif nds.len() > 0
 
         print_domain(&dmxs, dom_num);
 
         // Vector for position = display index, val = need_plans index
         let mut need_can = Vec::<usize>::with_capacity(nds.len());
 
-        //let mut need_plans = Vec::<InxPlan>::with_capacity(1);
-
         let mut can_do = 0;
         let mut cant_do = 0;
 
-       //if nds.len() > 0 {
-            // Check if each need can be done
-        let need_plans = dmxs.evaluate_needs(&nds);
+        if nds.len() > 0 {
 
-        if need_plans.len() > 0 {
-            // Get count of needs that can, and cannot, be done.
+            // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
+            if need_plans.len() == 0 {
+                cant_do = nds.len();
 
-            for ndplnx in need_plans.iter() {
-                if let Some(_) = ndplnx.pln {
-                    can_do += 1;
-                } else {
-                    cant_do += 1;
+                println!("\nNeeds that cannot be done:");
+                for ndx in nds.iter() {
+                    println!("   {}", ndx);
                 }
-            }
 
-            println!(" ");
-            
-            // Print needs that cannot be done.
-            if cant_do == 0 {
-                println!("Needs that cannot be done: None");
-            } else {
-                println!("Needs that cannot be done:");
-                for ndplnx in need_plans.iter() {
-                    if let Some(_) = ndplnx.pln {
-                    } else {
-                        println!("   {}", nds[ndplnx.inx]);
-                    }
-                }
-            }
-
-            // Print needs that can be done.
-
-            if can_do == 0 {
                 println!("\nNeeds that can be done: None");
             } else {
-                println!("\nNeeds that can be done:");
-                let mut inx = 0;
-                let mut disp = 0;
+
+                // Get count of needs that can, and cannot, be done.
                 for ndplnx in need_plans.iter() {
-                    if let Some(plnx) = &ndplnx.pln {
-                        if plnx.len() > 0 {
-                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
-                        } else {
-                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
-                        }
-                        need_can.push(inx);
-                        disp += 1;
+                    if let Some(_) = ndplnx.pln {
+                        can_do += 1;
+                    } else {
+                        cant_do += 1;
                     }
-                    inx += 1;
-                } // next ndplnx
-            }
+                }
+
+                // Print needs that cannot be done.
+                if cant_do == 0 {
+                    println!("\nNeeds that cannot be done: None");
+                } else {
+                    println!("\nNeeds that cannot be done:");
+                    for ndplnx in need_plans.iter() {
+                        if let Some(_) = ndplnx.pln {
+                        } else {
+                            println!("   {}", nds[ndplnx.inx]);
+                        }
+                    }
+                }
+
+                // Print needs that can be done.
+
+                if can_do == 0 {
+                    println!("\nNeeds that can be done: None");
+                } else {
+                    println!("\nNeeds that can be done:");
+                    let mut inx = 0;
+                    let mut disp = 0;
+                    for ndplnx in need_plans.iter() {
+                        if let Some(plnx) = &ndplnx.pln {
+                            if plnx.len() > 0 {
+                                println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
+                            } else {
+                                println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
+                            }
+                            need_can.push(inx);
+                            disp += 1;
+                        }
+                        inx += 1;
+                    } // next ndplnx
+                }
+            } // end  if need_plans.len() == 0 {} else
 
             // Stop running for this condition
-            if cant_do > 1 && can_do == 0 {
+            if cant_do > 0 && can_do == 0 {
                to_end = false;
             }
             
@@ -460,30 +507,16 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
-
-        if cmd[0] == "co" {
-            if let Some(areg) = &dm1.optimal {
-                println!("Change Optimal region from {} to None", areg);
-            } else {
-                println!("Change Optimal region from None to None");
-            }
-            dm1.set_optimal(None);
-            pause_for_input("\nWaiting, press Enter to continue: ");
-            return 0;
-        } //end command co
     } // end one-word commands
 
     // Handle two-word commands
     if cmd.len() == 2 {
-        if cmd[0] == "co" {
+        if cmd[0] == "oa" {
             match dm1.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
-                    if let Some(areg) = &dm1.optimal {
-                        println!("Change Optimal region from {} to {}", areg, goal_region);
-                    } else {
-                        println!("Change Optimal region from None to {}", goal_region);
-                    }
-                    dm1.set_optimal(Some(goal_region));
+
+                    let val = dm1.add_optimal(goal_region.clone());
+                    println!("Add Optimal region {} (nosubs) to {} succeeded {}", goal_region, &dm1.optimal, val);
                 }
                 Err(error) => {
                     println!("\nDid not understand region, {}", error);
@@ -491,7 +524,25 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             } // end match
             pause_for_input("\nWaiting, press Enter to continue: ");
             return 0
-        } //end command co
+        } //end command oa
+
+        if cmd[0] == "od" {
+            match dm1.region_from_string(&cmd[1]) {
+                Ok(goal_region) => {
+                    if dm1.optimal.contains(&goal_region) {
+                        let val = dm1.delete_optimal(&goal_region);
+                        println!("Delete Optimal region {} from {} succeeded {}", goal_region, &dm1.optimal, val);
+                    } else {
+                        println!("Region {} not matched", &goal_region);
+                    }
+                }
+                Err(error) => {
+                    println!("\nDid not understand region, {}", error);
+                }
+            } // end match
+            pause_for_input("\nWaiting, press Enter to continue: ");
+            return 0
+        } //end command od
 
         // Arbitrary change state
         if cmd[0] == "cs" {
@@ -848,17 +899,28 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
     println!("\nActs: {}", &dmxs[dom_num].actions);
 
-    if let Some(areg) = &dmxs[dom_num].optimal {
+    if dmxs[dom_num].optimal.len() > 0 {
         let mut in_opt = "Not in";
-        let optstr = areg.formatted_string();
-        if areg.is_superset_of_state(&dmxs[dom_num].cur_state) {
+
+        let mut optstr = dmxs[dom_num].optimal.formatted_string();
+
+        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&dmxs[dom_num].cur_state);
+
+        if opt_regs.len() > 0 {
             in_opt = "in";
+            optstr = opt_regs.formatted_string();
         }
-        println!("\nStep: {} Dom: {} Current State: {} {} Optimal Region: {}", &dmxs.get_step(), dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr);
+
+        if opt_regs.len() != dmxs[dom_num].optimal.len() {
+            println!("\nStep: {} Dom: {} Current State: {} {} Optimal Regions: {} of {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr, &dmxs[dom_num].optimal);
+        } else {
+            println!("\nStep: {} Dom: {} Current State: {} {} Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr);
+        }
     } else {
-        println!("\nStep: {} Dom: {} Current State: {}",&dmxs.get_step(), dom_num, &dmxs[dom_num].cur_state);
+        println!("\nStep: {} Dom: {} Current State: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state);
     }
-    if dmxs.get_step() > 500 {
+
+    if dmxs.step > 500 {
         assert!(1 == 2);
     }
 }
@@ -879,8 +941,7 @@ fn usage() {
     println!(
         "\n    cd <dom num>             - Change the displayed Domain to the given Domain number."
     );
-    println!("\n    co                       - Change the current domain optimal region to None.");
-    println!("    co <region>              - Change the current domain optimal region to the given region.");
+
     println!("\n    cs <state>               - Arbitrary Change State.");
     println!("\n    dn <need number>         - Run a particular need from the need list.");
     println!(
@@ -894,6 +955,9 @@ fn usage() {
     );
     println!("\n    h | help                 - Show this list.");
     println!("\n    ld <path>                - Load data from a file.");
+    println!("    oa <region>              - Add the given region, no subsets, to the current domain optimal region list.");
+    println!("    od <region>              - Delete the given region, from the current domain optimal region list.");
+
     println!("\n    ppd <need number>        - Print the Plan Details for a given need.");
     println!("\n    ps <act num>             - For an Action, Print all Squares.");
     println!("    ps <act num> <region>    - For an Action, Print Squares in a region.");

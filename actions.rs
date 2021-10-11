@@ -54,6 +54,7 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, hv: us
 /// Domain 0, act 0, actions, given the current state.
 /// The hv argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, hv: usize) -> SomeState {
+
     if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
         || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)

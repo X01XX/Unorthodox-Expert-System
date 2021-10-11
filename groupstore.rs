@@ -103,6 +103,7 @@ impl GroupStore {
 
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
+        assert!(reg.active);
         for grpx in &self.avec {
             if grpx.active && reg.is_subset_of(&grpx.region) {
                 return true;
@@ -123,6 +124,7 @@ impl GroupStore {
 
     /// Return regions of any group is a superset, or equal, to a region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
+        assert!(reg.active);
         let mut rs = RegionStore::new();
 
         for grpx in &self.avec {
@@ -135,6 +137,7 @@ impl GroupStore {
 
     /// Find and make inactive any subset groups.
     fn inactivate_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {
+        assert!(reg.active);
         let mut fnd = false;
 
         for grpx in &mut self.avec {
@@ -173,6 +176,8 @@ impl GroupStore {
 
     /// Add a group.
     pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
+        assert!(grp.active);
+
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
             let regs = self.supersets_of(&grp.region);
@@ -273,6 +278,8 @@ impl GroupStore {
 
     /// Find a group that matches a region, return a mutable reference.
     pub fn find_mut(&mut self, val: &SomeRegion) -> Option<&mut SomeGroup> {
+        assert!(val.active);
+
         for grpx in &mut self.avec {
             if grpx.active && grpx.region == *val {
                 return Some(grpx);
@@ -283,6 +290,8 @@ impl GroupStore {
 
     /// Find a group that matches a region, return a reference.
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
+        assert!(val.active);
+    
         for grpx in &self.avec {
             if grpx.active && grpx.region == *val {
                 return Some(grpx);
