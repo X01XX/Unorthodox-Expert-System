@@ -105,7 +105,7 @@ impl SomeDomain {
 
     /// Return needs gathers from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
-        
+
         let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
         //println!("aggregate changes are {}", &agg_chgs);
 
@@ -119,12 +119,15 @@ impl SomeDomain {
 
         if let Some(areg) = &self.optimal {
             if areg.is_superset_of_state(&self.cur_state) {
+                //println!("at 1 is superset");
             } else {
+                
                 nst.push(SomeNeed::ToRegion {
                     dom_num: self.num,
                     act_num: 0,
                     goal_reg: areg.clone(),
                 });
+                //println!("at 2 pushing ToRegion need {}", &nst);
             }
         }
 
@@ -336,7 +339,7 @@ impl SomeDomain {
 
         // Get a vector of steps (from rules) that make part of the needed changes.
         let steps_str : StepStore = self.actions.get_steps(&required_change);
-        // println!("\nmake_plan3: steps_str steps {}", steps_str.formatted_string(" "));
+        //println!("\nmake_plan3: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let mut can_change = SomeChange::new_low(self.num_ints);
@@ -362,7 +365,7 @@ impl SomeDomain {
                     
                     let bstep = stepx.restrict_initial_region(from_reg);
 
-//                    println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_reg, goal_reg);
+                    //println!("make_plan3: suc 1 Found one step {} to go from {} to {}", &bstep, from_reg, goal_reg);
                     return Some(StepStore::new_with_step(bstep));
                 }
             }
@@ -370,7 +373,7 @@ impl SomeDomain {
 
         // Check recursion depth
         if depth > 2 {
-//            println!("recursion depth maximum exceeded");
+            //println!("recursion depth maximum exceeded");
             return None;
         }
         
@@ -379,7 +382,7 @@ impl SomeDomain {
 
         // Check if any changes are mutually exclusive
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
-//            println!("make_plan3: mutually exclusive change rules found");
+            println!("make_plan3: mutually exclusive change rules found");
             return None;
         }
 
@@ -401,7 +404,7 @@ impl SomeDomain {
 
             if all_external {
                 //for stp_inx in &steps_by_change_vov2[inx] {
-                    //println!("Asym chaining required {} to {} agg {} step {}", from_reg, goal_reg, &agg_reg, &steps_str[*stp_inx]);
+                    //println!("Asym chaining required {} to {} agg {}", from_reg, goal_reg, &agg_reg);
                     asym_stps = true;
                     break;
                 //}
@@ -425,6 +428,7 @@ impl SomeDomain {
             }
 
             if steps_from == false || steps_goal == false {
+                //println!("no steps in glide path from {} goal {}", &steps_from, &steps_goal);
                 return None;
             }
 
@@ -434,15 +438,16 @@ impl SomeDomain {
 
             // Run a number of depth-first forward chaining
             for _ in 0..num_tries {
+
                 if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str) {
                     if poss_steps.initial().intersects(from_reg) {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
                         } else {
-                            println!("problem1: result {} not in steps {}", goal_reg, &poss_steps);
+                            //println!("problem1: result {} not in steps {}", goal_reg, &poss_steps);
                         }
                     } else {
-                        println!("problem2: initial {} not in steps {}", from_reg, &poss_steps);
+                        //println!("problem2: initial {} not in steps {}", from_reg, &poss_steps);
                     }
                 }
             } // next try
@@ -461,10 +466,10 @@ impl SomeDomain {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
                         } else {
-                            println!("problem3: result {} not in steps {}", goal_reg, &poss_steps);
+                            //println!("problem3: result {} not in steps {}", goal_reg, &poss_steps);
                         }
                     } else {
-                        println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
+                        //println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
                     }
                 }
             } // next try
@@ -548,7 +553,7 @@ impl SomeDomain {
 
         let mut min_dist_from = 9999;
 
-        // Find min distahttps://github.com/rust-lang/rfcs/issues/1155nce of step initial regions, that are external from agg_reg, to the from_reg
+        // Find min distance of step initial regions, that are external from agg_reg, to the from_reg
         for stepx in steps_str.iter() {
 
             if stepx.initial.intersects(&agg_reg) {
@@ -807,9 +812,11 @@ impl SomeDomain {
     /// Recursion depth check is not needed due to the requirement that each call gets at least one bit
     /// closer to the goal.
     fn random_depth_first_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore) -> Option<StepStore> {
+        //println!("rdffc: from {} to {} steps {}", from_reg, goal_reg, steps_str);
 
         // Get the bit changes required to go from from_reg to goal_reg.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
+        //println!("rdffc: required change: {}", &required_change);
 
         // Initialize vector for possible options.
         // Most StepStores will contain one step.  Some will contain two steps, due
@@ -888,10 +895,10 @@ impl SomeDomain {
                                     continue;
                                 }
                             } else {
-                                //println!("glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
+                                println!("glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
                             }
                         } else {
-                            //println!("glitch2");
+                            println!("glitch2 stp1 change is {}", &stp1.change());
                         }
                     } else {
                         //println!("glitch1 stp2 chg {} not eq rev chg needed {}", &stp2.change(), &chg_rev);
@@ -903,6 +910,11 @@ impl SomeDomain {
             } //end if
         } // next stpy
 
+        //println!("rdffc: steps_rev2:");
+        //for strtmp in &steps_rev2 {
+        //    print!(" {}", strtmp);
+        //}
+        //println!(" ");
         if steps_rev2.len() == 0 {
             return None;
         }
@@ -975,7 +987,7 @@ fn ptr_eq<T>(a: *const T, b: *const T) -> bool { a == b }
 
 /// Return true if any step pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
-    
+
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx+1)..by_change.len() {
             
@@ -983,7 +995,7 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
             for refx in by_change[inx].iter() {
                 for refy in by_change[iny].iter() {
-                    if ptr_eq(refx, refy) {
+                    if ptr_eq(*refx, *refy) {
                         exclusive = false;
                         continue;
                     }
@@ -991,19 +1003,19 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
                         //println!("step {} mutually exclusive to step {}", refx, refy);
                     } else {
                         exclusive = false;
-                        //break;
+                        break;
                     }
                 } //next numy
-                //if exclusive == false {
-                //    break;
-                //}
+                if exclusive == false {
+                    break;
+                }
 
-            } // next numx
+            } // next refx
             //println!(" ex: {}", exclusive);
             if exclusive {
+                //println!("exclusive inx {} iny {}", inx, iny);
                 return true;
             }
-            
         } // next iny
     } // next inx
 

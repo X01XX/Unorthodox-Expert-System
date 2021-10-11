@@ -140,7 +140,6 @@ impl DomainStore {
 
         let mut last_priority = 0;
 
-        //let avec: Vec<usize> = (0..nds.len()).collect();
         loop {
 
             // find next lowest priority needs
@@ -148,9 +147,10 @@ impl DomainStore {
             let mut least_priority = 9999;
 
             for ndsx in nds.iter() {
-                if ndsx.priority() > last_priority {
-                    if ndsx.priority() < least_priority {
-                        least_priority = ndsx.priority();
+                let pri = ndsx.priority();
+                if pri > last_priority {
+                    if pri < least_priority {
+                        least_priority = pri;
                     }
                 }
             }
@@ -158,8 +158,6 @@ impl DomainStore {
             if least_priority == 9999 {
                 return Vec::<InxPlan>::new();
             }
-
-            last_priority = least_priority;
 
             // Load avec with indicies
             let mut inx = 0;
@@ -208,19 +206,20 @@ impl DomainStore {
 
                 let mut try_again = true;
                 for inxplnx in ndsinx_plan.iter() {
-                    if let Some(_) = inxplnx.pln {
+                    if let Some(_) = &inxplnx.pln {
+                        //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
                         try_again = false;
-                        break;
                     }
                 }
 
-                if try_again {
-                } else {
+                if try_again == false {
                     return ndsinx_plan;
                 }
-
                 start = start + span;
             } // end while
+
+            last_priority = least_priority;
+
         } // end loop
     } // end evaluate_needs
 

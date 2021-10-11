@@ -31,6 +31,7 @@ impl StepStore {
         }
     }
 
+    /// Return a new StepStore with a step
     pub fn new_with_step(astep: SomeStep) -> Self {
         let mut vecx = Vec::<SomeStep>::with_capacity(2);
         vecx.push(astep);
@@ -39,6 +40,17 @@ impl StepStore {
         }
     }
 
+    /// Return a StepStore. cloning a vector input
+    pub fn _new_from_vec(steps: &Vec<SomeStep>) -> Self {
+        let mut vecx = Vec::<SomeStep>::with_capacity(steps.len());
+        for stpx in steps {
+            vecx.push(stpx.clone());
+        }
+        Self {
+            avec: vecx,
+        }
+    }
+    
     /// Return a new StepStore, empty, with an expected capacity.
     pub fn new_with_capacity(num: usize) -> Self {
         Self {
