@@ -179,10 +179,8 @@ impl DomainStore {
             //
             // To avoid the cycles required to make plans for many needs,
             //   Process needs by groups of the same, decreasing priority, until at least one has a plan
-            //   Split groups into vectors of 3 at the most. 
-
-            let span = 3;
-            let mut start = 0;
+            //   Split groups into vectors of 4 at the most. 
+            let span = 4;
 
             let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
@@ -208,18 +206,12 @@ impl DomainStore {
                     })
                     .collect::<Vec<InxPlan>>();
 
-                let mut try_again = true;
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
-                        try_again = false;
+                        return ndsinx_plan;
                     }
                 }
-
-                if try_again == false {
-                    return ndsinx_plan;
-                }
-                start = start + span;
             } // end while
 
             last_priority = least_priority;
