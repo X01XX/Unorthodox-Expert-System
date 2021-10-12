@@ -47,6 +47,7 @@ use domainstore::DomainStore;
 mod inxplan;
 //use crate::inxplan::InxPlan;
 mod truth;
+mod randompick;
 use std::io;
 use std::io::{Read, Write};
 //use std::process;

@@ -36,6 +36,8 @@ extern crate rand;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
+use crate::randompick::RandomPick;
+
 use rayon::prelude::*;
 
 impl fmt::Display for DomainStore {
@@ -181,20 +183,21 @@ impl DomainStore {
 
             let span = 3;
             let mut start = 0;
-            let limit = avec.len();
 
-            while start < limit { 
+            let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
-                let mut end = start + span; 
+            while rp1.len() > 0 { 
 
-                if end > limit { 
-                    end = limit;
+                let mut end = span; 
+
+                if end > rp1.len() { 
+                    end = rp1.len();
                 }
 
                 let mut avec2 = Vec::<usize>::with_capacity(span);
 
-                for inx in start..end {
-                    avec2.push(avec[inx]);
+                for _inx in 0..end {
+                    avec2.push(avec[rp1.pick()]);
                 }
 
                 let ndsinx_plan = avec2
