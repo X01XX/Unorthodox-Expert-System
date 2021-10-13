@@ -7,26 +7,26 @@
 // Example
 // ..
 // Cargo.toml
-// [dependencies]
-// rand = "0.7.3"
+//  [dependencies]
+//  rand = "0.7.3"
 //
 // main.rs
-// mod randompick;
-// use crate::randompick::RandomPick;
-// ..
-// let avec = vec![20, 21, 22, 23, 24, 254, 26]; // <a vector of options>
-// let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
+//  mod randompick;
+//  use crate::randompick::RandomPick;
 //
-// Randomly pick three numbers, as indicies into the original vector
+//  let avec = vec![20, 21, 22, 23, 24, 254, 26]; // <a vector of options>
+//  let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
+//
+//  Randomly pick three numbers, as indicies into the vector
+//
+//  for _ in 0..3 {
+//      let inx = rp1.pick().unwrap();
+//      println!("num picked is {} vector value is {}", inx, avec[inx]); 
+//  }
 // ..
-// for _ in 0..3 {
-//     let inx = rp1.pick().unwrap();
-//     println!("num picked is {} value is {}", inx, avec[inx]); 
-// }
-// ..
-// num picked is 2 value is 22
-// num picked is 0 value is 20
-// num picked is 4 value is 24
+// num picked is 2 vector value is 22
+// num picked is 0 vector value is 20
+// num picked is 4 vector value is 24
 
 extern crate rand;
 use rand::Rng;
@@ -38,16 +38,15 @@ pub struct RandomPick {
 
 impl RandomPick {
     /// Return a new instance of a RandomPick struct.
-    /// If the argument is GT zero, the vector with that range of numbers starting at zero.
+    /// The argument is GT zero, the vector with be populated with that range of numbers, starting at zero.
     pub fn new(nums: usize) -> Self {
+        assert!(nums > 0);
         let mut ret = RandomPick {
-            items: Vec::<usize>::new(),
+            items: Vec::<usize>::with_capacity(nums),
         };
 
-        if nums > 0 {
-            for i in 0..nums {
-                ret.items.push(i);
-            }
+        for i in 0..nums {
+            ret.items.push(i);
         }
 
         return ret;
@@ -56,13 +55,6 @@ impl RandomPick {
     /// Return the current pseudo length of the vector.
     pub fn len(&self) -> usize {
         return self.items.len();
-    }
-
-    /// Add a number to the RandomPick store.
-    /// At least one number must be added before the first pick.
-    /// A number, or numbers, can be added after a pick.
-    pub fn _push(&mut self, newnum: usize) {
-        self.items.push(newnum);
     }
 
     /// Pick a random item from a RandomPick vector.
@@ -74,7 +66,7 @@ impl RandomPick {
         }
 
         // Make a random pick
-        let inx = rand::thread_rng().gen_range(0, self.len());
+        let inx = rand::thread_rng().gen_range(0, self.items.len());
 
         let last_inx = self.items.len() - 1;
 
