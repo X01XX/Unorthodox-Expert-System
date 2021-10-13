@@ -195,7 +195,7 @@ impl DomainStore {
                 let mut avec2 = Vec::<usize>::with_capacity(span);
 
                 for _inx in 0..end {
-                    avec2.push(avec[rp1.pick()]);
+                    avec2.push(avec[rp1.pick().unwrap()]);
                 }
 
                 let ndsinx_plan = avec2
