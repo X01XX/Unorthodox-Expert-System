@@ -2240,16 +2240,19 @@ impl SomeAction {
                 // Check incompatible pn/pnc values
                 if sqry_pn > grpx.pn || sqry.get_pnc() {
                 } else {
+                    if grpx.pn == Pn::Unpredictable {
+                        // more samples needed of sqry to determine compatibility
+                        continue;
+                    }
                     // Check sqry pn == One, samples== 1 vs group pn == Two
                     // sqry can be incompatible or compatible
                     if sqry_pn == Pn::One && grpx.pn == Pn::Two {
-                        if sqry.len_results() == 1 {
-                            if sqry.rules[0].union(&grpx.rules[0]).is_valid_union() {
-                                continue;
-                            }
-                            if sqry.rules[0].union(&grpx.rules[1]).is_valid_union() {
-                                continue;
-                            }
+                        // sqry num result must be eq 1, if not already pnc
+                        if sqry.rules[0].union(&grpx.rules[0]).is_valid_union() {
+                            continue;
+                        }
+                        if sqry.rules[0].union(&grpx.rules[1]).is_valid_union() {
+                            continue;
                         }
                     }
                 }

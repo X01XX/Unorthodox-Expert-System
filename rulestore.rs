@@ -85,20 +85,20 @@ impl RuleStore {
 
     /// Add a rule to a RuleStore.
     pub fn push(&mut self, val: SomeRule) {
-        if self.len() > 1 {
-            panic!("Rule already full??");
-        }
+        assert!(self.avec.len() < 2);
 
         self.avec.push(val);
     }
 
     /// Return a reference to the first rule.
     pub fn first(&self) -> &SomeRule {
+        assert!(self.avec.len() > 0);
         &self.avec[0]
     }
 
     /// Return a reference to the second rule.
     pub fn second(&self) -> &SomeRule {
+        assert!(self.avec.len() > 1);
         &self.avec[1]
     }
 
