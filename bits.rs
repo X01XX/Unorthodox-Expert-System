@@ -14,9 +14,6 @@
 /// The number of bits in an integer used by SomeBits.
 pub const NUM_BITS_PER_INT: usize = 8;
 
-/// An integer with all bits set to one.
-const INT_ALL_BITS_MASK: u8 = std::u8::MAX;
-
 /// Masks, powers of 2, to isolate any bit-position of a single integer.
 /// Isolate bit 0 with: integer & ALL_BIT_MASKS\[0\]
 /// Isolate bit 5 with: integer & ALL_BIT_MASKS\[5\];
@@ -46,20 +43,12 @@ pub struct SomeBits {
 impl SomeBits {
     /// Create a SomeBits instance with integer(s) set to zero
     pub fn new_low(num_ints: usize) -> SomeBits {
-        let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
-        for _ in 0..num_ints {
-            ints_vec.push(0);
-        }
         SomeBits {
             ints: vec![0 as u8; num_ints],
         }
     }
 
     pub fn _new_high(num_ints: usize) -> SomeBits {
-        let mut ints_vec = Vec::<usize>::with_capacity(num_ints);
-        for _ in 0..num_ints {
-            ints_vec.push(0);
-        }
         SomeBits {
             ints: vec![u8::MAX; num_ints],
         }
@@ -231,7 +220,7 @@ impl SomeBits {
     /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
         for intx in self.ints.iter() {
-            if *intx != INT_ALL_BITS_MASK {
+            if *intx != u8::MAX {
                 return false;
             }
         }

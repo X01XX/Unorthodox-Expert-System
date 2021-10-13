@@ -306,7 +306,13 @@ impl RegionStore {
         let mut ret_store = Self::new();
         
         for regx in self.iter() {
+            if regx.active == false {
+                continue;
+            }
             for regy in other.iter() {
+                if regy.active == false {
+                    continue;
+                }
                 if regx.intersects(&regy) {
                     ret_store.push_nosubs(regx.intersection(&regy));
                 }
