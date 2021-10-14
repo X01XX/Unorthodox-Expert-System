@@ -36,7 +36,7 @@ impl fmt::Display for SomeAction {
 
         rc_str.push_str(&self.num.to_string());
 
-        if self.seek_edge.any_active() {
+        if self.seek_edge.len() > 0 {
             rc_str.push_str(&format!(" seek_edge: {}", self.seek_edge));
         }
 
@@ -46,9 +46,7 @@ impl fmt::Display for SomeAction {
 
         let mut fil = String::from(",\n       Grps: (");
         for grpx in self.groups.iter() {
-            if grpx.active == false {
-                continue;
-            }
+
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
             // Count the number of states in a group that are also in only one region
@@ -134,7 +132,8 @@ impl SomeAction {
         }
 
         if sqry.get_pn() == Pn::One || sqry.get_pnc() {
-        } else {
+        } else
+ {
             cmbx = Truth::M;
         }
 
@@ -193,6 +192,7 @@ impl SomeAction {
                 }
             }
 
+
             if sqrz.rules.is_subset_of(&rulsx) == false {
                 return Truth::F;
             }
@@ -250,7 +250,8 @@ impl SomeAction {
                                     dom,
                                     self.num,
                                 );
-                            } else {
+              
+              } else {
                                 let regs = self.groups.supersets_of(&for_reg);
                                 println!(
                                     "Dom {} Act {} Supersets found for new group (1) {} in {}",
@@ -301,7 +302,7 @@ impl SomeAction {
                 match cnb1 {
                     Truth::F => {
                         if sqr1.is_adjacent(&sqr3) {
-                            self.seek_edge.inactivate(greg);
+                            self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
                             self.seek_edge.push_nosups(even_closer_reg);
@@ -310,13 +311,14 @@ impl SomeAction {
                     _ => {}
                 } // end match cnb1
 
+
                 // Process next sample of square in-between for new square and state2 square
                 // Should be different from state1 square or state2 square
                 let cnb2 = sqr3.can_combine(&sqr2);
                 match cnb2 {
                     Truth::F => {
                         if sqr2.is_adjacent(&sqr3) {
-                            self.seek_edge.inactivate(greg);
+                            self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
                             self.seek_edge.push_nosups(even_closer_reg);
@@ -494,7 +496,7 @@ impl SomeAction {
             return;
         }
 
-        // Get num active groups in
+        // Get num groups the state is in
         let num_grps_in = self.groups.num_groups_state_in(&sqrx.state);
         println!(
             "\nDom {} Act {} Square {} in {} groups",
@@ -513,7 +515,7 @@ impl SomeAction {
         // Get possible regions, sqrx.state will be <region>.state1
         let rsx: RegionStore = self.possible_regions_from_square(sqrx);
 
-        if rsx.num_active() == 0 {
+        if rsx.len() == 0 {
             // Make a single-square group
             self.groups.push(
                 SomeGroup::new(&sqrx.state, &sqrx.state, sqrx.rules.clone()),
@@ -525,10 +527,7 @@ impl SomeAction {
 
         // println!("Regions for new groups {}", rsx.str());
         for regx in rsx.iter() {
-            if regx.active {
-            } else {
-                continue;
-            }
+
             if sqrx.get_pn() == Pn::Unpredictable {
                 self.groups.push(
                     SomeGroup::new(&sqrx.state, &regx.state2, RuleStore::new()),
@@ -583,7 +582,7 @@ impl SomeAction {
             // Check if current state is in any groups
             let mut in_grp = false;
             for grpx in self.groups.iter() {
-                if grpx.active && grpx.region.is_superset_of_state(cur_state) {
+                if grpx.region.is_superset_of_state(cur_state) {
                     in_grp = true;
                     break;
                 }
@@ -676,7 +675,7 @@ impl SomeAction {
                         // Add a new group
                         if self.groups.any_superset_of(&greg) {
                             let sups = self.groups.supersets_of(&greg);
-                            if sups.num_active() == 1 && sups.contains(&greg) {
+                            if sups.len() == 1 && sups.contains(&greg) {
                             } else {
                                 println!(
                                     "**** Supersets found for new group {} in {}",
@@ -736,7 +735,7 @@ impl SomeAction {
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         try_again = true;
-                        self.seek_edge.inactivate(&regx);
+                        self.seek_edge.remove_region(&regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
                         try_again = true;
@@ -772,9 +771,6 @@ impl SomeAction {
         let mut new_regs = RegionStore::new();
 
         for regx in self.seek_edge.iter() {
-            if regx.active == false {
-                continue;
-            }
 
             // Get the squares represented by the states that form the region
             let sqr1 = self.squares.find(&regx.state1).unwrap();
@@ -938,12 +934,10 @@ impl SomeAction {
         } // next regx closer_reg
 
         // Apply new seek edge regions
-        if new_regs.any_active() {
-            //ret_nds = NeedStore::new();
+        if new_regs.len() > 0 {
+
             for regx in new_regs.iter() {
-                if regx.active {
-                    ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
-                }
+                ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
             }
         }
 
@@ -959,9 +953,6 @@ impl SomeAction {
 
         // Get seek edge needs, scan the action seek_edge RegionStore.
         for regx in self.seek_edge.iter() {
-            if regx.active == false {
-                continue;
-            }
 
             if regx.state1.is_adjacent(&regx.state2) {
                 panic!(
@@ -1034,9 +1025,6 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
-                continue;
-            }
 
             let sqrx = self.squares.find(&grpx.region.state1).unwrap();
 
@@ -1103,10 +1091,6 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new();
 
-        if grpx.active == false {
-            return ret_nds;
-        }
-
         if grpx.confirmed {
             return ret_nds;
         }
@@ -1122,10 +1106,6 @@ impl SomeAction {
         let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
         //println!("test for group {} possible regs: {}", greg, &regs_new);
         for regx in regs_new.iter() {
-
-            if regx.active == false {
-                continue;
-            }
 
             if regx == g_reg {
                 ret_nds = NeedStore::new();
@@ -1497,7 +1477,7 @@ impl SomeAction {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
 
-        if self.groups.num_active() < 2 {
+        if self.groups.len() < 2 {
             return nds;
         }
 
@@ -1506,18 +1486,10 @@ impl SomeAction {
 
             let grpx = &self.groups[inx];
 
-            if grpx.active == false {
-                continue;
-            }
-
             // Pair grpx with every group after it in the GroupStore
             for iny in (inx + 1)..self.groups.len() {
 
                 let grpy = &self.groups[iny];
-
-                if grpy.active == false {
-                    continue;
-                }
 
                 if grpx.region.intersects(&grpy.region) {
                     let mut ndx = self.group_pair_intersection_needs(&grpx, &grpy);
@@ -1970,9 +1942,6 @@ impl SomeAction {
         let mut stps = StepStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
-                continue;
-            }
 
             match grpx.pn {
                 Pn::One => {
@@ -2034,9 +2003,6 @@ impl SomeAction {
         let mut stps = StepStore::new();
 
         for grpx in self.groups.iter() {
-            if grpx.active == false {
-                continue;
-            }
 
             match grpx.pn {
                 Pn::One => {
@@ -2157,9 +2123,6 @@ impl SomeAction {
 
         // Print possible regions
         for regx in rsx.iter() {
-            if regx.active == false {
-                continue;
-            }
 
             let sqry = self.squares.find(&regx.state2).unwrap();
             if sqry.get_pn() == Pn::Unpredictable {

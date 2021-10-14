@@ -31,9 +31,6 @@ pub struct SomeGroup {
     pub pn: Pn,
     /// Rules formed by two squares.
     pub rules: RuleStore,
-    /// Set to false to "delete" the group from the parent DomainStore vector.
-    /// To minimize vector copying.
-    pub active: bool,
     /// Set to true when a state only in the group has all adjacent states checked    
     pub confirmed: bool,
     /// The state, in only one (this) group, used to confirm the group.
@@ -65,7 +62,6 @@ impl SomeGroup {
             region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
             pn: pnx,
             rules: ruls,
-            active: true,
             confirmed: false,
             anchor: None,
             edge_expand: SomeMask::new_low(sta1.num_ints()),
@@ -75,13 +71,13 @@ impl SomeGroup {
 
     /// Accessor, set the edge_expand field.
     pub fn set_edge_expand(&mut self, amask: &SomeMask) {
-        assert!(self.active);
+
         self.edge_expand = amask.clone();
     }
 
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
-        assert!(self.active);
+
         let mut rc_str = String::from("G(");
         rc_str.push_str(&format!("{}", self.region.formatted_string()));
 
@@ -104,48 +100,30 @@ impl SomeGroup {
             }
         }
 
-        if self.active == false {
-            rc_str.push_str(", INactive");
-        } else {
-            match &self.anchor {
-                Some(sta1) => {
-                    if self.confirmed {
-                        rc_str.push_str(&format!(", confirmed using {}", sta1));
-                    } else {
-                        rc_str.push_str(&format!(", confirming using {}", sta1));
-                    }
+        match &self.anchor {
+            Some(sta1) => {
+                if self.confirmed {
+                    rc_str.push_str(&format!(", confirmed using {}", sta1));
+                } else {
+                    rc_str.push_str(&format!(", confirming using {}", sta1));
                 }
-                None => {}
             }
+            None => {}
         }
+
 
         //        rc_str.push_str(&format!(
         //            " nxe: {}",
         //            &self.edge_expand
         //        ));
 
-        //rc_str.push_str(&format!("){}", self.active));
         rc_str.push_str(&format!(")"));
         rc_str
     }
 
-    /// Inactivate a group, rather than deleting it from a vector.
-    /// It may be replaced by a new, active, group.
-    pub fn inactivate(&mut self, dom: usize, act: usize) -> bool {
-        assert!(self.active);
-        println!(
-            "\nDom {} Act {} Deleting group {}",
-            dom,
-            act,
-            self.region.formatted_string()
-        );
-        self.active = false;
-        true
-    }
-
     /// Return true if a square is compatible with a group.
     pub fn square_is_ok(&self, sqrx: &SomeSquare) -> bool {
-        assert!(self.active);
+
         //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
         match self.pn {
             Pn::One => match sqrx.get_pn() {
@@ -194,7 +172,7 @@ impl SomeGroup {
 
     /// Return true if a sample is compatible with a group.
     pub fn sample_is_ok(&self, init: &SomeState, rslt: &SomeState) -> bool {
-        assert!(self.active);
+
         let tmp_rul = SomeRule::new(&init, &rslt);
 
         match self.pn {
@@ -213,7 +191,7 @@ impl SomeGroup {
     /// Clear the anchor, it is no longer only in one group,
     /// or is superceeded by a higher rated anchor.
     pub fn set_anchor_off(&mut self) {
-        assert!(self.active);
+
         self.anchor = None;
         self.confirmed = false;
     }
@@ -222,7 +200,7 @@ impl SomeGroup {
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: SomeState) {
-        assert!(self.active);
+
         self.anchor = Some(astate.clone());
         self.confirmed = true;
         let state2 = self.region.far_state(&astate);

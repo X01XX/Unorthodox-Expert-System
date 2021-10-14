@@ -48,6 +48,7 @@ mod inxplan;
 //use crate::inxplan::InxPlan;
 mod truth;
 mod randompick;
+mod removeunordered;
 use std::io;
 use std::io::{Read, Write};
 //use std::process;

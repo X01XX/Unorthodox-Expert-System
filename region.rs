@@ -19,8 +19,6 @@ pub struct SomeRegion {
     /// Second state defining a region, it represents a sempled state.
     /// It may be the same as the first state, for a region with no X-bit positions.
     pub state2: SomeState,
-    /// To do less vector copying, inactivated regions should be ignored and may be overwritten.
-    pub active: bool,
 }
 
 impl fmt::Display for SomeRegion {
@@ -48,7 +46,6 @@ impl SomeRegion {
         Self {
             state1: sta1.clone(),
             state2: sta2.clone(),
-            active: true, // Used to decrease vector copying.
         }
     }
 
@@ -59,7 +56,6 @@ impl SomeRegion {
 
     /// Return a String representation of a Region without any prefix.
     pub fn formatted_string(&self) -> String {
-        assert!(self.active);
 
         let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
@@ -93,29 +89,21 @@ impl SomeRegion {
         s1
     }
 
-    /// Set a regions active indicator off, effectively deleting it from a
-    /// vector without structural changes to the vector.
-    pub fn inactivate(&mut self) -> bool {
-        assert!(self.active);
-        self.active = false;
-        true
-    }
-
     /// Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        assert!(self.active  && other.active);
+
         self.diff_mask(&other).just_one_bit()
     }
 
     /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
-        assert!(self.active);
+
         self.diff_mask_state(&other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &Self) -> bool {
-        assert!(self.active  && other.active);
+
         self.diff_mask(&other).is_low()
     }
 
@@ -125,7 +113,7 @@ impl SomeRegion {
     /// most of an overlapping part, except for a 0/1 pair that needs to be changed
     /// to X.
     pub fn intersection(&self, other: &Self) -> Self {
-        assert!(self.active  && other.active);
+
         Self::new(
             &self.high_mask().m_and(&other.high_mask()).to_state(),
             &self.low_mask().m_and(&other.low_mask()).m_not().to_state(),
@@ -134,7 +122,7 @@ impl SomeRegion {
 
     /// Return true if a region is a superset of a state.
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
-        assert!(self.active);
+
         let t1 = self
             .state1
             .s_xor(&a_state)
@@ -145,24 +133,24 @@ impl SomeRegion {
     
     /// Return a Mask of zero bits.
     pub fn zeros(&self) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of one bits.
     pub fn ones (&self) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_and(&self.state2).to_mask()
     }
     /// Return mask of x bits.
     pub fn x_mask(&self) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_xor(&self.state2).to_mask()
     }
 
     /// Return the number of X bits in a region.
     pub fn num_x(&self) -> usize {
-        assert!(self.active);
+
         self.state1.distance(&self.state2)
     }
 
@@ -174,7 +162,7 @@ impl SomeRegion {
     /// Given a region, and a proper subset region, return the
     /// far region within the superset region.
     pub fn far_reg(&self, other: &SomeRegion) -> SomeRegion {
-        assert!(self.active && other.active);
+
         let int_x_msk = self.x_mask();
 
         let ok_x_msk = other.x_mask();
@@ -193,7 +181,7 @@ impl SomeRegion {
 
     /// Return true if a region is a subset on another region.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        assert!(self.active && other.active);
+
         if self.intersects(&other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -204,7 +192,7 @@ impl SomeRegion {
 
     /// Return true if a region is a superset on another region.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        assert!(self.active && other.active);
+
         if self.intersects(&other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -215,7 +203,7 @@ impl SomeRegion {
 
     /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
-        assert!(self.active && other.active);
+
         let st_low = self
             .state1
             .s_and(&self.state2)
@@ -233,7 +221,7 @@ impl SomeRegion {
 
     /// Return the union of a region and a state.
     pub fn _union_state(&self, other: &SomeState) -> Self {
-        assert!(self.active);
+
         let st_low = self.state1.s_and(&self.state2).s_and(&other);
 
         let st_high = self.state1.s_or(&self.state2).s_or(&other);
@@ -243,19 +231,19 @@ impl SomeRegion {
 
     /// Return a Mask of zero or X bits (which include a zero).
     pub fn low_mask(&self) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_not().s_or(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of ones or X bits (which include a one).
     pub fn high_mask(&self) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_or(&self.state2).to_mask()
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-        assert!(self.active);
+
         let smsk = msk.to_state();
         Self::new(
             &self.state1.s_and(&smsk.s_not()),
@@ -265,7 +253,7 @@ impl SomeRegion {
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-        assert!(self.active);
+
         let smsk = msk.to_state();
         Self::new(
             &self.state1.s_or(&smsk),
@@ -276,7 +264,7 @@ impl SomeRegion {
     /// Return a region with masked X-bits set to zeros.
     /// The region states may not represent a samples state.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
-        assert!(self.active);
+
         let smsk = msk.to_state();
         Self::new(
             &self.state1.s_or(&smsk),
@@ -286,20 +274,20 @@ impl SomeRegion {
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        assert!(self.active);
+
         self.state1.s_xor(&sta1).s_and(&self.state2.s_xor(&sta1)).to_mask()
     }
 
     /// Return a mask of different (non-x) bits between two regions.
     pub fn diff_mask(&self, reg1: &SomeRegion) -> SomeMask {
-        assert!(self.active);
+
         self.diff_mask_state(&reg1.state1)
             .m_and(&self.diff_mask_state(&reg1.state2))
     }
 
     /// Return the number of different (non-x) bits with another region.
     pub fn distance(&self, reg1: &SomeRegion) -> usize {
-        assert!(self.active);
+
         self.diff_mask_state(&reg1.state1)
             .m_and(&self.diff_mask_state(&reg1.state2))
             .num_one_bits()
@@ -307,7 +295,7 @@ impl SomeRegion {
 
     /// Return states in a region, given a list of states.
     pub fn states_in(&self, stas: &StateStore) -> StateStore {
-        assert!(self.active);
+
         let mut stsin = StateStore::new();
 
         for stax in stas.iter() {
@@ -321,7 +309,7 @@ impl SomeRegion {
 
     /// Given two adjacent regions, return an overlapping region.
     pub fn overlapping_part(&self, other: &Self) -> Self {
-        assert!(self.active && other.active);
+
         assert!(self.is_adjacent(&other));
 
         let adj_bit = self.diff_mask(&other);
@@ -342,7 +330,7 @@ impl SomeRegion {
     ///
     /// An empty result is possible.
     pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
-        assert!(self.active);
+
         // Initialize the StateStore
         let mut store = StateStore::new_with_capacity(2);
 
@@ -432,7 +420,7 @@ impl SomeRegion {
     /// Given a region, and a second region, return the
     /// first region - the second
     pub fn _subtract(&self, other: &SomeRegion) -> Vec<Self> {
-        assert!(self.active && other.active);
+
         let mut ret_vec = Vec::<Self>::new();
 
         if self.intersects(&other) == false {
@@ -463,7 +451,6 @@ impl Clone for SomeRegion {
         Self {
             state1: self.state1.clone(),
             state2: self.state2.clone(),
-            active: true,
         }
     }
 }

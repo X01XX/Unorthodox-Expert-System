@@ -99,7 +99,7 @@ impl SomeDomain {
 
     /// Used to delete a region from the optimal region store
     pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
-        self.optimal.inactivate(areg)
+        self.optimal.remove_region(areg)
     }
 
     /// Add a SomeAction struct to the store.

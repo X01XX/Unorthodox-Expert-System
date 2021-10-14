@@ -161,7 +161,7 @@ mod tests {
             regs.push(regx.clone());
         }
 
-        if regs.num_active() != 2 {
+        if regs.len() != 2 {
             return Err(format!("{} minus {} = {} ??", &reg0, &reg1, &regs.formatted_string()));
         }
 
@@ -203,7 +203,7 @@ mod tests {
 
             let regs_new = dm0.actions[0].possible_regions_for_group(&grpx, &SomeMask::_from_string(1, "m110").unwrap());
 
-            if regs_new.num_active() != 2 {
+            if regs_new.len() != 2 {
                 return Err(format!("possible regions for {} given {} is ? {}", &grpx.region, &s1a, &regs_new.formatted_string()));
             }
 

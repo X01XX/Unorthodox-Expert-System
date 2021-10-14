@@ -1,11 +1,8 @@
 //! The RegionStore, a vector of SomeRegion structs.
-//!
-//! To avoid a lot of vector copying, setting a region to inactive is kind of
-//! like deleting it.  But it remains until it is overwritten by a region with the active
-//! indicator set to true.
 
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use crate::removeunordered::remove_unordered;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -39,25 +36,13 @@ impl RegionStore {
         }
     }
 
-    /// Return the number of active, and inactive, regions.
+    /// Return the number of regions.
     pub fn len(&self) -> usize {
         self.avec.len()
-    }
-    
-    /// Return the number active regions.
-    pub fn num_active(&self) -> usize {
-        let mut cnt = 0;
-        for regx in &self.avec {
-            if regx.active {
-                cnt += 1;
-            }
-        }
-        cnt
     }
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
-        assert!(val.active);
         self.avec.push(val);
     }
 
@@ -68,9 +53,9 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
+
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of(&reg) {
+            if regx.is_superset_of(&reg) {
                 return true;
             }
         }
@@ -79,9 +64,9 @@ impl RegionStore {
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
+
         for regx in &self.avec {
-            if regx.active && regx.is_subset_of(&reg) {
+            if regx.is_subset_of(&reg) {
                 return true;
             }
         }
@@ -90,8 +75,9 @@ impl RegionStore {
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
+
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(&sta) {
                 return true;
             }
         }
@@ -100,10 +86,11 @@ impl RegionStore {
 
     /// Return a RegionStore of supersets of a state.
     pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
+
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(&sta) {
                 ret_store.push(regx.clone());
             }
         }
@@ -112,10 +99,11 @@ impl RegionStore {
 
     /// Return a RegionStore of not supersets of a state.
     pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
+
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(&sta) {
             } else {
                 ret_store.push(regx.clone());
             }
@@ -127,9 +115,9 @@ impl RegionStore {
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
+
         for regx in &self.avec {
-            if reg.active && regx == reg {
+            if regx == reg {
                 return true;
             }
         }
@@ -141,117 +129,90 @@ impl RegionStore {
         let mut cnt = 0;
 
         for regx in &self.avec {
-            if regx.active && regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(&sta) {
                 cnt += 1;
             }
         }
         cnt == 1
     }
 
-    /// Find and make inactive any subset regions.
-    fn inactivate_subsets_of(&mut self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
+    /// Find and remove a given region.
+    pub fn remove_region(&mut self, reg: &SomeRegion) -> bool {
+
+        // Find a matching region
         let mut fnd = false;
+        let mut inx = 0;
+
         for regx in &mut self.avec {
-            if regx.active && regx.is_subset_of(&reg) {
-                regx.inactivate();
-                //println!("Inactivated region {}", regx);
+            if regx == reg {
                 fnd = true;
+                break;
             }
+            inx += 1;
         }
+
+        // Remove the region
+        if fnd {
+            remove_unordered(&mut self.avec, inx);
+        }
+
         fnd
-    }
-
-    /// Find and make inactive any superset regions.
-    fn inactivate_supersets_of(&mut self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
-        let mut fnd = false;
-        for regx in &mut self.avec {
-            if regx.active && regx.is_superset_of(&reg) {
-                regx.inactivate();
-                //println!("Inactivated region {}", regx);
-                fnd = true;
-            }
-        }
-        fnd
-    }
-
-    /// Find and make inactive a given region.
-    pub fn inactivate(&mut self, reg: &SomeRegion) -> bool {
-        assert!(reg.active);
-        let mut fnd = false;
-        for regx in &mut self.avec {
-            if regx.active && regx == reg {
-                regx.inactivate();
-                //println!("Inactivated region {}", regx);
-                fnd = true;
-            }
-        }
-        fnd
-    }
-
-    /// Find index to first inactive group, or return -1 if none found.
-    fn first_inactive_index(&self) -> Option<usize> {
-        let mut cnt = 0;
-        for regx in &self.avec {
-            if regx.active == false {
-                return Some(cnt);
-            }
-            cnt += 1;
-        }
-        None
-    }
-
-    /// Return true if any region is active.
-    pub fn any_active(&self) -> bool {
-        for regx in &self.avec {
-            if regx.active {
-                return true;
-            }
-        }
-        false
     }
 
     /// Add a region, inactivating subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
-        assert!(reg.active);
+
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
             //println!("skipped adding region {}, a superset exists", reg);
             return false;
         }
 
-        // Mark any subset regions as inactive
-        self.inactivate_subsets_of(&reg);
-
-        // Get index to the first inactive region
-        if let Some(inx) = self.first_inactive_index() {
-            self.avec[inx] = reg;
-        } else {
-            self.avec.push(reg);
+        // Identify subsets
+        let mut rmvec = Vec::<usize>::new();
+        let mut inx = 0;
+        for regx in &mut self.avec {
+            if regx.is_subset_of(&reg) {
+                rmvec.push(inx);
+            }
+            inx += 1;
         }
+
+        // Remove identified regions, in reverse order
+        for inx in rmvec.iter().rev() {
+            remove_unordered(&mut self.avec, *inx);
+        }
+
+        self.avec.push(reg);
 
         true
     }
 
     /// Add a region, inactivating superset regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
-        assert!(reg.active);
+
         // Check for subsets, which probably is an error
         if self.any_subset_of(&reg) {
             // println!("skipped adding region {}, a superset exists", reg.str());
             return false;
         }
 
-        // Mark any subset regions as inactive
-        self.inactivate_supersets_of(&reg);
-
-        // Get index to the first inactive region
-        if let Some(inx) = self.first_inactive_index() {
-            self.avec[inx] = reg;
-        } else {
-            self.avec.push(reg);
+        // Identify supersets
+        let mut rmvec = Vec::<usize>::new();
+        let mut inx = 0;
+        for regx in &mut self.avec {
+            if regx.is_superset_of(&reg) {
+                rmvec.push(inx);
+            }
+            inx += 1;
         }
+
+        // Remove identified regions, in reverse order
+        for inx in rmvec.iter().rev() {
+            remove_unordered(&mut self.avec, *inx);
+        }
+        
+        self.avec.push(reg);
 
         true
     }
@@ -260,12 +221,7 @@ impl RegionStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        let mut alen = 0;
-        for regx in &self.avec {
-            if regx.active {
-                alen += 1;
-            }
-        }
+        let alen = self.avec.len();
 
         if alen > 0 {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
@@ -284,9 +240,6 @@ impl RegionStore {
         rc_str.push('[');
 
         for regx in &self.avec {
-            if regx.active == false {
-                continue;
-            }
 
             if flg == 1 {
                 rc_str.push_str(", ");
@@ -306,13 +259,9 @@ impl RegionStore {
         let mut ret_store = Self::new();
         
         for regx in self.iter() {
-            if regx.active == false {
-                continue;
-            }
+
             for regy in other.iter() {
-                if regy.active == false {
-                    continue;
-                }
+
                 if regx.intersects(&regy) {
                     ret_store.push_nosubs(regx.intersection(&regy));
                 }
@@ -320,7 +269,7 @@ impl RegionStore {
         }
         ret_store
     }
-    
+
 } // end impl RegionStore
 
 impl Index<usize> for RegionStore {
