@@ -28,6 +28,7 @@
 // num picked is 0 vector value is 20
 // num picked is 4 vector value is 24
 
+use crate::removeunordered::remove_unordered;
 extern crate rand;
 use rand::Rng;
 
@@ -68,14 +69,10 @@ impl RandomPick {
         // Make a random pick
         let inx = rand::thread_rng().gen_range(0, self.items.len());
 
-        let last_inx = self.items.len() - 1;
+        let tmp = self.items[inx];
 
-        if inx != last_inx {
-            let tmp = self.items[inx];
-            self.items[inx] = self.items[last_inx];
-            self.items[last_inx] = tmp;
-        }
+        remove_unordered(&mut self.items, inx);
 
-        self.items.pop()
+        Some(tmp)
     }
 } // End RandomPick
