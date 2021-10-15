@@ -180,7 +180,7 @@ impl DomainStore {
             // To avoid the cycles required to make plans for many needs,
             //   Process needs by groups of the same, decreasing priority, until at least one has a plan
             //   Split groups into vectors of 4 at the most. 
-            let span = 4;
+            let span = 6;
 
             let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
