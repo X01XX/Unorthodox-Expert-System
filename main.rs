@@ -276,223 +276,215 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             }
         }
 
-        let mut cmd = Vec::<String>::with_capacity(10);
+        // Start command loop
+        loop {
+            let mut cmd = Vec::<String>::with_capacity(10);
+    
+            if to_end == false || (cant_do > 0 && can_do == 0) {
+                let guess = pause_for_input("\nPress Enter or type a command: ");
 
-        if to_end == false || (cant_do > 0 && can_do == 0) {
-            let guess = pause_for_input("\nPress Enter or type a command: ");
-
-            for word in guess.split_whitespace() {
-                //println!("word: {} is {}", word_count, word);
-                cmd.push(String::from(word));
-            }
-        }
-
-        // Default command, just press Enter
-        if cmd.len() == 0 {
-            // Process needs
-            if can_do > 0 {
-                //println!("\nAction needs: {}", nds);
-
-                let np_inx = dmxs.choose_need(&nds, &need_plans, &need_can);
-
-                let nd_inx = need_plans[np_inx].inx;
-                let ndx = &nds[nd_inx];
-                dom_num = ndx.dom_num();
-
-                let pln = &need_plans[np_inx].pln.as_ref().unwrap();
-
-                //println!("need {}, plan {}", &ndx, &pln);
-
-                if pln.len() > 0 {
-                    //println!("doing dmx.run_plan");
-                    dmxs.run_plan(dom_num, &pln);
-                } else {
-                    //println!("NOT doing dmx.run_plan");
+                for word in guess.split_whitespace() {
+                    //println!("word: {} is {}", word_count, word);
+                    cmd.push(String::from(word));
                 }
-
-                if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                    // println!("doing dmx.take_action_need");
-
-                    match ndx {
-                        SomeNeed::ToRegion {
-                            dom_num: _,
-                            act_num: _,
-                            goal_reg: _,
-                            } => {},
-                        _ => {
-                            dmxs.take_action_need(dom_num, &ndx);
-                            },
-                            // Add new needs here
-                        }
-                } else {
-                    // println!("NOT doing dmx.take_action_need");
-                }
-                continue;
             }
-
-//            if can_do == 0 {
-//                if cant_do > 0 {
-//                }
-//            }
-            continue;
-        } // end if cmd.len() == 0
-
-        if cmd.len() == 1 {
-            // Quit with q , exit, quit
-            if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
-                println!("Done");
-                return 0;
-            } else if cmd[0] == "run" {
-                to_end = true;
-                step_inc = 0;
-                continue;
-            } else if cmd[0] == "so" {
-                return 1;
-                //dmxs = init();
-                //continue;
-            }
-        }
-
-        if cmd.len() == 2 {
-            if cmd[0] == "cd" {
-                step_inc = 0;
-                
-                // Get domain number from string
-                match dmxs.domain_num_from_string(&cmd[1]) {
-                    Ok(d_num) => {
-                        dom_num = d_num;
+    
+            // Default command, just press Enter
+            if cmd.len() == 0 {
+                // Process needs
+                if can_do > 0 {
+                    //println!("\nAction needs: {}", nds);
+    
+                    let np_inx = dmxs.choose_need(&nds, &need_plans, &need_can);
+    
+                    let nd_inx = need_plans[np_inx].inx;
+                    let ndx = &nds[nd_inx];
+                    dom_num = ndx.dom_num();
+    
+                    let pln = &need_plans[np_inx].pln.as_ref().unwrap();
+    
+                    //println!("need {}, plan {}", &ndx, &pln);
+    
+                    if pln.len() > 0 {
+                        //println!("doing dmx.run_plan");
+                        dmxs.run_plan(dom_num, &pln);
+                    } else {
+                        //println!("NOT doing dmx.run_plan");
                     }
-                    Err(error) => {
-                        println!("\n{}", error);
-                        pause_for_input("\nWaiting, press Enter to continue: ");
-                    }
-                } // end match
-                continue;
-
-            } else if cmd[0] == "ta" {  // Take an arbirary action with the current state
-                
-                // Get act number from string
-                match dmxs[dom_num].act_num_from_string(&cmd[1]) {
-                    Ok(a_num) => {
-                        dmxs.take_action(dom_num, a_num); 
-                        pause_for_input("\nWaiting, press Enter to continue: ");
-                    }
-                    Err(error) => {
-                        println!("\n{}", error);
-                        pause_for_input("\nWaiting, press Enter to continue: ");
-                        step_inc = 0;
-                    }
-                } // end match
-                continue;
-
-            } else if cmd[0] == "ppd" {
-                step_inc = 0;
-                match cmd[1].parse::<usize>() {
-                    Ok(n_num) => {
-
-                        if n_num >= need_can.len() {
-                            println!("Invalid Need Number: {}", cmd[1]);
-                        } else {
-
-                            let ndx = &nds[need_plans[need_can[n_num]].inx];
-
-                            // Change the displayed Domain, if needed
-                            if dom_num != ndx.dom_num() {
-                                dom_num = ndx.dom_num();
-                            }
-
-                            //print_domain(&dmxs, dom_num);
-
-                            let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
-
-                            println!("\n{} Need: {}", &n_num, &ndx);
-
-                            if ndx.satisfied_by(&dmxs[dom_num].cur_state) {
-                                println!("\nPlan: current state satisfies need, just take the action");
-                            } else {
-                                println!("\nPlan: \n{}", &pln.str2());
-                            }
-                        }
-
-                    }
-                    Err(error) => {
-                        println!("\n{}", error);
-                    }
-                }
-                pause_for_input("\nWaiting, press Enter to continue: ");
-                continue;
-            } else if cmd[0] == "dn" {
-                
-                match cmd[1].parse::<usize>() {
-                    Ok(n_num) => {
-                        
-                        if n_num >= need_can.len() {
-                            println!("Invalid Need Number: {}", cmd[1]);
-                            step_inc = 0;
-                        } else {
-
-                            let ndx = &nds[need_can[n_num]];
-
-                            let inxpln = &need_plans[need_can[n_num]];
-                            
-                            let pln = inxpln.pln.as_ref().unwrap();
-
-                            println!("\nNeed chosen: {} {} {}\n", &n_num, &ndx, &pln.str_terse());
-
-                            dom_num = ndx.dom_num();
-
-                            //println!("need {}, plan {}", &ndx, &pln);
-
-                            if pln.len() > 0 {
-                                //println!("doing dmx.run_plan");
-                                dmxs.run_plan(dom_num, &pln);
-                            }
-
-                            if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                                // println!("doing dmx.take_action_need");
+    
+                    if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                        // println!("doing dmx.take_action_need");
+    
+                        match ndx {
+                            SomeNeed::ToRegion {
+                                dom_num: _,
+                                act_num: _,
+                                goal_reg: _,
+                                } => {},
+                            _ => {
                                 dmxs.take_action_need(dom_num, &ndx);
-                            } else {
-                                // println!("NOT doing dmx.take_action_need");
+                                },
+                                // Add new needs here
                             }
+                    } else {
+                        // println!("NOT doing dmx.take_action_need");
+                    }
+                    break;
+                } // end-if can_do > 0
+    
+                break;
+            } // end if cmd.len() == 0
+    
+            if cmd.len() == 1 {
+                // Quit with q , exit, quit
+                if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
+                    println!("Done");
+                    return 0;
+                } else if cmd[0] == "run" {
+                    to_end = true;
+                    step_inc = 0;
+                    continue;
+                } else if cmd[0] == "so" {
+                    return 1;
+                } else if cmd[0] == "dcs" {
+                    step_inc = 0;
+                    break;
+                }
+            }
+    
+            if cmd.len() == 2 {
+                if cmd[0] == "cd" {
+                    step_inc = 0;
+                    
+                    // Get domain number from string
+                    match dmxs.domain_num_from_string(&cmd[1]) {
+                        Ok(d_num) => {
+                            dom_num = d_num;
+                            break;
+                        }
+                        Err(error) => {
+                            println!("\n{}", error);
+                        }
+                    } // end match
+                    continue;
+
+                } else if cmd[0] == "ta" {  // Take an arbirary action with the current state
+                    
+                    // Get act number from string
+                    match dmxs[dom_num].act_num_from_string(&cmd[1]) {
+                        Ok(a_num) => {
+                            dmxs.take_action(dom_num, a_num);
+                            break;
+                        }
+                        Err(error) => {
+                            println!("\n{}", error);
+                            step_inc = 0;
+                        }
+                    } // end match
+                    continue;
+    
+                } else if cmd[0] == "ppd" {
+                    step_inc = 0;
+                    match cmd[1].parse::<usize>() {
+                        Ok(n_num) => {
+    
+                            if n_num >= need_can.len() {
+                                println!("Invalid Need Number: {}", cmd[1]);
+                            } else {
+    
+                                let ndx = &nds[need_plans[need_can[n_num]].inx];
+    
+                                // Change the displayed Domain, if needed
+                                if dom_num != ndx.dom_num() {
+                                    dom_num = ndx.dom_num();
+                                }
+    
+                                //print_domain(&dmxs, dom_num);
+    
+                                let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
+    
+                                println!("\n{} Need: {}", &n_num, &ndx);
+    
+                                if ndx.satisfied_by(&dmxs[dom_num].cur_state) {
+                                    println!("\nPlan: current state satisfies need, just take the action");
+                                } else {
+                                    println!("\nPlan: \n{}", &pln.str2());
+                                }
+                            }
+    
+                        }
+                        Err(error) => {
+                            println!("\n{}", error);
                         }
                     }
-                    Err(error) => {
-                        println!("\n{}", error);
+                    continue;
+                } else if cmd[0] == "dn" {
+                    
+                    match cmd[1].parse::<usize>() {
+                        Ok(n_num) => {
+                            
+                            if n_num >= need_can.len() {
+                                println!("Invalid Need Number: {}", cmd[1]);
+                                step_inc = 0;
+                            } else {
+                                let ndx = &nds[need_plans[need_can[n_num]].inx];
+    
+                                let inxpln = &need_plans[need_can[n_num]];
+                                
+                                let pln = inxpln.pln.as_ref().unwrap();
+    
+                                println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
+    
+                                dom_num = ndx.dom_num();
+    
+                                if pln.len() > 0 {
+                                    dmxs.run_plan(dom_num, &pln);
+                                }
+    
+                                if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                                    dmxs.take_action_need(dom_num, &ndx);
+                                    break;
+                                }
+                            }
+                        }
+                        Err(error) => {
+                            println!("\n{}", error);
+                        }
                     }
-                }
-                pause_for_input("\nWaiting, press Enter to continue: ");
-                continue;
-            } else if cmd[0] == "ld" {
-                match load_data(&cmd[1]) {
-                    Err(why) => {
-                        println!("couldn't read {}: {}", &cmd[1], why);
+                    continue;
+                } else if cmd[0] == "ld" {
+                    match load_data(&cmd[1]) {
+                        Err(why) => {
+                            println!("couldn't read {}: {}", &cmd[1], why);
+                        }
+                        Ok(new_dmxs) => {
+                            print!("Data loaded");
+                            dmxs = new_dmxs;
+                            break;
+                        }
+                    } // end match load_data
+                    step_inc = 0;
+                    continue;
+                } else if cmd[0] == "sd" {
+                    match store_data(&dmxs, &cmd[1]) {
+                        Err(why) => {
+                            println!("couldn't write {}: {}", &cmd[1], why);
+                        }
+                    Ok(_) => {
+                            print!("Data written");
+                        }
                     }
-                    Ok(new_dmxs) => {
-                        print!("Data loaded");
-                        dmxs = new_dmxs;
-                    }
-                } // end match load_data
-                pause_for_input("\nWaiting, press Enter to continue: ");
-                step_inc = 0;
-                continue;
-            } else if cmd[0] == "sd" {
-                match store_data(&dmxs, &cmd[1]) {
-                    Err(why) => {
-                        println!("couldn't write {}: {}", &cmd[1], why);
-                    }
-                Ok(_) => {
-                        print!("Data written");
-                    }
-                }
-                pause_for_input("\nWaiting, press Enter to continue: ");
-                step_inc = 0;
-                continue;
-            } // end command sd
-        } // end if cmd.len() == 2
-
-        // Do other commands
-        step_inc = do_command(&mut dmxs[dom_num], &cmd);
-
+                    step_inc = 0;
+                    continue;
+                } // end command sd
+            } // end if cmd.len() == 2
+    
+            // Do other commands
+            step_inc = do_command(&mut dmxs[dom_num], &cmd);
+            if step_inc == 1 {
+                break;
+            }
+        } // end command loop
     } // end loop
 } // end do_session
 
@@ -506,7 +498,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "h" || cmd[0] == "help" {
             usage();
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
     } // end one-word commands
@@ -524,7 +515,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\nDid not understand region, {}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0
         } //end command oa
 
@@ -542,7 +532,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\nDid not understand region, {}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0
         } //end command od
 
@@ -553,12 +542,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 Ok(a_state) => {
                     println!("Changed state to {}", a_state);
                     dm1.set_cur_state(&a_state);
-                    pause_for_input("\nWaiting, press Enter to continue: ");
                     return 1;
                 }
                 Err(error) => {
                     println!("\nDid not understand state, {}", error);
-                    pause_for_input("\nWaiting, press Enter to continue: ");
                     return 0;
                 }
             } // end match
@@ -579,9 +566,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             dm1.cur_state, goal_region
                         );
                     } else {
-                        step_inc = 1;
                         if dm1.to_region(&goal_region) {
                             println!("\nChange to region succeeded");
+                            step_inc = 1;
                         } else {
                             println!("\nChange to region failed");
                         }
@@ -591,7 +578,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match region_r
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         } //end command to
 
@@ -616,10 +602,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 }
                 Err(error) => {
                     println!("\n{}", error);
-
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -638,10 +622,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 }
                 Err(error) => {
                     println!("\n{}", error);
-
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         }
 
@@ -659,7 +641,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -677,7 +658,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
     } // end two-word commands
@@ -711,7 +691,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         }
 
@@ -758,7 +737,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 }
             } // end match act_num
 
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -781,7 +759,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -811,7 +788,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
 
@@ -847,7 +823,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match act num
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return 0;
         }
     } // end 3-word commands
@@ -886,13 +861,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\n{}", error);
                 }
             } // end match
-            pause_for_input("\nWaiting, press Enter to continue: ");
             return step_inc;
         } // end command ss
     } // end 4-word commands
 
     println!("\nDid not understand command: {:?}", cmd);
-    pause_for_input("\nWaiting, press Enter to continue: ");
     0
 } // end do_command
 
@@ -902,21 +875,20 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     println!("\nActs: {}", &dmxs[dom_num].actions);
 
     if dmxs[dom_num].optimal.len() > 0 {
-        let mut in_opt = "Not in";
 
         let mut optstr = dmxs[dom_num].optimal.formatted_string();
 
         let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&dmxs[dom_num].cur_state);
 
         if opt_regs.len() > 0 {
-            in_opt = "in";
             optstr = opt_regs.formatted_string();
-        }
-
-        if opt_regs.len() != dmxs[dom_num].optimal.len() {
-            println!("\nStep: {} Dom: {} Current State: {} {} Optimal Regions: {} of {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr, &dmxs[dom_num].optimal);
+            if opt_regs.len() != dmxs[dom_num].optimal.len() {
+                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} of {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr, &dmxs[dom_num].optimal);
+            } else {
+                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr);
+            }
         } else {
-            println!("\nStep: {} Dom: {} Current State: {} {} Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, &in_opt, optstr);
+                println!("\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr);
         }
     } else {
         println!("\nStep: {} Dom: {} Current State: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state);
@@ -945,7 +917,9 @@ fn usage() {
     );
 
     println!("\n    cs <state>               - Arbitrary Change State.");
-    println!("\n    dn <need number>         - Run a particular need from the need list.");
+    println!("\n    dn <need number>         - Run a particular need from the can do need list.");
+    println!("\n    dcs                      - Display Current state.  After a number of commands,");
+    println!("                               the current state scrolls off screen, this might be useful.");
     println!(
         "\n    g1 <act num>             - For an Action, print squares that are only in one group."
     );
@@ -957,7 +931,7 @@ fn usage() {
     );
     println!("\n    h | help                 - Show this list.");
     println!("\n    ld <path>                - Load data from a file.");
-    println!("    oa <region>              - Add the given region, no subsets, to the current domain optimal region list.");
+    println!("\n    oa <region>              - Add the given region, no subsets, to the current domain optimal region list.");
     println!("    od <region>              - Delete the given region, from the current domain optimal region list.");
 
     println!("\n    ppd <need number>        - Print the Plan Details for a given need.");
@@ -966,19 +940,19 @@ fn usage() {
     
     println!("\n    q | exit | quit          - Quit program.");
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    sd <path>                - Store data to a file.\n");
+    println!("\n    sd <path>                - Store data to a file.");
     println!("\n    so                       - Start Over.");
     println!("\n    ss <act num>                        - Action to Sample the current State.");
     println!("    ss <act num> <state>                - Action to Sample a given State.");
     println!(
-        "    ss <act num> <state> <result-state> - Action to take an arbitrary State Sample.\n"
+        "    ss <act num> <state> <result-state> - Action to take an arbitrary State Sample."
     );
     println!("\n    ta <act-num>             - Take an arbirary action with the current state");
     println!("\n    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
-    println!("\n    A need number is an integer, zero or greater, where such a need exists.\n");
-    println!("    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
+    println!("\n    A need number is an integer, zero or greater, where such a need exists.");
+    println!("\n    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
