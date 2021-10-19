@@ -387,7 +387,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <th></th>
                 <td>0</td>
                 <td>1</td>
-                <td><span class="not">x</span></td>
+                <td>x</td>
            </tr>
            <tr style="text-align:center;">
                 <th></th>
@@ -403,7 +403,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
    <p>
- I will represent a region as a list of bit patterns, like 0<span class="not">x</span>1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
+ I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
     </p>
    <p>
    This choice allows you to know the states that were used to form a region.
@@ -515,31 +515,31 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The X-mask for a region is: bits-0 ^ bits-1.
  </p>
  <p class="indent1">
- The X-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 ^ 0110 = 0101.
+ The X-mask of 0x1X, (0011, 0110) = 0011 ^ 0110 = 0101.
  </p>
  <p>
  The non-X-mask is: the complement of the X-mask.
  </p>
  <p class="indent1">
- The non-X-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
+ The non-X-mask of 0x1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
  </p>
  <p>
  The ones-mask of a region is: bits-0 &amp; bits-1
  </p>
  <p class="indent1">
-     The ones-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
+     The ones-mask of 0x1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
  </p>
  <p>
  The zeros-mask of a region is: ~bits-0 &amp; ~bits-1
  </p>
  <p class="indent1">
-     The zeros-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
+     The zeros-mask of 0x1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
  </p>
  <p>
  The any-ones-mask of a region is: bits-0 + bits-1
  </p>
  <p class="indent1">
-     The any-ones-mask of 0<span class="not">x</span>1X, (0011, 0110) = 0011 + 0110 = 0111.
+     The any-ones-mask of 0x1X, (0011, 0110) = 0011 + 0110 = 0111.
  </p>
  <p class="indent1">
      Or the ones-mask + x-mask.
@@ -548,7 +548,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The any-zeros-mask of a region is: ~bits-0 + ~bits-1
  </p>
  <p class="indent1">
-     The any-zeros-mask of 0<span class="not">x</span>1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
+     The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
  </p>
  <p class="indent1">
      Or the zeros-mask + x-mask.
@@ -565,7 +565,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Two regions intersect if their different bits mask = all zeros.
         </p>
  <table class="indent1">
- <caption>0<span class="not">x</span>X1 &amp; X11X = 0111 (7)</caption>
+ <caption>0xX1 &amp; X11X = 0111 (7)</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -606,10 +606,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The intersection region is given by (r1.any-ones-mask &amp; r2.any-ones-mask, ~r1.any-zeros-mask + ~r2.any-zeros-mask).
         </p>
       <p class="indent1">
-        Given 0<span class="not">x</span>X1 = (0011, 0101) and X11X = (1111, 0110).
+        Given 0xX1 = (0011, 0101) and X11X = (1111, 0110).
         </p>
         <p class="indent1">
- The intersection of 0<span class="not">x</span>X1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
+ The intersection of 0xX1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
         </p>
    <h3>Adjacent Regions</h3>
   <p>
@@ -665,18 +665,18 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 
   <h3>The Union of two Regions</h3>
   <p>
- If you have two regions, 0<span class="not">x</span>X1 and 1X<span class="not">x</span>1,
+ If you have two regions, 0xX1 and 1Xx1,
  the regions are adjacent and have corresponding X bits, they can be combined.
  The one different bit becomes an X in the result.
  Other equal, corresponding, bits will be the same value in the result.
  In this case the result would be XXX1.
   </p>
  <table class="indent1">
- <caption>0<span class="not">x</span>X1 + 1X<span class="not">x</span>1 = XXX1</caption>
+ <caption>0xX1 + 1Xx1 = XXX1</caption>
     <tr>
     <th>
  <table>
- <caption>0<span class="not">x</span>X1, 1X<span class="not">x</span>1</caption>
+ <caption>0xX1, 1Xx1</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -771,7 +771,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         is given by ("or" all states, "and" all states).
   </p>
    <p class="indent2">
- Given 0<span class="not">x</span>X1 = (0011, 0101) and 1X<span class="not">x</span>1 = (1101, 1011).
+ Given 0xX1 = (0011, 0101) and 1Xx1 = (1101, 1011).
   </p>
    <p class="indent2">
  The Union = (0011 + 0101 + 1101 + 1011, 0011 & 0101 & 1101 & 1011) = (1111, 0001) = XXX1.
@@ -793,7 +793,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Adjacent, similar, regions, without all X bits corresponding, have an overlapping part that can be calculated.
         </p>
         <table class="indent1">
-        <caption>1X0<span class="not">x</span>, X110</caption>
+        <caption>1X0x, X110</caption>
            <tr>
                 <th></th>
                 <th>00</th>
@@ -831,9 +831,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
            </tr>
         </table>
             <p>
-        To calculate the overlapping part of 1X0<span class="not">x</span> and X110, use the intersection logic, even though they do not intersect.
+        To calculate the overlapping part of 1X0x and X110, use the intersection logic, even though they do not intersect.
         </p>
-	<p>1X0<span class="not">x</span> = (1100, 1001)</p>
+	<p>1X0x = (1100, 1001)</p>
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
@@ -843,7 +843,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	OR the ~any-zeros-masks:   1000 + 0110 = 1110
 	</p>
 	<p>
-	Now make a region from the results, (1100, 1110) = 11<span class="not">x</span>0 (C, E).
+	Now make a region from the results, (1100, 1110) = 11x0 (C, E).
 	</p>
 <a name="SKM"></a><h2>Sparse Karnaugh Maps <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
     <p>
@@ -871,7 +871,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Other equal, corresponding, bits will be the same value in the result.
   </p>
  <p class="indent1">
-3+5 = 0XX1, 5+F = X1X1 
+3+5 = 0Xx1, 5+F = X1X1 
    </p>
     <p class="indent1">
  <table>
@@ -945,7 +945,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  the two regions may suggest a different sample result for square 7, which has not yet been sampled.
   </p>
  <table class="indent1">
- <caption>0XX1 vs. X11X</caption>
+ <caption>0Xx1 vs. X11X</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1003,19 +1003,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
           s2 can be calculated by: an isolated single bit of the region non-X bit position mask ^ s1.
     </p>
         <p class="indent1">
- If s1 is similar to s2, then the two squares form a region and s1 is in two regions, and the K-Map was not solved as previously thought.
+ If s1 is similar to s2, then the two squares form a region and s1 is in two regions, and the region was not discerned as previously thought.
   </p>
   <p class="indent1">
     <i>For a square that is only in one region, it must be dissimilar to all adjacent squares outside of the region</i>.
     </p>
     <p class="indent1">
-      <i>This allows us to predict that a square is in only one region, therefore a defining region, without having a complete solution!</i>
+      <i>This allows us to say that a square is in no larger region, and possibly a defining region.</i>
     </p>
     <p class="indent1">
-      <i>We are really proving that a square is in no larger region.</i>
-    </p>
-    <p class="indent1">
-        If a new sample shows the prediction to be wrong, there will be multiple subregions of the predicted region and s1 will be in more than one region.
+        If a new sample shows the prediction to be wrong, s1 will be in one (an additional adjacent dissimilar square), or more, smaller regions.
     </p>
     <p class="indent1">
     A large, sparse, K-Map, is never really "solved".
@@ -1024,7 +1021,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     If there are squares in both of two overlapping regions, discarding one region will make it appear that those squares are only in one region. 
     </p>
     <p class="indent1">
- So keep all valid regions, even those that are completely overlapped by other regions.
+ So keep all valid regions, unless they are a subset of another valid region.
     </p>
     </ul>
     <p class="indent1">
@@ -1083,6 +1080,50 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
  For example, the squares D and 7, above, might be used to confirm the regions they are in.
     </p>
+   <p>
+   In the K-Map below, square 5 is in two regions (0X0X, X10x) with one adjacent dissimilar square.
+</p>
+   <p>
+  The implied largest region for square 5 is XX0X, which is invalid due to dissimilar square 9.
+</p>
+ <table class="indent1">
+ <caption>Square 5 in two regions</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg">0</td>
+  <td class="bgg2">1</td>
+  <td>3</td>
+  <td>2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td class="bgg2">4</td>
+  <td class="bgg"><b>5</b></td>
+  <td class="bgr"><b>7</b></td>
+  <td>6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td class="bgg">C</td>
+  <td class="bgg2">D</td>
+  <td>F</td>
+  <td>E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td>8</td>
+  <td class="bgr">9</td>
+  <td>B</td>
+  <td>A</td>
+    </tr>
+ </table> 
   </div>
  <div id="learning">
  <a name="AL"></a>
@@ -1235,7 +1276,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <li>0 &#8594; 0, 1 &#8594; 1 = X &#8594; X</li>
  <li>0 &#8594; 0, 1 &#8594; 0 = X &#8594; 0</li>
  <li>0 &#8594; 1, 1 &#8594; 1 = X &#8594; 1</li>
- <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; <span class="not">x</span></li>
+ <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; x</li>
  <li>1 &#8594; 1, 1 &#8594; 0 = 1 &#8594; X (disallowed)</li>
     </ul>
     <p>
@@ -1271,7 +1312,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  (0&#8594;0, 0&#8594;1, 1&#8594;0, 0&#8594;0)<br />
  (0&#8594;0, 1&#8594;0, 0&#8594;0, 1&#8594;1)<br />
  ------------------------------------<br />
- (0&#8594;0, X&#8594;<span class="not">x</span>, X&#8594;0, X&#8594;X)
+ (0&#8594;0, X&#8594;x, X&#8594;0, X&#8594;X)
     </p>
     <p>
  The state 0110 is within the above union of 0XXX.
@@ -1422,7 +1463,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Assuming a current state of 0000, and the wish to change to the state 0011:
     </p>
     <p class="indent2">
-    With the rule XXXX-><span class="not">x</span>XXXX available to switch the leftmost bit.
+    With the rule XXXX->xXXXX available to switch the leftmost bit.
     </p>
     <p class="indent2">
     Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
@@ -1528,7 +1569,7 @@ For a state that always produces the same two results, alternating, a minimum of
  The union may be valid if, in a sequence that may start at different positions in the two lists, each may make a valid union (no 0&#8594;X or 1&#8594;X bits).
     </p>
     <p class="indent1">
-    If two two-result states can be combined in two ways, producing a rule with X->1 and/or X->0 and corresponding X-><span class="not">x</span> and/or X->X, something is wrong and the two states should not form a region.
+    If two two-result states can be combined in two ways, producing a rule with X->1 and/or X->0 and corresponding X->x and/or X->X, something is wrong and the two states should not form a region.
     </p>
     <p>
  If a state has two different results that do not alternate predictably, or more than two different results, the state can be marked as being unpredictable.
@@ -1550,7 +1591,7 @@ For a state that always produces the same two results, alternating, a minimum of
     What you think you know is always contingent on the next sample.  Multiple, consecutive, samples that meet expectations, decrease the probability of an unexpected sample.
     </p>
    <p>
-        Two states that have not established a result pattern, and have not become unpredictable, may appear to be compatible, but it might be better to say that they are not-incompatible.
+        Two states that have not established a result pattern, and have not become unpredictable, may appear to be compatible, but it might be better to say that they are not-incompatible yet.
    </p>
      <p class="indent1">
         When first starting to accumulate samples, many samples will be single samples taken using the current state.
@@ -1709,7 +1750,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 10/18/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 10/19/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1879,22 +1920,22 @@ For a state that always produces the same two results, alternating, a minimum of
 	The key is to start with 1-bit-number=> 0 <=1-bit-number, and 2-bit-number=> 7 <=2-bit-number.  Thats 6 numbers, a 1-bit and a 2-bit number are remaining.
         </p>
         <p class="indent1">
-	1-0-2 3-7-6 4 5
+	1-0-2 / 3-7-6 / 4 5
         </p>
         <p class="indent1">
-	1-0-2 6 4 5-7-3
+	1-0-2 / 6 4 / 5-7-3
         </p>
         <p class="indent1">
-	2-0-4 5 1 3-7-6
+	2-0-4 / 5 1 / 3-7-6
         </p>
         <p class="indent1">
-	1-0-4 5-7-6 2 3
+	1-0-4 / 5-7-6 / 2 3
         </p>
         <p class="indent1">
-	1-0-4 6 2 3-7-5
+	1-0-4 / 6 2 / 3-7-5
         </p>
         <p class="indent1">
-	2-0-4 6-7-5 1 3
+	2-0-4 / 6-7-5 / 1 3
         </p>
 </div>
 </body>
