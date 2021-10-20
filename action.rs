@@ -132,8 +132,7 @@ impl SomeAction {
         }
 
         if sqry.get_pn() == Pn::One || sqry.get_pnc() {
-        } else
- {
+        } else {
             cmbx = Truth::M;
         }
 
@@ -302,6 +301,7 @@ impl SomeAction {
                 match cnb1 {
                     Truth::F => {
                         if sqr1.is_adjacent(&sqr3) {
+                            println!("new edge found1 between {} and {}", &sqr1.state, &sqr3.state); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
@@ -318,6 +318,7 @@ impl SomeAction {
                 match cnb2 {
                     Truth::F => {
                         if sqr2.is_adjacent(&sqr3) {
+                            println!("new edge found2 between {} and {}", &sqr2.state, &sqr3.state); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
@@ -442,7 +443,14 @@ impl SomeAction {
                 let sqr2 = self.squares.find(&regx.state2).unwrap();
 
                 if sqr1.get_pnc() && sqr2.get_pnc() {
-                    self.seek_edge.push_nosubs(regx.clone());
+                    if sqrx.state.is_adjacent(&sqr1.state) == false && sqrx.can_combine(&sqr1) == Truth::F {
+                        println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr1.state);
+                        self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
+                    }
+                    if sqrx.state.is_adjacent(&sqr2.state) == false && sqrx.can_combine(&sqr2) == Truth::F {
+                        println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr2.state);
+                        self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
+                    }
                 }
             }
         }
@@ -735,6 +743,7 @@ impl SomeAction {
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         try_again = true;
+                        println!("new edge found3 removing {}", &regx); 
                         self.seek_edge.remove_region(&regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
@@ -771,41 +780,45 @@ impl SomeAction {
         let mut new_regs = RegionStore::new();
 
         for regx in self.seek_edge.iter() {
-
+            print!("seek_edge_needs1: checking reg {} ", &regx);
             // Get the squares represented by the states that form the region
             let sqr1 = self.squares.find(&regx.state1).unwrap();
             let sqr2 = self.squares.find(&regx.state2).unwrap();
 
-            let stas_in = self.squares.stas_in_reg(&regx);
-
             // Check squares that define the region.
 
             let cnb1 = sqr1.can_combine(&sqr2);
+            //let cnb1 = self.can_combine(&sqr1, &sqr2);
+            print!("state 1 {} can combine state 2 {} is {} ", &sqr1.state, &sqr2.state, cnb1); 
 
+            let mut needs_found = false;
             match cnb1 {
                 // A group of Pn:One may be invalidated by more samples, leading to
                 // the same group at Pn:+
                 Truth::T => {
+                    print!(" inactivating {} ", &regx);
                     ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
-                    continue;
+                    needs_found = true;
                 }
                 Truth::M => {
-                    if sqr1.get_pn() < sqr2.get_pn() {
+                    if sqr1.get_pnc() == false {
+                        print!("get more samples of square {} ", &sqr1.state);
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: sqr1.state.clone(),
                             in_group: regx.clone(),
                         });
-                        continue;
-                    } else if sqr2.get_pn() < sqr1.get_pn() {
+                        needs_found = true;
+                    } else if sqr2.get_pnc() == false {
+                        print!("get more samples of square {} ", &sqr2.state);
                         ret_nds.push(SomeNeed::SeekEdge {
                             dom_num: 0, // set this in domain get_needs
                             act_num: self.num,
                             targ_state: sqr2.state.clone(),
                             in_group: regx.clone(),
                         });
-                        continue;
+                        needs_found = true;
                     } else {
                         panic!(
                             "sqrpn {} {} == sqr pn {} {}",
@@ -818,124 +831,137 @@ impl SomeAction {
                 }
                 Truth::F => {
                     if sqr1.is_adjacent(&sqr2) {
-                        if sqr1.get_pnc() == false {
-                            ret_nds.push(SomeNeed::SeekEdge {
-                                dom_num: 0, // set this in domain get_needs
-                                act_num: self.num,
-                                targ_state: sqr1.state.clone(),
-                                in_group: regx.clone(),
-                            });
-                            continue;
-                        } else if sqr2.get_pnc() == false {
-                            ret_nds.push(SomeNeed::SeekEdge {
-                                dom_num: 0, // set this in domain get_needs
-                                act_num: self.num,
-                                targ_state: sqr2.state.clone(),
-                                in_group: regx.clone(),
-                            });
-                            continue;
-                        } else {
-                            ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
-                            continue;
-                        }
-                    } // else seek_edge_need2 will look for states between
+                        print!(" sqrs are adjacent, inactivating {} ", &regx);
+                        ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
+                        needs_found = true;
+                    } else {  // seek_edge_need2 will look for states between
+                        print!(" sqrs are not adjacent, needs2 will handle ");
+                    }
                 }
             } // end match cnb1
+            
 
-            if stas_in.len() == 2 {
+            let stas_in = self.squares.stas_in_reg(&regx);
+
+            if needs_found || stas_in.len() == 2 {
+                println!(" ");
                 continue;
             }
 
-            // Check squares any pair of squares in the region that are not
-            // combinable, except both the region defining squares.
-            let mut found = false;
-            for inx in 0..stas_in.len() {
-                let stax = &stas_in[inx];
-
+            // Check for squares between that are dissimilar to the region defining squares
+            let mut fs_found = false;
+            for stax in stas_in.iter() {
+                if *stax == regx.state1 || *stax == regx.state2 {
+                    continue;
+                }
                 let sqrx = self.squares.find(&stax).unwrap();
+                match sqrx.can_combine(&sqr1) {
+                    Truth::F => {
+                        fs_found = true;
+                        //  println!(
+                        //      "sqr {} is not combinable with {}",
+                        //      &stax, &sqry
+                        //  );
 
-                for iny in (inx + 1)..stas_in.len() {
-                    let stay = &stas_in[iny];
-
-                    let regy = SomeRegion::new(&stax, &stay);
-
-                    if &regy == regx {
-                        continue;
-                    }
-
-                    let sqry = self.squares.find(&stay).unwrap();
-
-                    match sqrx.can_combine(&sqry) {
-                        Truth::F => {
-                            //  println!(
-                            //      "sqr {} is not combinable with {}",
-                            //      &stax, &sqry
-                            //  );
-
-                            new_regs.push_nosups(regy);
-                            found = true;
+                        if sqrx.get_pnc() {
+                            new_regs.push_nosups(SomeRegion::new(&stax, &sqr1.state));
+                        } else {
+                            print!("get more samples of square {} ", &stax);
+                            ret_nds.push(SomeNeed::SeekEdge {
+                                    dom_num: 0, // set this in domain get_needs
+                                    act_num: self.num,
+                                    targ_state: stax.clone(),
+                                    in_group: regx.clone(),
+                                });
                         }
-                        _ => {}
-                    } // end match sqrx, sqry
-                } // next iny
-            } // next inx
+                    }
+                    _ => {}
+                }
+                match sqrx.can_combine(&sqr2) {
+                    Truth::F => {
+                        fs_found = true;
+                        //  println!(
+                        //      "sqr {} is not combinable with {}",
+                        //      &stax, &sqry
+                        //  );
 
-            if found {
+                        if sqrx.get_pnc() {
+                            new_regs.push_nosups(SomeRegion::new(&stax, &sqr2.state));
+                        } else {
+                            print!("get more samples of square {} ", &stax);
+                            ret_nds.push(SomeNeed::SeekEdge {
+                                    dom_num: 0, // set this in domain get_needs
+                                    act_num: self.num,
+                                    targ_state: stax.clone(),
+                                    in_group: regx.clone(),
+                                });
+                        }
+                    }
+                    _ => {}
+                }
+            } // next stax
+
+            if fs_found {
+                println!(" ");
                 continue;
             }
 
-            // Look for pairs that may need more samples, except both the region defining squares.
-            for inx in 0..stas_in.len() {
-                let sqrx = self.squares.find(&stas_in[inx]).unwrap();
+            // Check for squares between region defining squares that need more samples
+            for stax in stas_in.iter() {
+                if *stax == regx.state1 || *stax == regx.state2 {
+                    continue;
+                }
+                let sqrx = self.squares.find(&stax).unwrap();
+                match sqrx.can_combine(&sqr1) {
+                    Truth::M => {
+                        //  println!(
+                        //      "sqr {} is not combinable with {}",
+                        //      &stax, &sqry
+                        //  );
 
-                for iny in (inx + 1)..stas_in.len() {
-                    let regy = SomeRegion::new(&sqrx.state, &stas_in[iny]);
-
-                    if &regy == regx {
-                        continue;
-                    }
-
-                    let sqry = self.squares.find(&stas_in[iny]).unwrap();
-
-                    match sqrx.can_combine(&sqry) {
-                        Truth::M => {
-                            //  println!(
-                            //      "sqr {} msn with {}",
-                            //      &stax, &sqry.state
-                            //  );
-                            if sqrx.get_pn() < sqry.get_pn() {
-                                ret_nds.push(SomeNeed::SeekEdge {
+                        if sqrx.get_pnc() {
+                            panic!("sqrx pnc?");
+                        } else {
+                            print!("get more samples of square {} ", &stax);
+                            ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
                                     act_num: self.num,
-                                    targ_state: sqrx.state.clone(),
+                                    targ_state: stax.clone(),
                                     in_group: regx.clone(),
                                 });
-                                found = true;
-                            } else if sqry.get_pn() < sqrx.get_pn() {
-                                ret_nds.push(SomeNeed::SeekEdge {
-                                    dom_num: 0, // set this in domain get_needs
-                                    act_num: self.num,
-                                    targ_state: sqry.state.clone(),
-                                    in_group: regx.clone(),
-                                });
-                                found = true;
-                            }
                         }
-                        _ => {}
-                    } // end match sqrx+y
-                } // next iny
-            } // next inx
+                    }
+                    _ => {}
+                }
+                match sqrx.can_combine(&sqr2) {
+                    Truth::M => {
+                        //  println!(
+                        //      "sqr {} is not combinable with {}",
+                        //      &stax, &sqry
+                        //  );
 
-            // Group might be invalidate due to a Pn increase, then be OK
-            // after more samples.
-            if found == false {
-                ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
-            }
-        } // next regx closer_reg
+                        if sqrx.get_pnc() {
+                            panic!("sqrx pnc?");
+                        } else {
+                            print!("get more samples of square {} ", &stax);
+                            ret_nds.push(SomeNeed::SeekEdge {
+                                    dom_num: 0, // set this in domain get_needs
+                                    act_num: self.num,
+                                    targ_state: stax.clone(),
+                                    in_group: regx.clone(),
+                                });
+                        }
+                    }
+                    _ => {}
+                }
+            } // next stax
+            println!(" ");
+        } // next regx
 
         // Apply new seek edge regions
+        // After get_needs does the housekeeping, it will run this again
         if new_regs.len() > 0 {
-
+            ret_nds = NeedStore::new();
             for regx in new_regs.iter() {
                 ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
             }
@@ -953,6 +979,7 @@ impl SomeAction {
 
         // Get seek edge needs, scan the action seek_edge RegionStore.
         for regx in self.seek_edge.iter() {
+            print!("seek_edge_needs2: checking reg {} ", &regx);
 
             if regx.state1.is_adjacent(&regx.state2) {
                 panic!(
@@ -962,7 +989,7 @@ impl SomeAction {
             }
 
             if regx.state1 == regx.state2 {
-                panic!("region states {} {} are equal", regx.state1, regx.state2);
+                panic!("region states {} {} are equal ", regx.state1, regx.state2);
             }
 
             let stas_in = self.squares.stas_in_reg(&regx);
@@ -970,10 +997,11 @@ impl SomeAction {
             //println!("seek edge in {} stas {}", &regx, &stas_in);
 
             if stas_in.len() != 2 {
+                println!(" stas in = 2");
                 continue;
             }
+            print!(" stas in = {} ", stas_in.len());
 
-            // No unsatisfied needs from seek_edge_needs1
             // No square between region.state1 and region.state2, seek one
 
             // Get list of one-bit masks representing the bits different of the
@@ -1007,12 +1035,14 @@ impl SomeAction {
             let seek_state = statex.s_xor(&dif_msk.to_state());
 
             // Make need for seek_state
+            print!("get sample of new square {}", &seek_state);
             ret_nds.push(SomeNeed::SeekEdge {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 targ_state: seek_state,
                 in_group: regx.clone(),
             });
+            println!(" ");
         } // next regx
 
         ret_nds

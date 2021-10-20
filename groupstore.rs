@@ -5,7 +5,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-use crate::pn::Pn;
+//use crate::pn::Pn;
 use crate::removeunordered::remove_unordered;
 
 use serde::{Deserialize, Serialize};
@@ -66,16 +66,21 @@ impl GroupStore {
             if grpx.region.is_superset_of_state(&sqrx.state) {
 
                 if grpx.square_is_ok(&sqrx) == false {
-                    if grpx.pn == Pn::Two {
-                    println!(
-                        "\nDomain {} Act {} square {} {} invalidates\ngroup  {} {}",
-                        dom, act, sqrx.state, sqrx.rules.formatted_string(), &grpx.region, &grpx.rules.formatted_string()
-                    );
+                    if sqrx.get_pn() > grpx.pn {
+                        println!(
+                            "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
+                            dom, act, sqrx.state, sqrx.get_pn() , &grpx.region, grpx.pn
+                        );
+                    } else if sqrx.get_pn() < grpx.pn && sqrx.get_pnc() {
+                        println!(
+                            "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
+                            dom, act, sqrx.state, sqrx.get_pn() , &grpx.region, grpx.pn
+                        );
                     } else {
-                    println!(
-                        "\nDomain {} Act {} square {} {} invalidates\ngroup  {} {}",
-                        dom, act, sqrx.state, sqrx.rules.formatted_string() , &grpx.region, grpx.rules.formatted_string()
-                    );
+                        println!(
+                            "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
+                            dom, act, sqrx.state, sqrx.rules.formatted_string() , &grpx.region, grpx.rules.formatted_string()
+                        );
                     }
 
                     regs_invalid.push(grpx.region.clone());
@@ -87,7 +92,7 @@ impl GroupStore {
 
         // Remove the groups
         for inx in rmvec.iter().rev() {
-            println!("\nDomain {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
             remove_unordered(&mut self.avec, *inx);
         }
 
@@ -178,7 +183,7 @@ impl GroupStore {
 
         // Remove the groups
         for inx in rmvec.iter().rev() {
-            println!("\nDomain: {} Act: {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!("\nDom: {} Act: {} Group {} deleted", dom, act, self.avec[*inx].region);
             remove_unordered(&mut self.avec, *inx);
         }
 
@@ -239,7 +244,7 @@ impl GroupStore {
         }
 
         for inx in rmvec.iter().rev() {
-            println!("\nDomain {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
             remove_unordered(&mut self.avec, *inx);
         }
 

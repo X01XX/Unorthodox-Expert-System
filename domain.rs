@@ -151,7 +151,7 @@ impl SomeDomain {
             //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
             if self.boredom > 3 && self.optimal.len() > 1 && self.optimal.len() != sups.len() {
                 let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
-                println!("\nDomain {}: I'm bored lets move to {}", self.num, &notsups);
+                println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
 
                 let inx = rand::thread_rng().gen_range(0, notsups.len());
                 return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
