@@ -439,7 +439,7 @@ impl SomeNeed {
                 group2: _,
                 ruls2: _,
             } => {
-                return 1;
+                return 2;
             } // end process for ContradictoryIntersection
 
             SomeNeed::ToRegion {
@@ -475,19 +475,8 @@ impl SomeNeed {
                 targ_state: _,
                 in_group: _,
             } => {
-                return 2;
+                return 1;
             }
-            SomeNeed::SetEdgeExpand {
-                group_region: _,
-                edge_mask: _,
-            } => {
-                return 2;
-            }
-//            SomeNeed::AddGroup {
-//                group_region: _,
-//            } => {
-//                return 99;
-//            }
             _ => {
                 panic!("priority: Need not in match!");
             }

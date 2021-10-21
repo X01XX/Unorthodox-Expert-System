@@ -35,7 +35,7 @@ pub struct SomeGroup {
     pub confirmed: bool,
     /// The state, in only one (this) group, used to confirm the group.
     pub anchor: Option<SomeState>,
-    /// Mask of non-x bits checked for expansion dur to available rules.
+    /// Mask of non-x bits checked for expansion based on available rules capability to change bits.
     pub edge_expand: SomeMask,
     /// Flag used to check for other groups that are close.
     /// So a new group is checked against all others, until no
@@ -71,7 +71,6 @@ impl SomeGroup {
 
     /// Accessor, set the edge_expand field.
     pub fn set_edge_expand(&mut self, amask: &SomeMask) {
-
         self.edge_expand = amask.clone();
     }
 

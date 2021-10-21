@@ -207,7 +207,7 @@ impl RegionStore {
             inx += 1;
         }
 
-        // Remove identified regions, in reverse order
+        // Remove identified regions, in reverse (highest index) order
         for inx in rmvec.iter().rev() {
             remove_unordered(&mut self.avec, *inx);
         }
