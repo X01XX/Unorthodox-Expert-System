@@ -1392,7 +1392,7 @@ impl SomeAction {
             let mut nds_grp_add = NeedStore::new(); // needs for added group
             let mut grp_clear_bit = NeedStore::new(); // clear bit need for group
 
-            for inx in 2..cfm_max.len() {
+            for inx in 1..cfm_max.len() {
                 let adj_sta = &cfm_max[inx];
 
                 //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
@@ -2226,4 +2226,109 @@ impl SomeAction {
         //println!("possible_regions_for_group {} returning {}", &grpx.region, &regs);
         regs
     } // end possible_regions_for_group
+    
+    // Find and print verticies
+    pub fn vertices(&self) {
+        
+        let max_reg = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
+        println!("Vertices: ");
+        let edges: Vec<(SomeState, SomeState)> = self.squares.edges();
+//        for edgx in &edges {
+//            println!("  {} v {}", &edgx.0, &edgx.1);
+//        }
+        
+        if edges.len() < 3 {
+            return;
+        }
+        
+//        for inx in 0..(edges.len() - 1) {
+//            let edgx = &edges[inx];
+//            for iny in (inx+1)..edges.len() {
+//                let edgy = &edges[iny];
+//                if edgx.0 == edgy.0 {
+//                    println!("vert 00: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
+//                } else if edgx.0 == edgy.1 {
+//                    println!("vert 01: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
+//                } else if edgx.1 == edgy.0 {
+//                    println!("vert 10: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
+//                } else if edgx.1 == edgy.1 {
+//                    println!("vert 11: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
+//                }
+//            } // next iny
+//        } // next inx
+        
+        // Vector of each unique state in an edge
+        let mut stats = Vec::<SomeState>::new();
+        
+        for edgx in &edges {
+            if stats.contains(&edgx.0) {
+            } else {
+                stats.push(edgx.0.clone());
+            }
+            if stats.contains(&edgx.1) {
+            } else {
+                stats.push(edgx.1.clone());
+            }
+        }
+        //println!("num states to check = {}", stats.len());
+
+        let mut edge_data = Vec::<(usize, SomeState, StateStore)>::with_capacity(stats.len());
+
+        for stax in &stats {
+            let mut cnt = 0;
+            let mut exs = StateStore::new();
+            for edgx in &edges {
+                if edgx.0 == *stax {
+                    cnt += 1;
+                    exs.push(edgx.1.clone());
+                } else if edgx.1 == *stax {
+                    cnt += 1;
+                    exs.push(edgx.0.clone());
+                }
+            }
+            edge_data.push((cnt, stax.clone(), exs.clone()));
+            //println!("Sqr {} is in {} edges {}", stax, cnt, exs);
+        }
+
+        let mut cur_cnt = 9999;
+
+        loop {
+
+            // get next highest count
+            let mut tmp_cnt = 0;
+            for edgex in edge_data.iter() {
+                if edgex.0 > tmp_cnt && edgex.0 < cur_cnt {
+                    tmp_cnt = edgex.0;
+                }
+            }
+            if tmp_cnt < 3 {
+                break;
+            }
+            cur_cnt = tmp_cnt;
+
+            //println!("highest cnt {}", cur_cnt);
+
+            for edgex in edge_data.iter() {
+                if edgex.0 != cur_cnt {
+                    continue;
+                }
+                let mut base_reg = max_reg.clone();
+                let base_msk = edgex.1.to_mask();
+
+                for dis_state in edgex.2.iter() {
+                    let dif_msk = edgex.1.s_xor(dis_state).to_mask(); // will be one bit since they are adjacent
+                    
+                    if base_msk.m_and(&dif_msk).is_low() { // bit in base-state is 0
+                        let base_edge = max_reg.set_to_zeros(&dif_msk);
+                        base_reg = base_reg.intersection(&base_edge);
+                    } else { // bit in base-state is 1
+                        let base_edge = max_reg.set_to_ones(&dif_msk);
+                        base_reg = base_reg.intersection(&base_edge);
+                    }
+                } // next dis_state
+                println!("Sqr {} has {} edges {} region no larger than {}", &edgex.1, &edgex.0, &edgex.2, &base_reg);
+            } // next edgex
+
+        } // end loop
+    }
 } // end impl SomeAction

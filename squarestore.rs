@@ -132,7 +132,7 @@ impl SquareStore {
     }
 
     // Calc and return all edges
-    pub fn _edges(&self) -> Vec::<(SomeState, SomeState)> {
+    pub fn edges(&self) -> Vec::<(SomeState, SomeState)> {
         
         let mut sqrs = Vec::<&SomeSquare>::with_capacity(self.ahash.len());
         
@@ -144,6 +144,11 @@ impl SquareStore {
         
         for x in 0..(sqrs.len() - 1) {
             let sqrx = sqrs[x];
+
+            if sqrx.get_pnc() == false {
+                continue;
+            }
+
             for y in (x+1)..sqrs.len() {
                 let sqry = sqrs[y];
                 

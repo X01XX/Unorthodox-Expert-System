@@ -268,6 +268,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             }
         } else {
             println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
+            if 1 == 2 {
+                dmxs[0].actions[0].vertices();
+            }
             if to_end {
                 if run_count < run_max {
                     return 0;
