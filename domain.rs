@@ -1009,7 +1009,7 @@ impl SomeDomain {
             }
         }
     } // end act_num_from_string
-    
+
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to

@@ -30,7 +30,7 @@ impl RegionStore {
     }
 
     /// Return a new RegionStore instance, empty, with a specified capacity.
-    pub fn new_with_capacity(num: usize) -> Self {
+    pub fn with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeRegion>::with_capacity(num),
         }

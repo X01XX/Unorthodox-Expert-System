@@ -38,7 +38,7 @@ impl fmt::Display for SomeAction {
         rc_str.push_str(&self.num.to_string());
 
         if self.seek_edge.len() > 0 {
-            rc_str.push_str(&format!(" seek_edge: {}", self.seek_edge));
+            rc_str.push_str(&format!(" seek_edge within: {}", self.seek_edge));
         }
 
         //rc_str.push_str(&format!(" Predictable changes {}", self.predictable_bit_changes));
@@ -250,8 +250,7 @@ impl SomeAction {
                                     dom,
                                     self.num,
                                 );
-              
-              } else {
+                            } else {
                                 let regs = self.groups.supersets_of(&for_reg);
                                 println!(
                                     "Dom {} Act {} Supersets found for new group (1) {} in {}",
@@ -302,7 +301,7 @@ impl SomeAction {
                 match cnb1 {
                     Truth::F => {
                         if sqr1.is_adjacent(&sqr3) {
-                            println!("new edge found between {} and {}", &sqr1.state, &sqr3.state); 
+                            println!("new edge found between {} and {} removing seek edge {}", &sqr1.state, &sqr3.state, &greg); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
@@ -319,7 +318,7 @@ impl SomeAction {
                 match cnb2 {
                     Truth::F => {
                         if sqr2.is_adjacent(&sqr3) {
-                            println!("new edge found between {} and {}", &sqr2.state, &sqr3.state); 
+                            println!("new edge found between {} and {} removing seek edge {}", &sqr2.state, &sqr3.state, &greg); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
@@ -425,7 +424,7 @@ impl SomeAction {
     /// that are in no groups.
     /// Update max_reachable_region, if any groups are added or deleted.
     fn check_square_new_sample(&mut self, key: &SomeState, dom: usize) {
-        //println!("check_square_new_sample");
+        //println!("check_square_new_sample for {}", key);
 
         let sav_len = self.groups.len();
 
@@ -737,7 +736,6 @@ impl SomeAction {
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         try_again = true;
-                        println!("new edge found3 removing {}", &regx); 
                         self.seek_edge.remove_region(&regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
@@ -2174,6 +2172,9 @@ impl SomeAction {
         regs.push(most_x.clone());
         //println!("Possible max region is {}", &regs);
 
+        let sqr1 = self.squares.find(&grpx.region.state1).unwrap();
+        let sqr2 = self.squares.find(&grpx.region.state2).unwrap();
+    
         for (key, sqry) in &self.squares.ahash {
 
             // If a square is in the group region, skip it
@@ -2187,47 +2188,8 @@ impl SomeAction {
                 continue;
             }
 
-            // If the square rule(s) are compatible, or unknown, with the group rule(s), skip it
-            let sqry_pn = sqry.get_pn();
-
-            if sqry_pn == grpx.pn {
-                // If both are unpredictable, they are combinable
-                if sqry_pn == Pn::Unpredictable {
-                    continue;
-                }
-                if sqry_pn == Pn::Two {
-                    if let Some(_) = sqry.rules.union(&self.squares.find(&grpx.region.state1).unwrap().rules) {
-                        if let Some(_) = sqry.rules.union(&self.squares.find(&grpx.region.state2).unwrap().rules) {
-                           continue;
-                       }
-                    }
-                } else {
-                    // If a union can be made, they are compatible
-                    //println!("grules {} sqry rules {}", &g_rules, sqry.rules);
-                    if let Some(_) = sqry.rules.union(&grpx.rules) {
-                        continue;
-                    }
-                }
-            } else { // sqry_pn NE g_pn
-                // Check incompatible pn/pnc values
-                if sqry_pn > grpx.pn || sqry.get_pnc() {
-                } else {
-                    if grpx.pn == Pn::Unpredictable {
-                        // more samples needed of sqry to determine compatibility
-                        continue;
-                    }
-                    // Check sqry pn == One, samples== 1 vs group pn == Two
-                    // sqry can be incompatible or compatible
-                    if sqry_pn == Pn::One && grpx.pn == Pn::Two {
-                        // sqry num result must be eq 1, if not already pnc
-                        if sqry.rules[0].union(&grpx.rules[0]).is_valid_union() {
-                            continue;
-                        }
-                        if sqry.rules[0].union(&grpx.rules[1]).is_valid_union() {
-                            continue;
-                        }
-                    }
-                }
+            if sqry.can_combine(&sqr1) != Truth::F && sqry.can_combine(&sqr2) != Truth::F {
+                continue;
             }
 
             // sqry rules are incompatible with the group rules
@@ -2261,8 +2223,7 @@ impl SomeAction {
 
         } // next key, sqry
 
-        //println!("possible_regions_for_group {} returning {}", grpx.get_region(), &regs);
+        //println!("possible_regions_for_group {} returning {}", &grpx.region, &regs);
         regs
     } // end possible_regions_for_group
-
 } // end impl SomeAction

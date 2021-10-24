@@ -140,7 +140,7 @@ impl DomainStore {
     /// Return a vector of InxPlan structs, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
-
+        //println!("domainstore::evaluate_needs");
         let mut last_priority = 0;
 
         loop {
@@ -159,6 +159,7 @@ impl DomainStore {
             }
 
             if least_priority == 9999 {
+                //println!("domainstore::evaluate_needs returning empty vec");
                 return Vec::<InxPlan>::new();
             }
 
@@ -209,6 +210,7 @@ impl DomainStore {
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
+                        //println!("domainstore::evaluate_needs returning vec pri {} num items {}", least_priority, ndsinx_plan.len());
                         return ndsinx_plan;
                     }
                 }

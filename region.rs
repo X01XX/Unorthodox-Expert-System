@@ -332,7 +332,7 @@ impl SomeRegion {
     pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
 
         // Initialize the StateStore
-        let mut store = StateStore::new_with_capacity(2);
+        let mut store = StateStore::with_capacity(2);
 
         // Check each possible combination of two states
         for inx in 0..stas.len() {

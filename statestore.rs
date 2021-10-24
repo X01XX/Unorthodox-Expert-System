@@ -27,7 +27,7 @@ impl StateStore {
     }
 
     /// Return a new StateStore instance, empty, with a specified capacity.
-    pub fn new_with_capacity(num: usize) -> Self {
+    pub fn with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeState>::with_capacity(num),
         }
@@ -90,11 +90,22 @@ impl StateStore {
 
         rc_str
     }
+
 } // end impl StateStore
 
 impl Index<usize> for StateStore {
     type Output = SomeState;
     fn index<'a>(&'a self, i: usize) -> &'a SomeState {
         &self.avec[i]
+    }
+}
+
+impl Clone for StateStore {
+    fn clone(&self) -> Self {
+        let mut rcstp = Self::with_capacity(self.len());
+        for stax in self.avec.iter() {
+            rcstp.push(stax.clone());
+        }
+        rcstp
     }
 }

@@ -40,19 +40,8 @@ impl StepStore {
         }
     }
 
-    /// Return a StepStore. cloning a vector input
-    pub fn _new_from_vec(steps: &Vec<SomeStep>) -> Self {
-        let mut vecx = Vec::<SomeStep>::with_capacity(steps.len());
-        for stpx in steps {
-            vecx.push(stpx.clone());
-        }
-        Self {
-            avec: vecx,
-        }
-    }
-    
     /// Return a new StepStore, empty, with an expected capacity.
-    pub fn new_with_capacity(num: usize) -> Self {
+    pub fn with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(num),
         }
@@ -80,7 +69,7 @@ impl StepStore {
         let end_inx = self.len() - 1;
 
         if self.avec[end_inx].result == other.avec[0].initial {
-            let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
+            let mut rc_steps = StepStore::with_capacity(self.len() + other.len());
 
             for stp1 in self.iter() {
                 rc_steps.push(stp1.clone());
@@ -104,7 +93,7 @@ impl StepStore {
             if let Some(steps1) = self.restrict_result_region(&regx) {
                 if let Some(steps2) = other.restrict_initial_region(&regx) {
 
-                    let mut rc_steps = StepStore::new_with_capacity(self.len() + other.len());
+                    let mut rc_steps = StepStore::with_capacity(self.len() + other.len());
 
                     for stp1 in steps1.iter() {
                         rc_steps.push(stp1.clone());
@@ -167,7 +156,7 @@ impl StepStore {
     /// Return a new Some(StepStore) after restricting the initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
 
-        let mut rc_steps = StepStore::new_with_capacity(self.len());
+        let mut rc_steps = StepStore::with_capacity(self.len());
 
         let mut regy = regx.clone();
 
@@ -188,7 +177,7 @@ impl StepStore {
     /// Return a new Some(StepStore) after restricting the result region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
 
-        let mut rc_steps = StepStore::new_with_capacity(self.len());
+        let mut rc_steps = StepStore::with_capacity(self.len());
 
         let mut regy = regx.clone();
 
@@ -297,7 +286,7 @@ impl Index<usize> for StepStore {
 
 impl Clone for StepStore {
     fn clone(&self) -> Self {
-        let mut rcstp = Self::new_with_capacity(self.len());
+        let mut rcstp = Self::with_capacity(self.len());
         for stpx in self.avec.iter() {
             rcstp.push(stpx.clone());
         }

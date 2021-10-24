@@ -69,7 +69,7 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}", inx);
 
     let num_ints = 1;
-    let mut regstr = RegionStore::new_with_capacity(1);
+    let mut regstr = RegionStore::with_capacity(1);
     regstr.push(SomeRegion::from_string(num_ints, "r101X").unwrap());
     regstr.push(SomeRegion::from_string(num_ints, "r10X").unwrap());
     let mut dom1 = SomeDomain::new(num_ints, inx_str, regstr);
@@ -91,7 +91,7 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}000000", inx);
 
     let num_ints = 2;
-    let mut regstr = RegionStore::new_with_capacity(1);
+    let mut regstr = RegionStore::with_capacity(1);
     regstr.push(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap());
     let mut dom2 = SomeDomain::new(num_ints, inx_str, regstr);
 
@@ -135,8 +135,9 @@ fn main() {
     let run_max = run_left;
 
     while run_left > 0 {
+        {
         run_left += do_session(run_to_end, run_count, run_max);
-
+        }
         run_left -= 1;
         run_count += 1;
 
@@ -265,7 +266,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             if cant_do > 0 && can_do == 0 {
                to_end = false;
             }
-            
         } else {
             println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
             if to_end {

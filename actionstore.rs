@@ -56,6 +56,8 @@ impl ActionStore {
     /// Get needs for all actions in the store.
     pub fn get_needs(&mut self, cur: &SomeState, agg_chgs: &SomeChange, dom: usize) -> NeedStore {
         // Run a get_needs thread for each action
+        //println!("actionstore: get_needs");
+
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
