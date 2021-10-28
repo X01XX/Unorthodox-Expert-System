@@ -6,7 +6,7 @@ use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::pn::Pn;
-use crate::truth::Truth;
+//use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -131,35 +131,4 @@ impl SquareStore {
         states
     }
 
-    // Calc and return all edges
-    pub fn edges(&self) -> Vec::<(SomeState, SomeState)> {
-        
-        let mut sqrs = Vec::<&SomeSquare>::with_capacity(self.ahash.len());
-        
-        for (_key, sqry) in &self.ahash {
-            sqrs.push(&sqry);
-        }
-        
-        let mut ret_vec = Vec::<(SomeState, SomeState)>::new();
-        
-        for x in 0..(sqrs.len() - 1) {
-            let sqrx = sqrs[x];
-
-            if sqrx.get_pnc() == false {
-                continue;
-            }
-
-            for y in (x+1)..sqrs.len() {
-                let sqry = sqrs[y];
-                
-                if sqrx.is_adjacent(sqry) {
-                    if sqrx.can_combine(sqry) == Truth::F {
-                        ret_vec.push((sqrx.state.clone(), sqry.state.clone()));
-                    }
-                }
-            } // next y
-        } // next x
-        
-        ret_vec
-    }
 } // end impl SquareStore

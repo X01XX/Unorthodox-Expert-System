@@ -158,6 +158,8 @@ impl DomainStore {
                 }
             }
 
+            //println!("least priority = {}", least_priority);
+
             if least_priority == 9999 {
                 //println!("domainstore::evaluate_needs returning empty vec");
                 return Vec::<InxPlan>::new();
@@ -172,6 +174,7 @@ impl DomainStore {
                 }
                 inx += 1;
             }
+            //println!("num items in avec {}", avec.len());
 
             // Scan needs to see what can be achieved with a plan
             // Parallel make_plans for needs
@@ -186,6 +189,7 @@ impl DomainStore {
             let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
             while rp1.len() > 0 { 
+                //println!("rp1 len = {}", rp1.len());
 
                 let mut end = span; 
 
@@ -194,19 +198,21 @@ impl DomainStore {
                 }
 
                 let mut avec2 = Vec::<usize>::with_capacity(span);
-
+                //println!("sub while at 0");
                 for _inx in 0..end {
                     avec2.push(avec[rp1.pick().unwrap()]);
                 }
 
+                //println!("sub while at 2");
                 let ndsinx_plan = avec2
-                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                    .iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
                         pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
                     })
                     .collect::<Vec<InxPlan>>();
 
+                //println!("sub while at 3");
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
@@ -214,6 +220,7 @@ impl DomainStore {
                         return ndsinx_plan;
                     }
                 }
+                //println!("sub while at 5");
             } // end while
 
             last_priority = least_priority;

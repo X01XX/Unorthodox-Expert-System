@@ -154,7 +154,7 @@ mod tests {
 
         let reg1 = dm0.region_from_string("r0XX1").unwrap();
 
-        let regvec = reg0._subtract(&reg1);
+        let regvec = reg0.subtract(&reg1);
         
         let mut regs = RegionStore::new();
         for regx in &regvec {

@@ -130,14 +130,13 @@ fn main() {
 
     usage();
 
-    //let mut run_left = 1;
     let mut run_count = 1;
     let run_max = run_left;
 
     while run_left > 0 {
-        {
+        //println!("run_left = {}", run_left);
         run_left += do_session(run_to_end, run_count, run_max);
-        }
+
         run_left -= 1;
         run_count += 1;
 
@@ -153,14 +152,16 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut step_inc = 1; // amount to increment the step in the next loop
     
     loop {
+        //println!("start session loop");
         dmxs.set_step(dmxs.step + step_inc);
         step_inc = 1;
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
         //println!("main {} needs {}", nds.len(), &nds);
-
+        //println!("session loop 1");
         let need_plans = dmxs.evaluate_needs(&nds);
+        //println!("session loop 2");
 
         // Check if all needs are for the same domain, change domain number if needed
         if nds.len() > 0 {
@@ -196,6 +197,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         } // endif nds.len() > 0
 
         print_domain(&dmxs, dom_num);
+        //println!("session loop 3");
 
         // Vector for position = display index, val = need_plans index
         let mut need_can = Vec::<usize>::with_capacity(nds.len());
@@ -264,12 +266,17 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
             // Stop running for this condition
             if cant_do > 0 && can_do == 0 {
-               to_end = false;
+                if run_count != run_max {
+                    println!("\nrun_count {} of {}", run_count, run_max);
+                }
+                //return 0;
+                to_end = false;
             }
         } else {
-            println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
-            if 1 == 2 {
-                dmxs[0].actions[0].vertices();
+            if run_max == 1 {
+                println!("\nAction needs: None");
+            } else {
+                println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
             }
             if to_end {
                 if run_count < run_max {
@@ -281,6 +288,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         // Start command loop
         loop {
+            //println!("start command loop");
             let mut cmd = Vec::<String>::with_capacity(10);
     
             if to_end == false || (cant_do > 0 && can_do == 0) {
@@ -352,6 +360,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else if cmd[0] == "dcs" {
                     step_inc = 0;
                     break;
+                } else if cmd[0] == "left" {
+                    dmxs[0].actions[0].left_overs();
+                    continue;
+                } else if cmd[0] == "vert" {
+                    dmxs[0].actions[0].vertices();
+                    continue;
                 }
             }
     
@@ -488,7 +502,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 break;
             }
         } // end command loop
+        //println!("end command loop");
     } // end loop
+
 } // end do_session
 
 

@@ -35,24 +35,16 @@ impl fmt::Display for GroupStore {
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
-    /// If a group is added or deleted, the changed flag is set to true.
-    changed: bool,
 }
 
 impl GroupStore {
     /// Return a new GroupStore.
     pub fn new() -> Self {
         Self {
-            avec: Vec::<SomeGroup>::with_capacity(5),
-            changed: false,
+            avec: Vec::<SomeGroup>::with_capacity(10),
         }
     }
 
-    /// Accessor, set the value of the changed field.
-    pub fn set_changed(&mut self, aval: bool ) {
-        self.changed = aval;
-    }
-    
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
     pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
@@ -115,7 +107,7 @@ impl GroupStore {
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
 
         for grpx in &self.avec {
-            if reg.is_subset_of(&grpx.region) {
+            if grpx.region.is_superset_of(&reg) {
                 return true;
             }
         }
@@ -183,12 +175,8 @@ impl GroupStore {
 
         // Remove the groups
         for inx in rmvec.iter().rev() {
-            println!("\nDom: {} Act: {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
             remove_unordered(&mut self.avec, *inx);
-        }
-
-        if rmvec.len() > 0 {
-            self.changed = true;
         }
 
         rmvec.len() > 0
@@ -213,8 +201,6 @@ impl GroupStore {
         // push the new group
         println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
         self.avec.push(grp);
-
-        self.changed = true;
 
         true
     }
@@ -248,9 +234,6 @@ impl GroupStore {
             remove_unordered(&mut self.avec, *inx);
         }
 
-        if rmvec.len() > 0 {
-            self.changed = true;
-        }
         rmvec.len()
     }
 

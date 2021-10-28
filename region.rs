@@ -419,7 +419,7 @@ impl SomeRegion {
 
     /// Given a region, and a second region, return the
     /// first region - the second
-    pub fn _subtract(&self, other: &SomeRegion) -> Vec<Self> {
+    pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
 
         let mut ret_vec = Vec::<Self>::new();
 

@@ -340,6 +340,7 @@ impl SomeDomain {
 
     /// Get the steps of a plan, wrap the steps into a plan, return Some(SomePlan).
     pub fn make_plan2(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<SomePlan> {
+        //println!("make_plan2 start");
         if let Some(steps) = self.make_plan3(from_reg, goal_reg, 0) {
                 if steps.initial().intersects(from_reg) {
                     if steps.result().intersects(goal_reg) {
@@ -356,7 +357,7 @@ impl SomeDomain {
 
     /// Return the steps of a plan to go from a given state to a given region.
     pub fn make_plan3(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
-
+        //println!("make_plan3 start");
         // Check if from_reg is at the goal
         if goal_reg.intersects(from_reg) {
             return Some(StepStore::new());
@@ -385,6 +386,7 @@ impl SomeDomain {
             return None;
         }
 
+        //println!("make_plan3 at 1");
         // Check if one step makes the required change.
         // The ultimate end-point of any path search.
         for stepx in steps_str.iter() {
@@ -416,7 +418,7 @@ impl SomeDomain {
             //println!("make_plan3: mutually exclusive change rules found");
             return None;
         }
-
+        //println!("make_plan3 at 10");
         // Check for bit change vector with all steps outside of the glide path.
         // Accumulate a vector of all step indicies in such vectors.
         let agg_reg = goal_reg.union(from_reg);
@@ -466,11 +468,11 @@ impl SomeDomain {
             // Initalization for chaining
             let num_tries = 3;
             let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
-
+            //println!("make_plan3 at 20");
             // Run a number of depth-first forward chaining
             for _ in 0..num_tries {
 
-                if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str) {
+                if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str, 0) {
                     if poss_steps.initial().intersects(from_reg) {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
@@ -488,11 +490,12 @@ impl SomeDomain {
                 //println!("forward chaining test worked! {}", &step_options[inx]);
                 return Some(step_options[inx].clone());
             }
-
+            //println!("make_plan3 at 30");
             // Run a number of depth-first backward chaining 
             for _ in 0..num_tries {
-                if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg, &steps_str) {
-
+                //println!("make_plan3 at 31");
+                if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg, &steps_str, 0) {
+                    //println!("make_plan3 at 35");
                     if poss_steps.initial().intersects(from_reg) {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
@@ -503,6 +506,7 @@ impl SomeDomain {
                         //println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
                     }
                 }
+                //println!("make_plan3 at 37");
             } // next try
 
             if step_options.len() > 0 {
@@ -512,7 +516,7 @@ impl SomeDomain {
             }
 
         } // endif asym_stps.len() == 0
-
+        //println!("make_plan3 at 40");
         // Try Asymmetric forward chaining
         if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
@@ -523,7 +527,7 @@ impl SomeDomain {
                 return Some(ret_steps[chosen].clone());
             }
         }
-
+        //println!("make_plan3 at 50");
         // Try Asymmetric backward chaining
         if let Some(ret_steps) = self.asymmetric_backward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
@@ -534,7 +538,7 @@ impl SomeDomain {
                 return Some(ret_steps[chosen].clone());
             }
         }
-
+        //println!("make_plan3 at end");
         None
     } // end make_plan3
 
@@ -721,6 +725,7 @@ impl SomeDomain {
     pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
         // Check if a need can be achieved, if so store index and Option<plan>.
         // Higher priority needs that can be reached will superceed lower priority needs.
+        //println!("make_plan start");
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             return Some(SomePlan::new(StepStore::new()));
@@ -770,9 +775,14 @@ impl SomeDomain {
     } // end state_from_string
 
     /// Return a StepStore using random depth-first backward chaining to a state from a goal.
-    fn random_depth_first_backward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore) -> Option<StepStore> {
-    
-        //println!("random_depth_first_backward_chaining2: to {} from {}", from_reg.formatted_string(), goal_reg.formatted_string());
+    fn random_depth_first_backward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<StepStore> {
+
+        //println!("random_depth_first_backward_chaining: to {} from {}", from_reg.formatted_string(), goal_reg.formatted_string());
+
+        if depth > 20 {
+            println!("random_depth_first_backward_chaining: depth exceeded");
+            return None;
+        }
 
         // Initialize vector for possible options.
         // Most StepStores will contain one step.  Some will contain two steps, due
@@ -797,7 +807,7 @@ impl SomeDomain {
         if steps_rev2.len() == 0 {
             return None;
         }
-
+        //println!("rdfbc at 10"); 
         // Get stepstores that have a result region that intersects the goal region
         let mut next_steps = Vec::<usize>::new();
         let mut inx = 0;
@@ -807,7 +817,7 @@ impl SomeDomain {
             }
             inx += 1;
         }
-
+        //println!("rdfbc at 20");
         // Pick a solution stepstore that works, if there are any
         for inx in &next_steps {
             if steps_rev2[*inx].initial().intersects(from_reg) {
@@ -825,14 +835,20 @@ impl SomeDomain {
         // Calculate the next region from the step
         let prev_reg = steps_rev2[step_inx].initial();
 
+        let dist_cur = goal_reg.distance(from_reg);
+        let dist_next = prev_reg.distance(from_reg);
+        if dist_cur >= dist_next {
+            return None;
+        }
+
         // Use recursion to get next steps
-        if let Some(more_steps) = self.random_depth_first_backward_chaining(from_reg, &prev_reg, steps_str) {
+        if let Some(more_steps) = self.random_depth_first_backward_chaining(from_reg, &prev_reg, steps_str, depth + 1) {
 
             if let Some(ret_steps2) = more_steps.link(&steps_rev2[step_inx]) {
                 return Some(ret_steps2);
             }
         }
-
+        //println!("rdfbc at end");
         None
     } // end random_depth_first_backward_chaining
 
@@ -842,9 +858,14 @@ impl SomeDomain {
     /// Without correcting an unwanted change, such a step will be missed since it does not get closer to the goal.
     /// Recursion depth check is not needed due to the requirement that each call gets at least one bit
     /// closer to the goal.
-    fn random_depth_first_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore) -> Option<StepStore> {
+    fn random_depth_first_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<StepStore> {
         //println!("rdffc: from {} to {} steps {}", from_reg, goal_reg, steps_str);
 
+        if depth > 20 {
+            println!("random_depth_first_forward_chaining: depth exceeded");
+            return None;
+        }
+        
         // Get the bit changes required to go from from_reg to goal_reg.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
         //println!("rdffc: required change: {}", &required_change);
@@ -976,8 +997,14 @@ impl SomeDomain {
         // Calculate the next region from the step
         let next_reg = steps_rev2[step_inx].result();
 
+        let dist_cur = goal_reg.distance(goal_reg);
+        let dist_next = next_reg.distance(goal_reg);
+        if dist_cur >= dist_next {
+            return None;
+        }
+
         // Use recursion to get next steps
-        if let Some(more_steps) = self.random_depth_first_forward_chaining(&next_reg, goal_reg, steps_str) {
+        if let Some(more_steps) = self.random_depth_first_forward_chaining(&next_reg, goal_reg, steps_str, depth + 1) {
 
             if let Some(ret_steps2) = steps_rev2[step_inx].link(&more_steps) {
                 return Some(ret_steps2);

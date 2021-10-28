@@ -39,7 +39,7 @@ pub struct RandomPick {
 
 impl RandomPick {
     /// Return a new instance of a RandomPick struct.
-    /// The argument is GT zero, the vector with be populated with that range of numbers, starting at zero.
+    /// The argument should be GT zero, the vector with be populated with that range of numbers, starting at zero.
     pub fn new(nums: usize) -> Self {
         assert!(nums > 0);
         let mut ret = RandomPick {
@@ -53,7 +53,7 @@ impl RandomPick {
         return ret;
     }
 
-    /// Return the current pseudo length of the vector.
+    /// Return the current length of the vector.
     pub fn len(&self) -> usize {
         return self.items.len();
     }

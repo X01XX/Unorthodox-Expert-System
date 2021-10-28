@@ -45,7 +45,7 @@ impl fmt::Display for SomeAction {
 
         let regs = self.groups.regions();
 
-        let mut fil = String::from(",\n       Grps: (");
+        let mut fil = String::from(",\n       Grps: ");
         for grpx in self.groups.iter() {
 
             let stas_in = self.squares.stas_in_reg(&grpx.region);
@@ -59,17 +59,17 @@ impl fmt::Display for SomeAction {
             }
 
             rc_str.push_str(&format!(
-                "{}{} num Sqrs: {} in1: {}",
+                "{}{} num Sqrs: {} in1: {})",
                 &fil,
                 &grpx.formatted_string(),
                 &stas_in.len(),
                 &cnt,
             ));
 
-            fil = String::from(",\n              ");
+            fil = String::from(",\n             ");
         }
 
-        rc_str.push_str("))");
+        rc_str.push_str(")");
 
         write!(f, "{}", rc_str)
     }
@@ -208,8 +208,6 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-        self.groups.set_changed(false);
-
         self.store_sample(&initial, &result, dom);
         self.check_square_new_sample(&initial, dom);
       }
@@ -222,7 +220,6 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-        self.groups.set_changed(false);
 
         // Process each kind of need
         match ndx {
@@ -301,7 +298,7 @@ impl SomeAction {
                 match cnb1 {
                     Truth::F => {
                         if sqr1.is_adjacent(&sqr3) {
-                            println!("new edge found between {} and {} removing seek edge {}", &sqr1.state, &sqr3.state, &greg); 
+                            println!("Dom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr1.state, &sqr3.state, &greg); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
@@ -318,7 +315,7 @@ impl SomeAction {
                 match cnb2 {
                     Truth::F => {
                         if sqr2.is_adjacent(&sqr3) {
-                            println!("new edge found between {} and {} removing seek edge {}", &sqr2.state, &sqr3.state, &greg); 
+                            println!("Dom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr2.state, &sqr3.state, &greg); 
                             self.seek_edge.remove_region(greg);
                         } else {
                             let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
@@ -353,16 +350,12 @@ impl SomeAction {
             init_state, rslt_state
         );
 
-        self.groups.set_changed(false);
-
         self.store_sample(&init_state, &rslt_state, dom);
         self.check_square_new_sample(&init_state, dom);
     }
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
-        self.groups.set_changed(false);
-
         self.eval_step_sample2(cur, new_state, dom);
     }
 
@@ -2229,106 +2222,25 @@ impl SomeAction {
     
     // Find and print verticies
     pub fn vertices(&self) {
-        
-        let max_reg = SomeRegion::new(&SomeState::new(SomeBits::_new_high(self.num_ints)), &SomeState::new(SomeBits::new_low(self.num_ints)));
-        println!("Vertices: ");
-        let edges: Vec<(SomeState, SomeState)> = self.squares.edges();
-//        for edgx in &edges {
-//            println!("  {} v {}", &edgx.0, &edgx.1);
-//        }
-        
-        if edges.len() < 3 {
+
+    }
+    
+    // Find and print left-overs
+    pub fn left_overs(&self) {
+        if self.groups.len() < 2 {
             return;
         }
-        
-//        for inx in 0..(edges.len() - 1) {
-//            let edgx = &edges[inx];
-//            for iny in (inx+1)..edges.len() {
-//                let edgy = &edges[iny];
-//                if edgx.0 == edgy.0 {
-//                    println!("vert 00: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
-//                } else if edgx.0 == edgy.1 {
-//                    println!("vert 01: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
-//                } else if edgx.1 == edgy.0 {
-//                    println!("vert 10: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
-//                } else if edgx.1 == edgy.1 {
-//                    println!("vert 11: {} {} - {} {} ", edgx.0, edgx.1, edgy.0, edgy.1);
-//                }
-//            } // next iny
-//        } // next inx
-        
-        // Vector of each unique state in an edge
-        let mut stats = Vec::<SomeState>::new();
-        
-        for edgx in &edges {
-            if stats.contains(&edgx.0) {
-            } else {
-                stats.push(edgx.0.clone());
-            }
-            if stats.contains(&edgx.1) {
-            } else {
-                stats.push(edgx.1.clone());
-            }
-        }
-        //println!("num states to check = {}", stats.len());
 
-        let mut edge_data = Vec::<(usize, SomeState, StateStore)>::with_capacity(stats.len());
+        let tot_reg = self.groups.regions().union().unwrap();
 
-        for stax in &stats {
-            let mut cnt = 0;
-            let mut exs = StateStore::new();
-            for edgx in &edges {
-                if edgx.0 == *stax {
-                    cnt += 1;
-                    exs.push(edgx.1.clone());
-                } else if edgx.1 == *stax {
-                    cnt += 1;
-                    exs.push(edgx.0.clone());
-                }
-            }
-            edge_data.push((cnt, stax.clone(), exs.clone()));
-            //println!("Sqr {} is in {} edges {}", stax, cnt, exs);
+        let mut left = RegionStore::new();
+        left.push(tot_reg);
+
+        for grpx in self.groups.iter() {
+            left = left.subtract_region(&grpx.region);
         }
 
-        let mut cur_cnt = 9999;
-
-        loop {
-
-            // get next highest count
-            let mut tmp_cnt = 0;
-            for edgex in edge_data.iter() {
-                if edgex.0 > tmp_cnt && edgex.0 < cur_cnt {
-                    tmp_cnt = edgex.0;
-                }
-            }
-            if tmp_cnt < 3 {
-                break;
-            }
-            cur_cnt = tmp_cnt;
-
-            //println!("highest cnt {}", cur_cnt);
-
-            for edgex in edge_data.iter() {
-                if edgex.0 != cur_cnt {
-                    continue;
-                }
-                let mut base_reg = max_reg.clone();
-                let base_msk = edgex.1.to_mask();
-
-                for dis_state in edgex.2.iter() {
-                    let dif_msk = edgex.1.s_xor(dis_state).to_mask(); // will be one bit since they are adjacent
-                    
-                    if base_msk.m_and(&dif_msk).is_low() { // bit in base-state is 0
-                        let base_edge = max_reg.set_to_zeros(&dif_msk);
-                        base_reg = base_reg.intersection(&base_edge);
-                    } else { // bit in base-state is 1
-                        let base_edge = max_reg.set_to_ones(&dif_msk);
-                        base_reg = base_reg.intersection(&base_edge);
-                    }
-                } // next dis_state
-                println!("Sqr {} has {} edges {} region no larger than {}", &edgex.1, &edgex.0, &edgex.2, &base_reg);
-            } // next edgex
-
-        } // end loop
+        println!("left-overs: {}", &left);
+        
     }
 } // end impl SomeAction

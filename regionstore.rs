@@ -211,7 +211,7 @@ impl RegionStore {
         for inx in rmvec.iter().rev() {
             remove_unordered(&mut self.avec, *inx);
         }
-        
+
         self.avec.push(reg);
 
         true
@@ -270,6 +270,42 @@ impl RegionStore {
         ret_store
     }
 
+    // Return the union of regions in the store
+    pub fn union(&self) -> Option<SomeRegion> {
+
+        if self.len() == 0 {
+            return None;
+        }
+
+        if self.len() == 1 {
+            return Some(self[0].clone());
+        }
+
+        let mut ret_reg = self[0].clone();
+        for regx in self.iter() {
+            ret_reg = ret_reg.union(regx);
+        }
+
+        Some(ret_reg)
+    }
+
+    // Subtract a region from a RegionStore
+    pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
+        let mut ret_str = Self::new();
+
+        for regy in self.iter() {
+            if regx.intersects(regy) {
+                let avec = regy.subtract(&regx);
+                for regy in avec.iter() {
+                    ret_str.push_nosubs(regy.clone());
+                }
+            } else {
+                ret_str.push_nosubs(regy.clone());
+            }
+        }
+
+        ret_str
+    }
 } // end impl RegionStore
 
 impl Index<usize> for RegionStore {
