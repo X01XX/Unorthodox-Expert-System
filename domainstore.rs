@@ -205,7 +205,7 @@ impl DomainStore {
 
                 //println!("sub while at 2");
                 let ndsinx_plan = avec2
-                    .iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
                         pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),

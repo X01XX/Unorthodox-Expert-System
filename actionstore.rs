@@ -123,7 +123,7 @@ impl ActionStore {
    
         // Or each action change
         for actx in self.avec.iter() {
-            agg_chg = agg_chg.bitwise_or(&actx.aggregate_changes);
+            agg_chg = agg_chg.c_or(&actx.aggregate_changes);
         }
 
         agg_chg

@@ -73,6 +73,17 @@ impl RegionStore {
         false
     }
 
+    /// Return true if any region intersects a given region.
+    pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
+
+        for regx in &self.avec {
+            if regx.intersects(&reg) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
 
@@ -164,7 +175,7 @@ impl RegionStore {
 
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
-            //println!("skipped adding region {}, a superset exists", reg);
+            //println!("skipped adding region {}, a superset exists in {}", reg, self);
             return false;
         }
 
@@ -291,18 +302,18 @@ impl RegionStore {
 
     // Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
-        let mut ret_str = Self::new();
+        let mut ret_str = RegionStore::new();
 
         for regy in self.iter() {
             if regx.intersects(regy) {
                 let avec = regy.subtract(&regx);
-                for regy in avec.iter() {
-                    ret_str.push_nosubs(regy.clone());
+                for regz in avec.iter() {
+                    ret_str.push_nosubs(regz.clone());
                 }
             } else {
                 ret_str.push_nosubs(regy.clone());
             }
-        }
+        } // next regy
 
         ret_str
     }

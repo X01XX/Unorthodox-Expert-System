@@ -552,7 +552,7 @@ impl SomeAction {
                 let rules = &grpx.rules;
 
                 for rulex in rules.iter() {
-                    ret_cngs = ret_cngs.bitwise_or(&rulex.change());
+                    ret_cngs = ret_cngs.c_or(&rulex.change());
                 }
             }
         }
@@ -745,12 +745,36 @@ impl SomeAction {
 
             if try_again == false {
                 //println!("Act: {} get_needs: returning: {}", &self.num, &nds);
+                if nds.len() == 0 {
+                    return self.left_over_needs();
+                }
                 return nds;
             }
 
             nds = NeedStore::new();
         } // end loop
     } // end get_needs
+
+    /// Get left-over needs, from regions not covered by groups,
+    /// and no current samples.
+    pub fn left_over_needs(&self) -> NeedStore {
+        let mut nds = NeedStore::new();
+        
+        let regs = self.left_overs();
+
+        for regx in regs.iter() {
+            nds.push(SomeNeed::StateNotInGroup {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: regx.state1.clone() });
+            nds.push(SomeNeed::StateNotInGroup {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: regx.state2.clone() });
+        } // next regx
+
+        nds
+    }
 
     /// When a group is invalidated by a new sample, something was wrong within that group.
     ///
@@ -1121,17 +1145,21 @@ impl SomeAction {
         let g_reg = &grpx.region;
         let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
         //println!("test for group {} possible regs: {}", greg, &regs_new);
+        
+        if regs_new.len() == 1 && regs_new[0] == *g_reg {
+            ret_nds = NeedStore::new();
+            ret_nds.push(SomeNeed::SetEdgeExpand { group_region: g_reg.clone(), edge_mask: chg_mask });
+            return ret_nds;
+        }
+
         for regx in regs_new.iter() {
 
             if regx == g_reg {
-                ret_nds = NeedStore::new();
-                ret_nds.push(SomeNeed::SetEdgeExpand { group_region: g_reg.clone(), edge_mask: chg_mask });
-                return ret_nds;
+                continue;
             }
 
             let mut gnds = self.possible_group_needs(regx, 33);
             if gnds.len() > 0 {
-                //println!("expand_needs: for group {} found needs {}", greg, &gnds);
                 ret_nds.append(&mut gnds);
             }
         }
@@ -1950,14 +1978,14 @@ impl SomeAction {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange)
                     {
                         stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
                     }
                 }
                 Pn::Two => {
                     for ruly in grpx.rules.iter() {
-                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                        if let Some(rulx) = ruly.parse_for_changes(&achange) {
                             // See if an existing square is ready to produce the desired result
                             let i_reg = rulx.initial_region();
                             let stas = self.squares.stas_in_reg(&i_reg);
@@ -2011,7 +2039,7 @@ impl SomeAction {
             match grpx.pn {
                 Pn::One => {
                     // Find bit changes that are desired
-                    if let Some(rulx) = grpx.rules[0].parse_for_changes(&achange.b01, &achange.b10)
+                    if let Some(rulx) = grpx.rules[0].parse_for_changes(achange)
                     {
                         if rulx.change() == *achange {
                             stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
@@ -2020,7 +2048,7 @@ impl SomeAction {
                 }
                 Pn::Two => {
                     for ruly in grpx.rules.iter() {
-                        if let Some(rulx) = ruly.parse_for_changes(&achange.b01, &achange.b10) {
+                        if let Some(rulx) = ruly.parse_for_changes(achange) {
                             
                             if rulx.change() == *achange {
                                 // See if an existing square is ready to produce the desired result
@@ -2148,8 +2176,8 @@ impl SomeAction {
     } // end possible_regions_from_square
 
     /// Given a group, calculate the possible regions it may expand to by applying 
-    /// squares outside of the group that are incompatible, within the limits of 
-    /// the changes roughly allowed by the current rules, given by a mask.
+    /// dissimilar, non-intersecting, within the limits of the changes roughly allowed
+    /// by the current rules, given by a mask.
     pub fn possible_regions_for_group(&self, grpx: &SomeGroup, chg_mask: &SomeMask) -> RegionStore {
         //println!("possible_regions_for_group {}", &grpx.region);
 
@@ -2168,38 +2196,50 @@ impl SomeAction {
         let sqr1 = self.squares.find(&grpx.region.state1).unwrap();
         let sqr2 = self.squares.find(&grpx.region.state2).unwrap();
     
-        for (key, sqry) in &self.squares.ahash {
+        for grpy in self.groups.iter() {
 
             // If a square is in the group region, skip it
-            if grpx.region.is_superset_of_state(&key) {
+            if grpy.region.intersects(&grpx.region) {
                 continue;
             }
 
             // If a square is not in the current possible regions, skip it.
-            if regs.any_superset_of_state(&key) {
+            if regs.any_intersection(&grpy.region) {
             } else {
                 continue;
             }
 
-            if sqry.can_combine(&sqr1) != Truth::F && sqry.can_combine(&sqr2) != Truth::F {
+            let mut skip = true;
+            let sqr_a = self.squares.find(&grpy.region.state1).unwrap();
+            if sqr_a.can_combine(&sqr1) == Truth::F ||
+               sqr_a.can_combine(&sqr2) == Truth::F {
+                   skip = false;
+            } else {
+                let sqr_b = self.squares.find(&grpy.region.state2).unwrap();
+                if sqr_b.can_combine(&sqr1) == Truth::F ||
+                   sqr_b.can_combine(&sqr2) == Truth::F {
+                    skip = false;
+                }
+            }
+
+            if skip {
                 continue;
             }
 
-            // sqry rules are incompatible with the group rules
+            // grpy rules are incompatible with the grpx rules
 
-            let key_m = key.to_mask();
-            let dif_01 = key_m.m_not().m_and(&grpx.region.ones()).m_and(chg_mask);
-            let dif_10 = key_m.m_and(&grpx.region.zeros()).m_and(chg_mask);
-//            println!("sqry {} incompatable with group {} d01 {} d10 {}", &key, &g_reg, &dif_01, &dif_10);
+            let dif_01 = grpy.region.zeros().m_and(&grpx.region.ones()).m_and(chg_mask);
+            let dif_10 = grpy.region.ones().m_and(&grpx.region.zeros()).m_and(chg_mask);
+            //println!("possible_regions_for_group: grpy {} incompatable with group {} d01 {} d10 {}", &grpy.region, &grpx.region, &dif_01, &dif_10);
 
-            let mut sqry_regs = RegionStore::new();
+            let mut grpy_regs = RegionStore::new();
 
             if dif_01.is_not_low() {
                 let difs: Vec<SomeMask> = dif_01.split();
                 for mskx in &difs {
                     let regx = most_x.set_to_ones(mskx);
                     //println!(" regx {}", &regx);
-                    sqry_regs.push(regx);
+                    grpy_regs.push(regx);
                 }
             }
 
@@ -2208,27 +2248,72 @@ impl SomeAction {
                 for mskx in &difs {
                     let regx = most_x.set_to_zeros(mskx);
                     //println!(" regx {}", &regx);
-                    sqry_regs.push(regx);
+                    grpy_regs.push(regx);
                 }
             }
 
-            regs = regs.intersection(&sqry_regs);
+            regs = regs.intersection(&grpy_regs);
 
-        } // next key, sqry
+        } // next grpy
 
-        //println!("possible_regions_for_group {} returning {}", &grpx.region, &regs);
+        //println!("possible_regions_for_group: {} returning {}", &grpx.region, &regs);
         regs
     } // end possible_regions_for_group
-    
-    // Find and print verticies
+
+    /// Find and print verticies
     pub fn vertices(&self) {
 
-    }
-    
-    // Find and print left-overs
-    pub fn left_overs(&self) {
+        let mut lefts = Vec::<RegionStore>::with_capacity(self.groups.len());
+
+        for grpx in self.groups.iter() {
+            let mut left = RegionStore::new();
+            left.push(grpx.region.clone());
+            for grpy in self.groups.iter() {
+                if grpy.region != grpx.region {
+                    left = left.subtract_region(&grpy.region);
+                }
+            }
+            //println!("grp {} left {}", &grpx.region, &left);
+            lefts.push(left);
+        }
+
+        for inx in 0..lefts.len() {
+
+            for regx in lefts[inx].iter() {
+                let mut ovlp1 = RegionStore::new();
+
+                for iny in 0..lefts.len() {
+                    if inx == iny {
+                        continue;
+                    }
+
+                    for regy in lefts[iny].iter() {
+                        if regy.is_adjacent(regx) {
+                            let regovp = regx.overlapping_part(regy);
+                            //print!(" {} adj {} ovlp {}", regx, regy, regx.overlapping_part(regy));
+                            ovlp1.push(regovp);
+                        }
+                    } // next regy
+
+                    
+                } // next iny
+                if ovlp1.len() > 0 {
+                    print!("grp {} in 1 {} ovlps [", self.groups[inx].region, regx);
+                    for tx in ovlp1.iter() {
+                        print!("{} ", tx);
+                    }
+                    println!("]");
+                }
+            } // next regx
+            //println!(" ");
+        } // next inx
+    } // end vertices
+
+    /// Find left-over regions not currently coverd
+    /// by groups.
+    pub fn left_overs(&self) -> RegionStore {
         if self.groups.len() < 2 {
-            return;
+            return RegionStore::new();
         }
 
         let tot_reg = self.groups.regions().union().unwrap();
@@ -2240,7 +2325,7 @@ impl SomeAction {
             left = left.subtract_region(&grpx.region);
         }
 
-        println!("left-overs: {}", &left);
-        
+        //println!("left-overs: {}", &left);
+        left
     }
 } // end impl SomeAction

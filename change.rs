@@ -1,6 +1,6 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
-use crate::bits::{SomeBits, NUM_BITS_PER_INT};
+use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -48,8 +48,8 @@ impl SomeChange {
         }
     }
 
-    /// Return the logical bitwize and of two changes
-    pub fn bitwise_and(&self, other: &SomeChange) -> SomeChange {
+    /// Return the logical bitwise and of two changes
+    pub fn c_and(&self, other: &SomeChange) -> SomeChange {
         Self {
             b01: self.b01.m_and(&other.b01),
             b10: self.b10.m_and(&other.b10),
@@ -57,7 +57,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize or of two changes
-    pub fn bitwise_or(&self, other: &SomeChange) -> SomeChange {
+    pub fn c_or(&self, other: &SomeChange) -> SomeChange {
         Self {
             b01: self.b01.m_or(&other.b01),
             b10: self.b10.m_or(&other.b10),
@@ -67,7 +67,7 @@ impl SomeChange {
     /// Return the logical bitwize and of a change and a mask
     /// The mask is the not-x-mask of a goal, so changes that are 
     /// important to consider.
-    pub fn bitwise_and_mask(&self, msk: &SomeMask) -> SomeChange {
+    pub fn c_and_mask(&self, msk: &SomeMask) -> SomeChange {
         Self {
             b01: self.b01.m_and(msk),
             b10: self.b10.m_and(msk),
@@ -83,7 +83,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize not od a change
-    pub fn change_not(&self) -> SomeChange {
+    pub fn c_not(&self) -> SomeChange {
         Self {
             b01: self.b01.m_not(),
             b10: self.b10.m_not(),
@@ -103,13 +103,13 @@ impl SomeChange {
         !self.is_low()
     }
     
-    /// Return the union of two SomeChange instances.
-    pub fn union(&self, other: &SomeChange) -> Self {
-        SomeChange {
-            b01: self.b01.m_or(&other.b01),
-            b10: self.b10.m_or(&other.b10),
-        }
-    }
+    // Return the union of two SomeChange instances.
+//    pub fn union(&self, other: &SomeChange) -> Self {
+//        SomeChange {
+//            b01: self.b01.m_or(&other.b01),
+//            b10: self.b10.m_or(&other.b10),
+//        }
+//    }
 
     /// Return a mask of all bit positions that are one in both masks.
     pub fn _x_mask(&self) -> SomeMask {
@@ -129,31 +129,42 @@ impl SomeChange {
     /// Return a string to represent a SomeChange instance.
     pub fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(10);
+        
+        if self.b01.is_not_low() {
+            strrc.push_str(&format!("0->1: {}", self.b01));
+            if self.b10.is_not_low() {
+                strrc.push_str(&format!(", 1->0: {}", self.b10));
+            }
+        } else if self.b10.is_not_low() {
+            strrc.push_str(&format!("1->0: {}", self.b10));
+        } else {
+            strrc.push_str(&format!("(none)"));
+        }
 
-        let num_ints = self.b01.num_ints();
-        let num_bits = num_ints * NUM_BITS_PER_INT;
+//        let num_ints = self.b01.num_ints();
+//        let num_bits = num_ints * NUM_BITS_PER_INT;
 
-        for i in (0..num_bits).rev() {
-            let b01: bool = self.b01.is_bit_set(i);
+//        for i in (0..num_bits).rev() {
+//            let b01: bool = self.b01.is_bit_set(i);
 
-            let b10: bool = self.b10.is_bit_set(i);
+//            let b10: bool = self.b10.is_bit_set(i);
 
             //            if i != (num_bits - 1) {
             //                strrc.push('/');
             //            }
 
-            if b01 && b10 {
-                strrc.push_str(&format!("/bit{}:X->x", &i));
-            } else if b01 {
-                strrc.push_str(&format!("/bit{}:0->1", &i));
-            } else if b10 {
-                strrc.push_str(&format!("/bit{}:1->0", &i));
-            }
-        } // next i
+//            if b01 && b10 {
+//                strrc.push_str(&format!("/bit{}:X->x", &i));
+//            } else if b01 {
+//                strrc.push_str(&format!("/bit{}:0->1", &i));
+//            } else if b10 {
+//                strrc.push_str(&format!("/bit{}:1->0", &i));
+//            }
+//        } // next i
 
-        if strrc.len() == 0 {
-            strrc.push_str(&format!("(none)"));
-        }
+//        if strrc.len() == 0 {
+//            strrc.push_str(&format!("(none)"));
+//        }
 
         strrc
     }

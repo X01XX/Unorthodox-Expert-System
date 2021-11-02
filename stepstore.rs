@@ -1,5 +1,6 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
+//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 //use crate::state::SomeState;
 use crate::region::SomeRegion;
@@ -275,6 +276,16 @@ impl StepStore {
         ret_vec
     } // end steps_bt_change_bit2
 
+    // Return aggregate changes
+    pub fn _aggregate_changes(&self) -> SomeChange {
+        assert!(self.len() > 0);
+
+        let mut schg = SomeChange::new_low(self.avec[0].initial.state1.num_ints());
+        for stpx in &self.avec {
+            schg = schg.c_or(&stpx.rule.change());
+        }
+        schg
+    }
 } // end impl StepStore
 
 impl Index<usize> for StepStore {

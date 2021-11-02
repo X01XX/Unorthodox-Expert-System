@@ -24,7 +24,7 @@ impl fmt::Display for SomeNeed {
                 for_reg: freg,
                 far,
                 num_x: nx,
-            } => format!(
+            } =>  format!(
                 "N(Dom {} Act {} Pri {} Sample State {}, far from {}, to make group {} nx: {})",
                 dm, an, pri, sta, far, freg, nx
             ),
@@ -110,15 +110,15 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Act {} Pri {} Sample State {}, between {} and {})",
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
-            SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg,),
+            SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
             SomeNeed::SetGroupConfirmed {
                 group_region: greg,
                 cstate: sta1,
-            } => format!("N(set group {} confirmed by {})", greg, sta1,),
+            } => format!("N(set group {} confirmed by {})", greg, sta1),
             SomeNeed::SetEdgeExpand {
                 group_region: greg,
                 edge_mask: mbitx,
-            } => format!("N(group {} set edge expand {})", greg, mbitx,),
+            } => format!("N(group {} set edge expand {})", greg, mbitx),
 
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {}", &regx)
@@ -396,7 +396,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => { }
             },
             // Add new needs here
         };
@@ -407,6 +407,74 @@ impl PartialEq for SomeNeed {
 impl Eq for SomeNeed {}
 
 impl SomeNeed {
+    // Return a type string
+    pub fn type_string(&self) -> String {
+        let ret_str = match self {
+            SomeNeed::AStateMakeGroup {
+                dom_num: _,
+                act_num: _,
+                targ_state: _,
+                for_reg: _,
+                far: _,
+                num_x: _,
+            } => format!("AStateMakeGroup"),
+            SomeNeed::StateNotInGroup {
+                dom_num: _,
+                act_num: _,
+                targ_state: _,
+            } => format!("StateNotInGroup"),
+            SomeNeed::ContradictoryIntersection {
+                dom_num: _,
+                act_num: _,
+                goal_reg: _,
+                group1: _,
+                ruls1: _,
+                group2: _,
+                ruls2: _,
+            } => format!("ContradictoryIntersection"),
+            SomeNeed::ToRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: _,
+            } => format!("ToRegion"),
+            SomeNeed::ConfirmGroup {
+                dom_num: _,
+                act_num: _,
+                targ_state: _,
+                for_group: _,
+                anchor: _,
+            } => format!("ConfirmGroup"),
+            SomeNeed::StateAdditionalSample {
+                dom_num: _,
+                act_num: _,
+                targ_state: _,
+                grp_reg: _,
+                far: _,
+            } => format!("StateAdditionalSample"),
+            SomeNeed::SeekEdge {
+                dom_num: _,
+                act_num: _,
+                targ_state: _,
+                in_group: _,
+            } => format!("SeekEdge"),
+            SomeNeed::AddGroup { group_region: _, } => format!("AddGroup"),
+            SomeNeed::SetGroupConfirmed {
+                group_region: _,
+                cstate: _,
+            } => format!("SetGroupConfirmed"),
+            SomeNeed::SetEdgeExpand {
+                group_region: _,
+                edge_mask: _,
+            } => format!("SetEdgeExpand"),
+
+            SomeNeed::InactivateSeekEdge { reg: _ } => {
+                format!("InactivateSeekEdge")
+            }
+            SomeNeed::AddSeekEdge { reg: _ } => format!("AddSeekEdge"),
+        }; // end match
+        ret_str
+    } // end type_string
+
     /// Return a priority number for a need.  Lower is more important.
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
@@ -478,7 +546,7 @@ impl SomeNeed {
                 return 1;
             }
             _ => {
-                panic!("priority: Need not in match!");
+                panic!("priority: Need {} not in match!", self.type_string());
             }
         } // end match ndx
     } // end priority
@@ -568,7 +636,7 @@ impl SomeNeed {
                 }
                 return false;
             } // end process a ConfirmGroup need
-            _ => panic!("satisfied_by: should not be called on this need"),
+            _ => panic!("satisfied_by: should not be called on this need {}", self.type_string()),
         } //end match self
     } // end satisfied_by
 
@@ -636,7 +704,7 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process a ConfirmGroup need
-            _ => panic!("act_num not known for need {}", &self),
+            _ => panic!("act_num: not known for need {}", self.type_string()),
         } //end match self
     } // end act_num
 
@@ -704,7 +772,7 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process a ConfirmGroup need
-            _ => panic!("dom not known for need {}", &self),
+            _ => panic!("dom_num: not known for need {}", self.type_string()),
         } //end match self
     } // end dom_num
 
@@ -772,7 +840,7 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             } // end process a ConfirmGroup need
-            _ => panic!("target should not be called for this need"),
+            _ => panic!("target: should not be called for this need {}", self.type_string()),
         };
     } // end target
 
@@ -839,8 +907,7 @@ impl SomeNeed {
                 *dm = num;
             }
             _ => {
-                println!("need ??: {}", self);
-                panic!("set_dm should not be called for this need");
+                panic!("set_dom: should not be called for this need {}", self.type_string());
             }
         };
     } // end set_dom

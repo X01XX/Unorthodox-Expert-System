@@ -377,7 +377,7 @@ impl SomeDomain {
         let mut can_change = SomeChange::new_low(self.num_ints);
 
         for stpx in steps_str.iter() {
-            can_change = can_change.union(&stpx.rule.change());
+            can_change = can_change.c_or(&stpx.rule.change());
         }
 
         if required_change.is_subset_of(&can_change) {
@@ -835,6 +835,7 @@ impl SomeDomain {
         // Calculate the next region from the step
         let prev_reg = steps_rev2[step_inx].initial();
 
+        // Insure that the step gets closer to the start
         let dist_cur = goal_reg.distance(from_reg);
         let dist_next = prev_reg.distance(from_reg);
         if dist_cur >= dist_next {
@@ -892,8 +893,8 @@ impl SomeDomain {
 
             // Get the changes in the step that are not required, that are unwanted, and
             // do not correspond with an X-bit in the goal.
-            let chg_not = &required_change.change_not();
-            let chg_dif = stpx.rule.change().bitwise_and(&chg_not).bitwise_and_mask(&care_chg_mask);
+            let chg_not = &required_change.c_not();
+            let chg_dif = stpx.rule.change().c_and(&chg_not).c_and_mask(&care_chg_mask);
 
             if chg_dif.is_low() {
                 // No unwanted changes
@@ -997,6 +998,7 @@ impl SomeDomain {
         // Calculate the next region from the step
         let next_reg = steps_rev2[step_inx].result();
 
+        // Insure the step gets closer to the goal
         let dist_cur = goal_reg.distance(goal_reg);
         let dist_next = next_reg.distance(goal_reg);
         if dist_cur >= dist_next {
@@ -1040,7 +1042,7 @@ impl SomeDomain {
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to
-/// https://github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
+/// github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
 fn ptr_eq<T>(a: *const T, b: *const T) -> bool { a == b }
 
 /// Return true if any step pairs are all mutually exclusive

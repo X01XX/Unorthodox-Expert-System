@@ -282,11 +282,11 @@ impl SomeRule {
     /// X->0 is 0->0 and 1->0, the X can be changed to 1.
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
-    pub fn parse_for_changes(&self, b01: &SomeMask, b10: &SomeMask) -> Option<Self> {
-        let ones = self.b10.m_and(&b10);
-        let zeros = self.b01.m_and(&b01);
+    pub fn parse_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
 
-        if ones.is_low() && zeros.is_low() {
+        let cng_int = self.change().c_and(change_needed);
+
+        if cng_int.is_low() {
             // No change, or no change is needed
             return None;
         }
@@ -296,17 +296,17 @@ impl SomeRule {
         let i_reg_xes = i_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = ones.m_and(&i_reg_xes);
+        let to_ones = i_reg_xes.m_and(&cng_int.b01);
 
         if to_ones.is_not_low() {
-            i_reg = i_reg.set_to_ones(&to_ones);
+            i_reg = i_reg.set_to_zeros(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = zeros.m_and(&i_reg_xes);
+        let to_zeros = i_reg_xes.m_and(&cng_int.b10);
 
         if to_zeros.is_not_low() {
-            i_reg = i_reg.set_to_zeros(&to_zeros);
+            i_reg = i_reg.set_to_ones(&to_zeros);
         }
 
         // Return a restricted rule

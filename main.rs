@@ -22,6 +22,7 @@ mod need;
 mod region;
 use region::SomeRegion;
 mod change;
+//use change::SomeChange;
 mod regionstore;
 use regionstore::RegionStore;
 mod resultstore;
@@ -214,6 +215,18 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 println!("\nNeeds that cannot be done:");
                 for ndx in nds.iter() {
                     println!("   {}", ndx);
+                    //let domx = ndx.dom_num();
+                    //let req_chg = SomeChange::region_to_region(&SomeRegion::new(&dmxs[domx].cur_state, &dmxs[domx].cur_state), &ndx.target());
+                    
+                    //let stps = dmxs[domx].actions.get_steps(&req_chg);
+                    //println!("steps returned: {}", &stps);
+                    //let mut avail_chgs = SomeChange::new_low(dmxs[domx].num_ints);
+                    //if stps.len() > 0 {
+                    //    avail_chgs = stps.aggregate_changes();
+                    //}
+                    //let lack_chg = req_chg.c_and(&avail_chgs.c_not());
+                    //print!("\n    changes needed {} \n          avail {} \n        not found: {}", req_chg, avail_chgs, lack_chg);
+                    //println!(" ");
                 }
 
                 println!("\nNeeds that can be done: None");
@@ -237,6 +250,18 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         if let Some(_) = ndplnx.pln {
                         } else {
                             println!("   {}", nds[ndplnx.inx]);
+                            //let domx = nds[ndplnx.inx].dom_num();
+                            //let req_chg = SomeChange::region_to_region(&SomeRegion::new(&dmxs[domx].cur_state, &dmxs[domx].cur_state), &nds[ndplnx.inx].target());
+                    
+                            //let stps = dmxs[domx].actions.get_steps(&req_chg);
+                            //println!("steps returned: {}", &stps);
+                            //let mut avail_chgs = SomeChange::new_low(dmxs[domx].num_ints);
+                            //if stps.len() > 0 {
+                            //    avail_chgs = stps.aggregate_changes();
+                            //}
+                            //let lack_chg = req_chg.c_and(&avail_chgs.c_not());
+                            //print!("\n    changes needed {} \n             avail {} \n        not found: {}", req_chg, avail_chgs, lack_chg);
+                            //println!(" ");
                         }
                     }
                 }
@@ -361,14 +386,14 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     step_inc = 0;
                     break;
                 } else if cmd[0] == "left" {
-                    dmxs[0].actions[0].left_overs();
+                    println!("left-overs: {}", &dmxs[0].actions[0].left_overs());
                     continue;
                 } else if cmd[0] == "vert" {
                     dmxs[0].actions[0].vertices();
                     continue;
                 }
             }
-    
+
             if cmd.len() == 2 {
                 if cmd[0] == "cd" {
                     step_inc = 0;
@@ -975,7 +1000,7 @@ fn usage() {
     println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
-    println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results. U = upredictable.");
+    println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
 }
 
