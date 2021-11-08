@@ -43,8 +43,8 @@ impl SomeChange {
     /// Return a new SomeChange struct instance, set to zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
-            b01: SomeMask::new(SomeBits::new_low(num_ints)),
-            b10: SomeMask::new(SomeBits::new_low(num_ints)),
+            b01: SomeMask::new(SomeBits::new(num_ints)),
+            b10: SomeMask::new(SomeBits::new(num_ints)),
         }
     }
 

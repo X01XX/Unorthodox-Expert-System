@@ -108,47 +108,27 @@ impl SomeState {
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(sta) = SomeState::from_string(1, "0101")) {
+    /// if let Ok(sta) = SomeState::from_string(1, "s0101")) {
     ///    println!("State {}", &sta);
     /// } else {
     ///    panic!("Invalid State");
     /// }
+    /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
-        let mut bts = SomeBits::new_low(num_ints);
 
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 's' || ch == 'S' {
-                    continue;
-                } else {
-                    return Err(String::from("initial character should be s"));
-                }
+        for chr in str.chars() {
+            if chr != 's' && chr != 'S' {
+                return Err(String::from("initial character should be s"));
             }
+            break;
+        }
 
-            if bts.high_bit_set() {
-                return Err(String::from("too long"));
-            }
-
-            if ch == '0' {
-                bts = bts.shift_left();
-            } else if ch == '1' {
-                bts = bts.push_1();
-            } else if ch == '_' {
-                continue;
-            } else {
-                return Err(String::from("invalid character"));
-            }
-        } // end for ch
-
-        Ok(SomeState::new(bts))
+        Ok(SomeState::new(SomeBits::from_string(num_ints, &str[1..]).unwrap()))
     } // end from_string
 
 } // end impl SomeState
 
+/// Clone trait for SomeState
 impl Clone for SomeState {
     fn clone(&self) -> Self {
         Self {

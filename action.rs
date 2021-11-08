@@ -1024,7 +1024,7 @@ impl SomeAction {
             // 50% on each cycle.
             let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
-            let mut dif_msk = SomeMask::new(SomeBits::new_low(self.num_ints));
+            let mut dif_msk = SomeMask::new(SomeBits::new(self.num_ints));
 
             let mut inx = 0;
             for mskx in dif_bits.iter() {

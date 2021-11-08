@@ -29,9 +29,11 @@ impl fmt::Display for SomeSquare {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
+
+/// A state, with the most recent results on a given action.
 pub struct SomeSquare {
     pub state: SomeState,     // State that an action was taken on.
-    pub results: ResultStore, // Circular list of results.
+    pub results: ResultStore, // Circular list of most recent results.
     pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
 }
 
@@ -247,11 +249,13 @@ impl SomeSquare {
                 }
             }
         }
+
         if sav_pn != self.get_pn() {
             str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.get_pn()));
         } else {
             str_info.push_str(&format!(", pn {}", &self.get_pn()));
         }
+
         if sav_pnc != self.get_pnc() {
             str_info.push_str(&format!(
                 ", pnc changed from {} to {}",
@@ -261,6 +265,7 @@ impl SomeSquare {
         } else {
             str_info.push_str(&format!(", pnc {}", &self.get_pnc()));
         }
+
         println!("{}", &str_info);
         rc
     }

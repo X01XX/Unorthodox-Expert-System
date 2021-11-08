@@ -13,6 +13,7 @@ use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
+/// SomeRegion struct
 pub struct SomeRegion {
     /// First state defining a region, it represents a sempled state.
     pub state1: SomeState,
@@ -26,6 +27,7 @@ impl fmt::Display for SomeRegion {
         write!(f, "{}", self.formatted_string())
     }
 }
+
 impl PartialEq for SomeRegion {
     fn eq(&self, other: &Self) -> bool {
         if self.intersects(&other) {
@@ -326,7 +328,7 @@ impl SomeRegion {
     /// Given a set of states (square keys),
     ///
     /// Return a StateStore containing  pairs of states,
-    /// found to encompas the region.
+    /// found to encompass the region.
     ///
     /// An empty result is possible.
     pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
@@ -357,9 +359,9 @@ impl SomeRegion {
     /// }
     ///
     pub fn from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
-        let mut bts_high = SomeBits::new_low(num_ints);
+        let mut bts_high = SomeBits::new(num_ints);
 
-        let mut bts_low = SomeBits::new_low(num_ints);
+        let mut bts_low = SomeBits::new(num_ints);
 
         let mut inx = -1;
 

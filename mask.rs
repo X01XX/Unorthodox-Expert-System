@@ -23,11 +23,12 @@ use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+/// SomeMask struct, just some bits.
 pub struct SomeMask {
-    /// Bits set to one are significant.
     bts: SomeBits,
 }
 
+/// Display trait for SomeMask
 impl fmt::Display for SomeMask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -35,7 +36,7 @@ impl fmt::Display for SomeMask {
 }
 
 impl SomeMask {
-    /// Return a new Mask struct instance.
+    /// Return a new SomeMask instance.
     pub fn new(val: SomeBits) -> Self {
         Self { bts: val }
     }
@@ -43,14 +44,7 @@ impl SomeMask {
     /// Return a new mask set to all zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
-            bts: SomeBits::new_low(num_ints),
-        }
-    }
-
-    /// Return a new mask set to all zeros.
-    pub fn _new_high(num_ints: usize) -> Self {
-        Self {
-            bts: SomeBits::_new_high(num_ints),
+            bts: SomeBits::new(num_ints),
         }
     }
 
@@ -59,41 +53,37 @@ impl SomeMask {
         SomeState::new(self.bts.clone())
     }
 
-//  pub fn m_xor(&self, other: &Self) -> Self {
-//      Self::new(self.bts.b_xor(&other.bts))
-//  }
-
-    /// Return the or of two maks.
+    /// Return the bitwise OR of two masks.
     pub fn m_or(&self, other: &Self) -> Self {
         Self::new(self.bts.b_or(&other.bts))
     }
 
-    /// Return the and of two masks.
+    /// Return the bitwize AND of two masks.
     pub fn m_and(&self, other: &Self) -> Self {
         Self::new(self.bts.b_and(&other.bts))
     }
 
-    /// Return the result of a not operation.
+    /// Return the bitwize NOT of a mask.
     pub fn m_not(&self) -> Self {
         Self::new(self.bts.b_not())
     }
 
-    /// Return true if the mask is low, that is all zeros.
+    /// Return true if the mask is all zeros.
     pub fn is_low(&self) -> bool {
         self.bts.is_low()
     }
 
-    /// Return true if the mask is not low, that is not all zeros.
+    /// Return true if the mask is not all zeros.
     pub fn is_not_low(&self) -> bool {
         self.bts.is_not_low()
     }
 
-    /// Return true if the mask is high, that is all ones/
+    /// Return true if the mask is all ones.
     pub fn is_high(&self) -> bool {
         self.bts.is_high()
     }
 
-    /// Return true if a given bit is one at a given position.
+    /// Return true if a given bit position is one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
     }
@@ -147,6 +137,8 @@ impl SomeMask {
         self.bts.formatted_string('m')
     }
 
+    /// Create a formatted string to display under an instance,
+    /// to indicate specific bits positions.
     pub fn str2(&self) -> String {
         self.bts.str2(' ')
     }
@@ -154,43 +146,21 @@ impl SomeMask {
     /// Return a Mask from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(msk) = SomeMask::from_string(1, "0101")) {
+    /// if let Ok(msk) = SomeMask::from_string(1, "m0101")) {
     ///    println!("Mask {}", &msk);
     /// } else {
     ///    panic!("Invalid Mask");
     /// }
+    /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn _from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
-        let mut bts = SomeBits::new_low(num_ints);
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 'm' || ch == 'M' {
-                    continue;
-                } else {
-                    return Err(String::from("initial character should be s"));
-                }
+        for chr in str.chars() {
+            if chr != 'm' && chr != 'M' {
+                return Err(String::from("initial character should be m"));
             }
+            break;
+        }
 
-            if bts.high_bit_set() {
-                return Err(String::from("too long"));
-            }
-
-            if ch == '0' {
-                bts = bts.shift_left();
-            } else if ch == '1' {
-                bts = bts.push_1();
-            } else if ch == '_' {
-                continue;
-            } else {
-                return Err(String::from("invalid character"));
-            }
-        } // end for ch
-
-        Ok(SomeMask::new(bts))
+        Ok(SomeMask::new(SomeBits::from_string(num_ints, &str[1..]).unwrap()))
     } // end from_string
 
 } // end SomeMask

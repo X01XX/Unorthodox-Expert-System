@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
+/// Display trait for SomeBits
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string('b'))
@@ -33,24 +34,20 @@ impl fmt::Display for SomeBits {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
+
+/// SomeBits struct, just an unsigned integer vector.
+/// This structure sets the type of integer.
+/// Each Domain sets the number of integers.
 pub struct SomeBits {
-    /// Vector of one, or more, unsigned integers.
-    /// This structure sets the type of integer.
-    /// Each Domain sets the number of integers.
     ints: Vec<u8>,
 }
 
 impl SomeBits {
     /// Create a SomeBits instance with integer(s) set to zero
-    pub fn new_low(num_ints: usize) -> SomeBits {
+    pub fn new(num_ints: usize) -> SomeBits {
+        assert!(num_ints > 0);
         SomeBits {
             ints: vec![0 as u8; num_ints],
-        }
-    }
-
-    pub fn _new_high(num_ints: usize) -> SomeBits {
-        SomeBits {
-            ints: vec![u8::MAX; num_ints],
         }
     }
 
@@ -68,24 +65,27 @@ impl SomeBits {
 
         let num_ints = self.num_ints();
 
+        // For each integer in the bits vector
         for int_inx in 0..num_ints {
-            if self.ints[int_inx] > 0 {
-                let mut tmpint = self.ints[int_inx];
+            if self.ints[int_inx] == 0 {
+                continue;
+            }
 
-                // Make new SomeBits instance for each bit in the integer
-                while tmpint > 0 {
-                    let tmp2 = tmpint - 1;
+            let mut tmpint = self.ints[int_inx];
 
-                    let abit = tmpint & !tmp2;
+            // Make new SomeBits instance for each bit in the integer
+            while tmpint > 0 {
+                let tmp2 = tmpint - 1;      // zero the bit, rightmost zeros turn to 1
 
-                    let mut btsx = SomeBits::new_low(num_ints); // new Bits object, all zeros
+                let abit = tmpint & !tmp2;  // isolate the bit
 
-                    btsx.ints[int_inx] = abit; // update one integer
+                let mut btsx = SomeBits::new(num_ints); // new Bits object, all zeros
 
-                    rc_vec.push(btsx); // Save result
+                btsx.ints[int_inx] = abit;  // update one integer
 
-                    tmpint = tmpint & tmp2;
-                }
+                rc_vec.push(btsx);  // Save one-bit result
+
+                tmpint = tmpint & tmp2; // remove bit
             }
         } // end for int_inx
         rc_vec
@@ -104,34 +104,14 @@ impl SomeBits {
                 panic!("bit num {} is too large", &bit_num);
             }
 
-            let bit_pos = bit_num % NUM_BITS_PER_INT;
-            let int_num = lsi - (bit_num / NUM_BITS_PER_INT);
+            let bit_pos = bit_num % NUM_BITS_PER_INT;   // calc bit index
 
-            ary2[int_num] = ary2[int_num] ^ ALL_BIT_MASKS[bit_pos];
+            let int_num = lsi - (bit_num / NUM_BITS_PER_INT);   // calc integer index
+
+            ary2[int_num] = ary2[int_num] ^ ALL_BIT_MASKS[bit_pos]; // toggle the bit
         }
         Self { ints: ary2 }
     }
-
-    /// Return a Bits struct with specified bit(s) changed, if needed, to ones.
-//  pub fn bits_to_1(&self, bit_nums: Vec<usize>) -> Self {
-//      let mut ary2 = self.ints.clone();
-//
-//      let num_ints = self.num_ints();
-//      let num_bits = num_ints * NUM_BITS_PER_INT as usize;
-//      let lsi = num_ints - 1; // least significant integer
-//
-//      for bit_num in bit_nums {
-//          if bit_num >= num_bits {
-//              panic!("bit num too large");
-//          }
-//
-//          let bit_pos = bit_num % NUM_BITS_PER_INT;
-//          let int_num = lsi - (bit_num / NUM_BITS_PER_INT);
-//
-//          ary2[int_num] = ary2[int_num] | ALL_BIT_MASKS[bit_pos];
-//      }
-//      Self { ints: ary2 }
-//  }
 
     /// Return true if a bit is one at a given position.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
@@ -143,11 +123,11 @@ impl SomeBits {
             panic!("bit num too large");
         }
 
-        let bit_pos = bit_num % NUM_BITS_PER_INT;
+        let bit_pos = bit_num % NUM_BITS_PER_INT;   // calc bit index
 
-        let int_num = lsi - (bit_num / NUM_BITS_PER_INT);
+        let int_num = lsi - (bit_num / NUM_BITS_PER_INT);   // calc integer index
 
-        self.ints[int_num] & ALL_BIT_MASKS[bit_pos] > 0
+        self.ints[int_num] & ALL_BIT_MASKS[bit_pos] > 0 // test bit
     }
 
     /// Bitwise NOT of a Bits stuct.
@@ -227,7 +207,7 @@ impl SomeBits {
         true
     }
 
-    /// Return true is a Bits struct is a ones-subset of another.
+    /// Return true if a Bits struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         *self == self.b_and(&other)
     }
@@ -254,30 +234,22 @@ impl SomeBits {
         self.b_xor(&other).num_one_bits()
     }
 
-    /// Return true if only one bit is setto one.
+    /// Return true if only one bit is set to one.
     pub fn just_one_bit(&self) -> bool {
         let mut cnt = 0;
 
-        for int_inx in 0..self.num_ints() {
-            if self.ints[int_inx] > 0 {
-                let mut tmpint = self.ints[int_inx];
+        for intx in self.ints.iter() {
+            cnt += intx.count_ones();
 
-                while tmpint > 0 {
-                    let tmp2 = tmpint - 1;
-                    tmpint = tmpint & tmp2;
-
-                    if cnt > 0 {
-                        return false;
-                    }
-                    cnt += 1;
-                }
+            if cnt > 1 {
+                return false;
             }
-        } // end for int_inx
+        }
 
         cnt == 1
     }
 
-    /// Return a copy of self, shifted 1 to the left, and 1 added.
+    /// Return a copy, shifted 1 to the left, and 1 added.
     pub fn push_1(&self) -> Self {
         let num_ints = self.num_ints();
 
@@ -293,19 +265,42 @@ impl SomeBits {
         let mut ints2 = vec![0 as u8; self.num_ints()];
 
         let mut carry: u8 = 0;
+        let mut next_carry;
 
         for int_inx in (0..self.ints.len()).rev() {
-            if (self.ints[int_inx] & INT_HIGH_BIT) > 0 {
-                ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
-                carry = 1;
-            } else {
-                ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
-                carry = 0;
-            }
+
+            next_carry = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
+
+            ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
+            carry = next_carry;
         }
 
         // Overflow check
-        //		if carry == 1 {
+        //		if carry > 0 {
+        //			panic!("Bits shift_left overflow");
+        //		}
+
+        Self { ints: ints2 }
+    }
+
+    /// Return a copy, shifted left by 1 bit
+    /// The Most Significant 4 bit values are lost.
+    pub fn shift_left4(&self) -> Self {
+        let mut ints2 = vec![0 as u8; self.num_ints()];
+
+        let mut carry: u8 = 0;
+        let mut next_carry;
+
+        for int_inx in (0..self.ints.len()).rev() {
+
+            next_carry = self.ints[int_inx] >> (NUM_BITS_PER_INT - 4);
+
+            ints2[int_inx] = (self.ints[int_inx] << 4) + carry;
+            carry = next_carry;
+        }
+
+        // Overflow check
+        //		if carry > 0 {
         //			panic!("Bits shift_left overflow");
         //		}
 
@@ -332,7 +327,7 @@ impl SomeBits {
         (NUM_BITS_PER_INT * self.ints.len()) + self.ints.len()
     }
 
-    /// Create a formatted string fot the object.
+    /// Create a formatted string for the instance.
     pub fn formatted_string(&self, prefix: char) -> String {
         let mut astr = String::with_capacity(self.formatted_string_length());
         astr.push(prefix);
@@ -349,7 +344,7 @@ impl SomeBits {
         astr
     }
 
-    /// Create a formatted string to display under a SomeBits object,
+    /// Create a formatted string to display under an instance,
     /// to indicate specific bits positions.
     pub fn str2(&self, prefix: char) -> String {
         let mut astr = String::with_capacity(self.formatted_string_length());
@@ -371,8 +366,109 @@ impl SomeBits {
         }
         astr
     }
+
+    /// Return a bits instance from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    /// Underscore character is ignored.
+    /// 0X can be used as a prefix to indicate hexadecimal input.
+    ///
+    /// if let Ok(bts) = SomeBits::from_string(1, "0101")) {
+    ///    println!("bts {}", &bts);
+    /// } else {
+    ///    panic!("Invalid bits string");
+    /// }
+    /// A prefix of "0x" can be used to specify hexadecimal characters.
+    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeBits, String> {
+        let mut bts = SomeBits::new(num_ints);
+
+        let mut base = 2;
+
+        let mut zf = false;
+        let mut xf = false;
+
+        let mut inx = 0;
+        for chr in str.chars() {
+            if inx == 0 && chr == '0' {
+                zf = true;
+            }
+            if inx == 1 {
+                if chr == 'x' || chr == 'X' {
+                    xf = true;
+                }
+            }
+            inx += 1;
+            if inx > 1 {
+                break;
+            }
+        }
+
+        let mut str2 = str;
+        if zf && xf {
+            base = 16;
+            str2 = &str2[2..];
+        }
+
+        let lsb = num_ints - 1;
+        let shift_num = NUM_BITS_PER_INT - 4;
+
+        for chr in str2.chars() {
+
+            if chr == '_' {
+                continue;
+            }
+
+            if bts.high_bit_set() {
+                return Err(String::from("too long"));
+            }
+
+            if base == 2 {
+
+                if bts.high_bit_set() {
+                    return Err(String::from("too long"));
+                }
+
+                if chr == '0' {
+                    bts = bts.shift_left();
+                } else if chr == '1' {
+                    bts = bts.push_1();
+                } else if chr == '_' {
+                    continue;
+                } else {
+                    return Err(String::from("invalid character"));
+                }
+            } else {
+                
+                let numx;
+                
+                if bts.high_bit_set() {
+                    return Err(String::from("too long"));
+                }
+
+                if chr >= '0' && chr <= '9' {
+                    numx = chr as i32 - 48;
+                } else if chr >= 'a' && chr <= 'f' {
+                    numx = chr as i32  - 87;
+                } else if chr >= 'A' && chr <= 'F' {
+                    numx = chr as i32 - 55;
+                } else {
+                    return Err(String::from("invalid character"));
+                }
+
+                if bts.ints[0] >> shift_num > 0 {
+                    return Err(String::from("too long"));
+                }
+                bts = bts.shift_left4();
+
+                bts.ints[lsb] += numx as u8;
+            }
+        } // next inx
+
+        Ok(bts)
+    } // end from_string
+
 } // end impl SomeBits
 
+/// Create a clone of an instance.
 impl Clone for SomeBits {
     fn clone(&self) -> Self {
         let mut v1 = Vec::<u8>::with_capacity(self.len());

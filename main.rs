@@ -996,8 +996,9 @@ fn usage() {
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
-    println!("\n    A state starts with an 's' character, followed by zero, or more, zero and one characters.\n");
-    println!("    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
+    println!("\n    A state starts with an 's' character, followed by zero, or more, zero and one characters.");
+    println!("\n    A state can be specified in hexadecimal, like s0xa5.");
+    println!("\n    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
