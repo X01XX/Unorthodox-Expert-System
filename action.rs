@@ -88,8 +88,6 @@ pub struct SomeAction {
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
-    /// The number of integers the Domain/Action uses to represent a bit pattern
-    pub num_ints: usize,
     /// Changes that the rule can do
     pub aggregate_changes: SomeChange
 }
@@ -106,7 +104,6 @@ impl SomeAction {
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            num_ints: num_ints,
             aggregate_changes: SomeChange::new_low(num_ints),
         }
     }
@@ -114,6 +111,11 @@ impl SomeAction {
     /// Set the action number
     pub fn set_num(&mut self, anum: usize) {
         self.num = anum;
+    }
+
+    /// Return the number of integers used in the bits instances
+    pub fn num_ints(&self) -> usize {
+        self.aggregate_changes.b01.num_ints()
     }
 
     /// Return Truth enum for any two squares with the same Pn value.
@@ -127,11 +129,13 @@ impl SomeAction {
             return cmbx;
         }
 
+        // Be soft on Pn::One so rules can be bootstrapped
         if sqrx.get_pn() == Pn::One || sqrx.get_pnc() {
         } else {
             cmbx = Truth::M;
         }
 
+        // Be soft on Pn::One so rules can be bootstrapped
         if sqry.get_pn() == Pn::One || sqry.get_pnc() {
         } else {
             cmbx = Truth::M;
@@ -142,11 +146,6 @@ impl SomeAction {
         let stas = self
             .squares
             .stas_in_reg(&SomeRegion::new(&sqrx.state, &sqry.state));
-
-        // If there are no squares inbetween, done.
-        if stas.len() == 2 {
-            return cmbx;
-        }
 
         // Handle Pn::Unpredictable squares
         if sqrx.get_pn() == Pn::Unpredictable {
@@ -167,36 +166,38 @@ impl SomeAction {
             return cmbx;
         }
 
-        // Get rules
-        let rulsx = sqrx.rules.union(&sqry.rules).unwrap();
+        // Get rules union
+        if let Some(rulsx) = sqrx.rules.union(&sqry.rules) {
 
-        // Check squares between for compatibility to the rules.
-        for stax in stas.iter() {
-            if *stax == sqrx.state || *stax == sqry.state {
-                continue;
-            }
+            // Check squares between for compatibility to the rules.
+            for stax in stas.iter() {
+                if *stax == sqrx.state || *stax == sqry.state {
+                    continue;
+                }
 
-            let sqrz = self.squares.find(stax).unwrap();
+                let sqrz = self.squares.find(stax).unwrap();
 
-            if sqrz.get_pn() == Pn::Unpredictable {
-                // sqrx.get_pn() cannot be Unpredictable at this point, so this invalidates
-                return Truth::F;
-            }
-
-            if sqrz.get_pn() != sqrx.get_pn() {
-                if sqrz.get_pnc() {
+                if sqrz.get_pn() == Pn::Unpredictable {
+                    // sqrx.get_pn() cannot be Unpredictable at this point, so this invalidates
                     return Truth::F;
                 }
-                if sqrz.get_pn() > sqrx.get_pn() {
+
+                if sqrz.get_pn() != sqrx.get_pn() {
+                    if sqrz.get_pnc() {
+                        return Truth::F;
+                    }
+                    if sqrz.get_pn() > sqrx.get_pn() {
+                        return Truth::F;
+                    }
+                }
+
+                if sqrz.rules.is_subset_of(&rulsx) == false {
                     return Truth::F;
                 }
-            }
-
-
-            if sqrz.rules.is_subset_of(&rulsx) == false {
-                return Truth::F;
-            }
-        } // next stax
+            } // next stax
+        } else {
+            return Truth::F;
+        }
 
         cmbx
     }
@@ -221,6 +222,8 @@ impl SomeAction {
         dom: usize,
     ) {
 
+        self.eval_sample(initial, result, dom);
+
         // Process each kind of need
         match ndx {
             SomeNeed::AStateMakeGroup {
@@ -231,9 +234,6 @@ impl SomeAction {
                 far,
                 num_x: _,
             } => {
-                self.store_sample(&initial, &result, dom);
-                self.check_square_new_sample(&initial, dom);
-
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
                 let sqrx = self.squares.find(&sta).unwrap();
@@ -282,9 +282,6 @@ impl SomeAction {
                 targ_state: sta,
                 in_group: greg,
             } => {
-                self.store_sample(&initial, &result, dom);
-                self.check_square_new_sample(&initial, dom);
-
                 // Form the rules, make the group
                 let sqr1 = self.squares.find(&greg.state1).unwrap();
                 let sqr2 = self.squares.find(&greg.state2).unwrap();
@@ -325,13 +322,8 @@ impl SomeAction {
                     _ => {}
                 } // end match cnb2
             } // end match SeekEdgeNeed
-            _ => {
-                // Store sample.
-                self.store_sample(&initial, &result, dom);
-                // Check to invalidate old groups, create new groups.
-                self.check_square_new_sample(&initial, dom);
-            }
-        } // end match ndx00XX1X10
+            _ => {}
+        } // end match ndx
 
     } // End take_action_need2
 
@@ -341,26 +333,23 @@ impl SomeAction {
     ///   no user-specified samples.
     pub fn eval_arbitrary_sample(
         &mut self,
-        init_state: &SomeState,
-        rslt_state: &SomeState,
+        initial: &SomeState,
+        result: &SomeState,
         dom: usize,
     ) {
         println!(
             "take_action_arbitrary for state {} result {}",
-            init_state, rslt_state
+            initial, result
         );
 
-        self.store_sample(&init_state, &rslt_state, dom);
-        self.check_square_new_sample(&init_state, dom);
+        self.eval_sample(initial, result, dom);
+        //self.store_sample(&init_state, &rslt_state, dom);
+       // self.check_square_new_sample(&init_state, dom);
     }
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
-        self.eval_step_sample2(cur, new_state, dom);
-    }
 
-    /// A continuation of the eval_step_sample logic
-    pub fn eval_step_sample2(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
         // If square exists, update it, check square, return
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
@@ -387,8 +376,7 @@ impl SomeAction {
         }
 
         if num_grps_invalidated > 0 || num_grps_in == 0 {
-            self.store_sample(cur, new_state, dom);
-            self.check_square_new_sample(cur, dom);
+            self.eval_sample(cur, new_state, dom);
         }
     }
 
@@ -544,7 +532,7 @@ impl SomeAction {
 
     /// Return the aggregate changes for an action
     fn calc_aggregate_changes(&self) -> SomeChange {
-        let mut ret_cngs = SomeChange::new_low(self.num_ints);
+        let mut ret_cngs = SomeChange::new_low(self.num_ints());
 
         for grpx in self.groups.iter() {
 
@@ -1024,7 +1012,7 @@ impl SomeAction {
             // 50% on each cycle.
             let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
 
-            let mut dif_msk = SomeMask::new(SomeBits::new(self.num_ints));
+            let mut dif_msk = SomeMask::new(SomeBits::new(self.num_ints()));
 
             let mut inx = 0;
             for mskx in dif_bits.iter() {
@@ -1716,7 +1704,7 @@ impl SomeAction {
         }
 
         // No squares pnc
-        
+
         // Find max samples of any square
         let mut max_samples = 0;
         inx = 0;
