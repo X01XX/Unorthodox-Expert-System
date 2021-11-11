@@ -118,27 +118,15 @@ impl SomeAction {
         self.aggregate_changes.b01.num_ints()
     }
 
-    /// Return Truth enum for any two squares with the same Pn value.
+    /// Return Truth enum for any two squares.
     /// Check squares inbetween for compatibility.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.get_pn() == sqry.get_pn());
 
         // Check the two squares
         let mut cmbx = sqrx.can_combine(&sqry);
-        if cmbx == Truth::F {
+        if cmbx != Truth::T {
             return cmbx;
-        }
-
-        // Be soft on Pn::One so rules can be bootstrapped
-        if sqrx.get_pn() == Pn::One || sqrx.get_pnc() {
-        } else {
-            cmbx = Truth::M;
-        }
-
-        // Be soft on Pn::One so rules can be bootstrapped
-        if sqry.get_pn() == Pn::One || sqry.get_pnc() {
-        } else {
-            cmbx = Truth::M;
         }
 
         // Get keys for all squares in the region formed by the
@@ -239,19 +227,22 @@ impl SomeAction {
                 let sqrx = self.squares.find(&sta).unwrap();
                 //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.get_pn(), sqrx.get_pnc());
                 if let Some(sqry) = self.squares.find(&far) {
+
                     if sqrx.get_pn() == sqry.get_pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
+
                         if sqrx.get_pn() == Pn::Unpredictable {
-                            if self.groups.any_superset_of(&for_reg) == false {
+
+                            if self.groups.any_superset_of(&for_reg) {
+                                //let regs = self.groups.supersets_of(&for_reg);
+                                // println!(
+                                //    "Dom {} Act {} Supersets found for new group (1) {} in {}",
+                                //     &dom, &self.num, for_reg, &regs
+                                // );
+                            } else {
                                 self.groups.push(
                                     SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new()),
                                     dom,
                                     self.num,
-                                );
-                            } else {
-                                let regs = self.groups.supersets_of(&for_reg);
-                                println!(
-                                    "Dom {} Act {} Supersets found for new group (1) {} in {}",
-                                    &dom, &self.num, for_reg, &regs
                                 );
                             }
                         } else {
