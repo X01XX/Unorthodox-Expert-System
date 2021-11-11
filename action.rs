@@ -121,10 +121,9 @@ impl SomeAction {
     /// Return Truth enum for any two squares.
     /// Check squares inbetween for compatibility.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
-        assert!(sqrx.get_pn() == sqry.get_pn());
 
         // Check the two squares
-        let mut cmbx = sqrx.can_combine(&sqry);
+        let cmbx = sqrx.can_combine(&sqry);
         if cmbx != Truth::T {
             return cmbx;
         }
@@ -151,7 +150,7 @@ impl SomeAction {
                     }
                 }
             }
-            return cmbx;
+            return Truth::T;
         }
 
         // Get rules union
@@ -164,11 +163,6 @@ impl SomeAction {
                 }
 
                 let sqrz = self.squares.find(stax).unwrap();
-
-                if sqrz.get_pn() == Pn::Unpredictable {
-                    // sqrx.get_pn() cannot be Unpredictable at this point, so this invalidates
-                    return Truth::F;
-                }
 
                 if sqrz.get_pn() != sqrx.get_pn() {
                     if sqrz.get_pnc() {
@@ -183,11 +177,10 @@ impl SomeAction {
                     return Truth::F;
                 }
             } // next stax
+            return Truth::T;
         } else {
             return Truth::F;
         }
-
-        cmbx
     }
 
     /// Evaluate a sample taken to satisfy a need.
@@ -210,9 +203,10 @@ impl SomeAction {
         dom: usize,
     ) {
 
+        // Processing for all needs
         self.eval_sample(initial, result, dom);
 
-        // Process each kind of need
+        // Additional processing for selected kinds of need
         match ndx {
             SomeNeed::AStateMakeGroup {
                 dom_num: _,
@@ -222,40 +216,29 @@ impl SomeAction {
                 far,
                 num_x: _,
             } => {
+                if self.groups.any_superset_of(&for_reg) {
+                    return;
+                }
+
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
                 let sqrx = self.squares.find(&sta).unwrap();
+
                 //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.get_pn(), sqrx.get_pnc());
                 if let Some(sqry) = self.squares.find(&far) {
 
-                    if sqrx.get_pn() == sqry.get_pn() && self.can_combine(&sqrx, &sqry) == Truth::T {
+                    if self.can_combine(&sqrx, &sqry) == Truth::T {
 
                         if sqrx.get_pn() == Pn::Unpredictable {
 
-                            if self.groups.any_superset_of(&for_reg) {
-                                //let regs = self.groups.supersets_of(&for_reg);
-                                // println!(
-                                //    "Dom {} Act {} Supersets found for new group (1) {} in {}",
-                                //     &dom, &self.num, for_reg, &regs
-                                // );
-                            } else {
-                                self.groups.push(
-                                    SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new()),
-                                    dom,
-                                    self.num,
-                                );
-                            }
+                            self.groups.push(
+                                SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new()),
+                                dom,
+                                self.num,
+                            );
                         } else {
-                            let rulsxy = sqrx.rules.union(&sqry.rules).unwrap();
+                            if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
 
-                            //println!("Adding group   {}", &rulsxy[0].initial_region());
-                            if self.groups.any_superset_of(&rulsxy[0].initial_region()) {
-                                //println!(
-                                //    "Supersets found for new group {} in {}",
-                                //    rulsxy.initial_region(),
-                                //    self.groups.supersets_of(&rulsxy[0].initial_region())
-                                //);
-                            } else {
                                 self.groups.push(
                                     SomeGroup::new(&sqrx.state, &sqry.state, rulsxy),
                                     dom,
@@ -316,7 +299,7 @@ impl SomeAction {
             _ => {}
         } // end match ndx
 
-    } // End take_action_need2
+    } // end eval_need_sample
 
     /// Add a sample by user command.
     /// Its best to start a session and proceed with:
@@ -334,8 +317,6 @@ impl SomeAction {
         );
 
         self.eval_sample(initial, result, dom);
-        //self.store_sample(&init_state, &rslt_state, dom);
-       // self.check_square_new_sample(&init_state, dom);
     }
 
     /// Evaluate the sample taken for a step in a plan.
@@ -369,7 +350,7 @@ impl SomeAction {
         if num_grps_invalidated > 0 || num_grps_in == 0 {
             self.eval_sample(cur, new_state, dom);
         }
-    }
+    } // end eval_step_sample
 
     /// Store a sample.
     /// Update an existing square or create a new square.
@@ -394,11 +375,9 @@ impl SomeAction {
     /// Add a group for the square if the square is in no valid group.
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
-    /// Update max_reachable_region, if any groups are added or deleted.
+    /// Update aggregate_changes, if any groups are added or deleted.
     fn check_square_new_sample(&mut self, key: &SomeState, dom: usize) {
         //println!("check_square_new_sample for {}", key);
-
-        let sav_len = self.groups.len();
 
         let sqrx = self.squares.find(&key).unwrap();
 
@@ -409,7 +388,7 @@ impl SomeAction {
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
 
-            if regx.x_mask().num_one_bits() > 1 {
+            if regx.x_mask().num_one_bits() > 2 {
 
                 let sqr1 = self.squares.find(&regx.state1).unwrap();
                 let sqr2 = self.squares.find(&regx.state2).unwrap();
@@ -429,10 +408,7 @@ impl SomeAction {
         if regs_invalid.len() == 0 {
             if self.groups.num_groups_state_in(&key) == 0 {
                 self.create_groups_from_square(&key, dom);
-
-                if self.groups.len() > sav_len {
-                    self.aggregate_changes = self.calc_aggregate_changes();
-                }
+                self.aggregate_changes = self.calc_aggregate_changes();
             }
             return;
         }
@@ -449,7 +425,7 @@ impl SomeAction {
                 self.create_groups_from_square(keyx, dom);
             }
         }
-        
+
         self.aggregate_changes = self.calc_aggregate_changes();
     } // end check_square_new_sample
 
@@ -518,7 +494,7 @@ impl SomeAction {
                     self.num,
                 );
             }
-        } // end for regx
+        } // next regx
     } // end create_groups_from_square
 
     /// Return the aggregate changes for an action
@@ -527,7 +503,7 @@ impl SomeAction {
 
         for grpx in self.groups.iter() {
 
-            if grpx.pn == Pn::One {
+            if grpx.pn != Pn::Unpredictable {
                 let rules = &grpx.rules;
 
                 for rulex in rules.iter() {
@@ -573,17 +549,18 @@ impl SomeAction {
             // Look for a pn > 1, pnc == false, not in group squares
             // Extra samples are needed to gain pnc, then the first group.
             let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
+
             for stax in sqrs_pngt1.iter() {
                 if self.groups.any_superset_of_state(&stax) {
-                } else {
-                    let new_need = SomeNeed::StateNotInGroup {
+                    continue;
+                }
+
+                if in_grp || stax != cur_state {
+                    nds.push(SomeNeed::StateNotInGroup {
                         dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
-                        targ_state: stax.clone()};
-                    if nds.contains(&new_need) {
-                    } else {
-                        nds.push(new_need);
-                    }
+                        targ_state: stax.clone()
+                    });
                 }
             }
 
@@ -606,14 +583,13 @@ impl SomeAction {
                 nds.append(&mut ndx);
             }
 
-            if nds.len() == 0 {
-                let mut ndx = self.expand_needs(agg_chgs);
+            // Check for expand needs
+            let mut ndx = self.expand_needs(agg_chgs);
 
-                if ndx.len() > 0 {
-                    nds.append(&mut ndx);
-                }
+            if ndx.len() > 0 {
+                nds.append(&mut ndx);
             }
-            
+
             // Check any two groups for:
             // Overlapping regions that may be combined.
             // Overlapping groups that form a contradictory intersection.
@@ -633,7 +609,7 @@ impl SomeAction {
                 }
             }
 
-            //println!("needs: {}", nds);
+            // Check for repeating housekeeping needs loop
             if cnt > 20 {
                 println!("needs: {}", &nds);
                 panic!("loop count GT 20!");
@@ -645,7 +621,8 @@ impl SomeAction {
                 match ndx {
                     SomeNeed::AddGroup { group_region: greg } => {
                         try_again = true;
-                        // Add a new group
+
+                        // Check for supersets
                         if self.groups.any_superset_of(&greg) {
                             let sups = self.groups.supersets_of(&greg);
                             if sups.len() == 1 && sups.contains(&greg) {
@@ -659,6 +636,7 @@ impl SomeAction {
                             continue;
                         }
 
+                        // Add the new group
                         println!(
                             "Dom {} Act {} AddGroup {} using {} and {}",
                             dom, self.num, &greg, greg.state1, greg.state2
@@ -757,7 +735,7 @@ impl SomeAction {
 
     /// When a group is invalidated by a new sample, something was wrong within that group.
     ///
-    /// When the group has more than one X-bit position (the region states are not adjacent),
+    /// When the group has more than one X-bit positions (the region states are not adjacent),
     /// the number of possible replacement groups will be greatly decreased if the
     /// new sample can be used to find an adjacent, dissimilar pair of squares (an edge)
     /// within the invalidated group.
@@ -837,7 +815,7 @@ impl SomeAction {
                 continue;
             }
 
-            // Check for squares between that are dissimilar to the region defining squares
+            // Check for squares in the region that are dissimilar to the region defining squares
             let mut fs_found = false;
             for stax in stas_in.iter() {
 
@@ -877,7 +855,7 @@ impl SomeAction {
                 continue;
             }
 
-            // Check for squares between region defining squares that need more samples
+            // Check for squares in the region that need more samples
             for stax in stas_in.iter() {
                 if *stax == regx.state1 || *stax == regx.state2 {
                     continue;
@@ -1073,6 +1051,18 @@ impl SomeAction {
         ret_nds
     } // end additional_group_state_samples
 
+    /// Return true if the samples that form a group are pnc
+    fn group_pnc(&self, grpx: &SomeGroup) -> bool {
+
+        let sqrx = self.squares.find(&grpx.region.state1).unwrap();
+        if sqrx.get_pnc() == false {
+            return false;
+        }
+
+        let sqry = self.squares.find(&grpx.region.state2).unwrap();
+        sqry.get_pnc()
+    }
+
     /// Return expand needs for groups.
     /// Edges of each region under bit positions that can be changed,
     /// from the point of view of the Domain (the x_mask), need to be checked.
@@ -1082,6 +1072,9 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
+            if self.group_pnc(grpx) == false {
+                continue;
+            }
             let mut nds_tmp = self.expand_needs_group(grpx, agg_chgs);
             ret_nds.append(&mut nds_tmp);
         }
@@ -1124,7 +1117,7 @@ impl SomeAction {
         let g_reg = &grpx.region;
         let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
         //println!("test for group {} possible regs: {}", greg, &regs_new);
-        
+
         if regs_new.len() == 1 && regs_new[0] == *g_reg {
             ret_nds = NeedStore::new();
             ret_nds.push(SomeNeed::SetEdgeExpand { group_region: g_reg.clone(), edge_mask: chg_mask });
@@ -1146,7 +1139,7 @@ impl SomeAction {
         ret_nds
     }
 
-    /// Given a region with squares that do not have far squares, look for far needs.
+    /// Given a region with squares where no two squares can define th w region, look for far needs of the squares.
     ///
     /// Return needs for first or more samples to reach pn EQ.
     fn far_needs(&self, aregion: &SomeRegion, stas_in_reg: &StateStore) -> NeedStore {
@@ -1639,10 +1632,10 @@ impl SomeAction {
             }
             inx += 2;
         }
-        
+
         // At least one square is pnc
         if a_pnc {
-            
+
             // Find max samples of non-pnc square
             let mut max_samples = 0;
             inx = 0;
@@ -1796,10 +1789,6 @@ impl SomeAction {
         } else {
             return self.possible_group_needs(&reg_both, 2);
         }
-
-        // Rules are the same, see if the two groups can be combined
-        //self.possible_group_needs(&reg_both, 3)
-        //nds
     } // end group_pair_intersection_needs
 
     /// Get needs for two adjacent groups, with the same pn rating.
@@ -2155,7 +2144,7 @@ impl SomeAction {
     } // end possible_regions_from_square
 
     /// Given a group, calculate the possible regions it may expand to by applying 
-    /// dissimilar, non-intersecting, within the limits of the changes roughly allowed
+    /// dissimilar, non-intersecting groups, within the limits of the changes roughly allowed
     /// by the current rules, given by a mask.
     pub fn possible_regions_for_group(&self, grpx: &SomeGroup, chg_mask: &SomeMask) -> RegionStore {
         //println!("possible_regions_for_group {}", &grpx.region);
@@ -2182,7 +2171,7 @@ impl SomeAction {
                 continue;
             }
 
-            // If a square is not in the current possible regions, skip it.
+            // If a region does not intersect the current possible regions, skip it.
             if regs.any_intersection(&grpy.region) {
             } else {
                 continue;
