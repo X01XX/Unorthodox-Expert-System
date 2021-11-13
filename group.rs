@@ -29,6 +29,8 @@ pub struct SomeGroup {
     pub region: SomeRegion,
     /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
     pub pn: Pn,
+    /// Pnc indicator
+    pub pnc: bool,
     /// Rules formed by two squares.
     pub rules: RuleStore,
     /// Set to true when a state only in the group has all adjacent states checked    
@@ -61,6 +63,7 @@ impl SomeGroup {
         Self {
             region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
             pn: pnx,
+            pnc: false,
             rules: ruls,
             confirmed: false,
             anchor: None,
@@ -72,6 +75,11 @@ impl SomeGroup {
     /// Accessor, set the edge_expand field.
     pub fn set_edge_expand(&mut self, amask: &SomeMask) {
         self.edge_expand = amask.clone();
+    }
+
+    /// Accessor set the pnc field to true
+    pub fn set_pnc(&mut self) {
+        self.pnc = true;
     }
 
     /// Return a string representing a group.

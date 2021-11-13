@@ -540,7 +540,7 @@ impl SomeAction {
             // If not, generate need
             if in_grp == false {
                 nds.push(SomeNeed::StateNotInGroup {
-                    dom_num: 0, // set this in domain get_needs
+                    dom_num: dom,
                     act_num: self.num,
                     targ_state: cur_state.clone(),
                 });
@@ -557,7 +557,7 @@ impl SomeAction {
 
                 if in_grp || stax != cur_state {
                     nds.push(SomeNeed::StateNotInGroup {
-                        dom_num: 0, // set this in domain get_needs
+                        dom_num: dom,
                         act_num: self.num,
                         targ_state: stax.clone()
                     });
@@ -612,7 +612,7 @@ impl SomeAction {
             // Check for repeating housekeeping needs loop
             if cnt > 20 {
                 println!("needs: {}", &nds);
-                panic!("loop count GT 20!");
+                panic!("Dom {} Act {} loop count GT 20!", dom, self.num);
             }
 
             // Process a few specific housekeeping needs related to changing the Action or groups.
@@ -628,8 +628,8 @@ impl SomeAction {
                             if sups.len() == 1 && sups.contains(&greg) {
                             } else {
                                 println!(
-                                    "**** Supersets found for new group {} in {}",
-                                    &greg,
+                                    "\nDom {} Act {} **** Supersets found for new group {} in {}",
+                                    dom, self.num, &greg,
                                     self.groups.supersets_of(&greg)
                                 );
                             }
@@ -671,8 +671,16 @@ impl SomeAction {
                     } => {
                         try_again = true;
                         if let Some(grpx) = self.groups.find_mut(&greg) {
-                            println!("\nAct {} Group {} confirmed using {}", self.num, greg, sta1);
+                            println!("\nDom {} Act {} Group {} confirmed using {}", dom, self.num, greg, sta1);
                             grpx.set_anchor(sta1.clone());
+                        }
+                    }
+                    SomeNeed::SetGroupPnc {
+                        group_region: greg,
+                    } => {
+                        try_again = true; // needed to at least get need out of the need list on the next pass
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            grpx.set_pnc();
                         }
                     }
                     SomeNeed::SetEdgeExpand {
@@ -692,7 +700,7 @@ impl SomeAction {
                         try_again = true;
                         if self.seek_edge.push_nosups(regx.clone()) {
                         } else {
-                            println!("need {} failed to add to\n{}", &ndx, &self.seek_edge);
+                            println!("Dom {} Act {} need {} failed to add to\n{}", dom, self.num, &ndx, &self.seek_edge);
                             panic!("done");
                         }
                     }
@@ -1023,6 +1031,10 @@ impl SomeAction {
 
         for grpx in self.groups.iter() {
 
+            if grpx.pnc {
+                continue;
+            }
+
             let sqrx = self.squares.find(&grpx.region.state1).unwrap();
 
             if sqrx.get_pnc() == false {
@@ -1035,33 +1047,28 @@ impl SomeAction {
                 });
             }
 
-            let sqrx = self.squares.find(&grpx.region.state2).unwrap();
+            let sqry = self.squares.find(&grpx.region.state2).unwrap();
 
-            if sqrx.get_pnc() == false {
+            if sqry.get_pnc() == false {
                 ret_nds.push(SomeNeed::StateAdditionalSample {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqrx.state.clone(),
+                    targ_state: sqry.state.clone(),
                     grp_reg: grpx.region.clone(),
                     far: grpx.region.state1.clone(),
                 });
             }
+
+            if sqrx.get_pnc() && sqry.get_pnc() {
+                ret_nds.push(SomeNeed::SetGroupPnc {
+                    group_region: grpx.region.clone(),
+                });
+            }
+
         } // next grpx
 
         ret_nds
     } // end additional_group_state_samples
-
-    /// Return true if the samples that form a group are pnc
-    fn group_pnc(&self, grpx: &SomeGroup) -> bool {
-
-        let sqrx = self.squares.find(&grpx.region.state1).unwrap();
-        if sqrx.get_pnc() == false {
-            return false;
-        }
-
-        let sqry = self.squares.find(&grpx.region.state2).unwrap();
-        sqry.get_pnc()
-    }
 
     /// Return expand needs for groups.
     /// Edges of each region under bit positions that can be changed,
@@ -1072,7 +1079,7 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter() {
-            if self.group_pnc(grpx) == false {
+            if grpx.pnc == false {
                 continue;
             }
             let mut nds_tmp = self.expand_needs_group(grpx, agg_chgs);
