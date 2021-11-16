@@ -96,11 +96,10 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contina it, is set to zero and
     /// changed later.
-    pub fn new(num_ints: usize) -> Self {
-        assert!(num_ints > 0);
+    pub fn new(inx: usize, num_ints: usize) -> Self {
 
         SomeAction {
-            num: 0,
+            num: inx,
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
@@ -1235,22 +1234,36 @@ impl SomeAction {
 
         // Find squares in one group for each group, that may be an anchor
         for greg in regs.iter() {
-            let grpx = self.groups.find_mut(greg).unwrap();
 
             let stsin = greg.states_in(&states1); // The states in greg and no other group
 
             // println!("Act {} Group {} States {}", self.num, greg, stsin);
+
+            if stsin.len() == 0 {
+                let mut all_regs = regs.clone();
+                all_regs.remove_region(&greg);
+                let mut regs_left = RegionStore::new();
+                regs_left.push(greg.clone());
+                regs_left = regs_left.subtract(&all_regs);
+                
+                for regx in regs_left.iter() {
+                    ret_nds.push(SomeNeed::SampleRegion {
+                                    dom_num: 0, // will be filled later
+                                    act_num: self.num,
+                                    goal_reg: regx.clone(),
+                                    });
+                }
+                continue;
+            }
+
+            let grpx = self.groups.find_mut(greg).unwrap();
 
             if let Some(stax) = &grpx.anchor {
                 if stsin.contains(&stax) == false {
                     grpx.set_anchor_off();
                 }
             }
-
-            if stsin.len() == 0 {
-                continue;
-            }
-
+            
             // Get mask of edge bits to use to confirm.
             let mut edge_confirm = grpx.region.ones().m_and(&agg_chgs.b10);
             edge_confirm = edge_confirm.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));

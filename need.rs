@@ -56,6 +56,14 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Pri {} To Region {}",
                 dm, pri, &g_reg,
             ),
+            SomeNeed::SampleRegion {
+                dom_num: dm,
+                act_num: an,
+                goal_reg: g_reg,
+            } => format!(
+                "N(Dom {} Act {} Pri {} Sample Region {}",
+                dm, an, pri, &g_reg,
+            ),
             SomeNeed::ConfirmGroup {
                 dom_num: dm,
                 act_num: an,
@@ -187,6 +195,12 @@ pub enum SomeNeed {
         act_num: usize,
         goal_reg: SomeRegion,
     },
+    /// Sample a given region
+    SampleRegion {
+        dom_num: usize,
+        act_num: usize,
+        goal_reg: SomeRegion,
+    },
     /// Housekeeping, add a group.
     AddGroup { group_region: SomeRegion },
     /// Housekeeping, Set group pnc.
@@ -284,6 +298,22 @@ impl PartialEq for SomeNeed {
                     goal_reg: g_regx,
                 } => {
                     if dm == dmx && *g_reg == *g_regx {
+                        return true;
+                    }
+                }
+                _ => {}
+            },
+            SomeNeed::SampleRegion {
+                dom_num: dm,
+                act_num: an,
+                goal_reg: g_reg,
+            } => match other {
+                SomeNeed::SampleRegion {
+                    dom_num: dmx,
+                    act_num: anx,
+                    goal_reg: g_regx,
+                } => {
+                    if dm == dmx && an == anx && *g_reg == *g_regx {
                         return true;
                     }
                 }
@@ -450,6 +480,11 @@ impl SomeNeed {
                 act_num: _,
                 goal_reg: _,
             } => format!("ToRegion"),
+            SomeNeed::SampleRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: _,
+            } => format!("SampleRegion"),
             SomeNeed::ConfirmGroup {
                 dom_num: _,
                 act_num: _,
@@ -531,7 +566,15 @@ impl SomeNeed {
             } => {
                 return 9;
             } // end process for ToRegion
-            
+
+            SomeNeed::SampleRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: _,
+            } => {
+                return 8;
+            } // end process for SampleRegion
+
             SomeNeed::ConfirmGroup {
                 dom_num: _,
                 act_num: _,

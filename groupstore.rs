@@ -283,6 +283,7 @@ impl GroupStore {
         }
         None
     }
+
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

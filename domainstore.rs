@@ -87,8 +87,7 @@ impl DomainStore {
     }
     
     /// Add a Domain struct to the store.
-    pub fn push(&mut self, mut domx: SomeDomain) {
-        domx.set_num(self.avec.len());
+    pub fn push(&mut self, domx: SomeDomain) {
         self.avec.push(domx);
     }
 
@@ -435,6 +434,10 @@ impl DomainStore {
             } // end match
     }
 
+    /// Return the length of a DomainStore.
+    pub fn len(&self) -> usize {
+        self.avec.len()
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

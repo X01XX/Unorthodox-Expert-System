@@ -300,7 +300,7 @@ impl RegionStore {
         Some(ret_reg)
     }
 
-    // Subtract a region from a RegionStore
+    /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
         let mut ret_str = RegionStore::new();
 
@@ -317,11 +317,36 @@ impl RegionStore {
 
         ret_str
     }
+
+    /// Subtract a RegionStore from a RegionStore
+    pub fn subtract(&self, other: &RegionStore) -> RegionStore {
+        
+        let mut ret_str = self.clone();
+        
+        for regx in other.iter() {
+            if ret_str.any_intersection(regx) {
+                ret_str = ret_str.subtract_region(regx);
+            }
+        }
+        ret_str
+    }
+
 } // end impl RegionStore
 
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
     fn index<'a>(&'a self, i: usize) -> &'a SomeRegion {
         &self.avec[i]
+    }
+}
+
+impl Clone for RegionStore {
+    fn clone(&self) -> Self {
+        let mut retrs = RegionStore::new();
+
+        for regx in self.iter() {
+            retrs.push(regx.clone());
+        }
+        retrs
     }
 }

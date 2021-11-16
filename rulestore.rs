@@ -235,16 +235,18 @@ impl RuleStore {
                 orderb = true;
             }
 
-//            if ordera && orderb {
-//                return None;
-//            }
+            if ordera && orderb {
+                return None;
+            }
 
             let mut ret_store = Self::new();
             if ordera {
                 ret_store.push(rul0);
                 ret_store.push(rul1);
                 return Some(ret_store);
-            } else if orderb {
+            }
+
+            if orderb {
                 ret_store.push(rul2);
                 ret_store.push(rul3);
                 return Some(ret_store);
@@ -291,6 +293,8 @@ impl RuleStore {
             } else {
                 if int11.is_valid_intersection() == false {
                     order1 = false;
+                } else if int00.initial_region() != int11.initial_region() {
+                    order1 = false;
                 }
             }
 
@@ -304,6 +308,8 @@ impl RuleStore {
                 order2 = false;
             } else {
                 if int10.is_valid_intersection() == false {
+                    order2 = false;
+                } else if int01.initial_region() != int10.initial_region() {
                     order2 = false;
                 }
             }

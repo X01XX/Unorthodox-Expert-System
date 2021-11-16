@@ -45,37 +45,42 @@ impl fmt::Display for SomeDomain {
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct SomeDomain {
-    /// Domain number.  Index into a DomainStore.
+    /// Domain number.  Index into a higher-level DomainStore.
     pub num: usize,
-    /// Number integers making up a bits struct.    
+    /// Number integers making up a bits struct.
     pub num_ints: usize,
-    /// Actions the Domain can take.    
+    /// Actions the Domain can take.
     pub actions: ActionStore,
-    /// The Current State.    
+    /// The Current State.
     pub cur_state: SomeState,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     pub prev_state: SomeState,
     /// A counter to indicate number of cycles the previous state is equal to the current state
     pub boredom: usize,
-    /// An optimal region that is sought if there are no needs.  This may be changed. 
+    /// An optimal region that is sought if there are no needs.  This may be changed.
     pub optimal: RegionStore,
-    /// Hashmaps, one per action, allowing for "hidden variable" per state, for testing.   
+    /// For testing only. Hashmaps, one per action, allowing for "hidden variable" per state.
     vec_hash: Vec<HashMap<SomeState, usize>>,
-    /// Hidden variable range, for testing.  0-max(exclusive).
+    /// For testing only. Hidden variable range.  0-max(exclusive).
     /// Chosen randomly at first sample, incremented after each subsequent sample.     
     vec_hvr: Vec<usize>,
 }
 
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, and strings for the
-    /// initial state, the optimal state, and index into the DomainStore struct.
-    pub fn new(num_ints: usize, start_state: &str, optimal: RegionStore) -> Self {
+    /// initial state, the optimal state(s), the index into the higher-level DomainStore.
+    pub fn new(dom: usize, num_ints: usize, start_state: &str, optimal: RegionStore) -> Self {
         // Convert the state string into a state type instance.
         let cur = SomeState::from_string(num_ints, &start_state).unwrap();
 
+        // Check that optimal regions, if any, are the same number of ints.
+        for regx in optimal.iter() {
+            assert!(regx.num_ints() == num_ints);
+        }
+
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
-            num: 0, // will be set later
+            num: dom,
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
@@ -87,24 +92,21 @@ impl SomeDomain {
         };
     }
 
-    /// Accessor, set the value of the num field
-    pub fn set_num(&mut self, anum: usize) {
-        self.num = anum;
-    }
-
     /// Used to add a region, no subsets, to the optimal region store
     pub fn add_optimal(&mut self, areg: SomeRegion) -> bool {
         self.optimal.push_nosubs(areg)
     }
 
-    /// Used to delete a region from the optimal region store
+    /// Delete a region from the optimal region store
     pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
         self.optimal.remove_region(areg)
     }
 
-    /// Add a SomeAction struct to the store.
-    pub fn push(&mut self, mut actx: SomeAction, hv: usize) {
-        actx.set_num(self.actions.len());
+    /// Add a SomeAction instance to the store.
+    pub fn add_action(&mut self, hv: usize) {
+
+        let actx = SomeAction::new(self.actions.len(), self.num_ints);
+
         self.actions.push(actx);
 
         // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
@@ -112,7 +114,7 @@ impl SomeDomain {
         self.vec_hvr.push(hv);
     }
 
-    /// Return needs gathers from all actions.
+    /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
 
         let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
@@ -126,7 +128,7 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
-        if self.optimal.len() > 0 {
+        if self.optimal.len() > 1 {
             self.boredom += 1;
             if let Some(aneed) = self.check_optimal() {
                 nst.push(aneed);
@@ -150,6 +152,7 @@ impl SomeDomain {
         } else {
             //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
             if self.boredom > 3 && self.optimal.len() > 1 && self.optimal.len() != sups.len() {
+
                 let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
                 println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
 
@@ -186,8 +189,11 @@ impl SomeDomain {
         let act_num = ndx.act_num();
 
         let hv = self.get_hv(act_num);
+
         let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
+
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
+
         self.set_cur_state(&astate);
     }
 
@@ -196,8 +202,11 @@ impl SomeDomain {
         self.check_async();
 
         let hv = self.get_hv(act_num);
+
         let astate = take_action(self.num, act_num, &self.cur_state, hv);
+
         self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
+
         self.set_cur_state(&astate);
     }
     
@@ -418,9 +427,9 @@ impl SomeDomain {
             //println!("make_plan3: mutually exclusive change rules found");
             return None;
         }
-        //println!("make_plan3 at 10");
-        // Check for bit change vector with all steps outside of the glide path.
-        // Accumulate a vector of all step indicies in such vectors.
+
+        // Check for a bit change vector with all steps outside of the glide path.
+        // Set a flag, asym_steps.
         let agg_reg = goal_reg.union(from_reg);
         let mut asym_stps = false;
         for inx in 0..steps_by_change_vov.len() {
@@ -436,11 +445,9 @@ impl SomeDomain {
             } // next stp_inx
 
             if all_external {
-                //for stp_inx in &steps_by_change_vov2[inx] {
-                    //println!("Asym chaining required {} to {} agg {}", from_reg, goal_reg, &agg_reg);
-                    asym_stps = true;
-                    break;
-                //}
+                //println!("Asym chaining required {} to {} agg {}", from_reg, goal_reg, &agg_reg);
+                asym_stps = true;
+                break;
             }
         } // next inx
 
@@ -448,9 +455,10 @@ impl SomeDomain {
 
             // Evaluate glide path
             // Some steps may intersect both the from region and goal region witout
-            // being a single step solution
+            // being a single step solution.
             let mut steps_from = false;
             let mut steps_goal = false;
+
             for stpx in steps_str.iter() {
                 if steps_from == false && stpx.initial.intersects(from_reg) {
                     steps_from = true;
@@ -468,11 +476,12 @@ impl SomeDomain {
             // Initalization for chaining
             let num_tries = 3;
             let mut step_options = Vec::<StepStore>::with_capacity(num_tries);
-            //println!("make_plan3 at 20");
+
             // Run a number of depth-first forward chaining
             for _ in 0..num_tries {
 
                 if let Some(poss_steps) = self.random_depth_first_forward_chaining(from_reg, goal_reg, &steps_str, 0) {
+
                     if poss_steps.initial().intersects(from_reg) {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
@@ -490,12 +499,12 @@ impl SomeDomain {
                 //println!("forward chaining test worked! {}", &step_options[inx]);
                 return Some(step_options[inx].clone());
             }
-            //println!("make_plan3 at 30");
+
             // Run a number of depth-first backward chaining 
             for _ in 0..num_tries {
-                //println!("make_plan3 at 31");
+
                 if let Some(poss_steps) = self.random_depth_first_backward_chaining(from_reg, goal_reg, &steps_str, 0) {
-                    //println!("make_plan3 at 35");
+
                     if poss_steps.initial().intersects(from_reg) {
                         if poss_steps.result().intersects(goal_reg) {
                             step_options.push(poss_steps);
@@ -516,9 +525,9 @@ impl SomeDomain {
             }
 
         } // endif asym_stps.len() == 0
-        //println!("make_plan3 at 40");
+
         // Try Asymmetric forward chaining
-        if let Some(ret_steps) = self.asymmetric_forward_chaining(from_reg, goal_reg, &steps_str, depth) {
+        if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str, depth) {
 
             // Return a plan found so far, if any
             if ret_steps.len() > 0 {
@@ -527,23 +536,12 @@ impl SomeDomain {
                 return Some(ret_steps[chosen].clone());
             }
         }
-        //println!("make_plan3 at 50");
-        // Try Asymmetric backward chaining
-        if let Some(ret_steps) = self.asymmetric_backward_chaining(from_reg, goal_reg, &steps_str, depth) {
 
-            // Return a plan found so far, if any
-            if ret_steps.len() > 0 {
-                let chosen = choose_one(&ret_steps);
-                //println!("make_plan3: asym backward worked chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
-                return Some(ret_steps[chosen].clone());
-            }
-        }
-        //println!("make_plan3 at end");
         None
     } // end make_plan3
 
     /// Asymmetric chaining for a given step
-    fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
+    fn asymmetric_chaining_step(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
         let mut ret_stepsx = StepStore::new();
 
         assert!(from_reg.intersects(goal_reg) == false);
@@ -579,8 +577,8 @@ impl SomeDomain {
         None
     }
     
-    /// Try Asymmetric forward chaining
-    fn asymmetric_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
+    /// Try Asymmetric chaining
+    fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
 
         let mut ret_steps = Vec::<StepStore>::new();
 
@@ -634,7 +632,7 @@ impl SomeDomain {
                 continue;
             }
             
-            if let Some(ret_stepsx) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
+            if let Some(ret_stepsx) = self.asymmetric_chaining_step(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
                 ret_steps.push(ret_stepsx);
             }
         } // next inx
@@ -643,81 +641,9 @@ impl SomeDomain {
            return None;
        }
 
-       //println!("asymmetric_forward_chaining: worked returning num {} stepstores", &ret_steps.len());
+       //println!("asymmetric_chaining: worked returning num {} stepstores", &ret_steps.len());
        Some(ret_steps)
-   } // end asymmetric_forward_chaining
-
-    /// Try Asymmetric backward chaining
-    fn asymmetric_backward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
-
-        let mut ret_steps = Vec::<StepStore>::new();
-        
-        let agg_reg = goal_reg.union(from_reg);
-
-        let mut min_dist_goal = 9999;
-
-        // Find min distance of step result regions, that are external from agg_reg, to the goal_reg
-        for stepx in steps_str.iter() {
-
-            if stepx.result.intersects(&agg_reg) {
-                continue;
-            }
-
-            let dist = stepx.result.distance(goal_reg);
-            if dist < min_dist_goal {
-                min_dist_goal = dist;
-            }
-        } // next stepx
-
-        if min_dist_goal == 9999 {
-            return None;
-        }
-
-        // Accumulate indicies to steps found to be external to agg_reg and closest to goal_reg
-        let mut asym_steps = Vec::<usize>::new();
-        let mut inx = 0;
-        for stepx in steps_str.iter() {
-
-            if stepx.result.intersects(&agg_reg) == false {
-
-                let dist = stepx.result.distance(goal_reg);
-                if dist == min_dist_goal {
-                    asym_steps.push(inx);
-                }
-
-            }
-
-            inx += 1;
-        } // next step
-
-        for inx in &asym_steps {
-
-            if steps_str[*inx].initial.intersects(from_reg) {
-
-                let ret_steps1 = StepStore::new_with_step(steps_str[*inx].restrict_initial_region(from_reg));
-
-                if let Some(ret_steps2) = self.make_plan3(&ret_steps1.result(), goal_reg, depth + 1) {
-
-                    if let Some(ret_steps3) = ret_steps1.link(&ret_steps2) {
-                        ret_steps.push(ret_steps3);
-                    }
-                }
-                continue;
-            }
-            
-            if let Some(ret_steps3) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
-                ret_steps.push(ret_steps3);
-            }
-
-        } // next inx
-
-       if ret_steps.len() == 0 {
-           return None;
-       }
-
-       //println!("asymmetric_backward_chaining: worked returning num {} stepstores", &ret_steps.len());
-       Some(ret_steps)
-   } // end asymmetric_backward_chaining
+   } // end asymmetric_chaining
 
     /// Make a plan from a region to another region.
     /// Since there are some random choices, it may be useful to try

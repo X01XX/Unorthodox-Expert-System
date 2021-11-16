@@ -11,7 +11,7 @@
 
 use std::env;
 mod action;
-use crate::action::SomeAction;
+//use crate::action::SomeAction;
 mod actionstore;
 mod bits;
 mod group;
@@ -70,19 +70,19 @@ fn init() -> DomainStore {
     let inx_str = &format!("s{:b}", inx);
 
     let num_ints = 1;
-    let mut regstr = RegionStore::with_capacity(1);
+    let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::from_string(num_ints, "r101X").unwrap());
     regstr.push(SomeRegion::from_string(num_ints, "r10X").unwrap());
-    let mut dom1 = SomeDomain::new(num_ints, inx_str, regstr);
+    let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
-    dom1.push(SomeAction::new(num_ints), 6);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
-    dom1.push(SomeAction::new(num_ints), 0);
+    dom1.add_action(6);
+    dom1.add_action(0);
+    dom1.add_action(0);
+    dom1.add_action(0);
+    dom1.add_action(0);
+    dom1.add_action(0);
+    dom1.add_action(0);
+    dom1.add_action(0);
 
     dmxs.push(dom1);
 
@@ -94,13 +94,13 @@ fn init() -> DomainStore {
     let num_ints = 2;
     let mut regstr = RegionStore::with_capacity(1);
     regstr.push(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap());
-    let mut dom2 = SomeDomain::new(num_ints, inx_str, regstr);
+    let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
-    dom2.push(SomeAction::new(num_ints), 0);
-    dom2.push(SomeAction::new(num_ints), 0);
-    dom2.push(SomeAction::new(num_ints), 0);
-    dom2.push(SomeAction::new(num_ints), 0);
-    dom2.push(SomeAction::new(num_ints), 0);
+    dom2.add_action(0);
+    dom2.add_action(0);
+    dom2.add_action(0);
+    dom2.add_action(0);
+    dom2.add_action(0);
 
     dmxs.push(dom2);
 
