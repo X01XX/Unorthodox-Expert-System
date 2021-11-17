@@ -135,38 +135,31 @@ impl SomeGroup {
         match self.pn {
             Pn::One => match sqrx.get_pn() {
                 Pn::One => {
-                    //println!("square_is_ok at One One");
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 _ => {
-                    //println!("square_is_ok at One Other");
                     return false;
                 }
             },
             Pn::Two => match sqrx.get_pn() {
                 Pn::One => {
-                    //println!("square_is_ok at Two One len = {}", sqrx.len_results());
                     if sqrx.len_results() > 1 {
                         return false;
                     }
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 Pn::Two => {
-                    //println!("square_is_ok at Two Two");
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
                 _ => {
-                    //println!("square_is_ok at Two Other");
                     return false;
                 }
             },
             Pn::Unpredictable => match sqrx.get_pn() {
                 Pn::Unpredictable => {
-                    //println!("square_is_ok at U U");
                     return true;
                 }
                 _ => {
-                    //println!("square_is_ok at U Other");
                     if sqrx.get_pnc() {
                         return false;
                     } else {

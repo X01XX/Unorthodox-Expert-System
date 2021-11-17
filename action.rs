@@ -1237,7 +1237,7 @@ impl SomeAction {
 
             let stsin = greg.states_in(&states1); // The states in greg and no other group
 
-            // println!("Act {} Group {} States {}", self.num, greg, stsin);
+            //println!("Act {} Group {} States {}", self.num, greg, stsin);
 
             if stsin.len() == 0 {
                 let mut all_regs = regs.clone();
@@ -1247,11 +1247,13 @@ impl SomeAction {
                 regs_left = regs_left.subtract(&all_regs);
                 
                 for regx in regs_left.iter() {
-                    ret_nds.push(SomeNeed::SampleRegion {
+                    let ndx = SomeNeed::SampleRegion {
                                     dom_num: 0, // will be filled later
                                     act_num: self.num,
                                     goal_reg: regx.clone(),
-                                    });
+                                    };
+                    //println!("****Need: {}", &ndx);
+                    ret_nds.push(ndx);
                 }
                 continue;
             }
@@ -1505,6 +1507,7 @@ impl SomeAction {
                 });
             }
         } // next greg
+        //println!("confirm_group_needs: returning {}", &ret_nds);
         ret_nds
     } // end confirm_group_needs
 

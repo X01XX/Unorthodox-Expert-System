@@ -136,6 +136,17 @@ impl DomainStore {
         self.avec.len()
     }
 
+    pub fn check_optimal(&mut self) -> NeedStore {
+        let mut nds = NeedStore::new();
+
+        for dmx in self.avec.iter_mut() {
+            if let Some(aneed) = dmx.check_optimal() {
+                nds.push(aneed);
+            }
+        }
+        nds
+    }
+
     /// Return a vector of InxPlan structs, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
@@ -187,8 +198,7 @@ impl DomainStore {
 
             let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
-            while rp1.len() > 0 { 
-                //println!("rp1 len = {}", rp1.len());
+            while rp1.len() > 0 {
 
                 let mut end = span; 
 
@@ -197,12 +207,10 @@ impl DomainStore {
                 }
 
                 let mut avec2 = Vec::<usize>::with_capacity(span);
-                //println!("sub while at 0");
                 for _inx in 0..end {
                     avec2.push(avec[rp1.pick().unwrap()]);
                 }
 
-                //println!("sub while at 2");
                 let ndsinx_plan = avec2
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
@@ -211,7 +219,6 @@ impl DomainStore {
                     })
                     .collect::<Vec<InxPlan>>();
 
-                //println!("sub while at 3");
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
@@ -219,7 +226,6 @@ impl DomainStore {
                         return ndsinx_plan;
                     }
                 }
-                //println!("sub while at 5");
             } // end while
 
             last_priority = least_priority;
@@ -438,6 +444,12 @@ impl DomainStore {
     pub fn len(&self) -> usize {
         self.avec.len()
     }
+
+    /// Reset boredom counter for a domain
+    pub fn reset_boredom(&mut self, dom: usize) {
+        self.avec[dom].reset_boredom();
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

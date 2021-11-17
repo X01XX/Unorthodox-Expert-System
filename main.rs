@@ -151,17 +151,23 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut dmxs = init();
     let mut dom_num = 0;
     let mut step_inc = 1; // amount to increment the step in the next loop
-    
+
     loop {
         //println!("start session loop");
         dmxs.set_step(dmxs.step + step_inc);
         step_inc = 1;
 
         // Get the needs of all Domains / Actions
-        let nds = dmxs.get_needs();
+        let mut nds = dmxs.get_needs();
         //println!("main {} needs {}", nds.len(), &nds);
         //println!("session loop 1");
-        let need_plans = dmxs.evaluate_needs(&nds);
+        let mut need_plans = dmxs.evaluate_needs(&nds);
+
+        // Boredom processing in no needs, or no needs can be done.
+        if need_plans.len() == 0 {
+            nds = dmxs.check_optimal();
+            need_plans = dmxs.evaluate_needs(&nds);
+        }
         //println!("session loop 2");
 
         // Check if all needs are for the same domain, change domain number if needed
@@ -353,10 +359,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     
                         match ndx {
                             SomeNeed::ToRegion {
-                                dom_num: _,
+                                dom_num: domx,
                                 act_num: _,
                                 goal_reg: _,
-                                } => {},
+                                } => {
+                                    dmxs.reset_boredom(*domx);
+                                    },
                             _ => {
                                 dmxs.take_action_need(dom_num, &ndx);
                                 },

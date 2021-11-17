@@ -195,7 +195,7 @@ pub enum SomeNeed {
         act_num: usize,
         goal_reg: SomeRegion,
     },
-    /// Sample a given region
+    /// Sample a given region, to get a sample in only one region.
     SampleRegion {
         dom_num: usize,
         act_num: usize,
@@ -603,7 +603,7 @@ impl SomeNeed {
                 return 1;
             }
             _ => {
-                panic!("priority: Need {} not in match!", self.type_string());
+                return 9999;
             }
         } // end match ndx
     } // end priority

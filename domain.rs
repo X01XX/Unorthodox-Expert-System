@@ -128,18 +128,11 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
-        if self.optimal.len() > 1 {
-            self.boredom += 1;
-            if let Some(aneed) = self.check_optimal() {
-                nst.push(aneed);
-            }
-        }
-
         nst
     }
 
-    // Do functions related to being in an optimum region
-    fn check_optimal(&self) -> Option<SomeNeed> {
+    /// Do functions related to being in an optimum region
+    pub fn check_optimal(&mut self) -> Option<SomeNeed> {
 
         let sups = self.optimal.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
@@ -149,17 +142,23 @@ impl SomeDomain {
                     act_num: 0,
                     goal_reg: self.optimal[inx].clone(),
                 });
-        } else {
-            //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
-            if self.boredom > 3 && self.optimal.len() > 1 && self.optimal.len() != sups.len() {
+        }
+        //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
+        if self.optimal.len() > 1 && self.optimal.len() != sups.len() {
+
+            self.boredom += 1;
+
+            if self.boredom > 3 {
 
                 let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
                 println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
 
                 let inx = rand::thread_rng().gen_range(0, notsups.len());
+
                 return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
             }
         }
+
         None
     }
 
@@ -395,7 +394,6 @@ impl SomeDomain {
             return None;
         }
 
-        //println!("make_plan3 at 1");
         // Check if one step makes the required change.
         // The ultimate end-point of any path search.
         for stepx in steps_str.iter() {
@@ -515,7 +513,7 @@ impl SomeDomain {
                         //println!("problem4: initial {} not in steps {}", from_reg, &poss_steps);
                     }
                 }
-                //println!("make_plan3 at 37");
+
             } // next try
 
             if step_options.len() > 0 {
@@ -733,7 +731,7 @@ impl SomeDomain {
         if steps_rev2.len() == 0 {
             return None;
         }
-        //println!("rdfbc at 10"); 
+
         // Get stepstores that have a result region that intersects the goal region
         let mut next_steps = Vec::<usize>::new();
         let mut inx = 0;
@@ -743,7 +741,7 @@ impl SomeDomain {
             }
             inx += 1;
         }
-        //println!("rdfbc at 20");
+
         // Pick a solution stepstore that works, if there are any
         for inx in &next_steps {
             if steps_rev2[*inx].initial().intersects(from_reg) {
@@ -775,7 +773,7 @@ impl SomeDomain {
                 return Some(ret_steps2);
             }
         }
-        //println!("rdfbc at end");
+
         None
     } // end random_depth_first_backward_chaining
 
@@ -964,6 +962,13 @@ impl SomeDomain {
             }
         }
     } // end act_num_from_string
+
+    /// Reset boredom counter if the current state is in any optimal region.
+    pub fn reset_boredom(&mut self) {
+        if self.optimal.any_superset_of_state(&self.cur_state) {
+            self.boredom = 0;
+        }
+    }
 
 } // end impl SomeDomain
 
