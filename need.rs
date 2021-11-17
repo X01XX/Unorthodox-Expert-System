@@ -658,6 +658,16 @@ impl SomeNeed {
                 }
                 return false;
             } // end process ToRegion
+            SomeNeed::SampleRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: g_reg,
+            } => {
+                if g_reg.is_superset_of_state(&cur_state) {
+                    return true;
+                }
+                return false;
+            } // end process SampleRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -735,6 +745,13 @@ impl SomeNeed {
             } => {
                 return *an;
             } // end process ToRegion
+            SomeNeed::SampleRegion {
+                dom_num: _,
+                act_num: an,
+                goal_reg: _,
+            } => {
+                return *an;
+            } // end process SampleRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: an,
@@ -803,6 +820,13 @@ impl SomeNeed {
             } => {
                 return *dm;
             } // end process ToRegion
+            SomeNeed::SampleRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+            } => {
+                return *dm;
+            } // end process SampleRegion
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
                 act_num: _,
@@ -871,6 +895,13 @@ impl SomeNeed {
             } => {
                 return g_reg.clone();
             }
+            SomeNeed::SampleRegion {
+                dom_num: _,
+                act_num: _,
+                goal_reg: g_reg,
+            } => {
+                return g_reg.clone();
+            }
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -931,6 +962,13 @@ impl SomeNeed {
                 *dm = num;
             }
             SomeNeed::ToRegion {
+                dom_num: dm,
+                act_num: _,
+                goal_reg: _,
+            } => {
+                *dm = num;
+            }
+            SomeNeed::SampleRegion {
                 dom_num: dm,
                 act_num: _,
                 goal_reg: _,
