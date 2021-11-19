@@ -328,7 +328,7 @@ impl SomeRule {
         false
     }
 
-    /// Return true if the target rule should not be run before the second.
+    /// Return true if the target rule, run before the second rule, will lose all desired changes.
     ///
     ///    If a wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///
@@ -338,25 +338,25 @@ impl SomeRule {
 
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
+        // Isolate wanted 0->1 changes.
         let sb01 = self.b01.m_and(&wanted.b01);
         if sb01.is_not_low() {
-            // println!("order_bad: sb01 {} step2 zero pos {}", &sb01, &step2.initial.zero_bit_positions());
-            if sb01.m_and(&other.b10.m_or(&other.b11).m_not()).is_not_low() {
-                // println!("order_bad: returning true");
-                return true;
+            // Check if not all wanted changes are reset in getting the the second rule.
+            if sb01.m_and(&other.b10.m_or(&other.b11).m_not()) != sb01 {
+                return false;
             }
         }
 
+        // Isolate wanted 1->0 changes.
         let sb10 = self.b10.m_and(&wanted.b10);
         if sb10.is_not_low() {
-
-            if sb10.m_and(&other.b01.m_or(&other.b00).m_not()).is_not_low() {
-                // println!("order_bad: returning true");
-                return true;
+            // Check if not all wanted changes are reset in getting the the second rule.
+            if sb10.m_and(&other.b01.m_or(&other.b00).m_not()) != sb10 {
+                return false;
             }
         }
-        // println!("order_bad: returning false");
-        false
+        // println!("order_bad: returning true");
+        true
     }
 
 } // end SomeRule
