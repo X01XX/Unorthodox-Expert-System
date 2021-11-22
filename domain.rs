@@ -3,10 +3,9 @@
 //! Contains a vector of Action structs, the current state, and a few other fields.
 
 use crate::action::SomeAction;
-use crate::actions::take_action;
+//use crate::actions::take_action;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
-//use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -15,8 +14,6 @@ use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-
-use std::collections::HashMap;
 
 use std::fmt;
 extern crate rand;
@@ -59,11 +56,6 @@ pub struct SomeDomain {
     pub boredom: usize,
     /// An optimal region that is sought if there are no needs.  This may be changed.
     pub optimal: RegionStore,
-    /// For testing only. Hashmaps, one per action, allowing for "hidden variable" per state.
-    vec_hash: Vec<HashMap<SomeState, usize>>,
-    /// For testing only. Hidden variable range.  0-max(exclusive).
-    /// Chosen randomly at first sample, incremented after each subsequent sample.     
-    vec_hvr: Vec<usize>,
 }
 
 impl SomeDomain {
@@ -87,8 +79,6 @@ impl SomeDomain {
             prev_state: cur.clone(),
             boredom: 0,
             optimal: optimal,
-            vec_hash: Vec::<HashMap<SomeState, usize>>::new(),
-            vec_hvr: Vec::<usize>::new(),
         };
     }
 
@@ -103,15 +93,11 @@ impl SomeDomain {
     }
 
     /// Add a SomeAction instance to the store.
-    pub fn add_action(&mut self, hv: usize) {
+    pub fn add_action(&mut self) {
 
         let actx = SomeAction::new(self.actions.len(), self.num_ints);
 
         self.actions.push(actx);
-
-        // For canned actions, to show 2 and 3 result states. Not needed for real life actions.
-        self.vec_hash.push(HashMap::new());
-        self.vec_hvr.push(hv);
     }
 
     /// Return needs gathered from all actions.
@@ -176,7 +162,7 @@ impl SomeDomain {
     ) {
         self.check_async();
 
-        // may break hv info, so do not mix with take_action_need
+        // May break alternating sample, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
         self.set_cur_state(&r_state);
     }
@@ -187,9 +173,7 @@ impl SomeDomain {
 
         let act_num = ndx.act_num();
 
-        let hv = self.get_hv(act_num);
-
-        let astate = take_action(self.num, ndx.act_num(), &self.cur_state, hv);
+        let astate = self.actions[ndx.act_num()].take_action(self.num, &self.cur_state);
 
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
 
@@ -200,9 +184,7 @@ impl SomeDomain {
     pub fn take_action(&mut self, act_num: usize) {
         self.check_async();
 
-        let hv = self.get_hv(act_num);
-
-        let astate = take_action(self.num, act_num, &self.cur_state, hv);
+        let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
 
         self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
 
@@ -240,37 +222,6 @@ impl SomeDomain {
         self.run_plan2(pln, 0);
     }
 
-    /// Get a hidden variable value, for testing purposes.
-    /// Its per state sampled, in the range 0-N(exclusive), where N was given in the <domain>.add_action call.
-    /// If N was given as 0, then no hidden variable.
-    /// Is randomly generated on the first sample of a state.
-    /// In subsequent samples it is incremented, with wrap around.
-    fn get_hv(&mut self, act_num: usize) -> usize {
-        let hvr = self.vec_hvr[act_num];
-        //println!("get_hv: hvr {}", hvr);
-
-        let mut hvx = 0;
-        if hvr == 0 {
-            return 0;
-        }
-
-        if let Some(hvx) = self.vec_hash[act_num].get_mut(&self.cur_state) {
-            *hvx += 1;
-            if *hvx == hvr {
-                *hvx = 0;
-            }
-            return *hvx;
-        }
-
-        if hvr > 0 {
-            hvx = rand::thread_rng().gen_range(0, hvr);
-        }
-
-        self.vec_hash[act_num].insert(self.cur_state.clone(), hvx);
-
-        return hvx;
-    }
-
     /// Run a plan.  Try to replan and run if a plan encounters an unexpected result.
     fn run_plan2(&mut self, pln: &SomePlan, recur: usize) {
         if recur > 3 {
@@ -280,9 +231,8 @@ impl SomeDomain {
 
         for stpx in pln.iter() {
             if stpx.initial.is_superset_of_state(&self.cur_state) {
-                let hv = self.get_hv(stpx.act_num);
 
-                let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
+                let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
 
                 self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
@@ -300,7 +250,7 @@ impl SomeDomain {
                 if prev_state == self.cur_state {
                     println!("Try action a second time");
 
-                    let astate = take_action(self.num, stpx.act_num, &self.cur_state, hv);
+                    let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
 
                     self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 

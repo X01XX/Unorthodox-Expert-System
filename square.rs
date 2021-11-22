@@ -224,7 +224,7 @@ impl SomeSquare {
         let sav_pn = self.get_pn();
         let sav_pnc = self.get_pnc();
 
-        let rc = self.results.push_wrap(st);
+        let rc = self.results.push_back(st);
 
         match self.results.pn {
             Pn::One => {
@@ -282,11 +282,17 @@ impl SomeSquare {
 
     /// Return the second to last result for the square.
     pub fn last_result(&self) -> &SomeState {
-        self.results.last_result()
+        self.results.back()
     }
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
     pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
         self.state.is_adjacent(&other.state)
     }
+    
+    /// Return the most recent results
+    pub fn most_recent_results(&self) -> &SomeState {
+        self.results.back()
+    }
+
 } // end impl SomeSquare

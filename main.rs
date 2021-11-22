@@ -50,6 +50,7 @@ mod inxplan;
 mod truth;
 mod randompick;
 mod removeunordered;
+
 use std::io;
 use std::io::{Read, Write};
 //use std::process;
@@ -75,14 +76,14 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::from_string(num_ints, "r10X").unwrap());
     let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
-    dom1.add_action(6);
-    dom1.add_action(0);
-    dom1.add_action(0);
-    dom1.add_action(0);
-    dom1.add_action(0);
-    dom1.add_action(0);
-    dom1.add_action(0);
-    dom1.add_action(0);
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
+    dom1.add_action();
 
     dmxs.push(dom1);
 
@@ -96,11 +97,11 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap());
     let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
-    dom2.add_action(0);
-    dom2.add_action(0);
-    dom2.add_action(0);
-    dom2.add_action(0);
-    dom2.add_action(0);
+    dom2.add_action();
+    dom2.add_action();
+    dom2.add_action();
+    dom2.add_action();
+    dom2.add_action();
 
     dmxs.push(dom2);
 

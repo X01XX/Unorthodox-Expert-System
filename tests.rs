@@ -31,7 +31,7 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dm1 = SomeDomain::new(0, 1, "s1", RegionStore::new());
-        dm1.add_action(0);
+        dm1.add_action();
 
         let s5 = dm1.state_from_string("s101").unwrap();
 
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         let mut dm1 = SomeDomain::new(0, 1, "s1", RegionStore::new());
-        dm1.add_action(0);
+        dm1.add_action();
 
         let s5 = dm1.state_from_string("s101").unwrap();
 
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn region_subtraction() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
-        dm0.add_action(0);
+        dm0.add_action();
 
         let reg0 = dm0.region_from_string("rX10X").unwrap();
 
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn possible_regions_for_group_by_elimination() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
-        dm0.add_action(0);
+        dm0.add_action();
 
         let reg_1110x = dm0.region_from_string("r1110x").unwrap();
         

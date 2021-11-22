@@ -24,6 +24,7 @@ use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
 use crate::randompick::RandomPick;
+use crate::actions::take_action;
 
 //use rayon::prelude::*;
 use std::fmt;
@@ -89,7 +90,7 @@ pub struct SomeAction {
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
     /// Changes that the rule can do
-    pub aggregate_changes: SomeChange
+    pub aggregate_changes: SomeChange,
 }
 
 impl SomeAction {
@@ -2319,4 +2320,15 @@ impl SomeAction {
         //println!("left-overs: {}", &left);
         left
     }
+
+    /// Take an action with the current state.
+    pub fn take_action(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
+
+        let asquare = self.squares.find(cur_state);
+
+        let astate = take_action(dom, self.num, cur_state, asquare);
+
+        astate
+    }
+
 } // end impl SomeAction

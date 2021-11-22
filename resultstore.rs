@@ -38,7 +38,7 @@ impl ResultStore {
             changed: true,
             pnc: false,
         };
-        ret.push_wrap(st);
+        ret.push_back(st);
         ret.changed = true;
         ret
     }
@@ -51,7 +51,7 @@ impl ResultStore {
     /// Add a result to a circular buffer.
     /// Return true if the pattern number or pnc changed
     /// or Pn::One with two results, which indicates "cannot be Pn::Two"
-    pub fn push_wrap(&mut self, st: SomeState) -> bool {
+    pub fn push_back(&mut self, st: SomeState) -> bool {
         self.changed = false;
 
         if self.astore.len() >= MAX_RESULTS {
@@ -96,32 +96,32 @@ impl ResultStore {
 
     /// Return the first result.
     pub fn first(&self) -> &SomeState {
-        &self.astore[0]
+        &self.astore.get(0).unwrap()
     }
 
     /// Return the second result.
     pub fn second(&self) -> &SomeState {
-        &self.astore[1]
+        &self.astore.get(1).unwrap()
     }
 
     /// Return the last result.
-    pub fn last_result(&self) -> &SomeState {
-        &self.astore[self.astore.len() - 1]
+    pub fn back(&self) -> &SomeState {
+        &self.astore.back().unwrap()
     }
 
     /// Calculate the Pattern Number.
     pub fn calc_pn(&self) -> Pn {
-        let num = self.astore.len();
+        let len = self.astore.len();
 
         // Test pn == 1
-        if num == 1 {
+        if len == 1 {
             //println!("calc_pn returning pn 1a");
             return Pn::One;
         }
 
         // Check if all entries == first entry
         let mut flg = true;
-        for inx in 1..num {
+        for inx in 1..len {
             if self.astore[inx] != self.astore[0] {
                 flg = false;
                 break;
@@ -133,9 +133,9 @@ impl ResultStore {
         }
 
         // pn != 1, Check for pn == 2
-        if num > 2 {
+        if len > 2 {
             if self.astore[0] == self.astore[2] {
-                if num > 3 {
+                if len > 3 {
                     if self.astore[1] == self.astore[3] {
                         //println!("calc_pn returning pn 2a");
                         return Pn::Two;
@@ -165,7 +165,7 @@ impl ResultStore {
             }
         }
 
-        //rc_len += format!("{}", self.num_results).len();
+        //rc_len += format!("{}", self.len_results).len();
 
         rc_len
     }
@@ -176,8 +176,8 @@ impl ResultStore {
         let mut rc_str = String::with_capacity(self.formatted_string_length());
         rc_str.push('[');
 
-        for i in 0..self.astore.len() {
-            let rsltx = self.astore[i].clone();
+        for rsltx in self.astore.iter() {
+
             if flg == 1 {
                 rc_str.push_str(", ");
             }
@@ -189,4 +189,5 @@ impl ResultStore {
 
         rc_str
     }
+
 } // end impl ResultStore
