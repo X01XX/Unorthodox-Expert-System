@@ -1991,7 +1991,7 @@ impl SomeAction {
 
                                 // If a Pn::Two squares last result is not equal to what is wanted,
                                 // the next result should be.
-                                if sqrx.last_result() != &expected_result {
+                                if sqrx.most_recent_result() != &expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
@@ -2056,7 +2056,7 @@ impl SomeAction {
 
                                     // If a Pn::Two squares last result is not equal to what is wanted,
                                     // the next result should be.
-                                    if sqrx.last_result() != &expected_result {
+                                    if sqrx.most_recent_result() != &expected_result {
                                         let stpx = SomeStep::new(
                                             self.num,
                                             rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),

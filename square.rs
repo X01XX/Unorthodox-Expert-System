@@ -276,13 +276,8 @@ impl SomeSquare {
     }
 
     /// Return the first result for the square.
-    pub fn first_result(&self) -> &SomeState {
+    pub fn _first_result(&self) -> &SomeState {
         self.results.first()
-    }
-
-    /// Return the second to last result for the square.
-    pub fn last_result(&self) -> &SomeState {
-        self.results.back()
     }
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
@@ -291,8 +286,8 @@ impl SomeSquare {
     }
     
     /// Return the most recent results
-    pub fn most_recent_results(&self) -> &SomeState {
-        self.results.back()
+    pub fn most_recent_result(&self) -> &SomeState {
+        self.results.most_recent_result()
     }
 
 } // end impl SomeSquare

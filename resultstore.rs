@@ -104,9 +104,9 @@ impl ResultStore {
         &self.astore.get(1).unwrap()
     }
 
-    /// Return the last result.
-    pub fn back(&self) -> &SomeState {
-        &self.astore.back().unwrap()
+    /// Return the most recent result.
+    pub fn most_recent_result(&self) -> &SomeState {
+        self.astore.back().unwrap()
     }
 
     /// Calculate the Pattern Number.

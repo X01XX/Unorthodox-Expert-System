@@ -77,7 +77,7 @@ pub fn dom0_act0(cur: &SomeState, asquare: Option<&SomeSquare>) -> SomeState {
         // ...101x, 1x10, given that the above is not true, alternate between two changes.
         let mut sample_num = rand::thread_rng().gen_range(1, 3);
         if let Some(asqr) = asquare {
-            let lastr = asqr.most_recent_results();
+            let lastr = asqr.most_recent_result();
             let dif = cur.s_xor(lastr);
             if dif.is_bit_set(1) {
                 sample_num = 1;
@@ -111,7 +111,7 @@ pub fn dom0_act0(cur: &SomeState, asquare: Option<&SomeSquare>) -> SomeState {
         // ...000x, 0x00, given that the above is not true, alternate between 3 changes.
         let mut sample_num = rand::thread_rng().gen_range(1, 4);
         if let Some(asqr) = asquare {
-            let lastr = asqr.most_recent_results();
+            let lastr = asqr.most_recent_result();
             let dif = cur.s_xor(lastr);
             if dif.is_bit_set(1) {
                 sample_num = 1;
