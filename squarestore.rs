@@ -73,7 +73,7 @@ impl SquareStore {
             dom,
             act,
             sqrx.state,
-            &sqrx._first_result()
+            &sqrx.first_result()
         );
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }

@@ -236,6 +236,9 @@ impl RuleStore {
             }
 
             if ordera && orderb {
+                //println!("a: {} {}", rul0.formatted_string(), rul1.formatted_string());
+                //println!("b: {} {}", rul2.formatted_string(), rul3.formatted_string());
+                //panic!("done");
                 return None;
             }
 

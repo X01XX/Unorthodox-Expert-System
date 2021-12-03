@@ -15,12 +15,11 @@
 //! Squares inbetween that are Pn::Two, must have rules that are a subset of the combined rules.
 //!
 //! For Pn::Unpredictable squares, there should be no squares
-//! inbetween that have filled the maximum results (4),
-//! (referred to as pnc, or pattern number confirmed)
+//! inbetween that have a pnc (pattern number confirmed) = true,
 //! with a Pn other than Unpredictable.
 //!
 //! Repeated sampling can cause the Pn value to change back and forth, its contingent.
-//! Just like a ball drops when you let go of it, until is doesn't.
+//! A ball drops when you let go of it, until is doesn't.
 
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -74,27 +73,12 @@ impl PartialOrd for Pn {
 
 impl PartialEq for Pn {
     fn eq(&self, other: &Self) -> bool {
-        match self {
-            Pn::One {} => match other {
-                Pn::One => {
-                    return true;
-                }
-                _ => {}
-            },
-            Pn::Two {} => match other {
-                Pn::Two => {
-                    return true;
-                }
-                _ => {}
-            },
-            Pn::Unpredictable {} => match other {
-                Pn::Unpredictable => {
-                    return true;
-                }
-                _ => {}
-            },
+        match (self, other) {
+            (Pn::One, Pn::One) => { return true; }
+            (Pn::Two, Pn::Two) => { return true; }
+            (Pn::Unpredictable, Pn::Unpredictable) => { return true; }
+            _ => { return false; }
         }
-        false
     }
 }
 

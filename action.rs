@@ -89,7 +89,7 @@ pub struct SomeAction {
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
-    /// Changes that the rule can do
+    /// Changes that the group rules can do. Generally this will expand at first, then plateau, but might regress if something gets stuck.
     pub aggregate_changes: SomeChange,
 }
 
