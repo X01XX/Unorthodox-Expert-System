@@ -164,16 +164,16 @@ impl SomeSquare {
                         return Truth::F;
                     }
                     Pn::Two => {
-                        if self.get_pnc() && other.get_pnc() {
-                        } else {
-                            return Truth::M;
-                        }
                         // self.pn == Two, other.pn == Two
                         // The pn values match, if the rules can be combined,
                         // the squares can be combined.
                         //println!("union both {} {}", self.state.formatted_string(), other.state.formatted_string());
                         if let Some(_runx) = self.rules.union(&other.rules) {
-                            return Truth::T;
+                            if self.get_pnc() && other.get_pnc() {
+                                return Truth::T;
+                            } else {
+                                return Truth::M;
+                            }
                         }
                         // else
                         return Truth::F;
