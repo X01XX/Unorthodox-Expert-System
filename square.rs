@@ -94,6 +94,8 @@ impl SomeSquare {
     ///
     /// This returns three possible results: True, False or MoreSamplesNeeded.
     ///
+    /// If this function returns True, the next question is: Are there any squares
+    /// between them that will invalidate the combination?
     pub fn can_combine(&self, other: &Self) -> Truth {
         match self.get_pn() {
             Pn::One => {
