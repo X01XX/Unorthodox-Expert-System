@@ -122,10 +122,7 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-            if other.len() == 1 {
-                if self.first().is_subset_of(&other.first())
-                    || self.first().is_subset_of(&other.second()) {
-                    return true; }
+            if other.len() != 2 {
                 return false;
             }
 
