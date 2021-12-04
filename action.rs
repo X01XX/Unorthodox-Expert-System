@@ -1234,19 +1234,28 @@ impl SomeAction {
         //println!("Act {}, states in one region {}", self.num, states1);
 
         // Find squares in one group for each group, that may be an anchor
-        for greg in regs.iter() {
+        for grpx in self.groups.iter_mut() {
+
+            let greg = grpx.region.clone();
 
             let stsin = greg.states_in(&states1); // The states in greg and no other group
 
             //println!("Act {} Group {} States {}", self.num, greg, stsin);
 
+            // If no states only in a group region, see if there is any non-overlapped part.
             if stsin.len() == 0 {
+                // Get a copy of the regions without the target region.
                 let mut all_regs = regs.clone();
                 all_regs.remove_region(&greg);
+
+                // Start a RegionStore conainting the target region.
                 let mut regs_left = RegionStore::new();
                 regs_left.push(greg.clone());
+
+                // Subtract overlapping regions.
                 regs_left = regs_left.subtract(&all_regs);
-                
+
+                // Generate needs for any non-overlapped part.
                 for regx in regs_left.iter() {
                     let ndx = SomeNeed::SampleRegion {
                                     dom_num: 0, // will be filled later
@@ -1259,8 +1268,7 @@ impl SomeAction {
                 continue;
             }
 
-            let grpx = self.groups.find_mut(greg).unwrap();
-
+            // Check if a current anchor is still in only one region.
             if let Some(stax) = &grpx.anchor {
                 if stsin.contains(&stax) == false {
                     grpx.set_anchor_off();
@@ -1271,7 +1279,7 @@ impl SomeAction {
             let mut edge_confirm = grpx.region.ones().m_and(&agg_chgs.b10);
             edge_confirm = edge_confirm.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
 
-            // Get the bit masks on non-X bit-positions in greg
+            // Get the single-bit masks of edges in the group region.
             let edge_msks = edge_confirm.split();
 
             // For each state, sta1, only in the group region, greg:
@@ -1280,9 +1288,9 @@ impl SomeAction {
             //
             //  Calculate a rate for each sta1 option, based on the number of adjacent states
             //  in only one group.
-            let mut max_num = 0;
+            let mut max_rate = 0;
 
-            // Create a StateStore composed of anchor, far, adjacent-external
+            // Create a StateStore composed of anchor, far, and adjacent-external states.
             let mut cfmv_max = Vec::<StateStore>::new();
 
             for sta1 in stsin.iter() {
@@ -1290,14 +1298,14 @@ impl SomeAction {
 
                 cfmx.push(sta1.clone());
 
-                let mut cnt = 1;
+                let mut sta_rate = 1;
 
                 // Rate anchor
                 if let Some(sqrx) = self.squares.find(sta1) {
                     if sqrx.get_pnc() {
-                        cnt += 5;
+                        sta_rate += 5;
                     } else {
-                        cnt += sqrx.len_results();
+                        sta_rate += sqrx.len_results();
                     }
                 }
 
@@ -1306,9 +1314,9 @@ impl SomeAction {
                 // Rate far state
                 if let Some(sqrx) = self.squares.find(&cfmx[1]) {
                     if sqrx.get_pnc() {
-                        cnt += 5;
+                        sta_rate += 5;
                     } else {
-                        cnt += sqrx.len_results();
+                        sta_rate += sqrx.len_results();
                     }
                 }
 
@@ -1322,16 +1330,16 @@ impl SomeAction {
 
                     if states1.contains(&sta_adj) {
                         //println!("{} is in only one group", &sta_adj);
-                        cnt += 100;
+                        sta_rate += 100;
                     }
 
                     cfmx.push(sta_adj);
 
                     if let Some(sqrx) = self.squares.find(&sta1) {
                         if sqrx.get_pnc() {
-                            cnt += 5;
+                            sta_rate += 5;
                         } else {
-                            cnt += sqrx.len_results();
+                            sta_rate += sqrx.len_results();
                         }
                     }
                 } // next sta1
@@ -1339,12 +1347,12 @@ impl SomeAction {
                 //println!("group {} anchor {} rating {}", &greg, &cfmx[0], cnt);
 
                 // Accumulate highest rated anchors
-                if cnt > max_num {
-                    max_num = cnt;
+                if sta_rate > max_rate {
+                    max_rate = sta_rate;
                     cfmv_max = Vec::<StateStore>::new();
                 }
 
-                if cnt == max_num {
+                if sta_rate == max_rate {
                     cfmv_max.push(cfmx);
                 }
             } // next sta1
@@ -1418,7 +1426,7 @@ impl SomeAction {
                         let new_reg = SomeRegion::new(&anchor_sta, &adj_sta);
 
                         if new_group_regs.any_superset_of(&new_reg)
-                            || self.groups.any_superset_of(&new_reg)
+                            || regs.any_superset_of(&new_reg)
                         {
                             continue;
                         }
@@ -1827,64 +1835,26 @@ impl SomeAction {
             return nds;
         }
 
-        match grpx.pn {
-            Pn::Unpredictable => {
+        if grpx.region.x_mask() == grpy.region.x_mask() {
+            return nds;
+        }
 
-                let regz = grpx.region.overlapping_part(&grpy.region);
+        let regz = grpx.region.overlapping_part(&grpy.region);
 
-                if self.groups.any_superset_of(&regz) {
-                    return nds;
-                }
+        if self.groups.any_superset_of(&regz) {
+            return nds;
+        }
 
-                //println!("group_pair_adjacent_needs: {} and {}", &grpx.region, &grpy.region);
-                return self.possible_group_needs(&regz, 5);
-            }
-            _ => {
-                let regz = grpx.region.overlapping_part(&grpy.region);
+        if grpx.pn == Pn::Unpredictable {
+            //println!("group_pair_adjacent_needs: {} and {}", &grpx.region, &grpy.region);
+            return self.possible_group_needs(&regz, 5);
+        }
 
-                if self.groups.any_superset_of(&regz) {
-                    return nds;
-                }
+        if let Some(_rulesxy) = grpx.rules.restrict_initial_region(&regz).union(&grpy.rules.restrict_initial_region(&regz)) {
+            //println!("group_pair_adjacent_needs: {} and {} rules {}", &grpx.region, &grpy.region, &rulesxy);
+            return self.possible_group_needs(&regz, 6);
+        }
 
-                let stax1 = &grpx.region.state1;
-                let stax2 = &grpx.region.state2;
-                let stay1 = &grpy.region.state1;
-                let stay2 = &grpy.region.state2;
-
-                let sqrx1 = self.squares.find(stax1).unwrap();
-                let sqrx2 = self.squares.find(stax2).unwrap();
-                let sqry1 = self.squares.find(stay1).unwrap();
-                let sqry2 = self.squares.find(stay2).unwrap();
-
-                if SomeRegion::new(&stax1, &stay1).is_superset_of(&regz) {
-                    if sqrx1.can_combine(&sqry1) == Truth::T {
-                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
-                        return self.possible_group_needs(&regz, 199);
-                    }
-                }
-
-                if SomeRegion::new(&stax1, &stay2).is_superset_of(&regz) {
-                    if sqrx1.can_combine(&sqry2) == Truth::T {
-                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
-                        return self.possible_group_needs(&regz, 299);
-                    }
-                }
-
-                if SomeRegion::new(&stax2, &stay1).is_superset_of(&regz) {
-                    if sqrx2.can_combine(&sqry1) == Truth::T {
-                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
-                        return self.possible_group_needs(&regz, 399);
-                    }
-                }
-
-                if SomeRegion::new(&stax2, &stay2).is_superset_of(&regz) {
-                    if sqrx2.can_combine(&sqry2) == Truth::T {
-                        //println!("group_pair_adjacent_needs: {} and {} checking overlap {}", &grpx.get_region(), &grpy.get_region(), &regz);
-                        return self.possible_group_needs(&regz, 499);
-                    }
-                }
-            } // end match pn default
-        } // end match pn for adjacent regions
         nds
     } // end group_pair_adjacent_needs
 

@@ -215,8 +215,8 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-            assert!(self.initial_region().x_mask().is_low());
-            assert!(other.initial_region().x_mask().is_low());
+            //assert!(self.initial_region().x_mask().is_low());
+            //assert!(other.initial_region().x_mask().is_low());
 
             let mut ordera = false;
             let rul0 = self.avec[0].union(&other.avec[0]);

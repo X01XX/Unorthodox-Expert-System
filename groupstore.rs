@@ -11,7 +11,7 @@ use crate::removeunordered::remove_unordered;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for GroupStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -253,9 +253,9 @@ impl GroupStore {
     }
 
     /// Return an iterator
-//    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
-//        self.avec.iter_mut()
-//    }
+    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
+        self.avec.iter_mut()
+    }
 
     /// Return the number of groups.
     pub fn len(&self) -> usize {
