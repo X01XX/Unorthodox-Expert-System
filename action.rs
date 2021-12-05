@@ -1414,7 +1414,6 @@ impl SomeAction {
             // Check each adjacent external state
             let mut nds_grp = NeedStore::new(); // needs for more samples
             let mut nds_grp_add = NeedStore::new(); // needs for added group
-            let mut grp_clear_bit = NeedStore::new(); // clear bit need for group
 
             for inx in 1..cfm_max.len() {
                 let adj_sta = &cfm_max[inx];
@@ -1469,11 +1468,6 @@ impl SomeAction {
                 // println!("*** nds_grp_add {}", &nds_grp_add);
                 ret_nds.append(&mut nds_grp_add);
                 continue;
-            }
-
-            if grp_clear_bit.len() > 0 {
-                //  println!("*** nds_grp_clear_bit {}", &grp_clear_bit);
-                ret_nds.append(&mut grp_clear_bit);
             }
 
             if nds_grp.len() > 0 {
@@ -1559,7 +1553,7 @@ impl SomeAction {
     } // end group_pair_needs
 
     /// Check for needs, for making a given region into a group.
-    /// A need may be to take more samples, or just add the group.
+    /// Needs may be to take more samples to establish two defining squares, or just add the group.
     fn possible_group_needs(&self, reg_grp: &SomeRegion, _from: usize) -> NeedStore {
         //println!("possible_group_needs for {} from {}", &reg_grp, from);
         let mut nds = NeedStore::new();
@@ -1611,29 +1605,7 @@ impl SomeAction {
             return nds;
         }
 
-        // Num squares GT 1, check for any bad pn pairs
-
-        // Get a pn
-        let mut a_pn = Pn::One;
-        for stax in stas_in_reg.iter() {
-            let sqrx = self.squares.find(&stax).unwrap();
-            if sqrx.get_pnc() {
-                a_pn = sqrx.get_pn();
-                break;
-            }
-        }
-
-        // Check all other pns are equal, pn LE
-        for stax in stas_in_reg.iter() {
-            let sqrx = self.squares.find(&stax).unwrap();
-            if sqrx.get_pnc() {
-                if sqrx.get_pn() != a_pn {
-                    return nds;
-                }
-            } else if sqrx.get_pn() > a_pn {
-                return nds;
-            }
-        }
+        // Num squares GT 1
 
         // See if a pair of squares defines the region
         let pair_stas = reg_grp.defining_pairs(&stas_in_reg);
