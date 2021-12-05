@@ -19,7 +19,7 @@ use crate::change::SomeChange;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
@@ -113,7 +113,7 @@ impl SomeRule {
         }
 
         // Check for 4 change bit-position.
-        if ones_to_x.m_and(&zeros_to_x).is_not_low() { return None; }
+        if ones_to_x.m_and(&zeros_to_x).is_not_low() { println!("ret 1"); return None; }
 
         // Get zeros one change mask.
         let zeros_1_change = self.b01.m_xor(&self.b00);

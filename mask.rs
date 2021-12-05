@@ -9,11 +9,6 @@
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
 //! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
-//!
-//! Since ones matter in a mask, and zeros are place-holders, the xor operation only works as
-//! expected if one mask is a superset of the other.
-//!
-//! Instead of xor, you probably should use <1>.m_and(<2>.not()) to find ones in <1> that are not in <2>.
 
 use crate::bits::SomeBits;
 use crate::state::SomeState;
@@ -63,9 +58,9 @@ impl SomeMask {
         Self::new(self.bts.b_and(&other.bts))
     }
 
-    /// Return the bitwize AND of two masks.
+    /// Return the bitwize XOR of two masks.
     pub fn m_xor(&self, other: &Self) -> Self {
-        self.m_and(&other.m_not())
+        self.m_and(&other.m_not()).m_or(&self.m_not().m_and(&other))
     }
 
     /// Return the bitwize NOT of a mask.

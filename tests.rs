@@ -12,7 +12,7 @@ mod tests {
 //    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 //    use crate::resultstore::ResultStore;
-//    use crate::rule::SomeRule;
+    use crate::rule::SomeRule;
 //    use crate::rulestore::RuleStore;
 //    use crate::state::SomeState;
 //    use crate::statestore::StateStore;
@@ -222,4 +222,39 @@ mod tests {
         
         Ok(())
     }
+
+    #[test]
+    fn rule_valid_subset() -> Result<(), String> {
+        let rul1 = SomeRule {
+            b00: SomeMask::_from_string(1, "m00111001").unwrap(),
+            b01: SomeMask::_from_string(1, "m11000110").unwrap(),
+            b11: SomeMask::_from_string(1, "m10010011").unwrap(),
+            b10: SomeMask::_from_string(1, "m01101100").unwrap(),
+        };
+
+        let rul2 = SomeRule {
+            b00: SomeMask::_from_string(1, "m11000000").unwrap(),
+            b01: SomeMask::_from_string(1, "m00110000").unwrap(),
+            b11: SomeMask::_from_string(1, "m00001100").unwrap(),
+            b10: SomeMask::_from_string(1, "m00000011").unwrap(),
+        };
+
+        let rul3 = rul1.union(&rul2);
+
+        let rul4 = rul3.valid_subset().unwrap();
+
+        let rul5 = SomeRule {
+            b00: SomeMask::_from_string(1, "m00001001").unwrap(),
+            b01: SomeMask::_from_string(1, "m00000110").unwrap(),
+            b11: SomeMask::_from_string(1, "m10010000").unwrap(),
+            b10: SomeMask::_from_string(1, "m01100000").unwrap(),
+        };
+        
+        if rul4 == rul5 {
+            return Ok(());
+        }
+        
+        return Err(format!("subset is? {}", rul4.formatted_string()));
+    }
+
 } // end mod tests

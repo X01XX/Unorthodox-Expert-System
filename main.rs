@@ -14,9 +14,11 @@ mod action;
 //use crate::action::SomeAction;
 mod actionstore;
 mod bits;
+//use bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
+//use mask::SomeMask;
 mod maskstore;
 mod need;
 mod region;
@@ -27,6 +29,7 @@ mod regionstore;
 use regionstore::RegionStore;
 mod resultstore;
 mod rule;
+//use rule::SomeRule;
 mod rulestore;
 mod square;
 mod squarestore;
@@ -110,6 +113,14 @@ fn init() -> DomainStore {
 
 /// User Interface
 fn main() {
+    // Test
+
+//    if 1 == 1 {
+//        println!("Done");
+//        return;
+//    }
+    // End test
+
     // Start a DomainStore, add a Domain
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
