@@ -1822,9 +1822,9 @@ impl SomeAction {
             return self.possible_group_needs(&regz, 5);
         }
 
-        if let Some(_rulesxy) = grpx.rules.restrict_initial_region(&regz).union(&grpy.rules.restrict_initial_region(&regz)) {
+        if let Some(rulsxy) = grpx.rules.restrict_initial_region(&regz).union(&grpy.rules.restrict_initial_region(&regz)) {
             //println!("group_pair_adjacent_needs: {} and {} rules {}", &grpx.region, &grpy.region, &rulesxy);
-            return self.possible_group_needs(&regz, 6);
+            return self.possible_group_needs(&rulsxy.initial_region(), 6);
         }
 
         nds

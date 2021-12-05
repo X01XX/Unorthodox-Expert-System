@@ -210,6 +210,10 @@ impl RuleStore {
                 ars.push(rulx);
                 return Some(ars);
             } else {
+                if let Some(ruly) = rulx.valid_subset() {
+                    ars.push(ruly);
+                    return Some(ars);
+                } 
                 return None;
             }
         }
@@ -219,16 +223,45 @@ impl RuleStore {
             //assert!(other.initial_region().x_mask().is_low());
 
             let mut ordera = false;
-            let rul0 = self.avec[0].union(&other.avec[0]);
-            let rul1 = self.avec[1].union(&other.avec[1]);
-            if rul0.is_valid_union() && rul1.is_valid_union() {
+
+            let mut rul0 = self.avec[0].union(&other.avec[0]);
+            if rul0.is_valid_union() {
+            } else {
+                if let Some(rulz) = rul0.valid_subset() {
+                    rul0 = rulz;
+                }
+            }
+
+            let mut rul1 = self.avec[1].union(&other.avec[1]);
+            if rul0.is_valid_union() {
+            } else {
+                if let Some(rulz) = rul1.valid_subset() {
+                    rul1 = rulz;
+                }
+            }
+            if rul0.is_valid_union() && rul1.is_valid_union() && rul0.initial_region() == rul1.initial_region() {
                 ordera = true;
             }
 
             let mut orderb = false;
-            let rul2 = self.avec[0].union(&other.avec[1]);
-            let rul3 = self.avec[1].union(&other.avec[0]);
-            if rul2.is_valid_union() && rul3.is_valid_union() {
+
+            let mut rul2 = self.avec[0].union(&other.avec[1]);
+            if rul2.is_valid_union() {
+            } else {
+                if let Some(rulz) = rul2.valid_subset() {
+                    rul2 = rulz;
+                }
+            }
+
+            let mut rul3 = self.avec[1].union(&other.avec[0]);
+            if rul3.is_valid_union() {
+            } else {
+                if let Some(rulz) = rul3.valid_subset() {
+                    rul3 = rulz;
+                }
+            }
+
+            if rul2.is_valid_union() && rul3.is_valid_union() && rul2.initial_region() == rul3.initial_region() {
                 orderb = true;
             }
 

@@ -63,6 +63,11 @@ impl SomeMask {
         Self::new(self.bts.b_and(&other.bts))
     }
 
+    /// Return the bitwize AND of two masks.
+    pub fn m_xor(&self, other: &Self) -> Self {
+        self.m_and(&other.m_not())
+    }
+
     /// Return the bitwize NOT of a mask.
     pub fn m_not(&self) -> Self {
         Self::new(self.bts.b_not())

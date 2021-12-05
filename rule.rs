@@ -92,6 +92,55 @@ impl SomeRule {
         }
     }
 
+    /// Take an invalid rule, see if a valid subset exists.
+    ///
+    /// 00 + X1 = 11, 0X, return 11.
+    /// 00 + Xx = 10, 0X, return 10.
+    /// 01 + X0 = 10, 0X, return 10.
+    /// 01 + XX = 11, 0X, return 11.
+    /// 11 + X0 = 00, 1X, return 00.
+    /// 11 + Xx = 01, 1X, return 01.
+    /// 10 + X1 = 01, 1X, return 01.
+    /// 10 + XX = 00, 1X, return 00.
+    pub fn valid_subset(&self) -> Option<Self> {
+        let ones_to_x  = self.b10.m_and(&self.b11);
+        let zeros_to_x = self.b01.m_and(&self.b00);
+
+        // Check for valid rule.
+        if ones_to_x.is_low() && zeros_to_x.is_low() {
+            println!("rule::valid_subset: valid rule?");
+            return Some(self.clone());
+        }
+
+        // Check for 4 change bit-position.
+        if ones_to_x.m_and(&zeros_to_x).is_not_low() { return None; }
+
+        // Get zeros one change mask.
+        let zeros_1_change = self.b01.m_xor(&self.b00);
+
+        // Check 1X bits are subset zeros one change mask.
+        if ones_to_x.is_subset_of(&zeros_1_change) {
+        } else {
+            return None;
+        }
+
+        // Get ones one change mask.
+        let ones_1_change = self.b10.m_xor(&self.b11);
+
+        // Check 0X bits are subset ones one change mask.
+        if zeros_to_x.is_subset_of(&ones_1_change) {
+        } else {
+            return None;
+        }
+
+        Some(Self {
+            b00: self.b00.m_xor(&zeros_to_x),
+            b01: self.b01.m_xor(&zeros_to_x),
+            b11: self.b11.m_xor(&ones_to_x),
+            b10: self.b10.m_xor(&ones_to_x),
+        })
+    }
+    
     /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Self {
         Self {
