@@ -352,7 +352,7 @@ mod tests {
 
     // Seek a part of a group intersection that is contradictory.
     // Group X1XX intersects group XX0X at X10X.
-    // The intersection is not wholly contradictory, as woul dbe expected due to
+    // The intersection is not wholly contradictory, as would be expected due to
     // the two groups being defined by a square, D, in X10X.
     // The region X100 (4, C) in X10X is the contradictory part due to 
     // different results expected from the least significant bit.
@@ -384,4 +384,27 @@ mod tests {
         Ok(())
     }
 
+    // For showing something easily understandable, the groups in the program are shown
+    // with four, or fewer, edges.
+    // It is important to show that any arbitrary number of bits can form a group / rule.
+    #[test]
+    fn create_group_rule_with_ten_edges() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 2, "s1", RegionStore::new());
+        dm0.add_action();
+        
+        let s0 = dm0.state_from_string("s0001010010101000").unwrap();
+        let s1 = dm0.state_from_string("s1111010110101011").unwrap();
+        // Region                        XXX1010X101010XX.
+
+        // Create group for region XXX1010X101010XX.
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![4]));
+        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![4]));
+
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXXX1010X101010XX").unwrap()) {
+        } else {
+            return Err("Group rXXX1010X101010XX not found ??".to_string());
+        }
+
+        Ok(())
+    }
 } // end mod tests
