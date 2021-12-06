@@ -1,6 +1,8 @@
 //! The NeedStore struct, a vector of SomeNeeds structs.
 
 use crate::need::SomeNeed;
+use crate::region::SomeRegion;
+
 use std::fmt;
 use std::ops::Index; // IndexMut
 use std::slice::{ Iter, IterMut};
@@ -49,6 +51,19 @@ impl NeedStore {
         for nedx in &self.avec {
             if *nedx == *new_need {
                 return true;
+            }
+        }
+
+        false
+    }
+
+    /// Return true if a need with a given type and target is in a NeedStore.
+    pub fn _contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
+        for nedx in &self.avec {
+            if nedx.type_string() == type_string {
+                if nedx.target() == *target {
+                    return true;
+                }
             }
         }
 

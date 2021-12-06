@@ -9,7 +9,7 @@ mod tests {
     use crate::mask::SomeMask;
 //    use crate::maskstore::MaskStore;
 //    use crate::action::SomeAction;
-//    use crate::region::SomeRegion;
+    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 //    use crate::resultstore::ResultStore;
     use crate::rule::SomeRule;
@@ -261,120 +261,127 @@ mod tests {
     // Test Seek adjacent overlapping region.
     // Create region X10X and adjacent region 1X1X.
     // The overlapping part is region 11X1, with no squares in it.
-    // Should seek samples of the high (f) and low (d) squares.
-    // After two samples of each, should produce the AddGroup need.
+    // Should seek samples of the high (f) and low (d) squares of region 11X1.
+    // After two samples of each, it should produce the AddGroup need for 11X1.
     #[test]
     fn seek_adjacent_overlapping_part() -> Result<(), String> {
 
-        let mut dm1 = SomeDomain::new(0, 1, "s1", RegionStore::new());
-        dm1.add_action();
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
 
-        let s5 = dm1.state_from_string("s101").unwrap();
+        let s5 = dm0.state_from_string("s101").unwrap();
 
-        let s7 = dm1.state_from_string("s111").unwrap();
+        let s7 = dm0.state_from_string("s111").unwrap();
 
-        let s9 = dm1.state_from_string("s1001").unwrap();
+        let s9 = dm0.state_from_string("s1001").unwrap();
 
-        let sb = dm1.state_from_string("s1011").unwrap();
+        let sb = dm0.state_from_string("s1011").unwrap();
 
-        let sc = dm1.state_from_string("s1100").unwrap();
+        let sc = dm0.state_from_string("s1100").unwrap();
 
-        let sd = dm1.state_from_string("s1101").unwrap();
+        let sd = dm0.state_from_string("s1101").unwrap();
 
-        let se = dm1.state_from_string("s1110").unwrap();
+        let se = dm0.state_from_string("s1110").unwrap();
 
-        let sf = dm1.state_from_string("s1111").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
 
-        let targ_region = dm1.region_from_string("r11X1").unwrap();
+        let targ_region = dm0.region_from_string("r11X1").unwrap();
 
-        dm1.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
-        dm1.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
+        // Create group for region X10X.
+        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
 
-        dm1.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
-        dm1.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
 
-        dm1.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
-        dm1.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
+        // Add square to prevent squares (sc, s5) combining with squares (se, sb).
+        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
+        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
 
-        dm1.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
-        dm1.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
+        // Add square to prevent squares (sc, s5) combining with squares (se, sb).
+        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
+        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
 
-        dm1.eval_sample_arbitrary(0, &se, &se);
-        dm1.eval_sample_arbitrary(0, &se, &se);
+        // Create group for region 1X1X.
+        dm0.eval_sample_arbitrary(0, &se, &se);
+        dm0.eval_sample_arbitrary(0, &se, &se);
 
-        dm1.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
-        dm1.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
 
-        let nds1 = dm1.actions.avec[0].group_pair_needs();
+        // Get first needs.
+        let nds1 = dm0.actions.avec[0].group_pair_needs();
 
         // Check for two needs, targets f and d.
         assert!(nds1.len() == 2);
+        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
+        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
 
-        let nd1 = SomeNeed::AStateMakeGroup {
-                dom_num: 0,
-                act_num: 0,
-                targ_state: sf.clone(),
-                for_reg: targ_region.clone(),
-                far: sd.clone(),
-                num_x: 1,
-            };
-        assert!(nds1.contains(&nd1));
-
-        let nd2 = SomeNeed::AStateMakeGroup {
-                dom_num: 0,
-                act_num: 0,
-                targ_state: sd.clone(),
-                for_reg: targ_region.clone(),
-                far: sf.clone(),
-                num_x: 1,
-            };
-        assert!(nds1.contains(&nd2));
-
-        dm1.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
         
-        let nds2 = dm1.actions.avec[0].group_pair_needs();
+        let nds2 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds2.len() == 1);
-        assert!(nds2.contains(&nd2));
+        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
 
-        dm1.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
-        let nds3 = dm1.actions.avec[0].group_pair_needs();
+        let nds3 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds3.len() == 2);
-
-        let nd3 = SomeNeed::StateAdditionalSample {
-                            dom_num: 0,
-                            act_num: 0,
-                            targ_state: sd.clone(),
-                            grp_reg: targ_region.clone(),
-                            far: sf.clone(),
-                        };
-        assert!(nds3.contains(&nd3));
-
-        let nd4 = SomeNeed::StateAdditionalSample {
-                            dom_num: 0,
-                            act_num: 0,
-                            targ_state: sf.clone(),
-                            grp_reg: targ_region.clone(),
-                            far: sd.clone(),
-                        };
-        assert!(nds3.contains(&nd4));
+        assert!(nds3._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
+        assert!(nds3._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sf, &sf)));
         
-        dm1.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
 
-        let nds4 = dm1.actions.avec[0].group_pair_needs();
+        let nds4 = dm0.actions.avec[0].group_pair_needs();
+
         assert!(nds4.len() == 1);
-        assert!(nds4.contains(&nd3));
+        assert!(nds4._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
 
-        dm1.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
-        let nds5 = dm1.actions.avec[0].group_pair_needs();
+        let nds5 = dm0.actions.avec[0].group_pair_needs();
+
         assert!(nds5.len() == 1);
-        
         let ned7 = SomeNeed::AddGroup { group_region: targ_region.clone(), };
         assert!(nds5.contains(&ned7));
 
         Ok(())
     }
+
+    // Seek a part of a group intersection that is contradictory.
+    // Group X1XX intersects group XX0X at X10X.
+    // The intersection is not wholly contradictory, as woul dbe expected due to
+    // the two groups being defined by a square, D, in X10X.
+    // The region X100 (4, C) in X10X is the contradictory part due to 
+    // different results expected from the least significant bit.
+    #[test]
+    fn seek_sample_contradictory_intersection() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+        
+        let s0 = dm0.state_from_string("s0").unwrap();
+        let s6 = dm0.state_from_string("s110").unwrap();
+        let sd = dm0.state_from_string("s1101").unwrap();
+
+        // Create group for region XX0X.
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
+
+        dm0.eval_sample_arbitrary(0, &sd, &sd);
+        dm0.eval_sample_arbitrary(0, &sd, &sd);
+
+        // Create group X1XX
+        dm0.eval_sample_arbitrary(0, &s6, &s6);
+        dm0.eval_sample_arbitrary(0, &s6, &s6);
+
+        // Get and check needs.
+        let nds1 = dm0.actions.avec[0].group_pair_needs();
+        assert!(nds1.len() == 1);
+        assert!(nds1._contains_similar_need("ContradictoryIntersection", &dm0.region_from_string("rX100").unwrap()));
+
+        Ok(())
+    }
+
 } // end mod tests
