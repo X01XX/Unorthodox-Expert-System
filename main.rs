@@ -111,7 +111,7 @@ fn init() -> DomainStore {
     dmxs
 }
 
-/// User Interface
+/// The User Interface.
 fn main() {
     // Test
 
@@ -156,7 +156,7 @@ fn main() {
     } // end while
 } // end main
 
-/// DO one session of finding and using rules
+/// Do one session of finding and using rules.
 pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
     let mut to_end = run_to_end;
@@ -554,7 +554,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
 
 /// Do most commands entered by the user.
-/// Return a zero or one, to indicate how the step number should change
+/// Return a zero or one, to indicate how the step number should change.
 fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
     // Handle one-word commands
@@ -933,7 +933,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
     0
 } // end do_command
 
-/// Print a domain
+/// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
     println!("\nActs: {}", &dmxs[dom_num].actions);

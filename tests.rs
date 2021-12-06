@@ -20,16 +20,16 @@ mod tests {
 //    use crate::stepstore::StepStore;
     use crate::need::SomeNeed;
 
-    // Form a group, X1X1 from two squares that have alternating (pn=Two) results.
-    //
-    // Sample a square, 0111, in the group, once.  There should be no change.
-    //
-    // Sample the square a second time, with the same result, proving it cannot have an
-    // alternting result.
-    //
-    // Then group X1X1 should be invalidated and removed.
-    // **********************************************************************************
     #[test]
+    /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.
+    ///
+    /// Sample a square, 0111, in the group, once.  There should be no change.
+    ///
+    /// Sample the square a second time, with the same result, proving it cannot have an
+    /// alternting result.
+    ///
+    /// Then group X1X1 should be invalidated and removed.
+    /// **********************************************************************************
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dm1 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm1.add_action();
@@ -146,6 +146,7 @@ mod tests {
         }
     } // end group_pn_u_union_then_invalidation
 
+    // Test X10X - 0XX1 = X100, 110X.
     #[test]
     fn region_subtraction() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
@@ -179,6 +180,14 @@ mod tests {
         Ok(())
     }
 
+    // Test the expansion of group 1110X to 11XXX, where the mask 110 allows
+    // two edges to go to X.
+    // The dissimilar group 11010 blocks the expansion of both bits at the same time,
+    // it is in the region  11XXX. 
+    // Each individual edge can expand separately, to 111XX and 11X0X.
+    // 1110X - Group
+    // 111XX - result 1
+    // 11X0X - result 2
     #[test]
     fn possible_regions_for_group_by_elimination() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
@@ -197,7 +206,7 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s1d, &s0);
         dm0.eval_sample_arbitrary(0, &s1c, &s0);  // Group r1110x
 
-        dm0.eval_sample_arbitrary(0, &s1a, &s1a.s_not());  // Group r0010
+        dm0.eval_sample_arbitrary(0, &s1a, &s1a.s_not());  // Group r11010
 
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_1110x) {
             println!("Region r1110x found");
@@ -224,8 +233,19 @@ mod tests {
         Ok(())
     }
 
+    /// Take an invalid rule, see if a valid subset exists.
+    ///
+    /// 00 + X1 = 11, 0X, return 11.
+    /// 00 + Xx = 10, 0X, return 10.
+    /// 01 + X0 = 10, 0X, return 10.
+    /// 01 + XX = 11, 0X, return 11.
+    /// 11 + X0 = 00, 1X, return 00.
+    /// 11 + Xx = 01, 1X, return 01.
+    /// 10 + X1 = 01, 1X, return 01.
+    /// 10 + XX = 00, 1X, return 00.
     #[test]
     fn rule_valid_subset() -> Result<(), String> {
+        // Form a rule of X1/Xx/X0/XX/X0/Xx/X1/XX
         let rul1 = SomeRule {
             b00: SomeMask::_from_string(1, "m00111001").unwrap(),
             b01: SomeMask::_from_string(1, "m11000110").unwrap(),
@@ -233,6 +253,7 @@ mod tests {
             b10: SomeMask::_from_string(1, "m01101100").unwrap(),
         };
 
+        // Form a rule of 00/00/01/01/11/11/10/10
         let rul2 = SomeRule {
             b00: SomeMask::_from_string(1, "m11000000").unwrap(),
             b01: SomeMask::_from_string(1, "m00110000").unwrap(),
@@ -240,21 +261,30 @@ mod tests {
             b10: SomeMask::_from_string(1, "m00000011").unwrap(),
         };
 
+        // Form an invalid rule with the union of:
+        // X1/Xx/X0/XX/X0/Xx/X1/XX
+        // 00/00/01/01/11/11/10/10
         let rul3 = rul1.union(&rul2);
 
         let rul4 = rul3.valid_subset().unwrap();
 
+        // Form a rule of 11/10/10/11/00/01/01/00
         let rul5 = SomeRule {
             b00: SomeMask::_from_string(1, "m00001001").unwrap(),
             b01: SomeMask::_from_string(1, "m00000110").unwrap(),
             b11: SomeMask::_from_string(1, "m10010000").unwrap(),
             b10: SomeMask::_from_string(1, "m01100000").unwrap(),
         };
-        
+
+        // From the invalid union of:
+        // X1/Xx/X0/XX/X0/Xx/X1/XX
+        // 00/00/01/01/11/11/10/10
+        // Should get the following valid part.
+        // 11/10/10/11/00/01/01/00
         if rul4 == rul5 {
             return Ok(());
         }
-        
+
         return Err(format!("subset is? {}", rul4.formatted_string()));
     }
 
@@ -386,7 +416,7 @@ mod tests {
 
     // For showing something easily understandable, the groups in the program are shown
     // with four, or fewer, edges.
-    // It is important to show that any arbitrary number of bits can form a group / rule.
+    // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 2, "s1", RegionStore::new());
