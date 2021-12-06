@@ -18,6 +18,7 @@ mod tests {
 //    use crate::statestore::StateStore;
 //    use crate::step::SomeStep;
 //    use crate::stepstore::StepStore;
+    use crate::need::SomeNeed;
 
     // Form a group, X1X1 from two squares that have alternating (pn=Two) results.
     //
@@ -257,4 +258,123 @@ mod tests {
         return Err(format!("subset is? {}", rul4.formatted_string()));
     }
 
+    // Test Seek adjacent overlapping region.
+    // Create region X10X and adjacent region 1X1X.
+    // The overlapping part is region 11X1, with no squares in it.
+    // Should seek samples of the high (f) and low (d) squares.
+    // After two samples of each, should produce the AddGroup need.
+    #[test]
+    fn seek_adjacent_overlapping_part() -> Result<(), String> {
+
+        let mut dm1 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm1.add_action();
+
+        let s5 = dm1.state_from_string("s101").unwrap();
+
+        let s7 = dm1.state_from_string("s111").unwrap();
+
+        let s9 = dm1.state_from_string("s1001").unwrap();
+
+        let sb = dm1.state_from_string("s1011").unwrap();
+
+        let sc = dm1.state_from_string("s1100").unwrap();
+
+        let sd = dm1.state_from_string("s1101").unwrap();
+
+        let se = dm1.state_from_string("s1110").unwrap();
+
+        let sf = dm1.state_from_string("s1111").unwrap();
+
+        let targ_region = dm1.region_from_string("r11X1").unwrap();
+
+        dm1.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
+        dm1.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
+
+        dm1.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
+        dm1.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
+
+        dm1.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
+        dm1.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
+
+        dm1.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
+        dm1.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
+
+        dm1.eval_sample_arbitrary(0, &se, &se);
+        dm1.eval_sample_arbitrary(0, &se, &se);
+
+        dm1.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
+        dm1.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
+
+        let nds1 = dm1.actions.avec[0].group_pair_needs();
+
+        // Check for two needs, targets f and d.
+        assert!(nds1.len() == 2);
+
+        let nd1 = SomeNeed::AStateMakeGroup {
+                dom_num: 0,
+                act_num: 0,
+                targ_state: sf.clone(),
+                for_reg: targ_region.clone(),
+                far: sd.clone(),
+                num_x: 1,
+            };
+        assert!(nds1.contains(&nd1));
+
+        let nd2 = SomeNeed::AStateMakeGroup {
+                dom_num: 0,
+                act_num: 0,
+                targ_state: sd.clone(),
+                for_reg: targ_region.clone(),
+                far: sf.clone(),
+                num_x: 1,
+            };
+        assert!(nds1.contains(&nd2));
+
+        dm1.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+        
+        let nds2 = dm1.actions.avec[0].group_pair_needs();
+
+        assert!(nds2.len() == 1);
+        assert!(nds2.contains(&nd2));
+
+        dm1.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
+
+        let nds3 = dm1.actions.avec[0].group_pair_needs();
+
+        assert!(nds3.len() == 2);
+
+        let nd3 = SomeNeed::StateAdditionalSample {
+                            dom_num: 0,
+                            act_num: 0,
+                            targ_state: sd.clone(),
+                            grp_reg: targ_region.clone(),
+                            far: sf.clone(),
+                        };
+        assert!(nds3.contains(&nd3));
+
+        let nd4 = SomeNeed::StateAdditionalSample {
+                            dom_num: 0,
+                            act_num: 0,
+                            targ_state: sf.clone(),
+                            grp_reg: targ_region.clone(),
+                            far: sd.clone(),
+                        };
+        assert!(nds3.contains(&nd4));
+        
+        dm1.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+
+        let nds4 = dm1.actions.avec[0].group_pair_needs();
+        assert!(nds4.len() == 1);
+        assert!(nds4.contains(&nd3));
+
+        dm1.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
+
+        let nds5 = dm1.actions.avec[0].group_pair_needs();
+        assert!(nds5.len() == 1);
+        
+        let ned7 = SomeNeed::AddGroup { group_region: targ_region.clone(), };
+        assert!(nds5.contains(&ned7));
+
+        Ok(())
+    }
 } // end mod tests

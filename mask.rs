@@ -60,7 +60,7 @@ impl SomeMask {
 
     /// Return the bitwize XOR of two masks.
     pub fn m_xor(&self, other: &Self) -> Self {
-        self.m_and(&other.m_not()).m_or(&self.m_not().m_and(&other))
+        Self::new(self.bts.b_xor(&other.bts))
     }
 
     /// Return the bitwize NOT of a mask.

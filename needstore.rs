@@ -44,7 +44,7 @@ impl NeedStore {
         self.avec.len()
     }
 
-    /// Return true if a need is already in a SeedStore.
+    /// Return true if a need is already in a NeedStore.
     pub fn contains(&self, new_need: &SomeNeed) -> bool {
         for nedx in &self.avec {
             if *nedx == *new_need {

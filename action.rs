@@ -1515,7 +1515,7 @@ impl SomeAction {
     } // end confirm_group_needs
 
     /// Check needs for adjacent and intersecting groups.
-    fn group_pair_needs(&self) -> NeedStore {
+    pub fn group_pair_needs(&self) -> NeedStore {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
 

@@ -31,7 +31,7 @@ impl fmt::Display for ActionStore {
 #[derive(Serialize, Deserialize)]
 pub struct ActionStore {
     /// A vector of SomeAction structs
-    avec: Vec<SomeAction>,
+    pub avec: Vec<SomeAction>,
 }
 
 impl ActionStore {
