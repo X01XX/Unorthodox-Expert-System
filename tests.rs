@@ -512,6 +512,77 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_confirm_group_needs() -> Result<(), String> {
+        // Init domain with one action.
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        // Set up two groups.
+        // Changes for each sample set up two, and only two groups.
+        // Changes for bit three insure the seeking external dissimilar squares
+        // that differ by the third bit.  Like D and 5, 0 and 8.
+        let s0 = dm0.state_from_string("s0").unwrap();
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![3]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![3]));
+
+        let s7 = dm0.state_from_string("s111").unwrap();
+        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![3]));
+        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![3]));
+
+        let sd = dm0.state_from_string("s1101").unwrap();
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0,1,3]));
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0,1,3]));
+
+        let sa = dm0.state_from_string("s1010").unwrap();
+        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
+        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
+
+        // Run get_needs to set group.pnc to true.
+        let nds1 = dm0.get_needs();
+
+        // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
+        assert!(nds1.len() == 2);
+        assert!(nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1111").unwrap()) || nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1000").unwrap()));
+        assert!(nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r101").unwrap()) || nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+
+        // Start homing in with sample of 5, adjacent, external, to D in 1XXX.
+        let s5 = dm0.state_from_string("s101").unwrap();
+        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
+        let nds2 = dm0.get_needs();
+
+        // Check for second need for 5, to reach pnc for 5.
+        assert!(nds2.len() == 2);
+        assert!(nds2._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r101").unwrap()));
+
+        // Get second sample for 5.
+        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
+        let nds3 = dm0.get_needs();
+
+        // Check for need of square 10, far from square 5, in 0XXX.
+        assert!(nds3.len() == 1);
+        assert!(nds3._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+
+        // Get sample of 2, far from 5 in 0XXX.
+        // In 1XXX, A is already far from D, and is pnc, so no further needs for 1XXX.
+        let s2 = dm0.state_from_string("s10").unwrap();
+        dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
+        let nds4 = dm0.get_needs();
+
+        // Check for need of second sample of square 10, to reach pnc.
+        assert!(nds4.len() == 1);
+        assert!(nds4._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+
+        // Take second sample of square 10.
+        dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
+        let nds5 = dm0.get_needs();
+
+        // The two groups, 0XXX and 1XXX, shoul dbe confirmed, and have no further needs.
+        assert!(nds5.len() == 0);
+
+        Ok(())
+    }
+
     // For showing something easily understandable, the groups in the program are shown
     // with four, or fewer, edges.
     // It is important to show that any arbitrary number of edges can form a group / rule.

@@ -120,6 +120,7 @@ impl fmt::Display for SomeNeed {
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
             SomeNeed::SetGroupPnc { group_region: greg } => format!("N(Set group pnc {})", greg),
+            SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
             SomeNeed::SetGroupConfirmed {
                 group_region: greg,
                 cstate: sta1,
@@ -205,6 +206,8 @@ pub enum SomeNeed {
     AddGroup { group_region: SomeRegion },
     /// Housekeeping, Set group pnc.
     SetGroupPnc { group_region: SomeRegion },
+    /// Housekeeping, Remove group anchor.
+    RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to confirmed, using a state
     /// that is only in that group, has adjacent, external, dissimilar squares.
     SetGroupConfirmed {
@@ -379,6 +382,16 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
+            SomeNeed::RemoveGroupAnchor { group_region: greg } => match other {
+                SomeNeed::RemoveGroupAnchor {
+                    group_region: gregx,
+                } => {
+                    if *greg == *gregx {
+                        return true;
+                    }
+                }
+                _ => {}
+            },
             SomeNeed::SetGroupConfirmed {
                 group_region: greg,
                 cstate: sta1,
@@ -507,6 +520,7 @@ impl SomeNeed {
             } => format!("SeekEdge"),
             SomeNeed::AddGroup { group_region: _, } => format!("AddGroup"),
             SomeNeed::SetGroupPnc { group_region: _, } => format!("SetGroupPnc"),
+            SomeNeed::RemoveGroupAnchor { group_region: _, } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupConfirmed {
                 group_region: _,
                 cstate: _,

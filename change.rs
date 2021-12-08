@@ -7,7 +7,7 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.

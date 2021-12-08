@@ -94,6 +94,7 @@ impl SomeGroup {
         //        ));
 
         rc_str.push_str(&format!(", pn: {}", self.pn));
+        rc_str.push_str(&format!(", pnc: {}", self.pnc));
 
         match self.pn {
             Pn::One => {

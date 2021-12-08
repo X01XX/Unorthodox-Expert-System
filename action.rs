@@ -699,6 +699,14 @@ impl SomeAction {
                             grpx.set_pnc();
                         }
                     }
+                    SomeNeed::RemoveGroupAnchor {
+                        group_region: greg,
+                    } => {
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
+                            grpx.set_anchor_off();
+                        }
+                    }
                     SomeNeed::SetEdgeExpand {
                         group_region: greg,
                         edge_mask: mbitx,
@@ -740,6 +748,9 @@ impl SomeAction {
                             cstate: _,
                         } => { inxs.push(inx); }
                         SomeNeed::SetGroupPnc {
+                            group_region: _,
+                        } => { inxs.push(inx); }
+                        SomeNeed::RemoveGroupAnchor {
                             group_region: _,
                         } => { inxs.push(inx); }
                         SomeNeed::SetEdgeExpand {
@@ -1116,7 +1127,7 @@ impl SomeAction {
     /// Return expand needs for groups.
     /// Edges of each region under bit positions that can be changed,
     /// from the point of view of the Domain (the x_mask), need to be checked.
-    fn expand_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
+    fn expand_needs(&self, agg_chgs: &SomeChange) -> NeedStore {
 
         //println!("expand_needs");
         let mut ret_nds = NeedStore::new();
@@ -1263,8 +1274,8 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    fn confirm_groups_needs(&mut self, agg_chgs: &SomeChange) -> NeedStore {
-        //println!("confirm_groups_needs");
+    pub fn confirm_groups_needs(&self, agg_chgs: &SomeChange) -> NeedStore {
+        //println!("confirm_groups_needs chg {}", agg_chgs);
 
         let mut ret_nds = NeedStore::new();
 
@@ -1277,7 +1288,11 @@ impl SomeAction {
         //println!("Act {}, states in one region {}", self.num, states1);
 
         // Find squares in one group for each group, that may be an anchor
-        for grpx in self.groups.iter_mut() {
+        for grpx in self.groups.iter() {
+
+            if grpx.pnc == false {
+                continue;
+            }
 
             let greg = grpx.region.clone();
 
@@ -1314,13 +1329,17 @@ impl SomeAction {
             // Check if a current anchor is still in only one region.
             if let Some(stax) = &grpx.anchor {
                 if stsin.contains(&stax) == false {
-                    grpx.set_anchor_off();
+                    ret_nds.push(SomeNeed::RemoveGroupAnchor {
+                        group_region: grpx.region.clone(),
+                        });
+                    //grpx.set_anchor_off();
                 }
             }
-            
+
             // Get mask of edge bits to use to confirm.
             let mut edge_confirm = grpx.region.ones().m_and(&agg_chgs.b10);
             edge_confirm = edge_confirm.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
+            //println!("edge confirm: {}", edge_confirm);
 
             // Get the single-bit masks of edges in the group region.
             let edge_msks = edge_confirm.split();
@@ -1357,7 +1376,7 @@ impl SomeAction {
                 // Rate far state
                 if let Some(sqrx) = self.squares.find(&cfmx[1]) {
                     if sqrx.get_pnc() {
-                        sta_rate += 5;
+                        sta_rate += 4; // LT anchor value, so (pnc anchor, non-pnc far) NE (non-pnc anchor, pnc far)
                     } else {
                         sta_rate += sqrx.len_results();
                     }
@@ -1369,20 +1388,24 @@ impl SomeAction {
                     //println!(
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg
-                    // );
+                    //);
 
                     if states1.contains(&sta_adj) {
                         //println!("{} is in only one group", &sta_adj);
                         sta_rate += 100;
                     }
 
-                    cfmx.push(sta_adj);
+                    cfmx.push(sta_adj.clone());
 
-                    if let Some(sqrx) = self.squares.find(&sta1) {
+                    if let Some(sqrx) = self.squares.find(&sta_adj) {
                         if sqrx.get_pnc() {
                             sta_rate += 5;
                         } else {
                             sta_rate += sqrx.len_results();
+                        }
+                    } else {
+                        if regs.state_in_1_region(&sta_adj) {
+                            sta_rate += 90;
                         }
                     }
                 } // next sta1
@@ -1394,7 +1417,7 @@ impl SomeAction {
                     max_rate = sta_rate;
                     cfmv_max = Vec::<StateStore>::new();
                 }
-
+                //println!("rate {} is {}", cfmx[0], sta_rate);
                 if sta_rate == max_rate {
                     cfmv_max.push(cfmx);
                 }
@@ -1420,7 +1443,10 @@ impl SomeAction {
                         //  );
                         continue;
                     } else {
-                        grpx.set_anchor_off();
+                        ret_nds.push(SomeNeed::RemoveGroupAnchor {
+                            group_region: grpx.region.clone(),
+                            });
+                        //grpx.set_anchor_off();
                     }
                 }
             }
@@ -1458,7 +1484,15 @@ impl SomeAction {
             let mut nds_grp = NeedStore::new(); // needs for more samples
             let mut nds_grp_add = NeedStore::new(); // needs for added group
 
-            for inx in 1..cfm_max.len() {
+            //print!("cfm_mask ");
+            //for stax in cfm_max.iter() {
+            //    print!(" {}", &stax);
+            //}
+            //println!(" ");
+
+            for inx in 2..cfm_max.len() {
+                //println!("cfm_max num {} ", inx);
+                
                 let adj_sta = &cfm_max[inx];
 
                 //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
@@ -1474,8 +1508,6 @@ impl SomeAction {
                         }
 
                         new_group_regs.push_nosubs(new_reg.clone());
-
-                        let anchor_sqr = self.squares.find(anchor_sta).unwrap();
 
                         //println!(
                         //    "confirm_group_needs AddGroup {} using {} and {}",
@@ -1552,7 +1584,7 @@ impl SomeAction {
                     for_group: greg.clone(),
                 });
             }
-        } // next greg
+        } // next grpx
         //println!("confirm_group_needs: returning {}", &ret_nds);
         ret_nds
     } // end confirm_group_needs
