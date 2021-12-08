@@ -113,7 +113,7 @@ impl SomeRule {
         }
 
         // Check for 4 change bit-position.
-        if ones_to_x.m_and(&zeros_to_x).is_not_low() { println!("ret 1"); return None; }
+        if ones_to_x.m_and(&zeros_to_x).is_not_low() { return None; }
 
         // Get zeros one change mask.
         let zeros_1_change = self.b01.m_xor(&self.b00);

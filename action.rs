@@ -388,18 +388,20 @@ impl SomeAction {
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
 
-            if regx.x_mask().num_one_bits() > 2 {
+            if regx.x_mask().num_one_bits() > 2 && *key != regx.state1 && *key != regx.state2 {
 
                 let sqr1 = self.squares.find(&regx.state1).unwrap();
                 let sqr2 = self.squares.find(&regx.state2).unwrap();
 
-                if sqrx.state.is_adjacent(&sqr1.state) == false && sqrx.can_combine(&sqr1) == Truth::F {
-                    println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr1.state);
-                    self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
-                }
-                if sqrx.state.is_adjacent(&sqr2.state) == false && sqrx.can_combine(&sqr2) == Truth::F {
-                    println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr2.state);
-                    self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
+                if sqr1.get_pnc() && sqr2.get_pnc() {
+                    if sqrx.state.is_adjacent(&sqr1.state) == false && sqrx.can_combine(&sqr1) == Truth::F {
+                        println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr1.state);
+                        self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
+                    }
+                    if sqrx.state.is_adjacent(&sqr2.state) == false && sqrx.can_combine(&sqr2) == Truth::F {
+                        println!("\nDom {} Act {} Seek edge between {} and {}", &dom, &self.num, &sqrx.state, &sqr2.state);
+                        self.seek_edge.push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
+                    }
                 }
             }
         }
@@ -515,6 +517,51 @@ impl SomeAction {
         ret_cngs
     }
 
+    /// Return needs for states that are not in a group.
+    /// The Domain current state for which there are no samples.
+    /// A pn > 1 state that needs more samples.
+    pub fn state_not_in_group_needs(&self, cur_state: &SomeState) -> NeedStore {
+        let mut nds = NeedStore::new();
+        
+        // Check if current state is in any groups
+        let mut in_grp = false;
+        for grpx in self.groups.iter() {
+            if grpx.region.is_superset_of_state(cur_state) {
+                in_grp = true;
+                break;
+            }
+        }
+
+        // If not, generate need
+        if in_grp == false {
+            nds.push(SomeNeed::StateNotInGroup {
+                dom_num: 0, // will be set later
+                act_num: self.num,
+                targ_state: cur_state.clone(),
+            });
+        }
+
+        // Look for a pn > 1, pnc == false, not in group squares
+        // Extra samples are needed to gain pnc, then the first group.
+        let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
+
+        for stax in sqrs_pngt1.iter() {
+            if self.groups.any_superset_of_state(&stax) {
+                continue;
+            }
+
+            if in_grp || stax != cur_state {
+                nds.push(SomeNeed::StateNotInGroup {
+                    dom_num: 0, // will be set later
+                    act_num: self.num,
+                    targ_state: stax.clone()
+                });
+            }
+        }
+
+        nds
+    }
+
     /// Get needs for an Action, to improve understanding of the result pattern(s).
     /// When most needs are satisfied, needs for group confirmation are generated.
     /// If housekeeping needs are generated, they are processed and needs
@@ -528,40 +575,10 @@ impl SomeAction {
         loop {
             cnt += 1;
 
-            // Check if current state is in any groups
-            let mut in_grp = false;
-            for grpx in self.groups.iter() {
-                if grpx.region.is_superset_of_state(cur_state) {
-                    in_grp = true;
-                    break;
-                }
-            }
-
-            // If not, generate need
-            if in_grp == false {
-                nds.push(SomeNeed::StateNotInGroup {
-                    dom_num: dom,
-                    act_num: self.num,
-                    targ_state: cur_state.clone(),
-                });
-            }
-
-            // Look for a pn > 1, pnc == false, not in group squares
-            // Extra samples are needed to gain pnc, then the first group.
-            let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
-
-            for stax in sqrs_pngt1.iter() {
-                if self.groups.any_superset_of_state(&stax) {
-                    continue;
-                }
-
-                if in_grp || stax != cur_state {
-                    nds.push(SomeNeed::StateNotInGroup {
-                        dom_num: dom,
-                        act_num: self.num,
-                        targ_state: stax.clone()
-                    });
-                }
+            // Look for needs for states not in groups
+            let mut ndx = self.state_not_in_group_needs(cur_state);
+            if ndx.len() > 0 {
+                nds.append(&mut ndx);
             }
 
             // Look for needs to find a new edge in an invalidated group
@@ -620,7 +637,6 @@ impl SomeAction {
             for ndx in nds.iter_mut() {
                 match ndx {
                     SomeNeed::AddGroup { group_region: greg } => {
-                        try_again = true;
 
                         // Check for supersets
                         if self.groups.any_superset_of(&greg) {
@@ -636,6 +652,7 @@ impl SomeAction {
                             continue;
                         }
 
+                        try_again = true;
                         // Add the new group
                         println!(
                             "Dom {} Act {} AddGroup {} using {} and {}",
@@ -669,7 +686,6 @@ impl SomeAction {
                         group_region: greg,
                         cstate: sta1,
                     } => {
-                        try_again = true;
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             println!("\nDom {} Act {} Group {} confirmed using {}", dom, self.num, greg, sta1);
                             grpx.set_anchor(sta1.clone());
@@ -678,8 +694,8 @@ impl SomeAction {
                     SomeNeed::SetGroupPnc {
                         group_region: greg,
                     } => {
-                        try_again = true; // needed to at least get need out of the need list on the next pass
                         if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
                             grpx.set_pnc();
                         }
                     }
@@ -687,13 +703,12 @@ impl SomeAction {
                         group_region: greg,
                         edge_mask: mbitx,
                     } => {
-                        try_again = true; // needed to at least get need out of the need list on the next pass
                         if let Some(grpx) = self.groups.find_mut(&greg) {
+                            try_again = true;
                             grpx.set_edge_expand(&mbitx);
                         }
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
-                        try_again = true;
                         self.seek_edge.remove_region(&regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
@@ -712,6 +727,34 @@ impl SomeAction {
                 //println!("Act: {} get_needs: returning: {}", &self.num, &nds);
                 if nds.len() == 0 {
                     return self.left_over_needs();
+                }
+
+                // Filter out housekeeping needs, if any.
+                let mut inxs = Vec::<usize>::with_capacity(nds.len());
+                let mut inx = 0;
+                for ndx in nds.iter() {
+                    match ndx  {
+                        SomeNeed::AddGroup { group_region: _ } => { inxs.push(inx); }
+                        SomeNeed::SetGroupConfirmed {
+                            group_region: _,
+                            cstate: _,
+                        } => { inxs.push(inx); }
+                        SomeNeed::SetGroupPnc {
+                            group_region: _,
+                        } => { inxs.push(inx); }
+                        SomeNeed::SetEdgeExpand {
+                            group_region: _,
+                            edge_mask: _,
+                        } => { inxs.push(inx); }
+                        SomeNeed::InactivateSeekEdge { reg: _ } => { inxs.push(inx); } 
+                        SomeNeed::AddSeekEdge { reg: _ } => { inxs.push(inx); }
+                        _ => { }
+                    }
+                    inx += 1;
+                }
+
+                for inx in inxs.iter().rev() {
+                    nds.remove_unordered(*inx);
                 }
                 return nds;
             }
@@ -1025,7 +1068,7 @@ impl SomeAction {
 
     /// Get additional sample needs for the states that form a group.
     /// Should only affect groups with Pn::One
-    fn additional_group_state_samples(&self) -> NeedStore {
+    pub fn additional_group_state_samples(&self) -> NeedStore {
         //println!("additional_group_state_sample");
         let mut ret_nds = NeedStore::new();
 

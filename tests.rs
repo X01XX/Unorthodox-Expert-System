@@ -288,13 +288,111 @@ mod tests {
         return Err(format!("subset is? {}", rul4.formatted_string()));
     }
 
+    // Test action:get_needs StateNotInGroup, two flavors.
+    #[test]
+    fn need_for_state_not_in_group() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        // Check need for the current state not in a group.
+        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
+
+        assert!(nds1.len() == 1);
+        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+
+        // Create group for one sample
+        let s1 = dm0.state_from_string("s1").unwrap();
+        dm0.eval_sample_arbitrary(0, &s1, &s1);
+
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+        } else {
+            return Err("Group r1 not found ??".to_string());
+        }
+
+        // Invalidate group for sample 1 by giving it GT 1 different result.
+        // Current state changes to zero.
+        let s1 = dm0.state_from_string("s1").unwrap();
+        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![0]));
+        
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+            return Err("Group r1  found ??".to_string());
+        }
+
+        // Check needs for pn > 1 and not in group, and current state not in a group.
+        let nds1 = dm0.get_needs();
+
+        assert!(nds1.len() == 2);
+        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap()));
+
+        Ok(())
+    }
+
+    // Test additional_group_state_samples.
+    #[test]
+    fn need_additional_group_state_samples()  -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        // Check need for the current state not in a group.
+        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
+
+        assert!(nds1.len() == 1);
+        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+
+        // Create group for one sample
+        let s1 = dm0.state_from_string("s1").unwrap();
+        dm0.eval_sample_arbitrary(0, &s1, &s1);
+
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+        } else {
+            return Err("Group r1 not found ??".to_string());
+        }
+
+       // Expand group
+        let s2 = dm0.state_from_string("s10").unwrap();
+        dm0.eval_sample_arbitrary(0, &s2, &s2);
+
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXX").unwrap()) {
+        } else {
+            return Err("Group rXX not found ??".to_string());
+        }
+        
+        let nds2 = dm0.actions[0].additional_group_state_samples();
+        //println!("needs {}", nds2);
+
+        assert!(nds2.len() == 2);
+        assert!(nds2._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds2._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r10").unwrap()));
+
+        // Satisfy one need.
+        dm0.eval_sample_arbitrary(0, &s2, &s2);
+        
+        let nds3 = dm0.actions[0].additional_group_state_samples();
+        //println!("needs {}", nds3);
+
+        assert!(nds3.len() == 1);
+        assert!(nds3._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
+
+        // Satisfy second need.
+        dm0.eval_sample_arbitrary(0, &s1, &s1);
+
+        let nds4 = dm0.actions[0].additional_group_state_samples();
+        //println!("needs {}", nds4);
+
+        // Check for Need SetGroupPnc
+        assert!(nds4.len() == 1);
+        assert!(nds4._contains_need_type("SetGroupPnc"));
+        Ok(())
+    }
+
     // Test Seek adjacent overlapping region.
     // Create region X10X and adjacent region 1X1X.
     // The overlapping part is region 11X1, with no squares in it.
     // Should seek samples of the high (f) and low (d) squares of region 11X1.
     // After two samples of each, it should produce the AddGroup need for 11X1.
     #[test]
-    fn seek_adjacent_overlapping_part() -> Result<(), String> {
+    fn need_for_samples_in_adjacent_overlapping_part() -> Result<(), String> {
 
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
@@ -387,7 +485,7 @@ mod tests {
     // The region X100 (4, C) in X10X is the contradictory part due to 
     // different results expected from the least significant bit.
     #[test]
-    fn seek_sample_contradictory_intersection() -> Result<(), String> {
+    fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
         

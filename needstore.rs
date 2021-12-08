@@ -2,6 +2,7 @@
 
 use crate::need::SomeNeed;
 use crate::region::SomeRegion;
+use crate::removeunordered::remove_unordered;
 
 use std::fmt;
 use std::ops::Index; // IndexMut
@@ -58,12 +59,25 @@ impl NeedStore {
     }
 
     /// Return true if a need with a given type and target is in a NeedStore.
+    /// Used in tests.rs, so far.
     pub fn _contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
         for nedx in &self.avec {
             if nedx.type_string() == type_string {
                 if nedx.target() == *target {
                     return true;
                 }
+            }
+        }
+
+        false
+    }
+
+    /// Return true if a need with a given type and target is in a NeedStore.
+    /// Used in tests.rs, so far.
+    pub fn _contains_need_type(&self, type_string: &str) -> bool {
+        for nedx in &self.avec {
+            if nedx.type_string() == type_string {
+                return true;
             }
         }
 
@@ -91,7 +105,12 @@ impl NeedStore {
     pub fn iter(&self) -> Iter<SomeNeed> {
         self.avec.iter()
     }
-    
+
+    /// Remove a need from a NeedStore
+    pub fn remove_unordered(&mut self, inx: usize) {
+        remove_unordered(&mut self.avec, inx);
+    }
+
 } // end impl NeedStore
 
 impl Index<usize> for NeedStore {
