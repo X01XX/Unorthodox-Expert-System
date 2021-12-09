@@ -606,4 +606,43 @@ mod tests {
 
         Ok(())
     }
+
+    // Test a simple four-step plan to change the domain current state 
+    // from s0111 to s1000.
+    #[test]
+    fn test_make_plan1() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+        dm0.add_action();
+        dm0.add_action();
+        dm0.add_action();
+
+        let s0 = dm0.state_from_string("s0").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
+
+        // Create group for region XXXX, Act 0.
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+
+        // Create group for region XXXX, Act 1.
+        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits(vec![1]));
+        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits(vec![1]));
+
+        // Create group for region XXXX, Act 2.
+        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits(vec![2]));
+        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits(vec![2]));
+
+        // Create group for region XXXX, Act 3.
+        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
+        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3]));    // Last sample changes current state to s0111
+
+        let toreg = dm0.region_from_string("r1000").unwrap();
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            assert!(aplan.len() == 4);
+            assert!(*aplan.result_region() == toreg);
+        } else {
+            return Err("no plan found?".to_string());
+        }
+        Ok(())
+    }
 } // end mod tests

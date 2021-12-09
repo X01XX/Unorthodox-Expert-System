@@ -1281,8 +1281,6 @@ impl SomeAction {
 
         let regs = self.groups.regions();
 
-        let mut new_group_regs = RegionStore::new();
-
         let states1: StateStore = self.squares.states_in_1_region(&regs);
 
         //println!("Act {}, states in one region {}", self.num, states1);
@@ -1499,24 +1497,10 @@ impl SomeAction {
 
                 if let Some(adj_sqr) = self.squares.find(adj_sta) {
                     if adj_sqr.get_pnc() {
-                        let new_reg = SomeRegion::new(&anchor_sta, &adj_sta);
-
-                        if new_group_regs.any_superset_of(&new_reg)
-                            || regs.any_superset_of(&new_reg)
-                        {
-                            continue;
-                        }
-
-                        new_group_regs.push_nosubs(new_reg.clone());
-
-                        //println!(
-                        //    "confirm_group_needs AddGroup {} using {} and {}",
-                        //    &new_reg, &anchor_sta, &adj_sta
-                        //);
 
                         if anchor_sqr.can_combine(&adj_sqr) == Truth::T {
                             nds_grp_add.push(SomeNeed::AddGroup {
-                                group_region: new_reg,
+                                group_region: SomeRegion::new(&anchor_sta, &adj_sta),
                             });
                         }
                     } else {
