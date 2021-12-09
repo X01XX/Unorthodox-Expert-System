@@ -610,7 +610,7 @@ mod tests {
     // Test a simple four-step plan to change the domain current state 
     // from s0111 to s1000.
     #[test]
-    fn test_make_plan1() -> Result<(), String> {
+    fn test1_make_plan() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
         dm0.add_action();
@@ -636,13 +636,80 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
         dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3]));    // Last sample changes current state to s0111
 
-        let toreg = dm0.region_from_string("r1000").unwrap();
+        // Get plan for 7 to 8
+        dm0.set_cur_state(&dm0.state_from_string("s111").unwrap());
+        let mut toreg = dm0.region_from_string("r1000").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 4);
             assert!(*aplan.result_region() == toreg);
         } else {
-            return Err("no plan found?".to_string());
+            return Err("no plan found to r1000?".to_string());
         }
+
+        // Get plan for 8 to 7
+        dm0.set_cur_state(&dm0.state_from_string("s1000").unwrap());
+        toreg = dm0.region_from_string("r111").unwrap();
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            assert!(aplan.len() == 4);
+            assert!(*aplan.result_region() == toreg);
+        } else {
+            return Err("no plan found to r111?".to_string());
+        }
+
+        Ok(())
+    }
+    
+    // Test asymmetric chaining.  The plan must step out of the direct
+    // glide path X1XX, between 7 and C, into X0XX, to change the third bit,
+    // then step back into the glide path to get to the goal.
+    #[test]
+    fn test2_make_plan() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+        dm0.add_action();
+        dm0.add_action();
+        dm0.add_action();
+
+        let s0 = dm0.state_from_string("s0").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
+        let sb = dm0.state_from_string("s1011").unwrap();
+
+        // Create group for region XXXX, Act 0.
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+
+        // Create group for region XXXX, Act 1.
+        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits(vec![1]));
+        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits(vec![1]));
+
+        // Create group for region XXXX, Act 2.
+        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits(vec![2]));
+        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits(vec![2]));
+
+        // Create group for region X0XX, Act 3.
+        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
+        dm0.eval_sample_arbitrary(3, &sb, &sb.toggle_bits(vec![3]));
+
+        // Get plan for 7 to C
+        dm0.set_cur_state(&dm0.state_from_string("s111").unwrap());
+        let mut toreg = dm0.region_from_string("r1100").unwrap();
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            assert!(aplan.len() == 5);
+            assert!(*aplan.result_region() == toreg);
+        } else {
+            return Err("No plan found to r1100?".to_string());
+        }
+
+        // Get plan for C to 7
+        dm0.set_cur_state(&dm0.state_from_string("s1100").unwrap());
+        toreg = dm0.region_from_string("r111").unwrap();
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            assert!(aplan.len() == 5);
+            assert!(*aplan.result_region() == toreg);
+        } else {
+            return Err("No plan found to r111?".to_string());
+        }
+
         Ok(())
     }
 } // end mod tests
