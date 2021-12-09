@@ -513,7 +513,7 @@ mod tests {
     }
 
     #[test]
-    fn test_confirm_group_needs() -> Result<(), String> {
+    fn test_limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
@@ -543,8 +543,8 @@ mod tests {
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
         assert!(nds1.len() == 2);
-        assert!(nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1111").unwrap()) || nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1000").unwrap()));
-        assert!(nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r101").unwrap()) || nds1._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap()));
+        assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Start homing in with sample of 5, adjacent, external, to D in 1XXX.
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -553,7 +553,7 @@ mod tests {
 
         // Check for second need for 5, to reach pnc for 5.
         assert!(nds2.len() == 2);
-        assert!(nds2._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r101").unwrap()));
+        assert!(nds2._contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()));
 
         // Get second sample for 5.
         dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
@@ -561,7 +561,7 @@ mod tests {
 
         // Check for need of square 10, far from square 5, in 0XXX.
         assert!(nds3.len() == 1);
-        assert!(nds3._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds3._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Get sample of 2, far from 5 in 0XXX.
         // In 1XXX, A is already far from D, and is pnc, so no further needs for 1XXX.
@@ -571,13 +571,13 @@ mod tests {
 
         // Check for need of second sample of square 10, to reach pnc.
         assert!(nds4.len() == 1);
-        assert!(nds4._contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds4._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Take second sample of square 10.
         dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
         let nds5 = dm0.get_needs();
 
-        // The two groups, 0XXX and 1XXX, shoul dbe confirmed, and have no further needs.
+        // The two groups, 0XXX and 1XXX, should be limited, and have no further needs.
         assert!(nds5.len() == 0);
 
         Ok(())
@@ -610,7 +610,7 @@ mod tests {
     // Test a simple four-step plan to change the domain current state 
     // from s0111 to s1000.
     #[test]
-    fn test1_make_plan() -> Result<(), String> {
+    fn make_plan_direct() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
         dm0.add_action();
@@ -663,7 +663,7 @@ mod tests {
     // glide path X1XX, between 7 and C, into X0XX, to change the third bit,
     // then step back into the glide path to get to the goal.
     #[test]
-    fn test2_make_plan() -> Result<(), String> {
+    fn make_plan_asymmetric() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
         dm0.add_action();

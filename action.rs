@@ -563,7 +563,7 @@ impl SomeAction {
     }
 
     /// Get needs for an Action, to improve understanding of the result pattern(s).
-    /// When most needs are satisfied, needs for group confirmation are generated.
+    /// When most needs are satisfied, needs for group limitation are generated.
     /// If housekeeping needs are generated, they are processed and needs
     /// are checked again.
     pub fn get_needs(&mut self, cur_state: &SomeState, agg_chgs: &SomeChange, dom: usize) -> NeedStore {
@@ -619,7 +619,7 @@ impl SomeAction {
 
             // Check for squares in-one-group needs
             if nds.len() == 0 {
-                let mut ndx = self.confirm_groups_needs(agg_chgs);
+                let mut ndx = self.limit_groups_needs(agg_chgs);
 
                 if ndx.len() > 0 {
                     nds.append(&mut ndx);
@@ -682,12 +682,12 @@ impl SomeAction {
                             );
                         }
                     }
-                    SomeNeed::SetGroupConfirmed {
+                    SomeNeed::SetGroupLimited {
                         group_region: greg,
                         cstate: sta1,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
-                            println!("\nDom {} Act {} Group {} confirmed using {}", dom, self.num, greg, sta1);
+                            println!("\nDom {} Act {} Group {} limited using {}", dom, self.num, greg, sta1);
                             grpx.set_anchor(sta1.clone());
                         }
                     }
@@ -743,7 +743,7 @@ impl SomeAction {
                 for ndx in nds.iter() {
                     match ndx  {
                         SomeNeed::AddGroup { group_region: _ } => { inxs.push(inx); }
-                        SomeNeed::SetGroupConfirmed {
+                        SomeNeed::SetGroupLimited {
                             group_region: _,
                             cstate: _,
                         } => { inxs.push(inx); }
@@ -1164,7 +1164,7 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new();
 
-        if grpx.confirmed {
+        if grpx.limited {
             return ret_nds;
         }
 
@@ -1274,8 +1274,8 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn confirm_groups_needs(&self, agg_chgs: &SomeChange) -> NeedStore {
-        //println!("confirm_groups_needs chg {}", agg_chgs);
+    pub fn limit_groups_needs(&self, agg_chgs: &SomeChange) -> NeedStore {
+        //println!("limit_groups_needs chg {}", agg_chgs);
 
         let mut ret_nds = NeedStore::new();
 
@@ -1334,13 +1334,13 @@ impl SomeAction {
                 }
             }
 
-            // Get mask of edge bits to use to confirm.
-            let mut edge_confirm = grpx.region.ones().m_and(&agg_chgs.b10);
-            edge_confirm = edge_confirm.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
-            //println!("edge confirm: {}", edge_confirm);
+            // Get mask of edge bits to use to limit.
+            let mut edge_limit = grpx.region.ones().m_and(&agg_chgs.b10);
+            edge_limit = edge_limit.m_or(&grpx.region.zeros().m_and(&agg_chgs.b01));
+            //println!("edge limit: {}", edge_limit);
 
             // Get the single-bit masks of edges in the group region.
-            let edge_msks = edge_confirm.split();
+            let edge_msks = edge_limit.split();
 
             // For each state, sta1, only in the group region, greg:
             //
@@ -1421,9 +1421,9 @@ impl SomeAction {
                 }
             } // next sta1
 
-            // Check if a confirmed group anchor is still rated the best
+            // Check if a limited group anchor is still rated the best
             // If so, skip further processing.
-            if grpx.confirmed {
+            if grpx.limited {
                 if let Some(anchor) = &grpx.anchor {
                     // handle the rare case of anchors with the same rating
                     let mut in_flag = false;
@@ -1436,7 +1436,7 @@ impl SomeAction {
 
                     if in_flag {
                         // println!(
-                        //     "group {} anchor {} rating confirmed at {}",
+                        //     "group {} anchor {} rating limited at {}",
                         //     &greg, &anchor, max_num
                         //  );
                         continue;
@@ -1460,7 +1460,7 @@ impl SomeAction {
             //
             // If the group far state has not been sampled, or not enough, return a need for that.
             //
-            // Else confirm the group.
+            // Else limit the group.
             let anchor_sta = &cfm_max[0];
 
             let anchor_sqr = self.squares.find(anchor_sta).unwrap();
@@ -1468,7 +1468,7 @@ impl SomeAction {
                 // println!("group {} anchor {} pnc", &greg, &anchor_sta);
             } else {
                 // Get additional samples of the anchor
-                ret_nds.push(SomeNeed::ConfirmGroup {
+                ret_nds.push(SomeNeed::LimitGroup {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
@@ -1504,7 +1504,7 @@ impl SomeAction {
                             });
                         }
                     } else {
-                        nds_grp.push(SomeNeed::ConfirmGroup {
+                        nds_grp.push(SomeNeed::LimitGroup {
                             dom_num: 0, // will be set in domain code
                             act_num: self.num,
                             anchor: anchor_sta.clone(),
@@ -1513,7 +1513,7 @@ impl SomeAction {
                         });
                     }
                 } else {
-                    nds_grp.push(SomeNeed::ConfirmGroup {
+                    nds_grp.push(SomeNeed::LimitGroup {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
@@ -1543,14 +1543,14 @@ impl SomeAction {
             // instead of checking all states adjacent-internal to the anchor.
             if let Some(sqrf) = self.squares.find(&cfm_max[1]) {
                 if sqrf.get_pnc() {
-                    // Set the group confirmed
-                    ret_nds.push(SomeNeed::SetGroupConfirmed {
+                    // Set the group limited
+                    ret_nds.push(SomeNeed::SetGroupLimited {
                         group_region: greg.clone(),
                         cstate: anchor_sta.clone(),
                     });
                 } else {
                     // Get additional samples of the far state
-                    ret_nds.push(SomeNeed::ConfirmGroup {
+                    ret_nds.push(SomeNeed::LimitGroup {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
@@ -1560,7 +1560,7 @@ impl SomeAction {
                 }
             } else {
                 // Get the first sample of the far state
-                ret_nds.push(SomeNeed::ConfirmGroup {
+                ret_nds.push(SomeNeed::LimitGroup {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
@@ -1569,9 +1569,9 @@ impl SomeAction {
                 });
             }
         } // next grpx
-        //println!("confirm_group_needs: returning {}", &ret_nds);
+        //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
-    } // end confirm_group_needs
+    } // end limit_group_needs
 
     /// Check needs for adjacent and intersecting groups.
     pub fn group_pair_needs(&self) -> NeedStore {

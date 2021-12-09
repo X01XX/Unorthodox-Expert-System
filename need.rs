@@ -3,8 +3,8 @@
 //! Something is logically needed, like:
 //! More samples of a square(or state, or bit pattern),
 //! A sample in a region that has contradictory predictions.
-//! Samples to confirm a group.
-//! Housekeeping needs, like confirming a group.
+//! Samples to limit a group.
+//! Housekeeping needs, like limiting a group.
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -64,7 +64,7 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Act {} Pri {} Sample Region {}",
                 dm, an, pri, &g_reg,
             ),
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
@@ -74,18 +74,18 @@ impl fmt::Display for SomeNeed {
                 if greg.is_superset_of_state(&sta) {
                     if sta == anc_sta {
                         format!(
-                            "N(Dom {} Act {} Pri {} Sample anchor State {}, to confirm group {})",
+                            "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {})",
                             dm, an, pri, anc_sta, greg,
                         )
                     } else {
                         format!(
-                            "N(Dom {} Act {} Pri {} Sample State {}, far from {} to confirm group {})",
+                            "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {})",
                             dm, an, pri, sta, anc_sta, greg,
                         )
                     }
                 } else {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to confirm group {})",
+                        "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {})",
                         dm, an, pri, sta, anc_sta, greg,
                     )
                 }
@@ -121,10 +121,10 @@ impl fmt::Display for SomeNeed {
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
             SomeNeed::SetGroupPnc { group_region: greg } => format!("N(Set group pnc {})", greg),
             SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
-            SomeNeed::SetGroupConfirmed {
+            SomeNeed::SetGroupLimited {
                 group_region: greg,
                 cstate: sta1,
-            } => format!("N(set group {} confirmed by {})", greg, sta1),
+            } => format!("N(set group {} limited by {})", greg, sta1),
             SomeNeed::SetEdgeExpand {
                 group_region: greg,
                 edge_mask: mbitx,
@@ -167,8 +167,8 @@ pub enum SomeNeed {
         group2: SomeRegion,
         ruls2: RuleStore,
     },
-    /// Sample a state to confirm a group.
-    ConfirmGroup {
+    /// Sample a state to limit a group.
+    LimitGroup {
         dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
@@ -208,9 +208,9 @@ pub enum SomeNeed {
     SetGroupPnc { group_region: SomeRegion },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
-    /// Housekeeping, set a group to confirmed, using a state
+    /// Housekeeping, set a group to limited, using a state
     /// that is only in that group, has adjacent, external, dissimilar squares.
-    SetGroupConfirmed {
+    SetGroupLimited {
         group_region: SomeRegion,
         cstate: SomeState,
     },
@@ -322,14 +322,14 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
                 for_group: _,
                 anchor: anc_sta,
             } => match other {
-                SomeNeed::ConfirmGroup {
+                SomeNeed::LimitGroup {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
@@ -392,11 +392,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::SetGroupConfirmed {
+            SomeNeed::SetGroupLimited {
                 group_region: greg,
                 cstate: sta1,
             } => match other {
-                SomeNeed::SetGroupConfirmed {
+                SomeNeed::SetGroupLimited {
                     group_region: gregx,
                     cstate: sta1x,
                 } => {
@@ -498,13 +498,13 @@ impl SomeNeed {
                 act_num: _,
                 goal_reg: _,
             } => format!("SampleRegion"),
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: _,
                 act_num: _,
                 targ_state: _,
                 for_group: _,
                 anchor: _,
-            } => format!("ConfirmGroup"),
+            } => format!("LimitGroup"),
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
                 act_num: _,
@@ -521,10 +521,10 @@ impl SomeNeed {
             SomeNeed::AddGroup { group_region: _, } => format!("AddGroup"),
             SomeNeed::SetGroupPnc { group_region: _, } => format!("SetGroupPnc"),
             SomeNeed::RemoveGroupAnchor { group_region: _, } => format!("RemoveGroupAnchor"),
-            SomeNeed::SetGroupConfirmed {
+            SomeNeed::SetGroupLimited {
                 group_region: _,
                 cstate: _,
-            } => format!("SetGroupConfirmed"),
+            } => format!("SetGroupLimited"),
             SomeNeed::SetEdgeExpand {
                 group_region: _,
                 edge_mask: _,
@@ -589,7 +589,7 @@ impl SomeNeed {
                 return 8;
             } // end process for SampleRegion
 
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: _,
                 act_num: _,
                 targ_state: _,
@@ -597,7 +597,7 @@ impl SomeNeed {
                 anchor: _,
             } => {
                 return 8;
-            } // end process for ConfirmGroup
+            } // end process for LimitGroup
 
             SomeNeed::StateAdditionalSample {
                 dom_num: _,
@@ -705,7 +705,7 @@ impl SomeNeed {
                 }
                 return false;
             }
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: _,
                 act_num: _,
                 targ_state: sta,
@@ -716,7 +716,7 @@ impl SomeNeed {
                     return true;
                 }
                 return false;
-            } // end process a ConfirmGroup need
+            } // end process a LimitGroup need
             _ => panic!("satisfied_by: should not be called on this need {}", self.type_string()),
         } //end match self
     } // end satisfied_by
@@ -783,7 +783,7 @@ impl SomeNeed {
             } => {
                 return *an;
             }
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: _,
                 act_num: an,
                 targ_state: _,
@@ -791,7 +791,7 @@ impl SomeNeed {
                 anchor: _,
             } => {
                 return *an;
-            } // end process a ConfirmGroup need
+            } // end process a LimitGroup need
             _ => panic!("act_num: not known for need {}", self.type_string()),
         } //end match self
     } // end act_num
@@ -858,7 +858,7 @@ impl SomeNeed {
             } => {
                 return *dm;
             }
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: dm,
                 act_num: _,
                 targ_state: _,
@@ -866,7 +866,7 @@ impl SomeNeed {
                 anchor: _,
             } => {
                 return *dm;
-            } // end process a ConfirmGroup need
+            } // end process a LimitGroup need
             _ => panic!("dom_num: not known for need {}", self.type_string()),
         } //end match self
     } // end dom_num
@@ -933,7 +933,7 @@ impl SomeNeed {
             } => {
                 return SomeRegion::new(&sta, &sta);
             }
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: _,
                 act_num: _,
                 targ_state: sta,
@@ -941,7 +941,7 @@ impl SomeNeed {
                 anchor: _,
             } => {
                 return SomeRegion::new(&sta, &sta);
-            } // end process a ConfirmGroup need
+            } // end process a LimitGroup need
             _ => panic!("target: should not be called for this need {}", self.type_string()),
         };
     } // end target
@@ -1006,7 +1006,7 @@ impl SomeNeed {
             } => {
                 *dm = num;
             }
-            SomeNeed::ConfirmGroup {
+            SomeNeed::LimitGroup {
                 dom_num: dm,
                 act_num: _,
                 targ_state: _,

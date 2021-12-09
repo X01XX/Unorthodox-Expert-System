@@ -982,7 +982,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-   <h3>Confirming an Optimistic Union</h3>
+   <h3>Limiting an Optimistic Union</h3>
     <p>
  In a solved K-Map, it is common practice to remove regions that are completely overlapped by other regions.
   </p>
@@ -1034,7 +1034,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Square 5 has a similar square, 0, the farthest square from 5 in 0X0X. 
     </p>
  <table class="indent1">
- <caption>0X0X Confirmed</caption>
+ <caption>0X0X Limited</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1075,10 +1075,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         If the region contains no dissimilar squares, it is valid &quot;to the best of our knowledge&quot;.
     </p>
     <p class="indent1">
- With multiple confirmed regions, there is the opportunity/problem of minimizing the number of squares needed to confirm the regions.
+ With multiple limited regions, there is the opportunity/problem of minimizing the number of squares needed to limit the regions.
     </p>
     <p class="indent1">
- For example, the squares D and 7, above, might be used to confirm the regions they are in.
+ For example, the squares D and 7, above, might be used to limit the regions they are in.
     </p>
    <p>
    In the K-Map below, square 5 is in two regions (0X0X, X10x) with one adjacent dissimilar square.
@@ -1135,7 +1135,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p>
  When you are trying to solve a problem, you usually do not have all possible samples.
- You make a guess, and you try to get more samples to confirm your guess.
+ You make a guess, and you try to get more samples to limit your guess.
  When you try to get more samples, you usually choose them in some way, rather
  than at random.
     </p>
@@ -1156,7 +1156,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    Seeking samples of squares that are not already within a region.
    </p>
    <p class="indent1">
-   Seeking samples of squares to confirm a region.
+   Seeking samples of squares to limit a region.
    </p>
    <p class="indent1">
     Seeking a sample of a square to resolve a contradictory intersection of two regions.
@@ -1204,10 +1204,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Contradictory intersections can be identified by reviewing the intersections of a newly created region with existing regions.
         </p>
         <p>
-        Use squares that appear to be in only one region to confirm regions.
+        Use squares that appear to be in only one region to limit regions.
         </p>
         <p class="indent1">
-        A square used to confirm a region may become overlapped by later processing, causing a region to be unconfirmed.
+        A square used to limit a region may become overlapped by later processing, causing that square tonot be useful in limiting the region.
         </p>
       <p class="indent1">
         If an external adjacent square turns out to be similar instead of dissimilar, form a region from the two.
@@ -1750,7 +1750,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 11/18/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 12/09/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

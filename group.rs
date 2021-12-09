@@ -34,8 +34,8 @@ pub struct SomeGroup {
     /// Rules formed by two squares.
     pub rules: RuleStore,
     /// Set to true when a state only in the group has all adjacent states checked    
-    pub confirmed: bool,
-    /// The state, in only one (this) group, used to confirm the group.
+    pub limited: bool,
+    /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
     /// Mask of non-x bits checked for expansion based on available rules capability to change bits.
     pub edge_expand: SomeMask,
@@ -65,7 +65,7 @@ impl SomeGroup {
             pn: pnx,
             pnc: false,
             rules: ruls,
-            confirmed: false,
+            limited: false,
             anchor: None,
             edge_expand: SomeMask::new_low(sta1.num_ints()),
             pair_needs: true,
@@ -110,10 +110,10 @@ impl SomeGroup {
 
         match &self.anchor {
             Some(sta1) => {
-                if self.confirmed {
-                    rc_str.push_str(&format!(", confirmed using {}", sta1));
+                if self.limited {
+                    rc_str.push_str(&format!(", limited using {}", sta1));
                 } else {
-                    rc_str.push_str(&format!(", confirming using {}", sta1));
+                    rc_str.push_str(&format!(", limiting using {}", sta1));
                 }
             }
             None => {}
@@ -194,7 +194,7 @@ impl SomeGroup {
     pub fn set_anchor_off(&mut self) {
 
         self.anchor = None;
-        self.confirmed = false;
+        self.limited = false;
     }
 
     /// Set the anchor state, representing a square that is only in this group,
@@ -203,7 +203,7 @@ impl SomeGroup {
     pub fn set_anchor(&mut self, astate: SomeState) {
 
         self.anchor = Some(astate.clone());
-        self.confirmed = true;
+        self.limited = true;
         let state2 = self.region.far_state(&astate);
         self.region = SomeRegion::new(&astate, &state2);
     }
