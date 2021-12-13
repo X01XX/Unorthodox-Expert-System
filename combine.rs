@@ -291,7 +291,7 @@
         let max_inx = sqrs_inbetween.len() - 1;
         for sqrz in &sqrs_inbetween {
             if inx < max_inx {
-                for inx2 in (inx + 1)..max_inx {
+                for inx2 in (inx + 1)..sqrs_inbetween.len() {
                     if can_combine(*sqrz, sqrs_inbetween[inx2]) == Truth::F {
                         return Truth::F;
                     }
