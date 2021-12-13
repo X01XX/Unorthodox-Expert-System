@@ -78,7 +78,7 @@ impl SquareStore {
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 
-    /// Return a list of square states no in a list of regions.
+    /// Return a list of square states not in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 

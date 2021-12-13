@@ -25,7 +25,8 @@ use crate::stepstore::StepStore;
 use crate::truth::Truth;
 use crate::randompick::RandomPick;
 use crate::actions::take_action;
-use crate::combine::can_combine;
+use crate::combine::{can_combine, can_combine_check_between};
+//use crate::compare::Compare;
 
 //use rayon::prelude::*;
 use std::fmt;
@@ -119,69 +120,10 @@ impl SomeAction {
         self.aggregate_changes.b01.num_ints()
     }
 
-    /// Return Truth enum for any two squares.
-    /// Check squares inbetween for compatibility.
+    /// Return Truth enum for the combination of any two squares,
+    /// and the squares inbetween them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
-
-        // Check the two squares
-        let cmbx = can_combine(sqrx, sqry);
-        if cmbx != Truth::T {
-            return cmbx;
-        }
-
-        // Get keys for all squares in the region formed by the
-        // two given squares.
-        let stas = self
-            .squares
-            .stas_in_reg(&SomeRegion::new(&sqrx.state, &sqry.state));
-
-        // Handle Pn::Unpredictable squares
-        if sqrx.results.pn == Pn::Unpredictable {
-            // Check each inbetween square
-            for stax in stas.iter() {
-                if *stax == sqrx.state || *stax == sqry.state {
-                    continue;
-                }
-
-                let sqrz = self.squares.find(stax).unwrap();
-                if sqrz.results.pn == Pn::Unpredictable {
-                } else {
-                    if sqrz.results.pnc {
-                        return Truth::F;
-                    }
-                }
-            }
-            return Truth::T;
-        }
-
-        // Get rules union
-        if let Some(rulsx) = sqrx.rules.union(&sqry.rules) {
-
-            // Check squares between for compatibility to the rules.
-            for stax in stas.iter() {
-                if *stax == sqrx.state || *stax == sqry.state {
-                    continue;
-                }
-
-                let sqrz = self.squares.find(stax).unwrap();
-
-                if sqrz.results.pn != sqrx.results.pn {
-                    if sqrz.results.pnc {
-                        return Truth::F;
-                    }
-                    if sqrz.results.pn > sqrx.results.pn {
-                        return Truth::F;
-                    }
-                }
-
-                if sqrz.rules.is_subset_of(&rulsx) == false {
-                    return Truth::F;
-                }
-            } // next stax
-            return Truth::T;
-        } else {
-            return Truth::F;
-        }
+        can_combine_check_between(sqrx, sqry, &self.squares)
     }
 
     /// Evaluate a sample taken to satisfy a need.

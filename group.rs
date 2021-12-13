@@ -224,4 +224,7 @@ impl Compare for SomeGroup {
     fn get_rules_ref(&self) -> &RuleStore {
         &self.rules
     }
+    fn get_region(&self) -> SomeRegion {
+        self.region.clone()
+    }
 }

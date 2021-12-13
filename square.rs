@@ -2,6 +2,7 @@
 
 use crate::pn::Pn;
 use crate::resultstore::{ResultStore, MAX_RESULTS};
+use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
@@ -174,6 +175,9 @@ impl Compare for SomeSquare {
     }
     fn get_rules_ref(&self) -> &RuleStore {
         &self.rules
+    }
+    fn get_region(&self) -> SomeRegion {
+        SomeRegion::new(&self.state, &self.state)
     }
 }
 
