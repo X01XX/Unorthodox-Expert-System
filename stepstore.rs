@@ -277,10 +277,9 @@ impl StepStore {
     } // end steps_bt_change_bit2
 
     // Return aggregate changes
-    pub fn _aggregate_changes(&self) -> SomeChange {
-        assert!(self.len() > 0);
+    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
 
-        let mut schg = SomeChange::new_low(self.avec[0].initial.state1.num_ints());
+        let mut schg = SomeChange::new_low(num_ints);
         for stpx in &self.avec {
             schg = schg.c_or(&stpx.rule.change());
         }

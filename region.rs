@@ -134,13 +134,13 @@ impl SomeRegion {
     }
     
     /// Return a Mask of zero bits.
-    pub fn zeros(&self) -> SomeMask {
+    pub fn zeros_mask(&self) -> SomeMask {
 
         self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of one bits.
-    pub fn ones (&self) -> SomeMask {
+    pub fn ones_mask (&self) -> SomeMask {
 
         self.state1.s_and(&self.state2).to_mask()
     }

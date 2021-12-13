@@ -201,12 +201,14 @@ impl RuleStore {
             panic!("Unpredictable union not allowed");
         }
 
+        let regx = self.initial_region().union(&other.initial_region());
+
         let mut ars = Self::new();
 
         if self.len() == 1 {
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() {
+            if rulx.is_valid_union() && rulx.initial_region() == regx {
                 ars.push(rulx);
                 return Some(ars);
             } else {
@@ -225,7 +227,7 @@ impl RuleStore {
             let mut ordera = false;
 
             let mut rul0 = self.avec[0].union(&other.avec[0]);
-            if rul0.is_valid_union() {
+            if rul0.is_valid_union()  && rul0.initial_region() == regx {
             } else {
                 if let Some(rulz) = rul0.valid_subset() {
                     rul0 = rulz;
@@ -233,7 +235,7 @@ impl RuleStore {
             }
 
             let mut rul1 = self.avec[1].union(&other.avec[1]);
-            if rul0.is_valid_union() {
+            if rul0.is_valid_union()  && rul0.initial_region() == regx {
             } else {
                 if let Some(rulz) = rul1.valid_subset() {
                     rul1 = rulz;
@@ -246,7 +248,7 @@ impl RuleStore {
             let mut orderb = false;
 
             let mut rul2 = self.avec[0].union(&other.avec[1]);
-            if rul2.is_valid_union() {
+            if rul2.is_valid_union()  && rul2.initial_region() == regx {
             } else {
                 if let Some(rulz) = rul2.valid_subset() {
                     rul2 = rulz;
@@ -254,7 +256,7 @@ impl RuleStore {
             }
 
             let mut rul3 = self.avec[1].union(&other.avec[0]);
-            if rul3.is_valid_union() {
+            if rul3.is_valid_union()  && rul3.initial_region() == regx {
             } else {
                 if let Some(rulz) = rul3.valid_subset() {
                     rul3 = rulz;

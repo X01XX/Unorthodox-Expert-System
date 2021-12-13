@@ -332,11 +332,12 @@ impl SomeDomain {
         //println!("\nmake_plan3: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        let mut can_change = SomeChange::new_low(self.num_ints);
+//        let mut can_change = SomeChange::new_low(self.num_ints);
+        let can_change = steps_str.aggregate_changes(self.num_ints);
 
-        for stpx in steps_str.iter() {
-            can_change = can_change.c_or(&stpx.rule.change());
-        }
+//        for stpx in steps_str.iter() {
+//            can_change = can_change.c_or(&stpx.rule.change());
+//        }
 
         if required_change.is_subset_of(&can_change) {
         } else {

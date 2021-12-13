@@ -5,7 +5,7 @@
 mod tests {
 //    use crate::bits::SomeBits;
     use crate::domain::SomeDomain;
-//    use crate::change::SomeChange;
+    use crate::change::SomeChange;
     use crate::mask::SomeMask;
 //    use crate::maskstore::MaskStore;
 //    use crate::action::SomeAction;
@@ -538,10 +538,17 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
         dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
 
+        println!("dm0 {}", &dm0.actions[0]);
+        
         // Run get_needs to set group.pnc to true.
-        let nds1 = dm0.get_needs();
+        dm0.get_needs();
+
+        // Directly run limit_groups_needs.
+        let agg_chg = SomeChange { b01: SomeMask::_from_string(1, "m1111").unwrap(), b10: SomeMask::_from_string(1, "m1111").unwrap() };
+        let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
+        println!("needs are {}", nds1);
         assert!(nds1.len() == 2);
         assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap()));
         assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));

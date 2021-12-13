@@ -112,9 +112,9 @@ impl SomeChange {
 //    }
 
     /// Return a mask of all bit positions that are one in both masks.
-    pub fn _x_mask(&self) -> SomeMask {
-        self.b01.m_and(&self.b10)
-    }
+//    pub fn x_mask(&self) -> SomeMask {
+//        self.b01.m_and(&self.b10)
+//    }
 
     /// Return true if a SomeChange struct is a ones-subset of anoth.
     pub fn is_subset_of(&self, other: &SomeChange) -> bool {

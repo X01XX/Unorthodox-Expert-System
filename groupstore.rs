@@ -58,15 +58,15 @@ impl GroupStore {
             if grpx.region.is_superset_of_state(&sqrx.state) {
 
                 if grpx.square_is_ok(&sqrx) == false {
-                    if sqrx.get_pn() > grpx.pn {
+                    if sqrx.results.pn > grpx.pn {
                         println!(
                             "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.get_pn() , &grpx.region, grpx.pn
+                            dom, act, sqrx.state, sqrx.results.pn , &grpx.region, grpx.pn
                         );
-                    } else if sqrx.get_pn() < grpx.pn && sqrx.get_pnc() {
+                    } else if sqrx.results.pn < grpx.pn && sqrx.results.pnc {
                         println!(
                             "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.get_pn() , &grpx.region, grpx.pn
+                            dom, act, sqrx.state, sqrx.results.pn , &grpx.region, grpx.pn
                         );
                     } else {
                         println!(
@@ -137,28 +137,28 @@ impl GroupStore {
         rs
     }
 
-    /// Find and remove a given group, identified by region.
-    pub fn _remove_group(&mut self, reg: &SomeRegion) -> bool {
-
-        // Find a matching grop region
-        let mut fnd = false;
-        let mut inx = 0;
-
-        for grpx in &mut self.avec {
-            if grpx.region == *reg {
-                fnd = true;
-                break;
-            }
-            inx += 1;
-        }
-
-        // Remove the group
-        if fnd {
-            remove_unordered(&mut self.avec, inx);
-        }
-
-        fnd
-    }
+//    /// Find and remove a given group, identified by region.
+//    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
+//
+//        // Find a matching grop region
+//        let mut fnd = false;
+//        let mut inx = 0;
+//
+//        for grpx in &mut self.avec {
+//            if grpx.region == *reg {
+//                fnd = true;
+//                break;
+//            }
+//            inx += 1;
+//        }
+//
+//        // Remove the group
+//        if fnd {
+//            remove_unordered(&mut self.avec, inx);
+//        }
+//
+//        fnd
+//    }
 
     /// Find and remove any subset groups.
     fn remove_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {

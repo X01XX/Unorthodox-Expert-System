@@ -10,6 +10,8 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+//use crate::truth::Truth;
+use crate::compare::Compare;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -134,7 +136,7 @@ impl SomeGroup {
 
         //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
         match self.pn {
-            Pn::One => match sqrx.get_pn() {
+            Pn::One => match sqrx.results.pn {
                 Pn::One => {
                     return sqrx.rules.is_subset_of(&self.rules);
                 }
@@ -142,7 +144,7 @@ impl SomeGroup {
                     return false;
                 }
             },
-            Pn::Two => match sqrx.get_pn() {
+            Pn::Two => match sqrx.results.pn {
                 Pn::One => {
                     if sqrx.len_results() > 1 {
                         return false;
@@ -156,12 +158,12 @@ impl SomeGroup {
                     return false;
                 }
             },
-            Pn::Unpredictable => match sqrx.get_pn() {
+            Pn::Unpredictable => match sqrx.results.pn {
                 Pn::Unpredictable => {
                     return true;
                 }
                 _ => {
-                    if sqrx.get_pnc() {
+                    if sqrx.results.pnc {
                         return false;
                     } else {
                         return true;
@@ -206,5 +208,20 @@ impl SomeGroup {
         self.limited = true;
         let state2 = self.region.far_state(&astate);
         self.region = SomeRegion::new(&astate, &state2);
+    }
+
+
+
+} // end impl SomeGroup
+
+impl Compare for SomeGroup {
+    fn get_pn_ref(&self) -> &Pn {
+        &self.pn
+    }
+    fn get_pnc(&self) -> bool {
+        self.pnc
+    }
+    fn get_rules_ref(&self) -> &RuleStore {
+        &self.rules
     }
 }
