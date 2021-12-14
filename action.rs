@@ -2116,6 +2116,68 @@ impl SomeAction {
     /// by the current rules, given by a mask.
     pub fn possible_regions_for_group(&self, grpx: &SomeGroup, chg_mask: &SomeMask) -> RegionStore {
         //println!("possible_regions_for_group {}", &grpx.region);
+        let mut regs = RegionStore::new();
+
+        // Get masks for closest dissimilar squares.
+        let mut close_dis = MaskStore::new(Vec::<SomeMask>::new());
+        for (key, sqry) in &self.squares.ahash {
+
+            let diff_mask = grpx.region.diff_mask_state(&key);
+
+            // Skip squares in the group
+            if diff_mask.is_low() {
+                continue;
+            }
+
+            let trh = can_combine(grpx, sqry);
+            if trh ==  Truth::F {
+                close_dis.push_nosups(diff_mask);
+            }
+            
+        }
+
+        // Get far similar squares.
+        // In the case of problems with inbetween squares, the far similar 
+        // square becomes dissimilar.
+        let mut try_again = true;
+        let mut far_sim = MaskStore::new(Vec::<SomeMask>::new());
+        while try_again {
+            try_again = false;
+
+            far_sim = MaskStore::new(Vec::<SomeMask>::new());
+
+            for (key, sqry) in &self.squares.ahash {
+
+                let diff_mask = grpx.region.diff_mask_state(&key);
+
+                // Skip squares in the group
+                if diff_mask.is_low() {
+                    continue;
+                }
+
+                // Skip if any close dissimilar square is between
+                if close_dis.any_subset(&diff_mask) {
+                    continue;
+                }
+
+                let trh = can_combine_check_between(grpx, sqry, &self.squares);
+                if trh ==  Truth::F {
+                    //println!("for {} and {} dif msk {} truth F", &grpx.region, &sqry.state, diff_mask); 
+                    close_dis.push_nosups(diff_mask);
+                    try_again = true;
+                } else {
+                    far_sim.push_nosubs(diff_mask);
+                }
+            } // next key, sqry
+        } // end while
+
+        // Return expanded regions, if any.
+        if far_sim.len() > 0 {
+            for mskx in far_sim.iter() {
+                regs.push(grpx.region.set_to_x(mskx));
+            }
+            return regs;
+        }
 
         // Init return RegionStore
         let mut dis_or = SomeMask::new_low(chg_mask.num_ints());
@@ -2141,7 +2203,6 @@ impl SomeAction {
         //println!("for group {} close dis masks are {} chg_bit {} dis_or {}", &grpx.region, &dis_or, &chg_bits, &dis_or);
 
         let chg_bits_vec = chg_bits.split();
-        let mut regs = RegionStore::new();
 
         for mskx in chg_bits_vec.iter() {
             //println!("group {} close not dis mask {} so try {}", &grpx.region, mskx, grpx.region.set_to_x(mskx));

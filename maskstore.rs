@@ -1,7 +1,7 @@
 //! The MaskStore struct, a vector of SomeMask structs.
 
 use crate::mask::SomeMask;
-//use crate::removeunordered::remove_unordered;
+use crate::removeunordered::remove_unordered;
 
 use std::fmt;
 use std::ops::Index;
@@ -36,15 +36,15 @@ impl MaskStore {
         self.avec.iter()
     }
 
-//    /// Return true if any masks in the store are subset of a given mask.
-//    pub fn any_subset(&self, mskx: &SomeMask) -> bool {
-//        for stax in &self.avec {
-//            if stax.is_subset_of(mskx) {
-//                return true;
-//            }
-//        }
-//        false
-//    }
+    /// Return true if any masks in the store are subset of a given mask.
+    pub fn any_subset(&self, mskx: &SomeMask) -> bool {
+        for stax in &self.avec {
+            if stax.is_subset_of(mskx) {
+                return true;
+            }
+        }
+        false
+    }
 
     /// Return true if all masks in the store are one bit.
 //    pub fn all_one_bit(&self) -> bool {
@@ -58,66 +58,66 @@ impl MaskStore {
 //    }
 
     /// Return true if any masks in the store are a superset of a given mask.
-//    pub fn any_superset(&self, mskx: &SomeMask) -> bool {
-//        for stax in &self.avec {
-//            if mskx.is_subset_of(stax) {
-//                return true;
-//            }
-//        }
-//        false
-//    }
+    pub fn any_superset(&self, mskx: &SomeMask) -> bool {
+        for stax in &self.avec {
+            if mskx.is_subset_of(stax) {
+                return true;
+            }
+        }
+        false
+    }
 
     /// Push a given mask, deleting supersets.
-//    pub fn push_nosups(&mut self, mskx: SomeMask) {
-//
-//        if self._any_subset(&mskx) {
-//            return;
-//        }
-//
-//        // Get vector of indexes of supersets to remove.
-//        let mut inxs = Vec::<usize>::new();
-//        let mut inx = 0;
-//        for stax in &self.avec {
-//            if mskx.is_superset_of(stax) {
-//                inxs.push(inx);
-//            }
-//            inx += 1;
-//        }
-//
-//        // Remove supersets.
-//        for inx in inxs.iter().rev() {
-//            remove_unordered(&mut self.avec, *inx);
-//        }
-//
-//        // Add new mask
-//        self.avec.push(mskx);
-//    }
+    pub fn push_nosups(&mut self, mskx: SomeMask) {
 
-//    /// Push a given mask, deleting subsets.
-//    pub fn push_nosubs(&mut self, mskx: SomeMask) {
-//
-//        if self._any_superset(&mskx) {
-//            return;
-//        }
-//
-//        // Get vector of indexes of subsets to remove.
-//        let mut inxs = Vec::<usize>::new();
-//        let mut inx = 0;
-//        for stax in &self.avec {
-//            if stax.is_subset_of(&mskx) {
-//                inxs.push(inx);
-//            }
-//            inx += 1;
-//        }
-//
-//        // Remove subsets.
-//        for inx in inxs.iter().rev() {
-//            remove_unordered(&mut self.avec, *inx);
-//        }
-//
-//        // Add new mask
-//        self.avec.push(mskx);
-//    }
+        if self.any_subset(&mskx) {
+            return;
+        }
+
+        // Get vector of indexes of supersets to remove.
+        let mut inxs = Vec::<usize>::new();
+        let mut inx = 0;
+        for stax in &self.avec {
+            if mskx.is_superset_of(stax) {
+                inxs.push(inx);
+            }
+            inx += 1;
+        }
+
+        // Remove supersets.
+        for inx in inxs.iter().rev() {
+            remove_unordered(&mut self.avec, *inx);
+        }
+
+        // Add new mask
+        self.avec.push(mskx);
+    }
+
+    /// Push a given mask, deleting subsets.
+    pub fn push_nosubs(&mut self, mskx: SomeMask) {
+
+        if self.any_superset(&mskx) {
+            return;
+        }
+
+        // Get vector of indexes of subsets to remove.
+        let mut inxs = Vec::<usize>::new();
+        let mut inx = 0;
+        for stax in &self.avec {
+            if stax.is_subset_of(&mskx) {
+                inxs.push(inx);
+            }
+            inx += 1;
+        }
+
+        // Remove subsets.
+        for inx in inxs.iter().rev() {
+            remove_unordered(&mut self.avec, *inx);
+        }
+
+        // Add new mask
+        self.avec.push(mskx);
+    }
 
     /// Return the expected length of a string representing the MaskStore.
     pub fn formatted_string_length(&self) -> usize {
