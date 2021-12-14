@@ -4,6 +4,7 @@ use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
+use crate::squarestore::SquareStore;
 use crate::state::SomeState;
 //use crate::pn::Pn;
 use crate::removeunordered::remove_unordered;
@@ -47,7 +48,7 @@ impl GroupStore {
 
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
-    pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
+    pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize, squares: &SquareStore) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
         let mut rmvec = Vec::<usize>::new();
@@ -57,7 +58,7 @@ impl GroupStore {
 
             if grpx.region.is_superset_of_state(&sqrx.state) {
 
-                if grpx.square_is_ok(&sqrx) == false {
+                if grpx.check_square(&sqrx, squares) == false {
                     if sqrx.results.pn > grpx.pn {
                         println!(
                             "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
@@ -222,7 +223,7 @@ impl GroupStore {
 
             if grpx.region.is_superset_of_state(&init) {
 
-                if !grpx.sample_is_ok(&init, &rslt) {
+                if !grpx.check_sample(&init, &rslt) {
                     rmvec.push(inx);
                 }
             }

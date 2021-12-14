@@ -119,7 +119,7 @@ impl fmt::Display for SomeNeed {
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
-            SomeNeed::SetGroupPnc { group_region: greg } => format!("N(Set group pnc {})", greg),
+//            SomeNeed::SetGroupPnc { group_region: greg } => format!("N(Set group pnc {})", greg),
             SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
             SomeNeed::SetGroupLimited {
                 group_region: greg,
@@ -204,8 +204,8 @@ pub enum SomeNeed {
     },
     /// Housekeeping, add a group.
     AddGroup { group_region: SomeRegion },
-    /// Housekeeping, Set group pnc.
-    SetGroupPnc { group_region: SomeRegion },
+//    /// Housekeeping, Set group pnc.
+//    SetGroupPnc { group_region: SomeRegion },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
@@ -372,16 +372,16 @@ impl PartialEq for SomeNeed {
                 }
                 _ => {}
             },
-            SomeNeed::SetGroupPnc { group_region: greg } => match other {
-                SomeNeed::SetGroupPnc {
-                    group_region: gregx,
-                } => {
-                    if *greg == *gregx {
-                        return true;
-                    }
-                }
-                _ => {}
-            },
+//            SomeNeed::SetGroupPnc { group_region: greg } => match other {
+//                SomeNeed::SetGroupPnc {
+//                    group_region: gregx,
+//                } => {
+//                    if *greg == *gregx {
+//                        return true;
+//                    }
+//                }
+//                _ => {}
+//            },
             SomeNeed::RemoveGroupAnchor { group_region: greg } => match other {
                 SomeNeed::RemoveGroupAnchor {
                     group_region: gregx,
@@ -519,7 +519,7 @@ impl SomeNeed {
                 in_group: _,
             } => format!("SeekEdge"),
             SomeNeed::AddGroup { group_region: _, } => format!("AddGroup"),
-            SomeNeed::SetGroupPnc { group_region: _, } => format!("SetGroupPnc"),
+//            SomeNeed::SetGroupPnc { group_region: _, } => format!("SetGroupPnc"),
             SomeNeed::RemoveGroupAnchor { group_region: _, } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupLimited {
                 group_region: _,

@@ -41,7 +41,7 @@
                 match arg2.get_pn_ref() {
                     Pn::One => {
                         // arg1.get_pn_ref() == One, arg2.get_pn_ref() == One
-                        // If the rules can be combined, the squares can be combined.
+                        // If the rules can be combined, the structs can be combined.
                         if let Some(rulx) = arg1.get_rules_ref().union(&arg2.get_rules_ref()) {
                             if arg1.get_rules_ref().initial_region().union(&arg2.get_rules_ref().initial_region()) == rulx.initial_region() {
                                 return Truth::T;
@@ -75,12 +75,12 @@
 
                     Pn::Unpredictable => {
                         // arg1.get_pn_ref() == One, arg2.get_pn_ref() == Unpredictable
-                        // If the pn==One square is pnc, the squares cannot be combined.
+                        // If the pn==One struct is pnc, the structs cannot be combined.
                         if arg1.get_pnc() {
                             return Truth::F;
                         }
 
-                        // The pn==One square needs more samples.
+                        // The pn==One struct needs more samples.
                         return Truth::M;
                     }
                 } // end match arg2.get_pn_ref()
@@ -89,7 +89,7 @@
                 match arg2.get_pn_ref() {
                     Pn::One => {
                         // arg1.get_pn_ref() == Two, arg2.get_pn_ref() == One
-                        // If the pn==One square is has GT 1 sample, the squares cannot be combined.
+                        // If the pn==One square is has GT 1 sample, the structs cannot be combined.
                         if arg2.get_pnc() {
                             return Truth::F;
                         }
@@ -113,7 +113,7 @@
                     Pn::Two => {
                         // arg1.get_pn_ref() == Two, arg2.get_pn_ref() == Two
                         // The pn values match, if the rules can be combined,
-                        // the squares can be combined.
+                        // the structs can be combined.
                         //println!("union both {} {}", self.state.formatted_string(), other.state.formatted_string());
                         if let Some(rulx) = arg1.get_rules_ref().union(&arg2.get_rules_ref()) {
                             if arg1.get_rules_ref().initial_region().union(&arg2.get_rules_ref().initial_region()) == rulx.initial_region() {
@@ -143,7 +143,7 @@
                     Pn::Unpredictable => {
                         // arg1.get_pn_ref() == Unpredictable, arg2.get_pn_ref() == Unpredictable
                         // The pn values match, no rules exist to be checked,
-                        // the squares can be combined.
+                        // the structs can be combined.
                         return Truth::T;
                     }
                     _ => {
@@ -159,13 +159,13 @@
         } // end match arg1.get_pn_ref()
     } // end can_combine
 
-    /// Return Truth enum for the combination of any two squares,
-    /// and the squares inbetween them.
+    /// Return Truth enum for the combination of any two structs implementing the Compare trait,
+    /// and the squares between them.
     pub fn can_combine_check_between<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
 
         assert!(arg1.get_region() != arg2.get_region());
 
-        // Check the two squares
+        // Check the two structs
         let cmbx = can_combine(arg1, arg2);
 
         if cmbx == Truth::F {
@@ -179,8 +179,8 @@
         can_combine_check_between_m(arg1, arg2, squares)
     }
 
-    /// Return Truth enum for the combination of any two squares,
-    /// and the squares inbetween them, when the two squares can be combined
+    /// Return Truth enum for the combination of any two structs implementing the Compare trait,
+    /// and the squares between them, when the two structs can be combined
     /// alone.
     fn can_combine_check_between_t<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
 
@@ -188,13 +188,13 @@
         let reg2 = arg2.get_region();
 
         // Get keys for all squares in the region formed by the
-        // two given squares.
+        // two given structs.
         let stas = squares
             .stas_in_reg(&arg1.get_region().union(&arg2.get_region()));
 
         // Handle Pn::Unpredictable squares
         if *arg1.get_pn_ref() == Pn::Unpredictable {
-            // Check each inbetween square
+            // Check each between square
             for stax in stas.iter() {
                 if reg1.is_superset_of_state(stax) || reg2.is_superset_of_state(stax) {
                     continue;
@@ -239,8 +239,8 @@
 
     } // end can_combine_check_between_t
 
-    /// Return Truth enum for the combination of any two squares,
-    /// and the squares inbetween them, when the two squares cannot
+    /// Return Truth enum for the combination of any two structs implementing the Compare trait,
+    /// and the squares between them, when the two squares cannot
     /// be combined alone due to one needing more samples.
     /// No more samples should be sought, if there is a square between
     /// that will cause a problem.
@@ -250,7 +250,7 @@
         let reg2 = arg2.get_region();
 
         // Get keys for all squares in the region formed by the
-        // two given squares.
+        // two given structs.
         let stas = squares
             .stas_in_reg(&reg1.union(&reg2));
 
@@ -271,7 +271,7 @@
             return Truth::M;
         }
 
-        // Try squares combining with each defining square.
+        // Try squares combining with each defining struct.
         for sqrz in &sqrs_inbetween {
 
             if can_combine(*sqrz, arg1) == Truth::F {
@@ -286,7 +286,7 @@
             return Truth::M;
         }
 
-        // Try combining each pair of inbetween squares.
+        // Try combining each pair of between squares.
         let mut inx = 0;
         let max_inx = sqrs_inbetween.len() - 1;
         for sqrz in &sqrs_inbetween {

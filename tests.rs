@@ -380,9 +380,9 @@ mod tests {
         let nds4 = dm0.actions[0].additional_group_state_samples();
         //println!("needs {}", nds4);
 
-        // Check for Need SetGroupPnc
-        assert!(nds4.len() == 1);
-        assert!(nds4._contains_need_type("SetGroupPnc"));
+        // Check for no more needs.
+        assert!(nds4.len() == 0);
+
         Ok(())
     }
 
@@ -539,9 +539,6 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
 
         println!("dm0 {}", &dm0.actions[0]);
-        
-        // Run get_needs to set group.pnc to true.
-        dm0.get_needs();
 
         // Directly run limit_groups_needs.
         let agg_chg = SomeChange { b01: SomeMask::_from_string(1, "m1111").unwrap(), b10: SomeMask::_from_string(1, "m1111").unwrap() };

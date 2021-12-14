@@ -9,6 +9,7 @@ use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
+use crate::squarestore::SquareStore;
 use crate::state::SomeState;
 //use crate::truth::Truth;
 use crate::compare::Compare;
@@ -50,7 +51,7 @@ pub struct SomeGroup {
 impl SomeGroup {
     /// Return a new group, using two states, representing two squares, and
     /// their combined rules.  The RuleStore will be empty for Pn::Unpredictable squares.
-    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore) -> Self {
+    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore, pnc: bool) -> Self {
         //        println!(
         //            "adding group {}",
         //            SomeRegion::new(&sta1, &sta2)
@@ -65,7 +66,7 @@ impl SomeGroup {
         Self {
             region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
             pn: pnx,
-            pnc: false,
+            pnc: pnc,
             rules: ruls,
             limited: false,
             anchor: None,
@@ -132,7 +133,25 @@ impl SomeGroup {
     }
 
     /// Return true if a square is compatible with a group.
-    pub fn square_is_ok(&self, sqrx: &SomeSquare) -> bool {
+    /// Set group pnc if needed, and possible.
+    pub fn check_square(&mut self, sqrx: &SomeSquare, squares: &SquareStore) -> bool {
+
+        // Check pnc, set if able.
+        if self.pnc == false {
+            if sqrx.results.pnc {
+                if sqrx.state == self.region.state1 {
+                    let sqry = squares.find(&self.region.state2).unwrap();
+                    if sqry.results.pnc {
+                        self.set_pnc();
+                    }
+                } else if sqrx.state == self.region.state2 {
+                    let sqry = squares.find(&self.region.state1).unwrap();
+                    if sqry.results.pnc {
+                        self.set_pnc();
+                    }
+                }
+            }
+        }
 
         //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
         match self.pn {
@@ -174,7 +193,7 @@ impl SomeGroup {
     }
 
     /// Return true if a sample is compatible with a group.
-    pub fn sample_is_ok(&self, init: &SomeState, rslt: &SomeState) -> bool {
+    pub fn check_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
 
         let tmp_rul = SomeRule::new(&init, &rslt);
 

@@ -175,7 +175,7 @@ impl SomeAction {
                         if sqrx.results.pn == Pn::Unpredictable {
 
                             self.groups.push(
-                                SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new()),
+                                SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new(), sqrx.results.pnc && sqrx.results.pnc),
                                 dom,
                                 self.num,
                             );
@@ -183,7 +183,7 @@ impl SomeAction {
                             if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
 
                                 self.groups.push(
-                                    SomeGroup::new(&sqrx.state, &sqry.state, rulsxy),
+                                    SomeGroup::new(&sqrx.state, &sqry.state, rulsxy, sqrx.results.pnc && sqry.results.pnc),
                                     dom,
                                     self.num,
                                 );
@@ -326,7 +326,7 @@ impl SomeAction {
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
-        let regs_invalid: RegionStore = self.groups.check_square(&sqrx, dom, self.num);
+        let regs_invalid: RegionStore = self.groups.check_square(&sqrx, dom, self.num, &self.squares);
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
@@ -412,7 +412,7 @@ impl SomeAction {
         if rsx.len() == 0 {
             // Make a single-square group
             self.groups.push(
-                SomeGroup::new(&sqrx.state, &sqrx.state, sqrx.rules.clone()),
+                SomeGroup::new(&sqrx.state, &sqrx.state, sqrx.rules.clone(), sqrx.results.pnc),
                 dom,
                 self.num,
             );
@@ -424,7 +424,7 @@ impl SomeAction {
 
             if sqrx.results.pn == Pn::Unpredictable {
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &regx.state2, RuleStore::new()),
+                    SomeGroup::new(&sqrx.state, &regx.state2, RuleStore::new(), true),
                     dom,
                     self.num,
                 );
@@ -434,7 +434,7 @@ impl SomeAction {
                 //println!("Squares with states {}, {} produce ruls {}", &sqrx.state, &sqry.state, ruls);
 
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &sqry.state, ruls),
+                    SomeGroup::new(&sqrx.state, &sqry.state, ruls, sqrx.results.pnc && sqry.results.pnc),
                     dom,
                     self.num,
                 );
@@ -609,7 +609,7 @@ impl SomeAction {
 
                         if sqrx.results.pn == Pn::Unpredictable {
                             self.groups.push(
-                                SomeGroup::new(&greg.state1, &greg.state2, RuleStore::new()),
+                                SomeGroup::new(&greg.state1, &greg.state2, RuleStore::new(), true),
                                 dom,
                                 self.num,
                             );
@@ -619,6 +619,7 @@ impl SomeAction {
                                     &greg.state1,
                                     &greg.state2,
                                     sqrx.rules.union(&sqry.rules).unwrap(),
+                                    sqrx.results.pnc && sqry.results.pnc,
                                 ),
                                 dom,
                                 self.num,
@@ -634,14 +635,19 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-                    SomeNeed::SetGroupPnc {
-                        group_region: greg,
-                    } => {
-                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                            try_again = true;
-                            grpx.set_pnc();
-                        }
-                    }
+//                    SomeNeed::SetGroupPnc {
+//                        group_region: greg,
+//                    } => {
+//                        if let Some(grpx) = self.groups.find_mut(&greg) {
+//                            try_again = true;
+//                            if grpx.pnc == false {
+//                                println!("Group pnc set not needed!");
+//                            } else {
+//                                println!("Group pnc set needed!");
+//                                grpx.set_pnc();
+//                            }
+//                        }
+//                    }
                     SomeNeed::RemoveGroupAnchor {
                         group_region: greg,
                     } => {
@@ -690,9 +696,9 @@ impl SomeAction {
                             group_region: _,
                             cstate: _,
                         } => { inxs.push(inx); }
-                        SomeNeed::SetGroupPnc {
-                            group_region: _,
-                        } => { inxs.push(inx); }
+//                        SomeNeed::SetGroupPnc {
+//                            group_region: _,
+//                        } => { inxs.push(inx); }
                         SomeNeed::RemoveGroupAnchor {
                             group_region: _,
                         } => { inxs.push(inx); }
@@ -1056,11 +1062,11 @@ impl SomeAction {
                 });
             }
 
-            if sqrx.results.pnc && sqry.results.pnc {
-                ret_nds.push(SomeNeed::SetGroupPnc {
-                    group_region: grpx.region.clone(),
-                });
-            }
+//            if sqrx.results.pnc && sqry.results.pnc {
+//                ret_nds.push(SomeNeed::SetGroupPnc {
+//                    group_region: grpx.region.clone(),
+//                });
+//            }
 
         } // next grpx
 
