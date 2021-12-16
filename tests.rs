@@ -183,9 +183,64 @@ mod tests {
         Ok(())
     }
 
-    // Test the expansion of a group with similar external squares.
+    // Test the expansion of a group with dissimilar external square.
     #[test]
-    fn possible_regions_for_group_with_sim_sqrs() -> Result<(), String> {
+    fn possible_regions_for_group_with_dis_sqrs() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
+        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
+        let reg_xx0x = dm0.region_from_string("rxx0x").unwrap();
+
+        let sq2 = dm0.state_from_string("s10").unwrap();
+
+        let sq5 = dm0.state_from_string("s101").unwrap();
+
+        let sq9 = dm0.state_from_string("s1001").unwrap();
+
+        let sqc = dm0.state_from_string("s1100").unwrap();
+
+        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+
+        // Form group r11xx
+        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
+        dm0.eval_sample_arbitrary(0, &sq9, &sq9);
+
+        // Add square 2.
+        dm0.eval_sample_arbitrary(0, &sq2, &sq5);
+
+        println!("action {}", &dm0.actions[0]);
+        assert!(dm0.actions[0].groups.len() == 2);
+
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1x0x) {
+            let mut regs_found = RegionStore::with_capacity(6);
+            let mut cnt = 0;
+            let limit = 20;
+            while regs_found.len() < 2 {
+                cnt += 1;
+                if cnt > limit {
+                    return Err(format!("failed to find 6 options in {} tries", limit));
+                }
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
+                println!("regs {}", &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp.contains(&reg_1xxx) || regs_exp.contains(&reg_xx0x));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+        } else {
+            return Err(format!("Group 1X0X not found?"));
+        }
+
+        Ok(())
+    }
+
+    // Test the expansion of a group with similar external square.
+    #[test]
+    fn possible_regions_for_group_with_sim_sqr() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
 
