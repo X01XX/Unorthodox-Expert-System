@@ -24,7 +24,6 @@
 //! The DomainStore struct, a vector of SomeDomain structs.
 
 use crate::domain::SomeDomain;
-use crate::inxplan::InxPlan;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -56,6 +55,18 @@ impl fmt::Display for DomainStore {
 
         write!(f, "{}", rc_str)
     }
+}
+
+// An InxPlan struct, containing an index to a SomeNeed vector, and a SomePlan struct.
+//
+// A Vec<T> is needed as a collector for parallel processing of needs to find plans,
+// but a tuple, or array, does not qualify as a "T".
+#[derive(Debug)]
+pub struct InxPlan {
+    /// Index to a need in a NeedStore.
+    pub inx: usize,
+    /// Plan to satisfy need (may be empty if the current state satisfies the need), or None.
+    pub pln: Option<SomePlan>,
 }
 
 #[readonly::make]
