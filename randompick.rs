@@ -76,3 +76,26 @@ impl RandomPick {
         Some(tmp)
     }
 } // End RandomPick
+
+/// Get a random choice of a number of unique numbers (num_results) to a
+/// given number of positions, 0, 1 .. -> the_len (exclusive).
+/// random 2 of 5 -> [0, 3]
+    pub fn random_x_of_n(num_results: usize, the_len: usize) -> Vec<usize> {
+
+    if num_results < 1 || num_results >= the_len {
+        panic!(
+            "random_x_of_n: Number results {} is not right for length {}",
+            &num_results, &the_len
+        );
+    }
+
+    let mut yvec = Vec::<usize>::with_capacity(num_results);
+
+    let mut rp1 = RandomPick::new(the_len);
+
+    for _ in 0..num_results {
+        yvec.push(rp1.pick().unwrap());
+    }
+
+    yvec
+} // end random_x_of_n

@@ -12,6 +12,7 @@
 
 use crate::bits::SomeBits;
 use crate::state::SomeState;
+use crate::randompick::random_x_of_n;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -162,6 +163,22 @@ impl SomeMask {
 
         Ok(SomeMask::new(SomeBits::from_string(num_ints, &str[1..]).unwrap()))
     } // end from_string
+
+    /// Given a mask of more than one bit, return a mask that is a random selection of
+    /// roughly half the bits.
+    pub fn half_mask(&self) -> Self {
+
+        let one_bits: Vec<SomeBits> = self.bts.split();
+
+        let indicies: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
+
+        let mut or_bts = SomeBits::new(self.num_ints());
+
+        for inx in indicies.iter() {
+            or_bts = or_bts.b_or(&one_bits[*inx]);
+        }
+        SomeMask::new(or_bts)
+    }
 
 } // end SomeMask
 

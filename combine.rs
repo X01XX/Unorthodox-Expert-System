@@ -240,9 +240,8 @@
     } // end can_combine_check_between_t
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
-    /// and the squares between them, when the two squares cannot
-    /// be combined alone due to one needing more samples.
-    /// No more samples should be sought, if there is a square between
+    /// and the squares between them, when the two squares can be combined (pass can_combine) but one needs more samples.
+    /// No more samples should be sought, if there is a square, or a square pair, between
     /// that will cause a problem.
     fn can_combine_check_between_m<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
 

@@ -19,6 +19,9 @@ mod tests {
 //    use crate::step::SomeStep;
 //    use crate::stepstore::StepStore;
     use crate::need::SomeNeed;
+    use std::cmp::Ordering;
+    use crate::truth::Truth;
+    use crate::pn::Pn;
 
     #[test]
     /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.
@@ -180,56 +183,192 @@ mod tests {
         Ok(())
     }
 
-    // Test the expansion of group 1110X to 11XXX, where the mask 110 allows
-    // two edges to go to X.
-    // The dissimilar group 11010 blocks the expansion of both bits at the same time,
-    // it is in the region  11XXX. 
-    // Each individual edge can expand separately, to 111XX and 11X0X.
-    // 1110X - Group
-    // 111XX - result 1
-    // 11X0X - result 2
+    // Test the expansion of a group with similar external squares.
     #[test]
-    fn possible_regions_for_group_by_elimination() -> Result<(), String> {
+    fn possible_regions_for_group_with_sim_sqrs() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
         dm0.add_action();
 
-        let reg_1110x = dm0.region_from_string("r1110x").unwrap();
+        let reg_11xx = dm0.region_from_string("r11xx").unwrap();
+        let reg_x1x1 = dm0.region_from_string("rx1x1").unwrap();
+        let reg_x10x = dm0.region_from_string("rx10x").unwrap();
+        let reg_x1xx = dm0.region_from_string("rx1xx").unwrap();
+        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
+
+        let sq5 = dm0.state_from_string("s101").unwrap();
+
+        let sqc = dm0.state_from_string("s1100").unwrap();
+
+        let sqf = dm0.state_from_string("s1111").unwrap();
+
+        let chg_mask7 = SomeMask::_from_string(1, "m111").unwrap();
         
-        let s0 = dm0.state_from_string("s0").unwrap();
+        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
 
-        let s1a = dm0.state_from_string("s11010").unwrap();
+        // Form group r11xx
+        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
+        dm0.eval_sample_arbitrary(0, &sqf, &sqf);
 
-        let s1c = dm0.state_from_string("s11100").unwrap();
+        // Add square 5, forming groups rx1x1, x10x.
+        dm0.eval_sample_arbitrary(0, &sq5, &sq5);
 
-        let s1d = dm0.state_from_string("s11101").unwrap();
+        assert!(dm0.actions[0].groups.len() == 3);
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_11xx) { true } else { false });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) { true } else { false });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x10x) { true } else { false });
 
-        dm0.eval_sample_arbitrary(0, &s1d, &s0);
-        dm0.eval_sample_arbitrary(0, &s1c, &s0);  // Group r1110x
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_11xx) {
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
+            println!("for {} seek regs {}", &reg_11xx, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp.contains(&reg_x1xx));
 
-        dm0.eval_sample_arbitrary(0, &s1a, &s1a.s_not());  // Group r11010
-
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1110x) {
-            println!("Region r1110x found");
-
-            let regs_new = dm0.actions[0].possible_regions_for_group(&grpx, &SomeMask::_from_string(1, "m110").unwrap());
-
-            if regs_new.len() != 2 {
-                return Err(format!("possible regions for {} given {} is ? {}", &grpx.region, &s1a, &regs_new.formatted_string()));
-            }
-
-            if regs_new.contains(&dm0.region_from_string("r111XX").unwrap()) {
-            } else {
-                return Err(format!("Region r111XX not found in {} ??", &regs_new.formatted_string()));
-            }
-
-            if regs_new.contains(&dm0.region_from_string("r11X0X").unwrap()) {
-            } else {
-                return Err(format!("Region r1XX0X not found in {} ??", &regs_new.formatted_string()));
-            }
-        } else {
-            return Err(format!("Region r1110x not created? {}", dm0.actions[0]));
+            // Test non-sim-expansion under change mask, reverts to no-sim, no-dis, under change mask.
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
+            println!("for {} seek regs {}", &reg_11xx, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp.contains(&reg_1xxx));
         }
+
+        Ok(())
+    }
+
+    // Test the expansion of a group with no external squares.
+    #[test]
+    fn possible_regions_for_group_no_dis_or_sim_sqrs() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        let reg_110x = dm0.region_from_string("r110x").unwrap();
         
+        let sq0 = dm0.state_from_string("s0").unwrap();
+
+        let sqc = dm0.state_from_string("s1100").unwrap();
+
+        let sqd = dm0.state_from_string("s1101").unwrap();
+
+        dm0.eval_sample_arbitrary(0, &sqd, &sq0);
+
+        let reg_sqd = SomeRegion::new(&sqd, &sqd);
+
+        let chg_mask5 = SomeMask::_from_string(1, "m101").unwrap();
+        let chg_mask6 = SomeMask::_from_string(1, "m110").unwrap();
+        let chg_mask7 = SomeMask::_from_string(1, "m111").unwrap();
+        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+
+        // Test logic for a group, with no external similar, or disimilar, squares.
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {
+            // Test with 3-bit change mask
+            let mut regs_found = RegionStore::with_capacity(6);
+            let mut cnt = 0;
+            let limit = 60;
+            while regs_found.len() < 6 {
+                cnt += 1;
+                if cnt > limit {
+                    return Err(format!("failed to find 6 options in {} tries", limit));
+                }
+                // Repeated runs should elicit XX11, X0X1, X01X, 1XX1, 1X1X, 10XX.
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
+                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
+                assert!(regs_exp[0].x_mask().m_and(&chg_maskf.m_not()).is_low());
+                assert!(regs_exp[0].is_superset_of(&reg_sqd));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+            println!("regs found {}", &regs_found);
+
+            // Test with 3-bit change mask.
+            let mut regs_found = RegionStore::with_capacity(3);
+            let mut cnt = 0;
+            let limit = 30;
+            while regs_found.len() < 3 {
+                cnt += 1;
+                if cnt > limit {
+                    return Err(format!("failed to find 3 options in {} tries", limit));
+                }
+                // Repeated runs should elicit 1X01, 11X1, 110X. (int(3 bits/2) = 1 X bit)
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
+                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp[0].x_mask().num_one_bits() == 1);
+                assert!(regs_exp[0].x_mask().m_and(&chg_mask7.m_not()).is_low());
+                assert!(regs_exp[0].is_superset_of(&reg_sqd));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+            println!("regs found {}", &regs_found);
+
+            // Test with 2-bit change mask.
+            let mut regs_found = RegionStore::with_capacity(2);
+            let mut cnt = 0;
+            let limit = 20;
+            while regs_found.len() < 2 {
+                cnt += 1;
+                if cnt > limit {
+                    return Err(format!("failed to find 2 options in {} tries", limit));
+                }
+                // Repeated runs should elicit 1X01, 110X.
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
+                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp[0].x_mask().num_one_bits() == 1);
+                assert!(regs_exp[0].x_mask().m_and(&chg_mask5.m_not()).is_low());
+                assert!(regs_exp[0].is_superset_of(&reg_sqd));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+            println!("regs found {}", &regs_found);
+        } else {
+            return Err(format!("Group r1101 not found!"));
+        }
+
+        dm0.eval_sample_arbitrary(0, &sqc, &sq0);  // Group r110x
+
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_110x) {
+            // Test region with 1 X, with 2-bit change mask.
+            let mut regs_found = RegionStore::with_capacity(2);
+            while regs_found.len() < 2 {
+                // Repeated runs should elicit 1X0X, 11XX.
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask6);
+                println!("for {} seek regs {}", &reg_110x, &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
+                assert!(regs_exp[0].is_superset_of(&reg_110x));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+            println!("regs found {}", &regs_found);
+            
+            // Test region with 1 X, with 2-bit change mask that includes a region X-bit position.
+            let mut regs_found = RegionStore::with_capacity(2);
+            for _ in 0..4 {
+                // Repeated runs should elicit 1X0X.
+                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
+                println!("for {} seek regs {}", &reg_110x, &regs_exp);
+                assert!(regs_exp.len() == 1);
+                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
+                assert!(regs_exp[0].is_superset_of(&reg_110x));
+                if regs_found.contains(&regs_exp[0]) {
+                } else {
+                    regs_found.push(regs_exp[0].clone());
+                }
+            }
+            assert!(regs_found.len() == 1);
+            println!("regs found {}", &regs_found);
+        } else {
+            return Err(format!("Group r110x not found!"));
+        }
+
         Ok(())
     }
 
@@ -713,6 +852,46 @@ mod tests {
         } else {
             return Err("No plan found to r111?".to_string());
         }
+
+        Ok(())
+    }
+
+    // Check ordering of Truth values.
+    // Should be F < M < T
+    #[test]
+    fn truth_comparisons() -> Result<(), String> {
+
+        assert!(Truth::T.partial_cmp(&Truth::T).unwrap() == Ordering::Equal);
+        assert!(Truth::T.partial_cmp(&Truth::M).unwrap() == Ordering::Greater);
+        assert!(Truth::T.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
+
+        assert!(Truth::M.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
+        assert!(Truth::M.partial_cmp(&Truth::M).unwrap() == Ordering::Equal);
+        assert!(Truth::M.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
+
+        assert!(Truth::F.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
+        assert!(Truth::F.partial_cmp(&Truth::M).unwrap() == Ordering::Less);
+        assert!(Truth::F.partial_cmp(&Truth::F).unwrap() == Ordering::Equal);
+
+        Ok(())
+    }
+
+    // Check ordering of Pn values.
+    // Should be One < Two < Unpredictable
+    #[test]
+    fn pn_comparisons() -> Result<(), String> {
+
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Equal);
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::Two).unwrap() == Ordering::Greater);
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::One).unwrap() == Ordering::Greater);
+
+        assert!(Pn::Two.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Less);
+        assert!(Pn::Two.partial_cmp(&Pn::Two).unwrap() == Ordering::Equal);
+        assert!(Pn::Two.partial_cmp(&Pn::One).unwrap() == Ordering::Greater);
+
+        assert!(Pn::One.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Less);
+        assert!(Pn::One.partial_cmp(&Pn::Two).unwrap() == Ordering::Less);
+        assert!(Pn::One.partial_cmp(&Pn::One).unwrap() == Ordering::Equal);
 
         Ok(())
     }

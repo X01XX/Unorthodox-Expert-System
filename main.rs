@@ -42,6 +42,7 @@ mod needstore;
 mod plan;
 //use crate::plan::SomePlan;
 mod pn;
+//use crate::pn::Pn;
 mod step;
 mod stepstore;
 use domain::SomeDomain;
@@ -53,6 +54,7 @@ mod inxplan;
 mod combine;
 //use crate::inxplan::InxPlan;
 mod truth;
+//use crate::truth::Truth;
 mod randompick;
 mod removeunordered;
 
@@ -63,6 +65,7 @@ extern crate rand;
 use rand::Rng;
 use std::fs::File;
 use std::path::Path;
+//use std::cmp::Ordering;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
@@ -115,13 +118,11 @@ fn init() -> DomainStore {
 
 /// The User Interface.
 fn main() {
-    // Test
+
 
 //    if 1 == 1 {
-//        println!("Done");
-//        return;
+//        assert!(1 == 2);
 //    }
-    // End test
 
     // Start a DomainStore, add a Domain
     let args: Vec<String> = env::args().collect();

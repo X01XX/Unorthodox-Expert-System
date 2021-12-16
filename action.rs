@@ -4,7 +4,7 @@
 //! represents the current best-guess rules of the expected responses
 //! of executing an action for a given state.
 
-use crate::bits::SomeBits;
+//use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -23,7 +23,7 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
-use crate::randompick::RandomPick;
+//use crate::randompick::RandomPick;
 use crate::actions::take_action;
 use crate::combine::{can_combine, can_combine_check_between};
 //use crate::compare::Compare;
@@ -123,7 +123,18 @@ impl SomeAction {
     /// Return Truth enum for the combination of any two squares,
     /// and the squares inbetween them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
-        can_combine_check_between(sqrx, sqry, &self.squares)
+        let cmbx = can_combine(sqrx, sqry);
+        if cmbx == Truth::F {
+            return cmbx;
+        }
+
+        let cmbx2 = can_combine_check_between(sqrx, sqry, &self.squares);
+
+        // If cmbx is Truth::M and cmbx2 is Truth::F, return Truth::F
+        if cmbx2 < cmbx {
+            return cmbx2;
+        }
+        cmbx
     }
 
     /// Evaluate a sample taken to satisfy a need.
@@ -982,25 +993,11 @@ impl SomeAction {
 
             // No square between region.state1 and region.state2, seek one
 
-            // Get list of one-bit masks representing the bits different of the
-            // two regions states.
-            let dif_bits = MaskStore::new(regx.x_mask().split());
-
             // Select a random set of single-bit masks, up to one-half of the number of differences.
             // So if the region states are 10 or 11 bits different, a state 5 bits different from
             // one of the two states will be sought.  So the number of bit differences should go down
             // 50% on each cycle.
-            let indicies = self.random_x_of_n(dif_bits.len() / 2, dif_bits.len());
-
-            let mut dif_msk = SomeMask::new(SomeBits::new(self.num_ints()));
-
-            let mut inx = 0;
-            for mskx in dif_bits.iter() {
-                if indicies.contains(&inx) {
-                    dif_msk = dif_msk.m_or(mskx);
-                }
-                inx += 1;
-            }
+            let dif_msk = regx.x_mask().half_mask();
 
             // Randomly choose which state to use to calculate the target state from
             let mut statex = regx.state2.clone();
@@ -2033,29 +2030,6 @@ impl SomeAction {
         stps
     } // end get_steps_exact
 
-    /// Get a random choice of a number of unique numbers (num_results) to a
-    /// given number of positions, 0, 1 .. -> the_len (exclusive).
-    /// random 2 of 5 -> [0, 3]
-    pub fn random_x_of_n(&self, num_results: usize, the_len: usize) -> Vec<usize> {
-
-        if num_results < 1 || num_results >= the_len {
-            panic!(
-                "random_x_of_n: Number results {} is not right for length {}",
-                &num_results, &the_len
-            );
-        }
-
-        let mut yvec = Vec::<usize>::with_capacity(num_results);
-
-        let mut rp1 = RandomPick::new(the_len);
-
-        for _ in 0..num_results {
-            yvec.push(rp1.pick().unwrap());
-        }
-
-        yvec
-    } // end random_x_of_n
-
     /// Find squares whose rules can be combined with a given squares rules.
     /// Check if any included squares invalidate a combination.
     /// Remove subset combinations.
@@ -2139,84 +2113,120 @@ impl SomeAction {
             if trh ==  Truth::F {
                 close_dis.push_nosups(diff_mask);
             }
-            
         }
 
-        // Get far similar squares.
-        // In the case of problems with inbetween squares, the far similar 
-        // square becomes dissimilar.
-        let mut try_again = true;
+        // Add in closer squares that fail combination due to intervening squares
+        for (key, sqry) in &self.squares.ahash {
+
+            let diff_mask = grpx.region.diff_mask_state(&key);
+
+            // Skip squares in the group
+            if diff_mask.is_low() {
+                continue;
+            }
+
+            // Skip if any close dissimilar square is between
+            if close_dis.any_subset(&diff_mask) {
+                continue;
+            }
+                
+            let trh = can_combine_check_between(grpx, sqry, &self.squares);
+            if trh ==  Truth::F {
+                close_dis.push_nosups(diff_mask);
+            }
+        }
+
+        //println!("close_dis {}", &close_dis);
+
+        // Get farthest similar squares.
         let mut far_sim = MaskStore::new(Vec::<SomeMask>::new());
-        while try_again {
-            try_again = false;
 
-            far_sim = MaskStore::new(Vec::<SomeMask>::new());
+        for (key, _sqry) in &self.squares.ahash {
 
-            for (key, sqry) in &self.squares.ahash {
+            let diff_mask = grpx.region.diff_mask_state(&key);
 
-                let diff_mask = grpx.region.diff_mask_state(&key);
+            // Skip squares in the group
+            if diff_mask.is_low() {
+                continue;
+            }
 
-                // Skip squares in the group
-                if diff_mask.is_low() {
-                    continue;
-                }
+            // Skip if any close dissimilar square is between
+            if close_dis.any_subset(&diff_mask) {
+                continue;
+            }
 
-                // Skip if any close dissimilar square is between
-                if close_dis.any_subset(&diff_mask) {
-                    continue;
-                }
+            far_sim.push_nosubs(diff_mask);
 
-                let trh = can_combine_check_between(grpx, sqry, &self.squares);
-                if trh ==  Truth::F {
-                    //println!("for {} and {} dif msk {} truth F", &grpx.region, &sqry.state, diff_mask); 
-                    close_dis.push_nosups(diff_mask);
-                    try_again = true;
-                } else {
-                    far_sim.push_nosubs(diff_mask);
-                }
             } // next key, sqry
-        } // end while
+
+        //println!("far_sim {}", &far_sim);
 
         // Return expanded regions, if any.
         if far_sim.len() > 0 {
             for mskx in far_sim.iter() {
-                regs.push(grpx.region.set_to_x(mskx));
+                let diff_mask = mskx.m_and(&chg_mask);
+                if diff_mask.is_not_low() {
+                    regs.push(grpx.region.set_to_x(&diff_mask));
+                }
+            }
+            if regs.len() > 0 {
+                return regs;
+            }
+        }
+
+        // Check if any changes possible
+        if chg_mask.is_subset_of(&grpx.region.x_mask()) {
+            regs.push(grpx.region.clone());
+            return regs;
+        }
+
+        // So no far similar squares, calc max region.
+        let max_reg = grpx.region.set_to_x(&chg_mask);
+
+        // Process empty external region.
+        if close_dis.len() == 0 {
+            let far_reg = max_reg.far_reg(&grpx.region);
+            let diss_mask = far_reg.diff_mask(&grpx.region);
+            if diss_mask.just_one_bit() {
+                regs.push(max_reg);
+            } else {
+                regs.push(grpx.region.set_to_x(&diss_mask.half_mask()));
             }
             return regs;
         }
 
-        // Init return RegionStore
-        let mut dis_or = SomeMask::new_low(chg_mask.num_ints());
-
-        //println!("possible_group_regions: checking group {}", &grpx.region);
-        // Get adjacent incompatible squares masks.
-        for (key, sqry) in &self.squares.ahash {
-
-            let diff_mask = grpx.region.diff_mask_state(&key);
-            if diff_mask.just_one_bit() {
-                
-                //let trh = can_combine(&grpx.pn, grpx.pnc, &grpx.rules, &sqry.results.pn, sqry.results.pnc, &sqry.rules);
-                let trh = can_combine(grpx, sqry);
-                //println!("diff mask 1 bit for sqr {} trh {}", &key, &trh);
-                if trh ==  Truth::F {
-                    dis_or = dis_or.m_or(&diff_mask);
-                }
+        // Some close dissimilar squares.
+        // Seek samples between those that differ by GT 1 bit.
+        let mut aggr_dis = SomeMask::new_low(self.num_ints());
+        for cls_dis in close_dis.iter() { 
+            if cls_dis.just_one_bit() {
+                aggr_dis = aggr_dis.m_or(cls_dis);
+                continue;
             }
+
+            // cls_dis GT 1 bit diff, extend grpx region half as far.
+            let hlf_msk = cls_dis.half_mask();
+            regs.push(grpx.region.set_to_x(&hlf_msk));
         }
 
-        let chg_bits = grpx.region.x_mask().m_not().m_and(&chg_mask.m_and(&dis_or.m_not()));
+        // Check if at least one close dissimilar square is not adjacent.
+        if regs.len() > 0 {
+            return regs;
+        }
 
-        //println!("for group {} close dis masks are {} chg_bit {} dis_or {}", &grpx.region, &dis_or, &chg_bits, &dis_or);
-
-        let chg_bits_vec = chg_bits.split();
-
-        for mskx in chg_bits_vec.iter() {
-            //println!("group {} close not dis mask {} so try {}", &grpx.region, mskx, grpx.region.set_to_x(mskx));
-            regs.push(grpx.region.set_to_x(mskx));
+        // Maybe not all edges are accounted for by adjacent dissimilar squares.
+        let possible_new_x = chg_mask.m_and(&aggr_dis.m_not());
+        let net_x = possible_new_x.m_and(&grpx.region.x_mask().m_not());
+        
+        if net_x.is_low() {
+            regs.push(grpx.region.clone());
+        } else if net_x.just_one_bit() {
+            regs.push(grpx.region.set_to_x(&net_x));
+        } else {
+            regs.push(grpx.region.set_to_x(&net_x.half_mask()));
         }
 
         regs
-
     } // end possible_regions_for_group
 
     /// Find and print verticies
