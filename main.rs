@@ -50,7 +50,6 @@ mod actions;
 mod domainstore;
 mod tests;
 use domainstore::DomainStore;
-mod inxplan;
 mod combine;
 //use crate::inxplan::InxPlan;
 mod truth;

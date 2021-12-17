@@ -418,13 +418,13 @@ impl SomeBits {
             }
 
             if bts.high_bit_set() {
-                return Err(String::from("too long"));
+                return Err(format!("Did not understand the string {}, too long?", str));
             }
 
             if base == 2 {
 
                 if bts.high_bit_set() {
-                    return Err(String::from("too long"));
+                    return Err(format!("Did not understand the string {}, too long?", str));
                 }
 
                 if chr == '0' {
@@ -434,7 +434,7 @@ impl SomeBits {
                 } else if chr == '_' {
                     continue;
                 } else {
-                    return Err(String::from("invalid character"));
+                    return Err(format!("Did not understand the string {}, invalid character?", str));
                 }
             } else {
                 
@@ -451,11 +451,11 @@ impl SomeBits {
                 } else if chr >= 'A' && chr <= 'F' {
                     numx = chr as i32 - 55;
                 } else {
-                    return Err(String::from("invalid character"));
+                    return Err(format!("Did not understand the string {}, invalid character?", str));
                 }
 
                 if bts.ints[0] >> shift_num > 0 {
-                    return Err(String::from("too long"));
+                    return Err(format!("Did not understand the string {}, too long?", str));
                 }
                 bts = bts.shift_left4();
 

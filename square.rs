@@ -98,7 +98,7 @@ impl SomeSquare {
         let sav_pn = self.results.pn;
         let sav_pnc = self.results.pnc;
 
-        let rc = self.results.push_back(st);
+        let rc = self.results.add_result(st);
 
         match self.results.pn {
             Pn::One => {

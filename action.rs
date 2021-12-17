@@ -121,7 +121,7 @@ impl SomeAction {
     }
 
     /// Return Truth enum for the combination of any two squares,
-    /// and the squares inbetween them.
+    /// and the squares between them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         let cmbx = can_combine(sqrx, sqry);
         if cmbx == Truth::F {

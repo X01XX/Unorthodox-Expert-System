@@ -118,7 +118,7 @@ impl SomeState {
 
         for chr in str.chars() {
             if chr != 's' && chr != 'S' {
-                return Err(String::from("initial character should be s"));
+                return Err(format!("Did not understand the string {}, first character?", str));
             }
             break;
         }

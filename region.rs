@@ -378,20 +378,20 @@ impl SomeRegion {
                             return Ok(SomeRegion::new(&a_state, &a_state));
                         }
                         Err(error) => {
-                            return Err(format!("\nDid not understand state, {}", error));
+                            return Err(error);
                         }
                     } // end match state_r
                 } else {
-                    return Err(String::from("first character should be r"));
+                    return Err(format!("Did not understand the string {}, first character?", str));
                 }
             }
 
             if bts_high.high_bit_set() {
-                return Err(String::from("too long"));
+                return Err(format!("Did not understand the string {}, too long?", str));
             }
 
             if bts_low.high_bit_set() {
-                return Err(String::from("too long"));
+                return Err(format!("Did not understand the string {}, too long?", str));
             }
 
             if ch == '0' {
@@ -409,7 +409,7 @@ impl SomeRegion {
             } else if ch == '_' {
                 continue;
             } else {
-                return Err(String::from("invalid character"));
+                return Err(format!("Did not understand the string {}, invalid character?", str));
             }
         } // end for ch
 

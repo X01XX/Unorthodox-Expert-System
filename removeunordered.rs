@@ -6,7 +6,7 @@ pub fn remove_unordered<T>(avec: &mut Vec<T>, inx: usize) {
     assert!(inx < avec.len());
     let last_item = avec.pop().unwrap();
 
-    if inx < avec.len() {
+    if inx < avec.len() { // avec.len() is now equal to the index of the last item before the pop operation.
         avec[inx] = last_item;
     }
 }

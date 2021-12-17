@@ -5,10 +5,13 @@
 use crate::pn::Pn;
 use crate::state::SomeState;
 
-pub const MAX_RESULTS: usize = 4; // Seems like the best. It certaily should be even, for two-result squares.
+pub const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.
+// If three-result squares are to be supported, a one-result square would need three results before pnc = true, instead of two.
+// So you could tell the difference between (1, 1, 1) and (1, 1, 2, 1, 1, 2).
+// Some assumptions for one-result squares would need to be changed in other code.
+// Better not to go there unless there is a really good reason.
 
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
 use std::fmt;
 
 impl fmt::Display for ResultStore {
@@ -20,12 +23,14 @@ impl fmt::Display for ResultStore {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A VecDeque to store sample results for one domain/action/state, that is a square.
-    pub astore: VecDeque<SomeState>,
+    pub astore: Vec<SomeState>,
+    /// Number results seen so far.
+    num_results: usize,
     /// Pattern number, One, Two or Unpredicatble, trips change indicator when changed.
     pub pn: Pn,
     /// When first sample, pn or pnc has changed.
     pub changed: bool,
-    /// Pattern Number Confirmed, i.e num results stored has reached MAX_RESULTS.
+    /// Pattern Number Confirmed.
     pub pnc: bool,
 }
 
@@ -33,12 +38,13 @@ impl ResultStore {
     /// Return a new ResultStore, with an initial result.
     pub fn new(st: SomeState) -> Self {
         let mut ret = Self {
-            astore: VecDeque::<SomeState>::with_capacity(MAX_RESULTS),
+            astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
+            num_results: 0,
             pn: Pn::One,
             changed: true,
             pnc: false,
         };
-        ret.push_back(st);
+        ret.add_result(st);
         ret.changed = true;
         ret
     }
@@ -51,14 +57,15 @@ impl ResultStore {
     /// Add a result to a circular buffer.
     /// Return true if the pattern number or pnc changed
     /// or Pn::One with two results, which indicates "cannot be Pn::Two"
-    pub fn push_back(&mut self, st: SomeState) -> bool {
+    pub fn add_result(&mut self, st: SomeState) -> bool {
         self.changed = false;
 
-        if self.astore.len() >= MAX_RESULTS {
-            self.astore.pop_front();
+        if self.astore.len() < MAX_RESULTS {
+            self.astore.push(st);
+        } else {
+            self.astore[self.num_results % 4] = st;
         }
-
-        self.astore.push_back(st);
+        self.num_results += 1;
 
         let pnx = self.calc_pn();
 
@@ -106,7 +113,7 @@ impl ResultStore {
 
     /// Return the most recent result.
     pub fn most_recent_result(&self) -> &SomeState {
-        self.astore.back().unwrap()
+        &self.astore[(self.num_results - 1) % MAX_RESULTS]
     }
 
     /// Calculate the Pattern Number.
@@ -164,8 +171,6 @@ impl ResultStore {
                 rc_len += (self.astore.len() - 1) * 2;
             }
         }
-
-        //rc_len += format!("{}", self.len_results).len();
 
         rc_len
     }
