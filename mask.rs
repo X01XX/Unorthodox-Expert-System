@@ -161,7 +161,14 @@ impl SomeMask {
             break;
         }
 
-        Ok(SomeMask::new(SomeBits::from_string(num_ints, &str[1..]).unwrap()))
+        match SomeBits::from_string(num_ints, &str[1..]) {
+            Ok(bts) => {
+                return Ok(SomeMask::new(bts));
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
     } // end from_string
 
     /// Given a mask of more than one bit, return a mask that is a random selection of

@@ -1207,7 +1207,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Use squares that appear to be in only one region to limit regions.
         </p>
         <p class="indent1">
-        A square used to limit a region may become overlapped by later processing, causing that square tonot be useful in limiting the region.
+        A square used to limit a region may become overlapped by later processing, causing that square to not be useful in limiting the region.
         </p>
       <p class="indent1">
         If an external adjacent square turns out to be similar instead of dissimilar, form a region from the two.
@@ -1217,7 +1217,29 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	where edges intersect.
         </p>
       <p>
-        A regions possible expansion is limited by, and can be calculated using, the closest incompatible squares.
+        A regions possible expansion is limited by the closest incompatible squares.
+        </p>
+      <p class="indent1">
+          An incompatible square is closest to a region if there is no other incompatible square with a difference mask to the region
+          that is a proper subset of the first squares difference mask.
+        </p>
+      <p class="indent1">
+         A difference mask of 0001, between square 1111 and region X1X0, implies the region X1X1, not just 1111.  So there can be more than one square with the same difference mask.
+        </p>
+      <p class="indent1">
+        A square that is apparently similar to a region, is effectively dissimilar if all squares between cannot be combined with the first square and the region.
+        </p>
+      <p>
+        A regions possible expansion can be suggested by the farthest similar squares.
+        </p>
+      <p class="indent1">
+         A farthest similar square will be able to combine with a region, and all squares between them.
+        </p>
+      <p class="indent1">
+         It will have a difference mask to the region that is not a superset of any incompatible squares difference mask.
+        </p>
+      <p class="indent1">
+         Its difference mask will not be a proper subset of any other possible similar squares difference mask.
         </p>
       <p>
         Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
@@ -1750,7 +1772,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 12/09/2021</p>
+   <p>Web page Started: 10/20/2010, last changed: 12/17/2021</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1909,10 +1931,10 @@ For a state that always produces the same two results, alternating, a minimum of
         The form of a calculation in parentheses is (rule 1 change mask &amp; rule 2 change mask).
         </p>
         <p class="indent1">
-        The initial region of the aggregate rule may be equal to, or a subset of, the initial region of the first rule.
+        The initial region of the aggregate rule will be equal to, or a subset of, the initial region of the first rule.
         </p>
         <p class="indent1">
-        The result region of the aggregate rule may be equal to, or a subset of, the result region of the second rule.
+        The result region of the aggregate rule will be equal to, or a subset of, the result region of the second rule.
         </p>
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">

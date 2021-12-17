@@ -123,7 +123,14 @@ impl SomeState {
             break;
         }
 
-        Ok(SomeState::new(SomeBits::from_string(num_ints, &str[1..]).unwrap()))
+        match SomeBits::from_string(num_ints, &str[1..]) {
+            Ok(bts) => {
+                return Ok(SomeState::new(bts));
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
     } // end from_string
 
 } // end impl SomeState

@@ -172,16 +172,17 @@
             return cmbx;
         }
 
-        if cmbx == Truth::T {
+        if cmbx == Truth::T || *arg1.get_pn_ref() == Pn::One && *arg2.get_pn_ref() == Pn::One || arg1.get_pn_ref() == arg2.get_pn_ref() {
             return can_combine_check_between_t(arg1, arg2, squares);
         }
 
+        // More samples are needed.
+        // But there is no reason to seek more samples if a square, or square pair, between is incompatible.
         can_combine_check_between_m(arg1, arg2, squares)
     }
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
-    /// and the squares between them, when the two structs can be combined
-    /// alone.
+    /// and the squares between them, when the two structs rules can be combined.
     fn can_combine_check_between_t<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
 
         let reg1 = arg1.get_region();
@@ -240,11 +241,12 @@
     } // end can_combine_check_between_t
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
-    /// and the squares between them, when the two squares can be combined (pass can_combine) but one needs more samples.
-    /// No more samples should be sought, if there is a square, or a square pair, between
+    /// and the squares between them, when the two squares can be combined (can_combine returns Truth::M)
+    /// but one has a smaller pn value.
+    /// More samples should be sought, unless there is a square, or a square pair, between
     /// that will cause a problem.
     fn can_combine_check_between_m<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
-
+        //println!("can_combine_check_between_m pnA {} pnB {}", arg1.get_pn_ref(), arg2.get_pn_ref());
         let reg1 = arg1.get_region();
         let reg2 = arg2.get_region();
 
