@@ -238,6 +238,47 @@ mod tests {
         Ok(())
     }
 
+    // Test the expansion of a group with a dissimilar adjacent square.
+    #[test]
+    fn possible_regions_for_group_with_adj_dis_sqr() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, "s1", RegionStore::new());
+        dm0.add_action();
+
+        let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
+        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
+
+        let sq9 = dm0.state_from_string("s1001").unwrap();
+
+        let sqc = dm0.state_from_string("s1100").unwrap();
+
+        let sq5 = dm0.state_from_string("s101").unwrap();
+
+        let sq7 = dm0.state_from_string("s111").unwrap();
+
+        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+
+        // Form group r11xx
+        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
+        dm0.eval_sample_arbitrary(0, &sq9, &sq9);
+
+        // Add square 2.
+        dm0.eval_sample_arbitrary(0, &sq5, &sq7);
+
+        println!("action {}", &dm0.actions[0]);
+        assert!(dm0.actions[0].groups.len() == 2);
+
+        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1x0x) {
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
+            println!("regs {}", &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp.contains(&reg_1xxx));
+        } else {
+            return Err(format!("Group 1X0X not found?"));
+        }
+
+        Ok(())
+    }
+
     // Test the expansion of a group with similar external square.
     #[test]
     fn possible_regions_for_group_with_sim_sqr() -> Result<(), String> {
