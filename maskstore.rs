@@ -78,7 +78,7 @@ impl MaskStore {
         let mut inxs = Vec::<usize>::new();
         let mut inx = 0;
         for stax in &self.avec {
-            if mskx.is_superset_of(stax) {
+            if stax.is_superset_of(&mskx) {
                 inxs.push(inx);
             }
             inx += 1;

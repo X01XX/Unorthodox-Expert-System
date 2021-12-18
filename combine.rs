@@ -172,7 +172,7 @@
             return cmbx;
         }
 
-        if cmbx == Truth::T || *arg1.get_pn_ref() == Pn::One && *arg2.get_pn_ref() == Pn::One || arg1.get_pn_ref() == arg2.get_pn_ref() {
+        if cmbx == Truth::T || arg1.get_pn_ref() == arg2.get_pn_ref() {
             return can_combine_check_between_t(arg1, arg2, squares);
         }
 
