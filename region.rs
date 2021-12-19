@@ -51,6 +51,76 @@ impl SomeRegion {
         }
     }
 
+    /// Return a Region from a string and a hint as to the number of integers to use.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// if let Ok(regx) = <SomeDomain>.region_from_string(1, "r01x1")) {
+    ///    println!("Region {}", &regx);
+    /// } else {
+    ///    panic!("Invalid Region");
+    /// }
+    ///
+    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+        let mut bts_high = SomeBits::new(num_ints);
+
+        let mut bts_low = SomeBits::new(num_ints);
+
+        let mut inx = -1;
+
+        for ch in str.chars() {
+            inx += 1;
+
+            if inx == 0 {
+                if ch == 'r' || ch == 'R' {
+                    continue;
+                } else if ch == 's' || ch == 'S' {
+                    let state_r = SomeState::new_from_string(num_ints, &str);
+                    match state_r {
+                        Ok(a_state) => {
+                            return Ok(SomeRegion::new(&a_state, &a_state));
+                        }
+                        Err(error) => {
+                            return Err(error);
+                        }
+                    } // end match state_r
+                } else {
+                    return Err(format!("Did not understand the string {}, first character?", str));
+                }
+            }
+
+            if bts_high.high_bit_set() {
+                return Err(format!("Did not understand the string {}, too long?", str));
+            }
+
+            if bts_low.high_bit_set() {
+                return Err(format!("Did not understand the string {}, too long?", str));
+            }
+
+            if ch == '0' {
+                bts_high = bts_high.shift_left();
+                bts_low = bts_low.shift_left();
+            } else if ch == '1' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.push_1();
+            } else if ch == 'X' {
+                bts_high = bts_high.push_1();
+                bts_low = bts_low.shift_left();
+            } else if ch == 'x' {
+                bts_high = bts_high.shift_left();
+                bts_low = bts_low.push_1();
+            } else if ch == '_' {
+                continue;
+            } else {
+                return Err(format!("Did not understand the string {}, invalid character?", str));
+            }
+        } // end for ch
+
+        Ok(SomeRegion::new(
+            &SomeState::new(bts_high),
+        &SomeState::new(bts_low),
+        ))
+    } // end new_from_string
+
     /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
         (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints()
@@ -349,76 +419,6 @@ impl SomeRegion {
         store
     }
 
-    /// Return a Region from a string and a hint as to the number of integers to use.
-    /// Left-most, consecutive, zeros can be omitted.
-    ///
-    /// if let Ok(regx) = <SomeDomain>.region_from_string(1, "r01x1")) {
-    ///    println!("Region {}", &regx);
-    /// } else {
-    ///    panic!("Invalid Region");
-    /// }
-    ///
-    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeRegion, String> {
-        let mut bts_high = SomeBits::new(num_ints);
-
-        let mut bts_low = SomeBits::new(num_ints);
-
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
-
-            if inx == 0 {
-                if ch == 'r' || ch == 'R' {
-                    continue;
-                } else if ch == 's' || ch == 'S' {
-                    let state_r = SomeState::from_string(num_ints, &str);
-                    match state_r {
-                        Ok(a_state) => {
-                            return Ok(SomeRegion::new(&a_state, &a_state));
-                        }
-                        Err(error) => {
-                            return Err(error);
-                        }
-                    } // end match state_r
-                } else {
-                    return Err(format!("Did not understand the string {}, first character?", str));
-                }
-            }
-
-            if bts_high.high_bit_set() {
-                return Err(format!("Did not understand the string {}, too long?", str));
-            }
-
-            if bts_low.high_bit_set() {
-                return Err(format!("Did not understand the string {}, too long?", str));
-            }
-
-            if ch == '0' {
-                bts_high = bts_high.shift_left();
-                bts_low = bts_low.shift_left();
-            } else if ch == '1' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.push_1();
-            } else if ch == 'X' {
-                bts_high = bts_high.push_1();
-                bts_low = bts_low.shift_left();
-            } else if ch == 'x' {
-                bts_high = bts_high.shift_left();
-                bts_low = bts_low.push_1();
-            } else if ch == '_' {
-                continue;
-            } else {
-                return Err(format!("Did not understand the string {}, invalid character?", str));
-            }
-        } // end for ch
-
-        Ok(SomeRegion::new(
-            &SomeState::new(bts_high),
-            &SomeState::new(bts_low),
-        ))
-    } // end from_string
-
     /// Given a region, and a second region, return the
     /// first region - the second
     pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
@@ -462,3 +462,43 @@ impl Clone for SomeRegion {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::region::SomeRegion;
+    use crate::regionstore::RegionStore;
+    
+    // Test X10X - 0XX1 = X100, 110X.
+    #[test]
+    fn region_subtraction() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        let reg1 = SomeRegion::new_from_string(1, "r0XX1").unwrap();
+
+        let regvec = reg0.subtract(&reg1);
+        
+        let mut regs = RegionStore::new();
+        for regx in &regvec {
+            regs.push(regx.clone());
+        }
+
+        if regs.len() != 2 {
+            return Err(format!("{} minus {} = {} ??", &reg0, &reg1, &regs.formatted_string()));
+        }
+
+        if regs.contains(&SomeRegion::new_from_string(1, "rX100").unwrap()) {
+        } else {
+            return Err(format!("{} minus {} = {} ??", &reg0, &reg1, &regs.formatted_string()));
+        }
+
+        if regs.contains(&SomeRegion::new_from_string(1, "r110X").unwrap()) {
+        } else {
+            return Err(format!("{} minus {} = {} ??", &reg0, &reg1, &regs.formatted_string()));
+        }
+
+        Ok(())
+    }
+
+
+
+}

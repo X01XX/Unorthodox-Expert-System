@@ -151,11 +151,50 @@ impl MaskStore {
 
         rc_str
     }
+
+    /// Return true if a MaskStore contains a given mask.
+    pub fn _contains(&self, mskx: &SomeMask) -> bool {
+        for msky in &self.avec {
+            if msky == mskx {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Index<usize> for MaskStore {
     type Output = SomeMask;
     fn index<'a>(&'a self, i: usize) -> &'a SomeMask {
         &self.avec[i]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::mask::SomeMask;
+    use crate::maskstore::MaskStore;
+    // Test MaskStore push_nosups.
+    #[test]
+    fn maskstore_push_nosups() -> Result<(), String> {
+        let mut msk_str = MaskStore::new(vec![SomeMask::_from_string(1, "m111").unwrap()]);
+        msk_str.push_nosups(SomeMask::_from_string(1, "m1110").unwrap());
+        assert!(msk_str.len() == 2);
+        msk_str.push_nosups(SomeMask::_from_string(1, "m0110").unwrap());
+        assert!(msk_str.len() == 1);
+        assert!(msk_str._contains(&SomeMask::_from_string(1, "m0110").unwrap()));
+        Ok(())
+    }
+
+    // Test MaskStore push_nosubs.
+    #[test]
+    fn maskstore_push_nosubs() -> Result<(), String> {
+        let mut msk_str = MaskStore::new(vec![SomeMask::_from_string(1, "m1").unwrap()]);
+        msk_str.push_nosups(SomeMask::_from_string(1, "m10").unwrap());
+        assert!(msk_str.len() == 2);
+        msk_str.push_nosubs(SomeMask::_from_string(1, "m011").unwrap());
+        assert!(msk_str.len() == 1);
+        assert!(msk_str._contains(&SomeMask::_from_string(1, "m011").unwrap()));
+        Ok(())
     }
 }

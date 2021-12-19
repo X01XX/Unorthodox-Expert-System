@@ -79,8 +79,8 @@ fn init() -> DomainStore {
 
     let num_ints = 1;
     let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::from_string(num_ints, "r101X").unwrap());
-    regstr.push(SomeRegion::from_string(num_ints, "r10X").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r101X").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r10X").unwrap());
     let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
     dom1.add_action();
@@ -101,7 +101,7 @@ fn init() -> DomainStore {
 
     let num_ints = 2;
     let mut regstr = RegionStore::with_capacity(1);
-    regstr.push(SomeRegion::from_string(num_ints, "r10_1X00_0000").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r10_1X00_0000").unwrap());
     let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
     dom2.add_action();

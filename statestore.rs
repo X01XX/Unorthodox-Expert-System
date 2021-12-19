@@ -48,7 +48,7 @@ impl StateStore {
         self.avec.iter()
     }
 
-    /// Return true if a tateStore contains a given state.
+    /// Return true if a StateStore contains a given state.
     pub fn contains(&self, stax: &SomeState) -> bool {
         for stay in &self.avec {
             if stay == stax {

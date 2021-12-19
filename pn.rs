@@ -93,3 +93,28 @@ pub enum Pn {
 }
 
 impl Pn {}
+
+#[cfg(test)]
+mod tests {
+    use crate::pn::Pn;
+    use std::cmp::Ordering;
+    // Check ordering of Pn values.
+    // Should be One < Two < Unpredictable
+    #[test]
+    fn pn_comparisons() -> Result<(), String> {
+
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Equal);
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::Two).unwrap() == Ordering::Greater);
+        assert!(Pn::Unpredictable.partial_cmp(&Pn::One).unwrap() == Ordering::Greater);
+
+        assert!(Pn::Two.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Less);
+        assert!(Pn::Two.partial_cmp(&Pn::Two).unwrap() == Ordering::Equal);
+        assert!(Pn::Two.partial_cmp(&Pn::One).unwrap() == Ordering::Greater);
+
+        assert!(Pn::One.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Less);
+        assert!(Pn::One.partial_cmp(&Pn::Two).unwrap() == Ordering::Less);
+        assert!(Pn::One.partial_cmp(&Pn::One).unwrap() == Ordering::Equal);
+
+        Ok(())
+    }
+}

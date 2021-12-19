@@ -161,7 +161,7 @@ impl SomeMask {
             break;
         }
 
-        match SomeBits::from_string(num_ints, &str[1..]) {
+        match SomeBits::new_from_string(num_ints, &str[1..]) {
             Ok(bts) => {
                 return Ok(SomeMask::new(bts));
             }

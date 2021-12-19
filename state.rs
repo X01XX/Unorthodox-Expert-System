@@ -36,6 +36,34 @@ impl SomeState {
         Self { bts }
     }
 
+    /// Return a State from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// if let Ok(sta) = SomeState::from_string(1, "s0101")) {
+    ///    println!("State {}", &sta);
+    /// } else {
+    ///    panic!("Invalid State");
+    /// }
+    /// A prefix of "s0x" can be used to specify hexadecimal characters.
+    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+
+        for chr in str.chars() {
+            if chr != 's' && chr != 'S' {
+                return Err(format!("Did not understand the string {}, first character?", str));
+            }
+            break;
+        }
+
+        match SomeBits::new_from_string(num_ints, &str[1..]) {
+            Ok(bts) => {
+                return Ok(SomeState::new(bts));
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
+    } // end new_from_string
+
     /// Return true is a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
@@ -104,34 +132,6 @@ impl SomeState {
     pub fn to_mask(&self) -> SomeMask {
         SomeMask::new(self.bts.clone())
     }
-
-    /// Return a State from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    ///
-    /// if let Ok(sta) = SomeState::from_string(1, "s0101")) {
-    ///    println!("State {}", &sta);
-    /// } else {
-    ///    panic!("Invalid State");
-    /// }
-    /// A prefix of "s0x" can be used to specify hexadecimal characters.
-    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeState, String> {
-
-        for chr in str.chars() {
-            if chr != 's' && chr != 'S' {
-                return Err(format!("Did not understand the string {}, first character?", str));
-            }
-            break;
-        }
-
-        match SomeBits::from_string(num_ints, &str[1..]) {
-            Ok(bts) => {
-                return Ok(SomeState::new(bts));
-            }
-            Err(error) => {
-                return Err(error);
-            }
-        }
-    } // end from_string
 
 } // end impl SomeState
 

@@ -85,3 +85,29 @@ impl PartialEq for Truth {
 impl Eq for Truth {}
 
 impl Truth {}
+
+#[cfg(test)]
+mod tests {
+    use crate::truth::Truth;
+    use std::cmp::Ordering;
+
+    // Check ordering of Truth values.
+    // Should be F < M < T
+    #[test]
+    fn truth_comparisons() -> Result<(), String> {
+
+        assert!(Truth::T.partial_cmp(&Truth::T).unwrap() == Ordering::Equal);
+        assert!(Truth::T.partial_cmp(&Truth::M).unwrap() == Ordering::Greater);
+        assert!(Truth::T.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
+
+        assert!(Truth::M.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
+        assert!(Truth::M.partial_cmp(&Truth::M).unwrap() == Ordering::Equal);
+        assert!(Truth::M.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
+
+        assert!(Truth::F.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
+        assert!(Truth::F.partial_cmp(&Truth::M).unwrap() == Ordering::Less);
+        assert!(Truth::F.partial_cmp(&Truth::F).unwrap() == Ordering::Equal);
+
+        Ok(())
+    }
+}

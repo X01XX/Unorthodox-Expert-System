@@ -51,6 +51,105 @@ impl SomeBits {
         }
     }
 
+    /// Return a bits instance from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    /// Underscore character is ignored.
+    /// 0X can be used as a prefix to indicate hexadecimal input.
+    ///
+    /// if let Ok(bts) = SomeBits::from_string(1, "0101")) {
+    ///    println!("bts {}", &bts);
+    /// } else {
+    ///    panic!("Invalid bits string");
+    /// }
+    /// A prefix of "0x" can be used to specify hexadecimal characters.
+    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+        let mut bts = SomeBits::new(num_ints);
+
+        let mut base = 2;
+
+        let mut zf = false;
+        let mut xf = false;
+
+        let mut inx = 0;
+        for chr in str.chars() {
+            if inx == 0 && chr == '0' {
+                zf = true;
+            }
+            if inx == 1 {
+                if chr == 'x' || chr == 'X' {
+                    xf = true;
+                }
+            }
+            inx += 1;
+            if inx > 1 {
+                break;
+            }
+        }
+
+        let mut str2 = str;
+        if zf && xf {
+            base = 16;
+            str2 = &str2[2..];
+        }
+
+        let lsb = num_ints - 1;
+        let shift_num = NUM_BITS_PER_INT - 4;
+
+        for chr in str2.chars() {
+
+            if chr == '_' {
+                continue;
+            }
+
+            if bts.high_bit_set() {
+                return Err(format!("Did not understand the string {}, too long?", str));
+            }
+
+            if base == 2 {
+
+                if bts.high_bit_set() {
+                    return Err(format!("Did not understand the string {}, too long?", str));
+                }
+
+                if chr == '0' {
+                    bts = bts.shift_left();
+                } else if chr == '1' {
+                    bts = bts.push_1();
+                } else if chr == '_' {
+                    continue;
+                } else {
+                    return Err(format!("Did not understand the string {}, invalid character?", str));
+                }
+            } else {
+
+                let numx;
+
+                if bts.high_bit_set() {
+                    return Err(String::from("too long"));
+                }
+
+                if chr >= '0' && chr <= '9' {
+                    numx = chr as i32 - 48;
+                } else if chr >= 'a' && chr <= 'f' {
+                    numx = chr as i32  - 87;
+                } else if chr >= 'A' && chr <= 'F' {
+                    numx = chr as i32 - 55;
+                } else {
+                    return Err(format!("Did not understand the string {}, invalid character?", str));
+                }
+
+                if bts.ints[0] >> shift_num > 0 {
+                    return Err(format!("Did not understand the string {}, too long?", str));
+                }
+                bts = bts.shift_left4();
+
+                bts.ints[lsb] += numx as u8;
+            }
+        } // next inx
+
+        Ok(bts)
+    } // end new_from_string
+
     /// Return the number of integers in a SomeBits struct.
     pub fn len(&self) -> usize {
         self.ints.len()
@@ -367,105 +466,6 @@ impl SomeBits {
         astr
     }
 
-    /// Return a bits instance from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    /// Underscore character is ignored.
-    /// 0X can be used as a prefix to indicate hexadecimal input.
-    ///
-    /// if let Ok(bts) = SomeBits::from_string(1, "0101")) {
-    ///    println!("bts {}", &bts);
-    /// } else {
-    ///    panic!("Invalid bits string");
-    /// }
-    /// A prefix of "0x" can be used to specify hexadecimal characters.
-    pub fn from_string(num_ints: usize, str: &str) -> Result<SomeBits, String> {
-        let mut bts = SomeBits::new(num_ints);
-
-        let mut base = 2;
-
-        let mut zf = false;
-        let mut xf = false;
-
-        let mut inx = 0;
-        for chr in str.chars() {
-            if inx == 0 && chr == '0' {
-                zf = true;
-            }
-            if inx == 1 {
-                if chr == 'x' || chr == 'X' {
-                    xf = true;
-                }
-            }
-            inx += 1;
-            if inx > 1 {
-                break;
-            }
-        }
-
-        let mut str2 = str;
-        if zf && xf {
-            base = 16;
-            str2 = &str2[2..];
-        }
-
-        let lsb = num_ints - 1;
-        let shift_num = NUM_BITS_PER_INT - 4;
-
-        for chr in str2.chars() {
-
-            if chr == '_' {
-                continue;
-            }
-
-            if bts.high_bit_set() {
-                return Err(format!("Did not understand the string {}, too long?", str));
-            }
-
-            if base == 2 {
-
-                if bts.high_bit_set() {
-                    return Err(format!("Did not understand the string {}, too long?", str));
-                }
-
-                if chr == '0' {
-                    bts = bts.shift_left();
-                } else if chr == '1' {
-                    bts = bts.push_1();
-                } else if chr == '_' {
-                    continue;
-                } else {
-                    return Err(format!("Did not understand the string {}, invalid character?", str));
-                }
-            } else {
-                
-                let numx;
-                
-                if bts.high_bit_set() {
-                    return Err(String::from("too long"));
-                }
-
-                if chr >= '0' && chr <= '9' {
-                    numx = chr as i32 - 48;
-                } else if chr >= 'a' && chr <= 'f' {
-                    numx = chr as i32  - 87;
-                } else if chr >= 'A' && chr <= 'F' {
-                    numx = chr as i32 - 55;
-                } else {
-                    return Err(format!("Did not understand the string {}, invalid character?", str));
-                }
-
-                if bts.ints[0] >> shift_num > 0 {
-                    return Err(format!("Did not understand the string {}, too long?", str));
-                }
-                bts = bts.shift_left4();
-
-                bts.ints[lsb] += numx as u8;
-            }
-        } // next inx
-
-        Ok(bts)
-    } // end from_string
-
 } // end impl SomeBits
 
 /// Create a clone of an instance.
@@ -479,3 +479,37 @@ impl Clone for SomeBits {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::bits::SomeBits;
+
+    // Test SomeBits::b_and
+    #[test]
+    fn test_b_and() -> Result<(), String> {
+        let test_and = SomeBits::new_from_string(2, "0x1f75").unwrap().b_and(&SomeBits::new_from_string(2, "0x54ca").unwrap());
+        if test_and == SomeBits::new_from_string(2, "0x1440").unwrap() {
+            return Ok(());
+        }
+        Err(format!("b_and did not produced {} instead of 0x1440", test_and))
+    }
+
+    // Test SomeBits::b_not
+    #[test]
+    fn test_b_not() -> Result<(), String> {
+        let test_not = SomeBits::new_from_string(2, "0x1f75").unwrap().b_not();
+        if test_not == SomeBits::new_from_string(2, "0xe08a").unwrap() {
+            return Ok(());
+        }
+        Err(format!("b_not did not produced {} instead of 0xe08a", test_not))
+    }
+
+    // Test SomeBits::b_or
+    #[test]
+    fn test_b_or() -> Result<(), String> {
+        let test_or = SomeBits::new_from_string(2, "0x1f75").unwrap().b_or(&SomeBits::new_from_string(2, "0x54ca").unwrap());
+        if test_or == SomeBits::new_from_string(2, "0x5fff").unwrap() {
+            return Ok(());
+        }
+        Err(format!("b_or did not produced {} instaead of 0x5fff", test_or))
+    }
+}

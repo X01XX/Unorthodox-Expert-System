@@ -420,3 +420,63 @@ impl Clone for SomeRule {
         }
     }
 }
+
+#[cfg(tests)]
+mod tests {
+
+    /// Take an invalid rule, see if a valid subset exists.
+    ///
+    /// 00 + X1 = 11, 0X, return 11.
+    /// 00 + Xx = 10, 0X, return 10.
+    /// 01 + X0 = 10, 0X, return 10.
+    /// 01 + XX = 11, 0X, return 11.
+    /// 11 + X0 = 00, 1X, return 00.
+    /// 11 + Xx = 01, 1X, return 01.
+    /// 10 + X1 = 01, 1X, return 01.
+    /// 10 + XX = 00, 1X, return 00.
+    #[test]
+    fn rule_valid_subset() -> Result<(), String> {
+        // Form a rule of X1/Xx/X0/XX/X0/Xx/X1/XX
+        let rul1 = SomeRule {
+            b00: SomeMask::_from_string(1, "m00111001").unwrap(),
+            b01: SomeMask::_from_string(1, "m11000110").unwrap(),
+            b11: SomeMask::_from_string(1, "m10010011").unwrap(),
+            b10: SomeMask::_from_string(1, "m01101100").unwrap(),
+        };
+
+        // Form a rule of 00/00/01/01/11/11/10/10
+        let rul2 = SomeRule {
+            b00: SomeMask::_from_string(1, "m11000000").unwrap(),
+            b01: SomeMask::_from_string(1, "m00110000").unwrap(),
+            b11: SomeMask::_from_string(1, "m00001100").unwrap(),
+            b10: SomeMask::_from_string(1, "m00000011").unwrap(),
+        };
+
+        // Form an invalid rule with the union of:
+        // X1/Xx/X0/XX/X0/Xx/X1/XX
+        // 00/00/01/01/11/11/10/10
+        let rul3 = rul1.union(&rul2);
+
+        let rul4 = rul3.valid_subset().unwrap();
+
+        // Form a rule of 11/10/10/11/00/01/01/00
+        let rul5 = SomeRule {
+            b00: SomeMask::_from_string(1, "m00001001").unwrap(),
+            b01: SomeMask::_from_string(1, "m00000110").unwrap(),
+            b11: SomeMask::_from_string(1, "m10010000").unwrap(),
+            b10: SomeMask::_from_string(1, "m01100000").unwrap(),
+        };
+
+        // From the invalid union of:
+        // X1/Xx/X0/XX/X0/Xx/X1/XX
+        // 00/00/01/01/11/11/10/10
+        // Should get the following valid part.
+        // 11/10/10/11/00/01/01/00
+        if rul4 == rul5 {
+            return Ok(());
+        }
+
+        return Err(format!("subset is? {}", rul4.formatted_string()));
+    }
+
+} // end tests
