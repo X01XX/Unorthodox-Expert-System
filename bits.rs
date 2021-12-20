@@ -486,30 +486,431 @@ mod tests {
     // Test SomeBits::b_and
     #[test]
     fn test_b_and() -> Result<(), String> {
-        let test_and = SomeBits::new_from_string(2, "0x1f75").unwrap().b_and(&SomeBits::new_from_string(2, "0x54ca").unwrap());
-        if test_and == SomeBits::new_from_string(2, "0x1440").unwrap() {
-            return Ok(());
+        // 00
+        let mut test_and = SomeBits::new_from_string(2, "0x0").unwrap().b_and(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_and.is_not_low() {
+            return Err(format!("SomeBits::b_and 1 failed"));
         }
-        Err(format!("b_and did not produced {} instead of 0x1440", test_and))
+        // 01
+        test_and = SomeBits::new_from_string(2, "0x0").unwrap().b_and(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_and.is_not_low() {
+            return Err(format!("SomeBits::b_and 2 failed"));
+        }
+        // 11
+        test_and = SomeBits::new_from_string(2, "0xffff").unwrap().b_and(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_and != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_and 3 failed"));
+        }
+        // 10
+        test_and = SomeBits::new_from_string(2, "0xffff").unwrap().b_and(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_and.is_not_low() {
+            return Err(format!("SomeBits::b_and 4 failed"));
+        }
+        Ok(())
     }
 
     // Test SomeBits::b_not
     #[test]
     fn test_b_not() -> Result<(), String> {
-        let test_not = SomeBits::new_from_string(2, "0x1f75").unwrap().b_not();
-        if test_not == SomeBits::new_from_string(2, "0xe08a").unwrap() {
-            return Ok(());
+        let mut test_not = SomeBits::new_from_string(2, "0x5a5a").unwrap().b_not();
+        if test_not != SomeBits::new_from_string(2, "0xa5a5").unwrap() {
+            return Err(format!("SomeBits::b_not 1 failed"));
         }
-        Err(format!("b_not did not produced {} instead of 0xe08a", test_not))
+        test_not = SomeBits::new_from_string(2, "0xa5a5").unwrap().b_not();
+        if test_not != SomeBits::new_from_string(2, "0x5a5a").unwrap() {
+            return Err(format!("SomeBits::b_not 2 failed"));
+        }
+        Ok(())
     }
 
     // Test SomeBits::b_or
     #[test]
     fn test_b_or() -> Result<(), String> {
-        let test_or = SomeBits::new_from_string(2, "0x1f75").unwrap().b_or(&SomeBits::new_from_string(2, "0x54ca").unwrap());
-        if test_or == SomeBits::new_from_string(2, "0x5fff").unwrap() {
-            return Ok(());
+        // 00
+        let mut test_or = SomeBits::new_from_string(2, "0x0").unwrap().b_or(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_or.is_not_low() {
+            return Err(format!("SomeBits::b_or 1 failed"));
         }
-        Err(format!("b_or did not produced {} instaead of 0x5fff", test_or))
+        // 01
+        test_or = SomeBits::new_from_string(2, "0x0").unwrap().b_or(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_or != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_or 2 failed"));
+        }
+        // 11
+        test_or = SomeBits::new_from_string(2, "0xffff").unwrap().b_or(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_or != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_or 3 failed"));
+        }
+        // 10
+        test_or = SomeBits::new_from_string(2, "0xffff").unwrap().b_or(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_or != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_or 4 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::b_xor
+    #[test]
+    fn test_b_xor() -> Result<(), String> {
+        // 00
+        let mut test_xor = SomeBits::new_from_string(2, "0x0").unwrap().b_xor(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_xor.is_not_low() {
+            return Err(format!("SomeBits::b_xor 1 failed"));
+        }
+        // 01
+        test_xor = SomeBits::new_from_string(2, "0x0").unwrap().b_xor(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_xor != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_xor 2 failed"));
+        }
+        // 11
+        test_xor = SomeBits::new_from_string(2, "0xffff").unwrap().b_xor(&SomeBits::new_from_string(2, "0xffff").unwrap());
+        if test_xor.is_not_low() {
+            return Err(format!("SomeBits::b_xor 3 failed"));
+        }
+        // 10
+        test_xor = SomeBits::new_from_string(2, "0xffff").unwrap().b_xor(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_xor != SomeBits::new_from_string(2, "0xffff").unwrap() {
+            return Err(format!("SomeBits::b_xor 4 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::distance
+    #[test]
+    fn test_distance() -> Result<(), String> {
+
+        let mut test_numd = SomeBits::new_from_string(2, "0x0").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_numd != 0 {
+            return Err(format!("SomeBits::distance 1 failed"));
+        }
+
+        test_numd = SomeBits::new_from_string(2, "0x5555").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_numd != 8 {
+            return Err(format!("SomeBits::distance 2 failed"));
+        }
+
+        test_numd = SomeBits::new_from_string(2, "0xaaaa").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
+        if test_numd != 8 {
+            return Err(format!("SomeBits::distance 3 failed"));
+        }
+
+        Ok(())
+    }
+
+    // Test SomeBits::high_bit_set
+    #[test]
+    fn test_high_bit_set() -> Result<(), String> {
+
+        let mut test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x0").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 1 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x5").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 2 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x50").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 3 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0xa0").unwrap());
+        if test_bool == false {
+            return Err(format!("SomeBits::high_bit_set 4 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x00a0").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 5 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x5a0").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 6 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x5000").unwrap());
+        if test_bool {
+            return Err(format!("SomeBits::high_bit_set 7 failed"));
+        }
+
+        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0xa000").unwrap());
+        if test_bool == false {
+            return Err(format!("SomeBits::high_bit_set 8 failed"));
+        }
+
+        Ok(())
+    }
+
+    // Test SomeBits::is_bit_set
+    #[test]
+    fn test_is_bits_set() -> Result<(), String> {
+        let test_bits = SomeBits::new_from_string(2, "0x5aa5").unwrap();
+
+        if test_bits.is_bit_set(0) == false {
+            return Err(format!("SomeBits::is_bit_set 0 failed"));
+        }
+
+        if test_bits.is_bit_set(1) {
+            return Err(format!("SomeBits::is_bit_set 1 failed"));
+        }
+
+        if test_bits.is_bit_set(2) == false {
+            return Err(format!("SomeBits::is_bit_set 2 failed"));
+        }
+
+        if test_bits.is_bit_set(3) {
+            return Err(format!("SomeBits::is_bit_set 3 failed"));
+        }
+
+        if test_bits.is_bit_set(4) {
+            return Err(format!("SomeBits::is_bit_set 4 failed"));
+        }
+
+        if test_bits.is_bit_set(5) == false {
+            return Err(format!("SomeBits::is_bit_set 5 failed"));
+        }
+
+        if test_bits.is_bit_set(6) {
+            return Err(format!("SomeBits::is_bit_set 6 failed"));
+        }
+
+        if test_bits.is_bit_set(7) == false {
+            return Err(format!("SomeBits::is_bit_set 7 failed"));
+        }
+
+        if test_bits.is_bit_set(8) {
+            return Err(format!("SomeBits::is_bit_set 8 failed"));
+        }
+
+        if test_bits.is_bit_set(9) == false {
+            return Err(format!("SomeBits::is_bit_set 9 failed"));
+        }
+
+        if test_bits.is_bit_set(10) {
+            return Err(format!("SomeBits::is_bit_set 10 failed"));
+        }
+
+        if test_bits.is_bit_set(11) == false {
+            return Err(format!("SomeBits::is_bit_set 11 failed"));
+        }
+
+        if test_bits.is_bit_set(12) == false {
+            return Err(format!("SomeBits::is_bit_set 12 failed"));
+        }
+
+        if test_bits.is_bit_set(13)  {
+            return Err(format!("SomeBits::is_bit_set 13 failed"));
+        }
+        
+        if test_bits.is_bit_set(14) == false {
+            return Err(format!("SomeBits::is_bit_set 14 failed"));
+        }
+
+        if test_bits.is_bit_set(15) {
+            return Err(format!("SomeBits::is_bit_set 15 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::is_high
+    #[test]
+    fn test_is_high() -> Result<(), String> {
+        if SomeBits::new_from_string(1, "0xa5").unwrap().is_high() {
+            return Err(format!("SomeBits::is_high 1 failed"));
+        }
+
+        if SomeBits::new_from_string(1, "0xff").unwrap().is_high() == false {
+            return Err(format!("SomeBits::is_high 2 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0xa5").unwrap().is_high() {
+            return Err(format!("SomeBits::is_high 3 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0xffff").unwrap().is_high() == false {
+            return Err(format!("SomeBits::is_high 4 failed"));
+        }
+
+        Ok(())
+    }
+
+    // Test SomeBits::is_low
+    #[test]
+    fn test_is_low() -> Result<(), String> {
+        if SomeBits::new_from_string(1, "0xa5").unwrap().is_low() {
+            return Err(format!("SomeBits::is_low 1 failed"));
+        }
+
+        if SomeBits::new_from_string(1, "0x0").unwrap().is_low() == false {
+            return Err(format!("SomeBits::is_low 2 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0xa5").unwrap().is_low() {
+            return Err(format!("SomeBits::is_low 3 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0x0").unwrap().is_low() == false {
+            return Err(format!("SomeBits::is_low 4 failed"));
+        }
+
+        Ok(())
+    }
+    
+    // Test SomeBits::is_not_low
+    #[test]
+    fn test_is_not_low() -> Result<(), String> {
+        if SomeBits::new_from_string(1, "0xa5").unwrap().is_not_low() == false {
+            return Err(format!("SomeBits::is_not_low 1 failed"));
+        }
+
+        if SomeBits::new_from_string(1, "0x0").unwrap().is_not_low() {
+            return Err(format!("SomeBits::is_not_low 2 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0xa5").unwrap().is_not_low() == false {
+            return Err(format!("SomeBits::is_not_low 3 failed"));
+        }
+
+        if SomeBits::new_from_string(2, "0x0").unwrap().is_not_low() {
+            return Err(format!("SomeBits::is_not_low 4 failed"));
+        }
+
+        Ok(())
+    }
+
+    // Test SomeBits::is_subset_of
+    #[test]
+    fn test_is_subset_of() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x0").unwrap().is_subset_of(&SomeBits::new_from_string(2, "0x0").unwrap()) == false {
+            return Err(format!("SomeBits::is_subset_of 1 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x0").unwrap().is_subset_of(&SomeBits::new_from_string(2, "0x5").unwrap()) == false {
+            return Err(format!("SomeBits::is_subset_of 2 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x5555").unwrap().is_subset_of(&SomeBits::new_from_string(2, "0x7777").unwrap()) == false {
+            return Err(format!("SomeBits::is_subset_of 3 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x5").unwrap().is_subset_of(&SomeBits::new_from_string(2, "0x1").unwrap()) {
+            return Err(format!("SomeBits::is_subset_of 4 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x7777").unwrap().is_subset_of(&SomeBits::new_from_string(2, "0x5555").unwrap()) {
+            return Err(format!("SomeBits::is_subset_of 5 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::is_superset_of
+    #[test]
+    fn test_is_superset_of() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x0").unwrap().is_superset_of(&SomeBits::new_from_string(2, "0x0").unwrap()) == false {
+            return Err(format!("SomeBits::is_superset_of 1 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x5").unwrap().is_superset_of(&SomeBits::new_from_string(2, "0x0").unwrap()) == false {
+            return Err(format!("SomeBits::is_superset_of 2 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x7777").unwrap().is_superset_of(&SomeBits::new_from_string(2, "0x5555").unwrap()) == false {
+            return Err(format!("SomeBits::is_superset_of 3 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x1").unwrap().is_superset_of(&SomeBits::new_from_string(2, "0x5").unwrap()) {
+            return Err(format!("SomeBits::is_superset_of 4 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x5555").unwrap().is_superset_of(&SomeBits::new_from_string(2, "0x7777").unwrap()) {
+            return Err(format!("SomeBits::is_superset_of 5 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::just_one_bit
+    #[test]
+    fn test_just_one_bit() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x5555").unwrap().just_one_bit() {
+            return Err(format!("SomeBits::just_one_bit 1 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x3000").unwrap().just_one_bit() {
+            return Err(format!("SomeBits::just_one_bit 2 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x4000").unwrap().just_one_bit() == false {
+            return Err(format!("SomeBits::just_one_bit 3 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x0200").unwrap().just_one_bit() == false {
+            return Err(format!("SomeBits::just_one_bit 4 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x0010").unwrap().just_one_bit() == false {
+            return Err(format!("SomeBits::just_one_bit 5 failed"));
+        }
+        if SomeBits::new_from_string(2, "0x0002").unwrap().just_one_bit() == false {
+            return Err(format!("SomeBits::just_one_bit 6 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::num_one_bits
+    #[test]
+    fn test_num_one_bits() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x5555").unwrap().num_one_bits() != 8 {
+            return Err(format!("SomeBits::num_one_bits 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::push_1
+    #[test]
+    fn test_push_1() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x5555").unwrap().push_1() !=  SomeBits::new_from_string(2, "0xaaab").unwrap() {
+            return Err(format!("SomeBits::push_1 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::shift_left
+    #[test]
+    fn test_shift_left() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x5555").unwrap().shift_left() !=  SomeBits::new_from_string(2, "0xaaaa").unwrap() {
+            return Err(format!("SomeBits::shift_left 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::shift_left4
+    #[test]
+    fn test_shift_left4() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x505").unwrap().shift_left4() !=  SomeBits::new_from_string(2, "0x5050").unwrap() {
+            return Err(format!("SomeBits::shift_left4 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::split
+    #[test]
+    fn test_split() -> Result<(), String> {
+        let avec: Vec<SomeBits> = SomeBits::new_from_string(2, "0x5050").unwrap().split();
+        if avec.len() != 4 {
+            return Err(format!("SomeBits::split 1 failed"));
+        }
+        if avec.contains(&SomeBits::new_from_string(2, "0x4000").unwrap()) == false {
+            return Err(format!("SomeBits::split 2 failed"));
+        }
+        if avec.contains(&SomeBits::new_from_string(2, "0x1000").unwrap()) == false {
+            return Err(format!("SomeBits::split 3 failed"));
+        }
+        if avec.contains(&SomeBits::new_from_string(2, "0x0040").unwrap()) == false {
+            return Err(format!("SomeBits::split 4 failed"));
+        }
+        if avec.contains(&SomeBits::new_from_string(2, "0x0010").unwrap()) == false {
+            return Err(format!("SomeBits::split 5 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::toggle_bits
+    #[test]
+    fn test_toggle_bits() -> Result<(), String> {
+        if SomeBits::new_from_string(2, "0x505").unwrap().toggle_bits(vec![1,8,11]) !=  SomeBits::new_from_string(2, "0xc07").unwrap() {
+            return Err(format!("SomeBits::toggle_bits 1 failed"));
+        }
+        Ok(())
     }
 }
