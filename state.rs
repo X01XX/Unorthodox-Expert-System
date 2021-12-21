@@ -143,3 +143,115 @@ impl Clone for SomeState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::state::SomeState;
+
+    // Test SomeState::distance
+    // This uses SomeBits::distance, so only a basic test is done.
+    #[test]
+    fn test_distance() -> Result<(), String> {
+        if 2 != SomeState::new_from_string(2, "s0x0").unwrap().distance(&SomeState::new_from_string(2, "s0x11").unwrap()) {
+            return Err(format!("SomeState::distance 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::is_adjacent
+    #[test]
+    fn test_is_adjacent() -> Result<(), String> {
+        if SomeState::new_from_string(2, "s0x0").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap()) {
+            return Err(format!("SomeState::is_adjacent 1 failed"));
+        }
+        if SomeState::new_from_string(2, "s0x1").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())  == false {
+            return Err(format!("SomeState::is_adjacent 2 failed"));
+        }
+        if SomeState::new_from_string(2, "s0x0").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap()) {
+            return Err(format!("SomeState::is_adjacent 3 failed"));
+        }
+        if SomeState::new_from_string(2, "s0x100").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())  == false {
+            return Err(format!("SomeState::is_adjacent 4 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeBits::is_bit_set
+    // This uses SomeBits::is_bit_set, so only a basic test is done.
+    #[test]
+    fn test_is_bit_set() -> Result<(), String> {
+        let test_bits = SomeState::new_from_string(2, "s0x5aa5").unwrap();
+
+        if test_bits.is_bit_set(0) == false {
+            return Err(format!("SomeState::is_bit_set 0 failed"));
+        }
+
+        if test_bits.is_bit_set(1) {
+            return Err(format!("SomeState::is_bit_set 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::s_and
+    // This uses SomeBits::b_and, so only a basic test is done.
+    #[test]
+    fn test_s_and() -> Result<(), String> {
+        let test_and = SomeState::new_from_string(2, "s0x6666").unwrap().s_and(&SomeState::new_from_string(2, "s0xc37d").unwrap());
+        if test_and != SomeState::new_from_string(2, "s0x4264").unwrap() {
+            return Err(format!("SomeState::s_and 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::b_not
+    // This uses SomeBits::b_not, so only a basic test is done.
+    #[test]
+    fn test_b_not() -> Result<(), String> {
+        let test_not = SomeState::new_from_string(2, "s0x5a5a").unwrap().s_not();
+        if test_not != SomeState::new_from_string(2, "s0xa5a5").unwrap() {
+            return Err(format!("SomeState::s_not 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::s_or
+    // This uses SomeBits::b_or, so only a basic test is done.
+    #[test]
+    fn test_s_or() -> Result<(), String> {
+        let test_or = SomeState::new_from_string(2, "s0x2111").unwrap().s_or(&SomeState::new_from_string(2, "s0x428a").unwrap());
+        if test_or != SomeState::new_from_string(2, "s0x639b").unwrap() {
+            return Err(format!("SomeState::s_or 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::s_xor
+    // This uses SomeBits::b_xor, so only a basic test is done.
+    #[test]
+    fn test_s_xor() -> Result<(), String> {
+        let test_xor = SomeState::new_from_string(2, "s0x6666").unwrap().s_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap());
+        if test_xor != SomeState::new_from_string(2, "s0xa51b").unwrap() {
+            return Err(format!("SomeState::s_xor 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeState::toggle_bits
+    #[test]
+    fn test_toggle_bits() -> Result<(), String> {
+        if SomeState::new_from_string(2, "s0x505").unwrap().toggle_bits(vec![1,8,11]) !=  SomeState::new_from_string(2, "s0xc07").unwrap() {
+            return Err(format!("SomeState::toggle_bits 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test state.clone
+    #[test]
+    fn test_clone() -> Result<(), String> {
+        let tmp = SomeState::new_from_string(2, "s0x505").unwrap();
+        if tmp != tmp.clone() {
+            return Err(format!("SomeState::clone 1 failed"));
+        }
+        Ok(())
+    }
+}

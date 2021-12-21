@@ -48,7 +48,6 @@ mod stepstore;
 use domain::SomeDomain;
 mod actions;
 mod domainstore;
-mod tests;
 use domainstore::DomainStore;
 mod combine;
 //use crate::inxplan::InxPlan;

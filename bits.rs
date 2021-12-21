@@ -579,18 +579,15 @@ mod tests {
     #[test]
     fn test_distance() -> Result<(), String> {
 
-        let mut test_numd = SomeBits::new_from_string(2, "0x0").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
-        if test_numd != 0 {
+        if 0 != SomeBits::new_from_string(2, "0x0").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap()) {
             return Err(format!("SomeBits::distance 1 failed"));
         }
 
-        test_numd = SomeBits::new_from_string(2, "0x5555").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
-        if test_numd != 8 {
+        if 8 != SomeBits::new_from_string(2, "0x5555").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap()) {
             return Err(format!("SomeBits::distance 2 failed"));
         }
 
-        test_numd = SomeBits::new_from_string(2, "0xaaaa").unwrap().distance(&SomeBits::new_from_string(2, "0x0").unwrap());
-        if test_numd != 8 {
+        if 7 != SomeBits::new_from_string(2, "0xaaaa").unwrap().distance(&SomeBits::new_from_string(2, "0x02").unwrap()) {
             return Err(format!("SomeBits::distance 3 failed"));
         }
 
@@ -646,7 +643,7 @@ mod tests {
 
     // Test SomeBits::is_bit_set
     #[test]
-    fn test_is_bits_set() -> Result<(), String> {
+    fn test_is_bit_set() -> Result<(), String> {
         let test_bits = SomeBits::new_from_string(2, "0x5aa5").unwrap();
 
         if test_bits.is_bit_set(0) == false {
@@ -910,6 +907,16 @@ mod tests {
     fn test_toggle_bits() -> Result<(), String> {
         if SomeBits::new_from_string(2, "0x505").unwrap().toggle_bits(vec![1,8,11]) !=  SomeBits::new_from_string(2, "0xc07").unwrap() {
             return Err(format!("SomeBits::toggle_bits 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test bits.clone
+    #[test]
+    fn test_clone() -> Result<(), String> {
+        let tmp = SomeBits::new_from_string(2, "0x505").unwrap();
+        if tmp != tmp.clone() {
+            return Err(format!("SomeBits::clone 1 failed"));
         }
         Ok(())
     }
