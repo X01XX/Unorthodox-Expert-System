@@ -1,5 +1,7 @@
 # Unorthodox-Expert-System
-An Unorthodox Expert System based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html
+An Unorthodox Expert System, an expert of its own state.
+
+Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html
 
 There is extensive use of Boolean Algebra, which is supported by almost any programming language.
 
