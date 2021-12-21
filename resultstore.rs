@@ -64,7 +64,7 @@ impl ResultStore {
 
         self.num_results += 1;
 
-        if self.num_results > 254 {
+        if self.num_results == usize::MAX {
             self.num_results = (self.num_results % MAX_RESULTS) + MAX_RESULTS;
         }
 
@@ -109,46 +109,32 @@ impl ResultStore {
         &self.astore[(self.num_results - 1) % MAX_RESULTS]
     }
 
-    /// Calculate the Pattern Number.
-    pub fn calc_pn(&self) -> Pn {
-        let len = self.astore.len();
+    /// Calculate the Pattern Number, after adding a result.
+    /// Due to the way the function is used, the minimum number of results will be two.
+    /// Assume the Pn value was correct before adding the most recent result.
+    fn calc_pn(&self) -> Pn {
 
-        // Test pn == 1
-        if len == 1 {
-            //println!("calc_pn returning pn 1a");
-            return Pn::One;
-        }
+        let most_recent = self.most_recent_result();
 
-        // Check if all entries == first entry
-        let mut flg = true;
-        for inx in 1..len {
-            if self.astore[inx] != self.astore[0] {
-                flg = false;
-                break;
-            }
-        }
-        if flg {
-            //println!("calc_pn returning pn 1b");
-            return Pn::One;
-        }
-
-        if len == 2 {
-            return Pn::Two;
-        }
-
-        // len is 3 or more, check for Pn::Two.
-        let mut two_flag = true;
-        for inx in 2..self.astore.len() {
-            if self.astore[inx] != self.astore[inx - 2] {
-                two_flag = false;
-                break;
+        if self.pn == Pn::One {
+            if *most_recent == self.astore[(self.num_results - 2) % MAX_RESULTS] {
+                return Pn::One;
             }
         }
 
-        if two_flag {
+        // Not Pn::One at this point.
+        if self.astore.len() == 2 {
             return Pn::Two;
         }
 
+        // num_results > 2 at this point.
+        if self.pn == Pn::Two {
+            if *most_recent == self.astore[(self.num_results - 3) % MAX_RESULTS] {
+                return Pn::Two;
+            }
+        }
+
+        // Not Pn::Two at this point.
         Pn::Unpredictable
     }
 
