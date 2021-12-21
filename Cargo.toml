@@ -1,6 +1,6 @@
 [package]
 name = "ues"
-version = "2.1.3"
+version = "2.1.4"
 authors = ["Earl Dukerschein<earl.dukerschein@wisc.edu>"]
 edition = "2021"
 
