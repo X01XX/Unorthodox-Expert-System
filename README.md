@@ -1,5 +1,5 @@
 # Unorthodox-Expert-System
-An Unorthodox Expert System, an expert of its own state.
+An Unorthodox Expert System, an expert of its own state, no human intervention is required.
 
 Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html
 
@@ -11,7 +11,7 @@ Simply pressing the Enter key and seeing what happens is all you need to do.
 
 The program state is a series of bits.  Various (canned) actions change the state and the program
 gets a progressively better understanding of what the actions do.  The program seeks samples to 
-improve its understanding.  No human intervention is required.
+improve its understanding.
 
 The goal is a better and better understanding of the effects of the actions, due to samples gathered by circumstance and
 intention. Then be able to plan, and execute, a series of actions to change the current state to a goal region.  The command
