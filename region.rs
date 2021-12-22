@@ -163,19 +163,16 @@ impl SomeRegion {
 
     /// Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-
         self.diff_mask(&other).just_one_bit()
     }
 
     /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
-
         self.diff_mask_state(&other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &Self) -> bool {
-
         self.diff_mask(&other).is_low()
     }
 
@@ -303,13 +300,11 @@ impl SomeRegion {
 
     /// Return a Mask of zero or X bits (which include a zero).
     pub fn low_mask(&self) -> SomeMask {
-
         self.state1.s_not().s_or(&self.state2.s_not()).to_mask()
     }
 
     /// Return a Mask of ones or X bits (which include a one).
     pub fn high_mask(&self) -> SomeMask {
-
         self.state1.s_or(&self.state2).to_mask()
     }
 
@@ -346,7 +341,6 @@ impl SomeRegion {
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-
         self.state1.s_xor(&sta1).s_and(&self.state2.s_xor(&sta1)).to_mask()
     }
 
@@ -466,10 +460,13 @@ impl Clone for SomeRegion {
 mod tests {
     use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
-    
+    use crate::state::SomeState;
+    use crate::statestore::StateStore;
+    use crate::mask::SomeMask;
+
     // Test X10X - 0XX1 = X100, 110X.
     #[test]
-    fn region_subtraction() -> Result<(), String> {
+    fn region_subtract() -> Result<(), String> {
 
         let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
@@ -499,6 +496,422 @@ mod tests {
         Ok(())
     }
 
+    // Test union_state.
+    #[test]
+    fn test_union_state () -> Result<(), String> {
 
+        let reg0  = SomeRegion::new_from_string(1, "rXX0101").unwrap();
+        let state0 = SomeState::new_from_string(1, "s101001").unwrap();
 
-}
+        if reg0._union_state(&state0) != SomeRegion::new_from_string(1, "rXXXX01").unwrap() {
+            return Err(format!("test_union_state: Union not rXXXX01?"));
+        }
+        Ok(())
+    }
+
+    // Test defining_pairs. 
+    #[test]
+    fn test_defining_pairs () -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
+        let st1 = SomeState::new_from_string(1, "s1").unwrap();
+        let st6 = SomeState::new_from_string(1, "s110").unwrap();
+        let st7 = SomeState::new_from_string(1, "s0111").unwrap();
+        let st8 = SomeState::new_from_string(1, "s1000").unwrap();
+        let std = SomeState::new_from_string(1, "s1101").unwrap();
+        let ste = SomeState::new_from_string(1, "s1110").unwrap();
+        let mut sta_str = StateStore::new();
+
+        sta_str.push(st1.clone());
+        sta_str.push(st6);
+        sta_str.push(st7.clone());
+        sta_str.push(st8.clone());
+        sta_str.push(std);
+        sta_str.push(ste.clone());
+
+        let sta_str2 = reg0.defining_pairs(&sta_str);
+        assert!(sta_str2.len() == 4);
+
+        assert!(sta_str2.contains(&st1));
+        assert!(sta_str2.contains(&ste));
+        assert!(sta_str2.contains(&st7));
+        assert!(sta_str2.contains(&st8));
+
+        Ok(())
+    }
+    
+    // Test diff_mask. 
+    #[test]
+    fn test_diff_mask () -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(2, "rXXX000111").unwrap();
+        let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
+
+        if reg0.diff_mask(&reg1) != SomeMask::_new_from_string(2, "m10100").unwrap() {
+            return Err(format!("test_diff_mask result != m10100?"));
+        }
+        Ok(())
+    }
+
+    // Test diff_mask_state.
+    #[test]
+    fn test_diff_mask_state () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXX0011").unwrap();
+        let state0 = SomeState::new_from_string(1, "s010101").unwrap();
+
+        if reg0.diff_mask_state(&state0) != SomeMask::_new_from_string(1, "m110").unwrap() {
+            return Err(format!("test_diff_mask_state not m110?"));
+        }
+        Ok(())
+    }
+
+    // Test distance
+    #[test]
+    fn test_distance () -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(2, "rXXX000111").unwrap();
+        let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
+
+        if reg0.distance(&reg1) != 2 {
+            return Err(format!("test_distance result != 2?"));
+        }
+        Ok(())
+    }
+
+    // Test far_reg
+    #[test]
+    fn test_far_reg () -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(2, "rXXX01000000").unwrap();
+        let reg1 = SomeRegion::new_from_string(2, "r01X01000000").unwrap();
+
+        if reg0.far_reg(&reg1) != SomeRegion::new_from_string(2, "r10X01000000").unwrap() {
+            return Err(format!("test_far_reg: Far region not r10X01000000?"));
+        }
+        Ok(())
+    }
+
+    // Test far_state.
+    #[test]
+    fn test_far_state () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXXX1").unwrap();
+        let state0 = SomeState::new_from_string(1, "s1011").unwrap();
+
+        if reg0.far_state(&state0) != SomeState::new_from_string(1, "s101").unwrap() {
+            return Err(format!("test_far_state: Far state not s101?"));
+        }
+        Ok(())
+    }
+
+    // Test high_mask.
+    #[test]
+    fn test_high_mask () -> Result<(), String> {
+        let reg0  = SomeRegion::new_from_string(1, "rX0X1").unwrap();
+
+        if reg0.high_mask() != SomeMask::_new_from_string(1, "m1011").unwrap() {
+            return Err(format!("test_high_mask: High mask not m1011?"));
+        }
+        Ok(())
+    }
+
+    // Test intersection.
+    #[test]
+    fn test_region_intersection() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+
+        let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
+
+        if reg0.intersection(&reg1) != SomeRegion::new_from_string(1, "r010110X").unwrap() {
+            return Err(format!("test_intersection: Intersection not r010110X?"));
+        }
+        Ok(())
+    }
+
+    // Test intersects.
+    #[test]
+    fn test_intersects() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
+
+        if reg0.intersects(&reg1) == false {
+            return Err(format!("test_intersects 1 False?"));
+        }
+
+        let reg2 = SomeRegion::new_from_string(1, "r0XX111X").unwrap();
+        if reg0.intersects(&reg2) {
+            return Err(format!("test_intersects 2 True?"));
+        }
+
+        Ok(())
+    }
+
+    // Test is_adjacent.
+    #[test]
+    fn test_is_adjacent() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+
+        let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
+
+        if reg0.intersects(&reg1) == false {
+            return Err(format!("test_is_adjacent 1 False?"));
+        }
+
+        let reg2 = SomeRegion::new_from_string(1, "r0XX101X").unwrap();
+        if reg0.intersects(&reg2) {
+            return Err(format!("test_is_adjacent 2 True?"));
+        }
+
+        Ok(())
+    }
+
+    // Test is_adjacent_state.
+    #[test]
+    fn test_is_adjacent_state() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let sta1 =  SomeState::new_from_string(1, "s1001100").unwrap();
+        println!("{}", &reg0);
+        println!("{}", &sta1);
+        println!("{}", &reg0.diff_mask_state(&sta1));
+        if reg0.is_adjacent_state(&sta1) == false {
+            return Err(format!("test_is_adjacent_state 1 False?"));
+        }
+
+        let sta2 =  SomeState::new_from_string(1, "s1001110").unwrap();
+        if reg0.is_adjacent_state(&sta2) {
+            return Err(format!("test_is_adjacent_state 2 True?"));
+        }
+
+        Ok(())
+    }
+
+    // Test is_subset_of.
+    #[test]
+    fn test_is_subset_of() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        if reg0.is_subset_of(&reg1) == false {
+            return Err(format!("test_is_subset_of 1 False?"));
+        }
+
+        let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
+
+        if reg0.is_subset_of(&reg2) == false {
+            return Err(format!("test_is_subset_of 2 False?"));
+        }
+
+        if reg2.is_subset_of(&reg0) {
+            return Err(format!("test_is_subset_of 3 True?"));
+        }
+        Ok(())
+    }
+
+    // Test is_superset_of.
+    #[test]
+    fn test_is_superset_of() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        if reg0.is_superset_of(&reg1) == false {
+            return Err(format!("test_is_superset_of 1 False?"));
+        }
+
+        let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
+
+        if reg2.is_superset_of(&reg0) == false {
+            return Err(format!("test_is_superset_of 2 False?"));
+        }
+
+        if reg0.is_superset_of(&reg2) {
+            return Err(format!("test_is_superset_of 3 True?"));
+        }
+        Ok(())
+    }
+
+    // Test is_superset_of_state.
+    #[test]
+    fn test_is_superset_of_state() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
+
+        let sta1 = SomeState::new_from_string(1, "s1100").unwrap();
+        if reg0.is_superset_of_state(&sta1) == false {
+            return Err(format!("test_is_superset_of_state 1 False?"));
+        }
+
+        let sta2 = SomeState::new_from_string(1, "s0000").unwrap();
+        if reg0.is_superset_of_state(&sta2) {
+            return Err(format!("test_is_superset_of_state 2 True?"));
+        }
+
+        let sta3 = SomeState::new_from_string(1, "s0010").unwrap();
+        if reg0.is_superset_of_state(&sta3) {
+            return Err(format!("test_is_superset_of_state 2 True?"));
+        }
+        Ok(())
+    }
+
+    // Test low_mask.
+    #[test]
+    fn test_low_mask () -> Result<(), String> {
+        let reg0  = SomeRegion::new_from_string(1, "rX0X1").unwrap();
+
+        if reg0.low_mask() != SomeMask::_new_from_string(1, "m11111110").unwrap() {
+            println!("low mask {}", &reg0.low_mask());
+            return Err(format!("test_low_mask: Low mask not m1111110?"));
+        }
+        Ok(())
+    }
+
+    // Test num_x.
+    #[test]
+    fn test_num_x () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXX0101").unwrap();
+
+        if reg0.num_x() != 2 {
+            return Err(format!("test_num_x NE 2?"));
+        }
+        Ok(())
+    }
+
+    // Test ones_mask.
+    #[test]
+    fn test_ones_mask () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXX0101").unwrap();
+
+        if reg0.ones_mask() != SomeMask::_new_from_string(1, "m101").unwrap() {
+            return Err(format!("test_ones_mask NE m101?"));
+        }
+        Ok(())
+    }
+
+    // Test overlapping_part.
+    #[test]
+    fn test_overlapping_part() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0XX111X").unwrap();
+
+        if reg0.overlapping_part(&reg1) !=  SomeRegion::new_from_string(1, "r1011XX").unwrap() {
+            return Err(format!("test_overlapping_part not r1011XX?"));
+        }
+
+        Ok(())
+    }
+
+    // Test set_to_ones.
+    #[test]
+    fn test_set_to_ones() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let msk1 = SomeMask::_new_from_string(1, "m111").unwrap();
+
+        if reg0.set_to_ones(&msk1) !=  SomeRegion::new_from_string(1, "rX10X111").unwrap() {
+            return Err(format!("test_set_to_ones not rX10X111?"));
+        }
+
+        Ok(())
+    }
+
+    // Test set_to_x.
+    #[test]
+    fn test_set_to_x() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let msk1 = SomeMask::_new_from_string(1, "m111").unwrap();
+
+        if reg0.set_to_x(&msk1) !=  SomeRegion::new_from_string(1, "rX10XXXX").unwrap() {
+            return Err(format!("test_set_to_x not rX10XXXX?"));
+        }
+
+        Ok(())
+    }
+
+    // Test set_to_zeros.
+    #[test]
+    fn test_set_to_zeros() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
+        let msk1 = SomeMask::_new_from_string(1, "m111").unwrap();
+
+        if reg0.set_to_zeros(&msk1) !=  SomeRegion::new_from_string(1, "rX10X000").unwrap() {
+            return Err(format!("test_set_to_zeros not rX10X000?"));
+        }
+
+        Ok(())
+    }
+
+    // Test states_in. 
+    #[test]
+    fn test_states_in () -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(1, "rX1XX").unwrap();
+        let st1 = SomeState::new_from_string(1, "s1").unwrap();
+        let st6 = SomeState::new_from_string(1, "s110").unwrap();
+        let st7 = SomeState::new_from_string(1, "s0111").unwrap();
+        let st8 = SomeState::new_from_string(1, "s1000").unwrap();
+        let std = SomeState::new_from_string(1, "s1101").unwrap();
+        let ste = SomeState::new_from_string(1, "s1110").unwrap();
+        let mut sta_str = StateStore::new();
+
+        sta_str.push(st1);
+        sta_str.push(st6.clone());
+        sta_str.push(st7.clone());
+        sta_str.push(st8);
+        sta_str.push(std.clone());
+        sta_str.push(ste.clone());
+
+        let sta_str2 = reg0.states_in(&sta_str);
+        assert!(sta_str2.len() == 4);
+
+        assert!(sta_str2.contains(&st6));
+        assert!(sta_str2.contains(&st7));
+        assert!(sta_str2.contains(&std));
+        assert!(sta_str2.contains(&ste));
+
+        Ok(())
+    }
+
+    // Test zeros_mask.
+    #[test]
+    fn test_zeros_mask () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXX0101").unwrap();
+        if reg0.zeros_mask() != SomeMask::_new_from_string(1, "m11001010").unwrap() {
+            return Err(format!("test_zeros_mask NE m11001010?"));
+        }
+        Ok(())
+    }
+
+    // Test x_mask.
+    #[test]
+    fn test_x_mask () -> Result<(), String> {
+
+        let reg0  = SomeRegion::new_from_string(1, "rXX0101").unwrap();
+        if reg0.x_mask() != SomeMask::_new_from_string(1, "m110000").unwrap() {
+            return Err(format!("test_x_mask NE m110000?"));
+        }
+        Ok(())
+    }
+
+    // Test union.
+    #[test]
+    fn test_union() -> Result<(), String> {
+
+        let reg0 = SomeRegion::new_from_string(2, "r111000XXX").unwrap();
+        let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
+
+        if reg0.union(&reg1) !=  SomeRegion::new_from_string(2, "rX1X0XXXXX").unwrap() {
+            return Err(format!("test_union not rX1X0XXXXX?"));
+        }
+
+        Ok(())
+    }
+} // end tests

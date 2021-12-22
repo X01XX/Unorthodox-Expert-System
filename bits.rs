@@ -344,7 +344,6 @@ impl SomeBits {
                 return false;
             }
         }
-
         cnt == 1
     }
 

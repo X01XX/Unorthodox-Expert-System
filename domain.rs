@@ -1372,7 +1372,7 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         // Directly run limit_groups_needs.
-        let agg_chg = SomeChange { b01: SomeMask::_from_string(1, "m1111").unwrap(), b10: SomeMask::_from_string(1, "m1111").unwrap() };
+        let agg_chg = SomeChange { b01: SomeMask::_new_from_string(1, "m1111").unwrap(), b10: SomeMask::_new_from_string(1, "m1111").unwrap() };
         let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
@@ -1436,7 +1436,7 @@ mod tests {
 
         let sqc = dm0.state_from_string("s1100").unwrap();
 
-        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1490,7 +1490,7 @@ mod tests {
 
         let sq7 = dm0.state_from_string("s111").unwrap();
 
-        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1532,9 +1532,9 @@ mod tests {
 
         let sqf = dm0.state_from_string("s1111").unwrap();
 
-        let chg_mask7 = SomeMask::_from_string(1, "m111").unwrap();
+        let chg_mask7 = SomeMask::_new_from_string(1, "m111").unwrap();
         
-        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1582,10 +1582,10 @@ mod tests {
 
         let reg_sqd = SomeRegion::new(&sqd, &sqd);
 
-        let chg_mask5 = SomeMask::_from_string(1, "m101").unwrap();
-        let chg_mask6 = SomeMask::_from_string(1, "m110").unwrap();
-        let chg_mask7 = SomeMask::_from_string(1, "m111").unwrap();
-        let chg_maskf = SomeMask::_from_string(1, "m1111").unwrap();
+        let chg_mask5 = SomeMask::_new_from_string(1, "m101").unwrap();
+        let chg_mask6 = SomeMask::_new_from_string(1, "m110").unwrap();
+        let chg_mask7 = SomeMask::_new_from_string(1, "m111").unwrap();
+        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
 
         // Test logic for a group, with no external similar, or disimilar, squares.
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {

@@ -177,24 +177,24 @@ mod tests {
     // Test MaskStore push_nosups.
     #[test]
     fn maskstore_push_nosups() -> Result<(), String> {
-        let mut msk_str = MaskStore::new(vec![SomeMask::_from_string(1, "m111").unwrap()]);
-        msk_str.push_nosups(SomeMask::_from_string(1, "m1110").unwrap());
+        let mut msk_str = MaskStore::new(vec![SomeMask::_new_from_string(1, "m111").unwrap()]);
+        msk_str.push_nosups(SomeMask::_new_from_string(1, "m1110").unwrap());
         assert!(msk_str.len() == 2);
-        msk_str.push_nosups(SomeMask::_from_string(1, "m0110").unwrap());
+        msk_str.push_nosups(SomeMask::_new_from_string(1, "m0110").unwrap());
         assert!(msk_str.len() == 1);
-        assert!(msk_str._contains(&SomeMask::_from_string(1, "m0110").unwrap()));
+        assert!(msk_str._contains(&SomeMask::_new_from_string(1, "m0110").unwrap()));
         Ok(())
     }
 
     // Test MaskStore push_nosubs.
     #[test]
     fn maskstore_push_nosubs() -> Result<(), String> {
-        let mut msk_str = MaskStore::new(vec![SomeMask::_from_string(1, "m1").unwrap()]);
-        msk_str.push_nosups(SomeMask::_from_string(1, "m10").unwrap());
+        let mut msk_str = MaskStore::new(vec![SomeMask::_new_from_string(1, "m1").unwrap()]);
+        msk_str.push_nosups(SomeMask::_new_from_string(1, "m10").unwrap());
         assert!(msk_str.len() == 2);
-        msk_str.push_nosubs(SomeMask::_from_string(1, "m011").unwrap());
+        msk_str.push_nosubs(SomeMask::_new_from_string(1, "m011").unwrap());
         assert!(msk_str.len() == 1);
-        assert!(msk_str._contains(&SomeMask::_from_string(1, "m011").unwrap()));
+        assert!(msk_str._contains(&SomeMask::_new_from_string(1, "m011").unwrap()));
         Ok(())
     }
 }

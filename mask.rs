@@ -37,6 +37,33 @@ impl SomeMask {
         Self { bts: val }
     }
 
+    /// Return a Mask from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    ///
+    /// if let Ok(msk) = SomeMask::from_string(1, "m0101")) {
+    ///    println!("Mask {}", &msk);
+    /// } else {
+    ///    panic!("Invalid Mask");
+    /// }
+    /// A prefix of "m0x" can be used to specify hexadecimal characters.
+    pub fn _new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
+        for chr in str.chars() {
+            if chr != 'm' && chr != 'M' {
+                return Err(String::from("initial character should be m"));
+            }
+            break;
+        }
+
+        match SomeBits::new_from_string(num_ints, &str[1..]) {
+            Ok(bts) => {
+                return Ok(SomeMask::new(bts));
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
+    } // end new_from_string
+
     /// Return a new mask set to all zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
@@ -143,33 +170,6 @@ impl SomeMask {
     pub fn str2(&self) -> String {
         self.bts.str2(' ')
     }
-
-    /// Return a Mask from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    ///
-    /// if let Ok(msk) = SomeMask::from_string(1, "m0101")) {
-    ///    println!("Mask {}", &msk);
-    /// } else {
-    ///    panic!("Invalid Mask");
-    /// }
-    /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn _from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
-        for chr in str.chars() {
-            if chr != 'm' && chr != 'M' {
-                return Err(String::from("initial character should be m"));
-            }
-            break;
-        }
-
-        match SomeBits::new_from_string(num_ints, &str[1..]) {
-            Ok(bts) => {
-                return Ok(SomeMask::new(bts));
-            }
-            Err(error) => {
-                return Err(error);
-            }
-        }
-    } // end from_string
 
     /// Given a mask of more than one bit, return a mask that is a random selection of
     /// roughly half the bits.
