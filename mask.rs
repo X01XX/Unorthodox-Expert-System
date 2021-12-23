@@ -205,3 +205,217 @@ impl Clone for SomeMask {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::mask::SomeMask;
+
+    // Test SomeMask::half_mask, num_one_bits
+    #[test]
+    fn test_half_mask() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x5aa5").unwrap().half_mask();
+
+        if test_msk.num_one_bits() != 4 {
+            return Err(format!("SomeMask::test_half_mask num bits {} instead of 4?", test_msk.num_one_bits()));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_bit_set
+    // This uses SomeBits::is_bit_set, so only a basic test is done.
+    #[test]
+    fn test_is_bit_set() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x5aa5").unwrap();
+
+        if test_msk.is_bit_set(0) == false {
+            return Err(format!("SomeMask::is_bit_set 0 failed"));
+        }
+
+        if test_msk.is_bit_set(1) {
+            return Err(format!("SomeMask::is_bit_set 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_high
+    #[test]
+    fn test_is_high() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0xa5a5").unwrap();
+        if test_msk.is_high() {
+            return Err(format!("SomeMask::test_is_high 1 True?"));
+        }
+
+        let test_msk = SomeMask::new_from_string(2, "m0xffff").unwrap();
+        if test_msk.is_high() == false {
+            return Err(format!("SomeMask::test_is_high 2 False?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_low
+    #[test]
+    fn test_is_low() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x5aa5").unwrap();
+
+        if test_msk.is_low() {
+            return Err(format!("SomeMask::test_is_low 1 True?"));
+        }
+
+        let test_msk = SomeMask::new_from_string(2, "m0x0").unwrap();
+
+        if test_msk.is_low() == false {
+            return Err(format!("SomeMask::test_is_low 2 False?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_not_low
+    #[test]
+    fn test_is_not_low() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x0").unwrap();
+
+        if test_msk.is_not_low() {
+            return Err(format!("SomeMask::test_is_not_low 1 True?"));
+        }
+
+        let test_msk = SomeMask::new_from_string(2, "m0x010").unwrap();
+
+        if test_msk.is_not_low() == false {
+            return Err(format!("SomeMask::test_is_not_low 2 False?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_subset_of
+    #[test]
+    fn test_is_subset_of() -> Result<(), String> {
+        let test_msk1 = SomeMask::new_from_string(2, "m0x3210").unwrap();
+        let test_msk2 = SomeMask::new_from_string(2, "m0x7632").unwrap();
+
+        if test_msk1.is_subset_of(&test_msk2) == false {
+            return Err(format!("SomeMask::test_is_subset_of 1 False?"));
+        }
+
+        if test_msk2.is_subset_of(&test_msk1) {
+            return Err(format!("SomeMask::test_is_subset_of 2 True?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::is_superset_of
+    #[test]
+    fn test_is_superset_of() -> Result<(), String> {
+        let test_msk1 = SomeMask::new_from_string(2, "m0x3210").unwrap();
+        let test_msk2 = SomeMask::new_from_string(2, "m0x7632").unwrap();
+
+        if test_msk2.is_superset_of(&test_msk1) == false {
+            return Err(format!("SomeMask::test_is_superset_of 1 False?"));
+        }
+
+        if test_msk1.is_superset_of(&test_msk2) {
+            return Err(format!("SomeMask::test_is_superset_of 2 True?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::just_one_bit
+    #[test]
+    fn test_just_one_bit() -> Result<(), String> {
+        let test_msk1 = SomeMask::new_from_string(2, "m0x3210").unwrap();
+        let test_msk2 = SomeMask::new_from_string(2, "m0x40").unwrap();
+
+        if test_msk2.just_one_bit() == false {
+            return Err(format!("SomeMask::test_just_one_bit 1 False?"));
+        }
+
+        if test_msk1.just_one_bit() {
+            return Err(format!("SomeMask::test_just_one_bit 2 True?"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::m_and
+    // This uses SomeBits::b_and, so only a basic test is done.
+    #[test]
+    fn test_m_and() -> Result<(), String> {
+        let test_and = SomeMask::new_from_string(2, "m0x6666").unwrap().m_and(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
+        if test_and != SomeMask::new_from_string(2, "m0x4264").unwrap() {
+            return Err(format!("SomeMask::m_and 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::m_not
+    // This uses SomeBits::b_not, so only a basic test is done.
+    #[test]
+    fn test_m_not() -> Result<(), String> {
+        let test_not = SomeMask::new_from_string(2, "m0x5a5a").unwrap().m_not();
+        if test_not != SomeMask::new_from_string(2, "m0xa5a5").unwrap() {
+            return Err(format!("SomeMask::m_not 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::m_or
+    // This uses SomeBits::b_or, so only a basic test is done.
+    #[test]
+    fn test_m_or() -> Result<(), String> {
+        let test_or = SomeMask::new_from_string(2, "m0x2111").unwrap().m_or(&SomeMask::new_from_string(2, "m0x428a").unwrap());
+        if test_or != SomeMask::new_from_string(2, "m0x639b").unwrap() {
+            return Err(format!("SomeMask::m_or 1 failed"));
+        }
+        Ok(())
+    }
+
+    // Test SomeMask::m_xor
+    // This uses SomeBits::b_xor, so only a basic test is done.
+    #[test]
+    fn test_m_xor() -> Result<(), String> {
+        let test_xor = SomeMask::new_from_string(2, "m0x6666").unwrap().m_xor(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
+        if test_xor != SomeMask::new_from_string(2, "m0xa51b").unwrap() {
+            return Err(format!("SomeMask::m_xor 1 failed"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_push() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x3333").unwrap();
+        let mut test_msk2 = test_msk.push_1();
+
+        if test_msk2 != SomeMask::new_from_string(2, "m0x6667").unwrap() {
+            return Err(format!("SomeMask::push_1 m0x6667?"));
+        }
+
+        test_msk2 = test_msk2.push_0();
+        println!("msk2 {}", test_msk2);
+        if test_msk2 != SomeMask::new_from_string(2, "m0xccce").unwrap() {
+            return Err(format!("SomeMask::push_0 m0xccce?"));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_split() -> Result<(), String> {
+        let test_msk = SomeMask::new_from_string(2, "m0x050a").unwrap();
+        let one_bits: Vec<SomeMask> = test_msk.split();
+        
+        assert!(one_bits.len() == 4);
+        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0400").unwrap()));
+        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0100").unwrap()));
+        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0008").unwrap()));
+        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0002").unwrap()));
+        Ok(())
+    }
+
+    // Test SomeMask.clone
+    #[test]
+    fn test_clone() -> Result<(), String> {
+        let tmp = SomeMask::new_from_string(2, "m0x505").unwrap();
+        if tmp != tmp.clone() {
+            return Err(format!("SomeMask::clone 1 failed"));
+        }
+        Ok(())
+    }
+}

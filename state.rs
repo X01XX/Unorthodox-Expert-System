@@ -176,17 +176,17 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::is_bit_set
+    // Test SomeState::is_bit_set
     // This uses SomeBits::is_bit_set, so only a basic test is done.
     #[test]
     fn test_is_bit_set() -> Result<(), String> {
-        let test_bits = SomeState::new_from_string(2, "s0x5aa5").unwrap();
+        let test_sta = SomeState::new_from_string(2, "s0x5aa5").unwrap();
 
-        if test_bits.is_bit_set(0) == false {
+        if test_sta.is_bit_set(0) == false {
             return Err(format!("SomeState::is_bit_set 0 failed"));
         }
 
-        if test_bits.is_bit_set(1) {
+        if test_sta.is_bit_set(1) {
             return Err(format!("SomeState::is_bit_set 1 failed"));
         }
         Ok(())
@@ -203,10 +203,10 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeState::b_not
+    // Test SomeState::s_not
     // This uses SomeBits::b_not, so only a basic test is done.
     #[test]
-    fn test_b_not() -> Result<(), String> {
+    fn test_s_not() -> Result<(), String> {
         let test_not = SomeState::new_from_string(2, "s0x5a5a").unwrap().s_not();
         if test_not != SomeState::new_from_string(2, "s0xa5a5").unwrap() {
             return Err(format!("SomeState::s_not 1 failed"));
@@ -245,7 +245,7 @@ mod tests {
         Ok(())
     }
 
-    // Test state.clone
+    // Test SomeState.clone
     #[test]
     fn test_clone() -> Result<(), String> {
         let tmp = SomeState::new_from_string(2, "s0x505").unwrap();
