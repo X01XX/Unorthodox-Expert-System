@@ -357,6 +357,11 @@ impl SomeBits {
         tmp
     }
 
+    /// Return a copy, shifted 1 to the left.
+    pub fn push_0(&self) -> Self {
+        self.shift_left() // Shift all bits left, LSB bit becomes zero.
+    }
+
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {

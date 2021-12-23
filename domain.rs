@@ -1129,7 +1129,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
 
         assert!(nds1.len() == 1);
-        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s1").unwrap();
@@ -1153,8 +1153,8 @@ mod tests {
         let nds1 = dm0.get_needs();
 
         assert!(nds1.len() == 2);
-        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
-        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap()));
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap()));
 
         Ok(())
     }
@@ -1169,7 +1169,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
 
         assert!(nds1.len() == 1);
-        assert!(nds1._contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s1").unwrap();
@@ -1193,8 +1193,8 @@ mod tests {
         //println!("needs {}", nds2);
 
         assert!(nds2.len() == 2);
-        assert!(nds2._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
-        assert!(nds2._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds2.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds2.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r10").unwrap()));
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(0, &s2, &s2);
@@ -1203,7 +1203,7 @@ mod tests {
         //println!("needs {}", nds3);
 
         assert!(nds3.len() == 1);
-        assert!(nds3._contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds3.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
 
         // Satisfy second need.
         dm0.eval_sample_arbitrary(0, &s1, &s1);
@@ -1273,30 +1273,30 @@ mod tests {
 
         // Check for two needs, targets f and d.
         assert!(nds1.len() == 2);
-        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
-        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
+        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
+        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
 
         dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
         
         let nds2 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds2.len() == 1);
-        assert!(nds1._contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
+        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
 
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
         let nds3 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds3.len() == 2);
-        assert!(nds3._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
-        assert!(nds3._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sf, &sf)));
+        assert!(nds3.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
+        assert!(nds3.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sf, &sf)));
         
         dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
 
         let nds4 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds4.len() == 1);
-        assert!(nds4._contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
+        assert!(nds4.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
 
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
@@ -1338,7 +1338,7 @@ mod tests {
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
         assert!(nds1.len() == 1);
-        assert!(nds1._contains_similar_need("ContradictoryIntersection", &dm0.region_from_string("rX100").unwrap()));
+        assert!(nds1.contains_similar_need("ContradictoryIntersection", &dm0.region_from_string("rX100").unwrap()));
 
         Ok(())
     }
@@ -1372,14 +1372,14 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         // Directly run limit_groups_needs.
-        let agg_chg = SomeChange { b01: SomeMask::_new_from_string(1, "m1111").unwrap(), b10: SomeMask::_new_from_string(1, "m1111").unwrap() };
+        let agg_chg = SomeChange { b01: SomeMask::new_from_string(1, "m1111").unwrap(), b10: SomeMask::new_from_string(1, "m1111").unwrap() };
         let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
         println!("needs are {}", nds1);
         assert!(nds1.len() == 2);
-        assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap()));
-        assert!(nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()) || nds1._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap()) || nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap()));
+        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()) || nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Start homing in with sample of 5, adjacent, external, to D in 1XXX.
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -1388,7 +1388,7 @@ mod tests {
 
         // Check for second need for 5, to reach pnc for 5.
         assert!(nds2.len() == 2);
-        assert!(nds2._contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()));
+        assert!(nds2.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()));
 
         // Get second sample for 5.
         dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
@@ -1396,7 +1396,7 @@ mod tests {
 
         // Check for need of square 10, far from square 5, in 0XXX.
         assert!(nds3.len() == 1);
-        assert!(nds3._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds3.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Get sample of 2, far from 5 in 0XXX.
         // In 1XXX, A is already far from D, and is pnc, so no further needs for 1XXX.
@@ -1406,7 +1406,7 @@ mod tests {
 
         // Check for need of second sample of square 10, to reach pnc.
         assert!(nds4.len() == 1);
-        assert!(nds4._contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds4.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Take second sample of square 10.
         dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
@@ -1436,7 +1436,7 @@ mod tests {
 
         let sqc = dm0.state_from_string("s1100").unwrap();
 
-        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1490,7 +1490,7 @@ mod tests {
 
         let sq7 = dm0.state_from_string("s111").unwrap();
 
-        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1532,9 +1532,9 @@ mod tests {
 
         let sqf = dm0.state_from_string("s1111").unwrap();
 
-        let chg_mask7 = SomeMask::_new_from_string(1, "m111").unwrap();
+        let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
         
-        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
+        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
@@ -1582,10 +1582,10 @@ mod tests {
 
         let reg_sqd = SomeRegion::new(&sqd, &sqd);
 
-        let chg_mask5 = SomeMask::_new_from_string(1, "m101").unwrap();
-        let chg_mask6 = SomeMask::_new_from_string(1, "m110").unwrap();
-        let chg_mask7 = SomeMask::_new_from_string(1, "m111").unwrap();
-        let chg_maskf = SomeMask::_new_from_string(1, "m1111").unwrap();
+        let chg_mask5 = SomeMask::new_from_string(1, "m101").unwrap();
+        let chg_mask6 = SomeMask::new_from_string(1, "m110").unwrap();
+        let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
+        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
         // Test logic for a group, with no external similar, or disimilar, squares.
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {

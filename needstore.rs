@@ -60,7 +60,7 @@ impl NeedStore {
 
     /// Return true if a need with a given type and target is in a NeedStore.
     /// Used in tests.rs, so far.
-    pub fn _contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
+    pub fn contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
         for nedx in &self.avec {
             if nedx.type_string() == type_string {
                 if nedx.target() == *target {
@@ -74,7 +74,7 @@ impl NeedStore {
 
     /// Return true if a need with a given type and target is in a NeedStore.
     /// Used in tests.rs, so far.
-    pub fn _contains_need_type(&self, type_string: &str) -> bool {
+    pub fn contains_need_type(&self, type_string: &str) -> bool {
         for nedx in &self.avec {
             if nedx.type_string() == type_string {
                 return true;

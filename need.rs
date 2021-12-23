@@ -50,8 +50,8 @@ impl fmt::Display for SomeNeed {
             ),
             SomeNeed::ToRegion {
                 dom_num: dm,
-                act_num: _,
                 goal_reg: g_reg,
+                ..
             } => format!(
                 "N(Dom {} Pri {} To Region {}",
                 dm, pri, &g_reg,
@@ -96,7 +96,7 @@ impl fmt::Display for SomeNeed {
                 targ_state: sta,
                 grp_reg: greg,
                 far: farx,
-            } => {
+            } => 
                 if farx == sta {
                     format!(
                         "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {})",
@@ -107,8 +107,8 @@ impl fmt::Display for SomeNeed {
                         "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {} far {})",
                         dm, an, pri, &sta, &greg, &farx
                     )
-                }
-            }
+                },
+
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
@@ -119,7 +119,6 @@ impl fmt::Display for SomeNeed {
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
-//            SomeNeed::SetGroupPnc { group_region: greg } => format!("N(Set group pnc {})", greg),
             SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
             SomeNeed::SetGroupLimited {
                 group_region: greg,
@@ -204,8 +203,6 @@ pub enum SomeNeed {
     },
     /// Housekeeping, add a group.
     AddGroup { group_region: SomeRegion },
-//    /// Housekeeping, Set group pnc.
-//    SetGroupPnc { group_region: SomeRegion },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
@@ -232,22 +229,17 @@ impl PartialEq for SomeNeed {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
-                for_reg: _,
-                far: _,
-                num_x: _,
+                ..
             } => match other {
                 SomeNeed::AStateMakeGroup {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
-                    for_reg: _,
-                    far: _,
-                    num_x: _,
-                } => {
+                    ..
+                } => 
                     if dm == dmx && an == anx && sta == stax {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::StateNotInGroup {
@@ -259,51 +251,42 @@ impl PartialEq for SomeNeed {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
-                } => {
+                } => 
                     if dm == dmx && an == anx && sta == stax {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::ContradictoryIntersection {
                 dom_num: dm,
                 act_num: an,
                 goal_reg: g_reg,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
+                ..
             } => match other {
                 SomeNeed::ContradictoryIntersection {
                     dom_num: dmx,
                     act_num: anx,
                     goal_reg: g_regx,
-                    group1: _,
-                    ruls1: _,
-                    group2: _,
-                    ruls2: _,
-                } => {
+                    ..
+                } => 
                     if dm == dmx && an == anx && *g_reg == *g_regx {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::ToRegion {
                 dom_num: dm,
-                act_num: _,
                 goal_reg: g_reg,
+                ..
             } => match other {
                 SomeNeed::ToRegion {
                     dom_num: dmx,
-                    act_num: _,
                     goal_reg: g_regx,
-                } => {
+                    ..
+                } =>
                     if dm == dmx && *g_reg == *g_regx {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::SampleRegion {
@@ -315,81 +298,64 @@ impl PartialEq for SomeNeed {
                     dom_num: dmx,
                     act_num: anx,
                     goal_reg: g_regx,
-                } => {
+                } =>
                     if dm == dmx && an == anx && *g_reg == *g_regx {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::LimitGroup {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
-                for_group: _,
                 anchor: anc_sta,
+                ..
             } => match other {
                 SomeNeed::LimitGroup {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
-                    for_group: _,
                     anchor: anc_stax,
-                } => {
+                    ..
+                } =>
                     if dm == dmx && an == anx && sta == stax && anc_sta == anc_stax {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
                 act_num: an,
                 targ_state: sta,
-                grp_reg: _,
-                far: _,
+                ..
             } => match other {
                 SomeNeed::StateAdditionalSample {
                     dom_num: dmx,
                     act_num: anx,
                     targ_state: stax,
-                    grp_reg: _,
-                    far: _,
-                } => {
+                    ..
+                } => 
                     if dm == dmx && an == anx && sta == stax {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
             SomeNeed::AddGroup { group_region: greg } => match other {
                 SomeNeed::AddGroup {
                     group_region: gregx,
-                } => {
+                } => 
                     if *greg == *gregx {
                         return true;
-                    }
-                }
+                    },
                 _ => {}
             },
-//            SomeNeed::SetGroupPnc { group_region: greg } => match other {
-//                SomeNeed::SetGroupPnc {
-//                    group_region: gregx,
-//                } => {
-//                    if *greg == *gregx {
-//                        return true;
-//                    }
-//                }
-//                _ => {}
-//            },
             SomeNeed::RemoveGroupAnchor { group_region: greg } => match other {
                 SomeNeed::RemoveGroupAnchor {
                     group_region: gregx,
-                } => {
+                } =>
                     if *greg == *gregx {
                         return true;
                     }
-                }
                 _ => {}
             },
             SomeNeed::SetGroupLimited {
@@ -399,11 +365,10 @@ impl PartialEq for SomeNeed {
                 SomeNeed::SetGroupLimited {
                     group_region: gregx,
                     cstate: sta1x,
-                } => {
+                } =>
                     if greg == gregx && sta1 == sta1x {
                         return true;
                     }
-                }
                 _ => {}
             },
             SomeNeed::SetEdgeExpand {
@@ -413,11 +378,10 @@ impl PartialEq for SomeNeed {
                 SomeNeed::SetEdgeExpand {
                     group_region: gregx,
                     edge_mask: mbity,
-                } => {
+                } =>
                     if greg == gregx && mbitx == mbity {
                         return true;
                     }
-                }
                 _ => {}
             },
             SomeNeed::SeekEdge {
@@ -431,11 +395,10 @@ impl PartialEq for SomeNeed {
                     act_num: anx,
                     targ_state: stax,
                     in_group: gregx,
-                } => {
+                } =>
                     if dm == dmx && an == anx && greg == gregx && sta == stax {
                         return true;
                     }
-                }
                 _ => {}
             },
             SomeNeed::InactivateSeekEdge { reg: regx } => match other {
@@ -447,11 +410,10 @@ impl PartialEq for SomeNeed {
                 _ => {}
             },
             SomeNeed::AddSeekEdge { reg: regx } => match other {
-                SomeNeed::AddSeekEdge { reg: regy } => {
+                SomeNeed::AddSeekEdge { reg: regy } =>
                     if *regx == *regy {
                         return true;
-                    }
-                }
+                    },
                 _ => { }
             },
             // Add new needs here
@@ -467,67 +429,36 @@ impl SomeNeed {
     pub fn type_string(&self) -> String {
         let ret_str = match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
+                ..
             } => format!("AStateMakeGroup"),
             SomeNeed::StateNotInGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
+                ..
             } => format!("StateNotInGroup"),
             SomeNeed::ContradictoryIntersection {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
+                ..
             } => format!("ContradictoryIntersection"),
             SomeNeed::ToRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
+                ..
             } => format!("ToRegion"),
             SomeNeed::SampleRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
+                ..
             } => format!("SampleRegion"),
             SomeNeed::LimitGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
+                ..
             } => format!("LimitGroup"),
             SomeNeed::StateAdditionalSample {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
+                ..
             } => format!("StateAdditionalSample"),
             SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                in_group: _,
+                ..
             } => format!("SeekEdge"),
-            SomeNeed::AddGroup { group_region: _, } => format!("AddGroup"),
-//            SomeNeed::SetGroupPnc { group_region: _, } => format!("SetGroupPnc"),
-            SomeNeed::RemoveGroupAnchor { group_region: _, } => format!("RemoveGroupAnchor"),
+            SomeNeed::AddGroup { .. } => format!("AddGroup"),
+            SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupLimited {
-                group_region: _,
-                cstate: _,
+                ..
             } => format!("SetGroupLimited"),
             SomeNeed::SetEdgeExpand {
-                group_region: _,
-                edge_mask: _,
+                ..
             } => format!("SetEdgeExpand"),
 
             SomeNeed::InactivateSeekEdge { reg: _ } => {
@@ -542,83 +473,15 @@ impl SomeNeed {
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
-            SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => {
-                return 3;
-            } // end process for AStateMakeGroup
-
-            SomeNeed::StateNotInGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-            } => {
-                return 4;
-            } // end process for StateNotInGroup
-
-            SomeNeed::ContradictoryIntersection {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                return 2;
-            } // end process for ContradictoryIntersection
-
-            SomeNeed::ToRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                return 9;
-            } // end process for ToRegion
-
-            SomeNeed::SampleRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                return 8;
-            } // end process for SampleRegion
-
-            SomeNeed::LimitGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
-            } => {
-                return 8;
-            } // end process for LimitGroup
-
-            SomeNeed::StateAdditionalSample {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
-            } => {
-                return 5;
-            } // end process for StateAdditionalSample
-            SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                in_group: _,
-            } => {
-                return 1;
-            }
-            _ => {
-                return 9999;
-            }
+            SomeNeed::AStateMakeGroup { .. } => return 3,
+            SomeNeed::StateNotInGroup { .. } => return 4,
+            SomeNeed::ContradictoryIntersection { .. } => return 2,
+            SomeNeed::ToRegion { .. } => return 9,
+            SomeNeed::SampleRegion { .. } => return 8,
+            SomeNeed::LimitGroup { .. } => return 8,
+            SomeNeed::StateAdditionalSample { .. } => return 5,
+            SomeNeed::SeekEdge { .. } => return 1,
+            _ => return 9999,
         } // end match ndx
     } // end priority
 
@@ -626,172 +489,82 @@ impl SomeNeed {
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
         match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => {
+                targ_state: sta, ..
+            } =>
                 if cur_state == sta {
                     return true;
                 }
-                return false;
-            } // end process a AStateMakeGroup need
             SomeNeed::StateNotInGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-            } => {
+                targ_state: sta, ..
+            } =>
                 if cur_state == sta {
                     return true;
                 }
-                return false;
-            } // end process a StateNotInGroup need
             SomeNeed::ContradictoryIntersection {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
+                goal_reg: g_reg, ..
+            } =>
                 if g_reg.is_superset_of_state(&cur_state) {
                     return true;
                 }
-                return false;
-            } // end process ContradictoryIntersection
             SomeNeed::ToRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-            } => {
+                goal_reg: g_reg, ..
+            } =>
                 if g_reg.is_superset_of_state(&cur_state) {
                     return true;
                 }
-                return false;
-            } // end process ToRegion
             SomeNeed::SampleRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-            } => {
+                goal_reg: g_reg, ..
+            } =>
                 if g_reg.is_superset_of_state(&cur_state) {
                     return true;
                 }
-                return false;
-            } // end process SampleRegion
             SomeNeed::StateAdditionalSample {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                grp_reg: _,
-                far: _,
-            } => {
+                targ_state: sta, ..
+            } =>
                 if cur_state == sta {
                     return true;
                 }
-                return false;
-            } // end process a StateAdditionalSample need
             SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                in_group: _,
-            } => {
+                targ_state: sta, ..
+            } =>
                 if cur_state == sta {
                     return true;
                 }
-                return false;
-            }
             SomeNeed::LimitGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                for_group: _,
-                anchor: _,
-            } => {
-                if cur_state == sta {
-                    return true;
-                }
-                return false;
-            } // end process a LimitGroup need
+                targ_state: sta, ..
+            } => if cur_state == sta { return true; }
             _ => panic!("satisfied_by: should not be called on this need {}", self.type_string()),
         } //end match self
+        false
     } // end satisfied_by
 
     /// Return need action number.
     pub fn act_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: an,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => {
-                return *an;
-            } // end process a AStateMakeGroup need
+                act_num: an, ..
+            } => return *an,
             SomeNeed::StateNotInGroup {
-                dom_num: _,
-                act_num: an,
-                targ_state: _,
-            } => {
-                return *an;
-            } // end process a StateNotInGroup need
+                act_num: an, ..
+            } => return *an,
             SomeNeed::ContradictoryIntersection {
-                dom_num: _,
-                act_num: an,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                return *an;
-            } // end process ContradictoryIntersection
+                act_num: an, ..
+            } => return *an,
             SomeNeed::ToRegion {
-                dom_num: _,
-                act_num: an,
-                goal_reg: _,
-            } => {
-                return *an;
-            } // end process ToRegion
+                act_num: an, ..
+            } => return *an,
             SomeNeed::SampleRegion {
-                dom_num: _,
-                act_num: an,
-                goal_reg: _,
-            } => {
-                return *an;
-            } // end process SampleRegion
+                act_num: an, ..
+            } => return *an,
             SomeNeed::StateAdditionalSample {
-                dom_num: _,
-                act_num: an,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
-            } => {
-                return *an;
-            }
+                act_num: an, ..
+            } => return *an,
             SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: an,
-                targ_state: _,
-                in_group: _,
-            } => {
-                return *an;
-            }
+                act_num: an, ..
+            } => return *an,
             SomeNeed::LimitGroup {
-                dom_num: _,
-                act_num: an,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
-            } => {
-                return *an;
-            } // end process a LimitGroup need
+                act_num: an, ..
+            } => return *an,
             _ => panic!("act_num: not known for need {}", self.type_string()),
         } //end match self
     } // end act_num
@@ -800,73 +573,29 @@ impl SomeNeed {
     pub fn dom_num(&self) -> usize {
         match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => {
-                return *dm;
-            } // end process a AStateMakeGroup need
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::StateNotInGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-            } => {
-                return *dm;
-            } // end process a StateNotInGroup need
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::ContradictoryIntersection {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                return *dm;
-            } // end process ContradictoryIntersection
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::ToRegion {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                return *dm;
-            } // end process ToRegion
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::SampleRegion {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                return *dm;
-            } // end process SampleRegion
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::StateAdditionalSample {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
-            } => {
-                return *dm;
-            } // end process a StateAdditionalSample need
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::SeekEdge {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                in_group: _,
-            } => {
-                return *dm;
-            }
+                dom_num: dm, ..
+            } => return *dm,
             SomeNeed::LimitGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
-            } => {
-                return *dm;
-            } // end process a LimitGroup need
+                dom_num: dm, ..
+            } => return *dm,
             _ => panic!("dom_num: not known for need {}", self.type_string()),
         } //end match self
     } // end dom_num
@@ -875,73 +604,29 @@ impl SomeNeed {
     pub fn target(&self) -> SomeRegion {
         match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                for_reg: _,
-                far: _,
-                num_x: _,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            }
+                targ_state: sta, ..
+            } => return SomeRegion::new(&sta, &sta),
             SomeNeed::StateNotInGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            }
+                targ_state: sta, ..
+            } => return SomeRegion::new(&sta, &sta),
             SomeNeed::ContradictoryIntersection {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                return g_reg.clone();
-            }
+                goal_reg: g_reg, ..
+            } => return g_reg.clone(),
             SomeNeed::ToRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-            } => {
-                return g_reg.clone();
-            }
+                goal_reg: g_reg, ..
+            } => return g_reg.clone(),
             SomeNeed::SampleRegion {
-                dom_num: _,
-                act_num: _,
-                goal_reg: g_reg,
-            } => {
-                return g_reg.clone();
-            }
+                goal_reg: g_reg, ..
+            } => return g_reg.clone(),
             SomeNeed::StateAdditionalSample {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                grp_reg: _,
-                far: _,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            }
+                targ_state: sta, ..
+            } => return SomeRegion::new(&sta, &sta),
             SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                in_group: _,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            }
+                targ_state: sta, ..
+            } => return SomeRegion::new(&sta, &sta),
             SomeNeed::LimitGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: sta,
-                for_group: _,
-                anchor: _,
-            } => {
-                return SomeRegion::new(&sta, &sta);
-            } // end process a LimitGroup need
+                targ_state: sta, ..
+            } => return SomeRegion::new(&sta, &sta),
             _ => panic!("target: should not be called for this need {}", self.type_string()),
         };
     } // end target
@@ -950,71 +635,37 @@ impl SomeNeed {
     pub fn set_dom(&mut self, num: usize) {
         match self {
             SomeNeed::AStateMakeGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
+                dom_num: dm, ..
             } => *dm = num,
+
             SomeNeed::StateNotInGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::ContradictoryIntersection {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-                group1: _,
-                ruls1: _,
-                group2: _,
-                ruls2: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::ToRegion {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::SampleRegion {
-                dom_num: dm,
-                act_num: _,
-                goal_reg: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::StateAdditionalSample {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                grp_reg: _,
-                far: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::SeekEdge {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                in_group: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             SomeNeed::LimitGroup {
-                dom_num: dm,
-                act_num: _,
-                targ_state: _,
-                for_group: _,
-                anchor: _,
-            } => {
-                *dm = num;
-            }
+                dom_num: dm, ..
+            } => *dm = num,
+
             _ => {
                 panic!("set_dom: should not be called for this need {}", self.type_string());
             }

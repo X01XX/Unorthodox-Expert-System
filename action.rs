@@ -163,12 +163,10 @@ impl SomeAction {
         // Additional processing for selected kinds of need
         match ndx {
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
                 targ_state: sta,
                 for_reg,
                 far,
-                num_x: _,
+                ..
             } => {
                 if self.groups.any_superset_of(&for_reg) {
                     return;
@@ -205,10 +203,9 @@ impl SomeAction {
             } // end process AStateMakeGroup Need
 
             SomeNeed::SeekEdge {
-                dom_num: _,
-                act_num: _,
                 targ_state: sta,
                 in_group: greg,
+                ..
             } => {
                 // Form the rules, make the group
                 let sqr1 = self.squares.find(&greg.state1).unwrap();
@@ -646,19 +643,6 @@ impl SomeAction {
                             grpx.set_anchor(sta1.clone());
                         }
                     }
-//                    SomeNeed::SetGroupPnc {
-//                        group_region: greg,
-//                    } => {
-//                        if let Some(grpx) = self.groups.find_mut(&greg) {
-//                            try_again = true;
-//                            if grpx.pnc == false {
-//                                println!("Group pnc set not needed!");
-//                            } else {
-//                                println!("Group pnc set needed!");
-//                                grpx.set_pnc();
-//                            }
-//                        }
-//                    }
                     SomeNeed::RemoveGroupAnchor {
                         group_region: greg,
                     } => {
@@ -704,18 +688,13 @@ impl SomeAction {
                     match ndx  {
                         SomeNeed::AddGroup { group_region: _ } => { inxs.push(inx); }
                         SomeNeed::SetGroupLimited {
-                            group_region: _,
-                            cstate: _,
+                            ..
                         } => { inxs.push(inx); }
-//                        SomeNeed::SetGroupPnc {
-//                            group_region: _,
-//                        } => { inxs.push(inx); }
                         SomeNeed::RemoveGroupAnchor {
-                            group_region: _,
+                            ..
                         } => { inxs.push(inx); }
                         SomeNeed::SetEdgeExpand {
-                            group_region: _,
-                            edge_mask: _,
+                            ..
                         } => { inxs.push(inx); }
                         SomeNeed::InactivateSeekEdge { reg: _ } => { inxs.push(inx); } 
                         SomeNeed::AddSeekEdge { reg: _ } => { inxs.push(inx); }

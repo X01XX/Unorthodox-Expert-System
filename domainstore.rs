@@ -317,12 +317,7 @@ impl DomainStore {
         match nd0 {
             // Get the largest number-X group created
             SomeNeed::AStateMakeGroup {
-                dom_num: _,
-                act_num: _,
-                targ_state: _,
-                for_reg: _,
-                far: _,
-                num_x: _,
+                ..
             } => {
                 // Get max x group num
                 let mut a_state_make_group_max_x = 0;
@@ -335,12 +330,8 @@ impl DomainStore {
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
-                            dom_num: _,
-                            act_num: _,
-                            targ_state: _,
-                            for_reg: _,
-                            far: _,
                             num_x: nx,
+                            ..
                         } => {
                             if *nx > a_state_make_group_max_x {
                                 a_state_make_group_max_x = *nx;
@@ -359,12 +350,8 @@ impl DomainStore {
 
                     match ndx {
                         SomeNeed::AStateMakeGroup {
-                            dom_num: _,
-                            act_num: _,
-                            targ_state: _,
-                            for_reg: _,
-                            far: _,
                             num_x: nx,
+                            ..
                         } => {
                             if *nx == a_state_make_group_max_x {
                                 can_do2.push(cnp_inx);

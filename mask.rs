@@ -46,7 +46,7 @@ impl SomeMask {
     ///    panic!("Invalid Mask");
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn _new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
+    pub fn new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
         for chr in str.chars() {
             if chr != 'm' && chr != 'M' {
                 return Err(String::from("initial character should be m"));
@@ -187,7 +187,16 @@ impl SomeMask {
         SomeMask::new(or_bts)
     }
 
-} // end SomeMask
+    /// Return the mask after shifting left one position, and adding one.
+    pub fn push_1(&self) -> Self {
+        Self::new(self.bts.push_1())
+    }
+
+    /// Return mask after shifting left one position.
+    pub fn push_0(&self) -> Self {
+        Self::new(self.bts.push_0())
+    }
+} // end impl SomeMask
 
 impl Clone for SomeMask {
     fn clone(&self) -> Self {

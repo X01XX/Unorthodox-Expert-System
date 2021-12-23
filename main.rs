@@ -1,7 +1,7 @@
 // Main function for an Unorthodox Expert System
 
 #![allow(
-// dead_code,
+ dead_code,
 //  unused_variables,
 //  unused_macros,
 //  unused_imports,
@@ -20,6 +20,7 @@ mod groupstore;
 mod mask;
 //use mask::SomeMask;
 mod maskstore;
+//use maskstore::MaskStore;
 mod need;
 mod region;
 use region::SomeRegion;
@@ -35,10 +36,12 @@ mod compare;
 mod square;
 mod squarestore;
 mod state;
+//use state::SomeState;
 mod statestore;
 use need::SomeNeed;
 mod domain;
 mod needstore;
+//use needstore::NeedStore;
 mod plan;
 //use crate::plan::SomePlan;
 mod pn;
@@ -50,7 +53,6 @@ mod actions;
 mod domainstore;
 use domainstore::DomainStore;
 mod combine;
-//use crate::inxplan::InxPlan;
 mod truth;
 //use crate::truth::Truth;
 mod randompick;
@@ -116,7 +118,6 @@ fn init() -> DomainStore {
 
 /// The User Interface.
 fn main() {
-
 
 //    if 1 == 1 {
 //        assert!(1 == 2);
@@ -373,8 +374,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         match ndx {
                             SomeNeed::ToRegion {
                                 dom_num: domx,
-                                act_num: _,
-                                goal_reg: _,
+                                ..
                                 } => {
                                     dmxs.reset_boredom(*domx);
                                     },
