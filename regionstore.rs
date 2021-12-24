@@ -127,13 +127,7 @@ impl RegionStore {
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
-
-        for regx in &self.avec {
-            if regx == reg {
-                return true;
-            }
-        }
-        false
+        self.avec.contains(reg)
     }
 
     /// Return true if a given state is only in one region.

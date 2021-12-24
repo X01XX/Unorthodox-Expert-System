@@ -48,14 +48,8 @@ impl NeedStore {
     }
 
     /// Return true if a need is already in a NeedStore.
-    pub fn contains(&self, new_need: &SomeNeed) -> bool {
-        for nedx in &self.avec {
-            if *nedx == *new_need {
-                return true;
-            }
-        }
-
-        false
+    pub fn contains(&self, aneed: &SomeNeed) -> bool {
+        self.avec.contains(aneed)
     }
 
     /// Return true if a need with a given type and target is in a NeedStore.

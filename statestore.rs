@@ -50,12 +50,7 @@ impl StateStore {
 
     /// Return true if a StateStore contains a given state.
     pub fn contains(&self, stax: &SomeState) -> bool {
-        for stay in &self.avec {
-            if stay == stax {
-                return true;
-            }
-        }
-        false
+        self.avec.contains(stax)
     }
 
     /// Return the expected length of a string representing a StateStore.

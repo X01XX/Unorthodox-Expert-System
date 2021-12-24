@@ -23,7 +23,7 @@ pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
     pub astore: Vec<SomeState>,
     /// Number results seen so far.
-    num_results: usize,
+    pub num_results: usize,
     /// Pattern number, One, Two or Unpredicatble.
     pub pn: Pn,
     /// True on first sample, pn or pnc change.

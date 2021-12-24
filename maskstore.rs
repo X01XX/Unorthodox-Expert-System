@@ -46,17 +46,6 @@ impl MaskStore {
         false
     }
 
-    /// Return true if all masks in the store are one bit.
-//    pub fn all_one_bit(&self) -> bool {
-//        for stax in &self.avec {
-//            if stax.just_one_bit() {
-//            } else {
-//                return false;
-//            }
-//        }
-//        true
-//    }
-
     /// Return true if any masks in the store are a superset of a given mask.
     pub fn any_superset(&self, mskx: &SomeMask) -> bool {
         for stax in &self.avec {
@@ -154,14 +143,9 @@ impl MaskStore {
 
     /// Return true if a MaskStore contains a given mask.
     pub fn contains(&self, mskx: &SomeMask) -> bool {
-        for msky in &self.avec {
-            if msky == mskx {
-                return true;
-            }
-        }
-        false
+        self.avec.contains(mskx)
     }
-}
+} // end impl MaskStore
 
 impl Index<usize> for MaskStore {
     type Output = SomeMask;
@@ -174,9 +158,66 @@ impl Index<usize> for MaskStore {
 mod tests {
     use crate::mask::SomeMask;
     use crate::maskstore::MaskStore;
+
+    #[test]
+    fn test_any_subset() -> Result<(), String> {
+        let mut msk_str = MaskStore::new(vec![SomeMask::new_from_string(1, "m11").unwrap()]);
+        msk_str.push_nosups(SomeMask::new_from_string(1, "m1100").unwrap());
+
+        if msk_str.any_subset(&SomeMask::new_from_string(1, "m1100").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_subset 1 False?"));
+        }
+
+        if msk_str.any_subset(&SomeMask::new_from_string(1, "m11").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_subset 2 False?"));
+        }
+
+        if msk_str.any_subset(&SomeMask::new_from_string(1, "m111").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_subset 3 False?"));
+        }
+
+        if msk_str.any_subset(&SomeMask::new_from_string(1, "m1110").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_subset 4 False?"));
+        }
+
+        if msk_str.any_subset(&SomeMask::new_from_string(1, "m1").unwrap()) {
+            return Err(format!("MaskStore::test_any_subset 5 True?"));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_any_superset() -> Result<(), String> {
+        let mut msk_str = MaskStore::new(vec![SomeMask::new_from_string(1, "m11").unwrap()]);
+        msk_str.push_nosups(SomeMask::new_from_string(1, "m1100").unwrap());
+
+        if msk_str.any_superset(&SomeMask::new_from_string(1, "m1100").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_superset 1 False?"));
+        }
+
+        if msk_str.any_superset(&SomeMask::new_from_string(1, "m11").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_superset 2 False?"));
+        }
+
+        if msk_str.any_superset(&SomeMask::new_from_string(1, "m1").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_superset 3 False?"));
+        }
+
+        if msk_str.any_superset(&SomeMask::new_from_string(1, "m1000").unwrap()) == false {
+            return Err(format!("MaskStore::test_any_superset 4 False?"));
+        }
+
+        if msk_str.any_superset(&SomeMask::new_from_string(1, "m10000").unwrap()) {
+            return Err(format!("MaskStore::test_any_superset 5 True?"));
+        }
+
+        Ok(())
+    }
+
     // Test MaskStore push_nosups.
     #[test]
-    fn maskstore_push_nosups() -> Result<(), String> {
+    fn test_maskstore_push_nosups() -> Result<(), String> {
         let mut msk_str = MaskStore::new(vec![SomeMask::new_from_string(1, "m111").unwrap()]);
         msk_str.push_nosups(SomeMask::new_from_string(1, "m1110").unwrap());
         assert!(msk_str.len() == 2);
@@ -188,7 +229,7 @@ mod tests {
 
     // Test MaskStore push_nosubs.
     #[test]
-    fn maskstore_push_nosubs() -> Result<(), String> {
+    fn test_maskstore_push_nosubs() -> Result<(), String> {
         let mut msk_str = MaskStore::new(vec![SomeMask::new_from_string(1, "m1").unwrap()]);
         msk_str.push_nosups(SomeMask::new_from_string(1, "m10").unwrap());
         assert!(msk_str.len() == 2);

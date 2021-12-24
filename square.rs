@@ -1,7 +1,7 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
 use crate::pn::Pn;
-use crate::resultstore::{ResultStore, MAX_RESULTS};
+use crate::resultstore::ResultStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
@@ -83,15 +83,11 @@ impl SomeSquare {
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
-        let mut add_str = String::from(" ");
-        if self.len_results() < MAX_RESULTS {
-            add_str = format!(" {} ", self.len_results() + 1);
-        }
 
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result{}{}",
             self.str_terse(),
-            add_str,
+            format!(" {} ", self.results.num_results + 1),
             &st
         ));
 
