@@ -180,14 +180,10 @@ impl SomeRule {
     /// 10 + X1 = 01, 1X, return 01.
     /// 10 + XX = 00, 1X, return 00.
     pub fn valid_subset(&self) -> Option<Self> {
+        assert!(self.is_valid_union() == false);
+
         let ones_to_x  = self.b10.m_and(&self.b11);
         let zeros_to_x = self.b01.m_and(&self.b00);
-
-        // Check for valid rule.
-        if ones_to_x.is_low() && zeros_to_x.is_low() {
-            println!("rule::valid_subset: valid rule?");
-            return Some(self.clone());
-        }
 
         // Check for 4 change bit-position.
         if ones_to_x.m_and(&zeros_to_x).is_not_low() { return None; }

@@ -92,7 +92,15 @@ pub enum Pn {
     Unpredictable,
 }
 
-impl Pn {}
+impl Pn {
+    pub fn num_samples_needed(&self) -> usize {
+    match self {
+            Pn::One => { return 2; }
+            Pn::Two => { return 4; }
+            Pn::Unpredictable => { return 3; }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -63,6 +63,7 @@ impl ResultStore {
         }
 
         self.num_results += 1;
+        assert!(self.num_results < 100);
 
         if self.num_results == usize::MAX {
             self.num_results = (self.num_results % MAX_RESULTS) + MAX_RESULTS;

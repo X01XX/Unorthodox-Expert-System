@@ -1,7 +1,7 @@
 // Main function for an Unorthodox Expert System
 
 #![allow(
- dead_code,
+dead_code,
 //  unused_variables,
 //  unused_macros,
 //  unused_imports,

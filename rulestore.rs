@@ -10,6 +10,7 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -210,10 +211,89 @@ impl RuleStore {
         if self.len() == 1 {
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() && rulx.initial_region() == regx {
-                ars.push(rulx);
-                return Some(ars);
+            if rulx.is_valid_union() {
+                if rulx.initial_region() == regx {
+                    ars.push(rulx);
+                    return Some(ars);
+                }
+            }
+            return None;
+        }
+
+        if self.len() == 2 {
+            //assert!(self.initial_region().x_mask().is_low());
+            //assert!(other.initial_region().x_mask().is_low());
+
+            let mut ordera = false;
+
+            let rul0 = self.avec[0].union(&other.avec[0]);
+            let rul1 = self.avec[1].union(&other.avec[1]);
+ 
+            if rul0.is_valid_union() && rul1.is_valid_union() && rul0.initial_region() == rul1.initial_region() {
+                ordera = true;
+            }
+
+            let mut orderb = false;
+
+            let rul2 = self.avec[0].union(&other.avec[1]);
+            let rul3 = self.avec[1].union(&other.avec[0]);
+
+            if rul2.is_valid_union() && rul3.is_valid_union() && rul2.initial_region() == rul3.initial_region() {
+                orderb = true;
+            }
+
+            if ordera && orderb {
+                //println!("a: {} {}", rul0.formatted_string(), rul1.formatted_string());
+                //println!("b: {} {}", rul2.formatted_string(), rul3.formatted_string());
+                //panic!("done");
+                return None;
+            }
+
+            let mut ret_store = Self::new();
+            if ordera {
+                ret_store.push(rul0);
+                ret_store.push(rul1);
+                return Some(ret_store);
+            }
+
+            if orderb {
+                ret_store.push(rul2);
+                ret_store.push(rul3);
+                return Some(ret_store);
+            }
+
+            return None;
+        } // end if self.len() == 2
+
+        panic!("unexpected RuleStore length");
+    }
+
+    /// Form a union, return a valid subset if needed.
+    pub fn union_subset(&self, other: &Self) -> Option<Self> {
+        //println!("\nrulestore union {} and {}", &self, &other);
+        if self.len() != other.len() {
+            return None;
+        }
+
+        if self.len() == 0 {
+            //return Some(Self::new());
+            panic!("Unpredictable union not allowed");
+        }
+
+        let regx = self.initial_region().union(&other.initial_region());
+
+        let mut ars = Self::new();
+
+        if self.len() == 1 {
+            let rulx = self.avec[0].union(&other.avec[0]);
+
+            if rulx.is_valid_union() {
+                if rulx.initial_region() == regx {
+                    ars.push(rulx);
+                    return Some(ars);
+                }
             } else {
+//                println!("invalid union {}", &rulx);
                 if let Some(ruly) = rulx.valid_subset() {
                     ars.push(ruly);
                     return Some(ars);
@@ -229,7 +309,7 @@ impl RuleStore {
             let mut ordera = false;
 
             let mut rul0 = self.avec[0].union(&other.avec[0]);
-            if rul0.is_valid_union()  && rul0.initial_region() == regx {
+            if rul0.is_valid_union() {
             } else {
                 if let Some(rulz) = rul0.valid_subset() {
                     rul0 = rulz;
@@ -237,7 +317,7 @@ impl RuleStore {
             }
 
             let mut rul1 = self.avec[1].union(&other.avec[1]);
-            if rul0.is_valid_union()  && rul0.initial_region() == regx {
+            if rul1.is_valid_union() {
             } else {
                 if let Some(rulz) = rul1.valid_subset() {
                     rul1 = rulz;
@@ -250,7 +330,7 @@ impl RuleStore {
             let mut orderb = false;
 
             let mut rul2 = self.avec[0].union(&other.avec[1]);
-            if rul2.is_valid_union()  && rul2.initial_region() == regx {
+            if rul2.is_valid_union() {
             } else {
                 if let Some(rulz) = rul2.valid_subset() {
                     rul2 = rulz;
@@ -258,7 +338,7 @@ impl RuleStore {
             }
 
             let mut rul3 = self.avec[1].union(&other.avec[0]);
-            if rul3.is_valid_union()  && rul3.initial_region() == regx {
+            if rul3.is_valid_union() {
             } else {
                 if let Some(rulz) = rul3.valid_subset() {
                     rul3 = rulz;
@@ -295,6 +375,36 @@ impl RuleStore {
         panic!("unexpected RuleStore length");
     }
 
+    /// Return Truth value of a possible union.
+    pub fn can_form_union(&self, other: &Self) -> Truth {
+        // Handle Pn1 vs. Pn2.
+        // The Pn1 type should not have enough samples to be pnc.
+        if self.len() < other.len() {
+            for rulx in other.iter() {
+                if rulx.union(&self[0]).is_valid_union() {
+                    return Truth::M;
+                }
+            }
+            return Truth::F;
+        }
+
+        if other.len() < self.len() {
+            for rulx in self.iter() {
+                if rulx.union(&other[0]).is_valid_union() {
+                    return Truth::M;
+                }
+            }
+            return Truth::F;
+        }
+
+        if let Some(_ruls) = self.union(other) {
+            //println!("can_form_union: 1 returning T {}", &ruls);
+            return Truth::T;
+        }
+        //println!("can_form_union: 2 returning F");
+        Truth::F
+    }
+    
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRule> {
         self.avec.iter()
@@ -458,6 +568,7 @@ mod tests {
     use crate::region::SomeRegion;
     use crate::rule::SomeRule;
     use crate::rulestore::RuleStore;
+
 
     // Test restrict_initial_region and initial_region
     #[test]

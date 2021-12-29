@@ -54,6 +54,18 @@ impl SquareStore {
         rc_store
     }
 
+    /// Return a list of squares in a given region.
+    pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec::<&SomeSquare> {
+        let mut ret_vec = Vec::<&SomeSquare>::new();
+
+        for (key, sqrx) in &self.ahash {
+            if areg.is_superset_of_state(key) {
+                ret_vec.push(sqrx);
+            }
+        }
+        ret_vec
+    }
+
     /// Return an Option mutable reference for a square given a state,
     /// or None if not found.
     pub fn find_mut(&mut self, val: &SomeState) -> Option<&mut SomeSquare> {

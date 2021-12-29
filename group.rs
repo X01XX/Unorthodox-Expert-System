@@ -98,6 +98,9 @@ impl SomeGroup {
 
         rc_str.push_str(&format!(", pn: {}", self.pn));
         rc_str.push_str(&format!(", pnc: {}", self.pnc));
+        if self.limited {
+            rc_str.push_str(&format!(", limited"));
+        }
 
         match self.pn {
             Pn::One => {
@@ -121,7 +124,6 @@ impl SomeGroup {
             }
             None => {}
         }
-
 
         //        rc_str.push_str(&format!(
         //            " nxe: {}",
@@ -247,3 +249,8 @@ impl Compare for SomeGroup {
         self.region.clone()
     }
 }
+ 
+//#[cfg(test)]
+//mod tests {
+//    use crate::group::SomeGroup;
+//}

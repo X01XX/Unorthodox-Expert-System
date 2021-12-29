@@ -196,6 +196,7 @@ impl SomeMask {
     pub fn push_0(&self) -> Self {
         Self::new(self.bts.push_0())
     }
+
 } // end impl SomeMask
 
 impl Clone for SomeMask {

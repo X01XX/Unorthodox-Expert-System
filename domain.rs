@@ -1272,12 +1272,14 @@ mod tests {
         let nds1 = dm0.actions.avec[0].group_pair_needs();
 
         // Check for two needs, targets f and d.
+        println!("dm0 {}", &dm0.actions[0]);
+        println!("nds1: {}", &nds1);
         assert!(nds1.len() == 2);
         assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
         assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
 
         dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
-        
+
         let nds2 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds2.len() == 1);
@@ -1286,17 +1288,19 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
         let nds3 = dm0.actions.avec[0].group_pair_needs();
+//        println!("dm0 {}", &dm0.actions[0]);
+        assert!(nds3.len() == 1);
 
-        assert!(nds3.len() == 2);
-        assert!(nds3.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
-        assert!(nds3.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sf, &sf)));
-        
+        assert!(nds3.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
+
         dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
 
         let nds4 = dm0.actions.avec[0].group_pair_needs();
 
         assert!(nds4.len() == 1);
-        assert!(nds4.contains_similar_need("StateAdditionalSample", &SomeRegion::new(&sd, &sd)));
+//        println!("nds4: {}", &nds4);
+        assert!(nds4.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)) ||
+                nds4.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
 
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
@@ -1523,9 +1527,9 @@ mod tests {
         let reg_11xx = dm0.region_from_string("r11xx").unwrap();
         let reg_x1x1 = dm0.region_from_string("rx1x1").unwrap();
         let reg_x10x = dm0.region_from_string("rx10x").unwrap();
-        let reg_x1xx = dm0.region_from_string("rx1xx").unwrap();
         let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
-
+        let reg_xxxx = dm0.region_from_string("rxxxx").unwrap();
+        
         let sq5 = dm0.state_from_string("s101").unwrap();
 
         let sqc = dm0.state_from_string("s1100").unwrap();
@@ -1552,7 +1556,7 @@ mod tests {
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
             println!("for {} seek regs {}", &reg_11xx, &regs_exp);
             assert!(regs_exp.len() == 1);
-            assert!(regs_exp.contains(&reg_x1xx));
+            assert!(regs_exp.contains(&reg_xxxx));
 
             // Test non-sim-expansion under change mask, reverts to no-sim, no-dis, under change mask.
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
@@ -1591,71 +1595,50 @@ mod tests {
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {
             // Test with 3-bit change mask
             let mut regs_found = RegionStore::with_capacity(6);
-            let mut cnt = 0;
-            let limit = 60;
-            while regs_found.len() < 6 {
-                cnt += 1;
-                if cnt > limit {
-                    return Err(format!("failed to find 6 options in {} tries", limit));
-                }
-                // Repeated runs should elicit XX11, X0X1, X01X, 1XX1, 1X1X, 10XX.
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
-                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
-                assert!(regs_exp[0].x_mask().m_and(&chg_maskf.m_not()).is_low());
-                assert!(regs_exp[0].is_superset_of(&reg_sqd));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
+ 
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
+            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp[0].x_mask().num_one_bits() == 4);
+            assert!(regs_exp[0].x_mask().m_and(&chg_maskf.m_not()).is_low());
+            assert!(regs_exp[0].is_superset_of(&reg_sqd));
+            if regs_found.contains(&regs_exp[0]) {
+            } else {
+                regs_found.push(regs_exp[0].clone());
             }
+
             println!("regs found {}", &regs_found);
 
             // Test with 3-bit change mask.
             let mut regs_found = RegionStore::with_capacity(3);
-            let mut cnt = 0;
-            let limit = 30;
-            while regs_found.len() < 3 {
-                cnt += 1;
-                if cnt > limit {
-                    return Err(format!("failed to find 3 options in {} tries", limit));
-                }
-                // Repeated runs should elicit 1X01, 11X1, 110X. (int(3 bits/2) = 1 X bit)
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
-                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp[0].x_mask().num_one_bits() == 1);
-                assert!(regs_exp[0].x_mask().m_and(&chg_mask7.m_not()).is_low());
-                assert!(regs_exp[0].is_superset_of(&reg_sqd));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
+ 
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
+            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp[0].x_mask().num_one_bits() == 3);
+            assert!(regs_exp[0].x_mask().m_and(&chg_mask7.m_not()).is_low());
+            assert!(regs_exp[0].is_superset_of(&reg_sqd));
+            if regs_found.contains(&regs_exp[0]) {
+            } else {
+                regs_found.push(regs_exp[0].clone());
             }
+
             println!("regs found {}", &regs_found);
 
             // Test with 2-bit change mask.
             let mut regs_found = RegionStore::with_capacity(2);
-            let mut cnt = 0;
-            let limit = 20;
-            while regs_found.len() < 2 {
-                cnt += 1;
-                if cnt > limit {
-                    return Err(format!("failed to find 2 options in {} tries", limit));
-                }
-                // Repeated runs should elicit 1X01, 110X.
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
-                println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp[0].x_mask().num_one_bits() == 1);
-                assert!(regs_exp[0].x_mask().m_and(&chg_mask5.m_not()).is_low());
-                assert!(regs_exp[0].is_superset_of(&reg_sqd));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
+
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
+            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp[0].x_mask().num_one_bits() == 2);
+            assert!(regs_exp[0].x_mask().m_and(&chg_mask5.m_not()).is_low());
+            assert!(regs_exp[0].is_superset_of(&reg_sqd));
+            if regs_found.contains(&regs_exp[0]) {
+            } else {
+                regs_found.push(regs_exp[0].clone());
             }
+
             println!("regs found {}", &regs_found);
         } else {
             return Err(format!("Group r1101 not found!"));
@@ -1665,37 +1648,20 @@ mod tests {
 
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_110x) {
             // Test region with 1 X, with 2-bit change mask.
-            let mut regs_found = RegionStore::with_capacity(2);
-            while regs_found.len() < 2 {
-                // Repeated runs should elicit 1X0X, 11XX.
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask6);
-                println!("for {} seek regs {}", &reg_110x, &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
-                assert!(regs_exp[0].is_superset_of(&reg_110x));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
-            }
-            println!("regs found {}", &regs_found);
-            
+
+            // Repeated runs should elicit 1X0X, 11XX.
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask6);
+            println!("for {} seek regs {}", &reg_110x, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp[0].x_mask().num_one_bits() == 3);
+            assert!(regs_exp[0].is_superset_of(&reg_110x));
+
             // Test region with 1 X, with 2-bit change mask that includes a region X-bit position.
-            let mut regs_found = RegionStore::with_capacity(2);
-            for _ in 0..4 {
-                // Repeated runs should elicit 1X0X.
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
-                println!("for {} seek regs {}", &reg_110x, &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp[0].x_mask().num_one_bits() == 2);
-                assert!(regs_exp[0].is_superset_of(&reg_110x));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
-            }
-            assert!(regs_found.len() == 1);
-            println!("regs found {}", &regs_found);
+            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
+            println!("for {} seek regs {}", &reg_110x, &regs_exp);
+            assert!(regs_exp.len() == 1);
+            assert!(regs_exp[0].x_mask().num_one_bits() == 2);
+            assert!(regs_exp[0].is_superset_of(&reg_110x));
         } else {
             return Err(format!("Group r110x not found!"));
         }

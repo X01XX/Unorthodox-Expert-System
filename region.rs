@@ -389,30 +389,6 @@ impl SomeRegion {
 //        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
 //    }
 
-    /// Given a set of states (square keys),
-    ///
-    /// Return a StateStore containing  pairs of states,
-    /// found to encompass the region.
-    ///
-    /// An empty result is possible.
-    pub fn defining_pairs(&self, stas: &StateStore) -> StateStore {
-
-        // Initialize the StateStore
-        let mut store = StateStore::with_capacity(2);
-
-        // Check each possible combination of two states
-        for inx in 0..stas.len() {
-            for iny in (inx + 1)..stas.len() {
-                if SomeRegion::new(&stas[inx], &stas[iny]) == *self {
-                    store.push(stas[inx].clone());
-                    store.push(stas[iny].clone());
-                    //println!("regx {} equals regy {}", &self, SomeRegion::new(&stas[inx], &stas[iny]));
-                }
-            }
-        }
-        store
-    }
-
     /// Given a region, and a second region, return the
     /// first region - the second
     pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
@@ -509,36 +485,6 @@ mod tests {
         Ok(())
     }
 
-    // Test defining_pairs. 
-    #[test]
-    fn test_defining_pairs () -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
-        let st1 = SomeState::new_from_string(1, "s1").unwrap();
-        let st6 = SomeState::new_from_string(1, "s110").unwrap();
-        let st7 = SomeState::new_from_string(1, "s0111").unwrap();
-        let st8 = SomeState::new_from_string(1, "s1000").unwrap();
-        let std = SomeState::new_from_string(1, "s1101").unwrap();
-        let ste = SomeState::new_from_string(1, "s1110").unwrap();
-        let mut sta_str = StateStore::new();
-
-        sta_str.push(st1.clone());
-        sta_str.push(st6);
-        sta_str.push(st7.clone());
-        sta_str.push(st8.clone());
-        sta_str.push(std);
-        sta_str.push(ste.clone());
-
-        let sta_str2 = reg0.defining_pairs(&sta_str);
-        assert!(sta_str2.len() == 4);
-
-        assert!(sta_str2.contains(&st1));
-        assert!(sta_str2.contains(&ste));
-        assert!(sta_str2.contains(&st7));
-        assert!(sta_str2.contains(&st8));
-
-        Ok(())
-    }
-    
     // Test diff_mask. 
     #[test]
     fn test_diff_mask () -> Result<(), String> {

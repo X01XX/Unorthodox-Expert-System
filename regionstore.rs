@@ -260,21 +260,21 @@ impl RegionStore {
     }
     
     /// Return the result of intersectong two region stores
-    pub fn intersection(&self, other: &RegionStore) -> Self {
-
-        let mut ret_store = Self::new();
-        
-        for regx in self.iter() {
-
-            for regy in other.iter() {
-
-                if regx.intersects(&regy) {
-                    ret_store.push_nosubs(regx.intersection(&regy));
-                }
-            }
-        }
-        ret_store
-    }
+//    pub fn intersection(&self, other: &RegionStore) -> Self {
+//
+//        let mut ret_store = Self::new();
+//
+//        for regx in self.iter() {
+//
+//            for regy in other.iter() {
+//
+//                if regx.intersects(&regy) {
+//                    ret_store.push_nosubs(regx.intersection(&regy));
+//                }
+//            }
+//        }
+//        ret_store
+//    }
 
     // Return the union of regions in the store
     pub fn union(&self) -> Option<SomeRegion> {

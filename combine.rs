@@ -4,7 +4,7 @@
     use crate::compare::Compare;
     use crate::square::SomeSquare;
 //    use crate::region::SomeRegion;
-    use crate::regionstore::RegionStore;
+//    use crate::regionstore::RegionStore;
     use crate::squarestore::SquareStore;
 
     /// Can two structure rules, that implement the Compare trait, be combined?
@@ -34,151 +34,113 @@
     /// between them that will invalidate the combination?
     ///
     /// For combinations of (square square), (group group) or (group square).
+
+    /// Return the Truth of a combination where the Pn value of the first argument is LT the
+    /// Pn value of the second argument.
+    fn can_combine_lt<T: Compare, U: Compare>(arg1: &T, arg2: &U) -> Truth {
+        //println!("can_combine_check_lt {} {}", &arg1.get_region(), &arg2.get_region());
+        assert!(arg1.get_pn_ref() < arg2.get_pn_ref());
+
+        // If arg1 is pnc, it must be disimilar to arg2.
+        if arg1.get_pnc() {
+            return Truth::F;
+        }
+
+        // If arg2 is unpredictable, more samples are needed of arg1.
+        if *arg2.get_pn_ref() == Pn::Unpredictable {
+            return Truth::M;
+        }
+
+        // If the initial region of arg1 rules are a subset of the initial region of arg2 rules,
+        // check that the rules of arg1 are a subset of arg2 rules.
+        if arg1.get_rules_ref().initial_region().is_subset_of(&arg2.get_rules_ref().initial_region()) {
+            if arg1.get_rules_ref().is_subset_of(arg2.get_rules_ref()) {
+                return Truth::T;
+            } else {
+                return Truth::F;
+            }
+        }
+
+        // If the initial regions of arguments rules do not have a subset/superset
+        // relation, return the Truth of their possible union.
+        arg1.get_rules_ref().can_form_union(arg2.get_rules_ref())
+    }
+
+    /// Return the Truth of a combination for any two types that have the Compare Trait.
     pub fn can_combine<T: Compare, U: Compare>(arg1: &T, arg2: &U) -> Truth {
         //println!("arg1.get_pn_ref() {} arg1.get_pnc() {} arg1.get_rules_ref() {} arg2.get_pn_ref() {} arg2.get_pnc() {} arg2.get_rules_ref() {}", arg1.get_pn_ref(), &arg1.get_pnc(), arg1.get_rules_ref(), arg2.get_pn_ref(), &arg2.get_pnc(), arg2.get_rules_ref());
-        match arg1.get_pn_ref() {
-            Pn::One => {
-                match arg2.get_pn_ref() {
-                    Pn::One => {
-                        // arg1.get_pn_ref() == One, arg2.get_pn_ref() == One
-                        // If the rules can be combined, the structs can be combined.
-                        if let Some(rulx) = arg1.get_rules_ref().union(&arg2.get_rules_ref()) {
-                            if arg1.get_rules_ref().initial_region().union(&arg2.get_rules_ref().initial_region()) == rulx.initial_region() {
-                                return Truth::T;
-                            }
-                        }
-                        // else
-                        return Truth::F;
-                    }
+        //println!("can_combine {} {}", &arg1.get_region(), &arg2.get_region());
 
-                    Pn::Two => {
-                        // arg1.get_pn_ref() == One, arg2.get_pn_ref() == Two
-                        if arg1.get_pnc() {
-                            return Truth::F;
-                        }
+        // Calc Truth for equal Pn values.
+        if arg1.get_pn_ref() == arg2.get_pn_ref() {
 
-                        // If the pn==One, samples==1 square rule is combinable with one of the
-                        // pn==Two square rules, more samples are needed.
-                        let rulx = arg1.get_rules_ref()[0].union(&arg2.get_rules_ref()[0]);
-                        if rulx.is_valid_union() {
-                            return Truth::M;
-                        }
-
-                        let rulx = arg1.get_rules_ref()[0].union(&arg2.get_rules_ref()[1]);
-                        if rulx.is_valid_union() {
-                            return Truth::M;
-                        }
-
-                        // else
-                        return Truth::F;
-                    }
-
-                    Pn::Unpredictable => {
-                        // arg1.get_pn_ref() == One, arg2.get_pn_ref() == Unpredictable
-                        // If the pn==One struct is pnc, the structs cannot be combined.
-                        if arg1.get_pnc() {
-                            return Truth::F;
-                        }
-
-                        // The pn==One struct needs more samples.
-                        return Truth::M;
-                    }
-                } // end match arg2.get_pn_ref()
+            // If the Pn value for both is unpredictable, they can be combined.
+            if *arg1.get_pn_ref() == Pn::Unpredictable {
+                //println!("can_combine: 1 returning T");
+                return Truth::T;
             }
-            Pn::Two => {
-                match arg2.get_pn_ref() {
-                    Pn::One => {
-                        // arg1.get_pn_ref() == Two, arg2.get_pn_ref() == One
-                        // If the pn==One square is has GT 1 sample, the structs cannot be combined.
-                        if arg2.get_pnc() {
-                            return Truth::F;
-                        }
 
-                        // If the pn==one, samles==1, square has one sample, and
-                        // its rule is combinable with one of the pn==Two square rules,
-                        // more samples are needed.
-                        let rulx = arg2.get_rules_ref()[0].union(&arg1.get_rules_ref()[0]);
-                        if rulx.is_valid_union()  {
-                            return Truth::M;
-                        }
-
-                        let rulx = arg2.get_rules_ref()[0].union(&arg1.get_rules_ref()[1]);
-                        if rulx.is_valid_union() {
-                            return Truth::M;
-                        }
-                        
-                        // else
-                        return Truth::F;
-                    }
-                    Pn::Two => {
-                        // arg1.get_pn_ref() == Two, arg2.get_pn_ref() == Two
-                        // The pn values match, if the rules can be combined,
-                        // the structs can be combined.
-                        //println!("union both {} {}", self.state.formatted_string(), other.state.formatted_string());
-                        if let Some(rulx) = arg1.get_rules_ref().union(&arg2.get_rules_ref()) {
-                            if arg1.get_rules_ref().initial_region().union(&arg2.get_rules_ref().initial_region()) == rulx.initial_region() {
-                                if arg1.get_pnc() && arg2.get_pnc() {
-                                    return Truth::T;
-                                } else {
-                                    return Truth::M;
-                                }
-                            }
-                        }
-                        // else
-                        return Truth::F;
-                    }
-                    Pn::Unpredictable => {
-                        // arg1.get_pn_ref() == Two, other = Unpredictable
-                        // If the pn==Two square is not pnc, more samples needed.
-                        if arg1.get_pnc() == false {
-                            return Truth::M;
-                        }
-                        // else
-                        return Truth::F;
-                    }
-                } // end match arg2.get_pn_ref()
+            // If the initial region of arg1 rules are a subset of the initial region of arg2 rules,
+            // check that the rules of arg1 are a subset of arg2 rules.
+            if arg1.get_rules_ref().initial_region().is_subset_of(&arg2.get_rules_ref().initial_region()) {
+                if arg1.get_rules_ref().is_subset_of(arg2.get_rules_ref()) {
+                    //println!("can_combine: 2 returning T");
+                    return Truth::T;
+                } else {
+                    //println!("can_combine: 3 returning F");
+                    return Truth::F;
+                }
             }
-            Pn::Unpredictable => {
-                match arg2.get_pn_ref() {
-                    Pn::Unpredictable => {
-                        // arg1.get_pn_ref() == Unpredictable, arg2.get_pn_ref() == Unpredictable
-                        // The pn values match, no rules exist to be checked,
-                        // the structs can be combined.
-                        return Truth::T;
-                    }
-                    _ => {
-                        if arg2.get_pnc() {
-                            return Truth::F;
-                        }
 
-                        // Needs more samples
-                        return Truth::M;
-                    }
-                } // end match arg2.get_pn_ref()
+            // If the initial region of arg2 rules are a subset of the initial region of arg1 rules,
+            // check that the rules of arg2 are a subset of arg1 rules.
+            if arg2.get_rules_ref().initial_region().is_subset_of(&arg1.get_rules_ref().initial_region()) {
+                if arg2.get_rules_ref().is_subset_of(arg1.get_rules_ref()) {
+                    //println!("can_combine: 4 returning T");
+                    return Truth::T;
+                } else {
+                    //println!("can_combine: 5 returning ");
+                    return Truth::F;
+                }
             }
-        } // end match arg1.get_pn_ref()
+
+            // If the initial regions of arguments rules do not have a subset/superset
+            // relation, return the Truth of their possible union.
+            let ret = arg1.get_rules_ref().can_form_union(arg2.get_rules_ref());
+            //println!("can_combine: 6 returning {}", ret);
+            return ret;
+        }
+
+        // Calc Truth for Not Equal Pn values.
+        if arg1.get_pn_ref() < arg2.get_pn_ref() {
+            let ret = can_combine_lt(arg1, arg2);
+            //println!("can_combine: 7 returning {}", ret);
+            return ret;
+        }
+
+        // Must be arg2.get_pn_ref() < arg1.get_pn_ref()
+        let ret = can_combine_lt(arg2, arg1);
+        //println!("can_combine: 8 returning {}", ret);
+        ret
     } // end can_combine
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
     /// and the squares between them.
     pub fn can_combine_check_between<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
-
+        //println!("can_combine_check_between {} {}", &arg1.get_region(), &arg2.get_region());
         assert!(arg1.get_region() != arg2.get_region());
 
         // Check the two structs
         let cmbx = can_combine(arg1, arg2);
 
-        if cmbx == Truth::F {
-            return cmbx;
-        }
-
-        if cmbx == Truth::T || arg1.get_pn_ref() == arg2.get_pn_ref() {
+        if cmbx == Truth::T {
             return can_combine_check_between_t(arg1, arg2, squares);
         }
 
-        // More samples are needed.
-        // But there is no reason to seek more samples if a square, or square pair, between is incompatible.
-        can_combine_check_between_m(arg1, arg2, squares)
+        if cmbx == Truth::M {
+            return can_combine_check_between_m(arg1, arg2, squares);
+        }
+        panic!("Should not happen!");
     }
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
@@ -242,29 +204,36 @@
 
     /// Return Truth enum for the combination of any two structs implementing the Compare trait,
     /// and the squares between them, when the two squares can be combined (can_combine returns Truth::M)
-    /// but one has a smaller pn value.
+    /// so one has a smaller pn value, without being pnc.
     /// More samples should be sought, unless there is a square, or a square pair, between
     /// that will cause a problem.
     fn can_combine_check_between_m<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
+        //println!("can_combine_check_between_m {} {}", &arg1.get_region(), &arg2.get_region());
         //println!("can_combine_check_between_m pnA {} pnB {}", arg1.get_pn_ref(), arg2.get_pn_ref());
+
+        if arg1.get_pn_ref() < arg2.get_pn_ref() {
+            return can_combine_check_between_m2(arg1, arg2, squares);
+        }
+        return can_combine_check_between_m2(arg2, arg1, squares);
+    }
+
+    /// Return truth value of combining arg1 (Pn::One) and arg2 (Pn:Two), checking
+    /// squares between.
+    fn can_combine_check_between_m2<T: Compare, U: Compare>(arg1: &T, arg2: &U, squares: &SquareStore) -> Truth {
+        //println!("can_combine_check_between_m2 {} {}", &arg1.get_region(), &arg2.get_region());
         let reg1 = arg1.get_region();
         let reg2 = arg2.get_region();
 
-        // Get keys for all squares in the region formed by the
+        // Get refs for squares in the region formed by the
         // two given structs.
-        let stas = squares
-            .stas_in_reg(&reg1.union(&reg2));
+        let sqrs: Vec<&SomeSquare> = squares.squares_in_reg(&reg1.union(&reg2));
 
         // Get refs of squares inbetween arg1 and arg2.
-        let mut reglst = RegionStore::new();
-        reglst.push(reg1);
-        reglst.push(reg2);
-
-        let mut sqrs_inbetween = Vec::<&SomeSquare>::with_capacity(stas.len());
-        for stax in stas.iter() {
-            if reglst.any_superset_of_state(stax) {
+        let mut sqrs_inbetween = Vec::<&SomeSquare>::with_capacity(sqrs.len());
+        for sqrx in sqrs.iter() {
+            if reg1.is_superset_of_state(&sqrx.state) || reg2.is_superset_of_state(&sqrx.state) {
             } else {
-                sqrs_inbetween.push(squares.find(stax).unwrap());
+                sqrs_inbetween.push(sqrx);
             }
         }
 
@@ -273,11 +242,17 @@
         }
 
         // Try squares combining with each defining struct.
+        // A Pn::One (non-pnc) and a Pn::One (non-pnc) should not be checked for compatibility.
+        // A 0->1 square would be incompatible with a 0->0 square, but both would
+        // be compatible with a [0->0, 0->1] square.
         for sqrz in &sqrs_inbetween {
 
-            if can_combine(*sqrz, arg1) == Truth::F {
-                return Truth::F;
+            if sqrz.results.pn == Pn::Two {
+                if can_combine(*sqrz, arg1) == Truth::F {
+                    return Truth::F;
+                }
             }
+            // A Pn::One or Pn::Two square can be compared with the Pn::Two argument.
             if can_combine(*sqrz, arg2) == Truth::F {
                 return Truth::F;
             }
@@ -291,14 +266,19 @@
         let mut inx = 0;
         let max_inx = sqrs_inbetween.len() - 1;
         for sqrz in &sqrs_inbetween {
-            if inx < max_inx {
-                for inx2 in (inx + 1)..sqrs_inbetween.len() {
-                    if can_combine(*sqrz, sqrs_inbetween[inx2]) == Truth::F {
-                        return Truth::F;
-                    }
-                }
-            }
+            if inx < max_inx { // skip last square, as there is no + 1 element.
 
+                for inx2 in (inx + 1)..sqrs_inbetween.len() {
+                    let sqry = sqrs_inbetween[inx2];
+                    if *sqrz.get_pn_ref() == Pn::One && *sqry.get_pn_ref() == Pn::One {
+                    } else {
+                        if can_combine(*sqrz, sqry) == Truth::F {
+                            return Truth::F;
+                        }
+                    }
+                } // next inx2, sqry
+
+            }
             inx += 1;
         } // next sqrz
 
