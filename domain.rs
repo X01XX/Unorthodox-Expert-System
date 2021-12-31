@@ -1008,7 +1008,7 @@ fn choose_one(ret_steps: &Vec::<StepStore>) -> usize {
 mod tests {
     use crate::mask::SomeMask;
     use crate::change::SomeChange;
-    use crate::need::SomeNeed;
+    //use crate::need::SomeNeed;
     use crate::region::SomeRegion;
     use crate::domain::SomeDomain;
     use crate::regionstore::RegionStore;
@@ -1244,7 +1244,9 @@ mod tests {
 
         let sf = dm0.state_from_string("s1111").unwrap();
 
-        let targ_region = dm0.region_from_string("r11X1").unwrap();
+        let mskf = SomeMask::new_from_string(1, "m1111").unwrap();
+
+        let reg11x1 = dm0.region_from_string("r11X1").unwrap();
 
         // Create group for region X10X.
         dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
@@ -1287,28 +1289,14 @@ mod tests {
 
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
-        let nds3 = dm0.actions.avec[0].group_pair_needs();
-//        println!("dm0 {}", &dm0.actions[0]);
-        assert!(nds3.len() == 1);
+        // Generate overlapping group.
+        let chgf = SomeChange { b01: mskf.clone(), b10: mskf };
+        let _nds3 = dm0.actions.avec[0].get_needs(&sd, &chgf, 0);
 
-        assert!(nds3.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
-
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
-
-        let nds4 = dm0.actions.avec[0].group_pair_needs();
-
-        assert!(nds4.len() == 1);
-//        println!("nds4: {}", &nds4);
-        assert!(nds4.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)) ||
-                nds4.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
-
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
-
-        let nds5 = dm0.actions.avec[0].group_pair_needs();
-
-        assert!(nds5.len() == 1);
-        let ned7 = SomeNeed::AddGroup { group_region: targ_region.clone(), };
-        assert!(nds5.contains(&ned7));
+        if let Some(_grpx) = dm0.actions[0].groups.find(&reg11x1) {
+        } else {
+            return Err("Group r11X1 not found ??".to_string());
+        }
 
         Ok(())
     }

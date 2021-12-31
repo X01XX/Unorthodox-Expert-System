@@ -10,6 +10,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 
 use std::fmt;
 
@@ -119,6 +120,7 @@ impl fmt::Display for SomeNeed {
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
+            SomeNeed::AddGroup2 { group_region, states } => format!("N(Create group from {} {})", group_region, states),
             SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
             SomeNeed::SetGroupLimited {
                 group_region: greg,
@@ -203,6 +205,8 @@ pub enum SomeNeed {
     },
     /// Housekeeping, add a group.
     AddGroup { group_region: SomeRegion },
+        /// Housekeeping, add a group.
+    AddGroup2 { group_region: SomeRegion, states: StateStore },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
@@ -349,6 +353,16 @@ impl PartialEq for SomeNeed {
                     },
                 _ => {}
             },
+            SomeNeed::AddGroup2 { group_region, .. } => match other {
+                SomeNeed::AddGroup2 {
+                    group_region: group_regionx, ..
+                } => 
+                    if group_region == group_regionx {
+                        return true;
+                    },
+                    
+                _ => {}
+            },
             SomeNeed::RemoveGroupAnchor { group_region: greg } => match other {
                 SomeNeed::RemoveGroupAnchor {
                     group_region: gregx,
@@ -453,6 +467,7 @@ impl SomeNeed {
                 ..
             } => format!("SeekEdge"),
             SomeNeed::AddGroup { .. } => format!("AddGroup"),
+            SomeNeed::AddGroup2 { .. } => format!("AddGroup2"),
             SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupLimited {
                 ..

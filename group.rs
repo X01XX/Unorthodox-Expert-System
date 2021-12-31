@@ -142,14 +142,16 @@ impl SomeGroup {
         if self.pnc == false {
             if sqrx.results.pnc {
                 if sqrx.state == self.region.state1 {
-                    let sqry = squares.find(&self.region.state2).unwrap();
-                    if sqry.results.pnc {
-                        self.set_pnc();
+                    if let Some(sqry) = squares.find(&self.region.state2) {
+                        if sqry.results.pnc {
+                            self.set_pnc();
+                        }
                     }
                 } else if sqrx.state == self.region.state2 {
-                    let sqry = squares.find(&self.region.state1).unwrap();
-                    if sqry.results.pnc {
-                        self.set_pnc();
+                    if let Some(sqry) = squares.find(&self.region.state1) {
+                        if sqry.results.pnc {
+                            self.set_pnc();
+                        }
                     }
                 }
             }
@@ -167,7 +169,7 @@ impl SomeGroup {
             },
             Pn::Two => match sqrx.results.pn {
                 Pn::One => {
-                    if sqrx.len_results() > 1 {
+                    if sqrx.results.pnc {
                         return false;
                     }
                     return sqrx.rules.is_subset_of(&self.rules);
@@ -215,7 +217,6 @@ impl SomeGroup {
     /// Clear the anchor, it is no longer only in one group,
     /// or is superceeded by a higher rated anchor.
     pub fn set_anchor_off(&mut self) {
-
         self.anchor = None;
         self.limited = false;
     }

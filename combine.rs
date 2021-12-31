@@ -277,7 +277,6 @@
                         }
                     }
                 } // next inx2, sqry
-
             }
             inx += 1;
         } // next sqrz

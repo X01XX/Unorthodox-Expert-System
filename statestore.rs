@@ -1,6 +1,8 @@
 //! The StateStore struct. A vector of SomeState structs.
 
 use crate::state::SomeState;
+use crate::region::SomeRegion;
+
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -11,6 +13,21 @@ impl fmt::Display for StateStore {
         write!(f, "{}", self.formatted_string())
     }
 }
+
+impl PartialEq for StateStore {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        for stax in self.iter() {
+            if other.contains(stax) == false {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for StateStore {}
 
 #[derive(Debug)]
 pub struct StateStore {
@@ -86,6 +103,22 @@ impl StateStore {
         rc_str
     }
 
+    /// Return a region representing the union of states in a StateStore.
+    pub fn _region(&self) -> Option<SomeRegion> {
+        if self.len() == 0 {
+            return None;
+        }
+        let mut ret_reg = SomeRegion::new(&self[0], &self[0]);
+
+        for stax in &self.avec {
+            if ret_reg.is_superset_of_state(stax) {
+            } else {
+                ret_reg = ret_reg.union_state(stax);
+            }
+        }
+
+        Some(ret_reg)
+    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {
