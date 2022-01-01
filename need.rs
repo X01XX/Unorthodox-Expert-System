@@ -10,7 +10,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
+//use crate::statestore::StateStore;
 
 use std::fmt;
 
@@ -119,9 +119,8 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Act {} Pri {} Sample State {}, between {} and {})",
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
-            SomeNeed::AddGroup { group_region: greg } => format!("N(Create group {})", greg),
-            SomeNeed::AddGroup2 { group_region, states } => format!("N(Create group from {} {})", group_region, states),
-            SomeNeed::RemoveGroupAnchor { group_region: greg } => format!("N(Remove anchor for group {})", greg),
+            SomeNeed::AddGroup { group_region, rules } => format!("N(Create group from {} {})", &group_region, &rules),
+            SomeNeed::RemoveGroupAnchor { group_region } => format!("N(Remove anchor for group {})", &group_region),
             SomeNeed::SetGroupLimited {
                 group_region: greg,
                 cstate: sta1,
@@ -204,9 +203,7 @@ pub enum SomeNeed {
         goal_reg: SomeRegion,
     },
     /// Housekeeping, add a group.
-    AddGroup { group_region: SomeRegion },
-        /// Housekeeping, add a group.
-    AddGroup2 { group_region: SomeRegion, states: StateStore },
+    AddGroup { group_region: SomeRegion, rules: RuleStore },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
@@ -344,17 +341,8 @@ impl PartialEq for SomeNeed {
                     },
                 _ => {}
             },
-            SomeNeed::AddGroup { group_region: greg } => match other {
+            SomeNeed::AddGroup { group_region, .. } => match other {
                 SomeNeed::AddGroup {
-                    group_region: gregx,
-                } => 
-                    if *greg == *gregx {
-                        return true;
-                    },
-                _ => {}
-            },
-            SomeNeed::AddGroup2 { group_region, .. } => match other {
-                SomeNeed::AddGroup2 {
                     group_region: group_regionx, ..
                 } => 
                     if group_region == group_regionx {
@@ -467,7 +455,6 @@ impl SomeNeed {
                 ..
             } => format!("SeekEdge"),
             SomeNeed::AddGroup { .. } => format!("AddGroup"),
-            SomeNeed::AddGroup2 { .. } => format!("AddGroup2"),
             SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupLimited {
                 ..

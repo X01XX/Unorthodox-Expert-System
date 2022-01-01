@@ -52,9 +52,12 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// A copy of the current state, to detect if it has changed between Domain activities.    
     pub prev_state: SomeState,
-    /// A counter to indicate number of cycles the previous state is equal to the current state
+    /// A counter to indicate the number of steps the current state is in the same optimal region
+    /// before getting bored.
     pub boredom: usize,
-    /// An optimal region that is sought if there are no needs.  This may be changed.
+    /// Zero, or more, optimal regions that are sought if there are no needs.
+    /// This may be changed from the UI, see the help display for the commands "oa" and "od".
+    /// If more than one region, boredom may cause the program to run rules to switch to a different region.
     pub optimal: RegionStore,
 }
 
@@ -1637,7 +1640,6 @@ mod tests {
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_110x) {
             // Test region with 1 X, with 2-bit change mask.
 
-            // Repeated runs should elicit 1X0X, 11XX.
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask6);
             println!("for {} seek regs {}", &reg_110x, &regs_exp);
             assert!(regs_exp.len() == 1);

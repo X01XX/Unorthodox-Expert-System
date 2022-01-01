@@ -186,7 +186,7 @@ impl SomeAction {
                         if sqrx.results.pn == Pn::Unpredictable {
 
                             self.groups.push(
-                                SomeGroup::new(&sqrx.state, &sqry.state, RuleStore::new(), sqrx.results.pnc && sqrx.results.pnc),
+                                SomeGroup::new(SomeRegion::new(&sqrx.state, &sqry.state), RuleStore::new(), sqrx.results.pnc && sqrx.results.pnc),
                                 dom,
                                 self.num,
                             );
@@ -194,7 +194,7 @@ impl SomeAction {
                             if let Some(rulsxy) = sqrx.rules.union(&sqry.rules) {
 
                                 self.groups.push(
-                                    SomeGroup::new(&sqrx.state, &sqry.state, rulsxy, sqrx.results.pnc && sqry.results.pnc),
+                                    SomeGroup::new(SomeRegion::new(&sqrx.state, &sqry.state), rulsxy, sqrx.results.pnc && sqry.results.pnc),
                                     dom,
                                     self.num,
                                 );
@@ -424,7 +424,7 @@ impl SomeAction {
         if rsx.len() == 0 {
             // Make a single-square group
             self.groups.push(
-                SomeGroup::new(&sqrx.state, &sqrx.state, sqrx.rules.clone(), sqrx.results.pnc),
+                SomeGroup::new(SomeRegion::new(&sqrx.state, &sqrx.state), sqrx.rules.clone(), sqrx.results.pnc),
                 dom,
                 self.num,
             );
@@ -436,7 +436,7 @@ impl SomeAction {
 
             if sqrx.results.pn == Pn::Unpredictable {
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &regx.state2, RuleStore::new(), true),
+                    SomeGroup::new(SomeRegion::new(&sqrx.state, &regx.state2), RuleStore::new(), true),
                     dom,
                     self.num,
                 );
@@ -446,7 +446,7 @@ impl SomeAction {
                 //println!("Squares with states {}, {} produce ruls {}", &sqrx.state, &sqry.state, ruls);
 
                 self.groups.push(
-                    SomeGroup::new(&sqrx.state, &sqry.state, ruls, sqrx.results.pnc && sqry.results.pnc),
+                    SomeGroup::new(SomeRegion::new(&sqrx.state, &sqry.state), ruls, sqrx.results.pnc && sqry.results.pnc),
                     dom,
                     self.num,
                 );
@@ -589,8 +589,22 @@ impl SomeAction {
             let mut try_again = false;
             for ndx in nds.iter_mut() {
                 match ndx {
-                    SomeNeed::AddGroup2 { group_region, states } => {
+                    SomeNeed::AddGroup { group_region, rules } => {
 
+                        // Check for supersets
+                        if self.groups.any_superset_of(&group_region) {
+                            let sups = self.groups.supersets_of(&group_region);
+                            if sups.len() == 1 && sups.contains(&group_region) {
+                            } else {
+                                println!(
+                                    "\nDom {} Act {} **** Supersets found for new group {} in {}",
+                                    dom, self.num, &group_region,
+                                    self.groups.supersets_of(&group_region)
+                                );
+                            }
+                            continue;
+                        }
+                        
                         // Calc pnc
                         let mut pnc = false;
                         if let Some(sqrx) = self.squares.find(&group_region.state1) {
@@ -603,74 +617,15 @@ impl SomeAction {
                             }
                         }
 
-                        // Calc rules
-                        let pnx = self.squares.find(&states[0]).unwrap().results.pn;
-                        let mut rules = RuleStore::new();
-                        if pnx != Pn::Unpredictable {
-                            rules = self.squares.find(&states[0]).unwrap().rules.clone();
-                            for stax in states.iter() {
-                                let sqrx = self.squares.find(stax).unwrap();
-                                rules = sqrx.rules.union(&rules).unwrap();
-                            } 
-                        }
-                        
                         self.groups.push(
                                 SomeGroup::new(
-                                    &group_region.state1,
-                                    &group_region.state2,
-                                    rules,
+                                    group_region.clone(),
+                                    rules.clone(),
                                     pnc,
                                 ),
                                 dom,
                                 self.num,
                             );
-                    }
-                    SomeNeed::AddGroup { group_region: greg } => {
-
-                        // Check for supersets
-                        if self.groups.any_superset_of(&greg) {
-                            let sups = self.groups.supersets_of(&greg);
-                            if sups.len() == 1 && sups.contains(&greg) {
-                            } else {
-                                println!(
-                                    "\nDom {} Act {} **** Supersets found for new group {} in {}",
-                                    dom, self.num, &greg,
-                                    self.groups.supersets_of(&greg)
-                                );
-                            }
-                            continue;
-                        }
-
-                        try_again = true;
-                        // Add the new group
-                        println!(
-                            "Dom {} Act {} AddGroup {} using {} and {}",
-                            dom, self.num, &greg, greg.state1, greg.state2
-                        );
-
-                        let sqrx = self.squares.find(&greg.state1).unwrap();
-                        let sqry = self.squares.find(&greg.state2).unwrap();
-
-                        assert!(sqrx.results.pn == sqry.results.pn);
-
-                        if sqrx.results.pn == Pn::Unpredictable {
-                            self.groups.push(
-                                SomeGroup::new(&greg.state1, &greg.state2, RuleStore::new(), true),
-                                dom,
-                                self.num,
-                            );
-                        } else {
-                            self.groups.push(
-                                SomeGroup::new(
-                                    &greg.state1,
-                                    &greg.state2,
-                                    sqrx.rules.union(&sqry.rules).unwrap(),
-                                    sqrx.results.pnc && sqry.results.pnc,
-                                ),
-                                dom,
-                                self.num,
-                            );
-                        }
                     }
                     SomeNeed::SetGroupLimited {
                         group_region: greg,
@@ -725,7 +680,6 @@ impl SomeAction {
                 for ndx in nds.iter() {
                     match ndx  {
                         SomeNeed::AddGroup { .. } => { inxs.push(inx); }
-                        SomeNeed::AddGroup2 { .. } => { inxs.push(inx); }
                         SomeNeed::SetGroupLimited {
                             ..
                         } => { inxs.push(inx); }
@@ -1086,13 +1040,6 @@ impl SomeAction {
                     far: grpx.region.state1.clone(),
                 });
             }
-
-//            if sqrx.results.pnc && sqry.results.pnc {
-//                ret_nds.push(SomeNeed::SetGroupPnc {
-//                    group_region: grpx.region.clone(),
-//                });
-//            }
-
         } // next grpx
 
         ret_nds
@@ -1407,8 +1354,12 @@ impl SomeAction {
                     if adj_sqr.results.pnc {
 
                         if can_combine(anchor_sqr, adj_sqr) == Truth::T {
+                            let mut sta_str = StateStore::with_capacity(2);
+                            sta_str.push(anchor_sta.clone());
+                            sta_str.push(adj_sta.clone());
                             nds_grp_add.push(SomeNeed::AddGroup {
                                 group_region: SomeRegion::new(&anchor_sta, &adj_sta),
+                                rules: anchor_sqr.rules.union(&adj_sqr.rules).unwrap(),
                             });
                         }
                     } else {
@@ -1625,7 +1576,6 @@ impl SomeAction {
             }
             inx += 1;
         }
-        //println!("AddGroup2 mindef {} number pairs {} num new second states {}", &min_def, &pair_min_inxs.len(), &num_new_states);
 
         // Return region
         let mut inx = 0;
@@ -1649,9 +1599,12 @@ impl SomeAction {
         if reg_grp.num_x() == 0 {
             if let Some(sqrx) = self.squares.find(&reg_grp.state1) {
                 if sqrx.results.pnc {
+                    let mut sta_str = StateStore::with_capacity(1);
+                    sta_str.push(sqrx.state.clone());
                     ret_nds.push(
                         SomeNeed::AddGroup {
                             group_region: reg_grp.clone(),
+                            rules: sqrx.rules.clone(),
                         }
                     );
                     return Some(ret_nds);
@@ -1781,61 +1734,13 @@ impl SomeAction {
 
         if max_pn == Pn::Unpredictable {
 
-            //let mut strcc = format!("Act {} AddGroup2 A {} using sqrs ", &self.num, &reg_grp);
-            //for sqrx in pn_sqrs.iter() {
-           //     strcc.push_str(&format!(" {}", sqrx.state));
-            //}
-           // println!("{}", strcc);
-
-//            let mut sta1_found = false;
-//            let mut sta1_pnc = false;
-//            let mut sta2_found = false;
-//            let mut sta2_pnc = false;
             if let Some(regx) = self.best_states_to_define_region(reg_grp) {
                 ret_nds.push(
-                    SomeNeed::AddGroup2 {
+                    SomeNeed::AddGroup {
                         group_region:  regx,
-                        states: pn_states,
+                        rules: RuleStore::new(),
                     }
                 );
-                //println!("AddGroup2 A use pn state {} and far {}", &regx.state1, &regx.state2);
-//                if let Some(sqrx) = self.squares.find(&regx.state1) {
-//                    sta1_found = true;
-//                    sta1_pnc = sqrx.results.pnc;
-//                }
-//                if let Some(sqrx) = self.squares.find(&regx.state2) {
-//                    sta2_found = true;
-//                    sta2_pnc = sqrx.results.pnc;
-//                }
-//                if sta1_pnc && sta2_pnc {
-//                    ret_nds.push(SomeNeed::AddGroup { group_region: regx });
-//                    return Some(ret_nds);
-//                }
-//                if sta2_found == false || sta2_pnc == false {
-//                    ret_nds.push(
-//                        SomeNeed::AStateMakeGroup {
-//                            dom_num: 0, // Will be set later.
-//                            act_num: self.num,
-//                            targ_state: regx.state2.clone(),
-//                            for_reg: regx.clone(),
-//                            far: regx.state1.clone(),
-//                            num_x: reg_grp.num_x(),
-//                        }
-//                    );
-//                }
-//                if sta1_found == false || sta1_pnc == false {
-//                    ret_nds.push(
-//                        SomeNeed::AStateMakeGroup {
-//                            dom_num: 0, // Will be set later.
-//                            act_num: self.num,
-//                            targ_state: regx.state1.clone(),
-//                            for_reg: regx.clone(),
-//                            far: regx.state2.clone(),
-//                            num_x: reg_grp.num_x(),
-//                        }
-//                    );
-//                }
-//            }
         }
             return Some(ret_nds);
         }
@@ -1868,58 +1773,13 @@ impl SomeAction {
         } // next sqrx
 
         // Form group
-       // let mut strcc = format!("Act {} AddGroup2 B {} using sqrs ", &self.num, &reg_grp);
-        //for sqrx in pn_sqrs.iter() {
-        //    strcc.push_str(&format!(" {}", sqrx.state));
-       // }
-       // println!("{}", strcc);
-
-//        let mut sta1_found = false;
-//        let mut sta1_pnc = false;
-//        let mut sta2_found = false;
-//        let mut sta2_pnc = false;
         if let Some(regx) = self.best_states_to_define_region(reg_grp) {
             ret_nds.push(
-                SomeNeed::AddGroup2 {
+                SomeNeed::AddGroup {
                     group_region:  regx,
-                    states: pn_states,
+                    rules: agg_rules,
                 }
             );
-            //println!("AddGroup2 B use pn state {} and far {}", &regx.state1, &regx.state2);
-//            if let Some(sqrx) = self.squares.find(&regx.state1) {
-//                sta1_found = true;
-//                sta1_pnc = sqrx.results.pnc;
-//            }
-//            if let Some(sqrx) = self.squares.find(&regx.state2) {
-//                sta2_found = true;
-//                sta2_pnc = sqrx.results.pnc;
-//            }
-//            if sta1_pnc && sta2_pnc {
-//                ret_nds.push(SomeNeed::AddGroup { group_region: regx });
-//                return Some(ret_nds);
-//            } else if sta2_found == false || sta2_pnc == false {
-//                ret_nds.push(
-//                    SomeNeed::AStateMakeGroup {
-//                        dom_num: 0, // Will be set later.
-//                        act_num: self.num,
-//                        targ_state: regx.state2.clone(),
-//                        for_reg: regx.clone(),
-//                        far: regx.state1.clone(),
-//                        num_x: reg_grp.num_x(),
-//                    }
-//                );
-//            } else if sta1_found == false || sta1_pnc == false {
-//                ret_nds.push(
-//                    SomeNeed::AStateMakeGroup {
-//                        dom_num: 0, // Will be set later.
-//                        act_num: self.num,
-//                        targ_state: regx.state1.clone(),
-//                        for_reg: regx.clone(),
-//                        far: regx.state2.clone(),
-//                        num_x: reg_grp.num_x(),
-//                    }
-//                );
-//            }
         }
 
         return Some(ret_nds);

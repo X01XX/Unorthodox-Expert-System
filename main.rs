@@ -865,16 +865,56 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                         Ok(aregion) => {
                             // Find group
                             if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
-                                let sqr1 = dm1.actions[act_num]
-                                    .squares
-                                    .find(&grpx.region.state1)
-                                    .unwrap();
-                                println!("Square 1: {}", &sqr1);
-                                let sqr2 = dm1.actions[act_num]
-                                    .squares
-                                    .find(&grpx.region.state2)
-                                    .unwrap();
-                                println!("Square 2: {}", &sqr2);
+                                if grpx.region.state1 == grpx.region.state2 {
+                                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state1) {
+                                        println!("{}", &sqrx);
+                                    } else {
+                                        println!("No sample taken yet in region");
+                                    }
+                                } else {
+                                    let stas_in = dm1.actions[act_num].squares.stas_in_reg(&grpx.region);
+                                    if stas_in.contains(&grpx.region.state1) && stas_in.contains(&grpx.region.state2) {
+                                        let sqr1 = dm1.actions[act_num].squares.find(&grpx.region.state1).unwrap();
+                                        println!("{}", &sqr1);
+                                        let sqr2 = dm1.actions[act_num].squares.find(&grpx.region.state2).unwrap();
+                                        println!("{}", &sqr2);
+                                    } else if stas_in.contains(&grpx.region.state1) {
+                                        let sqrx = dm1.actions[act_num].squares.find(&grpx.region.state1).unwrap();
+                                        println!("{}, far {}", &sqrx, &grpx.region.state2);
+                                        for stax in stas_in.iter() {
+                                            if *stax == grpx.region.state1 {
+                                                continue;
+                                            }
+                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
+                                                if sqrx.results.pn == grpx.pn {
+                                                    println!("{}", &sqrx);
+                                                }
+                                            }
+                                        } // next stax
+                                    } else if stas_in.contains(&grpx.region.state2) {
+                                        let sqrx = dm1.actions[act_num].squares.find(&grpx.region.state2).unwrap();
+                                        println!("{}, far {}", &sqrx, &grpx.region.state1);
+                                        for stax in stas_in.iter() {
+                                            if *stax == grpx.region.state2 {
+                                                continue;
+                                            }
+                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
+                                                if sqrx.results.pn == grpx.pn {
+                                                    println!("{}", &sqrx);
+                                                }
+                                            }
+                                        } // next stax
+                                    } else {
+                                        println!("{}, far {}", &grpx.region.state1, &grpx.region.state2);
+                                        for stax in stas_in.iter() {
+                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
+                                                if sqrx.results.pn == grpx.pn {
+                                                    println!("{}", &sqrx);
+                                                }
+                                            }
+                                        } // next stax
+                                    }
+                                }
                             } else {
                                 println!("Region {} not found!", &aregion);
                             }
@@ -967,7 +1007,7 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
 /// Display usage options.
 fn usage() {
     println!("\nStartup Commands: <invoke> may be the command \"ues\" or \"cargo run\"");
-    println!("\n    <invoke>                 - Run once, stop when no needs can be done.");
+    println!("\n    <invoke>                 - Run interactively, press enter for each step.");
     println!("    <invoke> <number times>  - Run a number of times, stop at last run, or when no needs can be done and one, or more, cannot.");
     println!("    <invoke> [h | help]      - Show this list.\n");
 

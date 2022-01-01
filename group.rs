@@ -49,9 +49,10 @@ pub struct SomeGroup {
 }
 
 impl SomeGroup {
-    /// Return a new group, using two states, representing two squares, and
-    /// their combined rules.  The RuleStore will be empty for Pn::Unpredictable squares.
-    pub fn new(sta1: &SomeState, sta2: &SomeState, ruls: RuleStore, pnc: bool) -> Self {
+
+    /// Return a new group, given a region, RuleStore, pnc values.
+    /// The RuleStore will be empty for Pn::Unpredictable squares.
+    pub fn new(regionx: SomeRegion, ruls: RuleStore, pnc: bool) -> Self {
         //        println!(
         //            "adding group {}",
         //            SomeRegion::new(&sta1, &sta2)
@@ -63,14 +64,16 @@ impl SomeGroup {
             pnx = Pn::Two;
         }
 
+        let num_ints = regionx.state1.num_ints();
+        
         Self {
-            region: SomeRegion::new(&sta1, &sta2), // Region the group covers, and the states sampled that are joined
+            region: regionx,
             pn: pnx,
             pnc: pnc,
             rules: ruls,
             limited: false,
             anchor: None,
-            edge_expand: SomeMask::new_low(sta1.num_ints()),
+            edge_expand: SomeMask::new_low(num_ints),
             pair_needs: true,
         }
     }
