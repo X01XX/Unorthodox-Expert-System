@@ -23,8 +23,10 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
+use crate::actioninterface::ActionInterface;
+
 //use crate::randompick::RandomPick;
-use crate::actions::take_action;
+//use crate::actions::take_action;
 use crate::combine::{can_combine, can_combine_check_between};
 //use crate::compare::Compare;
 
@@ -93,6 +95,8 @@ pub struct SomeAction {
     pub seek_edge: RegionStore,
     /// Changes that the group rules can do. Generally this will expand at first, then plateau, but might regress if something gets stuck.
     pub aggregate_changes: SomeChange,
+    /// Interface to an action that does something.
+    do_something: ActionInterface,
 }
 
 impl SomeAction {
@@ -107,6 +111,7 @@ impl SomeAction {
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             aggregate_changes: SomeChange::new_low(num_ints),
+            do_something: ActionInterface::new(),
         }
     }
 
@@ -2347,11 +2352,7 @@ impl SomeAction {
     /// Take an action with the current state.
     pub fn take_action(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
 
-        let asquare = self.squares.find(cur_state);
-
-        let astate = take_action(dom, self.num, cur_state, asquare);
-
-        astate
+        self.do_something.take_action(dom, self.num, cur_state)
     }
 
 } // end impl SomeAction

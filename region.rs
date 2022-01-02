@@ -15,9 +15,9 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug)]
 /// SomeRegion struct
 pub struct SomeRegion {
-    /// First state defining a region, it represents a sempled state.
+    /// First state defining a region.
     pub state1: SomeState,
-    /// Second state defining a region, it represents a sempled state.
+    /// Second state defining a region.
     /// It may be the same as the first state, for a region with no X-bit positions.
     pub state2: SomeState,
 }

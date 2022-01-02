@@ -57,6 +57,7 @@ mod truth;
 //use crate::truth::Truth;
 mod randompick;
 mod removeunordered;
+mod actioninterface;
 
 use std::io;
 use std::io::{Read, Write};
@@ -118,6 +119,8 @@ fn init() -> DomainStore {
 
 /// The User Interface.
 fn main() {
+
+//    let stint1 = StateInterface::new(2);
 
 //    if 1 == 1 {
 //        assert!(1 == 2);
@@ -373,11 +376,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     
                         match ndx {
                             SomeNeed::ToRegion {
-                                dom_num: domx,
                                 ..
-                                } => {
-                                    dmxs.reset_boredom(*domx);
-                                    },
+                                } => {},
                             _ => {
                                 dmxs.take_action_need(dom_num, &ndx);
                                 },
@@ -468,7 +468,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     
                                 println!("\n{} Need: {}", &n_num, &ndx);
     
-                                if ndx.satisfied_by(&dmxs[dom_num].cur_state) {
+                                if ndx.satisfied_by(&dmxs[dom_num].get_current_state()) {
                                     println!("\nPlan: current state satisfies need, just take the action");
                                 } else {
                                     println!("\nPlan: \n{}", &pln.str2());
@@ -558,6 +558,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 /// Return a zero or one, to indicate how the step number should change.
 fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
+    let cur_state = dm1.get_current_state();
+
     // Handle one-word commands
     if cmd.len() == 1 {
 
@@ -623,12 +625,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                 Ok(goal_region) => {
                     println!(
                         "\nChange Current_state {} to region {}",
-                        dm1.cur_state, goal_region
+                        cur_state, goal_region
                     );
-                    if goal_region.is_superset_of_state(&dm1.cur_state) {
+                    if goal_region.is_superset_of_state(&cur_state) {
                         println!(
                             "\nCurrent_state {} is already in region {}",
-                            dm1.cur_state, goal_region
+                            dm1.get_current_state(), goal_region
                         );
                     } else {
                         if dm1.to_region(&goal_region) {
@@ -677,11 +679,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             // Get act number from string
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
-                    println!("Act {} sample State {}", act_num, dm1.cur_state);
+                    println!("Act {} sample State {}", act_num, cur_state);
                     dm1.take_action_need(&SomeNeed::StateNotInGroup {
                         dom_num: dm1.num,
                         act_num: act_num,
-                        targ_state: dm1.cur_state.clone(),
+                        targ_state: dm1.get_current_state(),
                     });
                     step_inc = 1;
                 }
@@ -976,27 +978,33 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
-    print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
+    if dmxs[dom_num].boredom > 0 {
+        print!("\nCurrent Domain: {} of {} Boredom level {}", dom_num, dmxs.num_domains(), dmxs[dom_num].boredom);
+    } else {
+        print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
+    }
     println!("\nActs: {}", &dmxs[dom_num].actions);
+
+    let cur_state = &dmxs[dom_num].get_current_state();
 
     if dmxs[dom_num].optimal.len() > 0 {
 
         let mut optstr = dmxs[dom_num].optimal.formatted_string();
 
-        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&dmxs[dom_num].cur_state);
+        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&cur_state);
 
         if opt_regs.len() > 0 {
             optstr = opt_regs.formatted_string();
             if opt_regs.len() != dmxs[dom_num].optimal.len() {
-                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} of {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr, &dmxs[dom_num].optimal);
+                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} of {}", &dmxs.step, dom_num, &cur_state, optstr, &dmxs[dom_num].optimal);
             } else {
-                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr);
+                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
             }
         } else {
-                println!("\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state, optstr);
+                println!("\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
         }
     } else {
-        println!("\nStep: {} Dom: {} Current State: {}", &dmxs.step, dom_num, &dmxs[dom_num].cur_state);
+        println!("\nStep: {} Dom: {} Current State: {}", &dmxs.step, dom_num, &cur_state);
     }
 
     if dmxs.step > 500 {

@@ -138,8 +138,8 @@ impl DomainStore {
     }
     
     /// Return the current state of a given Domain index
-    pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        &self.avec[dmxi].cur_state
+    pub fn cur_state(&self, dmxi: usize) -> SomeState {
+        self.avec[dmxi].get_current_state()
     }
 
     /// Return the number of domains
@@ -441,11 +441,6 @@ impl DomainStore {
     /// Return the length of a DomainStore.
     pub fn len(&self) -> usize {
         self.avec.len()
-    }
-
-    /// Reset boredom counter for a domain
-    pub fn reset_boredom(&mut self, dom: usize) {
-        self.avec[dom].reset_boredom();
     }
 
 } // end impl DomainStore

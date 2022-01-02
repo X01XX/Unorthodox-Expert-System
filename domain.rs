@@ -48,10 +48,8 @@ pub struct SomeDomain {
     pub num_ints: usize,
     /// Actions the Domain can take.
     pub actions: ActionStore,
-    /// The Current State.
-    pub cur_state: SomeState,
-    /// A copy of the current state, to detect if it has changed between Domain activities.    
-    pub prev_state: SomeState,
+    /// The Current, internal, State.
+    cur_state: SomeState,
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub boredom: usize,
@@ -79,10 +77,14 @@ impl SomeDomain {
             num_ints,
             actions: ActionStore::new(),
             cur_state: cur.clone(),
-            prev_state: cur.clone(),
             boredom: 0,
             optimal: optimal,
         };
+    }
+
+    /// Return a copy of the current , internal, state.
+    pub fn get_current_state(&self) -> SomeState {
+        self.cur_state.clone()
     }
 
     /// Used to add a region, no subsets, to the optimal region store
@@ -123,6 +125,12 @@ impl SomeDomain {
     /// Do functions related to being in an optimum region
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
 
+        // Check if there are no optimal regions.
+        if self.optimal.len() == 0 {
+            return None;
+        }
+
+        // Check if the current state is in at least one optimal regions.
         let sups = self.optimal.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
             let inx = rand::thread_rng().gen_range(0, self.optimal.len());
@@ -133,17 +141,18 @@ impl SomeDomain {
                 });
         }
         //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
-        if self.optimal.len() > 1 && self.optimal.len() != sups.len() {
 
+        // If there is at least one optimal region that the current_state is not in,
+        // check for, and solve, boredom.
+        let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
+        if notsups.len() > 0 {
             self.boredom += 1;
 
             if self.boredom > 3 {
 
-                let notsups = self.optimal.not_supersets_of_state(&self.cur_state);
                 println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
 
                 let inx = rand::thread_rng().gen_range(0, notsups.len());
-
                 return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
             }
         }
@@ -163,8 +172,6 @@ impl SomeDomain {
         i_state: &SomeState,
         r_state: &SomeState,
     ) {
-        self.check_async();
-
         // May break alternating sample, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
         self.set_cur_state(&r_state);
@@ -172,7 +179,6 @@ impl SomeDomain {
 
     /// Take an action for a need, evaluate the resulting sample.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        self.check_async();
 
         let act_num = ndx.act_num();
 
@@ -180,48 +186,44 @@ impl SomeDomain {
 
         self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
 
-        self.set_cur_state(&astate);
+        self.set_state(&astate);
     }
 
     /// Take an action with the current state.
     pub fn take_action(&mut self, act_num: usize) {
-        self.check_async();
 
         let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
 
         self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
 
-        self.set_cur_state(&astate);
+        self.set_state(&astate);
     }
-    
+
     /// Accessor, set the cur_state field.
     pub fn set_cur_state(&mut self, new_state: &SomeState) {
-        if self.prev_state == *new_state {
-            self.boredom += 1;
+        self.cur_state = new_state.clone();
+    }
+
+    /// Accessor, set the cur_state field.
+    pub fn set_state(&mut self, new_state: &SomeState) {
+        let opt_sups = self.optimal.supersets_of_state(&self.cur_state);
+
+        if opt_sups.len() > 0 {
+            if self.cur_state == *new_state || opt_sups.any_superset_of_state(new_state) {
+                self.boredom += 1;
+            } else {
+                self.boredom = 0;
+            }
         } else {
             self.boredom = 0;
-            self.prev_state = new_state.clone();
         }
 
         self.cur_state = new_state.clone();
     }
 
-    /// Check for a state change between sampling.
-    pub fn check_async(&mut self) {
-        if self.cur_state != self.prev_state {
-            println!(
-                "Asynchronous change from {} to {}",
-                &self.prev_state, &self.cur_state
-            );
-            // TODO store change?
-            self.prev_state = self.cur_state.clone();
-        }
-    }
 
     /// Run a plan.
     pub fn run_plan(&mut self, pln: &SomePlan) {
-        self.check_async();
-
         self.run_plan2(pln, 0);
     }
 
@@ -241,7 +243,7 @@ impl SomeDomain {
 
                 let prev_state = self.cur_state.clone();
 
-                self.set_cur_state(&astate);
+                self.set_state(&astate);
 
                 if stpx.result.is_superset_of_state(&self.cur_state) {
                     continue;
@@ -257,7 +259,7 @@ impl SomeDomain {
 
                     self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
-                    self.set_cur_state(&astate);
+                    self.set_state(&astate);
 
                     if stpx.result.is_superset_of_state(&self.cur_state) {
                         continue;
@@ -335,12 +337,7 @@ impl SomeDomain {
         //println!("\nmake_plan3: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
-//        let mut can_change = SomeChange::new_low(self.num_ints);
         let can_change = steps_str.aggregate_changes(self.num_ints);
-
-//        for stpx in steps_str.iter() {
-//            can_change = can_change.c_or(&stpx.rule.change());
-//        }
 
         if required_change.is_subset_of(&can_change) {
         } else {
@@ -916,13 +913,6 @@ impl SomeDomain {
             }
         }
     } // end act_num_from_string
-
-    /// Reset boredom counter if the current state is in any optimal region.
-    pub fn reset_boredom(&mut self) {
-        if self.optimal.any_superset_of_state(&self.cur_state) {
-            self.boredom = 0;
-        }
-    }
 
 } // end impl SomeDomain
 
