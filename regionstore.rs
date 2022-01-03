@@ -326,6 +326,51 @@ impl RegionStore {
         ret_str
     }
 
+    /// Return a RegionStore with the same regions, and intersections, and intersections of intersections.
+    pub fn and_intersections(&self) -> Self {
+        let mut ret_str = self.clone();
+
+        // Need at least two regions.
+        if ret_str.len() < 2 {
+            return ret_str;
+        }
+
+        // You should not delete or insert items in a list while traversing it, but pushes to
+        // the end of the list are usually OK.
+        let mut try_again = true;
+        while try_again {
+            try_again = false;
+
+            // Get the next round of intersections, by comparing all possible
+            // combinations of two regions.
+
+            let limit = ret_str.len();  // Only consider current items, not additions made below.
+
+            for inx1 in 0..(limit-1) {  // The last item does not have a next item to compare with.
+
+                // Compare the current inx1 item with all next items.
+                for inx2 in (inx1 + 1)..limit {
+
+                    if ret_str[inx1].intersects(&ret_str[inx2]) == false {
+                        continue;
+                    }
+
+                    let regx = ret_str[inx1].intersection(&ret_str[inx2]);
+
+                    // Skip previously seen intersections
+                    if ret_str.contains(&regx) {
+                        continue;
+                    }
+
+                    ret_str.push(regx);
+                    try_again = true;
+                } // next inx2
+            } // next inx1
+        } // end while
+        
+        //println!("and_intersections: returning {} for {}", &ret_str, &self);
+        ret_str
+    }
 } // end impl RegionStore
 
 impl Index<usize> for RegionStore {

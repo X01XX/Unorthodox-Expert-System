@@ -130,62 +130,36 @@ impl SomeDomain {
             return None;
         }
 
-        // Check if the current state is in at least one optimal regions.
+        // Check if the current state is in at least one optimal region.
         let sups = self.optimal.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
-            let inx = rand::thread_rng().gen_range(0, self.optimal.len());
+            let notsups = self.optimal.and_intersections();
+            let inx = rand::thread_rng().gen_range(0, notsups.len());
             return Some(SomeNeed::ToRegion {
                     dom_num: self.num,
                     act_num: 0,
-                    goal_reg: self.optimal[inx].clone(),
+                    goal_reg: notsups[inx].clone(),
                 });
         }
-        //println!("\nDomain {}, current state {} of is in optimal regions {}", &self.num, &self.cur_state, &sups);
 
-        // If there is at least one optimal region that the current_state is not in,
-        // check for, and solve, boredom.
+        // Check if there are any optimal regions the current state is not in.
         let mut notsups = self.optimal.not_supersets_of_state(&self.cur_state);
-        if notsups.len() > 0 {
-            // If GT 1 optimal region, push intersections, if any, into vector.
-            if notsups.len() > 1 {
-                // Get intersections, and intersections of intersections.
-                // You should not delete or insert items in a list while traversing it, but pushes to
-                // the end of the list are usually OK.
-                let mut try_again = true;
-                while try_again {
-                    try_again = false;
-                    // Get the next round of intersections
-                    let limit = notsups.len();  // Only consider current items, not additions made below.
-                    for inx1 in 0..(limit-1) {
-                        for inx2 in (inx1 + 1)..limit {
-                            // No previously seen intersections
-                            if notsups[inx1].is_superset_of(&notsups[inx2]) {
-                                continue;
-                            }
-                            // No previously seen intersections
-                            if notsups[inx2].is_superset_of(&notsups[inx1]) {
-                                continue;
-                            }
-                            if notsups[inx1].intersects(&notsups[inx2]) {
-                                let regx = notsups[inx1].intersection(&notsups[inx2]);
-                                if notsups.any_subset_of(&regx) == false {
-                                    notsups.push(regx);
-                                    try_again = true;
-                                }
-                            }
-                        } // next inx2
-                    } // next inx1
-                } // end while
-            }
-            self.boredom += 1;
 
-            if self.boredom > 3 {
+        if notsups.len() == 0 {
+            return None;
+        }
 
-                println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
+        self.boredom += 1;
 
-                let inx = rand::thread_rng().gen_range(0, notsups.len());
-                return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
-            }
+        if self.boredom > 3 { // Boredom action trigger.
+                
+            // Get intersections, if any.
+            notsups = notsups.and_intersections();
+
+            println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
+
+            let inx = rand::thread_rng().gen_range(0, notsups.len());
+            return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
         }
 
         None
