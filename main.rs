@@ -81,8 +81,12 @@ fn init() -> DomainStore {
 
     let num_ints = 1;
     let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(num_ints, "r101X").unwrap());
-    regstr.push(SomeRegion::new_from_string(num_ints, "r10X").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r0x0x").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r0xx1").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "rx1x1").unwrap());
+    regstr.push(SomeRegion::new_from_string(num_ints, "r1110").unwrap());
+    // Intersections, 0x01, 01x1.
+    // Intersections of intersections, 0101.
     let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
 
     dom1.add_action();
@@ -996,7 +1000,8 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
         if opt_regs.len() > 0 {
             optstr = opt_regs.formatted_string();
             if opt_regs.len() != dmxs[dom_num].optimal.len() {
-                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} of {}", &dmxs.step, dom_num, &cur_state, optstr, &dmxs[dom_num].optimal);
+                let notin = dmxs[dom_num].optimal.not_supersets_of_state(&dmxs[dom_num].get_current_state());
+                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}", &dmxs.step, dom_num, &cur_state, optstr, &notin);
             } else {
                 println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
             }
