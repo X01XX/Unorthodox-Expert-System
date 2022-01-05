@@ -543,14 +543,14 @@ impl SomeAction {
 
             // Look for needs to find a new edge in an invalidated group
             let mut ndx = self.seek_edge_needs1();
-            //println!("Ran seek_edge_needs1");
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
-            } else {
-                let mut ndx = self.seek_edge_needs2();
-                if ndx.len() > 0 {
-                    nds.append(&mut ndx);
-                }
+            }
+
+            // Look for needs to find a sample between in an invalidated group
+            let mut ndx = self.seek_edge_needs2();
+            if ndx.len() > 0 {
+                nds.append(&mut ndx);
             }
 
             // Check for additional samples for group states needs
@@ -751,6 +751,26 @@ impl SomeAction {
             let sqr2 = self.squares.find(&regx.state2).unwrap();
 
             // Check squares that define the region.
+            if sqr1.results.pnc == false {
+                //print!("get more samples of square {} ", &sqr1.state);
+                ret_nds.push(SomeNeed::SeekEdge {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                            targ_state: sqr1.state.clone(),
+                            in_group: regx.clone(),
+                        });
+                continue;
+            }
+            if sqr2.results.pnc == false {
+                    //print!("get more samples of square {} ", &sqr2.state);
+                    ret_nds.push(SomeNeed::SeekEdge {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        targ_state: sqr2.state.clone(),
+                        in_group: regx.clone(),
+                    });
+                continue;
+            }
 
             let cnb1 = can_combine(sqr1, sqr2);
             //print!("state 1 {} can combine state 2 {} is {} ", &sqr1.state, &sqr2.state, cnb1); 
@@ -765,40 +785,14 @@ impl SomeAction {
                     needs_found = true;
                 }
                 Truth::M => {
-                    if sqr1.results.pnc == false {
-                        //print!("get more samples of square {} ", &sqr1.state);
-                        ret_nds.push(SomeNeed::SeekEdge {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqr1.state.clone(),
-                            in_group: regx.clone(),
-                        });
-                        needs_found = true;
-                    } else if sqr2.results.pnc == false {
-                        //print!("get more samples of square {} ", &sqr2.state);
-                        ret_nds.push(SomeNeed::SeekEdge {
-                            dom_num: 0, // set this in domain get_needs
-                            act_num: self.num,
-                            targ_state: sqr2.state.clone(),
-                            in_group: regx.clone(),
-                        });
-                        needs_found = true;
-                    } else {
-                        panic!(
-                            "sqrpn {} {} == sqr pn {} {}",
-                            sqr1.state,
-                            sqr1.results.pn,
-                            sqr2.state,
-                            sqr2.results.pn
-                        );
-                    }
+                    panic!("Should not happen");
                 }
                 Truth::F => {
                     if sqr1.is_adjacent(&sqr2) {
                         //print!(" square {} is adjacent to {}, inactivating seek edge {} ", &sqr1.state, &sqr2.state, &regx);
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                         needs_found = true;
-                    } else {  // seek_edge_need2 will look for states between
+                    } else {  // seek_edge_needs2 will look for states between
                         //print!(" sqrs are not adjacent, needs2 will handle ");
                     }
                 }
@@ -811,6 +805,7 @@ impl SomeAction {
             let stas_in = self.squares.stas_in_reg(&regx);
 
             if stas_in.len() == 2 {
+                // seek_edge_needs2 will look for states between
                 continue;
             }
 
@@ -867,18 +862,7 @@ impl SomeAction {
                         //      &stax, &sqry
                         //  );
 
-                        if sqrx.results.pnc {
-                            if sqr1.results.pnc {
-                                panic!("sqrx {} sqr1 {} both pnc?", &sqrx.state, &sqr1.state);
-                            } else {
-                                ret_nds.push(SomeNeed::SeekEdge {
-                                    dom_num: 0, // set this in domain get_needs
-                                    act_num: self.num,
-                                    targ_state: sqr1.state.clone(),
-                                    in_group: regx.clone(),
-                                });
-                            }
-                        } else {
+                        if sqrx.results.pnc == false {
                             //print!("get more samples of square {} ", &stax);
                             ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
@@ -897,18 +881,7 @@ impl SomeAction {
                         //      &stax, &sqry
                         //  );
 
-                        if sqrx.results.pnc {
-                            if sqr2.results.pnc {
-                                panic!("sqrx {} sqr2 {} both pnc?", &sqrx.state, &sqr2.state);
-                            } else {
-                                ret_nds.push(SomeNeed::SeekEdge {
-                                    dom_num: 0, // set this in domain get_needs
-                                    act_num: self.num,
-                                    targ_state: sqr2.state.clone(),
-                                    in_group: regx.clone(),
-                                });
-                            }
-                        } else {
+                        if sqrx.results.pnc == false {
                             //print!("get more samples of square {} ", &stax);
                             ret_nds.push(SomeNeed::SeekEdge {
                                     dom_num: 0, // set this in domain get_needs
@@ -948,10 +921,7 @@ impl SomeAction {
             //print!("seek_edge_needs2: checking reg {} ", &regx);
 
             if regx.state1.is_adjacent(&regx.state2) {
-                panic!(
-                    "region states {} {} are adjacent",
-                    regx.state1, regx.state2
-                );
+                continue;
             }
 
             if regx.state1 == regx.state2 {
@@ -1160,6 +1130,7 @@ impl SomeAction {
 
             // If no states only in a group region, see if there is any non-overlapped part.
             if stsin.len() == 0 {
+                println!("no squares in only group {}", &greg);
                 // Get a copy of the regions without the target region.
                 let mut all_regs = regs.clone();
                 all_regs.remove_region(&greg);
@@ -1357,7 +1328,6 @@ impl SomeAction {
 
                 if let Some(adj_sqr) = self.squares.find(adj_sta) {
                     if adj_sqr.results.pnc {
-
                         if can_combine(anchor_sqr, adj_sqr) == Truth::T {
                             let mut sta_str = StateStore::with_capacity(2);
                             sta_str.push(anchor_sta.clone());
@@ -1388,13 +1358,13 @@ impl SomeAction {
             } // next inx in cfm_max
 
             if nds_grp_add.len() > 0 {
-                // println!("*** nds_grp_add {}", &nds_grp_add);
+                //println!("*** nds_grp_add {}", &nds_grp_add);
                 ret_nds.append(&mut nds_grp_add);
                 continue;
             }
 
             if nds_grp.len() > 0 {
-                //  println!("*** nds_grp {}", &nds_grp);
+                //println!("*** nds_grp {}", &nds_grp);
                 ret_nds.append(&mut nds_grp);
                 continue;
             }

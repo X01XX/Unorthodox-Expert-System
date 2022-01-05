@@ -32,12 +32,14 @@ mod resultstore;
 mod rule;
 //use rule::SomeRule;
 mod rulestore;
+use crate::rulestore::RuleStore;
 mod compare;
 mod square;
 mod squarestore;
 mod state;
 //use state::SomeState;
 mod statestore;
+use crate::statestore::StateStore;
 use need::SomeNeed;
 mod domain;
 mod needstore;
@@ -45,7 +47,7 @@ mod needstore;
 mod plan;
 //use crate::plan::SomePlan;
 mod pn;
-//use crate::pn::Pn;
+use crate::pn::Pn;
 mod step;
 mod stepstore;
 use domain::SomeDomain;
@@ -519,7 +521,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         }
                     }
                     continue;
-                } else if cmd[0] == "ld" {
+                } else if cmd[0] == "fld" {
                     match load_data(&cmd[1]) {
                         Err(why) => {
                             println!("couldn't read {}: {}", &cmd[1], why);
@@ -532,7 +534,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     } // end match load_data
                     step_inc = 0;
                     continue;
-                } else if cmd[0] == "sd" {
+                } else if cmd[0] == "fsd" {
                     match store_data(&dmxs, &cmd[1]) {
                         Err(why) => {
                             println!("couldn't write {}: {}", &cmd[1], why);
@@ -698,23 +700,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             return step_inc;
         }
 
-        if cmd[0] == "g1" {
-            // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    let sqrs = dm1.actions[act_num]
-                        .squares
-                        .states_in_1_region(&dm1.actions[act_num].groups.regions());
-
-                    println!("Act {} State in one group {}", act_num, &sqrs);
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return 0;
-        }
-
         if cmd[0] == "ps" {
             
             // Get act number from string
@@ -779,23 +764,97 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                 "Squares of Action {} in region {} are:\n",
                                 &act_num, &aregion
                             ));
-                            let stas = dm1.actions[act_num].squares.stas_in_reg(&aregion);
 
-                            let mut flg = 0;
+                            let stas = dm1.actions[act_num].squares.stas_in_reg(&aregion);
+                            if stas.len() == 0 {
+                                println!("No squares in region {}", &aregion);
+                                return 0;
+                            }
+
+                            let mut nl_flg = 0;
+                            let mut max_pn = Pn::One;
+                            let mut min_pn = Pn::Unpredictable;
+                            let mut max_pn_reg: Option<SomeRegion> = None;
 
                             for stax in stas.iter() {
-                                if flg == 1 {
+                                if nl_flg == 1 {
                                     psstr.push_str(",\n");
                                 }
 
-                                if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
-                                    psstr.push_str(&format!("    {}", sqrx));
-                                } else {
-                                    println!("Square {} not found??", stax);
+                                let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                psstr.push_str(&format!("    {}", &sqrx));
+
+                                if sqrx.results.pn < min_pn {
+                                    min_pn = sqrx.results.pn;
                                 }
 
-                                flg = 1;
+                                if sqrx.results.pn > max_pn {
+                                    max_pn = sqrx.results.pn;
+                                    max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                                } else if sqrx.results.pn == max_pn {
+                                        if let Some(regx) = max_pn_reg {
+                                            max_pn_reg = Some(regx.union_state(&sqrx.state));
+                                        } else {
+                                            max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                                        }
+                                }
+
+                                nl_flg = 1;
                             }
+
+                            // Get rule union, if any
+                            let mut rules: Option<RuleStore> = None;
+                            let mut non_pn_stas = StateStore::new();
+                            for stax in stas.iter() {
+                                let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                if sqrx.results.pn == max_pn {
+                                    if max_pn < Pn::Unpredictable {
+                                        if let Some(ruls) = rules {
+                                            if let Some(ruls2) = ruls.union(&sqrx.rules) {
+                                                rules = Some(ruls2);
+                                            } else {
+                                                rules = None;
+                                                break;
+                                            }
+                                        } else {
+                                            rules = Some(sqrx.rules.clone());
+                                        }
+                                    }
+                                } else {
+                                    if let Some(ref regx) = max_pn_reg {
+                                        if regx.is_superset_of_state(&sqrx.state) {
+                                            non_pn_stas.push(sqrx.state.clone());
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Check if max Pn squares can form a group.
+                            let mut form_group = true;
+                            let mut rules_str = String::from("None");
+                            if max_pn == Pn::Unpredictable{
+                                for stax in non_pn_stas.iter() {
+                                    let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                    if sqrx.results.pnc {
+                                        form_group = false;
+                                    }
+                                }
+                            } else {
+                                if let Some(ruls) = rules {
+                                    rules_str = ruls.formatted_string();
+                                    for stax in non_pn_stas.iter() {
+                                        let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                        if sqrx.rules.is_subset_of(&ruls) == false {
+                                            form_group = false;
+                                        }
+                                    }
+                                } else {
+                                    form_group = false;
+                                }
+                            }
+
+                            psstr.push_str(&format!("\n    Min Pn: {} Max Pn: {} Max Pn Reg {} Rules: {} Can form group: {}",
+                                &min_pn, &max_pn, &max_pn_reg.unwrap(), &rules_str, &form_group)); 
                             println!("{}", psstr);
                         }
                         Err(error) => {
@@ -818,8 +877,24 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     // Get region
                     match dm1.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
-                            let stas = dm1.actions[act_num].squares.stas_adj_reg(&aregion);
-                            println!("Squares adj to {} are {}", &aregion, &stas);
+                            if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
+                                if let Some(anchor) = &grpx.anchor {
+                                    let sqrx = dm1.actions[act_num].squares.find(anchor).unwrap();
+                                    println!("\nGroup:      {}", &aregion);
+                                    println!("Anchor:   {}", sqrx.formatted_string2());
+                                    let stas = dm1.actions[act_num].squares.stas_adj_reg(&SomeRegion::new(&anchor, &anchor));
+                                    for stax in stas.iter() {
+                                        if aregion.is_superset_of_state(stax) {
+                                        } else {
+                                            println!("Adjacent: {}", &dm1.actions[act_num].squares.find(stax).unwrap().formatted_string2());
+                                        }
+                                    }
+                                } else {
+                                    println!("\nGroup {} is not limited by a square only in one region", &aregion);
+                                }
+                            } else {
+                                println!("\nGroup with region {} not found", &aregion);
+                            }
                         }
                         Err(error) => {
                             println!("\n{}", error);
@@ -833,7 +908,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             return 0;
         }
 
-        if cmd[0] == "g1" {
+        if cmd[0] == "rps" {
            // Get act number from string
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
@@ -871,58 +946,21 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                         Ok(aregion) => {
                             // Find group
                             if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
-                                if grpx.region.state1 == grpx.region.state2 {
-                                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state1) {
+                                if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state1) {
+                                    println!("{}", &sqrx);
+                                } else {
+                                    println!("{} samples needed.", &grpx.region.state1);
+                                }
+
+                                if grpx.region.state1 != grpx.region.state2 {
+                                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state2) {
                                         println!("{}", &sqrx);
                                     } else {
-                                        println!("No sample taken yet in region");
-                                    }
-                                } else {
-                                    let stas_in = dm1.actions[act_num].squares.stas_in_reg(&grpx.region);
-                                    if stas_in.contains(&grpx.region.state1) && stas_in.contains(&grpx.region.state2) {
-                                        let sqr1 = dm1.actions[act_num].squares.find(&grpx.region.state1).unwrap();
-                                        println!("{}", &sqr1);
-                                        let sqr2 = dm1.actions[act_num].squares.find(&grpx.region.state2).unwrap();
-                                        println!("{}", &sqr2);
-                                    } else if stas_in.contains(&grpx.region.state1) {
-                                        let sqrx = dm1.actions[act_num].squares.find(&grpx.region.state1).unwrap();
-                                        println!("{}, far {}", &sqrx, &grpx.region.state2);
-                                        for stax in stas_in.iter() {
-                                            if *stax == grpx.region.state1 {
-                                                continue;
-                                            }
-                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
-                                                if sqrx.results.pn == grpx.pn {
-                                                    println!("{}", &sqrx);
-                                                }
-                                            }
-                                        } // next stax
-                                    } else if stas_in.contains(&grpx.region.state2) {
-                                        let sqrx = dm1.actions[act_num].squares.find(&grpx.region.state2).unwrap();
-                                        println!("{}, far {}", &sqrx, &grpx.region.state1);
-                                        for stax in stas_in.iter() {
-                                            if *stax == grpx.region.state2 {
-                                                continue;
-                                            }
-                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
-                                                if sqrx.results.pn == grpx.pn {
-                                                    println!("{}", &sqrx);
-                                                }
-                                            }
-                                        } // next stax
-                                    } else {
-                                        println!("{}, far {}", &grpx.region.state1, &grpx.region.state2);
-                                        for stax in stas_in.iter() {
-                                            if let Some(sqrx) = dm1.actions[act_num].squares.find(stax) {
-                                                if sqrx.results.pn == grpx.pn {
-                                                    println!("{}", &sqrx);
-                                                }
-                                            }
-                                        } // next stax
+                                        println!("{} samples needed.", &grpx.region.state2);
                                     }
                                 }
                             } else {
-                                println!("Region {} not found!", &aregion);
+                                println!("Group {} not found!", &aregion);
                             }
                         }
                         Err(error) => {
@@ -1025,49 +1063,46 @@ fn usage() {
     println!("    <invoke> [h | help]      - Show this list.\n");
 
     println!("\nSession Commands:");
-
+    println!("\n    h | help                 - Help list display (this list).");
     println!(
-        "    Press Enter (no command) - Satisfy one need that can be done, if any."
+        "\n    cd <dom num>             - Change the curently displayed Domain (CDD) to the given domain number."
     );
-    println!("\n    aj <act num> <region>    - For an Action, print Adjacent Squares to a region.");
     println!(
-        "\n    cd <dom num>             - Change the displayed Domain to the given Domain number."
+        "\n    Press Enter (no command) - Satisfy one need that can be done, if any."
     );
+    println!("\n    aj <act num> <region>    - For an Action in the CCD, and a limited group, print adJacent squares to the groups anchor");
 
-    println!("\n    cs <state>               - Arbitrary Change State.");
-    println!("\n    dn <need number>         - Run a particular need from the can do need list.");
-    println!("\n    dcs                      - Display Current state.  After a number of commands,");
+
+    println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
+    println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
+    println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");
     println!("                               the current state scrolls off screen, this might be useful.");
+    println!("\n    fld <path>               - File Load Data.");
+    println!("    fsd <path>               - File Store Data.");
     println!(
-        "\n    g1 <act num>             - For an Action, print squares that are only in one group."
+        "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
-    println!(
-        "    g1 <act num> <region>    - For an Action and region, print squares that are only in the given region."
-    );
-    println!(
-        "\n    gps <act num> <region>    - For an Action and region, print squares that define the group region."
-    );
-    println!("\n    h | help                 - Show this list.");
-    println!("\n    ld <path>                - Load data from a file.");
-    println!("\n    oa <region>              - Add the given region, no subsets, to the current domain optimal region list.");
-    println!("    od <region>              - Delete the given region, from the current domain optimal region list.");
+    println!("\n    oa <region>              - Optimal regions Add the given region, of the CCD.");
+    println!("    od <region>              - Optimal regions Delete the given region, of the CCD.");
 
-    println!("\n    ppd <need number>        - Print the Plan Details for a given need.");
-    println!("\n    ps <act num>             - For an Action, Print all Squares.");
-    println!("    ps <act num> <region>    - For an Action, Print Squares in a region.");
+    println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
+    println!("\n    ps <act num>             - Print all Squares for an action, of the CCD.");
+    println!("    ps <act num> <region>    - Print Squares in a given action and region, of the CCD.");
     
     println!("\n    q | exit | quit          - Quit program.");
-    println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    sd <path>                - Store data to a file.");
-    println!("\n    so                       - Start Over.");
-    println!("\n    ss <act num>                        - Action to Sample the current State.");
-    println!("    ss <act num> <state>                - Action to Sample a given State.");
     println!(
-        "    ss <act num> <state> <result-state> - Action to take an arbitrary State Sample."
+        "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CCD."
     );
-    println!("\n    ta <act-num>             - Take an arbirary action with the current state");
-    println!("\n    to <region>              - Change the current state to within a region, by calculating and executing a plan.");
-    println!("\n    A domain number is an integer, zero or greater, where such a domain exists.");
+    println!("\n    run                      - Run until there are no needs that can be done.");
+    println!("\n    so                       - Start Over.");
+    println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
+    println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
+    println!(
+        "    ss <act num> <state> <result-state> - Sample State, for a given action, state and arbitrary result, for the CDD."
+    );
+    println!("\n    ta <act-num>             - Take Action with the current state.");
+    println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
+    println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
     println!("\n    A state starts with an 's' character, followed by zero, or more, zero and one characters.");

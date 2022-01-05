@@ -160,6 +160,17 @@ impl SomeSquare {
         self.results.most_recent_result()
     }
 
+    pub fn formatted_string2(&self) -> String {
+        let mut rc_str = String::from("S[");
+        rc_str.push_str(&format!("{}", &self.state));
+        rc_str.push_str(&format!(", pn: {}", &self.results.pn));
+        rc_str.push_str(&format!(", pnc: {}", &self.results.pnc));
+        rc_str.push_str(&format!(", ch: {}", &self.changed()));
+        rc_str.push_str(&format!(", {}", self.rules));
+
+        rc_str.push(']');
+        rc_str
+    }
 } // end impl SomeSquare
 
 impl Compare for SomeSquare {

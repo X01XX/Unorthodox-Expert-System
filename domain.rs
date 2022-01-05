@@ -94,7 +94,7 @@ impl SomeDomain {
 
     /// Delete a region from the optimal region store
     pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
-        self.optimal.remove_region(areg)
+       self.optimal.remove_region(areg)
     }
 
     /// Add a SomeAction instance to the store.
@@ -122,7 +122,9 @@ impl SomeDomain {
         nst
     }
 
-    /// Do functions related to being in an optimum region
+    /// Do functions related to the wish to be in an optimum region.
+    /// Increment the boredom level, if needed.
+    /// Return a need to move to another optimal region, if needed.
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
 
         // Check if there are no optimal regions.
@@ -130,7 +132,8 @@ impl SomeDomain {
             return None;
         }
 
-        // Check if the current state is in at least one optimal region.
+        // If the current state is not in at least one optimal region,
+        // return a need to move to an optimal region.
         let sups = self.optimal.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
             let notsups = self.optimal.and_intersections();
@@ -142,9 +145,8 @@ impl SomeDomain {
                 });
         }
 
-        // Check if there are any optimal regions the current state is not in.
+        // Get the optimal regions the current state is not in.
         let mut notsups = self.optimal.not_supersets_of_state(&self.cur_state);
-
         if notsups.len() == 0 {
             return None;
         }
@@ -158,6 +160,10 @@ impl SomeDomain {
 
             println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
 
+            // Some optimal regions may not be accessable, a plan to get to the
+            // selected region is not yet known.
+            // Random selections may allow an accessable region to be chosen, eventually.
+            // A previously unaccessable region may be come accessable with new rules.
             let inx = rand::thread_rng().gen_range(0, notsups.len());
             return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
         }

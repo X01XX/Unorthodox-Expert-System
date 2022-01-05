@@ -183,7 +183,11 @@ impl DomainStore {
 
             if least_priority == 9999 {
                 //println!("domainstore::evaluate_needs returning empty vec");
-                return Vec::<InxPlan>::new();
+                let mut inxvec = Vec::<InxPlan>::with_capacity(nds.len());
+                for inx in 0..nds.len() {
+                    inxvec.push(InxPlan { inx: inx, pln: None });
+                }
+                return inxvec;
             }
 
             // Load avec with indicies
