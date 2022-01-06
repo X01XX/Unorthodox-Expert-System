@@ -166,7 +166,7 @@ impl DomainStore {
 
         loop {
 
-            // find next lowest priority needs
+            // find next lowest priority number (highest priority)needs
             let mut avec = Vec::<usize>::new();
             let mut least_priority = 9999;
 
@@ -181,8 +181,9 @@ impl DomainStore {
 
             //println!("least priority = {}", least_priority);
 
+            // No plans found for any need, or no needs.
             if least_priority == 9999 {
-                //println!("domainstore::evaluate_needs returning empty vec");
+                // Push InxPlan struct for each need, indicating no plan found.
                 let mut inxvec = Vec::<InxPlan>::with_capacity(nds.len());
                 for inx in 0..nds.len() {
                     inxvec.push(InxPlan { inx: inx, pln: None });
@@ -190,7 +191,7 @@ impl DomainStore {
                 return inxvec;
             }
 
-            // Load avec with indicies
+            // Load avec with indicies to needs of the current priority.
             let mut inx = 0;
             for ndsx in nds.iter() {
 
@@ -199,18 +200,21 @@ impl DomainStore {
                 }
                 inx += 1;
             }
-            //println!("num items in avec {}", avec.len());
 
             // Scan needs to see what can be achieved with a plan
-            // Parallel make_plans for needs
-            // It likes to collect a structure, in this case InxPlan,
-            // instead of a tuple or array
+            // Parallel make_plans for needs.
+            // It likes to collect a vector of structures, in this case InxPlan,
+            // instead of a tuple or array.
             //
             // To avoid the cycles required to make plans for many needs,
-            //   Process needs by groups of the same, decreasing priority, until at least one has a plan
-            //   Split groups into vectors of 4 at the most. 
+            //   Process needs by groups of the same, decreasing priority (increasing priority number),
+            //   until at least one has a plan.
+            //
+            // Split groups into vectors of length 6 at the most. 
             let span = 6;
 
+            // Randomly pick up to 6 needs at a time, from the current priority.
+            // The length of rp1 goes down as numbers are chosen.
             let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
 
             while rp1.len() > 0 {
@@ -221,7 +225,7 @@ impl DomainStore {
                     end = rp1.len();
                 }
 
-                let mut avec2 = Vec::<usize>::with_capacity(span);
+                let mut avec2 = Vec::<usize>::with_capacity(end);
                 for _inx in 0..end {
                     avec2.push(avec[rp1.pick().unwrap()]);
                 }
@@ -234,6 +238,7 @@ impl DomainStore {
                     })
                     .collect::<Vec<InxPlan>>();
 
+                // If at least one plan found, return vector of InxPlan structs. 
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
@@ -243,9 +248,11 @@ impl DomainStore {
                 }
             } // end while
 
+            // Increase the lower bound of the next, least, priority number.
             last_priority = least_priority;
 
         } // end loop
+        // Unreachable, since there is no break command.
     } // end evaluate_needs
 
     /// Choose a need, given a vector of needs,

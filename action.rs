@@ -1130,7 +1130,7 @@ impl SomeAction {
 
             // If no states only in a group region, see if there is any non-overlapped part.
             if stsin.len() == 0 {
-                println!("no squares in only group {}", &greg);
+                //println!("no squares in only group {}", &greg);
                 // Get a copy of the regions without the target region.
                 let mut all_regs = regs.clone();
                 all_regs.remove_region(&greg);
