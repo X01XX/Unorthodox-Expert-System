@@ -181,14 +181,13 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         step_inc = 1;
 
         // Get the needs of all Domains / Actions
-        let mut nds = dmxs.get_needs();
+        let nds = dmxs.get_needs();
         //println!("main {} needs {}", nds.len(), &nds);
         //println!("session loop 1");
         let mut need_plans = dmxs.evaluate_needs(&nds);
 
-        // Boredom processing in no needs, or no needs can be done.
+        // Boredom processing if no needs, or no needs can be done.
         if need_plans.len() == 0 {
-            nds = dmxs.check_optimal();
             need_plans = dmxs.evaluate_needs(&nds);
         }
         //println!("session loop 2");
@@ -580,9 +579,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         if cmd[0] == "oa" {
             match dm1.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
-
                     let val = dm1.add_optimal(goal_region.clone());
-                    println!("Add Optimal region {} (nosubs) to {} succeeded {}", goal_region, &dm1.optimal, val);
+                    println!("Add Optimal region {} result {}", goal_region, val);
                 }
                 Err(error) => {
                     println!("\nDid not understand region, {}", error);
@@ -594,12 +592,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         if cmd[0] == "od" {
             match dm1.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
-                    if dm1.optimal.contains(&goal_region) {
-                        let val = dm1.delete_optimal(&goal_region);
-                        println!("Delete Optimal region {} from {} succeeded {}", goal_region, &dm1.optimal, val);
-                    } else {
-                        println!("Region {} not matched", &goal_region);
-                    }
+                    let val = dm1.delete_optimal(&goal_region);
+                    println!("Delete Optimal region {} result {}", goal_region, val);
                 }
                 Err(error) => {
                     println!("\nDid not understand region, {}", error);
@@ -614,7 +608,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             match dm1.state_from_string(&cmd[1]) {
                 Ok(a_state) => {
                     println!("Changed state to {}", a_state);
-                    dm1.set_cur_state(&a_state);
+                    dm1.set_state(&a_state);
                     return 1;
                 }
                 Err(error) => {
@@ -729,7 +723,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     match dm1.state_from_string(&cmd[2]) {
                         Ok(a_state) => {
                             println!("Act {} sample State {}", act_num, a_state);
-                            dm1.set_cur_state(&a_state);
+                            dm1.set_state(&a_state);
                             dm1.take_action_need(&SomeNeed::StateNotInGroup {
                                 dom_num: dm1.num,
                                 act_num: act_num,
@@ -1029,16 +1023,16 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
-    if dmxs[dom_num].optimal.len() > 0 {
+    if dmxs[dom_num].optimal_and_ints.len() > 0 {
 
-        let mut optstr = dmxs[dom_num].optimal.formatted_string();
+        let mut optstr = dmxs[dom_num].optimal_and_ints.formatted_string();
 
-        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&cur_state);
+        let opt_regs = dmxs[dom_num].optimal_and_ints.supersets_of_state(&cur_state);
 
         if opt_regs.len() > 0 {
             optstr = opt_regs.formatted_string();
-            if opt_regs.len() != dmxs[dom_num].optimal.len() {
-                let notin = dmxs[dom_num].optimal.not_supersets_of_state(&dmxs[dom_num].get_current_state());
+            if opt_regs.len() != dmxs[dom_num].optimal_and_ints.len() {
+                let notin = dmxs[dom_num].optimal_and_ints.not_supersets_of_state(&dmxs[dom_num].get_current_state());
                 println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}", &dmxs.step, dom_num, &cur_state, optstr, &notin);
             } else {
                 println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
@@ -1070,7 +1064,7 @@ fn usage() {
     println!(
         "\n    Press Enter (no command) - Satisfy one need that can be done, if any."
     );
-    println!("\n    aj <act num> <region>    - For an Action in the CCD, and a limited group, print adJacent squares to the groups anchor");
+    println!("\n    aj <act num> <region>    - For an Action in the CDD, and a limited group, print adJacent squares to the groups anchor");
 
 
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
@@ -1082,16 +1076,17 @@ fn usage() {
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
-    println!("\n    oa <region>              - Optimal regions Add the given region, of the CCD.");
-    println!("    od <region>              - Optimal regions Delete the given region, of the CCD.");
-
+    println!("\n    oa <region>              - Optimal regions Add the given region, of the CDD.");
+    println!("                             - This will fail if the region is a subset of one of the displayed regions.");
+    println!("\n    od <region>              - Optimal regions Delete the given region, of the CDD.");
+    println!("                             - This will fail if the region is not found or is a displayed intersection.");
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
-    println!("\n    ps <act num>             - Print all Squares for an action, of the CCD.");
-    println!("    ps <act num> <region>    - Print Squares in a given action and region, of the CCD.");
+    println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
+    println!("    ps <act num> <region>    - Print Squares in a given action and region, of the CDD.");
     
     println!("\n    q | exit | quit          - Quit program.");
     println!(
-        "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CCD."
+        "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CDD."
     );
     println!("\n    run                      - Run until there are no needs that can be done.");
     println!("\n    so                       - Start Over.");
@@ -1112,6 +1107,10 @@ fn usage() {
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
+    println!("\n    If there is an optimal region for the CDD, when no more needs can be done, the program will seek to change the current state");
+    println!("    to be in an optimal region.");
+    println!("\n    If there is another optimal region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
+    println!("    and seek to move the current state to a different optimal region, or to an intersection of optimal regions.");
 }
 
 ///Pause for input from user.

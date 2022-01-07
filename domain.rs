@@ -3,7 +3,6 @@
 //! Contains a vector of Action structs, the current state, and a few other fields.
 
 use crate::action::SomeAction;
-//use crate::actions::take_action;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
 use crate::need::SomeNeed;
@@ -27,8 +26,8 @@ impl fmt::Display for SomeDomain {
         rc_str.push_str(&self.num.to_string());
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
-        if self.optimal.len() > 0 {
-            rc_str.push_str(&format!(", Optimal Regions: {}", &self.optimal));
+        if self.optimal_and_ints.len() > 0 {
+            rc_str.push_str(&format!(", Optimal Regions: {}", &self.optimal_and_ints));
         } else {
             rc_str.push_str(&format!(", Optimal Regions: None"));
         }
@@ -56,7 +55,9 @@ pub struct SomeDomain {
     /// Zero, or more, optimal regions that are sought if there are no needs.
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
-    pub optimal: RegionStore,
+    optimal: RegionStore,
+    /// RegionStore to add all possible intersections of the optimal states to discern.
+    pub optimal_and_ints: RegionStore,
 }
 
 impl SomeDomain {
@@ -78,6 +79,7 @@ impl SomeDomain {
             actions: ActionStore::new(),
             cur_state: cur.clone(),
             boredom: 0,
+            optimal_and_ints: optimal.and_intersections(),
             optimal: optimal,
         };
     }
@@ -89,12 +91,20 @@ impl SomeDomain {
 
     /// Used to add a region, no subsets, to the optimal region store
     pub fn add_optimal(&mut self, areg: SomeRegion) -> bool {
-        self.optimal.push_nosubs(areg)
+        if self.optimal.push_nosubs(areg) {
+            self.optimal_and_ints = self.optimal.and_intersections();
+            return true;
+        }
+        false
     }
 
     /// Delete a region from the optimal region store
     pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
-       self.optimal.remove_region(areg)
+       if self.optimal.remove_region(areg) {
+           self.optimal_and_ints = self.optimal.and_intersections();
+           return true;
+       }
+       false
     }
 
     /// Add a SomeAction instance to the store.
@@ -115,6 +125,10 @@ impl SomeDomain {
             .actions
             .get_needs(&self.cur_state, &agg_chgs, self.num);
 
+        if let Some(ndx) = self.check_optimal() {
+            nst.push(ndx);
+        }
+
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
         }
@@ -128,15 +142,16 @@ impl SomeDomain {
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
 
         // Check if there are no optimal regions.
-        if self.optimal.len() == 0 {
+        if self.optimal_and_ints.len() == 0 {
             return None;
         }
 
         // If the current state is not in at least one optimal region,
         // return a need to move to an optimal region.
-        let sups = self.optimal.supersets_of_state(&self.cur_state);
+        let sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
-            let notsups = self.optimal.and_intersections();
+            self.boredom = 0;
+            let notsups = self.optimal_and_ints.not_supersets_of_state(&self.cur_state);
             let inx = rand::thread_rng().gen_range(0, notsups.len());
             return Some(SomeNeed::ToRegion {
                     dom_num: self.num,
@@ -146,14 +161,14 @@ impl SomeDomain {
         }
 
         // Get the optimal regions the current state is not in.
-        let mut notsups = self.optimal.not_supersets_of_state(&self.cur_state);
+        let mut notsups = self.optimal_and_ints.not_supersets_of_state(&self.cur_state);
         if notsups.len() == 0 {
             return None;
         }
 
         self.boredom += 1;
 
-        if self.boredom > 3 { // Boredom action trigger.
+        if self.boredom > (3 * sups.len()) { // Boredom action trigger.
                 
             // Get intersections, if any.
             notsups = notsups.and_intersections();
@@ -185,7 +200,7 @@ impl SomeDomain {
     ) {
         // May break alternating sample, so do not mix with take_action_need
         self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
-        self.set_cur_state(&r_state);
+        self.set_state(&r_state);
     }
 
     /// Take an action for a need, evaluate the resulting sample.
@@ -211,27 +226,20 @@ impl SomeDomain {
     }
 
     /// Accessor, set the cur_state field.
-    pub fn set_cur_state(&mut self, new_state: &SomeState) {
-        self.cur_state = new_state.clone();
-    }
-
-    /// Accessor, set the cur_state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
-        let opt_sups = self.optimal.supersets_of_state(&self.cur_state);
+        if self.optimal_and_ints.len() > 1 {
+            let opt_sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
 
-        if opt_sups.len() > 0 {
-            if self.cur_state == *new_state || opt_sups.any_superset_of_state(new_state) {
-                self.boredom += 1;
-            } else {
-                self.boredom = 0;
+            if opt_sups.len() > 0 {
+                let opt_sups_new = self.optimal_and_ints.supersets_of_state(&new_state);
+                if opt_sups != opt_sups_new {
+                    self.boredom = 0;
+                }
             }
-        } else {
-            self.boredom = 0;
         }
 
         self.cur_state = new_state.clone();
     }
-
 
     /// Run a plan.
     pub fn run_plan(&mut self, pln: &SomePlan) {
@@ -1047,7 +1055,7 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3]));    // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        dm0.set_cur_state(&dm0.state_from_string("s111").unwrap());
+        dm0.set_state(&dm0.state_from_string("s111").unwrap());
         let mut toreg = dm0.region_from_string("r1000").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 4);
@@ -1057,7 +1065,7 @@ mod tests {
         }
 
         // Get plan for 8 to 7
-        dm0.set_cur_state(&dm0.state_from_string("s1000").unwrap());
+        dm0.set_state(&dm0.state_from_string("s1000").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 4);
@@ -1101,7 +1109,7 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &sb, &sb.toggle_bits(vec![3]));
 
         // Get plan for 7 to C
-        dm0.set_cur_state(&dm0.state_from_string("s111").unwrap());
+        dm0.set_state(&dm0.state_from_string("s111").unwrap());
         let mut toreg = dm0.region_from_string("r1100").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 5);
@@ -1111,7 +1119,7 @@ mod tests {
         }
 
         // Get plan for C to 7
-        dm0.set_cur_state(&dm0.state_from_string("s1100").unwrap());
+        dm0.set_state(&dm0.state_from_string("s1100").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 5);

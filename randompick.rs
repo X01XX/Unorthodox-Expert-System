@@ -40,22 +40,22 @@ pub struct RandomPick {
 impl RandomPick {
     /// Return a new instance of a RandomPick struct.
     /// The argument should be GT zero, the vector with be populated with that range of numbers, starting at zero.
-    pub fn new(nums: usize) -> Self {
-        assert!(nums > 0);
+    pub fn new(number_items: usize) -> Self {
+        assert!(number_items > 0);
         let mut ret = RandomPick {
-            items: Vec::<usize>::with_capacity(nums),
+            items: Vec::<usize>::with_capacity(number_items),
         };
 
-        for i in 0..nums {
-            ret.items.push(i);
+        for num in 0..number_items {
+            ret.items.push(num);
         }
 
-        return ret;
+        ret
     }
 
     /// Return the current length of the vector.
     pub fn len(&self) -> usize {
-        return self.items.len();
+        self.items.len()
     }
 
     /// Pick a random item from a RandomPick vector.
@@ -69,33 +69,33 @@ impl RandomPick {
         // Make a random pick
         let inx = rand::thread_rng().gen_range(0, self.items.len());
 
-        let tmp = self.items[inx];
+        let anumber = self.items[inx];
 
         remove_unordered(&mut self.items, inx);
 
-        Some(tmp)
+        Some(anumber)
     }
 } // End RandomPick
 
 /// Get a random choice of a number of unique numbers (num_results) to a
 /// given number of positions, 0, 1 .. -> the_len (exclusive).
 /// random 2 of 5 -> [0, 3]
-    pub fn random_x_of_n(num_results: usize, the_len: usize) -> Vec<usize> {
+pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
 
-    if num_results < 1 || num_results >= the_len {
+    if x < 1 || x >= n {
         panic!(
             "random_x_of_n: Number results {} is not right for length {}",
-            &num_results, &the_len
+            &x, &n
         );
     }
 
-    let mut yvec = Vec::<usize>::with_capacity(num_results);
+    let mut x_vec = Vec::<usize>::with_capacity(x);
 
-    let mut rp1 = RandomPick::new(the_len);
+    let mut rp1 = RandomPick::new(n);
 
-    for _ in 0..num_results {
-        yvec.push(rp1.pick().unwrap());
+    for _ in 0..x {
+        x_vec.push(rp1.pick().unwrap());
     }
 
-    yvec
+    x_vec
 } // end random_x_of_n

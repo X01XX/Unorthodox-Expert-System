@@ -22,6 +22,21 @@ pub struct RegionStore {
     avec: Vec<SomeRegion>,
 }
 
+impl PartialEq for RegionStore {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        for regx in self.iter() {
+            if other.contains(regx) == false {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for RegionStore {}
+
 impl RegionStore {
     /// Return a new, empty, RegionStore.
     pub fn new() -> Self {
