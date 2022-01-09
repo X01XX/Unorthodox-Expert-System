@@ -103,9 +103,9 @@ impl SomeStep {
     }
 
     // Return the change struct for a step
-    pub fn change(&self) -> SomeChange {
-        self.rule.change()
-    }
+//    pub fn change(&self) -> SomeChange {
+//        self.rule.change()
+//    }
     
 } // end impl SomeStep
 

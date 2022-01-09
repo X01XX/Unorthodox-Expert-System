@@ -64,31 +64,31 @@ impl SomeChange {
         }
     }
     
-    /// Return the logical bitwize and of a change and a mask
-    /// The mask is the not-x-mask of a goal, so changes that are 
-    /// important to consider.
-    pub fn c_and_mask(&self, msk: &SomeMask) -> SomeChange {
-        Self {
-            b01: self.b01.m_and(msk),
-            b10: self.b10.m_and(msk),
-        }
-    }
+    // Return the logical bitwize and of a change and a mask
+    // The mask is the not-x-mask of a goal, so changes that are 
+    // important to consider.
+//    pub fn c_and_mask(&self, msk: &SomeMask) -> SomeChange {
+//        Self {
+//            b01: self.b01.m_and(msk),
+//            b10: self.b10.m_and(msk),
+//        }
+//    }
 
-    /// Return the reverse change to a given change
-    pub fn change_reverse(&self) -> SomeChange {
-        Self {
-            b01: self.b10.clone(),
-            b10: self.b01.clone(),
-        }
-    }
+    // Return the reverse change to a given change
+//    pub fn change_reverse(&self) -> SomeChange {
+//        Self {
+//            b01: self.b10.clone(),
+//            b10: self.b01.clone(),
+//        }
+//    }
 
-    /// Return the logical bitwize not of a change
-    pub fn c_not(&self) -> SomeChange {
-        Self {
-            b01: self.b01.m_not(),
-            b10: self.b10.m_not(),
-        }
-    }
+    // Return the logical bitwize not of a change
+//    pub fn c_not(&self) -> SomeChange {
+//        Self {
+//            b01: self.b01.m_not(),
+//            b10: self.b10.m_not(),
+//        }
+//    }
 
     /// Return true if no bits are set
     pub fn is_low(&self) -> bool {
@@ -98,10 +98,10 @@ impl SomeChange {
         self.b10.is_low()
     }
 
-    /// Return true if a change is not low
-    pub fn is_not_low(&self) -> bool {
-        !self.is_low()
-    }
+    // Return true if a change is not low
+//    pub fn is_not_low(&self) -> bool {
+//        !self.is_low()
+//    }
     
     // Return the union of two SomeChange instances.
 //    pub fn union(&self, other: &SomeChange) -> Self {
@@ -186,12 +186,12 @@ impl SomeChange {
     }
 
     // Return true if a change intersects another
-    pub fn intersects(&self, other: &SomeChange) -> bool {
-        if self.b01.m_and(&other.b01).is_not_low() {
-            return true;
-        }
+//    pub fn intersects(&self, other: &SomeChange) -> bool {
+//        if self.b01.m_and(&other.b01).is_not_low() {
+//            return true;
+//        }
 
-        self.b10.m_and(&other.b10).is_not_low()
-    }
+//        self.b10.m_and(&other.b10).is_not_low()
+//    }
     
 } // end impl SomeChange

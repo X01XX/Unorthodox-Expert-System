@@ -1,6 +1,6 @@
 //! The Plan struct.  A StepStore struct where each step leads to the next.
 //!
-//! A StepStore is zero of more steps that may not be related.
+//! A StepStore is zero or more steps that may not be related.
 //!
 //! A Plan uses a StepStore but enforces relatedness,
 //! where the result of one step is equal to the initial region
@@ -12,6 +12,9 @@
 //!
 //! This is often a "pre-positioning", to change the current state to a state where a sample
 //! is needed.  The final sample taken is not part of the plan, at least so far.
+//!
+//! An empty plan means that the current state satisfies the need the plan is for, just
+//! sample the current state.
 
 use crate::region::SomeRegion;
 use crate::step::SomeStep;

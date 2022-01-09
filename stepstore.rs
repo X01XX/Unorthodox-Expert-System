@@ -285,6 +285,20 @@ impl StepStore {
         }
         schg
     }
+
+    // Return true if a StepStore contains a given step.
+//    pub fn contains(&self, astep: &SomeStep) -> bool {
+//        for stepx in self.iter() {
+//            if stepx.act_num == astep.act_num {
+//                if stepx.initial == astep.initial {
+//                    if stepx.result == astep.result {
+//                        return true;
+//                    }
+//                }
+//            }
+//        }
+//        false
+//    }
 } // end impl StepStore
 
 impl Index<usize> for StepStore {
