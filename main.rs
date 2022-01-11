@@ -225,7 +225,15 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         } // endif nds.len() > 0
 
-        print_domain(&dmxs, dom_num);
+        // See if any need can be done.
+        let mut can_do_flag = false;
+        for ndplnx in need_plans.iter() {
+            if let Some(_) = ndplnx.pln {
+                can_do_flag = true;
+            }
+        }
+
+        print_domain(&dmxs, dom_num, can_do_flag);
         //println!("session loop 3");
 
         // Vector for position = display index, val = need_plans index
@@ -1013,8 +1021,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 } // end do_command
 
 /// Print a domain.
-fn print_domain(dmxs: &DomainStore, dom_num: usize) {
-    if dmxs[dom_num].boredom > 0 {
+fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
+    if dmxs[dom_num].boredom > 0 && can_do_flag == false {
         print!("\nCurrent Domain: {} of {} Boredom level {}", dom_num, dmxs.num_domains(), dmxs[dom_num].boredom);
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
@@ -1023,7 +1031,7 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
-    if dmxs[dom_num].optimal_and_ints.len() > 0 {
+    if dmxs[dom_num].optimal_and_ints.len() > 0 && can_do_flag == false {
 
         let mut optstr = dmxs[dom_num].optimal_and_ints.formatted_string();
 
