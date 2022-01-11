@@ -8,6 +8,8 @@ use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+//use crate::regionstore::RegionStore;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -416,7 +418,7 @@ impl SomeRegion {
         ret_vec
     }
 
-    // Return the number of integers used in the states that make up the region
+    /// Return the number of integers used in the states that make up the region
     pub fn num_ints(&self) -> usize {
         self.state1.num_ints()
     }

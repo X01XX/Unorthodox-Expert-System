@@ -1064,7 +1064,8 @@ fn usage() {
     println!(
         "\n    Press Enter (no command) - Satisfy one need that can be done, if any."
     );
-    println!("\n    aj <act num> <region>    - For an Action in the CDD, and a limited group, print adJacent squares to the groups anchor");
+    println!("\n    q | exit | quit          - Quit the program.");
+    println!("\n\n    aj <act num> <region>    - For an Action in the CDD, and a limited group, print adJacent squares to the groups anchor");
 
 
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
@@ -1083,8 +1084,6 @@ fn usage() {
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!("    ps <act num> <region>    - Print Squares in a given action and region, of the CDD.");
-    
-    println!("\n    q | exit | quit          - Quit program.");
     println!(
         "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CDD."
     );
@@ -1111,6 +1110,11 @@ fn usage() {
     println!("    to be in an optimal region.");
     println!("\n    If there is another optimal region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
     println!("    and seek to move the current state to a different optimal region, or to an intersection of optimal regions.");
+    println!("\n    \"P[]\" means Plan: No extra actions need to be run, using the current state, run the need action to satisfy the need.");
+    println!("    \"P[1,2]\" means Plan: Run action 1, then action 2, to change the current state, then run the need action to satisfy the need.");
+    println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
+    println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
+    println!("    will get things moving again.");
 }
 
 ///Pause for input from user.

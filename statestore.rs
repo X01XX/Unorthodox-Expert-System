@@ -1,7 +1,8 @@
 //! The StateStore struct. A vector of SomeState structs.
 
 use crate::state::SomeState;
-use crate::region::SomeRegion;
+//use crate::region::SomeRegion;
+//use crate::removeunordered::remove_unordered;
 
 use std::ops::Index;
 use std::slice::Iter;
@@ -103,22 +104,35 @@ impl StateStore {
         rc_str
     }
 
-    /// Return a region representing the union of states in a StateStore.
-    pub fn _region(&self) -> Option<SomeRegion> {
-        if self.len() == 0 {
-            return None;
-        }
-        let mut ret_reg = SomeRegion::new(&self[0], &self[0]);
+    // Return a region representing the union of states in a StateStore.
+//    pub fn region(&self) -> Option<SomeRegion> {
+//        if self.len() == 0 {
+//            return None;
+//        }
+//        let mut ret_reg = SomeRegion::new(&self[0], &self[0]);
+//
+//        for stax in &self.avec {
+//            if ret_reg.is_superset_of_state(stax) {
+//            } else {
+//                ret_reg = ret_reg.union_state(stax);
+//            }
+//        }
+//
+//        Some(ret_reg)
+//    }
 
-        for stax in &self.avec {
-            if ret_reg.is_superset_of_state(stax) {
-            } else {
-                ret_reg = ret_reg.union_state(stax);
-            }
-        }
+    // Remove a state from a StateStore
+//    pub fn remove_unordered(&mut self, other: &SomeState) {
+//        let mut inx = 0;
+//        for stax in self.avec.iter() {
+//            if stax == other {
+//                break;
+//            }
+//            inx += 1;
+//        }
+//        remove_unordered(&mut self.avec, inx);
+//    }
 
-        Some(ret_reg)
-    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

@@ -590,47 +590,95 @@ impl SomeAction {
                 panic!("Dom {} Act {} loop count GT 20!", dom, self.num);
             }
 
+            // Edit out subset group adds.
+            let mut new_grp_regs = RegionStore::new();
+            for ndx in nds.iter_mut() {
+                match ndx {
+                    SomeNeed::AddGroup { group_region, .. } => {
+                        new_grp_regs.push_nosubs(group_region.clone());
+                    }
+                    _ => {}
+                };
+            } // Next ndx
+            
             // Process a few specific housekeeping needs related to changing the Action or groups.
             let mut try_again = false;
             for ndx in nds.iter_mut() {
                 match ndx {
                     SomeNeed::AddGroup { group_region, rules } => {
 
-                        // Check for supersets
-                        if self.groups.any_superset_of(&group_region) {
-                            let sups = self.groups.supersets_of(&group_region);
-                            if sups.len() == 1 && sups.contains(&group_region) {
-                            } else {
-                                println!(
-                                    "\nDom {} Act {} **** Supersets found for new group {} in {}",
-                                    dom, self.num, &group_region,
-                                    self.groups.supersets_of(&group_region)
-                                );
+                        if new_grp_regs.contains(&group_region) {
+
+                            // Check for supersets
+                            if self.groups.any_superset_of(&group_region) {
+                                let sups = self.groups.supersets_of(&group_region);
+                                if sups.len() == 1 && sups.contains(&group_region) {
+                                } else {
+                                    println!(
+                                        "\nDom {} Act {} **** Supersets found for new group {} in {}",
+                                        dom, self.num, &group_region,
+                                        self.groups.supersets_of(&group_region)
+                                    );
+                                }
+                                continue;
                             }
-                            continue;
-                        }
-                        
-                        // Calc pnc
-                        let mut pnc = false;
-                        if let Some(sqrx) = self.squares.find(&group_region.state1) {
-                            if group_region.state2 == group_region.state1 {
-                                pnc = sqrx.results.pnc;
-                            } else {
-                                if let Some(sqry) = self.squares.find(&group_region.state2) {
-                                    pnc = sqrx.results.pnc && sqry.results.pnc;
+
+                            // Calc pnc
+                            let mut pnc = false;
+                            if let Some(sqrx) = self.squares.find(&group_region.state1) {
+                                if group_region.state2 == group_region.state1 {
+                                    pnc = sqrx.results.pnc;
+                                } else {
+                                    if let Some(sqry) = self.squares.find(&group_region.state2) {
+                                        pnc = sqrx.results.pnc && sqry.results.pnc;
+                                    }
                                 }
                             }
-                        }
 
-                        self.groups.push(
-                                SomeGroup::new(
-                                    group_region.clone(),
-                                    rules.clone(),
-                                    pnc,
-                                ),
-                                dom,
-                                self.num,
-                            );
+                            // Get stas used to calc new group, for display.
+                            let sqrs_in_reg = self.squares.squares_in_reg(&group_region);
+                            let mut max_pn = Pn::One;
+                            for sqrx in sqrs_in_reg.iter() {
+                                if sqrx.results.pn > max_pn {
+                                    max_pn = sqrx.results.pn;
+                                }
+                            }
+                            let mut stas_max_pn = StateStore::new();
+                            for sqrx in sqrs_in_reg.iter() {
+                                if sqrx.results.pn == max_pn {
+                                    stas_max_pn.push(sqrx.state.clone());
+                                }
+                            }
+
+                            let mut stas_min = StateStore::new();
+
+                            if stas_max_pn.contains(&group_region.state1) {
+                                stas_min.push(group_region.state1.clone());
+                                if stas_max_pn.contains(&group_region.state2) {
+                                    stas_min.push(group_region.state2.clone());
+                                    println!("\nDom {} Act {} Group {} is an additional calculation, based on squares {}", dom, self.num, &group_region, &stas_min);
+                                } else {
+                                    println!("\nDom {} Act {} Group {} is an additional calculation, based on square {} and {} others, {} not yet sampled.",
+                                              dom, self.num, &group_region, &stas_min, stas_max_pn.len() - 1, &group_region.state2);
+                                }
+                            } else if stas_max_pn.contains(&group_region.state2) {
+                                stas_min.push(group_region.state2.clone());
+                                println!("\nDom {} Act {} Group {} is an additional calculation, based on square {} and {} others, {} not yet sampled.",
+                                              dom, self.num, &group_region, &stas_min, stas_max_pn.len() - 1, &group_region.state1);
+                            } else {
+                                println!("\nDom {} Act {} Group {} is an additional calculation, {} and {} not sampled yet",
+                                              dom, self.num, &group_region, &group_region.state1, &group_region.state2);
+                            }
+                            self.groups.push(
+                                    SomeGroup::new(
+                                        group_region.clone(),
+                                        rules.clone(),
+                                        pnc,
+                                    ),
+                                    dom,
+                                    self.num,
+                                );
+                        }
                     }
                     SomeNeed::SetGroupLimited {
                         group_region: greg,
@@ -1708,7 +1756,6 @@ impl SomeAction {
         // max_pn squares fill the region
 
         if max_pn == Pn::Unpredictable {
-
             if let Some(regx) = self.best_states_to_define_region(reg_grp) {
                 ret_nds.push(
                     SomeNeed::AddGroup {
@@ -1716,7 +1763,7 @@ impl SomeAction {
                         rules: RuleStore::new(),
                     }
                 );
-        }
+            }
             return Some(ret_nds);
         }
 
@@ -2246,7 +2293,6 @@ impl SomeAction {
         } else {
             regs.push(grpx.region.set_to_x(&net_x.half_mask()));
         }
-
         regs
     } // end possible_regions_for_group
 
