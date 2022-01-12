@@ -438,13 +438,15 @@ impl SomeDomain {
         }
 
         if try_goal_steps {
+
             // Choose a goal step.
             let mut inx = 0;
             if goal_steps.len() > 1 {
                 inx = rand::thread_rng().gen_range(0, goal_steps.len() * 11);
                 inx = inx % goal_steps.len();
             }
-            // Try rest of the path.
+
+            // Try the rest of the path.
             if let Some(before_steps) = self.random_depth_first_chaining(&from_reg, &goal_steps[inx].initial, depth + 1) {
                 ret_steps.push(goal_steps[inx].clone());
                 ret_steps = before_steps.link(&ret_steps).unwrap();
@@ -455,12 +457,14 @@ impl SomeDomain {
         }
 
         if try_from_steps {
+
             // Choose a from step.
             let mut inx = 0;
             if from_steps.len() > 1 {
                 inx = rand::thread_rng().gen_range(0, from_steps.len() * 11);
                 inx = inx % from_steps.len();
             }
+
             // Try the rest of the path.
             if let Some(after_steps) = self.random_depth_first_chaining(&from_steps[inx].result, &goal_reg, depth + 1) {
                 ret_steps.push(from_steps[inx].clone());
