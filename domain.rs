@@ -364,48 +364,57 @@ impl SomeDomain {
         // Get a vector of steps (from rules) that make part of the needed changes.
         let steps_str: StepStore = self.actions.get_steps(&required_change);
 
-        // Calculate the glide path.
-        let glide_path = from_reg.union(goal_reg);
-
         // Get from steps
         // Check if one step makes the desired change.
         let mut from_steps = StepStore::new();
         for stepx in steps_str.iter() {
-            if stepx.initial.intersects(from_reg) {
-                let stepz = stepx.restrict_initial_region(from_reg);
 
-                if stepz.result.is_subset_of(goal_reg) {
-//                    println!("random_depth_first_chaining: Found 1 {}", &stepz);
-                    ret_steps.push(stepz);
-                    return Some(ret_steps);
-                }
-
-                if stepz.result.is_subset_of(&glide_path) {
-                    //if from_steps.contains(&stepz) == false {
-                        from_steps.push(stepz);
-                    //}
-                }
+            // Check if the step can be applied to the from_reg.
+            if stepx.initial.intersects(from_reg) == false {
+                continue;
             }
+
+            // Restrict step to match from_reg, if needed.
+            let stepz = stepx.restrict_initial_region(from_reg);
+
+            // Check if this rule does the whole desired change.
+            if stepz.result.is_subset_of(goal_reg) {
+                ret_steps.push(stepz);
+                return Some(ret_steps);
+            }
+
+            // Check that the restricted rule still has at least one desired change.
+            let chg2 = stepz.rule.change().c_and(&required_change);
+            if chg2.is_low() {
+                continue;
+            }
+
+            // Save the step for later.
+            from_steps.push(stepz);
+
         } // Next stepx.
 
         // Get goal steps
         let mut goal_steps = StepStore::new();
         for stepx in steps_str.iter() {
-            if stepx.result.intersects(goal_reg) {
-                let mut stepz = stepx.restrict_result_region(goal_reg);
 
-                if stepz.initial.is_subset_of(&glide_path) {
-                    //if goal_steps.contains(&stepz) == false {
-                        goal_steps.push(stepz);
-                    //}
-                } else if stepz.initial.intersects(&glide_path) {
-                    // The goal region can be reduced, while the from region cannot.
-                    stepz = stepz.restrict_initial_region(&glide_path);
-                    //if goal_steps.contains(&stepz) == false {
-                        goal_steps.push(stepz);
-                    //}
-                }
+            // Check if the step can be applied to the goal_reg.
+            if stepx.result.intersects(goal_reg) == false {
+                continue;
             }
+
+            // Restrict step to match goal_reg, if needed.
+            let stepz = stepx.restrict_result_region(goal_reg);
+
+            // Check that the restricted rule still has at least one desired change.
+            let chg2 = stepz.rule.change().c_and(&required_change);
+            if chg2.is_low() {
+                continue;
+            }
+
+            // Save the step for later.
+            goal_steps.push(stepz);
+
         } // Next stepx.
 
         // Choose which steps to use next

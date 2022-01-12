@@ -32,6 +32,8 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, cmask:
             return dom0_act6(cur_state, cmask);
         } else if act_num == 7 {
             return dom0_act7(cur_state, cmask);
+        } else if act_num == 8 {
+            return dom0_act8(cur_state, cmask);
         } else {
             panic!("Dom 0, Uknown Action number {}", act_num);
         }
@@ -153,7 +155,7 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
 } // end action0
 
 /// Domain 0, act 1, actions, given the current state.
-/// Toggle bit 1.
+/// Toggle bit 1. ....../Xx/.
 pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![1]);
     println!(
@@ -166,7 +168,7 @@ pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 2, actions, given the current state.
-/// Toggle bit 2.
+/// Toggle bit 2. ...../Xx/..
 pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![2]);
     println!(
@@ -179,7 +181,7 @@ pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 3, actions, given the current state.
-/// Toggle bit 3.
+/// Toggle bit 3. ..../Xx/...
 pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![3]);
     println!(
@@ -192,7 +194,7 @@ pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 4, actions, given the current state.
-/// Toggle bit 4.
+/// Toggle bit 4. .../Xx/...
 pub fn dom0_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![4]);
     println!(
@@ -205,7 +207,7 @@ pub fn dom0_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 5, actions, given the current state.
-/// Toggle bit 5.
+/// Toggle bit 5. ../Xx/.....
 pub fn dom0_act5(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![5]);
     println!(
@@ -218,7 +220,7 @@ pub fn dom0_act5(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 6, actions, given the current state.
-/// Toggle bit 2,3 .00XX1X10
+/// Toggle bit 2,3 ..../Xx/Xx/..
 pub fn dom0_act6(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![2, 3]);
     println!(
@@ -231,11 +233,29 @@ pub fn dom0_act6(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 }
 
 /// Domain 0, act 7, actions, given the current state.
-/// Toggle bit 6 and 7, .XX......
+/// Toggle bit 6 and 7, Xx/Xx/......
 pub fn dom0_act7(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits(vec![7, 6]);
     println!(
         "\nDom 0 Act 7 {} -> {} change: {}",
+        cur,
+        new_state,
+        SomeChange::new_from_to(&cur, &new_state)
+    );
+    return new_state;
+}
+
+/// Domain 0, act 8, actions, given the current state.
+/// Toggle bit 6 ./Xx/......
+/// Will act 8 be used in combination with act 7 to effect a change of bit 7
+/// without affecting bit 6?
+/// /../Xx/, /../01/, /../10/
+/// /Xx/Xx/, /Xx/Xx/, /Xx/Xx/
+/// /Xx/XX/, /Xx/00/, /Xx/11/
+pub fn dom0_act8(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
+    let new_state = cur.toggle_bits(vec![6]);
+    println!(
+        "\nDom 0 Act 8 {} -> {} change: {}",
         cur,
         new_state,
         SomeChange::new_from_to(&cur, &new_state)

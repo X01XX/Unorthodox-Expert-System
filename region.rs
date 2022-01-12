@@ -38,7 +38,6 @@ impl PartialEq for SomeRegion {
         false
     }
 }
-impl Eq for SomeRegion {}
 
 impl SomeRegion {
     /// Create new region from two states.

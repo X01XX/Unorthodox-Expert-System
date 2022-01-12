@@ -462,7 +462,6 @@ impl SomeNeed {
             SomeNeed::SetEdgeExpand {
                 ..
             } => format!("SetEdgeExpand"),
-
             SomeNeed::InactivateSeekEdge { reg: _ } => {
                 format!("InactivateSeekEdge")
             }

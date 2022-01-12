@@ -99,6 +99,7 @@ fn init() -> DomainStore {
     dom1.add_action();
     dom1.add_action();
     dom1.add_action();
+    dom1.add_action();
 
     dmxs.push(dom1);
 
@@ -225,11 +226,14 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         } // endif nds.len() > 0
 
-        // See if any need can be done.
+        // See if any need can be done, for print_domain call.
         let mut can_do_flag = false;
         for ndplnx in need_plans.iter() {
             if let Some(_) = ndplnx.pln {
-                can_do_flag = true;
+                if nds[ndplnx.inx].type_string() != "ToRegion" {
+                    can_do_flag = true;
+                    break;
+                }
             }
         }
 
@@ -1023,7 +1027,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs[dom_num].boredom > 0 && can_do_flag == false {
-        print!("\nCurrent Domain: {} of {} Boredom level {}", dom_num, dmxs.num_domains(), dmxs[dom_num].boredom);
+        print!("\nCurrent Domain: {} of {} Boredom duration {}", dom_num, dmxs.num_domains(), dmxs[dom_num].boredom);
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
     }
