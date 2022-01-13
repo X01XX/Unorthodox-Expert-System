@@ -63,7 +63,15 @@ impl SomeChange {
             b10: self.b10.m_or(&other.b10),
         }
     }
-    
+
+    /// Return the logical bitwize xor of two changes
+    pub fn c_xor(&self, other: &SomeChange) -> SomeChange {
+        Self {
+            b01: self.b01.m_xor(&other.b01),
+            b10: self.b10.m_xor(&other.b10),
+        }
+    }
+
     // Return the logical bitwize and of a change and a mask
     // The mask is the not-x-mask of a goal, so changes that are 
     // important to consider.
@@ -98,6 +106,11 @@ impl SomeChange {
         self.b10.is_low()
     }
 
+    /// Return the number of changes in a SomeChange instance.
+    pub fn number_changes(&self) -> usize {
+        self.b01.num_one_bits() + self.b10.num_one_bits()
+    }
+
     // Return true if a change is not low
 //    pub fn is_not_low(&self) -> bool {
 //        !self.is_low()
@@ -116,7 +129,7 @@ impl SomeChange {
 //        self.b01.m_and(&self.b10)
 //    }
 
-    /// Return true if a SomeChange struct is a ones-subset of anoth.
+    /// Return true if a SomeChange struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &SomeChange) -> bool {
         if self.b01.is_subset_of(&other.b01) {
             if self.b10.is_subset_of(&other.b10) {

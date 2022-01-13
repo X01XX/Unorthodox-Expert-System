@@ -537,17 +537,29 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for a bit change vector with all steps outside of the glide path.
+        // Check for a bit change vector with all steps not reachable by the needed changes.
         // Set a flag, asym_steps.
-        let glide_path = goal_reg.union(from_reg);
+        //let glide_path = goal_reg.union(from_reg);
         let mut asym_stps = false;
         for inx in 0..steps_by_change_vov.len() {
 
             let mut all_external = true;
             
             for stpx in &steps_by_change_vov[inx] {
-                if stpx.initial.intersects(&glide_path) ||
-                   stpx.result.intersects(&glide_path) {
+                if stpx.initial.is_superset_of(from_reg) {
+                    all_external = false;
+                    break;
+                }
+                if stpx.result.intersects(goal_reg) {
+                    all_external = false;
+                    break;
+                }
+                // Check changes required to go from/to step.
+                let chg_f = SomeChange::region_to_region(from_reg, &stpx.initial);
+                let chg_g = SomeChange::region_to_region(&stpx.result, goal_reg);
+
+                if chg_f.is_subset_of(&required_change) ||
+                   chg_g.is_subset_of(&required_change) {
                        all_external = false;
                        break;
                    }
@@ -658,7 +670,7 @@ impl SomeDomain {
             // Return a plan found so far, if any
             if ret_steps.len() > 0 {
                 let chosen = choose_one(&ret_steps);
-                //println!("make_plan3: asym forward chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+                println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
                 return Some(ret_steps[chosen].clone());
             }
         }
@@ -670,21 +682,26 @@ impl SomeDomain {
     fn asymmetric_chaining_step(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
         let mut ret_stepsx = StepStore::new();
 
-        assert!(from_reg.intersects(goal_reg) == false);
-        assert!(from_reg.intersects(&stepx.initial) == false);
+        let mut stepy = stepx.clone();
 
         // Part one
-        if let Some(mut gap_steps1) = self.make_plan3(from_reg, &stepx.initial, depth + 1) {
-            ret_stepsx.append(&mut gap_steps1);
-            if ret_stepsx.result().intersects(&stepx.initial) {
-                ret_stepsx.push(stepx.restrict_initial_region(&ret_stepsx.result()));
-            } else {
+        if stepy.initial.is_superset_of(from_reg) {
+            stepy = stepy.restrict_initial_region(from_reg);
+            ret_stepsx.push(stepy.clone());
+        } else {
+            if let Some(mut gap_steps1) = self.make_plan3(from_reg, &stepy.initial, depth + 1) {
+                ret_stepsx.append(&mut gap_steps1);
+                if ret_stepsx.result().intersects(&stepy.initial) {
+                    ret_stepsx.push(stepx.restrict_initial_region(&ret_stepsx.result()));
+                } else {
+                    return None;
                 //println!("xx for from {} to {} step {}", from_reg, goal_reg, stepx);
                 //println!("plan {} result does not intersect {}", &ret_stepsx, &stepx.initial);
                 //assert!(1 == 2);
+                }
+            } else {
+                return None;
             }
-        } else {
-            return None;
         }
 
         // Part two
@@ -695,7 +712,6 @@ impl SomeDomain {
         }
 
         if let Some(gap_steps2) = self.make_plan3(&result1, goal_reg, depth + 1) {
-
             if let Some(ret_steps3) = ret_stepsx.link(&gap_steps2) {
                 return Some(ret_steps3);
             }
@@ -706,61 +722,69 @@ impl SomeDomain {
     /// Try Asymmetric chaining
     fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
 
-        let mut ret_steps = Vec::<StepStore>::new();
+        let ret_steps = Vec::<StepStore>::new();
 
-        let glide_path = goal_reg.union(from_reg);
+        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
 
-        let mut min_dist_from = 9999;
+        // Gather vec of step index, number non-reqiured changes needed)
+        let mut asym_steps_nrc = Vec::<(usize, usize)>::new();
 
-        // Find min distance of step initial regions, that are external from glide_path, to the from_reg
+        // Check steps that require changes in excess of the required changes.
+        let mut inx = 0;
         for stepx in steps_str.iter() {
+            if stepx.initial.is_superset_of(from_reg) {
+                inx += 1;
+                continue;
+            }
+            if stepx.result.intersects(goal_reg) {
+                inx += 1;
+                continue;
+            }
+            // Check changes required to go from/to step.
+            let chg_f = SomeChange::region_to_region(from_reg, &stepx.initial);
+            let chg_g = SomeChange::region_to_region(&stepx.result, goal_reg);
 
-            if stepx.initial.intersects(&glide_path) {
+            if chg_f.is_subset_of(&required_change) &&
+                chg_g.is_subset_of(&required_change) {
+                inx += 1;
                 continue;
             }
 
-            let dist = stepx.initial.distance(from_reg);
-            if dist < min_dist_from {
-                min_dist_from = dist;
-            }
+            //println!("chg_x_needed {}", &required_changes_required);
+            let chg_f_needed = chg_f.c_and(&required_change);
+            let chg_f_extra = chg_f_needed.c_xor(&chg_f);
+            let nrc_f = chg_f_extra.number_changes();
+           // println!("chg_f_needed {} chg_f_extra {} nrc_f {}", &chg_f_needed , &chg_f_extra, nrc_f);
+
+            let chg_g_needed = chg_g.c_and(&required_change);
+            let chg_g_extra = chg_g_needed.c_xor(&chg_g);
+            let nrc_g = chg_g_extra.number_changes();
+            //println!("chg_g_needed {} chg_g_extra {} nrc_g {}", &chg_g_needed , &chg_g_extra, nrc_g);
+
+            // Get total non-required change needed.
+            let low_num: usize = nrc_f + nrc_g;
+
+            asym_steps_nrc.push((inx, low_num));
+
+            inx += 1;
         } // next stepx
 
-        if min_dist_from == 9999 {
+        if asym_steps_nrc.len() == 0 {
             return None;
         }
 
-        // Accumulate indicies to steps found to be external to glide_path and closest to from_reg
-        let mut asym_steps = Vec::<usize>::new();
-        let mut inx = 0;
-        for stepx in steps_str.iter() {
+        // Sort steps by ascending number of non-required changes.
+        asym_steps_nrc.sort_by(|a, b| a.1.cmp(&b.1));
 
-            if stepx.initial.intersects(&glide_path) == false {
+        
+        for inx_nrc in &asym_steps_nrc {
 
-                let dist = stepx.initial.distance(from_reg);
-                if dist == min_dist_from {
-                    asym_steps.push(inx);
-                }
+            let inx = inx_nrc.0;
+
+            if let Some(steps) = self.asymmetric_chaining_step(from_reg, goal_reg, &steps_str[inx], depth + 1) {
+                return Some(vec![steps]);
             }
 
-            inx += 1;
-        } // next step
-
-        for inx in &asym_steps {
-
-            if steps_str[*inx].result.intersects(goal_reg) {
-                let ret_steps1 = StepStore::new_with_step(steps_str[*inx].restrict_result_region(goal_reg));
-
-                if let Some(ret_steps2) = self.make_plan3(from_reg, &ret_steps1.initial(), depth + 1) {
-                    if let Some(ret_steps3) = ret_steps2.link(&ret_steps1) {
-                        ret_steps.push(ret_steps3);
-                    }
-                }
-                continue;
-            }
-            
-            if let Some(ret_stepsx) = self.asymmetric_chaining_step(from_reg, goal_reg, &steps_str[*inx], depth + 1) {
-                ret_steps.push(ret_stepsx);
-            }
         } // next inx
 
        if ret_steps.len() == 0 {
@@ -999,7 +1023,7 @@ impl SomeDomain {
 //                                } else {
 //                                    continue;
 //                                }
-//                            } else {
+// dist                           } else {
 //                                println!("glitch3 stp1 chg {} is not subset req chg {}", &stp1.change(), &required_change);
 //                            }
 //                        } else {
