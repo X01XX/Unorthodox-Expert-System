@@ -127,12 +127,6 @@ fn init() -> DomainStore {
 /// The User Interface.
 fn main() {
 
-//    let stint1 = StateInterface::new(2);
-
-//    if 1 == 1 {
-//        assert!(1 == 2);
-//    }
-
     // Start a DomainStore, add a Domain
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);

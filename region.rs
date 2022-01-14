@@ -8,6 +8,7 @@ use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+use crate::rule::SomeRule;
 //use crate::regionstore::RegionStore;
 
 use serde::{Deserialize, Serialize};
@@ -420,6 +421,26 @@ impl SomeRegion {
     /// Return the number of integers used in the states that make up the region
     pub fn num_ints(&self) -> usize {
         self.state1.num_ints()
+    }
+
+    /// Return a rule for moving from one region to another.
+    /// The result of the rule may be equal or subset of the second region.
+    pub fn rule_to_region(&self, to: &SomeRegion) -> SomeRule {
+
+        let f_ones  = self.state1.s_or(&self.state2).to_mask();
+        let f_zeros = self.state1.s_not().s_or(&self.state2.s_not()).to_mask();
+
+        let t_ones  = to.state1.s_or(&to.state2).to_mask();
+        let t_zeros = to.state1.s_not().s_or(&to.state2.s_not()).to_mask();
+
+        let to_not_x = to.x_mask().m_not();
+
+        SomeRule {
+            b00: f_zeros.m_and(&t_zeros),
+            b01: f_zeros.m_and(&t_ones).m_and(&to_not_x),
+            b11: f_ones.m_and(&t_ones),
+            b10: f_ones.m_and(&t_zeros).m_and(&to_not_x),
+        }
     }
 
 } // end impl SomeRegion

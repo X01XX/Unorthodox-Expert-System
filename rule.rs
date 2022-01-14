@@ -457,32 +457,50 @@ impl SomeRule {
     ///
     ///    If a wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
     ///
+    pub fn order_ok(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
+        !self.order_bad(other, wanted)
+    }
     pub fn order_bad(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
 
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
-        // Isolate wanted 0->1 changes.
-        let sb01 = self.b01.m_and(&wanted.b01);
-        if sb01.is_not_low() {
-            // Check if not all wanted changes are reset in getting the the second rule.
-            if sb01.m_and(&other.b10.m_or(&other.b11).m_not()) != sb01 {
-                return false;
-            }
-        }
+        //println!("order_bad:");
 
-        // Isolate wanted 1->0 changes.
-        let sb10 = self.b10.m_and(&wanted.b10);
-        if sb10.is_not_low() {
-            // Check if not all wanted changes are reset in getting the the second rule.
-            if sb10.m_and(&other.b01.m_or(&other.b00).m_not()) != sb10 {
-                return false;
-            }
+        // Calc aggregate rule.
+        let rulx: SomeRule;
+        if self.result_region().intersects(&other.initial_region()) {
+            rulx = self.then_to(&other);
+            //println!("r1 {}\nr2 {}\nr3 {}", self, other, &rulx);
+        } else {
+            let rul_between = self.result_region().rule_to_region(&other.initial_region());
+            rulx = self.then_to(&rul_between).then_to(&other);
+            //println!("r1 {}\nrb {}\nr2 {}\nr3 {}", self, &rul_between, other, &rulx);
         }
-        // println!("order_bad: returning true");
-        true
+        let s_wanted = self.change().c_and(wanted);
+        //let o_wanted = other.change().c_and(wanted);
+        let a_wanted = rulx.change().c_and(wanted);
+        let rslt = s_wanted.c_and(&a_wanted);
+        //println!("r1 wanted: {}\nr2 wanted: {}\nr3 wanted: {} change {}\n",
+        //&s_wanted, &o_wanted, &a_wanted, &rslt);
+        if rslt.is_low() {
+            return true;
+        }
+        false
     }
 
-} // end SomeRule
+    /// Combine two rules in sequence.
+    /// The result region of the first rule must intersect the initial region of the second rule.
+    pub fn then_to(&self, other: &SomeRule) -> Self {
+        assert!(self.result_region().intersects(&other.initial_region()));
+
+        Self {
+            b00: self.b00.m_and(&other.b00).m_or(&self.b01.m_and(&other.b10)),
+            b01: self.b01.m_and(&other.b11).m_or(&self.b00.m_and(&other.b01)),
+            b11: self.b11.m_and(&other.b11).m_or(&self.b10.m_and(&other.b01)),
+            b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
+        }
+    }
+} // end impl SomeRule
 
 impl Clone for SomeRule {
     fn clone(&self) -> Self {
@@ -616,8 +634,8 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "10/01").unwrap();
         let chg1 = SomeChange::new(&SomeMask::new_from_string(1, "m11").unwrap(), &SomeMask::new_low(1));
-        if rul1.mutually_exclusive(&rul2, &chg1)  {
-            return Err(format!("test_mutually_exclusive 1 True?"));
+        if rul1.mutually_exclusive(&rul2, &chg1) == false {
+            return Err(format!("test_mutually_exclusive 1 False?"));
         }
 
         // The results of rules (1X, X0) intersects both of the initial regions (XX, XX),
@@ -638,15 +656,22 @@ mod tests {
         // so one rul1 should be run before rul2.
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "10/01").unwrap();
+        let rul3 = SomeRule::new_from_string(1, "xx/xx").unwrap();
         let chg1 = SomeChange::new(&SomeMask::new_from_string(1, "m11").unwrap(), &SomeMask::new_low(1));
 
         println!("1->2 {}", rul1.order_bad(&rul2, &chg1));
         println!("2->1 {}", rul2.order_bad(&rul1, &chg1));
-        if rul1.order_bad(&rul2, &chg1) {
-            return Err(format!("test_mutually_exclusive 1 True?"));
+        if rul1.order_bad(&rul2, &chg1) == false {
+            return Err(format!("test_order_bad 1 False?"));
         }
         if rul2.order_bad(&rul1, &chg1) == false {
-            return Err(format!("test_mutually_exclusive 1 False?"));
+            return Err(format!("test_order_bad 2 False?"));
+        }
+        if rul1.order_bad(&rul3, &chg1) {
+            return Err(format!("test_order_bad 3 True?"));
+        }
+        if rul2.order_bad(&rul3, &chg1) {
+            return Err(format!("test_order_bad 4 True?"));
         }
         
         Ok(())

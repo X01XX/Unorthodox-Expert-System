@@ -670,7 +670,7 @@ impl SomeDomain {
             // Return a plan found so far, if any
             if ret_steps.len() > 0 {
                 let chosen = choose_one(&ret_steps);
-                println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
+                //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
                 return Some(ret_steps[chosen].clone());
             }
         }
@@ -762,9 +762,9 @@ impl SomeDomain {
             //println!("chg_g_needed {} chg_g_extra {} nrc_g {}", &chg_g_needed , &chg_g_extra, nrc_g);
 
             // Get total non-required change needed.
-            let low_num: usize = nrc_f + nrc_g;
+            let num_chg: usize = nrc_f + nrc_g;
 
-            asym_steps_nrc.push((inx, low_num));
+            asym_steps_nrc.push((inx, num_chg));
 
             inx += 1;
         } // next stepx
