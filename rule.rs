@@ -467,30 +467,29 @@ impl SomeRule {
         //println!("order_bad:");
 
         // Calc aggregate rule.
-        let rulx: SomeRule;
-        if self.result_region().intersects(&other.initial_region()) {
-            rulx = self.then_to(&other);
-            //println!("r1 {}\nr2 {}\nr3 {}", self, other, &rulx);
-        } else {
-            let rul_between = self.result_region().rule_to_region(&other.initial_region());
-            rulx = self.then_to(&rul_between).then_to(&other);
-            //println!("r1 {}\nrb {}\nr2 {}\nr3 {}", self, &rul_between, other, &rulx);
-        }
+        let rulx = self.then_to(&other);
+
         let s_wanted = self.change().c_and(wanted);
         //let o_wanted = other.change().c_and(wanted);
         let a_wanted = rulx.change().c_and(wanted);
         let rslt = s_wanted.c_and(&a_wanted);
         //println!("r1 wanted: {}\nr2 wanted: {}\nr3 wanted: {} change {}\n",
         //&s_wanted, &o_wanted, &a_wanted, &rslt);
-        if rslt.is_low() {
-            return true;
-        }
-        false
+        rslt.is_low()
     }
 
     /// Combine two rules in sequence.
-    /// The result region of the first rule must intersect the initial region of the second rule.
+    /// The result region of the first rule may not intersect the initial region of the second rule.
     pub fn then_to(&self, other: &SomeRule) -> Self {
+        if self.result_region().intersects(&other.initial_region()) {
+            return self.then_to2(&other);
+        }
+        let rul_between = self.result_region().rule_to_region(&other.initial_region());
+        self.then_to2(&rul_between).then_to2(&other)
+    }
+    /// Combine two rules in sequence.
+    /// The result region of the first rule must intersect the initial region of the second rule.
+    pub fn then_to2(&self, other: &SomeRule) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
