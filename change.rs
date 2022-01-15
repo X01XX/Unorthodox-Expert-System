@@ -64,13 +64,13 @@ impl SomeChange {
         }
     }
 
-    /// Return the logical bitwize xor of two changes
-    pub fn c_xor(&self, other: &SomeChange) -> SomeChange {
-        Self {
-            b01: self.b01.m_xor(&other.b01),
-            b10: self.b10.m_xor(&other.b10),
-        }
-    }
+    // Return the logical bitwize xor of two changes
+//    pub fn c_xor(&self, other: &SomeChange) -> SomeChange {
+//        Self {
+//            b01: self.b01.m_xor(&other.b01),
+//            b10: self.b10.m_xor(&other.b10),
+//        }
+//    }
 
     // Return the logical bitwize and of a change and a mask
     // The mask is the not-x-mask of a goal, so changes that are 
@@ -106,10 +106,10 @@ impl SomeChange {
         self.b10.is_low()
     }
 
-    /// Return the number of changes in a SomeChange instance.
-    pub fn number_changes(&self) -> usize {
-        self.b01.num_one_bits() + self.b10.num_one_bits()
-    }
+    // Return the number of changes in a SomeChange instance.
+//    pub fn number_changes(&self) -> usize {
+//        self.b01.num_one_bits() + self.b10.num_one_bits()
+//    }
 
     // Return true if a change is not low
 //    pub fn is_not_low(&self) -> bool {

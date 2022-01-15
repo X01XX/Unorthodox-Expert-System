@@ -13,6 +13,7 @@ use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::removeunordered::remove_unordered;
 
 use std::fmt;
 extern crate rand;
@@ -320,21 +321,6 @@ impl SomeDomain {
         } // next stpx
     } // end run_plan2
 
-    /// Return true if the steps referenced in argument1 should be run before the steps referenced argument2.
-    pub fn steps_before(&self, arg1: &Vec<&SomeStep>, arg2: &Vec<&SomeStep>, wanted: &SomeChange) -> bool {
-        for stpx in arg1.iter() {
-            for stpy in arg2.iter() {
-                if ptr_eq(stpx, stpy) {
-                    return false;
-                }
-                if stpy.rule.order_ok(&stpx.rule, wanted) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     /// Get the steps of a plan, wrap the steps into a plan, return Some(SomePlan).
     pub fn make_plan2(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<SomePlan> {
         //println!("make_plan2 start");
@@ -355,6 +341,7 @@ impl SomeDomain {
         //println!("make_plan3 returns None");
         None
     }
+
     /// It seems possible that a failed forward-chaining path could intersect a failed backward-chaining path,
     /// so maybe forward-chaining and backward-chaining can be combined.
     ///
@@ -509,7 +496,73 @@ impl SomeDomain {
         true
     }
 
+    /// Return true if the order of two steps vectors is OK in at lease one pair.
+    fn order_ok(&self, steps_from: &Vec::<&SomeStep>, steps_to: &Vec::<&SomeStep>, required_change: &SomeChange) -> bool {
+        for stepx in steps_from.iter() {
+            for stepy in steps_to.iter() {
+                if ptr_eq(stepx, stepy) || stepx.rule.order_ok(&stepy.rule, required_change) {
+                    return true;
+                } 
+            }
+        }
+        false
+    }
+
+    /// Return indexes of bit-change vectors that should be run after another.
+    fn order_after(&self, step_vecs: &Vec<Vec<&SomeStep>>, required_change: &SomeChange) -> Vec<usize> {
+        let mut avec = Vec::<usize>::new();
+
+        // Check each combination of bit-change step vectors
+        for inx in 0..(step_vecs.len() - 1) {
+            for iny in (inx + 1)..step_vecs.len() {
+                if self.order_ok(&step_vecs[inx], &step_vecs[iny], required_change) == false {
+                    if avec.contains(&inx) == false {
+                        avec.push(inx);
+                    }
+                }
+                if self.order_ok(&step_vecs[iny], &step_vecs[iny], required_change) == false {
+                    if avec.contains(&iny) == false {
+                        avec.push(iny);
+                    }
+                }
+            }
+        }
+
+        avec.sort_by(|a, b| a.cmp(&b));  // Ascending order.
+        //if avec.len() > 0 {
+        //    println!("order_after: returning {:?}", &avec);
+        //}
+        avec
+    }
+
     /// Return the steps of a plan to go from a given state to a given region.
+    ///
+    /// The required change of bits is calculated from the two given regions.
+    ///
+    /// Steps that make at least one of the needed changes are extracted from domain actions.
+    ///
+    /// The steps are split up into a vector of step vectors, each step vector has steps that change a 
+    /// particular bit.  Often, there will only be one step in a step vector.
+    ///
+    /// Steps that make more than one needed bit change will be in multiple step vectors.
+    ///
+    /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
+    /// needs to be backed off to run any step in the other step vector.  If any such pair, return None. 
+    ///
+    /// All possible step vector pairs are checked for needing one to be run before the other.  
+    /// If found, the step vector needing to be run after is removed.
+    ///
+    /// All step vectors are checked for the circumstance that all have an initial region that does not 
+    /// intersect the from region, and have a result region that does not intersect the goal region.
+    /// If found, one step will be randomly chosen to calculate:
+    /// From region to step initial region, then step result region to goal region.
+    /// This have the effect of splitting the recursion depth violation risk.
+    ///
+    /// Steps with an initial region the intersects the from region are found.
+    /// Steps with a result region that intersects the goal region are found.
+    /// One of the above steps is chosen for recursion, either:
+    /// From region to step initial region, or
+    /// Step result region to goal region.
     pub fn make_plan3(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
         //println!("make_plan3: from {} to {}", from_reg, goal_reg);
         // Check if from_reg is at the goal
@@ -554,13 +607,13 @@ impl SomeDomain {
         }
 
         // Check recursion depth
-        if depth > 2 {
+        if depth > 5 {
             //println!("recursion depth maximum exceeded");
             return None;
         }
         
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let steps_by_change_vov: Vec<Vec<&SomeStep>> = steps_str.steps_by_change_bit(&required_change);
+        let mut steps_by_change_vov: Vec<Vec<&SomeStep>> = steps_str.steps_by_change_bit(&required_change);
 
         // Check if any changes, all steps, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
@@ -568,10 +621,26 @@ impl SomeDomain {
             return None;
         }
 
+        // Take out bit changes that must be run after others.
+        let after_inxs: Vec::<usize> = self.order_after(&steps_by_change_vov, &required_change);
+        if after_inxs.len() > 0 {
+            //println!("order_after:  removing {} of {} step vectors", &after_inxs.len(), &steps_by_change_vov.len());
+
+            for inx in after_inxs.iter().rev() {
+                //for stepx in steps_by_change_vov[*inx].iter() {
+                    //println!("removing inx {} step {}", inx, stepx);
+                //}
+                remove_unordered(&mut steps_by_change_vov, *inx);
+            }
+            //for inx in 0..steps_by_change_vov.len() {
+                //for iny in 0..steps_by_change_vov[inx].len() {
+                    //println!("remaining inx {} step {}", inx, &steps_by_change_vov[inx][iny]);
+                //}
+            //}
+        }
+
         // Check for a bit change vector with all steps not reachable by the needed changes.
         // Set a flag, asym_steps.
-        //let glide_path = goal_reg.union(from_reg);
-//        let mut asym_stps = false;
         let mut between_bit_changes = Vec::<usize>::new();
 
         for inx in 0..steps_by_change_vov.len() {
@@ -601,6 +670,7 @@ impl SomeDomain {
                 //println!("make_plan3: asym returns steps {}", ret_steps.formatted_string(" "));
                 return Some(ret_steps);
             }
+            return None;
         }
 
         // Evaluate glide path.
@@ -643,17 +713,6 @@ impl SomeDomain {
             //println!("chaining test worked! {}", &step_options[inx]);
             return Some(step_options[inx].clone());
         }
-
-        // Try Asymmetric forward chaining
-//        if let Some(ret_steps) = self.asymmetric_chaining(from_reg, goal_reg, &steps_str, depth) {
-
-            // Return a plan found so far, if any
-//            if ret_steps.len() > 0 {
-//                let chosen = choose_one(&ret_steps);
-//                //println!("make_plan3: asym chosen returns steps {}", ret_steps[chosen].formatted_string(" "));
-//                return Some(ret_steps[chosen].clone());
-//            }
-//        }
 
         None
     } // end make_plan3
@@ -708,81 +767,6 @@ impl SomeDomain {
         //println!("asymmetric_chaining_step returning 3 None");
         None
     }
-    
-    /// Try Asymmetric chaining
-//    fn asymmetric_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<Vec<StepStore>> {
-
-//        let ret_steps = Vec::<StepStore>::new();
-
-//        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
-
-        // Gather vec of step index, number non-reqiured changes needed)
-//        let mut asym_steps_nrc = Vec::<(usize, usize)>::new();
-
-        // Check steps that require changes in excess of the required changes.
-//        let mut inx = 0;
-//        for stepx in steps_str.iter() {
-//            if stepx.initial.is_superset_of(from_reg) {
-//                inx += 1;
-//                continue;
-//            }
-//            if stepx.result.intersects(goal_reg) {
-//                inx += 1;
-//                continue;
-//            }
-            // Check changes required to go from/to step.
-//            let chg_f = SomeChange::region_to_region(from_reg, &stepx.initial);
-//            let chg_g = SomeChange::region_to_region(&stepx.result, goal_reg);
-
-//            if chg_f.is_subset_of(&required_change) &&
-//                chg_g.is_subset_of(&required_change) {
-//                inx += 1;
-//                continue;
-//            }
-
-//            //println!("chg_x_needed {}", &required_changes_required);
-//            let chg_f_needed = chg_f.c_and(&required_change);
-//            let chg_f_extra = chg_f_needed.c_xor(&chg_f);
-//            let nrc_f = chg_f_extra.number_changes();
-           // println!("chg_f_needed {} chg_f_extra {} nrc_f {}", &chg_f_needed , &chg_f_extra, nrc_f);
-
-//            let chg_g_needed = chg_g.c_and(&required_change);
-//            let chg_g_extra = chg_g_needed.c_xor(&chg_g);
-//            let nrc_g = chg_g_extra.number_changes();
-            //println!("chg_g_needed {} chg_g_extra {} nrc_g {}", &chg_g_needed , &chg_g_extra, nrc_g);
-
-            // Get total non-required change needed.
-//            let num_chg: usize = nrc_f + nrc_g;
-
-//            asym_steps_nrc.push((inx, num_chg));
-
-//            inx += 1;
-//        } // next stepx
-
-//        if asym_steps_nrc.len() == 0 {
-//            return None;
-//        }
-
-        // Sort steps by ascending number of non-required changes.
-//        asym_steps_nrc.sort_by(|a, b| a.1.cmp(&b.1));
-
-//        for inx_nrc in &asym_steps_nrc {
-
-//            let inx = inx_nrc.0;
-
-//            if let Some(steps) = self.asymmetric_chaining_step(from_reg, goal_reg, &steps_str[inx], depth + 1) {
-//                return Some(vec![steps]);
-//            }
-
-//        } // next inx
-
-//       if ret_steps.len() == 0 {
-//           return None;
-//       }
-
-       //println!("asymmetric_chaining: worked returning num {} stepstores", &ret_steps.len());
-//       Some(ret_steps)
-//   } // end asymmetric_chaining
 
     /// Make a plan from a region to another region.
     /// Since there are some random choices, it may be useful to try
