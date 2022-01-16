@@ -67,6 +67,11 @@ impl StepStore {
     pub fn link(&self, other: &Self) -> Option<Self> {
         //println!("stepstore:link: {} and {}", self, other);
 
+        if self.result() == other.result() {
+            println!("linking {} and {} ?", self, other);
+            panic!("Done");
+        }
+
         let end_inx = self.len() - 1;
 
         if self.avec[end_inx].result == other.avec[0].initial {
@@ -299,6 +304,58 @@ impl StepStore {
 //        }
 //        false
 //    }
+
+    /// Return a StepStore after checking for shortcuts.
+    /// Return None if no shortcuts found.
+    pub fn shortcuts(&self) -> Option<StepStore> {
+        if self.len() == 1 {
+            return None;
+        }
+
+        let mut reg_inx = Vec::<(SomeRegion, Vec::<usize>)>::new();
+        for inx in 0..self.len() {
+            let rsltx = self[inx].result.clone();
+            let mut found = false;
+            for reg_inx_tup in reg_inx.iter_mut() {
+                if reg_inx_tup.0 == rsltx {
+                    reg_inx_tup.1.push(inx);
+                    found = true;
+                }
+            }
+            if found == false {
+                reg_inx.push((rsltx, vec![inx]));
+            }
+        } // next inx
+
+        // Process one shortcut
+        if reg_inx.len() < self.len() {
+            let mut steps2: StepStore;
+            //println!("shortcut found");
+            //println!("self {}", &self);
+            //println!("test {} lt {}", reg_inx.len(), self.len());
+            for tupx in reg_inx.iter() {
+                if tupx.1.len() > 1 {
+                    //println!("{} at {:?}", tupx.0, tupx.1);
+                    steps2 = StepStore::new();
+                    let mut inx = 0;
+                    for stepx in self.iter() {
+                        if inx <= tupx.1[0] || inx > tupx.1[1] { 
+                            steps2.push(stepx.clone());
+                        }
+                        inx += 1;
+                    }
+                    // Remove shortcut recursively, one by one.
+                    if let Some(steps3) = steps2.shortcuts() {
+                        return Some(steps3);
+                    }
+                    return Some(steps2);
+                }
+            }
+        }
+
+        None
+    }
+
 } // end impl StepStore
 
 impl Index<usize> for StepStore {

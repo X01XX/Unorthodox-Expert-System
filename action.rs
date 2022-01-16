@@ -32,7 +32,6 @@ use crate::combine::{can_combine, can_combine_check_between};
 
 //use rayon::prelude::*;
 use std::fmt;
-extern crate rand;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 

@@ -33,7 +33,7 @@ impl fmt::Display for SomePlan {
 #[derive(Debug)]
 pub struct SomePlan {
     /// A StepStore instance.
-    steps: StepStore, // Do some steps
+    pub steps: StepStore, // Do some steps
 }
 
 impl SomePlan {

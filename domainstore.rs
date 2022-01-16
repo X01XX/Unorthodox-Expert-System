@@ -31,7 +31,6 @@ use crate::state::SomeState;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
-extern crate rand;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -232,7 +231,7 @@ impl DomainStore {
                 }
 
                 let ndsinx_plan = avec2
-                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                    .iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
                         pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
