@@ -36,10 +36,15 @@ impl SomeState {
         Self { bts }
     }
 
+    // Return a new state, with random bits set to one.
+    pub fn new_random(num_ints: usize) -> Self {
+        Self { bts: SomeBits::new_random(num_ints) }
+    }
+
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(sta) = SomeState::from_string(1, "s0101")) {
+    /// if let Ok(sta) = SomeState::new_from_string(1, "s0101")) {
     ///    println!("State {}", &sta);
     /// } else {
     ///    panic!("Invalid State");

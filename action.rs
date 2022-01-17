@@ -4,7 +4,6 @@
 //! represents the current best-guess rules of the expected responses
 //! of executing an action for a given state.
 
-//use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -24,13 +23,8 @@ use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
 use crate::actioninterface::ActionInterface;
-
-//use crate::randompick::RandomPick;
-//use crate::actions::take_action;
 use crate::combine::{can_combine, can_combine_check_between};
-//use crate::compare::Compare;
 
-//use rayon::prelude::*;
 use std::fmt;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -143,7 +137,7 @@ impl SomeAction {
         cmbx
     }
 
-    /// Evaluate a sample taken to satisfy a need.
+    /// Evaluate a sample.
     pub fn eval_sample(
         &mut self,
         initial: &SomeState,
@@ -163,7 +157,7 @@ impl SomeAction {
         dom: usize,
     ) {
 
-        // Processing for all needs
+        // Processing for all samples.
         self.eval_sample(initial, result, dom);
 
         // Additional processing for selected kinds of need
@@ -286,9 +280,7 @@ impl SomeAction {
 
             if sqrx.changed() {
                 self.check_square_new_sample(cur, dom);
-                return;
             }
-
             return;
         }
 
@@ -1091,14 +1083,14 @@ impl SomeAction {
 //            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
 //            .map(|grpx| self.expand_needs_group(grpx, agg_chgs))
 //            .collect::<Vec<NeedStore>>();
-
-        // Aggregate the results into one NeedStore
+//
+//        // Aggregate the results into one NeedStore
 //        let mut nds_agg = NeedStore::new();
-
+//
 //        for mut nst in vecx.iter_mut() {
 //            nds_agg.append(&mut nst);
 //        }
-
+//
 //        nds_agg
     }
 
@@ -2042,72 +2034,6 @@ impl SomeAction {
         stps
     } // end get_steps
 
-    // Get possible steps that can be used to make a given change.
-    //
-    // For each rule, prune the rule X bit positions to favor desired changes.
-    //
-    // For a two-result group, see if there is an existing square that is expected to
-    // produce the desired change.
-//    pub fn get_steps_exact(&self, achange: &SomeChange) -> StepStore {
-//        let mut stps = StepStore::new();
-
-//        for grpx in self.groups.iter() {
-
-//            match grpx.pn {
-//                Pn::One => {
-//                    // Find bit changes that are desired
-//                    if let Some(rulx) = grpx.rules[0].parse_for_changes(achange)
-//                    {
-//                        if rulx.change() == *achange {
-//                            stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
-//                        }
-//                    }
-//                }
-//                Pn::Two => {
-//                    for ruly in grpx.rules.iter() {
-//                        if let Some(rulx) = ruly.parse_for_changes(achange) {
-//                            
-//                            if rulx.change() == *achange {
-//                                // See if an existing square is ready to produce the desired result
-//                                let i_reg = rulx.initial_region();
-//                                let stas = self.squares.stas_in_reg(&i_reg);
-
-//                                let mut found = false;
-//                                for stax in stas.iter() {
-//                                    let sqrx = self.squares.find(stax).unwrap();
-
-//                                    // Will include at least one bit change desired, but maybe others.
-//                                    let expected_result = rulx.result_from_initial_state(stax);
-
-//                                    // If a Pn::Two squares last result is not equal to what is wanted,
-//                                    // the next result should be.
-//                                    if sqrx.most_recent_result() != &expected_result {
-//                                        let stpx = SomeStep::new(
-//                                            self.num,
-//                                            rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
-//                                            false,
-//                                            grpx.region.clone(),
-//                                        );
-//                                        stps.push(stpx);
-//                                        found = true;
-//                                    } // end if
-//                                } // next stax
-
-//                                if found == false {
-//                                    stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
-//                                }
-//                            } // endif Some(rulx)
-//                        } // endif == achange
-//                    } // next ruly
-//                } // end match Two
-//                Pn::Unpredictable => {}
-//            } // end match grpx.pn
-//        } // next grpx
-
-        // println!("Steps: {}", &stps);
-//        stps
-//    } // end get_steps_exact
-
     /// Find squares whose rules can be combined with a given squares rules.
     /// Check if any included squares invalidate a combination.
     /// Remove subset combinations.
@@ -2295,52 +2221,51 @@ impl SomeAction {
         regs
     } // end possible_regions_for_group
 
-    /// Find and print verticies
+    /// Find and print vertices and edges.
+    /// A vertex is formed by a region and two, or more, adjacent regions.
+    /// There is one bit that is different between any two adjacent regions, making an edge.
+    /// The length of the ege is equal to 2 to the power of the number of corresponding X bit positions.
     pub fn vertices(&self) {
-
-        let mut lefts = Vec::<RegionStore>::with_capacity(self.groups.len());
+        println!(" ");
+        let mut adjs = Vec::<RegionStore>::with_capacity(self.groups.len());
 
         for grpx in self.groups.iter() {
-            let mut left = RegionStore::new();
-            left.push(grpx.region.clone());
+            // Init store for group regions that are adjacent to grpx
+            let mut adjx = RegionStore::new();
+            adjx.push(grpx.region.clone());
             for grpy in self.groups.iter() {
                 if grpy.region != grpx.region {
-                    left = left.subtract_region(&grpy.region);
+                    if grpy.region.is_adjacent(&grpx.region) {
+                    adjx.push(grpy.region.clone());
+                    }
                 }
             }
             //println!("grp {} left {}", &grpx.region, &left);
-            lefts.push(left);
+            if adjx.len() > 1 && adjs.contains(&adjx) == false {
+                adjs.push(adjx);
+            }
         }
-
-        for inx in 0..lefts.len() {
-
-            for regx in lefts[inx].iter() {
-                let mut ovlp1 = RegionStore::new();
-
-                for iny in 0..lefts.len() {
-                    if inx == iny {
-                        continue;
-                    }
-
-                    for regy in lefts[iny].iter() {
-                        if regy.is_adjacent(regx) {
-                            let regovp = regx.overlapping_part(regy);
-                            //print!(" {} adj {} ovlp {}", regx, regy, regx.overlapping_part(regy));
-                            ovlp1.push(regovp);
-                        }
-                    } // next regy
-
-                    
+        if adjs.len() == 0 {
+            println!("No vertices or edges at this time.");
+            return;
+        }
+        let base: u32 = 2;
+        for inx in 0..adjs.len() {
+            if adjs[inx].len() == 2 {
+                println!("{} forms an edge with ", adjs[inx][0]);
+                println!("{} edge bit {}, length {}", adjs[inx][1], adjs[inx][0].diff_mask(&adjs[inx][1]),
+                    base.pow(adjs[inx][0].x_mask().m_and(&adjs[inx][1].x_mask()).num_one_bits() as u32)
+                    );
+                println!(" ");
+            } else if adjs[inx].len() > 2 {
+                println!("{} forms a vertex with ", adjs[inx][0]);
+                for iny in 1..adjs[inx].len() {
+                    println!("{} edge bit {}, length {}", adjs[inx][iny], adjs[inx][0].diff_mask(&adjs[inx][iny]),
+                        base.pow(adjs[inx][0].x_mask().m_and(&adjs[inx][iny].x_mask()).num_one_bits() as u32)
+                        );
                 } // next iny
-                if ovlp1.len() > 0 {
-                    print!("grp {} in 1 {} ovlps [", self.groups[inx].region, regx);
-                    for tx in ovlp1.iter() {
-                        print!("{} ", tx);
-                    }
-                    println!("]");
-                }
-            } // next regx
-            //println!(" ");
+                println!(" ");
+            }
         } // next inx
     } // end vertices
 

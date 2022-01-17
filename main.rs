@@ -37,7 +37,7 @@ mod compare;
 mod square;
 mod squarestore;
 mod state;
-//use state::SomeState;
+use state::SomeState;
 mod statestore;
 use crate::statestore::StateStore;
 use need::SomeNeed;
@@ -65,7 +65,6 @@ use std::io;
 use std::io::{Read, Write};
 //use std::process;
 extern crate rand;
-use rand::Rng;
 use std::fs::File;
 use std::path::Path;
 //use std::cmp::Ordering;
@@ -75,13 +74,11 @@ fn init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
-    // Initialize a domain, with number of integers, initial state, optimal region.
-
-    // Generate a one u8 integer random starting state string.
-    let inx = rand::thread_rng().gen_range(0, 2_u8.pow(6));
-    let inx_str = &format!("s{:b}", inx);
+    // Initialize a domain, with number of integers = 1, initial state, optimal region.
 
     let num_ints = 1;
+    let init_state = SomeState::new_random(num_ints);
+
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(num_ints, "r0x0x").unwrap());
     regstr.push(SomeRegion::new_from_string(num_ints, "r0xx1").unwrap());
@@ -89,7 +86,7 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::new_from_string(num_ints, "r1110").unwrap());
     // Intersections, 0x01, 01x1.
     // Intersections of intersections, 0101.
-    let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
+    let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
 
     dom1.add_action();
     dom1.add_action();
@@ -101,17 +98,17 @@ fn init() -> DomainStore {
     dom1.add_action();
     dom1.add_action();
 
+    // Add the domain to the DomainStore.
     dmxs.push(dom1);
 
-    // Generate a two u8 integer random starting state string,
-    // spanning the two integers.
-    let inx = rand::thread_rng().gen_range(0, 2_u8.pow(4));
-    let inx_str = &format!("s{:b}000000", inx);
+    // Initialize a domain, with number of integers = 2, initial state, optimal region.
 
     let num_ints = 2;
+    let init_state = SomeState::new_random(num_ints);
+
     let mut regstr = RegionStore::with_capacity(1);
-    regstr.push(SomeRegion::new_from_string(num_ints, "r10_1X00_0000").unwrap());
-    let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, inx_str, regstr);
+    regstr.push(SomeRegion::new_from_string(num_ints, "rXXXXXX10_1XXX_XXXX").unwrap());
+    let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
 
     dom2.add_action();
     dom2.add_action();
@@ -119,6 +116,7 @@ fn init() -> DomainStore {
     dom2.add_action();
     dom2.add_action();
 
+    // Add the domain to the DomainStore.
     dmxs.push(dom2);
 
     dmxs
@@ -1102,6 +1100,7 @@ fn usage() {
     );
     println!("\n    ta <act-num>             - Take Action with the current state.");
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
+    println!("\n    vert                     - Print vertices and edges in domain 0, action 0.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");

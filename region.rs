@@ -53,15 +53,17 @@ impl SomeRegion {
         }
     }
 
-    /// Return a Region from a string and a hint as to the number of integers to use.
+    /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(regx) = <SomeDomain>.region_from_string(1, "r01x1")) {
+    /// if let Ok(regx) = SomeRegion::new_from_string(1, "r01x1")) {
     ///    println!("Region {}", &regx);
     /// } else {
     ///    panic!("Invalid Region");
     /// }
     ///
+    /// A state string can be used, like "s101010" or s0x34", making
+    /// a region with no X bit positions.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         let mut bts_high = SomeBits::new(num_ints);
 

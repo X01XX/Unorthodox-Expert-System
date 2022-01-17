@@ -25,6 +25,7 @@ const INT_HIGH_BIT: u8 = 1 << (NUM_BITS_PER_INT - 1);
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
+use rand::Rng;
 
 /// Display trait for SomeBits
 impl fmt::Display for SomeBits {
@@ -51,12 +52,23 @@ impl SomeBits {
         }
     }
 
+    /// Return a new bits instance, with a random value.
+    pub fn new_random(num_ints: usize) -> Self {
+        let mut ints = vec![0 as u8; num_ints];
+        for inx in 0..num_ints {
+            ints[inx] = rand::thread_rng().gen_range(0, u8::MAX)
+        }
+        SomeBits {
+            ints,
+        }
+    }
+
     /// Return a bits instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     /// Underscore character is ignored.
     /// 0X can be used as a prefix to indicate hexadecimal input.
     ///
-    /// if let Ok(bts) = SomeBits::from_string(1, "0101")) {
+    /// if let Ok(bts) = SomeBits::new_from_string(1, "0101")) {
     ///    println!("bts {}", &bts);
     /// } else {
     ///    panic!("Invalid bits string");

@@ -46,7 +46,7 @@ impl fmt::Display for SomeNeed {
                 group2: grp2,
                 ruls2,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {}",
+                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {})",
                 dm, an, pri, &g_reg, &grp1, &ruls1, &grp2, &ruls2
             ),
             SomeNeed::ToRegion {
@@ -54,7 +54,7 @@ impl fmt::Display for SomeNeed {
                 goal_reg: g_reg,
                 ..
             } => format!(
-                "N(Dom {} Pri {} To Region {}",
+                "N(Dom {} Pri {} To Region {})",
                 dm, pri, &g_reg,
             ),
             SomeNeed::SampleRegion {
@@ -62,7 +62,7 @@ impl fmt::Display for SomeNeed {
                 act_num: an,
                 goal_reg: g_reg,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {}",
+                "N(Dom {} Act {} Pri {} Sample Region {})",
                 dm, an, pri, &g_reg,
             ),
             SomeNeed::LimitGroup {
@@ -131,9 +131,9 @@ impl fmt::Display for SomeNeed {
             } => format!("N(group {} set edge expand {})", greg, mbitx),
 
             SomeNeed::InactivateSeekEdge { reg: regx } => {
-                format!("N(Inactivate SeekEdge region: {}", &regx)
+                format!("N(Inactivate SeekEdge region: {})", &regx)
             }
-            SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {}", &regx),
+            SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {})", &regx),
         }; // end match
 
         write!(f, "{}", rc_str)

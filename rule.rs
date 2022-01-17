@@ -435,13 +435,14 @@ impl SomeRule {
         // Return a restricted rule
         Some(self.restrict_initial_region(&i_reg))
     }
-    
+
     /// Return a SomeChange struct instance
     pub fn change(&self) -> SomeChange {
         SomeChange::new(&self.b01, &self.b10)
     }
 
-    /// Return true if two rules are mutually exclusive
+    /// Return true if two rules are mutually exclusive.
+    /// Both rules lose wanted changes, running them in any order.
     pub fn mutually_exclusive(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
         if self.order_bad(other, wanted) {
             if other.order_bad(self, wanted) {
@@ -453,28 +454,28 @@ impl SomeRule {
 
     /// Return true if the target rule, run before the second rule, will lose all desired changes.
     ///
-    ///    If a wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
-    ///
-    ///    If a wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
-    ///
+    ///    A change can be lost by:
+    ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
+    ///        A wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
     pub fn order_ok(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
         !self.order_bad(other, wanted)
     }
     pub fn order_bad(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
-
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
-
-        //println!("order_bad:");
 
         // Calc aggregate rule.
         let rulx = self.then_to(&other);
 
+        // Get a mask of the wanted changes in this rule.
         let s_wanted = self.change().c_and(wanted);
-        //let o_wanted = other.change().c_and(wanted);
+
+        // Get a mask of the wanted changes after running both rules.
         let a_wanted = rulx.change().c_and(wanted);
+
+        // Get a mask of wanted changes in this rule that remain after running the second rule.
         let rslt = s_wanted.c_and(&a_wanted);
-        //println!("r1 wanted: {}\nr2 wanted: {}\nr3 wanted: {} change {}\n",
-        //&s_wanted, &o_wanted, &a_wanted, &rslt);
+
+        // Return true, the oreder is bad, if no wanted changes remain.
         rslt.is_low()
     }
 
@@ -489,7 +490,7 @@ impl SomeRule {
     }
     /// Combine two rules in sequence.
     /// The result region of the first rule must intersect the initial region of the second rule.
-    pub fn then_to2(&self, other: &SomeRule) -> Self {
+    fn then_to2(&self, other: &SomeRule) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
