@@ -507,9 +507,13 @@ impl SomeDomain {
         false
     }
 
-    /// Return indexes of bit-change vectors that should be run after another.
+    /// Return indexes, in descending order, of bit-change vectors that should be run after another.
     fn order_after(&self, step_vecs: &Vec<Vec<&SomeStep>>, required_change: &SomeChange) -> Vec<usize> {
         let mut avec = Vec::<usize>::new();
+
+        if step_vecs.len() < 2 {
+            return avec;
+        }
 
         // Check each combination of bit-change step vectors
         for inx in 0..(step_vecs.len() - 1) {
@@ -520,7 +524,7 @@ impl SomeDomain {
                         avec.push(inx);
                     }
                 }
-                if self.order_ok(&step_vecs[iny], &step_vecs[iny], required_change) == false {
+                if self.order_ok(&step_vecs[iny], &step_vecs[inx], required_change) == false {
                     if avec.contains(&iny) == false {
                         avec.push(iny);
                     }
@@ -528,41 +532,50 @@ impl SomeDomain {
             } // next iny
         } // next inx
 
-        avec.sort_by(|a, b| a.cmp(&b));  // Ascending order.
-        //if avec.len() > 0 {
-        //    println!("order_after: returning {:?}", &avec);
-        //}
+        // Make sure the indicies are in descending order.
+        if avec.len() > 1 {
+            avec.sort_by(|a, b| b.cmp(&a));
+            // println!("order_after: returning {:?}", &avec);
+        }
+
         avec
     }
 
-    /// Return the steps of a plan to go from a given state to a given region.
+    /// Return the steps of a plan to go from a given state/region to a given region.
     ///
     /// The required change of bits is calculated from the two given regions.
     ///
     /// Steps that make at least one of the needed changes are extracted from domain actions.
+    /// A rule that changes X->x will be pruned to make a step that changes 0->1 or 1->0 depending
+    /// on the change needed.
+    ///
+    /// If all steps found, in aggregate, do not change all bits needed, return None.
     ///
     /// The steps are split up into a vector of step vectors, each step vector has steps that change a 
-    /// particular bit.  Often, there will only be one step in a step vector.
+    /// particular needed-change bit.  Often, there will only be one step in a step vector.
     ///
     /// Steps that make more than one needed bit change will be in multiple step vectors.
     ///
     /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
     /// needs to be backed off to run any step in the other step vector.  If any such pair, return None. 
     ///
-    /// All possible step vector pairs are checked for needing one to be run before the other.  
+    /// All possible step vector pairs are checked for all step pairs needing one to be run before the other.  
     /// If found, the step vector needing to be run after is removed.
     ///
     /// All step vectors are checked for the circumstance that all have an initial region that does not 
     /// intersect the from region, and have a result region that does not intersect the goal region.
     /// If found, one step will be randomly chosen to calculate:
     /// From region to step initial region, then step result region to goal region.
-    /// This have the effect of splitting the recursion depth violation risk.
+    /// This has the effect of dividing in half the recursion depth violation risk.
+    /// This skips the following part, except in recursion.
     ///
     /// Steps with an initial region the intersects the from region are found.
     /// Steps with a result region that intersects the goal region are found.
-    /// One of the above steps is chosen for recursion, either:
-    /// From region to step initial region, or
-    /// Step result region to goal region.
+    /// One of the above steps is chosen, either:
+    /// From region to step initial region, recurse from step result region to goal region.
+    /// Step result region to goal region, recurse from-region to step initial reigon.
+    ///
+    /// Plans returned, that may have more than one step, are checked for shortcuts.
     pub fn random_depth_first_search(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
         //println!("random_depth_first_chaining: from {} to {}", from_reg, goal_reg);
         // Check if from_reg is at the goal
@@ -597,7 +610,6 @@ impl SomeDomain {
                 let stepy = stepx.restrict_initial_region(from_reg);
 
                 if goal_reg.is_superset_of(&stepy.result) {
-
                     //println!("random_depth_first_chaining: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
                     return Some(StepStore::new_with_step(stepy));
                 }
@@ -605,8 +617,8 @@ impl SomeDomain {
         }
 
         // Check recursion depth
-        if depth > 5 {
-            //println!("recursion depth maximum exceeded");
+        if depth > 10 {
+            //println!("recursion depth maximum exceeded at from {} to {}", from_reg, goal_reg);
             return None;
         }
         
@@ -624,7 +636,8 @@ impl SomeDomain {
         if after_inxs.len() > 0 {
             //println!("order_after:  removing {} of {} step vectors", &after_inxs.len(), &steps_by_change_vov.len());
 
-            for inx in after_inxs.iter().rev() {
+            // Indexes in after_inxs are in descending order, so remove them in that order.
+            for inx in after_inxs.iter() {
                 //for stepx in steps_by_change_vov[*inx].iter() {
                     //println!("removing inx {} step {}", inx, stepx);
                 //}
@@ -637,7 +650,7 @@ impl SomeDomain {
             //}
         }
 
-        // Check for a bit change vector with all steps not intersecting the from region and goal region.
+        // Check for a bit change vectors with all steps not intersecting the from region and goal region.
         let mut between_bit_changes = Vec::<usize>::new();
 
         for inx in 0..steps_by_change_vov.len() {
@@ -678,12 +691,14 @@ impl SomeDomain {
                     }
                 }
             }
+            // Skip the following code, except for recursion.
             return None;
         }
 
         // Create a new step vector in case some have been removed from steps_by_change_vov
         let mut steps2: StepStore;
         if after_inxs.len() > 0 {
+            // Copy steps still in steps_by_change_vov to a new StepStore.
             steps2 = StepStore::new();
             for vecx in steps_by_change_vov.iter() {
                 for stepx in vecx.iter() {
@@ -765,12 +780,10 @@ impl SomeDomain {
         None
     } // end asymmetric_chaining_step
 
-    /// Make a plan from a region to another region.
+    /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_one_plan more than once.
     pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
-        // Check if a need can be achieved, if so store index and Option<plan>.
-        // Higher priority needs that can be reached will superceed lower priority needs.
         //println!("make_plan start");
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
@@ -778,13 +791,32 @@ impl SomeDomain {
             return Some(SomePlan::new(StepStore::new()));
         }
 
-        for _ in 0..2 {
+        // We could select possible steps only for those that get closest to the target,
+        // or up the number of random tries, to get a better diversity of possible paths,
+        // at the cost of more cycles.  I'm opting for more tries, the point of the word "random"
+        // in random_depth_first_search.
+        let mut plans = Vec::<SomePlan>::new();
+        for _ in 0..4 {
 
             if let Some(planz) = self.make_plan2(&SomeRegion::new(&self.cur_state, &self.cur_state), &goal_reg) {
                 // println!("make_plan2 worked!");
-                return Some(planz);
+                plans.push(planz);
+                //return Some(planz);
             }
 
+        }
+        if plans.len() == 1 {
+            return Some(plans.pop().unwrap());
+        }
+        if plans.len() > 1 {
+            let inx = choose_one(&plans);
+            for iny in (0..plans.len()).rev() {
+                if iny > inx {
+                    plans.pop();
+                } else {
+                    return Some(plans.pop().unwrap());
+                }
+            }
         }
 
         None
@@ -1130,16 +1162,16 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 }
 
 /// Return the index value of a chosen StepStore
-fn choose_one(ret_steps: &Vec::<StepStore>) -> usize {
-    assert!(ret_steps.len() > 0);
+fn choose_one(ret_plans: &Vec::<SomePlan>) -> usize {
+    assert!(ret_plans.len() > 0);
 
-    if ret_steps.len() == 1 {
+    if ret_plans.len() == 1 {
         return 0;
     }
 
     let mut min_len = 9999;
     let mut max_len = 0;
-    for rets in ret_steps.iter() {
+    for rets in ret_plans.iter() {
         if rets.len() < min_len {
             min_len = rets.len();
         }
@@ -1148,13 +1180,13 @@ fn choose_one(ret_steps: &Vec::<StepStore>) -> usize {
         }
     } // next rets
 
-    //println!("ret_steps len = {} min {} max {}", ret_steps.len(), &min_len, &max_len);
+    //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
     let mut chosen = 0;
-    if ret_steps.len() > 1 {
+    if ret_plans.len() > 1 {
         // Choose step, TODO better criteria, maybe total of least rule "cost", or negative/positive effects.
         let mut inx_ary = Vec::<usize>::new();
         let mut inx = 0;
-        for rets in ret_steps.iter() {
+        for rets in ret_plans.iter() {
             if rets.len() == min_len {
                 inx_ary.push(inx);
             }

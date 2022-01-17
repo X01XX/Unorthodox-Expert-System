@@ -159,7 +159,6 @@ impl DomainStore {
 
     /// Return a vector of InxPlan structs, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
-
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
         //println!("domainstore::evaluate_needs");
         let mut last_priority = 0;
@@ -231,7 +230,7 @@ impl DomainStore {
                 }
 
                 let ndsinx_plan = avec2
-                    .iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
                         pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),

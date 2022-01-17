@@ -87,13 +87,12 @@ impl SomeStep {
         rcstr
     }
 
-    /// Return the result of a step when applied to a given initial region.
-    /// The given initial region must intersect the step initial region.
-    pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
-        assert!(self.initial.intersects(&i_reg));
-
-        self.rule.result_from_initial_region(i_reg)
-    }
+    // Return the result of a step when applied to a given initial region.
+    // The given initial region must intersect the step initial region.
+//    pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
+//        assert!(self.initial.intersects(&i_reg));
+//        self.rule.result_from_initial_region(i_reg)
+//    }
 
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
