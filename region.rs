@@ -445,6 +445,19 @@ impl SomeRegion {
         }
     }
 
+    /// Return the ajacent part to another, adjacent, region.
+    pub fn adjacent_part_to(&self, other: &SomeRegion) -> SomeRegion {
+        assert!(self.is_adjacent(other));
+        
+        let x_bits = self.x_mask();
+        let ones = other.ones_mask();
+        let zeros = other.zeros_mask();
+        
+        let regx = self.set_to_ones(&x_bits.m_and(&ones));
+        
+        regx.set_to_zeros(&x_bits.m_and(&zeros))
+    }
+
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {
@@ -463,6 +476,22 @@ mod tests {
     use crate::state::SomeState;
     use crate::statestore::StateStore;
     use crate::mask::SomeMask;
+
+    #[test]
+    fn test_adjacent_part_to() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(1, "r01Xx0x").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "rxx0x11").unwrap();
+
+        let reg1a = reg1.adjacent_part_to(&reg2);
+        println!("\nreg1 {} adj part to {} is {}", &reg1, &reg2, &reg1a);
+        assert!(reg1a == SomeRegion::new_from_string(1, "r00010x01").unwrap());
+
+        let reg2a = reg2.adjacent_part_to(&reg1);
+        println!("reg2 {} adj part to {} is {}", &reg2, &reg1, &reg2a);
+        assert!(reg2a == SomeRegion::new_from_string(1, "r00010x11").unwrap());
+
+        Ok(())
+    }
 
     // Test X10X - 0XX1 = X100, 110X.
     #[test]

@@ -124,7 +124,6 @@ fn init() -> DomainStore {
 
 /// The User Interface.
 fn main() {
-
     // Start a DomainStore, add a Domain
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
@@ -167,6 +166,10 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut dmxs = init();
     let mut dom_num = 0;
     let mut step_inc = 1; // amount to increment the step in the next loop
+
+    // Start Test
+
+    // End test
 
     loop {
         //println!("start session loop");

@@ -2251,21 +2251,24 @@ impl SomeAction {
         }
         let base: u32 = 2;
         for inx in 0..adjs.len() {
-            if adjs[inx].len() == 2 {
+            let mut difs = MaskStore::new(Vec::<SomeMask>::new());
+            for iny in 1..adjs[inx].len() {
+                difs.push_nosubs(adjs[inx][0].diff_mask(&adjs[inx][iny]));
+            } // next iny
+
+            if difs.len() == 1 {
                 println!("{} forms an edge with ", adjs[inx][0]);
-                println!("{} edge bit {}, length {}", adjs[inx][1], adjs[inx][0].diff_mask(&adjs[inx][1]),
-                    base.pow(adjs[inx][0].x_mask().m_and(&adjs[inx][1].x_mask()).num_one_bits() as u32)
-                    );
-                println!(" ");
-            } else if adjs[inx].len() > 2 {
+            } else {
                 println!("{} forms a vertex with ", adjs[inx][0]);
-                for iny in 1..adjs[inx].len() {
-                    println!("{} edge bit {}, length {}", adjs[inx][iny], adjs[inx][0].diff_mask(&adjs[inx][iny]),
-                        base.pow(adjs[inx][0].x_mask().m_and(&adjs[inx][iny].x_mask()).num_one_bits() as u32)
-                        );
-                } // next iny
-                println!(" ");
             }
+            for iny in 1..adjs[inx].len() {
+                let adj0 = adjs[inx][0].adjacent_part_to(&adjs[inx][iny]);
+                let adjy = adjs[inx][iny].adjacent_part_to(&adjs[inx][0]);
+                println!("{} - {} adjacent to {} edge {}, length {}", adjs[inx][iny], adjy, adj0, adjs[inx][0].diff_mask(&adjs[inx][iny]),
+                    base.pow(adj0.x_mask().num_one_bits() as u32)
+                    );
+            } // next iny
+            println!(" ");
         } // next inx
     } // end vertices
 
