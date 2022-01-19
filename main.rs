@@ -168,7 +168,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut step_inc = 1; // amount to increment the step in the next loop
 
     // Start Test
-
+//    if 1 == 1 {
+//        panic!("Done");
+//    }
     // End test
 
     loop {

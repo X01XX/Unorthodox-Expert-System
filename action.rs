@@ -2255,19 +2255,32 @@ impl SomeAction {
             for iny in 1..adjs[inx].len() {
                 difs.push_nosubs(adjs[inx][0].diff_mask(&adjs[inx][iny]));
             } // next iny
+            let max_len = base.pow(adjs[inx][0].x_mask().num_one_bits() as u32);
+            let edge_mask = adjs[inx][0].zeros_mask().m_or(&adjs[inx][0].ones_mask());
+            let edges = edge_mask.split();
+            println!("{} has {} edges of length {}", adjs[inx][0], edges.len(), max_len);
+    
+            for mskx in edges.iter() {
+                // Prep for reducing region with each adjacent part found.
+                let mut edge_left = RegionStore::new();
+                edge_left.push(adjs[inx][0].clone());
 
-            if difs.len() == 1 {
-                println!("{} forms an edge with ", adjs[inx][0]);
-            } else {
-                println!("{} forms a vertex with ", adjs[inx][0]);
+                println!("  edge: {}", mskx);
+                for iny in 1..adjs[inx].len() {
+                    let adj0 = adjs[inx][0].adjacent_part_to(&adjs[inx][iny]);
+                    let adjy = adjs[inx][iny].adjacent_part_to(&adjs[inx][0]);
+                    let msky = adj0.diff_mask(&adjy);
+                    if msky != *mskx {
+                        continue;
+                    }
+                    edge_left = edge_left.subtract_region(&adj0);
+                    let len = base.pow(adj0.x_mask().num_one_bits() as u32);
+                    println!("        {} - {} adjacent to {}, length {}", adjs[inx][iny], adjy, adj0, len);
+                } // next iny
+                if edge_left.len() > 0 {
+                    println!("        Squares not matched: {} number {}", &edge_left, edge_left.number_squares());
+                }
             }
-            for iny in 1..adjs[inx].len() {
-                let adj0 = adjs[inx][0].adjacent_part_to(&adjs[inx][iny]);
-                let adjy = adjs[inx][iny].adjacent_part_to(&adjs[inx][0]);
-                println!("{} - {} adjacent to {} edge {}, length {}", adjs[inx][iny], adjy, adj0, adjs[inx][0].diff_mask(&adjs[inx][iny]),
-                    base.pow(adj0.x_mask().num_one_bits() as u32)
-                    );
-            } // next iny
             println!(" ");
         } // next inx
     } // end vertices
