@@ -427,7 +427,13 @@ impl SomeRegion {
 
     /// Return a rule for moving from one region to another.
     /// The result of the rule may be equal, or subset, of the second region.
-    pub fn rule_to_region(&self, to: &SomeRegion) -> SomeRule {
+    pub fn rule_to_region(&self, to: &SomeRegion) -> Option<SomeRule> {
+        // Check for rule that needs no change.
+        if to.is_superset_of(self) {
+            // Could return a rule that does nothing, but this probably only
+            // happens from a logic problem.
+            return None;
+        }
 
         let f_ones  = self.state1.s_or(&self.state2).to_mask();
         let f_zeros = self.state1.s_not().s_or(&self.state2.s_not()).to_mask();
@@ -437,12 +443,12 @@ impl SomeRegion {
 
         let to_not_x = to.x_mask().m_not();
 
-        SomeRule {
+        Some(SomeRule {
             b00: f_zeros.m_and(&t_zeros),
             b01: f_zeros.m_and(&t_ones).m_and(&to_not_x),
             b11: f_ones.m_and(&t_ones),
             b10: f_ones.m_and(&t_zeros).m_and(&to_not_x),
-        }
+        })
     }
 
     /// Return the adjacent part to another, adjacent, region.
@@ -483,10 +489,23 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(2, "r000111xxx").unwrap();
         let reg2 = SomeRegion::new_from_string(2, "r01x01x01x").unwrap();
 
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2).unwrap();
         println!("rule is {}", &rul1);
-
         assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
+
+        // Test proper subset region.
+        let reg1 = SomeRegion::new_from_string(1, "r0011").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "rx01x").unwrap();
+        if let Some(_) = reg1.rule_to_region(&reg2) {
+            return Err(format!("Should return None!"));
+        }
+
+        // Test intersecting regions.
+        let reg1 = SomeRegion::new_from_string(1, "r010x").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "rx1x1").unwrap();
+        let rul1 = reg1.rule_to_region(&reg2).unwrap();
+        println!("rul1 {}", &rul1);
+        assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101").unwrap());
         Ok(())
     }
 

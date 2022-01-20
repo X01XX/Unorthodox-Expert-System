@@ -748,17 +748,11 @@ impl SomeDomain {
 
         // Return one of the plans, avoid the need to clone.
         if plans.len() == 1 {
-            return Some(plans.pop().unwrap());
+            return Some(plans.remove(0));
         }
         if plans.len() > 1 {
             let inx = choose_one(&plans);
-            for iny in (0..plans.len()).rev() {
-                if iny > inx {
-                    plans.pop();
-                } else {
-                    return Some(plans.pop().unwrap());
-                }
-            }
+            return Some(plans.remove(inx));
         }
         // No plan to return.
         None

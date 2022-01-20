@@ -374,3 +374,50 @@ impl Clone for StepStore {
         rcstp
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::region::SomeRegion;
+    use crate::step::SomeStep;
+    use crate::stepstore::StepStore;
+
+    // Test the link function. This also tests the len, push, result, initial, restrict_initial_region and restrict_result_region functions.
+    #[test]
+    fn test_link() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "r0x1x").unwrap();
+        let reg3 = SomeRegion::new_from_string(1, "r1x1x").unwrap();
+        let reg4 = SomeRegion::new_from_string(1, "r111x").unwrap();
+        let reg5 = SomeRegion::new_from_string(1, "r101x").unwrap();
+        let reg6 = SomeRegion::new_from_string(1, "r000x").unwrap();
+
+        let step1 = SomeStep::new(0, reg1.rule_to_region(&reg2).unwrap(), false, reg1.clone());
+        let step2 = SomeStep::new(0, reg2.rule_to_region(&reg3).unwrap(), false, reg2.clone());
+        let mut stp_str1 = StepStore::with_capacity(2);
+        stp_str1.push(step1);
+        stp_str1.push(step2);
+
+        let step4 = SomeStep::new(0, reg4.rule_to_region(&reg5).unwrap(), false, reg4.clone());
+        let step5 = SomeStep::new(0, reg5.rule_to_region(&reg6).unwrap(), false, reg5.clone());
+        let mut stp_str2 = StepStore::with_capacity(2);
+        stp_str2.push(step4);
+        stp_str2.push(step5);
+        
+        println!("stp1 {}", &stp_str1);
+        println!("stp2 {}", &stp_str2);
+
+        let stp_str3 = stp_str1.link(&stp_str2).unwrap();
+        println!("stp3 {}", &stp_str3);
+        assert!(stp_str3.len() == 4);
+        assert!(stp_str3.initial() == SomeRegion::new_from_string(1, "r010x").unwrap());
+        assert!(stp_str3.result() == reg6);
+        
+        let stp_str4 = stp_str2.link(&stp_str1).unwrap();
+        println!("stp4 {}", &stp_str4);
+        assert!(stp_str4.len() == 4);
+        assert!(stp_str4.initial() == reg4);
+        assert!(stp_str4.result() == SomeRegion::new_from_string(1, "r101x").unwrap());
+
+        Ok(())
+    }
+}

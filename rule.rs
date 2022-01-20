@@ -485,7 +485,7 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.then_to2(&other);
         }
-        let rul_between = self.result_region().rule_to_region(&other.initial_region());
+        let rul_between = self.result_region().rule_to_region(&other.initial_region()).unwrap();
         self.then_to2(&rul_between).then_to2(&other)
     }
     /// Combine two rules in sequence.
