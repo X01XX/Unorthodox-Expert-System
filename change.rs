@@ -124,7 +124,7 @@ impl SomeChange {
 //        }
 //    }
 
-    /// Return a mask of all bit positions that are one in both masks.
+    // Return a mask of all bit positions that are one in both masks.
 //    pub fn x_mask(&self) -> SomeMask {
 //        self.b01.m_and(&self.b10)
 //    }

@@ -400,8 +400,7 @@ impl SomeDomain {
             try_goal_steps = false;
         }
         if try_from_steps && try_goal_steps {
-            let choice = rand::thread_rng().gen_range(0, 2);
-            if choice == 0 {
+            if rand::random::<bool>() {
                 try_from_steps = false;
             } else {
                 try_goal_steps = false;

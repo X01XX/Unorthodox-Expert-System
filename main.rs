@@ -1122,9 +1122,13 @@ fn usage() {
     println!("    and seek to move the current state to a different optimal region, or to an intersection of optimal regions.");
     println!("\n    \"P[]\" means Plan: No extra actions need to be run, using the current state, run the need action to satisfy the need.");
     println!("    \"P[1,2]\" means Plan: Run action 1, then action 2, to change the current state, then run the need action to satisfy the need.");
+    println!("    You start to see these after step 50-60, using previously generated rules, to limit or extend rules, or test contradictory intersections.");
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
     println!("    will get things moving again.");
+    println!("\n    After no more needs can be done, optimal region seeking logic will be used.  If there are more than one optimal");
+    println!("    regions, repeatedly pressing enter will increase the boredom duration, and after 3 times the number of optimal regions");
+    println!("    the current state is in, a different optimal region will be sought.");
 }
 
 ///Pause for input from user.

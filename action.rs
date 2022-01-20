@@ -987,8 +987,7 @@ impl SomeAction {
 
             // Randomly choose which state to use to calculate the target state from
             let mut statex = regx.state2.clone();
-            let choice = rand::thread_rng().gen_range(0, 2);
-            if choice == 0 {
+            if rand::random::<bool>() {
                 statex = regx.state1.clone();
             }
 

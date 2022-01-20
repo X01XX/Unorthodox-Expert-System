@@ -103,7 +103,7 @@ impl SquareStore {
         states
     }
 
-    /// Return a list of square states no in a list of regions.
+    /// Return a list of squares with pn GT Pn:One, not yet pnc.
     pub fn pn_gt1_no_pnc(&self) -> StateStore {
         let mut states = StateStore::new();
 
