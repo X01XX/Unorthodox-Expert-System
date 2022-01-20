@@ -426,7 +426,7 @@ impl SomeRegion {
     }
 
     /// Return a rule for moving from one region to another.
-    /// The result of the rule may be equal or subset of the second region.
+    /// The result of the rule may be equal, or subset, of the second region.
     pub fn rule_to_region(&self, to: &SomeRegion) -> SomeRule {
 
         let f_ones  = self.state1.s_or(&self.state2).to_mask();
@@ -445,7 +445,7 @@ impl SomeRegion {
         }
     }
 
-    /// Return the ajacent part to another, adjacent, region.
+    /// Return the adjacent part to another, adjacent, region.
     pub fn adjacent_part_to(&self, other: &SomeRegion) -> SomeRegion {
         assert!(self.is_adjacent(other));
         
@@ -476,6 +476,19 @@ mod tests {
     use crate::state::SomeState;
     use crate::statestore::StateStore;
     use crate::mask::SomeMask;
+
+
+    #[test]
+    fn test_rule_to_region() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(2, "r000111xxx").unwrap();
+        let reg2 = SomeRegion::new_from_string(2, "r01x01x01x").unwrap();
+
+        let rul1 = reg1.rule_to_region(&reg2);
+        println!("rule is {}", &rul1);
+
+        assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
+        Ok(())
+    }
 
     #[test]
     fn test_adjacent_part_to() -> Result<(), String> {
