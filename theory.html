@@ -505,7 +505,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Every bit-value/square/state in a region is on every edge of the region.
     </p>
      <p class="indent1">
-     Each edge is the same length, 2 to the power of the number of X-bit positions.
+     Each edge is the same length, 2 to the power of the number of X-bit positions of the region.
      </p>
      <p class="indent1">
      More than one edge indicates an intersection of edges, producing a vertex and (number edges - 1) faces.
@@ -1772,7 +1772,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 01/19/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 01/21/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1830,6 +1830,14 @@ For a state that always produces the same two results, alternating, a minimum of
  r2.high-bits = minuend.high-bits, r2.low-bits = minuend.low-bits ^ isolated-bit.
  </p>
 
+<h3>Subtracting a region from a set of regions</h3>
+  <p>
+  For each region in the set, if it does not intersect the region being subtracted, copy it to the new set, deleting subsets.
+  </p>
+  <p>
+  If a region does intersect the region being subtracted, subtract from the region, add the result regions, if any, to
+  the result set, deleting subsets.
+  </p>
 <h3>Region Complement</h3>
    <p>
  Subtract the region from the Largest Possible Region.
@@ -1916,13 +1924,13 @@ For a state that always produces the same two results, alternating, a minimum of
         If the result region of the first rule intersects the initial region of the second rule, the aggregate can be calculated as follows:
         </p>
     <p class="indent1">
-        0&#8594;0 mask = (0&#8594;0 &amp; 0&#8594;0) + (0&#8594;1 &amp; 1&#8594;0)
+        0&#8594;0 mask = (0&#8594;0 &amp; 0&#8594;0) + (0&#8594;1 &amp; 1&#8594;0, note: rule 1 change reversed)
     </p>
     <p class="indent1">
         0&#8594;1 mask = (0&#8594;0 &amp; 0&#8594;1) + (0&#8594;1 &amp; 1&#8594;1)
     </p>
     <p class="indent1">
-        1&#8594;1 mask = (1&#8594;1 &amp; 1&#8594;1) + (1&#8594;0 &amp; 0&#8594;1)
+        1&#8594;1 mask = (1&#8594;1 &amp; 1&#8594;1) + (1&#8594;0 &amp; 0&#8594;1, note: rule 1 change reversed)
     </p>
     <p class="indent1">
         1&#8594;0 mask = (1&#8594;1 &amp; 1&#8594;0) + (1&#8594;0 &amp; 0&#8594;0)
@@ -1940,6 +1948,38 @@ For a state that always produces the same two results, alternating, a minimum of
         If the result region of the first rule does not intersect the initial region of the second rule, a third rule
         can be calculated to make that change, then sequence all three rules.
         </p>
+   <h3>Rule for region to region change</h3>
+       <p class="indent1">
+       Calculate a rule to change r000_111_XXX to r01X_01X_01X.
+       </p>
+       <p class="indent1">
+       From a rule that does not change r000_111_XXX at all, four modifications are needed:
+       </p>
+       <p class="indent2">
+       For 0->1, a 0->0 change is replaced by 0->1.
+       </p>
+       <p class="indent2">
+       For 1->0, a 1->1 change is replaced by 1->0.
+       </p>
+       <p class="indent2">
+       For X->1, a 0->0 change is replaced by 0->1.
+       </p>
+       <p class="indent2">
+       For X->0, a 1->1 change is replaced by 1->0.
+       </p>
+       <p class="indent1">
+       For 0->X or 1->X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
+       </p>
+   <h3>Number of squares in a set of regions</h3>
+       <p class="indent1">
+       Since regions can overlap, this is not as easy as totalling up 2 to the number X-bit power for each region.
+       </p>
+       <p class="indent1">
+       Extract one region from the region-set and calculate the number of squares in it.
+       </p>
+       <p class="indent1">
+       Use that number plus the number of squares in the region-set minus the region just extracted, until no regions are left.
+       </p>
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">
 	Below are the six ways. They are really circles, not lines.
