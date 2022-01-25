@@ -370,6 +370,10 @@ impl SomeDomain {
 
         } // Next stepx.
 
+        if from_steps.len() == 0 && goal_steps.len() == 0 {
+            return None;
+        }
+        
         // Check for a two step solution.
         for step_f in from_steps.iter() {
             for step_g in goal_steps.iter() {
@@ -389,60 +393,37 @@ impl SomeDomain {
             }
         }
 
-        // Choose which steps to use next
-        let mut try_from_steps = true;
-        let mut try_goal_steps = true;
-
-        if from_steps.len() == 0 {
-            try_from_steps = false;
+        // Init new step vector.
+        let mut choices = Vec::<&SomeStep>::new();
+        // Add from steps.
+        for stepx in from_steps.iter() {
+            choices.push(stepx);
         }
-        if goal_steps.len() == 0 {
-            try_goal_steps = false;
+        // Add goal steps.
+        for stepx in goal_steps.iter() {
+            choices.push(stepx);
         }
-        if try_from_steps && try_goal_steps {
-            if rand::random::<bool>() {
-                try_from_steps = false;
-            } else {
-                try_goal_steps = false;
-            }
-        }
+        // Pick a step to try.
+        let inx = self.pick_a_step(&choices, from_reg, goal_reg);
 
-        if try_goal_steps {
-
-            // Choose a goal step.
-            let mut inx = 0;
-            if goal_steps.len() > 1 {
-                inx = rand::thread_rng().gen_range(0, goal_steps.len());
-            }
-
-            // Try the rest of the path.
-            if let Some(before_steps) = self.random_depth_first_search(&from_reg, &goal_steps[inx].initial, depth + 1) {
-                let g_step = StepStore::new_with_step(goal_steps[inx].clone());
-                let ret_steps = before_steps.link(&g_step).unwrap();
+        // Try the rest of the path.
+        let stepx = choices[inx];
+        if stepx.result.intersects(goal_reg) {
+            if let Some(before_steps) = self.random_depth_first_search(&from_reg, &choices[inx].initial, depth + 1) {
+                let b_step = StepStore::new_with_step(choices[inx].clone());
+                let ret_steps = before_steps.link(&b_step).unwrap();
                 //println!("symmetric_chaining: found 2 {}", &ret_steps);
                 return Some(ret_steps);
             }
-            //println!("symmetric_chaining: returning None;");
-            return None;
-        }
-
-        if try_from_steps {
-
-            // Choose a from step.
-            let mut inx = 0;
-            if from_steps.len() > 1 {
-                inx = rand::thread_rng().gen_range(0, from_steps.len());
-            }
-
-            // Try the rest of the path.
-            if let Some(after_steps) = self.random_depth_first_search(&from_steps[inx].result, &goal_reg, depth + 1) {
+        } else {
+            if let Some(after_steps) = self.random_depth_first_search(&choices[inx].result, &goal_reg, depth + 1) {
                 let f_str = StepStore::new_with_step(from_steps[inx].clone()); 
                 let ret_steps = f_str.link(&after_steps).unwrap();
                 //println!("symmetric_chaining: Found 3 {}", &ret_steps);
                 return Some(ret_steps);
             }
-            return None;
         }
+        
         //println!("symmetric_chaining: returning None;");
         None
     } // end symmetric_chaining
@@ -503,6 +484,68 @@ impl SomeDomain {
         }
 
         avec
+    }
+
+    /// Given a list of step references, and from/to regions, pick one, return its index.
+    /// Avoid steps with the greatest number of bit changes required.
+    pub fn pick_a_step(&self, steps: &Vec::<&SomeStep>, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> usize {
+        assert!(steps.len() > 0);
+
+        // Check for no choice available.
+        if steps.len() == 1 {
+            return 0;
+        }
+
+        // Init vector of tuples containing a steps vector index, followed by the minimum number of bit changes needed to 
+        // use the rule in a solution. 
+        let mut choices = Vec::<(usize, usize)>::new();
+
+        // Fill the vector.
+        let mut inx = 0;
+        for stepy in steps.iter() {
+            choices.push((inx, stepy.rule.from_to_number_changes(from_reg, goal_reg)));
+            inx += 1;
+        }
+
+        // Get min, max and total number bit changes.
+        let mut min_num = 9999;
+        let mut max_num = 0;
+        let mut total = 0;
+        for tupx in choices.iter() {
+            if tupx.1 < min_num {
+                min_num = tupx.1;
+            }
+            if tupx.1 > max_num {
+                max_num = tupx.1;
+            }
+            total += tupx.1;
+        }
+
+        // Check for all choices the same.
+        if min_num == max_num {
+            let inx = rand::thread_rng().gen_range(0, steps.len());
+            //println!("rule chosen needs {} bits, min {} max {}", steps[inx].rule.from_to_number_changes(from_reg, goal_reg), min_num, max_num);
+            return inx;
+        }
+
+        // Calc average.
+        let avg = total / choices.len();
+        //println!("min {} max {} avg {} total {} num samples {}", min_num, max_num, avg, total, choices.len()); 
+
+        // Make vector of steps indices with average, or fewer, bit changes required.
+        let mut choices2 = Vec::<usize>::new();
+        for tupx in choices.iter() {
+            if tupx.1 <= avg {
+                choices2.push(tupx.0);
+            }
+        }
+
+        // Randomly choose a choice index.
+        let inx = rand::thread_rng().gen_range(0, choices2.len());
+        //println!("rule chosen needs {} bits, min {} max {}", steps[choices2[inx]].rule.from_to_number_changes(from_reg, goal_reg), min_num, max_num);
+
+        // Return a steps index.
+        choices2[inx]
     }
 
     /// Return the steps of a plan to go from a given state/region to a given region.
@@ -619,20 +662,25 @@ impl SomeDomain {
         // Process single bit-change steps that do not intersect from_reg and goal_reg.
         if between_bit_changes.len() > 0 {
 
-            //println!("between_bit_changes {:?}", between_bit_changes);
-            // Select a single bit-change vector index.
-            let mut inx = rand::thread_rng().gen_range(0, between_bit_changes.len());
-            inx = between_bit_changes[inx]; // get index to steps_by_change_vov
+            // for each step inx, in each vector, get step inx and number changes.
+            // get min and max number changes.
+            // if min LT max, randomly select non-max step.
             
-            //for stepx in steps_by_change_vov[inx].iter() {
-            //    println!("step_between based on random inx {} {}", &inx, &stepx);
-            //}
-            // Select a step in a single bit-change vector.
-            let iny = rand::thread_rng().gen_range(0, steps_by_change_vov[inx].len());
-            //println!("step between based on inx, iny {} {} {}", &inx, &iny, &steps_by_change_vov[inx][iny]);
+            // Init vector of tuples contianing step index, followed by the minimum number of bit changes needed to 
+            // use the rule in a solution. 
+            let mut choices = Vec::<&SomeStep>::new();
+
+            // Fill the vector.
+            for inx in between_bit_changes.iter() {
+                for stepy in steps_by_change_vov[*inx].iter() {
+                    choices.push(stepy);
+                }
+            }
+
+            let inx = self.pick_a_step(&choices, from_reg, goal_reg);
 
             // Try Asymmetric chaining
-            if let Some(ret_steps) = self.asymmetric_chaining_step(from_reg, goal_reg, steps_by_change_vov[inx][iny], depth + 1) {
+            if let Some(ret_steps) = self.asymmetric_chaining_step(from_reg, goal_reg, choices[inx], depth + 1) {
                 if ret_steps.initial().intersects(from_reg) {
                     if goal_reg.is_superset_of(&ret_steps.result()) {
                         if let Some(ret_steps2) = ret_steps.shortcuts() {

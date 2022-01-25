@@ -501,7 +501,10 @@ impl SomeRule {
         }
     }
     
-    /// Return the number of changes required to go from a given region, to another, via a rule.
+    /// Return the number of one-bit changes required to go from a given region, to another, via a rule.
+    /// This gives a general idea of the effect of adding a rule to a possible rule-path,
+    /// assuming other rules may be required to finish the path.
+    /// In other words, how far out of your way do you have to go to make a rule part of the solution?
     pub fn from_to_number_changes(&self, from_reg: &SomeRegion, to_reg: &SomeRegion) -> usize {
         let mut rul2 = self.clone();
         let mut num_changes = 0;
@@ -516,10 +519,10 @@ impl SomeRule {
             rul2 = rul2.restrict_initial_region(&rul1.result_region());
         }
 
-        // Add self number changes.
+        // Add self rule number changes.
         num_changes += rul2.change().number_changes();
 
-        // Add self result to to_reg number changes.
+        // Add self rule result to_reg number changes.
         let result = rul2.result_region();
         if to_reg.is_superset_of(&result) {
         } else {
