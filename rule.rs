@@ -500,6 +500,35 @@ impl SomeRule {
             b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
         }
     }
+    
+    /// Return the number of changes required to go from a given region, to another, via a rule.
+    pub fn from_to_number_changes(&self, from_reg: &SomeRegion, to_reg: &SomeRegion) -> usize {
+        let mut rul2 = self.clone();
+        let mut num_changes = 0;
+
+        // Calc from_reg to rule initial region number changes.
+        let initial = rul2.initial_region();
+        if initial.is_superset_of(from_reg) {
+            rul2 = rul2.restrict_initial_region(&initial);
+        } else {
+            let rul1 = from_reg.rule_to_region(&initial).unwrap();
+            num_changes = rul1.change().number_changes();
+            rul2 = rul2.restrict_initial_region(&rul1.result_region());
+        }
+
+        // Add self number changes.
+        num_changes += rul2.change().number_changes();
+
+        // Add self result to to_reg number changes.
+        let result = rul2.result_region();
+        if to_reg.is_superset_of(&result) {
+        } else {
+            let rul3 = result.rule_to_region(to_reg).unwrap();
+            num_changes += rul3.change().number_changes();
+        }
+
+        num_changes
+    }
 } // end impl SomeRule
 
 impl Clone for SomeRule {
@@ -520,6 +549,40 @@ mod tests {
     use crate::region::SomeRegion;
     use crate::rule::SomeRule;
     use crate::change::SomeChange;
+
+    #[test]
+    fn test_from_to_number_changes() -> Result<(), String> {
+        let reg4 = SomeRegion::new_from_string(1, "s0100").unwrap();
+        let regd = SomeRegion::new_from_string(1, "s1101").unwrap();
+        let regf = SomeRegion::new_from_string(1, "s1111").unwrap();
+        let reg6 = SomeRegion::new_from_string(1, "s0110").unwrap();
+
+        // Tets no intersection of rule and from or to regions.
+        let rul1 = regd.rule_to_region(&regf).unwrap();
+        let num_chg = rul1.from_to_number_changes(&reg4, &reg6);
+        println!("from {} using {} to {}, number changes = {}", &reg4, &rul1, &reg6, &num_chg);
+        assert!(num_chg == 5);
+
+        // Test intersection of rule initial region and from region.
+        let rul1 = reg4.rule_to_region(&regf).unwrap();
+        let num_chg = rul1.from_to_number_changes(&reg4, &reg6);
+        println!("from {} using {} to {}, number changes = {}", &reg4, &rul1, &reg6, &num_chg);
+        assert!(num_chg == 5);
+
+        // Test intersection of rule result and to region.
+        let rul1 = regd.rule_to_region(&reg6).unwrap();
+        let num_chg = rul1.from_to_number_changes(&reg4, &reg6);
+        println!("from {} using {} to {}, number changes = {}", &reg4, &rul1, &reg6, &num_chg);
+        assert!(num_chg == 5);
+
+        // Test intersection of both initial and result of rule.
+        let rul1 = reg4.rule_to_region(&reg6).unwrap();
+        let num_chg = rul1.from_to_number_changes(&reg4, &reg6);
+        println!("from {} using {} to {}, number changes = {}", &reg4, &rul1, &reg6, &num_chg);
+        assert!(num_chg == 1);
+
+        Ok(())
+    }
 
     #[test]
     fn test_initial_region() -> Result<(), String> {

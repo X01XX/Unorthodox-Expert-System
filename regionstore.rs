@@ -181,6 +181,18 @@ impl RegionStore {
     }
 
     /// Add a region, removing subset (and equal) regions.
+    pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
+
+        if self.contains(&reg) {
+            return false;
+        }
+
+        self.avec.push(reg);
+
+        true
+    }
+
+    /// Add a region, removing subset (and equal) regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
 
         // Check for supersets, which probably is an error

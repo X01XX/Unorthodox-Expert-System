@@ -2248,8 +2248,24 @@ impl SomeAction {
             println!("No vertices or edges at this time.");
             return;
         }
+        let mut only_one = Vec::<RegionStore>::new();
         let base: u32 = 2;
         for inx in 0..adjs.len() {
+            // Get sub-regions in only this region.
+            let mut regs_left = RegionStore::new();
+            regs_left.push(adjs[inx][0].clone());
+            for grpx in self.groups.iter() {
+                if grpx.region == adjs[inx][0] {
+                    continue;
+                }
+                if regs_left.any_intersection(&grpx.region) {
+                    regs_left = regs_left.subtract_region(&grpx.region);
+                }
+            }
+            if regs_left.len() > 0 {
+                only_one.push(regs_left.clone());
+            }
+            
             let mut difs = MaskStore::new(Vec::<SomeMask>::new());
             for iny in 1..adjs[inx].len() {
                 difs.push_nosubs(adjs[inx][0].diff_mask(&adjs[inx][iny]));
@@ -2257,7 +2273,7 @@ impl SomeAction {
             let max_len = base.pow(adjs[inx][0].x_mask().num_one_bits() as u32);
             let edge_mask = adjs[inx][0].zeros_mask().m_or(&adjs[inx][0].ones_mask());
             let edges = edge_mask.split();
-            println!("{} has {} edges of length {}", adjs[inx][0], edges.len(), max_len);
+            println!("{} has {} edges of length {}, in only one region {}", adjs[inx][0], edges.len(), max_len, regs_left);
     
             for mskx in edges.iter() {
                 // Prep for reducing region with each adjacent part found.
@@ -2282,6 +2298,67 @@ impl SomeAction {
             }
             println!(" ");
         } // next inx
+        println!("\nAll single-region sub-regions:");
+        for regsx in only_one.iter() {
+            println!(" {}", regsx);
+        }
+        println!(" ");
+        let mut regs_all = RegionStore::new();
+        for regsx in only_one.iter() {
+            for regx in regsx.iter() {
+                regs_all.push(regx.clone());
+            }
+        }
+
+        // Identify all adjacent parts of adjacent regions that are only 
+        // in one region.
+        let mut parts = RegionStore::new();
+        for inx in 0..(regs_all.len() - 1) {
+            for iny in (inx + 1)..regs_all.len() {
+                if regs_all[inx].is_adjacent(&regs_all[iny]) {
+                    let part_a = regs_all[inx].adjacent_part_to(&regs_all[iny]);
+                    let part_b = regs_all[iny].adjacent_part_to(&regs_all[inx]);
+                    println!("{} (part {}) adjacent to {} (part {})", &regs_all[inx], &part_a, &regs_all[iny], &part_b);
+                    parts.push_no_dup(part_a);
+                    parts.push_no_dup(part_b);
+                }
+            }
+        }
+        println!(" ");
+
+        // Find adjacent parts that are adjacent to other parts,
+        // sort by number adjacent.
+        // The first region of each RegionStore will be the target region,
+        // following regions will be adjacent regions.
+        let mut parts_adj = Vec::<RegionStore>::new();
+        for inx in 0..parts.len() {
+            let mut tmp_str = RegionStore::new();
+            tmp_str.push(parts[inx].clone());
+            for iny in 0..parts.len() {
+                if inx == iny {
+                    continue;
+                }
+                if parts[inx].is_adjacent(&parts[iny]) {
+                    tmp_str.push(parts[iny].clone());
+                }
+            }
+            parts_adj.push(tmp_str);
+        }
+        parts_adj.sort_by(|a, b| b.len().cmp(&a.len()));
+        
+        // Print
+        println!("Regions in only one region, by number of adjacent regions in only one region.");
+        println!(" <parent>    <target>,   <adjacent>...");
+        let max_adj = parts_adj[0].len();
+        for rsx in parts_adj.iter() {
+            if rsx.len() == max_adj {
+                let grps = self.groups.supersets_of(&rsx[0]);
+                println!("{} {}*", &grps, &rsx);
+            } else {
+                let grps = self.groups.supersets_of(&rsx[0]);
+                println!("{} {}", &grps, &rsx);
+            }
+        }
     } // end vertices
 
     /// Find left-over regions not currently coverd

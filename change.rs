@@ -106,10 +106,10 @@ impl SomeChange {
         self.b10.is_low()
     }
 
-    // Return the number of changes in a SomeChange instance.
-//    pub fn number_changes(&self) -> usize {
-//        self.b01.num_one_bits() + self.b10.num_one_bits()
-//    }
+    /// Return the number of changes in a SomeChange instance.
+    pub fn number_changes(&self) -> usize {
+        self.b01.num_one_bits() + self.b10.num_one_bits()
+    }
 
     // Return true if a change is not low
 //    pub fn is_not_low(&self) -> bool {
