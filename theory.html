@@ -1490,6 +1490,11 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent2">
     Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
     </p>
+    <p class="indent1">
+        How far out of your way do you have to go to use a rule? The number of changes required to go from the initial state to the initial
+        region of the rule, and from the result region of the rule to the goal region, can be counted.  A lower number would  
+        imply a shorter rule-path in the end, and can be selected for.
+    </p>
     <p>Asymmetric-Chaining</p>
     <p class="indent1">
     Planning a path, using rules, from an initial state to a goal state/region, is called forward-chaining.  
@@ -1503,8 +1508,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     This could be thought of as traversing the region of (initial-state union goal-region) (IUG).
     </p>
     <p class="indent1">
-    If all rules for a needed bit change, and that rules result-region is outside of IUG,
-    backward-chaining will not work.
+    If all rules for a needed bit change have their initial and result regions outside of the IUG,
+    directed chaining will not work.
     </p>
     <p class="indent1">
     In that case, the chaining problem needs to be broken up into (initial-state to/from rule-initial-region) and (rule-result-region to/from goal).
@@ -1772,7 +1777,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 01/21/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 01/26/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

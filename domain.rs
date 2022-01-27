@@ -14,6 +14,7 @@ use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::removeunordered::remove_unordered;
+//use crate::randompick::RandomPick;
 
 use std::fmt;
 use rand::Rng;
@@ -548,6 +549,40 @@ impl SomeDomain {
         choices2[inx]
     }
 
+    /// Return true if a rule-path is roughly possible.
+    /// The needed bit changes are available in rules, and no set of 1-bit changes are
+    /// mutually exclusive to another.
+    pub fn _is_rule_path_possible(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> bool {
+        // Calculate the minimum bit changes needed.
+        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
+        // println!("random_depth_first_chaining: required_change {}", &required_change);
+
+        // Get a vector of steps (from rules) that make part of the needed changes.
+        let steps_str: StepStore = self.actions.get_steps(&required_change);
+        //println!("\nrandom_depth_first_chaining: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
+
+        // Check that the steps roughly encompass all needed changes, else return None.
+        let can_change = steps_str.aggregate_changes(self.num_ints);
+
+        if required_change.is_subset_of(&can_change) {
+        } else {
+            // println!("random_depth_first_chaining: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+            return false;
+        }
+
+        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
+        let steps_by_change_vov: Vec<Vec<&SomeStep>> = steps_str.steps_by_change_bit(&required_change);
+
+        // Check if any pair of single-bit changes, all steps, are mutually exclusive.
+        if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
+            //println!("random_depth_first_chaining: mutually exclusive change rules found");
+            return false;
+        }
+
+        // TODO check for any rule that intersects the from_reg, and any rule that intersects the goal_reg.
+        true
+    }
+
     /// Return the steps of a plan to go from a given state/region to a given region.
     ///
     /// The required change of bits is calculated from the two given regions.
@@ -584,6 +619,7 @@ impl SomeDomain {
     ///
     /// Plans returned, that may have more than one step, are checked for shortcuts.
     pub fn random_depth_first_search(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
+
         //println!("random_depth_first_chaining: from {} to {}", from_reg, goal_reg);
         // Check if from_reg is at the goal
         if goal_reg.is_superset_of(from_reg) {
@@ -613,7 +649,6 @@ impl SomeDomain {
         // Check if one step makes the required change.
         for stepx in steps_str.iter() {
             if stepx.initial.intersects(from_reg) {
-
                 let stepy = stepx.restrict_initial_region(from_reg);
 
                 if goal_reg.is_superset_of(&stepy.result) {
@@ -636,6 +671,36 @@ impl SomeDomain {
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
             //println!("random_depth_first_chaining: mutually exclusive change rules found");
             return None;
+        }
+
+        // Check for one rule single bit changes.
+        // If there is more than one such rule, deal first with rule that requires
+        // going the farthest out of your way.
+        let mut max_dif = 0;
+        let mut ones = Vec::<&SomeStep>::new();
+        for vecx in steps_by_change_vov.iter() {
+            if vecx.len() == 1 {
+                let num_chgs = vecx[0].rule.from_to_number_changes(from_reg, goal_reg);
+                if num_chgs > max_dif {
+                    max_dif = num_chgs;
+                    ones = Vec::<&SomeStep>::new();
+                }
+                if num_chgs == max_dif {
+                    ones.push(vecx[0]);
+                }
+            }
+        }
+
+        // Act on one rule bit changes
+        if ones.len() > 0 {
+            for stepx in ones.iter() {
+                if let Some(steps) = self.rule_path_with_step(from_reg, goal_reg, stepx, depth + 1) {
+                    //println!("rule_path_with_step: from {} to {} returns {}", from_reg, goal_reg, &steps);
+                    return Some(steps);
+                } else {
+                    //println!("rule_path_with_step:  from {} to {} returns None, keep going.", from_reg, goal_reg);
+                }
+            }
         }
 
         // Take out bit changes that must be run after others.
@@ -769,6 +834,58 @@ impl SomeDomain {
         //println!("asymmetric_chaining_step returning 3 None");
         None
     } // end asymmetric_chaining_step
+
+    /// Find rule-path when a given step is reguired.
+    fn rule_path_with_step(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
+        //println!("rule_path_with_step from {} to {} with step {}", from_reg, goal_reg, stepx);
+
+        let mut stepy = stepx.clone();
+
+        if stepy.initial.intersects(from_reg) {
+            stepy = stepy.restrict_initial_region(from_reg);
+        }
+
+        if stepy.result.intersects(goal_reg) {
+            stepy = stepy.restrict_result_region(goal_reg);
+        }
+
+        // Check for single step rule-path.
+        if from_reg.intersects(&stepy.initial) && goal_reg.is_superset_of(&stepy.result) {
+            return Some(StepStore::new_with_step(stepy.clone()));
+        }
+
+        let mut ret_steps = StepStore::new();
+
+        // Check for need of path for from_reg to step.initial.
+        if stepy.initial.intersects(from_reg) {
+            ret_steps.push(stepy.clone());
+        } else {
+            if let Some(steps1) = self.random_depth_first_search(from_reg, &stepy.initial, depth + 1) {
+                if let Some(ret_steps2) = steps1.link(&StepStore::new_with_step(stepy)) {
+                    ret_steps = ret_steps2;
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+
+        // Check for need of path for ret_steps.result() to goal_reg.
+        let result = ret_steps.result();
+        if goal_reg.is_superset_of(&result) {
+            return Some(ret_steps);
+        }
+
+        // Look for rule-path
+        if let Some(steps2) = self.random_depth_first_search(&result, goal_reg, depth + 1) {
+            if let Some(ret_steps2) = ret_steps.link(&steps2) {
+                return Some(ret_steps2);
+            } 
+        }
+
+        None
+    } // end rule_path_with_step
 
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try

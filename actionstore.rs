@@ -4,10 +4,8 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
-//use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
-//use crate::region::SomeRegion;
 use crate::stepstore::StepStore;
 
 use serde::{Deserialize, Serialize};
@@ -77,14 +75,14 @@ impl ActionStore {
     /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
 
-        // Run a get_needs thread for each action
+        // Run a thread for each action
         let mut stps: Vec<StepStore> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
             .map(|actx| actx.get_steps(achange))
             .collect::<Vec<StepStore>>();
 
-        // Aggregate the results into one NeedStore
+        // Aggregate the results into one StepStore
         let mut stps_agg = StepStore::new();
 
         for stp in stps.iter_mut() {

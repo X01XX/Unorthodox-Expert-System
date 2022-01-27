@@ -356,6 +356,14 @@ impl StepStore {
         None
     }
 
+    // Return a reference to the last step in the StepStore.
+//    pub fn last(&self) -> Option<&SomeStep> {
+//        if self.len() == 0 {
+//            return None;
+//        }
+//        Some(&self.avec[self.avec.len() - 1])
+//    }
+
 } // end impl StepStore
 
 impl Index<usize> for StepStore {
