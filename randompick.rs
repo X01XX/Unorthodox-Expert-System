@@ -99,3 +99,29 @@ pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
 
     x_vec
 } // end random_x_of_n
+
+/// Return a list of tuples that consist of a random index of a vector element, and
+/// a random index of the sub-vector element.
+///
+/// So [[1, 2], [3, 4, 5], [6]] might return [(1, 0), (0, 1), (2, 0)],
+/// which applied to the vector is [3, 2, 6].
+/// *******************************************************************************
+pub fn _random_choice_vector_of_vectors<T>(avec: &Vec::<Vec::<T>>) -> Vec::<(usize, usize)> {
+
+    // Init random pick for highest level vector. 
+    let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector. 
+
+    // Init return vector. 
+    let mut options = Vec::<(usize, usize)>::with_capacity(avec.len());
+
+    // Make a vector of random options 
+    for _ in 0..avec.len() {
+        let inx = rp1.pick().unwrap();
+
+        // Pick one item from each option vector, skip a pick, and that option vector, if the pick is already in the result vector. 
+        options.push((inx, rand::thread_rng().gen_range(0, avec[inx].len())));
+
+    } // next _
+
+    options 
+}

@@ -58,6 +58,24 @@ impl StepStore {
         self.avec.push(val);
     }
 
+    /// Pop a step to a StepStore.
+    pub fn _pop(&mut self) -> Option<SomeStep> {
+        if self.len() == 0 {
+            return None;
+        }
+        self.avec.pop()
+    }
+
+    /// Return true if there is a superset step in a StepStore.
+    pub fn _any_superset_of(&mut self, other: &SomeStep) -> bool {
+        for stpx in self.iter() {
+            if stpx._is_superset_of(other) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Append a StepStore to a StepStore.
     pub fn append(&mut self, val: &mut StepStore) {
         self.avec.append(&mut val.avec); // empties val.avec
@@ -279,7 +297,7 @@ impl StepStore {
         } // next stepx
 
         ret_vec
-    } // end steps_bt_change_bit2
+    } // end steps_by_change_bit
 
     // Return aggregate changes
     pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {

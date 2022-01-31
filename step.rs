@@ -105,7 +105,11 @@ impl SomeStep {
 //    pub fn change(&self) -> SomeChange {
 //        self.rule.change()
 //    }
-    
+
+    /// Return true is a step is a superset of another step.
+    pub fn _is_superset_of(&self, other: &SomeStep) -> bool {
+        self.rule._is_superset_of(&other.rule)
+    }
 } // end impl SomeStep
 
 impl Clone for SomeStep {

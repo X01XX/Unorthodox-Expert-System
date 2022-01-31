@@ -133,6 +133,13 @@ impl SomeRule {
         *self == tmprul
     }
 
+    /// Return true if a rule is a superset of another.
+    pub fn _is_superset_of(&self, other: &Self) -> bool {
+        let tmprul = self.intersection(other);
+
+        *other == tmprul
+    }
+
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
         if self.b00.m_and(&self.b01).is_low() {
