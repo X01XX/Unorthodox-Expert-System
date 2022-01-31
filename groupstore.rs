@@ -6,7 +6,6 @@ use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-//use crate::pn::Pn;
 use crate::removeunordered::remove_unordered;
 
 use serde::{Deserialize, Serialize};

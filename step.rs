@@ -2,7 +2,6 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-//use crate::state::SomeState;
 use crate::change::SomeChange;
 
 use std::fmt;
@@ -87,13 +86,6 @@ impl SomeStep {
         rcstr
     }
 
-    // Return the result of a step when applied to a given initial region.
-    // The given initial region must intersect the step initial region.
-//    pub fn result_from_initial(&self, i_reg: &SomeRegion) -> SomeRegion {
-//        assert!(self.initial.intersects(&i_reg));
-//        self.rule.result_from_initial_region(i_reg)
-//    }
-
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &SomeStep, wanted: &SomeChange) -> bool {
@@ -101,15 +93,6 @@ impl SomeStep {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 
-    // Return the change struct for a step
-//    pub fn change(&self) -> SomeChange {
-//        self.rule.change()
-//    }
-
-    /// Return true is a step is a superset of another step.
-    pub fn _is_superset_of(&self, other: &SomeStep) -> bool {
-        self.rule._is_superset_of(&other.rule)
-    }
 } // end impl SomeStep
 
 impl Clone for SomeStep {

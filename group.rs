@@ -11,7 +11,6 @@ use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-//use crate::truth::Truth;
 use crate::compare::Compare;
 
 use serde::{Deserialize, Serialize};

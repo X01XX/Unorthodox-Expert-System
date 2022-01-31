@@ -1,12 +1,9 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
-//use crate::bits::SomeBits;
 use crate::mask::SomeMask;
-//use crate::state::SomeState;
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::change::SomeChange;
-//use crate::rule::SomeRule;
 
 use std::fmt;
 use std::ops::Index;
@@ -56,24 +53,6 @@ impl StepStore {
     /// Add a step to a StepStore.
     pub fn push(&mut self, val: SomeStep) {
         self.avec.push(val);
-    }
-
-    /// Pop a step to a StepStore.
-    pub fn _pop(&mut self) -> Option<SomeStep> {
-        if self.len() == 0 {
-            return None;
-        }
-        self.avec.pop()
-    }
-
-    /// Return true if there is a superset step in a StepStore.
-    pub fn _any_superset_of(&mut self, other: &SomeStep) -> bool {
-        for stpx in self.iter() {
-            if stpx._is_superset_of(other) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Append a StepStore to a StepStore.
@@ -309,20 +288,6 @@ impl StepStore {
         schg
     }
 
-    // Return true if a StepStore contains a given step.
-//    pub fn contains(&self, astep: &SomeStep) -> bool {
-//        for stepx in self.iter() {
-//            if stepx.act_num == astep.act_num {
-//                if stepx.initial == astep.initial {
-//                    if stepx.result == astep.result {
-//                        return true;
-//                    }
-//                }
-//            }
-//        }
-//        false
-//    }
-
     /// Return a StepStore after checking for shortcuts.
     /// Return None if no shortcuts found.
     pub fn shortcuts(&self) -> Option<StepStore> {
@@ -330,6 +295,50 @@ impl StepStore {
             return None;
         }
 
+        // CHeck for repeating initial region
+        let mut reg_inx = Vec::<(SomeRegion, Vec::<usize>)>::new();
+        for inx in 0..self.len() {
+            let initx = self[inx].initial.clone();
+            let mut found = false;
+            for reg_inx_tup in reg_inx.iter_mut() {
+                if reg_inx_tup.0 == initx {
+                    reg_inx_tup.1.push(inx);
+                    found = true;
+                }
+            }
+            if found == false {
+                reg_inx.push((initx, vec![inx]));
+            }
+        } // next inx
+
+        // Process one shortcut
+        if reg_inx.len() < self.len() {
+            let mut steps2: StepStore;
+            //println!("shortcut initial found for {}", self);
+            for tupx in reg_inx.iter() {
+                if tupx.1.len() > 1 {
+                    //println!("{} at {:?}", tupx.0, tupx.1);
+                    steps2 = StepStore::new();
+                    let mut inx = 0;
+                    for stepx in self.iter() {
+                        if inx < tupx.1[0] || inx >= tupx.1[1] { 
+                            steps2.push(stepx.clone());
+                        }
+                        inx += 1;
+                    }
+                    // Remove shortcuts recursively, one by one.
+                    //println!("shortcut step2 {}", steps2);
+                    if let Some(steps3) = steps2.shortcuts() {
+                        
+                        return Some(steps3);
+                    }
+                 
+                    return Some(steps2);
+                }
+            }
+        }
+
+        // Check for repeating result
         let mut reg_inx = Vec::<(SomeRegion, Vec::<usize>)>::new();
         for inx in 0..self.len() {
             let rsltx = self[inx].result.clone();
@@ -348,9 +357,7 @@ impl StepStore {
         // Process one shortcut
         if reg_inx.len() < self.len() {
             let mut steps2: StepStore;
-            //println!("shortcut found");
-            //println!("self {}", &self);
-            //println!("test {} lt {}", reg_inx.len(), self.len());
+            //println!("shortcut result found for {}", self);
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
@@ -362,8 +369,10 @@ impl StepStore {
                         }
                         inx += 1;
                     }
-                    // Remove shortcut recursively, one by one.
+                    // Remove shortcuts recursively, one by one.
+                    //println!("shortcut step2 {}", steps2);
                     if let Some(steps3) = steps2.shortcuts() {
+                        
                         return Some(steps3);
                     }
                     return Some(steps2);
@@ -373,14 +382,6 @@ impl StepStore {
 
         None
     }
-
-    // Return a reference to the last step in the StepStore.
-//    pub fn last(&self) -> Option<&SomeStep> {
-//        if self.len() == 0 {
-//            return None;
-//        }
-//        Some(&self.avec[self.avec.len() - 1])
-//    }
 
 } // end impl StepStore
 

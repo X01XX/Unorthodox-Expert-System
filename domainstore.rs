@@ -146,17 +146,6 @@ impl DomainStore {
         self.avec.len()
     }
 
-//    pub fn check_optimal(&mut self) -> NeedStore {
-//        let mut nds = NeedStore::new();
-
-//        for dmx in self.avec.iter_mut() {
-//            if let Some(aneed) = dmx.check_optimal() {
-//                nds.push(aneed);
-//            }
-//        }
-//        nds
-//    }
-
     /// Return a vector of InxPlan structs, given a NeedStore.
     /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {

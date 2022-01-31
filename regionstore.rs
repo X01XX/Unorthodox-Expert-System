@@ -2,7 +2,6 @@
 
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-//use crate::statestore::StateStore;
 use crate::removeunordered::remove_unordered;
 
 use serde::{Deserialize, Serialize};
@@ -285,8 +284,8 @@ impl RegionStore {
 
         rc_str
     }
-    
-    /// Return the result of intersectong two region stores
+
+    // Return the result of intersectong two region stores
 //    pub fn intersection(&self, other: &RegionStore) -> Self {
 //
 //        let mut ret_store = Self::new();

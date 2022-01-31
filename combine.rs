@@ -1,10 +1,7 @@
     use crate::pn::Pn;
-//    use crate::rulestore::RuleStore;
     use crate::truth::Truth;
     use crate::compare::Compare;
     use crate::square::SomeSquare;
-//    use crate::region::SomeRegion;
-//    use crate::regionstore::RegionStore;
     use crate::squarestore::SquareStore;
 
     /// Can two structure rules, that implement the Compare trait, be combined?

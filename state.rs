@@ -101,13 +101,6 @@ impl SomeState {
         }
     }
 
-    /// Change the bits of a state, to 1, given a vector of numbers.
-//  pub fn bits_to_1(&self, nums: Vec<usize>) -> Self {
-//      SomeState {
-//          bts: self.bts.bits_to_1(nums),
-//      }
-//  }
-
     /// Return the number of integers used to represent a state.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()

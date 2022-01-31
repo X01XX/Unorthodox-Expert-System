@@ -6,7 +6,6 @@
 use crate::change::SomeChange;
 use crate::state::SomeState;
 use crate::mask::SomeMask;
-//use crate::square::SomeSquare;
 use rand::Rng;
 
 // The number of bits is set by the line of code that creates

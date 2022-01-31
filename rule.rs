@@ -464,9 +464,6 @@ impl SomeRule {
     ///    A change can be lost by:
     ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///        A wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
-    pub fn order_ok(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
-        !self.order_bad(other, wanted)
-    }
     pub fn order_bad(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
