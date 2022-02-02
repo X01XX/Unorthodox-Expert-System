@@ -463,6 +463,12 @@ impl SomeRegion {
         regx.set_to_zeros(&x_bits.m_and(&zeros))
     }
 
+    /// Project a region to another, indicating the result of the least changes.
+    pub fn project_to(&self, other: &SomeRegion) -> SomeRegion {
+        let rulx = self.rule_to_region(other).unwrap();
+        rulx.result_region().intersection(other)
+    }
+
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {

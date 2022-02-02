@@ -11,26 +11,20 @@ dead_code,
 
 use std::env;
 mod action;
-//use crate::action::SomeAction;
 mod actionstore;
 mod bits;
-//use bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
-//use mask::SomeMask;
 mod maskstore;
-//use maskstore::MaskStore;
 mod need;
 mod region;
 use region::SomeRegion;
 mod change;
-//use change::SomeChange;
 mod regionstore;
 use regionstore::RegionStore;
 mod resultstore;
 mod rule;
-//use rule::SomeRule;
 mod rulestore;
 use crate::rulestore::RuleStore;
 mod compare;
@@ -43,9 +37,7 @@ use crate::statestore::StateStore;
 use need::SomeNeed;
 mod domain;
 mod needstore;
-//use needstore::NeedStore;
 mod plan;
-//use crate::plan::SomePlan;
 mod pn;
 use crate::pn::Pn;
 mod step;
@@ -56,7 +48,6 @@ mod domainstore;
 use domainstore::DomainStore;
 mod combine;
 mod truth;
-//use crate::truth::Truth;
 mod randompick;
 mod removeunordered;
 mod actioninterface;
@@ -166,6 +157,18 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut dmxs = init();
     let mut dom_num = 0;
     let mut step_inc = 1; // amount to increment the step in the next loop
+
+//    let reg1 = SomeRegion::new_from_string(2, "r000_111_XXX").unwrap();
+//    let reg2 = SomeRegion::new_from_string(2, "r01X_01X_01X").unwrap();
+//    let reg3 = reg1.project_to(&reg2);
+//    println!("{} project to", &reg1);
+//    println!("{} =", &reg2);
+//    println!("{}", &reg3);
+
+//    let reg4 = reg2.project_to(&reg1);
+//    println!("{} project to", &reg2);
+//    println!("{} =", &reg1);
+//    println!("{}", &reg4);
 
     // Start Test
 //    if 1 == 1 {

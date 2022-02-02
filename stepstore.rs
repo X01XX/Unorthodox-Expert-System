@@ -61,17 +61,32 @@ impl StepStore {
     }
 
     /// Link two stepstores together, return Some(StepStore).
+    /// Restrict StepStores that have an intersection of the result() and 
+    /// initial() regions.
+    /// Restricting the steps, forward and backward, from that intersection may
+    /// cause a break in the path, which is why None may be returned.
     pub fn link(&self, other: &Self) -> Option<Self> {
-        //println!("stepstore:link: {} and {}", self, other);
-
-        if self.result() == other.result() {
-            println!("linking {} and {} ?", self, other);
-            panic!("Done");
+        if self.result().intersects(&other.initial()) == false {
+            println!("stepstore:link: problem {} and {} ", self, other);
         }
 
-        let end_inx = self.len() - 1;
+        // Sanity checks
+        assert!(self.len() > 0);
+        assert!(other.len() > 0);
+        assert!(self.result().intersects(&other.initial()));
+        if self.len() > 1 {
+            for inx in 1..self.len() {
+                assert!(self[inx - 1].result.intersects(&self[inx].initial));
+            }
+        }
+        if other.len() > 1 {
+            for inx in 1..other.len() {
+                assert!(other[inx - 1].result.intersects(&other[inx].initial));
+            }
+        }
 
-        if self.avec[end_inx].result == other.avec[0].initial {
+        // If the StepStores are already congruent, just make a new StepStore.
+        if self.result() == other.initial() {
             let mut rc_steps = StepStore::with_capacity(self.len() + other.len());
 
             for stp1 in self.iter() {
@@ -81,17 +96,16 @@ impl StepStore {
             for stp2 in other.iter() {
                 rc_steps.push(stp2.clone());
             }
-
+            //println!("stepstore:link: 1 {} and {} giving {}", self, other, rc_steps);
             return Some(rc_steps);
         }
 
-        if self.avec[end_inx]
-            .result
-            .intersects(&other.avec[0].initial)
+        // Restrict the StepStores, forward and backward.
+        if self.result()
+            .intersects(&other.initial())
         {
-            let regx = self.avec[end_inx]
-                .result
-                .intersection(&other.avec[0].initial);
+            let regx = self.result()
+                .intersection(&other.initial());
 
             if let Some(steps1) = self.restrict_result_region(&regx) {
                 if let Some(steps2) = other.restrict_initial_region(&regx) {
@@ -105,7 +119,7 @@ impl StepStore {
                     for stp2 in steps2.iter() {
                         rc_steps.push(stp2.clone());
                     }
-
+                    //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
                     return Some(rc_steps);
                 }
             }

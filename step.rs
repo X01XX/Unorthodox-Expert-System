@@ -42,13 +42,13 @@ impl SomeStep {
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         assert!(self.initial.intersects(&reg));
 
-        let init_reg = self.initial.intersection(&reg);
+        let rule_new = self.rule.restrict_initial_region(reg);
 
         Self {
-            initial: init_reg.clone(),
+            initial: rule_new.initial_region(),
             act_num: self.act_num,
-            result: self.rule.result_from_initial_region(&init_reg),
-            rule: self.rule.restrict_initial_region(&init_reg),
+            result: rule_new.result_region(),
+            rule: rule_new,
             alt_rule: self.alt_rule,
             group_reg: self.group_reg.clone(),
         }
@@ -56,15 +56,15 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the result region
     pub fn restrict_result_region(&self, reg: &SomeRegion) -> Self {
-        assert!(self.result.intersects(&reg));
+        assert!(self.result.intersects(reg));
 
-        let rulx = self.rule.restrict_result_region(reg);
+        let rule_new = self.rule.restrict_result_region(reg);
 
         Self {
-            initial: rulx.initial_region(),
+            initial: rule_new.initial_region(),
             act_num: self.act_num,
-            result: rulx.result_region(),
-            rule: rulx,
+            result: rule_new.result_region(),
+            rule: rule_new,
             alt_rule: self.alt_rule,
             group_reg: self.group_reg.clone(),
         }
