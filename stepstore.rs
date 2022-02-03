@@ -60,9 +60,35 @@ impl StepStore {
         self.avec.append(&mut val.avec); // empties val.avec
     }
 
+    /// Check if a StepStore is a valid sequence of steps.
+    /// There are greater than zero steps.
+    /// Each step changes something.
+    /// Sequential step pairs result and initial regions are equal.
+    /// Steps do not form a loop.
+    pub fn is_valid_sequence(&self) -> bool {
+        if self.len() == 0 {
+            return false;
+        }
+        if self.len() > 1 {
+            for inx in 1..self.len() {
+                if self[inx].initial == self[inx].result {
+                    return false;
+                }
+                if self[inx - 1].result == self[inx].initial {
+                } else {
+                    return false;
+                }
+            }
+        }
+        if self.initial().intersects(&self.result()) {
+            return false;
+        }
+        true
+    }
+
     /// Link two stepstores together, return Some(StepStore).
-    /// Restrict StepStores that have an intersection of the result() and 
-    /// initial() regions.
+    /// Restrict StepStores that have an intersection of the result and 
+    /// initial regions.
     /// Restricting the steps, forward and backward, from that intersection may
     /// cause a break in the path, which is why None may be returned.
     pub fn link(&self, other: &Self) -> Option<Self> {
@@ -74,31 +100,6 @@ impl StepStore {
         assert!(self.len() > 0);
         assert!(other.len() > 0);
         assert!(self.result().intersects(&other.initial()));
-        if self.len() > 1 {
-            for inx in 1..self.len() {
-                assert!(self[inx - 1].result.intersects(&self[inx].initial));
-            }
-        }
-        if other.len() > 1 {
-            for inx in 1..other.len() {
-                assert!(other[inx - 1].result.intersects(&other[inx].initial));
-            }
-        }
-
-        // If the StepStores are already congruent, just make a new StepStore.
-        if self.result() == other.initial() {
-            let mut rc_steps = StepStore::with_capacity(self.len() + other.len());
-
-            for stp1 in self.iter() {
-                rc_steps.push(stp1.clone());
-            }
-
-            for stp2 in other.iter() {
-                rc_steps.push(stp2.clone());
-            }
-            //println!("stepstore:link: 1 {} and {} giving {}", self, other, rc_steps);
-            return Some(rc_steps);
-        }
 
         // Restrict the StepStores, forward and backward.
         if self.result()
@@ -107,20 +108,17 @@ impl StepStore {
             let regx = self.result()
                 .intersection(&other.initial());
 
-            if let Some(steps1) = self.restrict_result_region(&regx) {
-                if let Some(steps2) = other.restrict_initial_region(&regx) {
+            if let Some(mut steps1) = self.restrict_result_region(&regx) {
+                if let Some(mut steps2) = other.restrict_initial_region(&regx) {
 
-                    let mut rc_steps = StepStore::with_capacity(self.len() + other.len());
+                    steps1.append(&mut steps2);
 
-                    for stp1 in steps1.iter() {
-                        rc_steps.push(stp1.clone());
-                    }
-
-                    for stp2 in steps2.iter() {
-                        rc_steps.push(stp2.clone());
-                    }
                     //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-                    return Some(rc_steps);
+                    if steps1.is_valid_sequence() {
+                        return Some(steps1);
+                    } else {
+                        return None;
+                    }
                 }
             }
         }
