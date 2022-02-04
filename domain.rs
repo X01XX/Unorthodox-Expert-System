@@ -192,6 +192,8 @@ impl SomeDomain {
     }
 
     /// Evaluate an arbitrary sample given by the user.
+    /// This tends to break things for an action, unless all samples are arbitrary,
+    /// like for testing a wholly different series of samples/results.
     pub fn eval_sample_arbitrary(
         &mut self,
         act_num: usize,
@@ -204,6 +206,7 @@ impl SomeDomain {
     }
 
     /// Take an action for a need, evaluate the resulting sample.
+    /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
 
         let act_num = ndx.act_num();
@@ -216,6 +219,7 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state.
+    /// A sample made for a rule-path should not be saved if the result is expected.
     pub fn take_action(&mut self, act_num: usize) {
 
         let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
@@ -227,10 +231,13 @@ impl SomeDomain {
 
     /// Accessor, set the cur_state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
+        // Check optimal regions and boredom duration.
         if self.optimal_and_ints.len() > 1 {
             let opt_sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
 
-            if opt_sups.len() > 0 {
+            if opt_sups.len() == 0 {
+                self.boredom = 0;
+            } else {
                 let opt_sups_new = self.optimal_and_ints.supersets_of_state(&new_state);
                 if opt_sups != opt_sups_new {
                     self.boredom = 0;
@@ -238,6 +245,7 @@ impl SomeDomain {
             }
         }
 
+        // Set the state.
         self.cur_state = new_state.clone();
     }
 
@@ -246,77 +254,80 @@ impl SomeDomain {
         self.run_plan2(pln, 0); // Init depth counter.
     }
 
-    /// Run a plan.  Try to replan and run if a plan encounters an unexpected result.
+    /// Run a plan, with a recursion depth check.
+    /// An unexpected result has a few flavors.
+    /// A step from a group whose rule is a combination of samples that covers too broad a region.
+    ///   The rule is deleted and maybe others are formed.  A re-plan-to-goal is done.
+    /// A rule that has two expected results, in order, and the state is not known by a most-recent
+    /// sample to be the alternate result.
+    ///   If the alternate result has no changes, the action can be immediately tried again.
+    ///   If the alternate result changes something, a re-plan-to-goal is done.
     fn run_plan2(&mut self, pln: &SomePlan, depth: usize) {
         if depth > 3 {
-            println!("\nPlan {} failed", &pln);
+            println!("\nDepth exceeded, at plan {}", &pln);
+            return;
+        }
+
+        if pln.initial_region().is_superset_of_state(&self.cur_state) == false {
+            println!("\nCurrent state {} is not in the start region of plan {}", &self.cur_state, &pln);
             return;
         }
 
         for stpx in pln.iter() {
-            if stpx.initial.is_superset_of_state(&self.cur_state) {
+
+            let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
+
+            self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
+
+            let prev_state = self.cur_state.clone();
+
+            self.set_state(&astate);
+
+            if stpx.result.is_superset_of_state(&self.cur_state) {
+                continue;
+            }
+
+            // Handle unexpected/unwanted result
+            // May be an expected possibility from a two result state
+
+            if prev_state == self.cur_state && stpx.alt_rule {
+                println!("Try action a second time");
 
                 let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
 
                 self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
-
-                let prev_state = self.cur_state.clone();
 
                 self.set_state(&astate);
 
                 if stpx.result.is_superset_of_state(&self.cur_state) {
                     continue;
                 }
+            }
 
-                // Handle unexpected/unwanted result
-                // May be an expected possibility from a two result state
-
-                if prev_state == self.cur_state {
-                    println!("Try action a second time");
-
-                    let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
-
-                    self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
-
-                    self.set_state(&astate);
-
-                    if stpx.result.is_superset_of_state(&self.cur_state) {
-                        continue;
-                    }
-                }
-
-                // Try re-plan to goal
-                if let Some(planx) = self.make_plan(pln.result_region()) {
-                    println!(
-                        "\nChange [{} -{:02}> {}] unexpected, expected {}, new plan from {} to {} is {}",
-                        &prev_state,
-                        &stpx.act_num,
-                        &self.cur_state,
-                        stpx,
-                        &self.cur_state,
-                        &pln.result_region(),
-                        &planx.str_terse()
-                        );
-                    return self.run_plan2(&planx, depth + 1);
-                    //panic!("done");
-                }
+            // Try re-plan to goal
+            if let Some(planx) = self.make_plan(pln.result_region()) {
                 println!(
-                    "\nChange [{} -{:02}> {}] unexpected, expected {}, no plan from {} to {}, failed.",
+                    "\nChange [{} -{:02}> {}] unexpected, expected {}, new plan from {} to {} is {}",
                     &prev_state,
                     &stpx.act_num,
                     &self.cur_state,
                     stpx,
                     &self.cur_state,
-                    &pln.result_region()
-                );
-                return;
-
-            } else {
-                panic!(
-                    "step initial {} rule {} is not superset of the result found {}, plan building problem",
-                    &stpx.initial, &stpx.rule, &self.cur_state
-                );
+                    &pln.result_region(),
+                    &planx.str_terse()
+                    );
+                return self.run_plan2(&planx, depth + 1);
             }
+            println!(
+                "\nChange [{} -{:02}> {}] unexpected, expected {}, no plan from {} to {}, failed.",
+                &prev_state,
+                &stpx.act_num,
+                &self.cur_state,
+                stpx,
+                &self.cur_state,
+                &pln.result_region()
+            );
+            return;
         } // next stpx
     } // end run_plan2
 
@@ -379,7 +390,7 @@ impl SomeDomain {
         None
     } // end symmetric_backward_chaining
 
-    // Try the next step in ???? chaining.
+    // Try the next step in forward chaining.
     pub fn symmetric_forward_chaining(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, steps_str: &StepStore, depth: usize) -> Option<StepStore> {
         //println!("symmetric_forward_chaining from {} to {}", from_reg, goal_reg);
 
@@ -473,6 +484,8 @@ impl SomeDomain {
         }
 
         // Make new vector of steps, restricted by from region.
+        // Otherwise, not all parts of the result region will produce an
+        // initial region with the minimum changes to the from region. 
         let mut steps_str = StepStore::with_capacity(steps_str2.len());
         for stepx in steps_str2.iter() {
             if from_reg.intersects(&stepx.initial) {
@@ -650,6 +663,8 @@ impl SomeDomain {
         }
 
         // Make new vector of steps, restricted by the goal region.
+        // Otherwise, not all parts of the initial region will produce a
+        // result region with the minimum changes to the goal region. 
         let mut steps_str = StepStore::with_capacity(steps_str2.len());
         for stepx in steps_str2.iter() {
             if goal_reg.intersects(&stepx.result) {
@@ -755,7 +770,7 @@ impl SomeDomain {
         None
     } // end forward_depth_first_search
 
-    /// Find backward rule-path with a given step.
+    /// Find backward rule-path with a given step, that does not intersect the goal-region.
     fn asymmetric_backward_from_step(&self, goal_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
         //println!("asymmetric_backward_from_step {} to {}", stepx, goal_reg);
 
@@ -779,7 +794,7 @@ impl SomeDomain {
         None
     } // end asymmetric_backward_from_step
 
-    /// Find forward rule-path with a given step.
+    /// Find forward rule-path with a given step, that does not intersect the from-region.
     fn asymmetric_forward_to_step(&self, from_reg: &SomeRegion, stepx: &SomeStep, depth: usize) -> Option<StepStore> {
         //println!("asymmetric_forward_to_step from {} to step {}", from_reg, stepx);
 
@@ -1032,7 +1047,6 @@ fn choose_one(ret_plans: &Vec::<SomePlan>) -> usize {
 mod tests {
     use crate::mask::SomeMask;
     use crate::change::SomeChange;
-    //use crate::need::SomeNeed;
     use crate::state::SomeState;
     use crate::region::SomeRegion;
     use crate::domain::SomeDomain;

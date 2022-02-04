@@ -89,8 +89,15 @@ impl SomePlan {
         self.steps.iter()
     }
 
+    /// Return the initial region of a plan that contains at least one step.
+    pub fn initial_region(&self) -> &SomeRegion {
+        assert!(self.len() > 0);
+        return &self.steps[0].initial;
+    }
+
     /// Return the result region of a plan that contains at least one step.
     pub fn result_region(&self) -> &SomeRegion {
+        assert!(self.len() > 0);
         return &self.steps[self.steps.len() - 1].result;
     }
 
