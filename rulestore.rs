@@ -569,7 +569,6 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::rulestore::RuleStore;
 
-
     // Test restrict_initial_region and initial_region
     #[test]
     fn test_restrict_initial_region() -> Result<(), String> {

@@ -1,4 +1,4 @@
-///  A trait to allow SomeGroup and SomeSquare instances to be comapared in any combination.
+///  A trait to allow SomeGroup and SomeSquare instances to be compared in any combination.
 
 use crate::pn::Pn;
 use crate::region::SomeRegion;

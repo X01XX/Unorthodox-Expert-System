@@ -1,4 +1,4 @@
-//! The NeedStore struct, a vector of SomeNeeds structs.
+//! The NeedStore struct, a vector of SomeNeed structs.
 
 use crate::need::SomeNeed;
 use crate::region::SomeRegion;

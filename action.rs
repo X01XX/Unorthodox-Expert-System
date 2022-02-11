@@ -1076,7 +1076,7 @@ impl SomeAction {
 
         ret_nds
 
-        // Run a get_needs thread for each action
+        // Run a get_needs thread for each group
 //        let mut vecx: Vec<NeedStore> = self
 //            .groups.avec
 //            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages

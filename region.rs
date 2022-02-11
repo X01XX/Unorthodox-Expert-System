@@ -466,7 +466,7 @@ impl SomeRegion {
     /// Project a region to another, indicating the result of the least changes.
     pub fn project_to(&self, other: &SomeRegion) -> SomeRegion {
         let rulx = self.rule_to_region(other).unwrap();
-        rulx.result_region().intersection(other)
+        rulx.result_region()
     }
 
 } // end impl SomeRegion
@@ -506,8 +506,8 @@ mod tests {
 
     #[test]
     fn test_rule_to_region() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(2, "r000111xxx").unwrap();
-        let reg2 = SomeRegion::new_from_string(2, "r01x01x01x").unwrap();
+        let reg1 = SomeRegion::new_from_string(2, "r000_111_xxx").unwrap();
+        let reg2 = SomeRegion::new_from_string(2, "r01x_01x_01x").unwrap();
 
         let rul1 = reg1.rule_to_region(&reg2).unwrap();
         println!("rule is {}", &rul1);

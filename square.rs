@@ -6,8 +6,6 @@ use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-//use crate::truth::Truth;
-//use crate::combine::can_combine;
 use crate::compare::Compare;
 
 use serde::{Deserialize, Serialize};

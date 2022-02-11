@@ -6,7 +6,6 @@ use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::pn::Pn;
-//use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

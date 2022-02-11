@@ -400,7 +400,7 @@ impl RegionStore {
     }
 
     /// Return the total number of squares represented by the regions in a store.
-    /// Take out a region, recurse on the store minus that region.
+    /// Take out a region, calc its number squares, then recurse on the store minus that region.
     pub fn number_squares(&self) -> usize {
         // Recursion end case, empty store.
         if self.len() == 0 {

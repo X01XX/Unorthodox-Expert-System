@@ -4,11 +4,11 @@
 //!
 //! A Mask of differences between two states would be calculated like:
 //!
-//! let diff_mask = SomeMask { ints: state1.bts.b_xor(&state2.bts) };
+//! let diff_mask = state1.s_xor(&state2).to_mask();
 //!
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
-//! let state2 = SomeState { ints: diff_mask.bts.b_xor(&state1.bts) };
+//! let state2 = diff_mask.to_state().s_xor(&state1.bts);
 
 use crate::bits::SomeBits;
 use crate::state::SomeState;

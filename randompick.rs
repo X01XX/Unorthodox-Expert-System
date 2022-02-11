@@ -29,7 +29,6 @@
 // num picked is 4 vector value is 24
 
 use crate::removeunordered::remove_unordered;
-//extern crate rand;
 use rand::Rng;
 
 #[derive(Debug)]
