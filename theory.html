@@ -1182,6 +1182,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         The first samples of this kind can be used to form regions that can be used, with some errors,
         to change the current state to a state needed to improve the regions.
      </p>
+     <p class="indent1">
+	Errors in the first regions lead to unexpected, but needed, samples, which lead to new regions.
+     </p>
          <p>
         Keep a list of superset non-falsified regions of squares with compatible samples.
         </p>
@@ -1189,10 +1192,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         A newly sampled square may invalidate some regions.
         </p>
 	<p class="indent2">
-        Seek a pair of adjacent, dissimilar, squares, in any invalidated region.
-	</p>
-	<p class="indent2">
-	This discovers a new edge in the solution.  Adjacent regions formed from the squares map out the length of the edge.
+        Seek a pair of adjacent, dissimilar, squares, in any invalidated region, to discover a new edge in the solution.
 	</p>
         <p class="indent1">
         A newly sampled square, and squares from invalidated regions, can be compared to other squares to form new regions.
@@ -1245,12 +1245,18 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
         </p>
       <p>
+      Parallel processing.
+      </p>
+      <p class="indent1">
+	Parallel processing has always been thought to be crucial for Expert Systems.  This is hobbled when there is a need for different tasks to update a piece of shared data.  There are a number of opportunities to use unfettered parallel processing here.
+      </p>
+      <p class="indent1">
       Generating needs can be done in parallel, per action.  Likely without any shared memory, just aggregate the results.
      </p>
-      <p>
+      <p class="indent1">
       Calculating plans for possible needs can be done in parallel, per need.  Likely without any shared memory, just aggregate the results.
      </p>
-      <p>
+      <p class="indent1">
       Getting rules/steps, that meet certain criteria, can be done in parallel, per action.  Likely without any shared memory, just aggregate the results.
      </p>
    </div>
@@ -1777,7 +1783,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 01/26/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 02/11/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
