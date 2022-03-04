@@ -196,20 +196,16 @@ impl SomeRule {
         // Check for 4 change bit-position.
         if ones_to_x.m_and(&zeros_to_x).is_not_low() { return None; }
 
-        // Get zeros one change mask.
-        let zeros_1_change = self.b01.m_xor(&self.b00);
+        let x_mask = self.initial_region().x_mask();
 
-        // Check 1X bits are subset zeros one change mask.
-        if ones_to_x.is_subset_of(&zeros_1_change) {
+        // Check 1X bits are subset x_mask
+        if ones_to_x.is_subset_of(&x_mask) {
         } else {
             return None;
         }
 
-        // Get ones one change mask.
-        let ones_1_change = self.b10.m_xor(&self.b11);
-
-        // Check 0X bits are subset ones one change mask.
-        if zeros_to_x.is_subset_of(&ones_1_change) {
+        // Check 0X bits are subset x_mask.
+        if zeros_to_x.is_subset_of(&x_mask) {
         } else {
             return None;
         }
