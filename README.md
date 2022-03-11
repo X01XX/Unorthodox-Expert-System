@@ -3,9 +3,9 @@ An Unorthodox Expert System, an expert of its own state, no human intervention i
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory.
 
-Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html
+There is extensive use of Boolean Algebra.
 
-There is extensive use of Boolean Algebra, which is supported by almost any programming language.
+Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html
 
 Run under Rust, a command help screen will display.  
 
