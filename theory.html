@@ -1478,7 +1478,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Then calculate the initial region of the restricted rule.
     </p>
    <p>
-    Rule order
+    Rule Order
     </p>
     <p class="indent1">
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
@@ -1496,55 +1496,78 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent2">
     Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
     </p>
-    <p class="indent1">
-        How far out of your way do you have to go to use a rule? The number of changes required to go from the initial state to the initial
-        region of the rule, and from the result region of the rule to the goal region, can be counted.  A lower number would  
-        imply a shorter rule-path in the end, and can be selected for.
-    </p>
-    <p>Asymmetric-Chaining</p>
-    <p class="indent1">
-    Planning a path, using rules, from an initial state to a goal state/region, is called forward-chaining.  
-    </p>
-    <p class="indent1">
-    If forward-chaining does not work, thinking about going from the goal state to the initial state may help, this is called
-    backward-chaining.
-    </p>
-    <p class="indent1">
-    In forward-chaining, and backward-chaining, there is a successive number of steps, each getting closer to the target.
-    This could be thought of as traversing the region of (initial-state union goal-region) (IUG).
-    </p>
-    <p class="indent1">
-    If all rules for a needed bit change have their initial and result regions outside of the IUG,
-    directed chaining will not work.
-    </p>
-    <p class="indent1">
-    In that case, the chaining problem needs to be broken up into (initial-state to/from rule-initial-region) and (rule-result-region to/from goal).
-    </p>
    <p>
-    Intelligent rule selection
-    </p>
+    Generating a rule-path, to translate a from-region to a goal-region.
     </p>
     <p class="indent1">
-    Calculate the needed bit changes between the current state and the goal.
+    This has some similarities to the Travelling Salesperson Problem, going  from rule to rule.
+    </p>
+    <p class="indent1">
+    Calculate the needed bit changes between the from-region (starts as the current-state) and the goal-region.
     </p>
     <p class="indent1">
     Make one pass though the rules and select any rule that elicits at least one bit change that matches the needed changes.
     </p> 
     <p class="indent1">
-    The aggregate changes of the rules found should be a superset of the changes needed, or no path will be found.
+    Check if a single rule solves the problem.  This is the ultimate successful end-point of any search.
     </p> 
     <p class="indent1">
-    All the rules for any two needed bit changes should not be mutually exclusive. If a rule makes more than one needed bit change, those pairs are not mutually exclusive.
+    The aggregate changes of the rules found should be a superset of the changes needed, or no path can be found.
     </p> 
     <p class="indent1">
-    You now have a list of rules that will contain what you need, if some (probably subset) rules, can be ordered correctly.
+    Create a sorted list of each single bit-change needed, and the rules available to make that change.
+    </p> 
+    <p class="indent1">
+    All the rules for any two needed bit-changes should not be mutually exclusive. If a rule makes more than one needed bit change, the pairs it is in are not mutually exclusive.
+    </p> 
+    <p class="indent1">
+    A single bit-change that has only one available rule, guarantees that the rule will be part of a successful rule-path search.
    </p>
     <p class="indent1">
-    If the rule(s) for one particular bit change are all outside the IUG, Asymmetric chaining will have to be tried for each rule.
+    A single bit-change that has two rules available, indicates a roughly 50% change for either rule to be part of a successful rule-path search.
     </p> 
-
     <p class="indent1">
-    IRL, we find that the path to a goal is not always straight, preliminary steps are required.  Some changes undo previous changes, and some changes need to be done before others.
+    If a rule has an initial-region that is not a superset of the from-region, and a result-region that does not intersect the goal-region,
+    it has the effect of splitting up the search into two, possibly easier/shorter, parts.
+    </p>
+    <p class="indent1">
+    A depth-first search, using random choices, seems to be the best method of generating a rule-path.
+    It should be run some number of times before giving up.
+    </p>
+    <p class="indent1">
+    Of the bit-changes that contain only rules that require splitting the rule-path search into two parts, aggregate the rules from those bit-changes
+    with the least number of rules.
+    </p>
+    <p class="indent2">
+    If there are no such bit-changes, aggregate the rules from any bit-changes with the lowest number of rules.
+    </p>
+    <p class="indent2">
+    Randomly choose one of the selected rules.
+    </p>
+    <p class="indent1">
+    Forward Chaining
+    </p>
+    <p class="indent2">
+    If the initial-region of the selected rule is a superset of the from-region, restrict the initial-region of the rule. Use recursion
+    to find a path from the restricted rule result-region to the goal-region.
+    </p>
+    <p class="indent1">
+    Backward Chaining
+    </p>
+    <p class="indent2">
+    If the result-region of the selected rule intersects the goal-region, restrict the result-region of the rule. Use recursion
+    to find a path from the from-region to the restricted rule initial-region.
+    </p>
+    <p class="indent1">
+    Asymmetrical Chaining
+    </p>
+    <p class="indent2">
+    Otherwise, use recursion to go from the from-region to the rule initial-region. Restrict the rule initial-region.
+    Use recursion to find a path from the restricted rule result-region to the goal-region.
+    </p>
+    <p class="indent1">
+    Keep a count of the recursion depth, and fail the process at some point.  
+    Asymmetrical Chaining has the effect of splitting the depth count risk.
     </p>
     <h3>Contradictory Intersections</h3>
     <p>
@@ -1783,7 +1806,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 02/11/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/11/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
