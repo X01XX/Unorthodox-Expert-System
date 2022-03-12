@@ -13,7 +13,7 @@ use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-
+use rayon::prelude::*;
 use std::fmt;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -527,16 +527,27 @@ impl SomeDomain {
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
         let num_depth = 3 * required_change.number_changes();
 
-        for _ in 0..4 {
-            if let Some(steps) = self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
-                //println!("random_depth_first_search worked!");
-                if let Some(steps2) = steps.shortcuts() {
-                    plans.push(SomePlan::new(steps2));
-                } else {
-                    plans.push(SomePlan::new(steps));
-                }
+        let poss_steps = (0..6)
+                .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+                .map(|_| self.random_depth_first_search(&cur_reg, &goal_reg, num_depth))
+                .collect::<Vec<Option<StepStore>>>();
+
+        for optx in poss_steps {
+            if let Some(stepsx) = optx {
+                plans.push(SomePlan::new(stepsx));
             }
         }
+
+//        for _ in 0..4 {
+//            if let Some(steps) = self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
+//                //println!("random_depth_first_search worked!");
+//                if let Some(steps2) = steps.shortcuts() {
+//                    plans.push(SomePlan::new(steps2));
+//                } else {
+//                    plans.push(SomePlan::new(steps));
+//                }
+//            }
+//        }
 
         // Return one of the plans, avoid the need to clone.
         if plans.len() == 1 {
