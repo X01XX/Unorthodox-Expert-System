@@ -363,7 +363,18 @@ impl SomeDomain {
     /// For the selected step, do Forward Chaining, Backward Chaining, or Asummetric Chaining, as needed.
     ///
     pub fn random_depth_first_search(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
-        //println!("random_depth_first_search: from {} to {}", from_reg, goal_reg);
+
+        if let Some(steps) = self.random_depth_first_search2(from_reg, goal_reg, depth) {
+            if let Some(steps2) = steps.shortcuts() {
+                return Some(steps2);
+            }
+            return Some(steps);
+        }
+        None
+    }
+
+    pub fn random_depth_first_search2(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
+        //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
         
         // Check if from_reg is at the goal, no steps are needed.
         if goal_reg.is_superset_of(from_reg) {
@@ -375,17 +386,17 @@ impl SomeDomain {
 
         // Calculate the minimum bit changes needed.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
-        // println!("forward_depth_first_search: required_change {}", &required_change);
+        // println!("forward_depth_first_search2: required_change {}", &required_change);
 
         // Get a vector of steps (from rules) that make part of the needed changes.
         let steps_str: StepStore = self.actions.get_steps(&required_change);
-        //println!("\nforward_depth_first_search: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
+        //println!("\nforward_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let can_change = steps_str.aggregate_changes(self.num_ints);
         if required_change.is_subset_of(&can_change) {
         } else {
-            // println!("forward_depth_first_search: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+            // println!("forward_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
             return None;
         }
 
@@ -395,7 +406,7 @@ impl SomeDomain {
                 let stepy = stepx.restrict_initial_region(from_reg);
 
                 if goal_reg.is_superset_of(&stepy.result) {
-                    //println!("forward_depth_first_search: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
+                    //println!("forward_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
                     return Some(StepStore::new_with_step(stepy));
                 }
             }
@@ -411,7 +422,7 @@ impl SomeDomain {
 
         // Check if any pair of single-bit changes, all steps, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
-            //println!("forward_depth_first_search: mutually exclusive change rules found");
+            //println!("forward_depth_first_search2: mutually exclusive change rules found");
             return None;
         }
 
@@ -479,7 +490,7 @@ impl SomeDomain {
         // Forward chaining
         if stepx.initial.is_superset_of(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
-            if let Some(next_steps) = self.random_depth_first_search(&stepy.result, goal_reg, depth - 1) {
+            if let Some(next_steps) = self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1) {
                 return StepStore::new_with_step(stepy).link(&next_steps);
             }
             return None;
@@ -488,14 +499,14 @@ impl SomeDomain {
         // Backward chaining
         if stepx.result.intersects(goal_reg) {
             let stepy = stepx.restrict_result_region(goal_reg);
-            if let Some(prev_steps) = self.random_depth_first_search(from_reg, &stepy.initial, depth - 1) {
+            if let Some(prev_steps) = self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1) {
                 return prev_steps.link(&StepStore::new_with_step(stepy));
             }
             return None;
         }
         
         // Asymmetrical chaining
-        if let Some(first_steps) = self.random_depth_first_search(from_reg, &stepx.initial, depth - 1) {
+        if let Some(first_steps) = self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1) {
             let stepy = stepx.restrict_initial_region(&first_steps.result());
             if let Some(next_steps) = self.random_depth_first_search(&stepy.result, goal_reg, depth - 1) {
                 if let Some(steps1) = first_steps.link(&StepStore::new_with_step(stepy)) {
@@ -505,7 +516,7 @@ impl SomeDomain {
         }
 
         None
-    } // end random_depth_first_search
+    } // end random_depth_first_search2
 
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
@@ -519,7 +530,7 @@ impl SomeDomain {
         }
 
         // Try to make a plan several times.
-        let mut plans = Vec::<SomePlan>::new();
+        //let mut plans = Vec::<SomePlan>::new();
         let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
         //println!("make_plan: from {} to {}", cur_reg, goal_reg);
 
@@ -527,27 +538,11 @@ impl SomeDomain {
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
         let num_depth = 3 * required_change.number_changes();
 
-        let poss_steps = (0..6)
+        let mut plans = (0..6)
                 .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                .map(|_| self.random_depth_first_search(&cur_reg, &goal_reg, num_depth))
-                .collect::<Vec<Option<StepStore>>>();
-
-        for optx in poss_steps {
-            if let Some(stepsx) = optx {
-                plans.push(SomePlan::new(stepsx));
-            }
-        }
-
-//        for _ in 0..4 {
-//            if let Some(steps) = self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
-//                //println!("random_depth_first_search worked!");
-//                if let Some(steps2) = steps.shortcuts() {
-//                    plans.push(SomePlan::new(steps2));
-//                } else {
-//                    plans.push(SomePlan::new(steps));
-//                }
-//            }
-//        }
+                .filter_map(|_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth)
+                                      { Some(x) => Some(SomePlan::new(x)), None => None})
+                .collect::<Vec<SomePlan>>();
 
         // Return one of the plans, avoid the need to clone.
         if plans.len() == 1 {
