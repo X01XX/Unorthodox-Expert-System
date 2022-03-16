@@ -19,7 +19,7 @@ After 50 to 60 samples of the current state, enough groups are formed to allow t
 
 What is needed?  Resampling a state to insure that the change it causes is repeatable.  Sampling a state to enlarge an existing group.  Sampling a state where two groups intersect and make different predictions.  Sampling states adjacent to a group to test the boundaries of the group.
 
-Plans apear as something like "P[1,2,4]" which means: Run action 1, then 2, then 4, to get to a desired state.  Then run the need action to get the desired sample.  The command "ppd <need number>" shows a good map of the plan.
+Plans appear as something like "P[1,2,4]" which means: Run action 1, then 2, then 4, to get to a desired state.  Then run the need action to get the desired sample.  The command "ppd <need number>" shows a good map of the plan.
 
 After a number of groups are formed, the user can change the state with a command like "to r010X", which will attempt to change the current state to 0101 or 0100.
 
