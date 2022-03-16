@@ -11,13 +11,17 @@ Run under Rust, a command help screen will display.
 
 Simply pressing the Enter key and seeing what happens is all you need to do.
 
-The program state is a series of bits.  Various (canned) actions change the state and the program
-gets a progressively better understanding of what the actions do.  The program seeks samples to 
-improve its understanding.
+To start, the current state is not predictable, so a need is created for all possible actions, to get a sample of the state.
 
-The goal is a better and better understanding of the effects of the actions, due to samples gathered by circumstance and
-intention. Then be able to plan, and execute, a series of actions to change the current state to a goal region.  The command
-"to r010X" will attempt to change the current state to 0101 or 0100.
+As samples are taken, and the current state changes for some samples, the program combines similar samples/results into regions, called "groups", which predict sample results for states that may not have been sampled yet.
+
+After 50 to 60 samples of the current state, enough groups are formed to allow the program to plan actions to change the current state as needed.
+
+What is needed?  Resampling a state to insure that the change it causes is repeatable.  Sampling a state to enlarge an existing group.  Sampling a state where two groups intersect and make different predictions.  Sampling states adjacent to a group to test the boundaries of the group.
+
+Plans apear as something like "P[1,2,4]" which means: Run action 1, then 2, then 4, to get to a desired state.  Then run the need action to get the desired sample.  The command "ppd <need number>" shows a good map of the plan.
+
+After a number of groups are formed, the user can change the state with a command like "to r010X", which will attempt to change the current state to 0101 or 0100.
 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
