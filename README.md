@@ -15,7 +15,7 @@ To start, the current state is not predictable, so a need is created for all pos
 
 As samples are taken, and the current state changes for some samples, the program combines similar samples/results into regions, called "groups", which predict sample results for states that may not have been sampled yet.
 
-After 50 to 60 samples of the current state, enough groups are formed to allow the program to plan actions to change the current state as needed.
+After 50 to 60 samples of the current state (you can lean on the Enter key), enough groups are formed to allow the program to plan actions to change the current state as needed.
 
 What is needed?  Resampling a state to insure that the change it causes is repeatable.  Sampling a state to enlarge an existing group.  Sampling a state where two groups intersect and make different predictions.  Sampling states adjacent to a group to test the boundaries of the group.
 
