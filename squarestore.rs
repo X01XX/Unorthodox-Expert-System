@@ -28,6 +28,7 @@ impl fmt::Display for SquareStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct SquareStore {
     pub ahash: HashMap<SomeState, SomeSquare>,

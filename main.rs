@@ -54,11 +54,9 @@ mod actioninterface;
 
 use std::io;
 use std::io::{Read, Write};
-//use std::process;
 extern crate rand;
 use std::fs::File;
 use std::path::Path;
-//use std::cmp::Ordering;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
@@ -158,24 +156,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut dom_num = 0;
     let mut step_inc = 1; // amount to increment the step in the next loop
 
-//    let reg1 = SomeRegion::new_from_string(2, "r000_111_XXX").unwrap();
-//    let reg2 = SomeRegion::new_from_string(2, "r01X_01X_01X").unwrap();
-//    let reg3 = reg1.project_to(&reg2);
-//    println!("{} project to", &reg1);
-//    println!("{} =", &reg2);
-//    println!("{}", &reg3);
-
-//    let reg4 = reg2.project_to(&reg1);
-//    println!("{} project to", &reg2);
-//    println!("{} =", &reg1);
-//    println!("{}", &reg4);
-
-    // Start Test
-//    if 1 == 1 {
-//        panic!("Done");
-//    }
-    // End test
-
     loop {
         //println!("start session loop");
         dmxs.set_step(dmxs.step + step_inc);
@@ -184,14 +164,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
         //println!("main {} needs {}", nds.len(), &nds);
-        //println!("session loop 1");
         let mut need_plans = dmxs.evaluate_needs(&nds);
 
         // Boredom processing if no needs, or no needs can be done.
         if need_plans.len() == 0 {
             need_plans = dmxs.evaluate_needs(&nds);
         }
-        //println!("session loop 2");
 
         // Check if all needs are for the same domain, change domain number if needed
         if nds.len() > 0 {
@@ -255,18 +233,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 println!("\nNeeds that cannot be done:");
                 for ndx in nds.iter() {
                     println!("   {}", ndx);
-                    //let domx = ndx.dom_num();
-                    //let req_chg = SomeChange::region_to_region(&SomeRegion::new(&dmxs[domx].cur_state, &dmxs[domx].cur_state), &ndx.target());
-                    
-                    //let stps = dmxs[domx].actions.get_steps(&req_chg);
-                    //println!("steps returned: {}", &stps);
-                    //let mut avail_chgs = SomeChange::new_low(dmxs[domx].num_ints);
-                    //if stps.len() > 0 {
-                    //    avail_chgs = stps.aggregate_changes();
-                    //}
-                    //let lack_chg = req_chg.c_and(&avail_chgs.c_not());
-                    //print!("\n    changes needed {} \n          avail {} \n        not found: {}", req_chg, avail_chgs, lack_chg);
-                    //println!(" ");
                 }
 
                 println!("\nNeeds that can be done: None");
@@ -290,18 +256,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         if let Some(_) = ndplnx.pln {
                         } else {
                             println!("   {}", nds[ndplnx.inx]);
-                            //let domx = nds[ndplnx.inx].dom_num();
-                            //let req_chg = SomeChange::region_to_region(&SomeRegion::new(&dmxs[domx].cur_state, &dmxs[domx].cur_state), &nds[ndplnx.inx].target());
-                    
-                            //let stps = dmxs[domx].actions.get_steps(&req_chg);
-                            //println!("steps returned: {}", &stps);
-                            //let mut avail_chgs = SomeChange::new_low(dmxs[domx].num_ints);
-                            //if stps.len() > 0 {
-                            //    avail_chgs = stps.aggregate_changes();
-                            //}
-                            //let lack_chg = req_chg.c_and(&avail_chgs.c_not());
-                            //print!("\n    changes needed {} \n             avail {} \n        not found: {}", req_chg, avail_chgs, lack_chg);
-                            //println!(" ");
                         }
                     }
                 }
@@ -355,7 +309,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         loop {
             //println!("start command loop");
             let mut cmd = Vec::<String>::with_capacity(10);
-    
+
             if to_end == false || (cant_do > 0 && can_do == 0) {
                 let guess = pause_for_input("\nPress Enter or type a command: ");
 

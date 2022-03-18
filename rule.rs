@@ -20,7 +20,7 @@ use crate::change::SomeChange;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
@@ -47,6 +47,15 @@ impl SomeRule {
             b01: initial.s_not().s_and(&result).to_mask(),
             b11: initial.s_and(&result).to_mask(),
             b10: initial.s_and(&result.s_not()).to_mask(),
+        }
+    }
+
+    pub fn new_from_masks(b00: SomeMask, b01: SomeMask, b11: SomeMask, b10: SomeMask) -> Self {
+        Self {
+            b00: b00,
+            b01: b01,
+            b11: b11,
+            b10: b10,
         }
     }
 
@@ -139,6 +148,11 @@ impl SomeRule {
         let tmprul = self.intersection(other);
 
         *other == tmprul
+    }
+
+    /// Return true is a rule is valid
+    pub fn is_valid(&self) -> bool {
+        self.is_valid_union() && self.is_valid_intersection()
     }
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)

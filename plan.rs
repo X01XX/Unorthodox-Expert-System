@@ -30,6 +30,7 @@ impl fmt::Display for SomePlan {
     }
 }
 
+#[readonly::make]
 #[derive(Debug)]
 pub struct SomePlan {
     /// A StepStore instance.

@@ -7,6 +7,7 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
@@ -152,31 +153,6 @@ impl SomeChange {
         } else {
             strrc.push_str(&format!("(none)"));
         }
-
-//        let num_ints = self.b01.num_ints();
-//        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-//        for i in (0..num_bits).rev() {
-//            let b01: bool = self.b01.is_bit_set(i);
-
-//            let b10: bool = self.b10.is_bit_set(i);
-
-            //            if i != (num_bits - 1) {
-            //                strrc.push('/');
-            //            }
-
-//            if b01 && b10 {
-//                strrc.push_str(&format!("/bit{}:X->x", &i));
-//            } else if b01 {
-//                strrc.push_str(&format!("/bit{}:0->1", &i));
-//            } else if b10 {
-//                strrc.push_str(&format!("/bit{}:1->0", &i));
-//            }
-//        } // next i
-
-//        if strrc.len() == 0 {
-//            strrc.push_str(&format!("(none)"));
-//        }
 
         strrc
     }

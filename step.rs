@@ -12,6 +12,7 @@ impl fmt::Display for SomeStep {
     }
 }
 
+#[readonly::make]
 #[derive(Debug)]
 pub struct SomeStep {
     pub initial: SomeRegion,

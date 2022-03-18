@@ -18,6 +18,7 @@ impl fmt::Display for ResultStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.

@@ -13,6 +13,7 @@ impl fmt::Display for MaskStore {
     }
 }
 
+#[readonly::make]
 pub struct MaskStore {
     /// A vector for storing SomeMask stucts instances.
     avec: Vec<SomeMask>,

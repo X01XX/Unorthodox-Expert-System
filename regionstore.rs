@@ -15,6 +15,7 @@ impl fmt::Display for RegionStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegionStore {
     /// A vector of regions.
@@ -61,7 +62,7 @@ impl RegionStore {
         self.avec.push(val);
     }
 
-    /// Return a vactor iterator.
+    /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRegion> {
         self.avec.iter()
     }

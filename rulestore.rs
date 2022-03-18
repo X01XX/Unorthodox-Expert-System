@@ -17,6 +17,7 @@ use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
@@ -80,6 +81,18 @@ impl RuleStore {
         }
     }
 
+    /// Return if a rulestore is valid
+    pub fn is_valid(&self) -> bool {
+        if self.len() == 0 { return true; }
+
+        if self.len() == 1 { return self.avec[0].is_valid(); } // single rule is valid, or not
+
+        if self.len() > 2 { return false; }
+
+        // Length must be 2.  The two rules are different and the initial regions are the same, or not.
+        self.avec[0] != self.avec[1] && self.avec[0].initial_region() == self.avec[1].initial_region()
+    }
+
     /// Return the length of a RuleStore.
     /// Should be 0, 1 or 2.
     pub fn len(&self) -> usize {
@@ -91,6 +104,7 @@ impl RuleStore {
         assert!(self.avec.len() < 2);
 
         self.avec.push(val);
+        assert!(self.is_valid());
     }
 
     /// Return a reference to the first rule.
@@ -242,10 +256,19 @@ impl RuleStore {
                 orderb = true;
             }
 
+            // For any two-result state, there must be a 01 and 00, alternating change bit,
+            // or a 10 and 11 alternating change bit.
+            //
+            // The predictive power is in the alternation, one sample after another for a specific bit position and value.
+            //
+            // Making a union of the two different bits (other bit positions being compatible) makes either (XX, Xx) or (X0, X1),
+            // which presents problems for future unions, intersections and equality tests.
+            //
+            // You could choose only one of the two options, I prefer (XX, Xx), but if there are two such alternating positions,
+            // you may have to decide between a wrong choice, and a wrong choice. 
+            //
+            // Disallowing this kind of union can be seen as preventing an X initial bit in that position.
             if ordera && orderb {
-                //println!("a: {} {}", rul0.formatted_string(), rul1.formatted_string());
-                //println!("b: {} {}", rul2.formatted_string(), rul3.formatted_string());
-                //panic!("done");
                 return None;
             }
 

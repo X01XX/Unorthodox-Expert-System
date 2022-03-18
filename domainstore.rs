@@ -60,6 +60,7 @@ impl fmt::Display for DomainStore {
 //
 // A Vec<T> is needed as a collector for parallel processing of needs to find plans,
 // but a tuple, or array, does not qualify as a "T".
+#[readonly::make]
 #[derive(Debug)]
 pub struct InxPlan {
     /// Index to a need in a NeedStore.
@@ -85,11 +86,6 @@ impl DomainStore {
             step: 0,
         }
     }
-
-    /// Accessor, return the value of the step field.
-//    pub fn get_step(&self) -> usize {
-//        self.step
-//    }
     
     /// Accessor, set the setp field.
     pub fn set_step(&mut self, anum: usize) {

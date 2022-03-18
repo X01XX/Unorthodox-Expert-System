@@ -34,6 +34,7 @@ impl fmt::Display for SomeBits {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 
 /// SomeBits struct, just an unsigned integer vector.

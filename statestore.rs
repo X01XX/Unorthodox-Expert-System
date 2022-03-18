@@ -28,6 +28,7 @@ impl PartialEq for StateStore {
 }
 impl Eq for StateStore {}
 
+#[readonly::make]
 #[derive(Debug)]
 pub struct StateStore {
     /// A vector of states.

@@ -8,6 +8,7 @@ use crate::actions::take_action;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct ActionInterface {
     /// Store states and most-recent change seen

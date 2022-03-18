@@ -72,11 +72,6 @@ impl SomeSquare {
         self.state.formatted_string()
     }
 
-
-//    pub fn can_combine(&self, other: &Self) -> Truth {
-//        can_combine(self, other)
-//    } // end can_combine
-
     /// Add a result to a square (4-item circular buffer).
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.

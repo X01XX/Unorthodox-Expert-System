@@ -29,6 +29,7 @@ impl fmt::Display for NeedStore {
     }
 }
 
+#[readonly::make]
 pub struct NeedStore {
     /// A vector od SomeNeed instances.
     avec: Vec<SomeNeed>,

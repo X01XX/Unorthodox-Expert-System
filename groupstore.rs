@@ -31,6 +31,7 @@ impl fmt::Display for GroupStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct GroupStore {
     /// Vector of SomeGroup structs.

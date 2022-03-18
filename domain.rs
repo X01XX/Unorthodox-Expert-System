@@ -360,7 +360,7 @@ impl SomeDomain {
     ///
     /// Randomly choose a step.
     ///
-    /// For the selected step, do Forward Chaining, Backward Chaining, or Asummetric Chaining, as needed.
+    /// For the selected step, do Forward Chaining, Backward Chaining, or Asymmetric Chaining, as needed.
     ///
     pub fn random_depth_first_search(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
 
@@ -400,7 +400,7 @@ impl SomeDomain {
             return None;
         }
 
-        // Check if one step makes the required change.
+        // Check if one step makes the required change, the end point of any search.
         for stepx in steps_str.iter() {
             if stepx.initial.intersects(from_reg) {
                 let stepy = stepx.restrict_initial_region(from_reg);
@@ -541,7 +541,7 @@ impl SomeDomain {
         let mut plans = (0..6)
                 .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
                 .filter_map(|_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth)
-                                      { Some(x) => Some(SomePlan::new(x)), None => None})
+                                      { Some(x) => Some(SomePlan::new(x)), None => None })
                 .collect::<Vec<SomePlan>>();
 
         // Return one of the plans, avoid the need to clone.
@@ -551,7 +551,7 @@ impl SomeDomain {
         }
         if plans.len() > 1 {
             //println!("forward_depth_first_search returned plan");
-            let inx = choose_one(&plans);
+            let inx = self.choose_one(&plans);
             return Some(plans.remove(inx));
         } else {
             //println!("random_depth_first_search did not return a plan");
@@ -611,6 +611,86 @@ impl SomeDomain {
         }
     } // end act_num_from_string
 
+
+/// Return the index value of a chosen StepStore
+fn choose_one(&self, ret_plans: &Vec::<SomePlan>) -> usize {
+    assert!(ret_plans.len() > 0);
+
+    if ret_plans.len() == 1 {
+        return 0;
+    }
+
+    // Find plan maximum length
+    let mut max_len = 0;
+    for rets in ret_plans.iter() {
+        if rets.len() > max_len {
+            max_len = rets.len();
+        }
+    } // next rets
+
+    //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
+
+    // Rate plans, highest rate is best rate.
+    // TODO better critera
+    // Length of plan is rated inversely
+    let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
+    for rets in ret_plans.iter() {
+
+        // Rate the length of the plan
+        let mut rate = max_len - rets.len() + 10;
+
+        // Check for steps that may have two results
+        for stpx in rets.iter() {
+            if stpx.alt_rule {
+                if let Some(sqrx) = self.actions[stpx.act_num].squares.find(&stpx.initial.state1) {
+                    // For an alternating square, you want the most recent result to be NEQ the desired next result.
+                    if *sqrx.most_recent_result() == stpx.result.state1 {
+                        if rate > 1 {
+                            rate = rate - 2;
+                        } else {
+                            rate = 0;
+                        }
+                    }
+                } else {
+                    if rate > 1 {
+                        rate = rate - 2;
+                    } else {
+                        rate = 0;
+                    }
+                }
+            }
+        }
+
+        rates_vec.push(rate);
+    }
+
+    // Find max rate
+    let mut max_rate = 0;
+    for rtx in rates_vec.iter() {
+        if *rtx > max_rate {
+            max_rate = *rtx;
+        }
+    }
+
+    // Gather highest rated plan indexes 
+    let mut inx_ary = Vec::<usize>::new();
+    let mut inx = 0;
+    for rets in rates_vec.iter() {
+        if *rets == max_rate {
+            inx_ary.push(inx);
+        }
+        inx += 1;
+    }
+
+    // Choose a step
+    if inx_ary.len() == 1 {
+        return inx_ary[0];
+    }
+    return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
+} // end choose_one
+
+
+
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to
@@ -641,41 +721,6 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
     true
 }
 
-/// Return the index value of a chosen StepStore
-fn choose_one(ret_plans: &Vec::<SomePlan>) -> usize {
-    assert!(ret_plans.len() > 0);
-
-    if ret_plans.len() == 1 {
-        return 0;
-    }
-
-    let mut min_len = 9999;
-    let mut max_len = 0;
-    for rets in ret_plans.iter() {
-        if rets.len() < min_len {
-            min_len = rets.len();
-        }
-        if rets.len() > max_len {
-            max_len = rets.len();
-        }
-    } // next rets
-
-    //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
-
-    // Choose step, TODO better criteria, maybe total of least rule "cost", or negative/positive effects.
-    let mut inx_ary = Vec::<usize>::new();
-    let mut inx = 0;
-    for rets in ret_plans.iter() {
-        if rets.len() == min_len {
-            inx_ary.push(inx);
-        }
-        inx += 1;
-    }
-    if inx_ary.len() == 1 {
-        return inx_ary[0];
-    }
-    return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
-} // end choose_one
 
 #[cfg(test)]
 mod tests {

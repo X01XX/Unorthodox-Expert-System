@@ -442,12 +442,16 @@ impl SomeRegion {
 
         let to_not_x = to.x_mask().m_not();
 
-        Some(SomeRule {
-            b00: f_zeros.m_and(&t_zeros),
-            b01: f_zeros.m_and(&t_ones).m_and(&to_not_x),
-            b11: f_ones.m_and(&t_ones),
-            b10: f_ones.m_and(&t_zeros).m_and(&to_not_x),
-        })
+        Some(SomeRule::new_from_masks(
+            // b00
+            f_zeros.m_and(&t_zeros),
+            // b01
+            f_zeros.m_and(&t_ones).m_and(&to_not_x),
+            // b11
+            f_ones.m_and(&t_ones),
+            // b10
+            f_ones.m_and(&t_zeros).m_and(&to_not_x),
+        ))
     }
 
     /// Return the adjacent part to another, adjacent, region.
