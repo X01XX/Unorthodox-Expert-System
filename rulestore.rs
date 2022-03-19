@@ -683,7 +683,7 @@ mod tests {
 
         let mut rul_str2 = RuleStore::new();
         rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/10/00").unwrap());
-        rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/01/00").unwrap());
+        rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/11/00").unwrap());
 
         if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
             return Err(format!("test_intersection 4 worked = {}", &rul_str3));

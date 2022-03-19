@@ -1010,8 +1010,8 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
 
         // Generate overlapping group.
-        let chgf = SomeChange { b01: mskf.clone(), b10: mskf };
-        let _nds3 = dm0.actions.avec[0].get_needs(&sd, &chgf, 0);
+        let chgf = SomeChange::new(&mskf, &mskf);
+        let _nds3 = dm0.actions.get_needs(&sd, &chgf, 0);
 
         if let Some(_grpx) = dm0.actions[0].groups.find(&reg11x1) {
         } else {
@@ -1084,7 +1084,7 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         // Directly run limit_groups_needs.
-        let agg_chg = SomeChange { b01: SomeMask::new_from_string(1, "m1111").unwrap(), b10: SomeMask::new_from_string(1, "m1111").unwrap() };
+        let agg_chg = SomeChange::new(&SomeMask::new_from_string(1, "m1111").unwrap(), &SomeMask::new_from_string(1, "m1111").unwrap());
         let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
