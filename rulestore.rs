@@ -90,6 +90,7 @@ impl RuleStore {
         if self.len() > 2 { return false; }
 
         // Length must be 2.  The two rules are different and the initial regions are the same, or not.
+        self.avec[0].is_valid() && self.avec[1].is_valid() &&
         self.avec[0] != self.avec[1] && self.avec[0].initial_region() == self.avec[1].initial_region()
     }
 
