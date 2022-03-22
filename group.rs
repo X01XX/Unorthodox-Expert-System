@@ -93,11 +93,6 @@ impl SomeGroup {
         let mut rc_str = String::from("G(");
         rc_str.push_str(&format!("{}", self.region.formatted_string()));
 
-        //        rc_str.push_str(&format!(
-        //            " 1: {} 2: {}",
-        //            self.region.state1, self.region.state2
-        //        ));
-
         rc_str.push_str(&format!(", pn: {}", self.pn));
         rc_str.push_str(&format!(", pnc: {}", self.pnc));
         if self.limited {
@@ -126,11 +121,6 @@ impl SomeGroup {
             }
             None => {}
         }
-
-        //        rc_str.push_str(&format!(
-        //            " nxe: {}",
-        //            &self.edge_expand
-        //        ));
 
         rc_str.push_str(&format!(")"));
         rc_str

@@ -449,7 +449,7 @@ impl SomeDomain {
         // Init selected steps
         let mut selected_steps = Vec::<&SomeStep>::new();
 
-        // If any asymmetrical singl-bit changes found
+        // If any asymmetrical single-bit changes found
         if asym_inx.len() > 0 {
             // find min number of steps for the selected bit-changes
             let mut min_steps = 99;
@@ -534,7 +534,7 @@ impl SomeDomain {
         let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
         //println!("make_plan: from {} to {}", cur_reg, goal_reg);
 
-        // Tune maximum depth to be a multiple of the number of bit changes require.
+        // Tune maximum depth to be a multiple of the number of bit changes required.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
         let num_depth = 3 * required_change.number_changes();
 
@@ -544,20 +544,19 @@ impl SomeDomain {
                                       { Some(x) => Some(SomePlan::new(x)), None => None })
                 .collect::<Vec<SomePlan>>();
 
-        // Return one of the plans, avoid the need to clone.
+        // Return one of the plans, avoiding the need to clone.
         if plans.len() == 1 {
             //println!("forward_depth_first_search returned plan");
             return Some(plans.remove(0));
         }
         if plans.len() > 1 {
             //println!("forward_depth_first_search returned plan");
-            let inx = self.choose_one(&plans);
+            let inx = self.choose_a_plan(&plans);
             return Some(plans.remove(inx));
-        } else {
-            //println!("random_depth_first_search did not return a plan");
         }
 
         // No plan to return.
+        //println!("random_depth_first_search did not return a plan");
         None
     } // end make plan
 
@@ -612,84 +611,82 @@ impl SomeDomain {
     } // end act_num_from_string
 
 
-/// Return the index value of a chosen StepStore
-fn choose_one(&self, ret_plans: &Vec::<SomePlan>) -> usize {
-    assert!(ret_plans.len() > 0);
+    /// Return the index value of a chosen Plan
+    fn choose_a_plan(&self, ret_plans: &Vec::<SomePlan>) -> usize {
+        assert!(ret_plans.len() > 0);
 
-    if ret_plans.len() == 1 {
-        return 0;
-    }
-
-    // Find plan maximum length
-    let mut max_len = 0;
-    for rets in ret_plans.iter() {
-        if rets.len() > max_len {
-            max_len = rets.len();
+        if ret_plans.len() == 1 {
+            return 0;
         }
-    } // next rets
 
-    //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
+        // Find plan maximum length
+        let mut max_len = 0;
+        for rets in ret_plans.iter() {
+            if rets.len() > max_len {
+                max_len = rets.len();
+            }
+        } // next rets
 
-    // Rate plans, highest rate is best rate.
-    // TODO better critera
-    // Length of plan is rated inversely
-    let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
-    for rets in ret_plans.iter() {
+        //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
 
-        // Rate the length of the plan
-        let mut rate = max_len - rets.len() + 10;
+        // Rate plans, highest rate is best rate.
+        // TODO better critera
+        // Length of plan is rated inversely
+        let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
+        for rets in ret_plans.iter() {
 
-        // Check for steps that may have two results
-        for stpx in rets.iter() {
-            if stpx.alt_rule {
-                if let Some(sqrx) = self.actions[stpx.act_num].squares.find(&stpx.initial.state1) {
-                    // For an alternating square, you want the most recent result to be NEQ the desired next result.
-                    if *sqrx.most_recent_result() == stpx.result.state1 {
+            // Rate the length of the plan
+            let mut rate = max_len - rets.len() + 10;
+
+            // Check for steps that may have two results
+            for stpx in rets.iter() {
+                if stpx.alt_rule {
+                    if let Some(sqrx) = self.actions[stpx.act_num].squares.find(&stpx.initial.state1) {
+                        // For an alternating square, you want the most recent result to be NEQ the desired next result.
+                        if *sqrx.most_recent_result() == stpx.result.state1 {
+                            if rate > 1 {
+                                rate = rate - 2;
+                            } else {
+                                rate = 0;
+                            }
+                        }
+                    } else {
                         if rate > 1 {
                             rate = rate - 2;
                         } else {
                             rate = 0;
                         }
                     }
-                } else {
-                    if rate > 1 {
-                        rate = rate - 2;
-                    } else {
-                        rate = 0;
-                    }
                 }
+            }
+
+            rates_vec.push(rate);
+        }
+
+        // Find max rate
+        let mut max_rate = 0;
+        for rtx in rates_vec.iter() {
+            if *rtx > max_rate {
+                max_rate = *rtx;
             }
         }
 
-        rates_vec.push(rate);
-    }
-
-    // Find max rate
-    let mut max_rate = 0;
-    for rtx in rates_vec.iter() {
-        if *rtx > max_rate {
-            max_rate = *rtx;
+        // Gather highest rated plan indexes 
+        let mut inx_ary = Vec::<usize>::new();
+        let mut inx = 0;
+        for rets in rates_vec.iter() {
+            if *rets == max_rate {
+                inx_ary.push(inx);
+            }
+            inx += 1;
         }
-    }
 
-    // Gather highest rated plan indexes 
-    let mut inx_ary = Vec::<usize>::new();
-    let mut inx = 0;
-    for rets in rates_vec.iter() {
-        if *rets == max_rate {
-            inx_ary.push(inx);
+        // Choose a step
+        if inx_ary.len() == 1 {
+            return inx_ary[0];
         }
-        inx += 1;
-    }
-
-    // Choose a step
-    if inx_ary.len() == 1 {
-        return inx_ary[0];
-    }
-    return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
-} // end choose_one
-
-
+        return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
+    } // end choose_a_plan
 
 } // end impl SomeDomain
 
@@ -697,7 +694,7 @@ fn choose_one(&self, ret_plans: &Vec::<SomePlan>) -> usize {
 /// github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
 fn ptr_eq<T>(a: *const T, b: *const T) -> bool { a == b }
 
-/// Return true if any step pairs are all mutually exclusive
+/// Return true if any single-bit change vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
 
     for inx in 0..(by_change.len() - 1) {
@@ -720,7 +717,6 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 
     true
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1299,7 +1295,7 @@ mod tests {
         let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
         let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
-        // Test logic for a group, with no external similar, or disimilar, squares.
+        // Test logic for a group, with no external similar, or dissimilar, squares.
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {
             // Test with 3-bit change mask
             let mut regs_found = RegionStore::with_capacity(6);

@@ -4,7 +4,7 @@
     use crate::square::SomeSquare;
     use crate::squarestore::SquareStore;
 
-    /// Can two structure rules, that implement the Compare trait, be combined?
+    /// Can two structure rules, that implement the Compare trait (SomeSquare, SomeGroup), be combined?
     ///
     /// This is one of the most tricky, and crucial, functions.
     ///
@@ -38,7 +38,7 @@
         //println!("can_combine_check_lt {} {}", &arg1.get_region(), &arg2.get_region());
         assert!(arg1.get_pn_ref() < arg2.get_pn_ref());
 
-        // If arg1 is pnc, it must be disimilar to arg2.
+        // If arg1 is pnc, it must be dissimilar to arg2.
         if arg1.get_pnc() {
             return Truth::F;
         }

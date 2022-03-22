@@ -467,12 +467,6 @@ impl SomeRegion {
         regx.set_to_zeros(&x_bits.m_and(&zeros))
     }
 
-    /// Project a region to another, indicating the result of the least changes.
-    pub fn project_to(&self, other: &SomeRegion) -> SomeRegion {
-        let rulx = self.rule_to_region(other).unwrap();
-        rulx.result_region()
-    }
-
 } // end impl SomeRegion
 
 impl Clone for SomeRegion {
@@ -491,22 +485,6 @@ mod tests {
     use crate::state::SomeState;
     use crate::statestore::StateStore;
     use crate::mask::SomeMask;
-
-    #[test]
-    fn test_project_to() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(2, "r000111xxx").unwrap();
-        let reg2 = SomeRegion::new_from_string(2, "r01x01x01x").unwrap();
-
-        let reg3 = reg1.project_to(&reg2);
-        println!("reg3 {}", &reg3);
-        assert!(reg3 ==  SomeRegion::new_from_string(2, "r00000000_1001101X").unwrap());
-
-        let reg4 = reg2.project_to(&reg1);
-        println!("reg4 {}", &reg4);
-        assert!(reg4 ==  SomeRegion::new_from_string(2, "r00000000_0011101X").unwrap());
-
-        Ok(())
-    }
 
     #[test]
     fn test_rule_to_region() -> Result<(), String> {

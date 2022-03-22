@@ -81,7 +81,7 @@ impl RuleStore {
         }
     }
 
-    /// Return if a rulestore is valid
+    /// Return if a square result rulestore is valid
     pub fn is_valid(&self) -> bool {
         if self.len() == 0 { return true; }
 

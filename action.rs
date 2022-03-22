@@ -39,8 +39,6 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(" seek_edge within: {}", self.seek_edge));
         }
 
-        //rc_str.push_str(&format!(" Predictable changes {}", self.predictable_bit_changes));
-
         let regs = self.groups.regions();
 
         let mut fil = String::from(",\n       Grps: ");
@@ -1874,9 +1872,6 @@ impl SomeAction {
         if grpx.limited && grpy.limited {
             return nds;
         }
-//        if grpx.region.x_mask() == grpy.region.x_mask() {
-//            return nds;
-//        }
 
         let regz = grpx.region.overlapping_part(&grpy.region);
         //println!("overlapping part = {}", &regz);
