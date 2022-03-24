@@ -110,12 +110,24 @@
 
         // Calc Truth for Not Equal Pn values.
         if arg1.get_pn_ref() < arg2.get_pn_ref() {
+            if *arg2.get_pn_ref() == Pn::Unpredictable {
+                if arg1.get_pnc() == true {
+                    return Truth::F;
+                }
+                return Truth::M;
+            }
             let ret = can_combine_lt(arg1, arg2);
             //println!("can_combine: 7 returning {}", ret);
             return ret;
         }
 
         // Must be arg2.get_pn_ref() < arg1.get_pn_ref()
+        if *arg1.get_pn_ref() == Pn::Unpredictable {
+            if arg2.get_pnc() == true {
+                return Truth::F;
+            }
+            return Truth::M;
+        }
         let ret = can_combine_lt(arg2, arg1);
         //println!("can_combine: 8 returning {}", ret);
         ret
