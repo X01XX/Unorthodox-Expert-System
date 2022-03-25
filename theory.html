@@ -315,6 +315,13 @@ p {
  The improved definition of the K-Map gives a computer program an easy test for determining if two squares
  are adjacent, or measuring the degree of separation, by counting the number of different bits.  The number of bits can be arbitrarily large.
   </p> 
+   <p>
+ The
+  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>
+ can be used to efficiently count the number of one bits in an integer.
+ The Count Bits Algorithm goes through one cycle for each bit that is set to one, no cycles for
+        bits that are set to zero.
+    </p>
 <p>
 I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pattern on a K-Map.
  On a K-Map, groups of squares can be formed that have 2<sup>n</sup> squares, where n is one or greater.
@@ -334,47 +341,23 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  "^" for the XOR operation, and "~" for the NOT or Complement operation.
  The XOR operation is bitwise, the other operations may be bitwise operations or set operations, depending on the context.
    </p>
-   <h3>Working with bits</h3>
    <p>
- For some operations, the
-  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>
- can be used to efficiently count the number of one bits in an integer.
- The Count Bits Algorithm goes through one cycle for each bit that is set to one, no cycles for
-        bits that are set to zero.
-    </p>
-   <p>
-  <p>
-     A <i>Split-Bits</i> algorithm, to isolate each bit in a bit mask, e.g. producing (0100, 0010) from 0110 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>):
-  </p>
-  <p class="indent1">
-      // Initialize a list of bit objects.<br />
-      while (val > 0)<br />
-      {
-  </p>
-  <p class="indent2">
-          minus1 = val - 1; <br />              
-          valLess1 = val &amp; minus1 &nbsp;&nbsp;&nbsp; // remove one bit from val, put into valLess1 <br />
-          oneBit = val ^ valLess1; &nbsp;&nbsp;&nbsp; // isolate the removed bit <br />
-   // Store oneBit into a new Bits object, add the Bits object to the list.<br />
-          val = valLess1;
-  </p>
-  <p class="indent1">
-       }
-  </p>
    <h3>Representing a region</h3>
    <p>
-   I have identified three ways to represent a region.  The choice affects the equations used to manipulate regions.
-   I have used each method and have some preference for number 1, below.
+   Here are two ways to represent a region, they can be used together.
    <p>
   1) A region can be represented in a computer is by using any two bit patterns.
   A region can also be formed by one bit pattern, used twice.
    </p> 
-        <p>Interpretation of region bits:</p>
-      <table class="indent1">
+   <p class="indent1">
+   So region 0x1X = (0011, 0110), region 0101 = (0101, 0101), referred to as (state1, state2).
+    </p>
+        <p class="indent1">Interpretation of region bits:</p>
+      <table class="indent2">
            <tr>
                 <th></th>
-                <th>Bit-0</th>
-                <th>Bit-1</th>
+                <th>State1</th>
+                <th>State2</th>
                 <th>Region Bit</th>
            </tr>
            <tr style="text-align:center;">
@@ -402,20 +385,26 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <td>X</td>
            </tr>
         </table>
-   <p>
- I will represent a region as a list of bit patterns, like 0x1X = (0011, 0110), or 0101 = (0101, 0101), referred to as (bits-0, bits-1).
-    </p>
-   <p>
-   This choice allows you to know the states that were used to form a region.
+   <p class="indent1">
+   This choice allows you to know the states that were used to form a region, instead of storing them separately.
+   </p>
+   <p class="indent1">
+   The highest state in the above region is state1 + state2 = 0011 + 0110 = 0111.
+   </p>
+   <p class="indent1">
+   The lowest state in the above region is state1 &amp; state2 = 0011 &amp; 0110 = 0010.
+   </p>
+    <p class="indent1">
+   Two regions are equal if  r1 high state = r2 high state and r1 low state = r2 low state
    </p>
     <p>
-    2) Another possible representation of a region is maximum 1-bits and maximum 0-bits, or highest/lowest.
+    2) Another possible representation of a region is maximum 1-bits (high mask) and maximum 0-bits (low mask).
     </p>
-    <p>
-    Given two states, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 & 0110 = 0010.
+    <p class="indent1">
+    Given two states, or the first type of region, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 & 0110 = 0010.
     </p>
-        <p>Interpretation of region bits:</p>
-      <table class="indent1">
+        <p class="indent1">Interpretation of region bits:</p>
+      <table class="indent2">
            <tr>
                 <th></th>
                 <th>Highest</th>
@@ -447,54 +436,11 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
                 <td>X</td>
            </tr>
         </table>
-    <p>
-   With this choice, two regions are equal if the two bit patterns forming them are equal.
+    <p class="indent1">
+   Two regions are equal if the two bit patterns forming them are equal.
    </p>
-   <p>
-   When calculating regions, like intersections and unions, the needed sampled states will often not be available, so I will use this representation.
-   </p>
-        <p>
-        3) Another possible representation is to use a mask for ones and a mask for zeros.
-        </p>
-    <p>
-    Given two states, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is ~(1010 & 0110) = 1101.
-    </p>
-        <p>Interpretation of region bits:</p>
-      <table class="indent1">
-           <tr>
-                <th></th>
-                <th>Mask-1</th>
-                <th>Mask-0</th>
-                <th>Region Bit</th>
-           </tr>
-           <tr style="text-align:center;">
-                <th></th>
-                <td>0</td>
-                <td>0</td>
-                <td>No bit</td>
-           </tr>
-           <tr style="text-align:center;">
-                <th></th>
-                <td>0</td>
-                <td>1</td>
-                <td>0</td>
-           </tr>
-           <tr style="text-align:center;">
-                <th></th>
-                <td>1</td>
-                <td>1</td>
-                <td>X</td>
-           </tr>
-           <tr style="text-align:center;">
-                <th></th>
-                <td>1</td>
-                <td>0</td>
-                <td>1</td>
-           </tr>
-        </table>
-    <p>
-    <p>
-   With this choice, a mask of the bits in play are Mask-1 + Mask-0, so no problems with the effects of a not operation when not using all available bits in an integer.
+   <p class="indent1">
+   When calculating intersections and unions of the first type of region, the needed sampled states will often not be available, so I will use this representation.
    </p>
     <h4>An analogy to a crystal:</h4>
     </p>
@@ -512,7 +458,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      </p>
    <h3>Calculating various characteristics of a Region, or Regions</h3>
  <p>
- The X-mask for a region is: bits-0 ^ bits-1.
+ The X-mask for a region is: state1 ^ state2.
  </p>
  <p class="indent1">
  The X-mask of 0x1X, (0011, 0110) = 0011 ^ 0110 = 0101.
@@ -524,39 +470,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The non-X-mask of 0x1X, (0011, 0110) = ~(0011 ^ 0110) = ~0101 = 1010.
  </p>
  <p>
- The ones-mask of a region is: bits-0 &amp; bits-1
- </p>
- <p class="indent1">
-     The ones-mask of 0x1X, (0011, 0110) = 0011 &amp; 0110 = 0010.
- </p>
- <p>
- The zeros-mask of a region is: ~bits-0 &amp; ~bits-1
- </p>
- <p class="indent1">
-     The zeros-mask of 0x1X, (0011, 0110) = ~0011 &amp; ~0110 = 1100 &amp; 1001 = 1000.
- </p>
- <p>
- The any-ones-mask of a region is: bits-0 + bits-1
- </p>
- <p class="indent1">
-     The any-ones-mask of 0x1X, (0011, 0110) = 0011 + 0110 = 0111.
- </p>
- <p class="indent1">
-     Or the ones-mask + x-mask.
- </p>
- <p>
- The any-zeros-mask of a region is: ~bits-0 + ~bits-1
- </p>
- <p class="indent1">
-     The any-zeros-mask of 0x1X, (0011, 0110) = ~0011 + ~0110 = 1100 + 1001 = 1101.
- </p>
- <p class="indent1">
-     Or the zeros-mask + x-mask.
- </p>
-   <h3>Calculating a different bits mask of two regions</h3>
- <p>
  To calculate a mask of corresponding bits that are different, 1/0 or 0/1, between two regions, r1 and r2,
- use: mask = (r1.ones-mask &amp; r2.zeros-mask) + (r1.zeros-mask &amp; r2.ones-mask).
+ use: mask = (r1.high-mask ^ r2.high-mask) &amp; (r1.low-mask ^ r2.low-mask).
  </p>
  <p class="indent1">
  </p>
@@ -603,13 +518,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </tr>
  </table>
  <p>
- The intersection region is given by (r1.any-ones-mask &amp; r2.any-ones-mask, ~r1.any-zeros-mask + ~r2.any-zeros-mask).
+ The intersection region is given by (r1.high-mask &amp; r2.high-mask, r1.low-mask + r2.low-mask).
         </p>
       <p class="indent1">
-        Given 0xX1 = (0011, 0101) and X11X = (1111, 0110).
+        Given 0xX1 = (0111, 0001) and X11X = (1111, 0110).
         </p>
         <p class="indent1">
- The intersection of 0xX1 and X11X = (0111 &amp; 1111, ~1110 + ~1001) = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
+ The intersection of 0xX1 and X11X = (0111 &amp; 1111, 0001 + 0110) = (0111, 0111) = 7.
         </p>
    <h3>Adjacent Regions</h3>
   <p>
@@ -776,10 +691,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    <p class="indent2">
  The Union = (0011 + 0101 + 1101 + 1011, 0011 & 0101 & 1101 & 1011) = (1111, 0001) = XXX1.
    </p>
-   <h3>Testing if a region is equal to another region</h3>
-  <p>
-        Two regions are equal if they intersect and their corresponding X-bit masks are equal.
-   </p>
    <h3>Testing if a region is subset to another region</h3>
   <p>
         A region is a subset of another region they intersect and the first region X-bit mask is a subset of the second region X-bit mask.
@@ -833,17 +744,17 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
             <p>
         To calculate the overlapping part of 1X0x and X110, use the intersection logic, even though they do not intersect.
         </p>
-	<p>1X0x = (1100, 1001)</p>
+	<p>1X0x = (1101, 1000)</p>
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
-	AND the any-ones-masks: 1101 & 1110 = 1100
+	AND the high masks: 1101 & 1110 = 1100
 	</p>
 	<p>
-	OR the ~any-zeros-masks:   1000 + 0110 = 1110
+	OR the low masks:   1000 + 0110 = 1110
 	</p>
 	<p>
-	Now make a region from the results, (1100, 1110) = 11x0 (C, E).
+	Now make a region from the results, (1110, 1100) = 11X0 (E, C).
 	</p>
 <a name="SKM"></a><h2>Sparse Karnaugh Maps <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
     <p>
@@ -1497,8 +1408,130 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Neither order will work for the rules: 0X00->0X01, 1X00->1X10.
     </p>
    <p>
-    Generating a rule-path, to translate a from-region to a goal-region.
+    <h3>Multiple State Samples</h3>
+    <p>
+    If a state is sampled once, I would say it has a Pattern Number (PN) of one.
     </p>
+    <p>
+    If a state is sampled twice, with the same result, I start to think I can predict the result.
+    Its a low bar, but I have to place it somewhere.
+    I now say it is Pattern Number Comfirmed (PNC).
+    </p>
+    <p>
+ I am tempted to say that a state that produces more than one result can simply be called unpredictable.
+  </p>
+  <p>
+  Due to my previously mentioned "infrequent perceptions", I feel that simple patterns like (0, 1, 0, 1, 0) should be accommodated.
+    </p>
+    <p>
+ A state that is sampled twice, with two results, is PN 2.
+    </p>
+    <p>
+ A state that is sampled four times, with two results, in proper order, is PNC.
+    </p>
+    <p>
+ A state that is sampled and produces three different results, or two results not in proper order (1, 0, 0) is considered Unpredictable.
+    </p>
+    <h3>Comparing Multiple State Samples</h3>
+    <p>
+    For different states, rules formed from their samples can be compared for possible union.
+    </p>
+    <p>
+    The result of the comparison is True, False or Maybe (More samples needed).
+    </p>
+    <p>
+    If two states can be combined based on the PN and PNC values, an additional requirement may be to Test the union of rules formed by the samples.
+    </p>
+    <p>
+    Testing the union of the rules of two samples with both having PNC values will produce True or False.
+    </p>
+    <p>
+    Testing the union of the rules of two samples without both having PNC values will produce Maybe or False.
+    </p>
+    <p>
+      <table class="indent2">
+           <tr>
+                <th></th>
+                <th>PN 1 PNC</th>
+                <th>PN 2 PNC</th>
+                <th>Unpredictable</th>
+           </tr>
+           <tr style="text-align:center;">
+                <th>PN 1 PNC</th>
+                <td>Test</td>
+                <td>False</td>
+                <td>False</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th>PN 2 PNC</th>
+                <td>False</td>
+                <td>Test</td>
+                <td>False</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th>Unpredictable</th>
+                <td>False</td>
+                <td>False</td>
+                <td>True</td>
+           </tr>
+        </table>
+    </p>
+    <p>
+    If neither of the two states has a PNC value, the result is Maybe (an exception is made for bootstrapping with PN 1 states).
+    </p>
+    <p>
+    For an Unpredictable state with a PNC state, the result is False.
+    </p>
+    <p>
+    For a PN 2 state with a PN 1 PNC state, the result is False.
+    </p>
+    <p>
+    For a PN 2 PNC state with a PN 1 state, if the PN 1 state rule is combinable with one of the PN 2 PNC state rules, the result is Maybe, otherwise False.
+    </p>
+    <h3>Union of Multiple States Rules</h3>
+    <p>
+    Two unpredictable states can be combined, if there are no PNC states between them.
+    </p>
+    <p>
+    Two PN 1 states can be combined, if there are no PN > 1 states between them.
+    </p>
+    <p>
+    Two PN 2 PNC states can be combined if one of the two possible combinations of rules is valid.
+    That is [s1.rule1 union s2.rule1] and [s1.rule2 union s2.rule2] or [s1.rule1 union s2.rule2] and [s1.rule2 union s2.rule1].
+    <p>
+    </p>
+    <p>
+    If two PN 2 PNC states can be combined in both ways, due to [0->0, 0->1] and [1->1, 1->0], it will produce rules with [X->1, X->0] and [X->x, X->X], something is wrong and the two states should not form a union.
+    </p>
+    <h3>Contradictory Intersections</h3>
+    <p>
+    If two rules intersect, the intersection of the two rules can be calculated.
+    </p>
+    <p>
+   The intersection region can be used to restrict each of the two rules.
+    </p>
+    <p>
+    If the two resulting rules are not equal, the intersection is a target for sampling.
+    </p>
+    <p>
+    Take the intersection of the two restricted rules.
+    </p>
+    <p>
+    If the resulting rule is invalid:
+    </p>
+    <p class="indent1">
+    Seek any sample in the intersection.
+    </p>
+    <p>
+    If the resulting rule is valid:
+    </p>
+    <p class="indent1">
+    The initial region of the resulting rule is the part of the original intersection that is valid.  Seek a sample in the intersection that is not in the valid part.
+    </p>
+    <p>
+    Its unlikley, but sampling a contradictory region could invalidate both regions.
+    </p>
+    <h3>Generating a rule-path, to translate a from-region to a goal-region.</h3>
     <p class="indent1">
     This has some similarities to the Travelling Salesperson Problem, going  from rule to rule.
     </p>
@@ -1568,98 +1601,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
     Keep a count of the recursion depth, and fail the process at some point.  
     Asymmetrical Chaining has the effect of splitting the depth count risk.
-    </p>
-    <h3>Contradictory Intersections</h3>
-    <p>
-    If two rules intersect, the intersection of the two rules can be calculated.
-    </p>
-    <p>
-   The intersection region can be used to restrict each of the two rules.
-    </p>
-    <p>
-    If the two resulting rules are not equal, the intersection is a target for sampling.
-    </p>
-    <p>
-    Take the intersection of the two restricted rules.
-    </p>
-    <p>
-    If the resulting rule is invalid:
-    </p>
-    <p class="indent1">
-    Seek any sample in the intersection.
-    </p>
-    <p>
-    If the resulting rule is valid:
-    </p>
-    <p class="indent1">
-    The initial region of the resulting rule is the part of the original intersection that is valid.  Seek a sample in the intersection that is not in the valid part.
-    </p>
-    <p>
-    Its unlikley, but sampling a contradictory region could invalidate both regions.
-    </p>
-    <h3>Multiple Result States</h3>
-    <p>
- Taking multiple samples of the same state can produce different results.
-     </p>
-    <p>
- I am tempted to say that a state that produces more than one result can simply be called unpredictable and combined with other such states
- to produce unpredictable regions.  These regions would be invalidated by an included state that is predictable.
-  </p>
-  <p>
-  Due to my previously mentioned "infrequent perceptions", I feel that simple patterns like (0, 1, 0, 1, 0) should be accommodated.  This is unfortunate, because its the biggest pain of the whole project.
-    </p>
-    <p>
- A pattern can be defined as a sequence of results that is seen at least twice in the result list.
-    </p>
-    <p>
- For a state that always produces the same result, it can be considered to be predictable after at least two samples.
-    </p>
-    <p class="indent1">
-     This may be combined with a state that also produces a single result, if a valid rule can be formed from the two.
-    </p>
-    <p>
-For a state that always produces the same two results, alternating, a minimum of four samples will be needed.
-    </p>
-    <p class="indent1">
- Combining the state with each result in a result pattern list creates a State-Change Rule list.  A union can be formed from two State-Change Rule lists, from different states.
- The union may be valid if, in a sequence that may start at different positions in the two lists, each may make a valid union (no 0&#8594;X or 1&#8594;X bits).
-    </p>
-    <p class="indent1">
-    If two two-result states can be combined in two ways, producing a rule with X->1 and/or X->0 and corresponding X->x and/or X->X, something is wrong and the two states should not form a region.
-    </p>
-    <p>
- If a state has two different results that do not alternate predictably, or more than two different results, the state can be marked as being unpredictable.
-    </p>
-     <p class="indent1">
-    A region can be made from two unpredictable states, if other states in the region are either unpredictable or more samples needed.
-    </p>
-     <p class="indent1">
-   When a predictable region intersects an unpredictable region, the intersection region can be considered to be contradictory.
-   </p>
-   <p class="indent1">
-   In the intersection region, sample a state until its predictability or unpredictability is determined.
-   </p>
-    <p>
- There is always the possibility that continued sampling, with the oldest samples being dropped to conserve memory,
- could change a state between being predictable and unpredictable, or between one result and two results.
-    </p>
-    <p class="indent1">
-    What you think you know is always contingent on the next sample.  Multiple, consecutive, samples that meet expectations, decrease the probability of an unexpected sample.
-    </p>
-   <p>
-        Two states that have not established a result pattern, and have not become unpredictable, may appear to be compatible, but it might be better to say that they are not-incompatible yet.
-   </p>
-     <p class="indent1">
-        When first starting to accumulate samples, many samples will be single samples taken using the current state.
-    </p>
-     <p class="indent1">
-        The first regions must be formed from samples that are poorly sampled, but not-incompatible.
-    </p>
-     <p class="indent1">
-        Using the first regions to build rule-paths will often produce unexpected changes, but each unexpected change can be learned from.
-    </p>
-     <p class="indent1">
-  Failure rates should decrease with more samples from both rule-path failures and rule-path successes (the needed sample is found and taken).
     </p>
   </div>
   <div id="combex">
@@ -1806,7 +1747,7 @@ For a state that always produces the same two results, alternating, a minimum of
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/11/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/25/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1823,6 +1764,25 @@ For a state that always produces the same two results, alternating, a minimum of
 
   <p>A 5-bit K-Map might be printed as multiple 4-bit maps, 0XXXX, 1XXXX, but you would need a special talent, which I do not have, to visually make sense of multiple K-Maps.</p>
 
+<h3>Splitting up bits</h3>
+  <p>
+     A <i>Split-Bits</i> algorithm, to isolate each bit in a bit mask, e.g. producing (0100, 0010) from 0110 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>):
+  </p>
+  <p class="indent1">
+      // Initialize a list of bit objects.<br />
+      while (val > 0)<br />
+      {
+  </p>
+  <p class="indent2">
+          minus1 = val - 1; <br />              
+          valLess1 = val &amp; minus1 &nbsp;&nbsp;&nbsp; // remove one bit from val, put into valLess1 <br />
+          oneBit = val ^ valLess1; &nbsp;&nbsp;&nbsp; // isolate the removed bit <br />
+   // Store oneBit into a new Bits object, add the Bits object to the list.<br />
+          val = valLess1;
+  </p>
+  <p class="indent1">
+       }
+  </p>
 <h3>Region Subtraction</h3>
   <p>
   In a K-Map with lots of bits, the results of subtraction can get numerous.
@@ -2014,6 +1974,59 @@ For a state that always produces the same two results, alternating, a minimum of
        <p class="indent1">
        Use that number plus the number of squares in the region-set minus the region just extracted, until no regions are left.
        </p>
+   <h3>Another possible representation for a region</h3>
+        <p>
+        Use a mask for ones and a mask for zeros.
+        </p>
+    <p class="indent1">
+    Given two states, like 1010 and 0110, the ones mask is 1010 + 0110 = 1110.  The zeros mask is ~(1010 & 0110) = 1101.
+    </p>
+        <p class="indent1">Interpretation of region bits:</p>
+      <table class="indent2">
+           <tr>
+                <th></th>
+                <th>Mask-1</th>
+                <th>Mask-0</th>
+                <th>Region Bit</th>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>0</td>
+                <td>No bit</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>0</td>
+                <td>1</td>
+                <td>0</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>1</td>
+                <td>X</td>
+           </tr>
+           <tr style="text-align:center;">
+                <th></th>
+                <td>1</td>
+                <td>0</td>
+                <td>1</td>
+           </tr>
+        </table>
+    <p>
+    <p class="indent1">
+   Two regions are equal if the two bit patterns forming them are equal.
+   </p>
+    <p class="indent1">
+   Region x-mask = mask-1 & mask-0.
+   </p>
+    <p class="indent1">
+   Intersection of two regions: mask-1 = r1.mask-1 & r2.mask-1. mask-0 = r1.mask-0 & r2.mask-0.
+   </p>
+    <p class="indent1">
+   Union of two regions: mask-1 = r1.mask-1 + r2.mask-1. mask-0 = r1.mask-0 + r2.mask-0.
+   </p>
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">
 	Below are the six ways. They are really circles, not lines.
