@@ -187,8 +187,8 @@ impl SomeRegion {
     pub fn intersection(&self, other: &Self) -> Self {
 
         Self::new(
-            &self.high_mask().m_and(&other.high_mask()).to_state(),
-            &self.low_mask().m_and(&other.low_mask()).m_not().to_state(),
+            &self.high_state().s_and(&other.high_state()),
+            &self.low_state().s_or(&other.low_state()),
         )
     }
 
@@ -203,18 +203,18 @@ impl SomeRegion {
         t1.is_low()
     }
     
-    /// Return a Mask of zero bits.
+    /// Return a Mask of zero positions.
     pub fn zeros_mask(&self) -> SomeMask {
 
         self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
     }
 
-    /// Return a Mask of one bits.
+    /// Return a Mask of one positions.
     pub fn ones_mask (&self) -> SomeMask {
 
         self.state1.s_and(&self.state2).to_mask()
     }
-    /// Return mask of x bits.
+    /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
 
         self.state1.s_xor(&self.state2).to_mask()
@@ -301,14 +301,14 @@ impl SomeRegion {
         Self::new(&st_high, &st_low)
     }
 
-    /// Return a Mask of zero or X bits (which include a zero).
-    pub fn low_mask(&self) -> SomeMask {
-        self.state1.s_not().s_or(&self.state2.s_not()).to_mask()
+    /// Return the highest state in the region
+    pub fn high_state(&self) -> SomeState {
+        self.state1.s_or(&self.state2)
     }
 
-    /// Return a Mask of ones or X bits (which include a one).
-    pub fn high_mask(&self) -> SomeMask {
-        self.state1.s_or(&self.state2).to_mask()
+    /// Return lowest state in the region
+    pub fn low_state(&self) -> SomeState {
+        self.state1.s_and(&self.state2)
     }
 
     /// Return a region with masked X-bits set to zeros.
@@ -357,9 +357,7 @@ impl SomeRegion {
     /// Return the number of different (non-x) bits with another region.
     pub fn distance(&self, reg1: &SomeRegion) -> usize {
 
-        self.diff_mask_state(&reg1.state1)
-            .m_and(&self.diff_mask_state(&reg1.state2))
-            .num_one_bits()
+        self.diff_mask(&reg1).num_one_bits()
     }
 
     /// Return states in a region, given a list of states.
@@ -634,13 +632,13 @@ mod tests {
         Ok(())
     }
 
-    // Test high_mask.
+    // Test high_state.
     #[test]
-    fn test_high_mask () -> Result<(), String> {
+    fn test_high_state () -> Result<(), String> {
         let reg0  = SomeRegion::new_from_string(1, "rX0X1").unwrap();
 
-        if reg0.high_mask() != SomeMask::new_from_string(1, "m1011").unwrap() {
-            return Err(format!("test_high_mask: High mask not m1011?"));
+        if reg0.high_state() != SomeState::new_from_string(1, "s1011").unwrap() {
+            return Err(format!("test_high_state: High state not s1011?"));
         }
         Ok(())
     }
@@ -790,14 +788,14 @@ mod tests {
         Ok(())
     }
 
-    // Test low_mask.
+    // Test low_state.
     #[test]
-    fn test_low_mask () -> Result<(), String> {
+    fn test_low_state () -> Result<(), String> {
         let reg0  = SomeRegion::new_from_string(1, "rX0X1").unwrap();
 
-        if reg0.low_mask() != SomeMask::new_from_string(1, "m11111110").unwrap() {
-            println!("low mask {}", &reg0.low_mask());
-            return Err(format!("test_low_mask: Low mask not m1111110?"));
+        if reg0.low_state() != SomeState::new_from_string(1, "s1").unwrap() {
+            println!("low state {}", &reg0.low_state());
+            return Err(format!("test_low_state: Low state not s1?"));
         }
         Ok(())
     }

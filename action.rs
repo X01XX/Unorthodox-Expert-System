@@ -1474,7 +1474,7 @@ impl SomeAction {
                             nds.append(&mut ndx);
                         }
                     } // end if pn ==
-                } // end if regions adjacent
+                } // end if
             } // next iny
         } // next inx
 

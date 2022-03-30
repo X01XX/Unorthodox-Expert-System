@@ -297,8 +297,8 @@ impl SomeRule {
 
         let reg_int = regx.intersection(&init_reg);
 
-        let zeros = reg_int.low_mask();
-        let ones = reg_int.high_mask();
+        let zeros = reg_int.low_state().to_mask().m_not();
+        let ones = reg_int.high_state().to_mask();
 
         Self {
             b00: self.b00.m_and(&zeros),
@@ -334,8 +334,8 @@ impl SomeRule {
 
         let reg_int = regx.intersection(&rslt_reg);
 
-        let zeros = reg_int.low_mask();
-        let ones = reg_int.high_mask();
+        let zeros = reg_int.low_state().to_mask().m_not();
+        let ones = reg_int.high_state().to_mask();
 
         let rc_rul = Self {
             b00: self.b00.m_and(&zeros),

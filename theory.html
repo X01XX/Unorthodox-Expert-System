@@ -398,7 +398,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    Two regions are equal if  r1 high state = r2 high state and r1 low state = r2 low state
    </p>
     <p>
-    2) Another possible representation of a region is maximum 1-bits (high mask) and maximum 0-bits (low mask).
+    2) Another possible representation of a region is maximum 1-bits (high state) and maximum 0-bits (low state).
     </p>
     <p class="indent1">
     Given two states, or the first type of region, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 & 0110 = 0010.
@@ -407,8 +407,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
       <table class="indent2">
            <tr>
                 <th></th>
-                <th>Highest</th>
-                <th>Lowest</th>
+                <th>High</th>
+                <th>Low</th>
                 <th>Region Bit</th>
            </tr>
            <tr style="text-align:center;">
@@ -748,10 +748,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
-	AND the high masks: 1101 & 1110 = 1100
+	AND the high states: 1101 & 1110 = 1100
 	</p>
 	<p>
-	OR the low masks:   1000 + 0110 = 1110
+	OR the low states:   1000 + 0110 = 1110
 	</p>
 	<p>
 	Now make a region from the results, (1110, 1100) = 11X0 (E, C).
@@ -1747,7 +1747,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/25/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/30/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
