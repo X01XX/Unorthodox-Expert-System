@@ -990,7 +990,7 @@ impl SomeAction {
             }
 
             // Calculate the target inbetween
-            let seek_state = statex.s_xor(&dif_msk.to_state());
+            let seek_state = SomeState::new(statex.bts.b_xor(&dif_msk.bts));
 
             // Make need for seek_state
             //print!("get first sample of square {}", &seek_state);
@@ -1249,7 +1249,7 @@ impl SomeAction {
 
                 // Rate adjacent external states
                 for edge_bit in edge_msks.iter() {
-                    let sta_adj = sta1.s_xor(&edge_bit.to_state());
+                    let sta_adj = SomeState::new(sta1.bts.b_xor(&edge_bit.bts));
                     //println!(
                     //    "checking {} adjacent to {} external to {}",
                     //    &sta_adj, &sta1, &greg

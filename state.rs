@@ -5,11 +5,11 @@
 //!
 //! A different mask for two states would be calculated like:
 //!
-//! let diff_mask = state1.s_xor(&state2).to_mask();
+//! let diff_mask = SomeMask::new(state1.bts.b_xor(&state2.bts));
 //!
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
-//! let state2 = diff_mask.to_state().s_xor(&state1)
+//! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
 use crate::bits::SomeBits;
 use crate::mask::SomeMask;
@@ -21,7 +21,7 @@ use std::hash::Hash;
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
 pub struct SomeState {
-    bts: SomeBits,
+    pub bts: SomeBits,
 }
 
 impl fmt::Display for SomeState {
@@ -74,7 +74,7 @@ impl SomeState {
         self.bts.is_bit_set(b)
     }
 
-    /// Return a state and another state.
+    /// Return a mask for state and another state.
     pub fn s_and(&self, other: &Self) -> Self {
         Self::new(self.bts.b_and(&other.bts))
     }
@@ -108,7 +108,7 @@ impl SomeState {
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &SomeState) -> bool {
-        self.s_xor(&other).bts.just_one_bit()
+        SomeMask::new(self.bts.b_xor(&other.bts)).just_one_bit()
     }
 
     /// Return the number of one bits that are different between two states.
@@ -124,11 +124,6 @@ impl SomeState {
     /// Return a string used to represent a state.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
-    }
-
-    /// Return a mask given a state
-    pub fn to_mask(&self) -> SomeMask {
-        SomeMask::new(self.bts.clone())
     }
 
 } // end impl SomeState

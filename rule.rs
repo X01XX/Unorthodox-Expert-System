@@ -43,10 +43,10 @@ impl SomeRule {
     /// Return a new SomeRule instance given an initial state and the corresponding result state.
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         Self {
-            b00: initial.s_not().s_and(&result.s_not()).to_mask(),
-            b01: initial.s_not().s_and(&result).to_mask(),
-            b11: initial.s_and(&result).to_mask(),
-            b10: initial.s_and(&result.s_not()).to_mask(),
+            b00: SomeMask::new(initial.bts.b_not().b_and(&result.bts.b_not())),
+            b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
+            b11: SomeMask::new(initial.bts.b_and(&result.bts)),
+            b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
         }
     }
 
@@ -244,16 +244,16 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = self.b11.m_or(&self.b10).to_state();
-        let st_low = self.b00.m_or(&self.b01).m_not().to_state();
+        let st_high = SomeState::new(self.b11.bts.b_or(&self.b10.bts));
+        let st_low = SomeState::new(self.b00.bts.b_or(&self.b01.bts).b_not());
 
         SomeRegion::new(&st_high, &st_low)
     }
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = self.b11.m_or(&self.b01).to_state();
-        let st_low = self.b00.m_or(&self.b10).m_not().to_state();
+        let st_high = SomeState::new(self.b11.bts.b_or(&self.b01.bts));
+        let st_low = SomeState::new(self.b00.bts.b_or(&self.b10.bts).b_not());
 
         SomeRegion::new(&st_high, &st_low)
     }
@@ -277,9 +277,9 @@ impl SomeRule {
             );
         }
 
-        let mut toggle = self.b01.to_state().s_and(&sta.s_not());
-        toggle = toggle.s_or(&self.b10.to_state().s_and(sta));
-        sta.s_xor(&toggle)
+        let mut toggle = SomeMask::new(self.b01.bts.b_and(&sta.s_not().bts));
+        toggle = SomeMask::new(toggle.bts.b_or(&self.b10.bts.b_and(&sta.bts)));
+        SomeState::new(sta.bts.b_xor(&toggle.bts))
     }
 
     /// Restrict the initial region to an intersection of the
@@ -297,8 +297,8 @@ impl SomeRule {
 
         let reg_int = regx.intersection(&init_reg);
 
-        let zeros = reg_int.low_state().to_mask().m_not();
-        let ones = reg_int.high_state().to_mask();
+        let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
+        let ones = SomeMask::new(reg_int.high_state().bts.clone());
 
         Self {
             b00: self.b00.m_and(&zeros),
@@ -334,8 +334,8 @@ impl SomeRule {
 
         let reg_int = regx.intersection(&rslt_reg);
 
-        let zeros = reg_int.low_state().to_mask().m_not();
-        let ones = reg_int.high_state().to_mask();
+        let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
+        let ones = SomeMask::new(reg_int.high_state().bts.clone());
 
         let rc_rul = Self {
             b00: self.b00.m_and(&zeros),

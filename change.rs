@@ -35,8 +35,8 @@ impl SomeChange {
     /// Return a change from an initial to a result state.
     pub fn new_from_to(initial: &SomeState, result: &SomeState) -> Self {
         Self {
-            b01: initial.s_not().s_and(&result).to_mask(),
-            b10: initial.s_and(&result.s_not()).to_mask(),
+            b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
+            b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
         }
     }
 
@@ -159,11 +159,11 @@ impl SomeChange {
 
     /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones  = from.state1.s_or(&from.state2).to_mask();
-        let f_zeros = from.state1.s_not().s_or(&from.state2.s_not()).to_mask();
+        let f_ones  = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
+        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
 
-        let t_ones  = to.state1.s_or(&to.state2).to_mask();
-        let t_zeros = to.state1.s_not().s_or(&to.state2.s_not()).to_mask();
+        let t_ones  = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
 
         let to_not_x = to.x_mask().m_not();
 

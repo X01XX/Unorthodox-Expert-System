@@ -4,14 +4,13 @@
 //!
 //! A Mask of differences between two states would be calculated like:
 //!
-//! let diff_mask = state1.s_xor(&state2).to_mask();
+//! let diff_mask = SomeMask::new(state1.bts.b_xor(&state2.bts);
 //!
 //! A difference mask applied to a state, to get a new state, would be calculated like:
 //!
-//! let state2 = diff_mask.to_state().s_xor(&state1.bts);
+//! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts));
 
 use crate::bits::SomeBits;
-use crate::state::SomeState;
 use crate::randompick::random_x_of_n;
 
 use serde::{Deserialize, Serialize};
@@ -21,7 +20,7 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 /// SomeMask struct, just some bits.
 pub struct SomeMask {
-    bts: SomeBits,
+    pub bts: SomeBits,
 }
 
 /// Display trait for SomeMask
@@ -69,11 +68,6 @@ impl SomeMask {
         Self {
             bts: SomeBits::new(num_ints),
         }
-    }
-
-    /// Convert a mask into astate
-    pub fn to_state(&self) -> SomeState {
-        SomeState::new(self.bts.clone())
     }
 
     /// Return the bitwise OR of two masks.

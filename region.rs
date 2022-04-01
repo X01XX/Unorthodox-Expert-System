@@ -195,10 +195,10 @@ impl SomeRegion {
     /// Return true if a region is a superset of a state.
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
 
-        let t1 = self
+        let t1 = SomeMask::new(self
             .state1
-            .s_xor(&a_state)
-            .s_and(&self.state2.s_xor(&a_state)).to_mask();
+            .bts.b_xor(&a_state.bts)
+            .b_and(&self.state2.s_xor(&a_state).bts));
 
         t1.is_low()
     }
@@ -206,18 +206,18 @@ impl SomeRegion {
     /// Return a Mask of zero positions.
     pub fn zeros_mask(&self) -> SomeMask {
 
-        self.state1.s_not().s_and(&self.state2.s_not()).to_mask()
+        SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
     }
 
     /// Return a Mask of one positions.
     pub fn ones_mask (&self) -> SomeMask {
 
-        self.state1.s_and(&self.state2).to_mask()
+        SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
     }
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
 
-        self.state1.s_xor(&self.state2).to_mask()
+        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
     }
 
     /// Return the number of X bits in a region.
@@ -243,11 +243,11 @@ impl SomeRegion {
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
-        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not()).to_state();
+        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not());
 
         SomeRegion::new(
-            &other.state1.s_xor(&cng_bits),
-            &other.state2.s_xor(&cng_bits),
+            &SomeState::new(other.state1.bts.b_xor(&cng_bits.bts)),
+            &SomeState::new(other.state2.bts.b_xor(&cng_bits.bts)),
         )
     }
 
@@ -276,17 +276,9 @@ impl SomeRegion {
     /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
 
-        let st_low = self
-            .state1
-            .s_and(&self.state2)
-            .s_and(&other.state1)
-            .s_and(&other.state2);
+        let st_low = self.low_state().s_and(&other.low_state());
 
-        let st_high = self
-            .state1
-            .s_or(&self.state2)
-            .s_or(&other.state1)
-            .s_or(&other.state2);
+        let st_high = self.high_state().s_or(&other.high_state());
 
         Self::new(&st_high, &st_low)
     }
@@ -294,9 +286,9 @@ impl SomeRegion {
     /// Return the union of a region and a state.
     pub fn union_state(&self, other: &SomeState) -> Self {
 
-        let st_low = self.state1.s_and(&self.state2).s_and(&other);
+        let st_low = self.low_state().s_and(&other);
 
-        let st_high = self.state1.s_or(&self.state2).s_or(&other);
+        let st_high = self.high_state().s_or(&other);
 
         Self::new(&st_high, &st_low)
     }
@@ -314,20 +306,18 @@ impl SomeRegion {
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
 
-        let smsk = msk.to_state();
         Self::new(
-            &self.state1.s_and(&smsk.s_not()),
-            &self.state2.s_and(&smsk.s_not()),
+            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
+            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
         )
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
 
-        let smsk = msk.to_state();
         Self::new(
-            &self.state1.s_or(&smsk),
-            &self.state2.s_or(&smsk),
+            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
+            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
         )
     }
 
@@ -335,16 +325,15 @@ impl SomeRegion {
     /// The region states may not represent a samples state.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
 
-        let smsk = msk.to_state();
         Self::new(
-            &self.state1.s_or(&smsk),
-            &self.state2.s_and(&smsk.s_not()),
+            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
+            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
             )
     }
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        self.state1.s_xor(&sta1).s_and(&self.state2.s_xor(&sta1)).to_mask()
+        SomeMask::new(self.state1.s_xor(&sta1).bts.b_and(&self.state2.s_xor(&sta1).bts))
     }
 
     /// Return a mask of different (non-x) bits between two regions.
@@ -386,7 +375,7 @@ impl SomeRegion {
 
     /// Toggle non-x bits in a region, given a mask.
 //    pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
-//        let stxor = tbits.to_state();
+//        let stxor = SomeState::new(tbits.bts.clone());
 //        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
 //    }
 
@@ -406,7 +395,7 @@ impl SomeRegion {
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.m_and(&reg_int.state1.to_mask()).is_low() {
+            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {
@@ -432,11 +421,11 @@ impl SomeRegion {
             return None;
         }
 
-        let f_ones  = self.state1.s_or(&self.state2).to_mask();
-        let f_zeros = self.state1.s_not().s_or(&self.state2.s_not()).to_mask();
+        let f_ones  = SomeMask::new(self.state1.bts.b_or(&self.state2.bts));
+        let f_zeros = SomeMask::new(self.state1.bts.b_not().b_or(&self.state2.bts.b_not()));
 
-        let t_ones  = to.state1.s_or(&to.state2).to_mask();
-        let t_zeros = to.state1.s_not().s_or(&to.state2.s_not()).to_mask();
+        let t_ones  = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
+        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
 
         let to_not_x = to.x_mask().m_not();
 
