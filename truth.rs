@@ -9,11 +9,7 @@ use std::fmt;
 
 impl fmt::Display for Truth {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = match self {
-            Truth::T => String::from("T"),
-            Truth::F => String::from("F"),
-            Truth::M => String::from("M"),
-        };
+        let rc_str = self.formatted_string();
 
         write!(f, "{}", rc_str)
     }
@@ -84,7 +80,17 @@ impl PartialEq for Truth {
 }
 impl Eq for Truth {}
 
-impl Truth {}
+impl Truth {
+    /// Return a string for a Truth value.
+    pub fn formatted_string(&self) -> String {
+        let rc_str = match self {
+            Truth::T => String::from("T"),
+            Truth::F => String::from("F"),
+            Truth::M => String::from("M"),
+        };
+        rc_str
+    }
+}
 
 #[cfg(test)]
 mod tests {

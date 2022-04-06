@@ -30,7 +30,7 @@ impl ActionInterface {
 
         let amsk = self.ahash.get(&cur_state);
         let ret_state = take_action(dom_num, act_num, &cur_state, amsk);
-        let dif = SomeMask::new(cur_state.s_xor(&ret_state).bts.clone());
+        let dif = SomeMask::new(cur_state.bts.b_xor(&ret_state.bts));
         self.ahash.insert(cur_state.clone(), dif);
 
         ret_state

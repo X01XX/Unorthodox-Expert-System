@@ -12,6 +12,8 @@ use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
 use crate::compare::Compare;
+use crate::truth::Truth;
+use crate::combine;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -129,7 +131,7 @@ impl SomeGroup {
     /// Return true if a square is compatible with a group.
     /// Set group pnc if needed, and possible.
     pub fn check_square(&mut self, sqrx: &SomeSquare, squares: &SquareStore) -> bool {
-
+        //println!("group:check_square grp {} sqr {}", &self.region, &sqrx.state);
         // Check pnc, set if able.
         if self.pnc == false {
             if sqrx.results.pnc {
@@ -149,43 +151,11 @@ impl SomeGroup {
             }
         }
 
-        //println!("square_is_ok grp: {} sqr: {}", &self.region, &sqrx.state);
-        match self.pn {
-            Pn::One => match sqrx.results.pn {
-                Pn::One => {
-                    return sqrx.rules.is_subset_of(&self.rules);
-                }
-                _ => {
-                    return false;
-                }
-            },
-            Pn::Two => match sqrx.results.pn {
-                Pn::One => {
-                    if sqrx.results.pnc {
-                        return false;
-                    }
-                    return sqrx.rules.is_subset_of(&self.rules);
-                }
-                Pn::Two => {
-                    return sqrx.rules.is_subset_of(&self.rules);
-                }
-                _ => {
-                    return false;
-                }
-            },
-            Pn::Unpredictable => match sqrx.results.pn {
-                Pn::Unpredictable => {
-                    return true;
-                }
-                _ => {
-                    if sqrx.results.pnc {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                }
-            },
+        if combine::can_combine(self, sqrx) == Truth::F {
+            return false;
         }
+
+        true
     }
 
     /// Return true if a sample is compatible with a group.
@@ -233,7 +203,8 @@ impl Compare for SomeGroup {
         &self.pn
     }
     fn get_pnc(&self) -> bool {
-        self.pnc
+        //self.pnc
+        true // Group is expected to become pnc == true, when compared to squares.
     }
     fn get_rules_ref(&self) -> &RuleStore {
         &self.rules

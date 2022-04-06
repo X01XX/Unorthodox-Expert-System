@@ -74,26 +74,6 @@ impl SomeState {
         self.bts.is_bit_set(b)
     }
 
-    /// Return a mask for state and another state.
-    pub fn s_and(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_and(&other.bts))
-    }
-
-    /// Return the result of a not operation.
-    pub fn s_not(&self) -> Self {
-        Self::new(self.bts.b_not())
-    }
-    
-    /// Return a state or another state.
-    pub fn s_or(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_or(&other.bts))
-    }
-
-    /// Return a state xor another state.
-    pub fn s_xor(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_xor(&other.bts))
-    }
-
     /// Toggle the bits of a state, given a vector of numbers.
     pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {
         SomeState {
@@ -189,7 +169,7 @@ mod tests {
     // This uses SomeBits::b_and, so only a basic test is done.
     #[test]
     fn test_s_and() -> Result<(), String> {
-        let test_and = SomeState::new_from_string(2, "s0x6666").unwrap().s_and(&SomeState::new_from_string(2, "s0xc37d").unwrap());
+        let test_and = SomeState::new(SomeState::new_from_string(2, "s0x6666").unwrap().bts.b_and(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts));
         if test_and != SomeState::new_from_string(2, "s0x4264").unwrap() {
             return Err(format!("SomeState::s_and 1 failed"));
         }
@@ -200,7 +180,7 @@ mod tests {
     // This uses SomeBits::b_not, so only a basic test is done.
     #[test]
     fn test_s_not() -> Result<(), String> {
-        let test_not = SomeState::new_from_string(2, "s0x5a5a").unwrap().s_not();
+        let test_not = SomeState::new(SomeState::new_from_string(2, "s0x5a5a").unwrap().bts.b_not());
         if test_not != SomeState::new_from_string(2, "s0xa5a5").unwrap() {
             return Err(format!("SomeState::s_not 1 failed"));
         }
@@ -211,7 +191,7 @@ mod tests {
     // This uses SomeBits::b_or, so only a basic test is done.
     #[test]
     fn test_s_or() -> Result<(), String> {
-        let test_or = SomeState::new_from_string(2, "s0x2111").unwrap().s_or(&SomeState::new_from_string(2, "s0x428a").unwrap());
+        let test_or = SomeState::new(SomeState::new_from_string(2, "s0x2111").unwrap().bts.b_or(&SomeState::new_from_string(2, "s0x428a").unwrap().bts));
         if test_or != SomeState::new_from_string(2, "s0x639b").unwrap() {
             return Err(format!("SomeState::s_or 1 failed"));
         }
@@ -222,7 +202,7 @@ mod tests {
     // This uses SomeBits::b_xor, so only a basic test is done.
     #[test]
     fn test_s_xor() -> Result<(), String> {
-        let test_xor = SomeState::new_from_string(2, "s0x6666").unwrap().s_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap());
+        let test_xor = SomeState::new(SomeState::new_from_string(2, "s0x6666").unwrap().bts.b_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts));
         if test_xor != SomeState::new_from_string(2, "s0xa51b").unwrap() {
             return Err(format!("SomeState::s_xor 1 failed"));
         }

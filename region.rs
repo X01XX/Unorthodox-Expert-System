@@ -187,8 +187,8 @@ impl SomeRegion {
     pub fn intersection(&self, other: &Self) -> Self {
 
         Self::new(
-            &self.high_state().s_and(&other.high_state()),
-            &self.low_state().s_or(&other.low_state()),
+            &SomeState::new(self.high_state().bts.b_and(&other.high_state().bts)),
+            &SomeState::new(self.low_state().bts.b_or(&other.low_state().bts)),
         )
     }
 
@@ -198,7 +198,7 @@ impl SomeRegion {
         let t1 = SomeMask::new(self
             .state1
             .bts.b_xor(&a_state.bts)
-            .b_and(&self.state2.s_xor(&a_state).bts));
+            .b_and(&self.state2.bts.b_xor(&a_state.bts)));
 
         t1.is_low()
     }
@@ -228,7 +228,7 @@ impl SomeRegion {
 
     /// Given a state in a region, return the far state in the region.
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
-        self.state1.s_xor(&self.state2).s_xor(&sta)
+        SomeState::new(self.state1.bts.b_xor(&self.state2.bts).b_xor(&sta.bts))
     }
 
     /// Given a region, and a proper subset region, return the
@@ -276,9 +276,9 @@ impl SomeRegion {
     /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
 
-        let st_low = self.low_state().s_and(&other.low_state());
+        let st_low = SomeState::new(self.low_state().bts.b_and(&other.low_state().bts));
 
-        let st_high = self.high_state().s_or(&other.high_state());
+        let st_high = SomeState::new(self.high_state().bts.b_or(&other.high_state().bts));
 
         Self::new(&st_high, &st_low)
     }
@@ -286,21 +286,21 @@ impl SomeRegion {
     /// Return the union of a region and a state.
     pub fn union_state(&self, other: &SomeState) -> Self {
 
-        let st_low = self.low_state().s_and(&other);
+        let st_low = SomeState::new(self.low_state().bts.b_and(&other.bts));
 
-        let st_high = self.high_state().s_or(&other);
+        let st_high = SomeState::new(self.high_state().bts.b_or(&other.bts));
 
         Self::new(&st_high, &st_low)
     }
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        self.state1.s_or(&self.state2)
+        SomeState::new(self.state1.bts.b_or(&self.state2.bts))
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        self.state1.s_and(&self.state2)
+        SomeState::new(self.state1.bts.b_and(&self.state2.bts))
     }
 
     /// Return a region with masked X-bits set to zeros.
@@ -333,7 +333,7 @@ impl SomeRegion {
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        SomeMask::new(self.state1.s_xor(&sta1).bts.b_and(&self.state2.s_xor(&sta1).bts))
+        SomeMask::new(self.state1.bts.b_xor(&sta1.bts).b_and(&self.state2.bts.b_xor(&sta1.bts)))
     }
 
     /// Return a mask of different (non-x) bits between two regions.

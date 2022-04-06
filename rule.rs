@@ -277,7 +277,7 @@ impl SomeRule {
             );
         }
 
-        let mut toggle = SomeMask::new(self.b01.bts.b_and(&sta.s_not().bts));
+        let mut toggle = SomeMask::new(self.b01.bts.b_and(&sta.bts.b_not()));
         toggle = SomeMask::new(toggle.bts.b_or(&self.b10.bts.b_and(&sta.bts)));
         SomeState::new(sta.bts.b_xor(&toggle.bts))
     }

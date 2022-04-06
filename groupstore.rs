@@ -89,6 +89,7 @@ impl GroupStore {
             remove_unordered(&mut self.avec, *inx);
         }
 
+        //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
         regs_invalid
     }
 
