@@ -141,8 +141,9 @@
 #[cfg(test)]
 mod tests {
     use crate::square::SomeSquare;
+    use crate::squarestore::SquareStore;
     use crate::state::SomeState;
-    use crate::combine::can_combine;
+    use crate::combine::*;
     use crate::truth::Truth;
 
     #[test]
@@ -298,6 +299,90 @@ mod tests {
             return Err(format!("ret: {}", ret));
         }
 
+        Ok(())
+    }
+    
+    #[test]
+    fn test_check_between_nothing_between() -> Result<(), String> {
+
+        let mut squares = SquareStore::new();
+
+        let sqr1 = SomeSquare::new(SomeState::new_from_string(2, "s1111").unwrap(), SomeState::new_from_string(2, "s1111").unwrap());
+        squares.insert(sqr1, 0, 0);
+
+        let sqr2 = SomeSquare::new(SomeState::new_from_string(2, "s0000").unwrap(), SomeState::new_from_string(2, "s0000").unwrap());
+        squares.insert(sqr2, 0, 0);
+
+        // Non compatible square, but not between.
+        let sqr4 = SomeSquare::new(SomeState::new_from_string(2, "s10001").unwrap(), SomeState::new_from_string(2, "s10000").unwrap());
+        squares.insert(sqr4, 0, 0);
+
+        let sqrx: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s1111").unwrap()).unwrap();
+        let sqry: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s0000").unwrap()).unwrap();
+
+        let rslt = can_combine_check_between(sqrx, sqry, &squares);
+
+        if rslt != Truth::T {
+            return Err(format!("rslt: {}", rslt));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_check_between_compat_between() -> Result<(), String> {
+
+        let mut squares = SquareStore::new();
+        let sqr1 = SomeSquare::new(SomeState::new_from_string(2, "s1111").unwrap(), SomeState::new_from_string(2, "s1111").unwrap());
+        squares.insert(sqr1, 0, 0);
+
+        let sqr2 = SomeSquare::new(SomeState::new_from_string(2, "s0000").unwrap(), SomeState::new_from_string(2, "s0000").unwrap());
+        squares.insert(sqr2, 0, 0);
+
+        // Compatible square between.
+        let sqr3 = SomeSquare::new(SomeState::new_from_string(2, "s0001").unwrap(), SomeState::new_from_string(2, "s0001").unwrap());
+        squares.insert(sqr3, 0, 0);
+
+        // Non compatible square, but not between.
+        let sqr4 = SomeSquare::new(SomeState::new_from_string(2, "s10001").unwrap(), SomeState::new_from_string(2, "s10000").unwrap());
+        squares.insert(sqr4, 0, 0);
+
+        let sqrx: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s1111").unwrap()).unwrap();
+        let sqry: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s0000").unwrap()).unwrap();
+
+        let rslt = can_combine_check_between(sqrx, sqry, &squares);
+
+        if rslt != Truth::T {
+            return Err(format!("rslt: {}", rslt));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_check_between_noncompat_between() -> Result<(), String> {
+
+        let mut squares = SquareStore::new();
+        let sqr1 = SomeSquare::new(SomeState::new_from_string(2, "s1111").unwrap(), SomeState::new_from_string(2, "s1111").unwrap());
+        squares.insert(sqr1, 0, 0);
+
+        let sqr2 = SomeSquare::new(SomeState::new_from_string(2, "s0000").unwrap(), SomeState::new_from_string(2, "s0000").unwrap());
+        squares.insert(sqr2, 0, 0);
+
+        // Non compatible square between.
+        let sqr3 = SomeSquare::new(SomeState::new_from_string(2, "s0001").unwrap(), SomeState::new_from_string(2, "s0000").unwrap());
+        squares.insert(sqr3, 0, 0);
+
+        // Compatible square between.
+        let sqr4 = SomeSquare::new(SomeState::new_from_string(2, "s0011").unwrap(), SomeState::new_from_string(2, "s0011").unwrap());
+        squares.insert(sqr4, 0, 0);
+
+        let sqrx: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s1111").unwrap()).unwrap();
+        let sqry: &SomeSquare = squares.find(&SomeState::new_from_string(2, "s0000").unwrap()).unwrap();
+
+        let rslt = can_combine_check_between(sqrx, sqry, &squares);
+
+        if rslt != Truth::F {
+            return Err(format!("rslt: {}", rslt));
+        }
         Ok(())
     }
 }
