@@ -122,7 +122,7 @@ impl SomeAction {
         assert!(sqrx.state != sqry.state);
 
         let cmbx = can_combine(sqrx, sqry);
-        if cmbx == Truth::F {
+        if cmbx != Truth::T {
             return cmbx;
         }
 
@@ -2133,10 +2133,12 @@ impl SomeAction {
             if close_dis.any_subset(&diff_mask) {
                 continue;
             }
-                
-            let trh = can_combine_check_between(grpx, sqry, &self.squares);
-            if trh ==  Truth::F {
-                close_dis.push_nosups(diff_mask);
+
+            if can_combine(grpx, sqry) ==  Truth::T {
+                let trh = can_combine_check_between(grpx, sqry, &self.squares);
+                if trh ==  Truth::F {
+                    close_dis.push_nosups(diff_mask);
+                }
             }
         }
 
