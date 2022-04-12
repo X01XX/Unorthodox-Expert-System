@@ -1,5 +1,5 @@
 # Unorthodox-Expert-System
-An Unorthodox Expert System, an expert of its own state, no human intervention is required.
+An Unorthodox Expert System, an expert of its own state, rules can be developed and used without human intervention.
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory.
 
