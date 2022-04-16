@@ -89,26 +89,28 @@ impl SomeSquare {
 
         let rc = self.results.add_result(st);
 
-        match self.results.pn {
-            Pn::One => {
-                if self.rules.len() != 1 {
-                    self.rules = RuleStore::new();
-                    self.rules
-                        .push(SomeRule::new(&self.state, self.results.first()));
+        if rc {
+            match self.results.pn {
+                Pn::One => {
+                    if self.rules.len() != 1 {
+                        self.rules = RuleStore::new();
+                        self.rules
+                            .push(SomeRule::new(&self.state, self.results.first()));
+                    }
                 }
-            }
-            Pn::Two => {
-                if self.rules.len() != 2 {
-                    self.rules = RuleStore::new();
-                    self.rules
-                        .push(SomeRule::new(&self.state, self.results.first()));
-                    self.rules
-                        .push(SomeRule::new(&self.state, self.results.second()));
+                Pn::Two => {
+                    if self.rules.len() != 2 {
+                        self.rules = RuleStore::new();
+                        self.rules
+                            .push(SomeRule::new(&self.state, self.results.first()));
+                        self.rules
+                            .push(SomeRule::new(&self.state, self.results.second()));
+                    }
                 }
-            }
-            Pn::Unpredictable => {
-                if self.rules.len() != 0 {
-                    self.rules = RuleStore::new();
+                Pn::Unpredictable => {
+                    if self.rules.len() != 0 {
+                        self.rules = RuleStore::new();
+                    }
                 }
             }
         }

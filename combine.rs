@@ -187,7 +187,7 @@
         //println!("Test ref 5");
         Truth::T
 
-    } // end can_combine_check_between_t
+    } // end can_combine_check_between
 
 // Run various tests.
 // The tests exercise each chunk of code.
