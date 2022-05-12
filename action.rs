@@ -549,13 +549,6 @@ impl SomeAction {
                 nds.append(&mut ndx);
             }
 
-            // Check for expand needs
-            let mut ndx = self.expand_needs(agg_chgs);
-
-            if ndx.len() > 0 {
-                nds.append(&mut ndx);
-            }
-
             // Check any two groups for:
             // Overlapping regions that may be combined.
             // Overlapping groups that form a contradictory intersection.
@@ -686,15 +679,6 @@ impl SomeAction {
                             grpx.set_anchor_off();
                         }
                     }
-                    SomeNeed::SetEdgeExpand {
-                        group_region: greg,
-                        edge_mask: mbitx,
-                    } => {
-                        if let Some(grpx) = self.groups.find_mut(&greg) {
-                            try_again = true;
-                            grpx.set_edge_expand(&mbitx);
-                        }
-                    }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         self.seek_edge.remove_region(&regx);
                     }
@@ -726,9 +710,6 @@ impl SomeAction {
                             ..
                         } => { inxs.push(inx); }
                         SomeNeed::RemoveGroupAnchor {
-                            ..
-                        } => { inxs.push(inx); }
-                        SomeNeed::SetEdgeExpand {
                             ..
                         } => { inxs.push(inx); }
                         SomeNeed::InactivateSeekEdge { .. } => { inxs.push(inx); } 
@@ -1055,80 +1036,6 @@ impl SomeAction {
 
         ret_nds
     } // end additional_group_state_samples
-
-    /// Return expand needs for groups.
-    /// Edges of each region under bit positions that can be changed,
-    /// from the point of view of the Domain (the x_mask), need to be checked.
-    fn expand_needs(&self, agg_chgs: &SomeChange) -> NeedStore {
-
-        //println!("expand_needs");
-        let mut ret_nds = NeedStore::new();
-
-        for grpx in self.groups.iter() {
-            if grpx.pnc == false && grpx.pn > Pn::One {
-                continue;
-            }
-            let mut nds_tmp = self.expand_needs_group(grpx, agg_chgs);
-            ret_nds.append(&mut nds_tmp);
-        }
-
-        ret_nds
-
-        // Run a get_needs thread for each group
-//        let mut vecx: Vec<NeedStore> = self
-//            .groups.avec
-//            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-//            .map(|grpx| self.expand_needs_group(grpx, agg_chgs))
-//            .collect::<Vec<NeedStore>>();
-//
-//        // Aggregate the results into one NeedStore
-//        let mut nds_agg = NeedStore::new();
-//
-//        for mut nst in vecx.iter_mut() {
-//            nds_agg.append(&mut nst);
-//        }
-//
-//        nds_agg
-    }
-
-    /// Return the expand need for a gorup
-    pub fn expand_needs_group(&self, grpx: &SomeGroup, agg_chgs: &SomeChange) -> NeedStore {
-
-        let mut ret_nds = NeedStore::new();
-
-        if grpx.limited || grpx.pnc == false {
-            return ret_nds;
-        }
-
-        // Calc possible change mask for group region non-X bits.
-        let chg_mask = grpx.region.ones_mask().m_and(&agg_chgs.b10);
-        let chg_mask = chg_mask.m_or(&grpx.region.zeros_mask().m_and(&agg_chgs.b01));
-
-        if chg_mask == grpx.edge_expand {
-            return ret_nds;
-        }
-
-        let regs_new: RegionStore = self.possible_regions_for_group(&grpx, &chg_mask);
-        //println!("test for group {} possible regs: {}", greg, &regs_new);
-
-        if regs_new.len() == 1 && regs_new[0] == grpx.region {
-            ret_nds.push(SomeNeed::SetEdgeExpand { group_region: grpx.region.clone(), edge_mask: chg_mask });
-            return ret_nds;
-        }
-
-        for regx in regs_new.iter() {
-
-            if *regx == grpx.region {
-                continue;
-            }
-
-            if let Some(gnds) = self.possible_group_needs(regx, 33) {
-                return gnds;
-            }
-        }
-
-        ret_nds
-    }
 
     /// Check for squares-in-one-group (anchor) needs.
     ///

@@ -3,7 +3,6 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -41,8 +40,6 @@ pub struct SomeGroup {
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
-    /// Mask of non-x bits checked for expansion based on available rules capability to change bits.
-    pub edge_expand: SomeMask,
     /// Flag used to check for other groups that are close.
     /// So a new group is checked against all others, until no
     /// more needs are generated.
@@ -65,8 +62,6 @@ impl SomeGroup {
             pnx = Pn::Two;
         }
 
-        let num_ints = regionx.state1.num_ints();
-        
         Self {
             region: regionx,
             pn: pnx,
@@ -74,14 +69,8 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
-            edge_expand: SomeMask::new_low(num_ints),
             pair_needs: true,
         }
-    }
-
-    /// Accessor, set the edge_expand field.
-    pub fn set_edge_expand(&mut self, amask: &SomeMask) {
-        self.edge_expand = amask.clone();
     }
 
     /// Accessor set the pnc field to true
@@ -193,8 +182,6 @@ impl SomeGroup {
         let state2 = self.region.far_state(&astate);
         self.region = SomeRegion::new(&astate, &state2);
     }
-
-
 
 } // end impl SomeGroup
 

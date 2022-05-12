@@ -6,7 +6,6 @@
 //! Samples to limit a group.
 //! Housekeeping needs, like limiting a group.
 
-use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
@@ -124,11 +123,6 @@ impl fmt::Display for SomeNeed {
                 group_region: greg,
                 cstate: sta1,
             } => format!("N(set group {} limited by {})", greg, sta1),
-            SomeNeed::SetEdgeExpand {
-                group_region: greg,
-                edge_mask: mbitx,
-            } => format!("N(group {} set edge expand {})", greg, mbitx),
-
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
             }
@@ -210,11 +204,6 @@ pub enum SomeNeed {
     SetGroupLimited {
         group_region: SomeRegion,
         cstate: SomeState,
-    },
-    /// Housekeeping, set an edge expand mask.
-    SetEdgeExpand {
-        group_region: SomeRegion,
-        edge_mask: SomeMask,
     },
     /// Housekeeping, inactivate a region in the seek_edge vector.
     InactivateSeekEdge { reg: SomeRegion },
@@ -372,19 +361,6 @@ impl PartialEq for SomeNeed {
                     }
                 _ => {}
             },
-            SomeNeed::SetEdgeExpand {
-                group_region: greg,
-                edge_mask: mbitx,
-            } => match other {
-                SomeNeed::SetEdgeExpand {
-                    group_region: gregx,
-                    edge_mask: mbity,
-                } =>
-                    if greg == gregx && mbitx == mbity {
-                        return true;
-                    }
-                _ => {}
-            },
             SomeNeed::SeekEdge {
                 dom_num: dm,
                 act_num: an,
@@ -458,9 +434,6 @@ impl SomeNeed {
             SomeNeed::SetGroupLimited {
                 ..
             } => format!("SetGroupLimited"),
-            SomeNeed::SetEdgeExpand {
-                ..
-            } => format!("SetEdgeExpand"),
             SomeNeed::InactivateSeekEdge { reg: _ } => {
                 format!("InactivateSeekEdge")
             }
