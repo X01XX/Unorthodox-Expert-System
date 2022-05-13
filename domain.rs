@@ -1227,6 +1227,43 @@ mod tests {
         Ok(())
     }
 
+    // Test the expansion of a group with similar external adjacent square.
+    // Like when a limiting sample turns out to be similar instead of dissimilar.
+    #[test]
+    fn possible_regions_for_group_with_sim_adj_sqr() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        dm0.add_action();
+
+        let reg_xxx1 = dm0.region_from_string("rxxx1").unwrap();
+        let reg_x1x1 = dm0.region_from_string("rx1x1").unwrap();
+
+        let sq1 = dm0.state_from_string("s1").unwrap();
+
+        let sq5 = dm0.state_from_string("s101").unwrap();
+
+        let sqf = dm0.state_from_string("s1111").unwrap();
+
+        // Form group 1111
+        dm0.eval_sample_arbitrary(0, &sqf, &sqf);
+        println!("domain: {}", dm0.actions);
+
+        // Form group 1x1x
+        dm0.eval_sample_arbitrary(0, &sq5, &sq5);
+        println!("domain: {}", dm0.actions);
+
+        assert!(dm0.actions[0].groups.len() == 1);
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) { true } else { false });
+
+        // Add similar square, 1, adjacent to 5
+        dm0.eval_sample_arbitrary(0, &sq1, &sq1);
+        println!("domain: {}", dm0.actions);
+
+        assert!(dm0.actions[0].groups.len() == 1);
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_xxx1) { true } else { false });
+
+        Ok(())
+    }
+
     // Test the expansion of a group with similar external square.
     #[test]
     fn possible_regions_for_group_with_sim_sqr() -> Result<(), String> {

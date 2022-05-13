@@ -57,6 +57,7 @@ use std::io::{Read, Write};
 extern crate rand;
 use std::fs::File;
 use std::path::Path;
+use std::process;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
@@ -140,10 +141,13 @@ fn main() {
 
     while run_left > 0 {
         //println!("run_left = {}", run_left);
-        run_left += do_session(run_to_end, run_count, run_max);
-
-        run_left -= 1;
-        run_count += 1;
+        if 1 == do_session(run_to_end, run_count, run_max) {
+            run_count = 1;
+            run_left = run_max;
+        } else {
+            run_left -= 1;
+            run_count += 1;
+        }
 
     } // end while
 } // end main
@@ -285,7 +289,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
             // Stop running for this condition
             if cant_do > 0 && can_do == 0 {
-                if run_count != run_max {
+                if run_count != run_max || run_max > 1 {
                     println!("\nrun_count {} of {}", run_count, run_max);
                 }
                 //return 0;
@@ -367,13 +371,17 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 // Quit with q , exit, quit
                 if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
                     println!("Done");
-                    return 0;
+                    process::exit(1);
                 } else if cmd[0] == "run" {
                     to_end = true;
                     step_inc = 0;
                     continue;
                 } else if cmd[0] == "so" {
-                    return 1;
+                    if run_count != run_max {
+                        return 0;
+                    } else {
+                        return 1;
+                    }
                 } else if cmd[0] == "dcs" {
                     step_inc = 0;
                     break;
