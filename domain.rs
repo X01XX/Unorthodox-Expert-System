@@ -304,28 +304,33 @@ impl SomeDomain {
                 }
             }
 
-            // Try re-plan to goal
-            if let Some(planx) = self.make_plan(pln.result_region()) {
-                println!(
-                    "\nChange [{} -{:02}> {}] unexpected, expected {}, new plan from {} to {} is {}",
-                    &prev_state,
-                    &stpx.act_num,
-                    &self.cur_state,
-                    stpx,
-                    &self.cur_state,
-                    &pln.result_region(),
-                    &planx.str_terse()
-                    );
-                return self.run_plan2(&planx, depth + 1);
-            }
             println!(
-                "\nChange [{} -{:02}> {}] unexpected, expected {}, no plan from {} to {}, failed.",
+                "\nChange [{} -{:02}> {}] unexpected, expected {}",
                 &prev_state,
                 &stpx.act_num,
                 &self.cur_state,
                 stpx,
+            );
+                    
+            // Try re-plan to goal
+            if pln.result_region().is_superset_of_state(&self.cur_state) {
+                println!("The unexpected result is in the goal region");
+                return;
+            }
+
+            if let Some(planx) = self.make_plan(pln.result_region()) {
+                println!(
+                    "The new plan from {} to {} is {}",
+                    &self.cur_state,
+                    &pln.result_region(),
+                    &planx.str_terse()
+                );
+                return self.run_plan2(&planx, depth + 1);
+            }
+            println!(
+                "A plan from {} to {} is not found",
                 &self.cur_state,
-                &pln.result_region()
+                &pln.result_region(),
             );
             return;
         } // next stpx
@@ -906,7 +911,7 @@ mod tests {
         }
         
         let nds2 = dm0.actions[0].additional_group_state_samples();
-        //println!("needs {}", nds2);
+        println!("needs {}", nds2);
 
         assert!(nds2.len() == 2);
         assert!(nds2.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
@@ -1246,10 +1251,14 @@ mod tests {
 
         // Form group r11xx
         dm0.eval_sample_arbitrary(0, &sqc, &sqc);
+        println!("domain: {}", dm0.actions);
+
         dm0.eval_sample_arbitrary(0, &sqf, &sqf);
+        println!("domain: {}", dm0.actions);
 
         // Add square 5, forming groups rx1x1, x10x.
         dm0.eval_sample_arbitrary(0, &sq5, &sq5);
+        println!("domain: {}", dm0.actions);
 
         assert!(dm0.actions[0].groups.len() == 3);
         assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_11xx) { true } else { false });
