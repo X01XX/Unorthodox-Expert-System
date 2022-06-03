@@ -168,7 +168,6 @@ impl SomeMask {
     /// Given a mask of more than one bit, return a mask that is a random selection of
     /// roughly half the bits.
     pub fn half_mask(&self) -> Self {
-
         let one_bits: Vec<SomeBits> = self.bts.split();
 
         let indicies: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
@@ -190,7 +189,6 @@ impl SomeMask {
     pub fn push_0(&self) -> Self {
         Self::new(self.bts.push_0())
     }
-
 } // end impl SomeMask
 
 impl Clone for SomeMask {
@@ -211,7 +209,10 @@ mod tests {
         let test_msk = SomeMask::new_from_string(2, "m0x5aa5").unwrap().half_mask();
 
         if test_msk.num_one_bits() != 4 {
-            return Err(format!("SomeMask::test_half_mask num bits {} instead of 4?", test_msk.num_one_bits()));
+            return Err(format!(
+                "SomeMask::test_half_mask num bits {} instead of 4?",
+                test_msk.num_one_bits()
+            ));
         }
         Ok(())
     }
@@ -333,7 +334,9 @@ mod tests {
     // This uses SomeBits::b_and, so only a basic test is done.
     #[test]
     fn test_m_and() -> Result<(), String> {
-        let test_and = SomeMask::new_from_string(2, "m0x6666").unwrap().m_and(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
+        let test_and = SomeMask::new_from_string(2, "m0x6666")
+            .unwrap()
+            .m_and(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
         if test_and != SomeMask::new_from_string(2, "m0x4264").unwrap() {
             return Err(format!("SomeMask::m_and 1 failed"));
         }
@@ -355,7 +358,9 @@ mod tests {
     // This uses SomeBits::b_or, so only a basic test is done.
     #[test]
     fn test_m_or() -> Result<(), String> {
-        let test_or = SomeMask::new_from_string(2, "m0x2111").unwrap().m_or(&SomeMask::new_from_string(2, "m0x428a").unwrap());
+        let test_or = SomeMask::new_from_string(2, "m0x2111")
+            .unwrap()
+            .m_or(&SomeMask::new_from_string(2, "m0x428a").unwrap());
         if test_or != SomeMask::new_from_string(2, "m0x639b").unwrap() {
             return Err(format!("SomeMask::m_or 1 failed"));
         }
@@ -366,7 +371,9 @@ mod tests {
     // This uses SomeBits::b_xor, so only a basic test is done.
     #[test]
     fn test_m_xor() -> Result<(), String> {
-        let test_xor = SomeMask::new_from_string(2, "m0x6666").unwrap().m_xor(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
+        let test_xor = SomeMask::new_from_string(2, "m0x6666")
+            .unwrap()
+            .m_xor(&SomeMask::new_from_string(2, "m0xc37d").unwrap());
         if test_xor != SomeMask::new_from_string(2, "m0xa51b").unwrap() {
             return Err(format!("SomeMask::m_xor 1 failed"));
         }
@@ -395,7 +402,7 @@ mod tests {
     fn test_split() -> Result<(), String> {
         let test_msk = SomeMask::new_from_string(2, "m0x050a").unwrap();
         let one_bits: Vec<SomeMask> = test_msk.split();
-        
+
         assert!(one_bits.len() == 4);
         assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0400").unwrap()));
         assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0100").unwrap()));

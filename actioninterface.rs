@@ -1,9 +1,8 @@
+use crate::actions::take_action;
+use crate::mask::SomeMask;
 /// A filter between the internal states/functions, and a
 /// function that does something.
-
 use crate::state::SomeState;
-use crate::mask::SomeMask;
-use crate::actions::take_action;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -26,8 +25,12 @@ impl ActionInterface {
     /// Given a domain number, action number and domain current state,
     /// take an action, filter and massage as needed, return a new domain
     /// current state.
-    pub fn take_action(&mut self, dom_num: usize, act_num: usize, cur_state: &SomeState) -> SomeState {
-
+    pub fn take_action(
+        &mut self,
+        dom_num: usize,
+        act_num: usize,
+        cur_state: &SomeState,
+    ) -> SomeState {
         let amsk = self.ahash.get(&cur_state);
         let ret_state = take_action(dom_num, act_num, &cur_state, amsk);
         let dif = SomeMask::new(cur_state.bts.b_xor(&ret_state.bts));

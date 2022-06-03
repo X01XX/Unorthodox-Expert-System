@@ -75,7 +75,6 @@ impl ActionStore {
 
     /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
-
         // Run a thread for each action
         let mut stps: Vec<StepStore> = self
             .avec
@@ -96,9 +95,8 @@ impl ActionStore {
 
     /// Return the maximum reachable region for all actions
     pub fn get_aggregate_changes(&self, num_ints: usize) -> SomeChange {
-
         let mut agg_chg = SomeChange::new_low(num_ints);
-   
+
         // Or each action change
         for actx in self.avec.iter() {
             agg_chg = agg_chg.c_or(&actx.aggregate_changes);
@@ -106,7 +104,6 @@ impl ActionStore {
 
         agg_chg
     }
-
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

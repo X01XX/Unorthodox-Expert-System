@@ -13,10 +13,10 @@ use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use rayon::prelude::*;
-use std::fmt;
 use rand::Rng;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -63,7 +63,6 @@ impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(dom: usize, num_ints: usize, start_state: SomeState, optimal: RegionStore) -> Self {
-
         // Check that optimal regions, if any, are the same number of ints.
         for regx in optimal.iter() {
             assert!(regx.num_ints() == num_ints);
@@ -99,16 +98,15 @@ impl SomeDomain {
     /// Delete a region from the optimal region store.
     /// Return true if deleted.
     pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
-       if self.optimal.remove_region(areg) {
-           self.optimal_and_ints = self.optimal.and_intersections();
-           return true;
-       }
-       false
+        if self.optimal.remove_region(areg) {
+            self.optimal_and_ints = self.optimal.and_intersections();
+            return true;
+        }
+        false
     }
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-
         let actx = SomeAction::new(self.actions.len(), self.num_ints);
 
         self.actions.push(actx);
@@ -116,15 +114,12 @@ impl SomeDomain {
 
     /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
-
         // Get all changes that can be made, to avoid needs that have no chance
         // of being satisfied.
         // Sample the current state, for any reason, does not require any changes.
         let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
 
-        let mut nst = self
-            .actions
-            .get_needs(&self.cur_state, &agg_chgs, self.num);
+        let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num);
 
         if let Some(ndx) = self.check_optimal() {
             nst.push(ndx);
@@ -141,7 +136,6 @@ impl SomeDomain {
     /// Increment the boredom duration, if needed.
     /// Return a need to move to another optimal region, if needed.
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
-
         // Check if there are no optimal regions.
         if self.optimal_and_ints.len() == 0 {
             return None;
@@ -151,25 +145,30 @@ impl SomeDomain {
         // return a need to move to an optimal region.
         let sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
         if sups.len() == 0 {
-            let notsups = self.optimal_and_ints.not_supersets_of_state(&self.cur_state);
+            let notsups = self
+                .optimal_and_ints
+                .not_supersets_of_state(&self.cur_state);
             let inx = rand::thread_rng().gen_range(0, notsups.len());
             return Some(SomeNeed::ToRegion {
-                    dom_num: self.num,
-                    act_num: 0,
-                    goal_reg: notsups[inx].clone(),
-                });
+                dom_num: self.num,
+                act_num: 0,
+                goal_reg: notsups[inx].clone(),
+            });
         }
 
         // Get the optimal regions the current state is not in.
-        let mut notsups = self.optimal_and_ints.not_supersets_of_state(&self.cur_state);
+        let mut notsups = self
+            .optimal_and_ints
+            .not_supersets_of_state(&self.cur_state);
         if notsups.len() == 0 {
             return None;
         }
 
         self.boredom += 1;
 
-        if self.boredom > (3 * sups.len()) { // Boredom action trigger.
-                
+        if self.boredom > (3 * sups.len()) {
+            // Boredom action trigger.
+
             // Get intersections, if any.
             notsups = notsups.and_intersections();
 
@@ -180,7 +179,11 @@ impl SomeDomain {
             // Random selections may allow an accessable region to be chosen, eventually.
             // A previously unaccessable region may be come accessable with new rules.
             let inx = rand::thread_rng().gen_range(0, notsups.len());
-            return Some(SomeNeed::ToRegion { dom_num: self.num, act_num: 0, goal_reg: notsups[inx].clone() });
+            return Some(SomeNeed::ToRegion {
+                dom_num: self.num,
+                act_num: 0,
+                goal_reg: notsups[inx].clone(),
+            });
         }
 
         None
@@ -208,7 +211,6 @@ impl SomeDomain {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-
         let act_num = ndx.act_num();
 
         let astate = self.actions[ndx.act_num()].take_action(self.num, &self.cur_state);
@@ -221,7 +223,6 @@ impl SomeDomain {
     /// Take an action with the current state.
     /// A sample made for a rule-path should not be saved if the result is expected.
     pub fn take_action(&mut self, act_num: usize) {
-
         let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
 
         self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
@@ -269,12 +270,14 @@ impl SomeDomain {
         }
 
         if pln.initial_region().is_superset_of_state(&self.cur_state) == false {
-            println!("\nCurrent state {} is not in the start region of plan {}", &self.cur_state, &pln);
+            println!(
+                "\nCurrent state {} is not in the start region of plan {}",
+                &self.cur_state, &pln
+            );
             return;
         }
 
         for stpx in pln.iter() {
-
             let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
 
             self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
@@ -306,12 +309,9 @@ impl SomeDomain {
 
             println!(
                 "\nChange [{} -{:02}> {}] unexpected, expected {}",
-                &prev_state,
-                &stpx.act_num,
-                &self.cur_state,
-                stpx,
+                &prev_state, &stpx.act_num, &self.cur_state, stpx,
             );
-                    
+
             // Try re-plan to goal
             if pln.result_region().is_superset_of_state(&self.cur_state) {
                 println!("The unexpected result is in the goal region");
@@ -346,17 +346,17 @@ impl SomeDomain {
     ///
     /// If all steps found, in aggregate, cannot change all bits needed, return None.
     ///
-    /// The steps are split up into a vector of step vectors, each step vector has steps that change a 
+    /// The steps are split up into a vector of step vectors, each step vector has steps that change a
     /// particular needed-change bit.  Often, there will only be one step in a step vector.
     ///
     /// Steps that make more than one needed bit change will be in multiple step vectors.
     ///
     /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
-    /// needs to be backed off to run any step in the other step vector.  If any such pair, return None. 
+    /// needs to be backed off to run any step in the other step vector.  If any such pair, return None.
     ///
     /// All step vectors are checked for the circumstance that all steps have an initial-region that is not a
     /// superset of the from-region, and the result-region does not intersect the goal-region.
-    /// 
+    ///
     /// If no step vetors are found in the above step, all step vectors are considered to be selected.
     ///
     /// Find the minimum number of steps for all the selected step vectors.
@@ -367,8 +367,12 @@ impl SomeDomain {
     ///
     /// For the selected step, do Forward Chaining, Backward Chaining, or Asymmetric Chaining, as needed.
     ///
-    pub fn random_depth_first_search(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
-
+    pub fn random_depth_first_search(
+        &self,
+        from_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        depth: usize,
+    ) -> Option<StepStore> {
         if let Some(steps) = self.random_depth_first_search2(from_reg, goal_reg, depth) {
             if let Some(steps2) = steps.shortcuts() {
                 return Some(steps2);
@@ -378,9 +382,14 @@ impl SomeDomain {
         None
     }
 
-    pub fn random_depth_first_search2(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion, depth: usize) -> Option<StepStore> {
+    pub fn random_depth_first_search2(
+        &self,
+        from_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        depth: usize,
+    ) -> Option<StepStore> {
         //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
-        
+
         // Check if from_reg is at the goal, no steps are needed.
         if goal_reg.is_superset_of(from_reg) {
             //println!("from {} subset goal {} ?", from_reg, goal_reg);
@@ -423,7 +432,8 @@ impl SomeDomain {
         }
 
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let steps_by_change_vov: Vec<Vec<&SomeStep>> = steps_str.steps_by_change_bit(&required_change);
+        let steps_by_change_vov: Vec<Vec<&SomeStep>> =
+            steps_str.steps_by_change_bit(&required_change);
 
         // Check if any pair of single-bit changes, all steps, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
@@ -432,15 +442,14 @@ impl SomeDomain {
         }
 
         // Check for single-bit vectors where no rules have an initial-region that
-        // is a superset of the from-region, and the result-region does not intersect the 
+        // is a superset of the from-region, and the result-region does not intersect the
         // goal-region.
         let mut asym_inx = Vec::<usize>::new();
         let mut inx = 0;
         for vecx in steps_by_change_vov.iter() {
             let mut no_asym = true;
             for stepx in vecx.iter() {
-                if stepx.initial.is_superset_of(from_reg) ||
-                   stepx.result.intersects(goal_reg) {
+                if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
                     no_asym = false;
                     break;
                 }
@@ -495,7 +504,9 @@ impl SomeDomain {
         // Forward chaining
         if stepx.initial.is_superset_of(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
-            if let Some(next_steps) = self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1) {
+            if let Some(next_steps) =
+                self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
+            {
                 return StepStore::new_with_step(stepy).link(&next_steps);
             }
             return None;
@@ -504,16 +515,22 @@ impl SomeDomain {
         // Backward chaining
         if stepx.result.intersects(goal_reg) {
             let stepy = stepx.restrict_result_region(goal_reg);
-            if let Some(prev_steps) = self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1) {
+            if let Some(prev_steps) =
+                self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1)
+            {
                 return prev_steps.link(&StepStore::new_with_step(stepy));
             }
             return None;
         }
-        
+
         // Asymmetrical chaining
-        if let Some(first_steps) = self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1) {
+        if let Some(first_steps) =
+            self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
+        {
             let stepy = stepx.restrict_initial_region(&first_steps.result());
-            if let Some(next_steps) = self.random_depth_first_search(&stepy.result, goal_reg, depth - 1) {
+            if let Some(next_steps) =
+                self.random_depth_first_search(&stepy.result, goal_reg, depth - 1)
+            {
                 if let Some(steps1) = first_steps.link(&StepStore::new_with_step(stepy)) {
                     return steps1.link(&next_steps);
                 }
@@ -544,10 +561,14 @@ impl SomeDomain {
         let num_depth = 3 * required_change.number_changes();
 
         let mut plans = (0..6)
-                .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                .filter_map(|_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth)
-                                      { Some(x) => Some(SomePlan::new(x)), None => None })
-                .collect::<Vec<SomePlan>>();
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(
+                |_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
+                    Some(x) => Some(SomePlan::new(x)),
+                    None => None,
+                },
+            )
+            .collect::<Vec<SomePlan>>();
 
         // Return one of the plans, avoiding the need to clone.
         if plans.len() == 1 {
@@ -601,7 +622,6 @@ impl SomeDomain {
     /// Left-most, consecutive, zeros can be omitted.
     /// Returns an error if the string is bad or no action exists of that number.
     pub fn act_num_from_string(&self, str_num: &str) -> Result<usize, String> {
-
         match str_num.parse::<usize>() {
             Ok(act_num) => {
                 if act_num >= self.num_actions() {
@@ -615,9 +635,8 @@ impl SomeDomain {
         }
     } // end act_num_from_string
 
-
     /// Return the index value of a chosen Plan
-    fn choose_a_plan(&self, ret_plans: &Vec::<SomePlan>) -> usize {
+    fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
         assert!(ret_plans.len() > 0);
 
         if ret_plans.len() == 1 {
@@ -639,14 +658,16 @@ impl SomeDomain {
         // Length of plan is rated inversely
         let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
         for rets in ret_plans.iter() {
-
             // Rate the length of the plan
             let mut rate = max_len - rets.len() + 10;
 
             // Check for steps that may have two results
             for stpx in rets.iter() {
                 if stpx.alt_rule {
-                    if let Some(sqrx) = self.actions[stpx.act_num].squares.find(&stpx.initial.state1) {
+                    if let Some(sqrx) = self.actions[stpx.act_num]
+                        .squares
+                        .find(&stpx.initial.state1)
+                    {
                         // For an alternating square, you want the most recent result to be NEQ the desired next result.
                         if *sqrx.most_recent_result() == stpx.result.state1 {
                             if rate > 1 {
@@ -676,7 +697,7 @@ impl SomeDomain {
             }
         }
 
-        // Gather highest rated plan indexes 
+        // Gather highest rated plan indexes
         let mut inx_ary = Vec::<usize>::new();
         let mut inx = 0;
         for rets in rates_vec.iter() {
@@ -692,18 +713,18 @@ impl SomeDomain {
         }
         return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
     } // end choose_a_plan
-
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to
 /// github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
-fn ptr_eq<T>(a: *const T, b: *const T) -> bool { a == b }
+fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
+    a == b
+}
 
 /// Return true if any single-bit change vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
-
     for inx in 0..(by_change.len() - 1) {
-        for iny in (inx+1)..by_change.len() {
+        for iny in (inx + 1)..by_change.len() {
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
             for refx in by_change[inx].iter() {
                 for refy in by_change[iny].iter() {
@@ -725,18 +746,23 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 
 #[cfg(test)]
 mod tests {
-    use crate::mask::SomeMask;
     use crate::change::SomeChange;
-    use crate::state::SomeState;
-    use crate::region::SomeRegion;
     use crate::domain::SomeDomain;
+    use crate::mask::SomeMask;
+    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
-    
-    // Test a simple four-step plan to change the domain current state 
+    use crate::state::SomeState;
+
+    // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
     #[test]
     fn make_plan_direct() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -759,7 +785,7 @@ mod tests {
 
         // Create group for region XXXX, Act 3.
         dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
-        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3]));    // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3])); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s111").unwrap());
@@ -789,7 +815,12 @@ mod tests {
     // then step back into the glide path to get to the goal.
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -843,20 +874,30 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
 
         assert!(nds1.len() == 1);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
+        );
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1);
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1").unwrap())
+        {
         } else {
             return Err("Group r1 not found ??".to_string());
         }
@@ -865,8 +906,11 @@ mod tests {
         // Current state changes to zero.
         let s1 = dm0.state_from_string("s1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![0]));
-        
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1").unwrap())
+        {
             return Err("Group r1  found ??".to_string());
         }
 
@@ -874,57 +918,83 @@ mod tests {
         let nds1 = dm0.get_needs();
 
         assert!(nds1.len() == 2);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap()));
+        assert!(
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
+        );
+        assert!(
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
+        );
 
         Ok(())
     }
 
     // Test additional_group_state_samples.
     #[test]
-    fn need_additional_group_state_samples()  -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+    fn need_additional_group_state_samples() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
 
         assert!(nds1.len() == 1);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
+        );
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1);
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1").unwrap()) {
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1").unwrap())
+        {
         } else {
             return Err("Group r1 not found ??".to_string());
         }
 
-       // Expand group
+        // Expand group
         let s2 = dm0.state_from_string("s10").unwrap();
         dm0.eval_sample_arbitrary(0, &s2, &s2);
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXX").unwrap()) {
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rXX").unwrap())
+        {
         } else {
             return Err("Group rXX not found ??".to_string());
         }
-        
+
         let nds2 = dm0.actions[0].additional_group_state_samples();
         println!("needs {}", nds2);
 
         assert!(nds2.len() == 2);
-        assert!(nds2.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
-        assert!(nds2.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds2.contains_similar_need(
+            "StateAdditionalSample",
+            &dm0.region_from_string("r1").unwrap()
+        ));
+        assert!(nds2.contains_similar_need(
+            "StateAdditionalSample",
+            &dm0.region_from_string("r10").unwrap()
+        ));
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(0, &s2, &s2);
-        
+
         let nds3 = dm0.actions[0].additional_group_state_samples();
         //println!("needs {}", nds3);
 
         assert!(nds3.len() == 1);
-        assert!(nds3.contains_similar_need("StateAdditionalSample", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds3.contains_similar_need(
+            "StateAdditionalSample",
+            &dm0.region_from_string("r1").unwrap()
+        ));
 
         // Satisfy second need.
         dm0.eval_sample_arbitrary(0, &s1, &s1);
@@ -945,8 +1015,12 @@ mod tests {
     // After two samples of each, it should produce the AddGroup need for 11X1.
     #[test]
     fn need_for_samples_in_adjacent_overlapping_part() -> Result<(), String> {
-
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -981,8 +1055,8 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
 
         // Add square to prevent squares (sc, s5) combining with squares (se, sb).
-        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
-        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2,1,0]));
+        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2, 1, 0]));
+        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2, 1, 0]));
 
         // Create group for region 1X1X.
         dm0.eval_sample_arbitrary(0, &se, &se);
@@ -1026,13 +1100,18 @@ mod tests {
     // Group X1XX intersects group XX0X at X10X.
     // The intersection is not wholly contradictory, as would be expected due to
     // the two groups being defined by a square, D, in X10X.
-    // The region X100 (4, C) in X10X is the contradictory part due to 
+    // The region X100 (4, C) in X10X is the contradictory part due to
     // different results expected from the least significant bit.
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
-        
+
         let s0 = dm0.state_from_string("s0").unwrap();
         let s6 = dm0.state_from_string("s110").unwrap();
         let sd = dm0.state_from_string("s1101").unwrap();
@@ -1051,7 +1130,10 @@ mod tests {
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
         assert!(nds1.len() == 1);
-        assert!(nds1.contains_similar_need("ContradictoryIntersection", &dm0.region_from_string("rX100").unwrap()));
+        assert!(nds1.contains_similar_need(
+            "ContradictoryIntersection",
+            &dm0.region_from_string("rX100").unwrap()
+        ));
 
         Ok(())
     }
@@ -1059,7 +1141,12 @@ mod tests {
     #[test]
     fn test_limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         // Set up two groups.
@@ -1075,24 +1162,35 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![3]));
 
         let sd = dm0.state_from_string("s1101").unwrap();
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0,1,3]));
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0,1,3]));
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0, 1, 3]));
+        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0, 1, 3]));
 
         let sa = dm0.state_from_string("s1010").unwrap();
-        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
-        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0,1,3]));
+        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0, 1, 3]));
+        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0, 1, 3]));
 
         println!("dm0 {}", &dm0.actions[0]);
 
         // Directly run limit_groups_needs.
-        let agg_chg = SomeChange::new(&SomeMask::new_from_string(1, "m1111").unwrap(), &SomeMask::new_from_string(1, "m1111").unwrap());
+        let agg_chg = SomeChange::new(
+            &SomeMask::new_from_string(1, "m1111").unwrap(),
+            &SomeMask::new_from_string(1, "m1111").unwrap(),
+        );
         let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
 
         // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
         println!("needs are {}", nds1);
         assert!(nds1.len() == 2);
-        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap()) || nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap()));
-        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()) || nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(
+            nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap())
+                || nds1
+                    .contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap())
+        );
+        assert!(
+            nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap())
+                || nds1
+                    .contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap())
+        );
 
         // Start homing in with sample of 5, adjacent, external, to D in 1XXX.
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -1130,11 +1228,16 @@ mod tests {
 
         Ok(())
     }
-    
-        // Test the expansion of a group with dissimilar external square.
+
+    // Test the expansion of a group with dissimilar external square.
     #[test]
     fn possible_regions_for_group_with_dis_sqrs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
@@ -1189,7 +1292,12 @@ mod tests {
     // Test the expansion of a group with a dissimilar adjacent square.
     #[test]
     fn possible_regions_for_group_with_adj_dis_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
@@ -1231,7 +1339,12 @@ mod tests {
     // Like when a limiting sample turns out to be similar instead of dissimilar.
     #[test]
     fn possible_regions_for_group_with_sim_adj_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let reg_xxx1 = dm0.region_from_string("rxxx1").unwrap();
@@ -1252,14 +1365,22 @@ mod tests {
         println!("domain: {}", dm0.actions);
 
         assert!(dm0.actions[0].groups.len() == 1);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) { true } else { false });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) {
+            true
+        } else {
+            false
+        });
 
         // Add similar square, 1, adjacent to 5
         dm0.eval_sample_arbitrary(0, &sq1, &sq1);
         println!("domain: {}", dm0.actions);
 
         assert!(dm0.actions[0].groups.len() == 1);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_xxx1) { true } else { false });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_xxx1) {
+            true
+        } else {
+            false
+        });
 
         Ok(())
     }
@@ -1267,7 +1388,12 @@ mod tests {
     // Test the expansion of a group with similar external square.
     #[test]
     fn possible_regions_for_group_with_sim_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let reg_11xx = dm0.region_from_string("r11xx").unwrap();
@@ -1275,7 +1401,7 @@ mod tests {
         let reg_x10x = dm0.region_from_string("rx10x").unwrap();
         let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
         let reg_xxxx = dm0.region_from_string("rxxxx").unwrap();
-        
+
         let sq5 = dm0.state_from_string("s101").unwrap();
 
         let sqc = dm0.state_from_string("s1100").unwrap();
@@ -1283,7 +1409,7 @@ mod tests {
         let sqf = dm0.state_from_string("s1111").unwrap();
 
         let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
-        
+
         let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
 
         // Form group r11xx
@@ -1298,9 +1424,21 @@ mod tests {
         println!("domain: {}", dm0.actions);
 
         assert!(dm0.actions[0].groups.len() == 3);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_11xx) { true } else { false });
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) { true } else { false });
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x10x) { true } else { false });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_11xx) {
+            true
+        } else {
+            false
+        });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) {
+            true
+        } else {
+            false
+        });
+        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x10x) {
+            true
+        } else {
+            false
+        });
 
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_11xx) {
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
@@ -1321,11 +1459,16 @@ mod tests {
     // Test the expansion of a group with no external squares.
     #[test]
     fn possible_regions_for_group_no_dis_or_sim_sqrs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
 
         let reg_110x = dm0.region_from_string("r110x").unwrap();
-        
+
         let sq0 = dm0.state_from_string("s0").unwrap();
 
         let sqc = dm0.state_from_string("s1100").unwrap();
@@ -1345,7 +1488,7 @@ mod tests {
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {
             // Test with 3-bit change mask
             let mut regs_found = RegionStore::with_capacity(6);
- 
+
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
             println!("for {} seek regs {}", &reg_sqd, &regs_exp);
             assert!(regs_exp.len() == 1);
@@ -1361,7 +1504,7 @@ mod tests {
 
             // Test with 3-bit change mask.
             let mut regs_found = RegionStore::with_capacity(3);
- 
+
             let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
             println!("for {} seek regs {}", &reg_sqd, &regs_exp);
             assert!(regs_exp.len() == 1);
@@ -1394,7 +1537,7 @@ mod tests {
             return Err(format!("Group r1101 not found!"));
         }
 
-        dm0.eval_sample_arbitrary(0, &sqc, &sq0);  // Group r110x
+        dm0.eval_sample_arbitrary(0, &sqc, &sq0); // Group r110x
 
         if let Some(grpx) = dm0.actions[0].groups.find(&reg_110x) {
             // Test region with 1 X, with 2-bit change mask.
@@ -1429,7 +1572,12 @@ mod tests {
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm1 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm1.add_action();
 
         let s5 = dm1.state_from_string("s101").unwrap();
@@ -1491,7 +1639,12 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(0, 1, SomeState::new_from_string(1, "s1").unwrap(), RegionStore::new());
+        let mut dm1 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm1.add_action();
 
         let s5 = dm1.state_from_string("s101").unwrap();
@@ -1534,8 +1687,8 @@ mod tests {
                     return Ok(());
                 }
             } else {
-                 //println!("\nActs: {}", &dm1.actions[0]);
-                 //println!("       Sqrs: ({})", dm1.actions[0].get_squares());
+                //println!("\nActs: {}", &dm1.actions[0]);
+                //println!("       Sqrs: ({})", dm1.actions[0].get_squares());
                 return Err(String::from("Group deleted too soon"));
             }
         } else {
@@ -1549,9 +1702,14 @@ mod tests {
     // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 2, SomeState::new_from_string(2, "s1").unwrap(), RegionStore::new());
+        let mut dm0 = SomeDomain::new(
+            0,
+            2,
+            SomeState::new_from_string(2, "s1").unwrap(),
+            RegionStore::new(),
+        );
         dm0.add_action();
-        
+
         let s0 = dm0.state_from_string("s0001010010101000").unwrap();
         let s1 = dm0.state_from_string("s1111010110101011").unwrap();
         // Region                        XXX1010X101010XX.
@@ -1560,12 +1718,14 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![4]));
         dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![4]));
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXXX1010X101010XX").unwrap()) {
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rXXX1010X101010XX").unwrap())
+        {
         } else {
             return Err("Group rXXX1010X101010XX not found ??".to_string());
         }
 
         Ok(())
     }
-
 } // end tests

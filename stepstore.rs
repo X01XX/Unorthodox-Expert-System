@@ -1,9 +1,9 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
-use crate::change::SomeChange;
 
 use std::fmt;
 use std::ops::Index;
@@ -34,9 +34,7 @@ impl StepStore {
     pub fn new_with_step(astep: SomeStep) -> Self {
         let mut vecx = Vec::<SomeStep>::with_capacity(2);
         vecx.push(astep);
-        Self {
-            avec: vecx,
-        }
+        Self { avec: vecx }
     }
 
     /// Return a new StepStore, empty, with an expected capacity.
@@ -88,7 +86,7 @@ impl StepStore {
     }
 
     /// Link two stepstores together, return Some(StepStore).
-    /// Restrict StepStores that have an intersection of the result and 
+    /// Restrict StepStores that have an intersection of the result and
     /// initial regions.
     /// Restricting the steps, forward and backward, from that intersection may
     /// cause a break in the path, which is why None may be returned.
@@ -103,15 +101,11 @@ impl StepStore {
         assert!(self.result().intersects(&other.initial()));
 
         // Restrict the StepStores, forward and backward.
-        if self.result()
-            .intersects(&other.initial())
-        {
-            let regx = self.result()
-                .intersection(&other.initial());
+        if self.result().intersects(&other.initial()) {
+            let regx = self.result().intersection(&other.initial());
 
             if let Some(mut steps1) = self.restrict_result_region(&regx) {
                 if let Some(mut steps2) = other.restrict_initial_region(&regx) {
-
                     steps1.append(&mut steps2);
 
                     //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
@@ -171,7 +165,6 @@ impl StepStore {
 
     /// Return a new Some(StepStore) after restricting the initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
-
         let mut rc_steps = StepStore::with_capacity(self.len());
 
         let mut regy = regx.clone();
@@ -192,7 +185,6 @@ impl StepStore {
 
     /// Return a new Some(StepStore) after restricting the result region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
-
         let mut rc_steps = StepStore::with_capacity(self.len());
 
         let mut regy = regx.clone();
@@ -219,7 +211,7 @@ impl StepStore {
 
         Some(rc_steps)
     }
-    
+
     pub fn initial(&self) -> SomeRegion {
         assert!(self.len() > 0);
         self[0].initial.clone()
@@ -234,7 +226,6 @@ impl StepStore {
     /// where the sub-vectors indicate a single bit change that is required.
     /// Note that a step that changes more than one bit may end up in more than one sub-vector.
     pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
-
         let mut b01 = Vec::<SomeMask>::new();
 
         if required_change.b01.is_not_low() {
@@ -263,11 +254,9 @@ impl StepStore {
 
         // Add step index numbers to the return vector.
         for stepx in self.avec.iter() {
-
             // Check for matching b01 changes
             let mut b01_inx = 0;
             for b01x in b01.iter() {
-
                 if stepx.rule.b01.m_and(b01x).is_not_low() {
                     ret_vec[b01_inx].push(stepx);
                 }
@@ -278,14 +267,12 @@ impl StepStore {
             // Check for matching b10 changes
             let mut b10_inx = b01_len;
             for b10x in b10.iter() {
-
                 if stepx.rule.b10.m_and(b10x).is_not_low() {
                     ret_vec[b10_inx].push(stepx);
                 }
 
                 b10_inx += 1;
             } // next b01x
-
         } // next stepx
 
         ret_vec
@@ -293,7 +280,6 @@ impl StepStore {
 
     // Return aggregate changes
     pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
-
         let mut schg = SomeChange::new_low(num_ints);
         for stpx in &self.avec {
             schg = schg.c_or(&stpx.rule.change());
@@ -309,7 +295,7 @@ impl StepStore {
         }
 
         // CHeck for repeating initial region
-        let mut reg_inx = Vec::<(SomeRegion, Vec::<usize>)>::new();
+        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
             let initx = self[inx].initial.clone();
             let mut found = false;
@@ -334,7 +320,7 @@ impl StepStore {
                     steps2 = StepStore::new();
                     let mut inx = 0;
                     for stepx in self.iter() {
-                        if inx < tupx.1[0] || inx >= tupx.1[1] { 
+                        if inx < tupx.1[0] || inx >= tupx.1[1] {
                             steps2.push(stepx.clone());
                         }
                         inx += 1;
@@ -342,17 +328,16 @@ impl StepStore {
                     // Remove shortcuts recursively, one by one.
                     //println!("shortcut step2 {}", steps2);
                     if let Some(steps3) = steps2.shortcuts() {
-                        
                         return Some(steps3);
                     }
-                 
+
                     return Some(steps2);
                 }
             }
         }
 
         // Check for repeating result
-        let mut reg_inx = Vec::<(SomeRegion, Vec::<usize>)>::new();
+        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
             let rsltx = self[inx].result.clone();
             let mut found = false;
@@ -377,7 +362,7 @@ impl StepStore {
                     steps2 = StepStore::new();
                     let mut inx = 0;
                     for stepx in self.iter() {
-                        if inx <= tupx.1[0] || inx > tupx.1[1] { 
+                        if inx <= tupx.1[0] || inx > tupx.1[1] {
                             steps2.push(stepx.clone());
                         }
                         inx += 1;
@@ -385,7 +370,6 @@ impl StepStore {
                     // Remove shortcuts recursively, one by one.
                     //println!("shortcut step2 {}", steps2);
                     if let Some(steps3) = steps2.shortcuts() {
-                        
                         return Some(steps3);
                     }
                     return Some(steps2);
@@ -395,7 +379,6 @@ impl StepStore {
 
         None
     }
-
 } // end impl StepStore
 
 impl Index<usize> for StepStore {
@@ -442,7 +425,7 @@ mod tests {
         let mut stp_str2 = StepStore::with_capacity(2);
         stp_str2.push(step4);
         stp_str2.push(step5);
-        
+
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
 
@@ -451,7 +434,7 @@ mod tests {
         assert!(stp_str3.len() == 4);
         assert!(stp_str3.initial() == SomeRegion::new_from_string(1, "r010x").unwrap());
         assert!(stp_str3.result() == reg6);
-        
+
         let stp_str4 = stp_str2.link(&stp_str1).unwrap();
         println!("stp4 {}", &stp_str4);
         assert!(stp_str4.len() == 4);

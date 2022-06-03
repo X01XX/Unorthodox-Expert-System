@@ -1,8 +1,8 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
 use crate::region::SomeRegion;
-use crate::state::SomeState;
 use crate::removeunordered::remove_unordered;
+use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -69,7 +69,6 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-
         for regx in &self.avec {
             if regx.is_superset_of(&reg) {
                 return true;
@@ -80,7 +79,6 @@ impl RegionStore {
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
-
         for regx in &self.avec {
             if regx.is_subset_of(&reg) {
                 return true;
@@ -91,7 +89,6 @@ impl RegionStore {
 
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
-
         for regx in &self.avec {
             if regx.intersects(&reg) {
                 return true;
@@ -102,7 +99,6 @@ impl RegionStore {
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
-
         for regx in &self.avec {
             if regx.is_superset_of_state(&sta) {
                 return true;
@@ -113,7 +109,6 @@ impl RegionStore {
 
     /// Return a RegionStore of supersets of a state.
     pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
-
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
@@ -126,7 +121,6 @@ impl RegionStore {
 
     /// Return a RegionStore of not supersets of a state.
     pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
-
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
@@ -159,7 +153,6 @@ impl RegionStore {
 
     /// Find and remove a given region.
     pub fn remove_region(&mut self, reg: &SomeRegion) -> bool {
-
         // Find a matching region
         let mut fnd = false;
         let mut inx = 0;
@@ -182,7 +175,6 @@ impl RegionStore {
 
     /// Add a region, removing subset (and equal) regions.
     pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
-
         if self.contains(&reg) {
             return false;
         }
@@ -194,7 +186,6 @@ impl RegionStore {
 
     /// Add a region, removing subset (and equal) regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
-
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
@@ -223,7 +214,6 @@ impl RegionStore {
 
     /// Add a region, removing superset (and equal) regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
-
         // Check for subsets, which probably is an error
         if self.any_subset_of(&reg) {
             // println!("skipped adding region {}, a superset exists", reg.str());
@@ -273,7 +263,6 @@ impl RegionStore {
         rc_str.push('[');
 
         for regx in &self.avec {
-
             if flg == 1 {
                 rc_str.push_str(", ");
             }
@@ -287,25 +276,24 @@ impl RegionStore {
     }
 
     // Return the result of intersectong two region stores
-//    pub fn intersection(&self, other: &RegionStore) -> Self {
-//
-//        let mut ret_store = Self::new();
-//
-//        for regx in self.iter() {
-//
-//            for regy in other.iter() {
-//
-//                if regx.intersects(&regy) {
-//                    ret_store.push_nosubs(regx.intersection(&regy));
-//                }
-//            }
-//        }
-//        ret_store
-//    }
+    //    pub fn intersection(&self, other: &RegionStore) -> Self {
+    //
+    //        let mut ret_store = Self::new();
+    //
+    //        for regx in self.iter() {
+    //
+    //            for regy in other.iter() {
+    //
+    //                if regx.intersects(&regy) {
+    //                    ret_store.push_nosubs(regx.intersection(&regy));
+    //                }
+    //            }
+    //        }
+    //        ret_store
+    //    }
 
     // Return the union of regions in the store
     pub fn union(&self) -> Option<SomeRegion> {
-
         if self.len() == 0 {
             return None;
         }
@@ -342,9 +330,8 @@ impl RegionStore {
 
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, other: &RegionStore) -> RegionStore {
-        
         let mut ret_str = self.clone();
-        
+
         for regx in other.iter() {
             if ret_str.any_intersection(regx) {
                 ret_str = ret_str.subtract_region(regx);
@@ -372,13 +359,13 @@ impl RegionStore {
             // Get the next round of intersections, by comparing all possible
             // combinations of two regions.
 
-            let limit = ret_str.len();  // Only consider current items, not additions made below.
+            let limit = ret_str.len(); // Only consider current items, not additions made below.
 
-            for inx1 in 0..(limit-1) {  // Skip the last item, it does not have a next item to compare with.
+            for inx1 in 0..(limit - 1) {
+                // Skip the last item, it does not have a next item to compare with.
 
                 // Compare the current inx1 item with all next items.
                 for inx2 in (inx1 + 1)..limit {
-
                     if ret_str[inx1].intersects(&ret_str[inx2]) == false {
                         continue;
                     }
@@ -395,7 +382,7 @@ impl RegionStore {
                 } // next inx2
             } // next inx1
         } // end while
-        
+
         //println!("and_intersections: returning {} for {}", &ret_str, &self);
         ret_str
     }
@@ -451,9 +438,9 @@ impl Clone for RegionStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::SomeState;
     use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
+    use crate::state::SomeState;
 
     #[test]
     fn test_and_intersections() -> Result<(), String> {
@@ -464,7 +451,7 @@ mod tests {
         regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
-    
+
         let reg_ints = regstr.and_intersections();
         println!("results {}", reg_ints);
 
@@ -477,20 +464,19 @@ mod tests {
 
     #[test]
     fn test_number_squares() -> Result<(), String> {
+        let mut regstr = RegionStore::with_capacity(4);
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        // Intersections, 0x01, 01x1.
+        // Intersections of intersections, 0101.
 
-    let mut regstr = RegionStore::with_capacity(4);
-    regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-    regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-    regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-    regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-    // Intersections, 0x01, 01x1.
-    // Intersections of intersections, 0101.
-    
-    let num_sqrs = regstr.number_squares();
-    println!("results {}", num_sqrs);
+        let num_sqrs = regstr.number_squares();
+        println!("results {}", num_sqrs);
 
-    assert!(num_sqrs == 9);
-    Ok(())
+        assert!(num_sqrs == 9);
+        Ok(())
     }
 
     #[test]
@@ -547,10 +533,10 @@ mod tests {
         let mut regstr2 = RegionStore::with_capacity(2);
         regstr2.push(SomeRegion::new_from_string(1, "r01x1").unwrap());
         regstr2.push(SomeRegion::new_from_string(1, "r0x01").unwrap());
-        
+
         let regstr3 = regstr.subtract(&regstr2);
         println!("regstr3: {}", &regstr3);
-        
+
         assert!(regstr3.len() == 5);
         assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0x00").unwrap()));
         assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0011").unwrap()));
@@ -631,7 +617,9 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0100").unwrap()));
-        assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0111").unwrap()) == false);
+        assert!(
+            regstr.state_in_1_region(&SomeState::new_from_string(1, "s0111").unwrap()) == false
+        );
         Ok(())
     }
 
@@ -646,7 +634,8 @@ mod tests {
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        let regstr2 = regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0111").unwrap());
+        let regstr2 =
+            regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0111").unwrap());
         println!("not supersets {}", &regstr2);
 
         assert!(regstr2.len() == 2);
@@ -687,7 +676,9 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0111").unwrap()));
-        assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s1011").unwrap()) == false);
+        assert!(
+            regstr.any_superset_of_state(&SomeState::new_from_string(1, "s1011").unwrap()) == false
+        );
         Ok(())
     }
 
@@ -703,7 +694,9 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_intersection(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
-        assert!(regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1").unwrap()) == false);
+        assert!(
+            regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1").unwrap()) == false
+        );
         Ok(())
     }
 

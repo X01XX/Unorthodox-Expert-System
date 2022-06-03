@@ -1,17 +1,15 @@
-
 // Return a vector of vectors, any x of 0-to-n numbers, order does not matter.
 // These canbe used as indicies into a vector of items.
 //##########################################################################
-pub fn any_x_of_n(num_items: usize, limit: usize) -> Vec::<Vec::<usize>> {
-
+pub fn any_x_of_n(num_items: usize, limit: usize) -> Vec<Vec<usize>> {
     assert!(num_items <= limit);
 
     if num_items == 0 {
-        return Vec::<Vec::<usize>>::new();
+        return Vec::<Vec<usize>>::new();
     }
 
     if num_items == 1 {
-        let mut ret_vec = Vec::<Vec::<usize>>::new();
+        let mut ret_vec = Vec::<Vec<usize>>::new();
         for i in 0..limit {
             let mut listx = Vec::<usize>::with_capacity(num_items);
             listx.push(i);
@@ -27,7 +25,7 @@ pub fn any_x_of_n(num_items: usize, limit: usize) -> Vec::<Vec::<usize>> {
     }
 
     if num_items == limit {
-        let mut ret_vec = Vec::<Vec::<usize>>::new();
+        let mut ret_vec = Vec::<Vec<usize>>::new();
         ret_vec.push(listx);
         return ret_vec;
     }
@@ -44,20 +42,18 @@ pub fn any_x_of_n(num_items: usize, limit: usize) -> Vec::<Vec::<usize>> {
 // =  (a, b, c) (a, b, d) (a, c, d) (b, c, d)
 //
 //######################################################################
-pub fn any_x_of_n2(num_items: usize, listy: &Vec<usize>, listx: &Vec<usize>) -> Vec::<Vec<usize>> {
-
-    let mut ret_vec = Vec::<Vec::<usize>>::new();
+pub fn any_x_of_n2(num_items: usize, listy: &Vec<usize>, listx: &Vec<usize>) -> Vec<Vec<usize>> {
+    let mut ret_vec = Vec::<Vec<usize>>::new();
 
     if num_items < 1 || num_items > listx.len() {
-       ret_vec.push(listy.to_vec());
-       return ret_vec;
+        ret_vec.push(listy.to_vec());
+        return ret_vec;
     }
 
     let numx = listx.len() - num_items;
 
     for x in 0..(numx + 1) {
-
-        let toright = &listx[x+1..].to_vec();
+        let toright = &listx[x + 1..].to_vec();
 
         let listz = &mut listy[0..].to_vec();
 
@@ -74,6 +70,3 @@ pub fn any_x_of_n2(num_items: usize, listy: &Vec<usize>, listx: &Vec<usize>) -> 
 
     ret_vec
 }
-
-
-

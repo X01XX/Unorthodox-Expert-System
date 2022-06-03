@@ -119,7 +119,7 @@ impl SomePlan {
 
             let dif_bits2 = stpx.result.diff_mask(&self.steps[inx_end].result);
             let dif_num2 = dif_bits2.num_one_bits();
-    
+
             rc_str.push_str(&format!(
                 "{} Action {:02} Group {} Rule {} #dif: {} {} to #dif: {} {}\n{}\n",
                 &stpx.initial,

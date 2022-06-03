@@ -101,7 +101,6 @@ mod tests {
     // Should be F < M < T
     #[test]
     fn truth_comparisons() -> Result<(), String> {
-
         assert!(Truth::T.partial_cmp(&Truth::T).unwrap() == Ordering::Equal);
         assert!(Truth::T.partial_cmp(&Truth::M).unwrap() == Ordering::Greater);
         assert!(Truth::T.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);

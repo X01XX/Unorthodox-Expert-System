@@ -1,8 +1,8 @@
 //! The SomeStep struct.  Indicates an initial region, and action, and a result region..
 
+use crate::change::SomeChange;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::change::SomeChange;
 
 use std::fmt;
 
@@ -90,10 +90,8 @@ impl SomeStep {
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &SomeStep, wanted: &SomeChange) -> bool {
-
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
-
 } // end impl SomeStep
 
 impl Clone for SomeStep {

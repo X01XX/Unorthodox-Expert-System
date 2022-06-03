@@ -3,10 +3,10 @@
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
+use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-use crate::removeunordered::remove_unordered;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -19,7 +19,6 @@ impl fmt::Display for GroupStore {
         let mut rc_str = String::new();
 
         for grpx in &self.avec {
-
             if flg == 1 {
                 rc_str.push_str(",\n              ");
             }
@@ -48,16 +47,20 @@ impl GroupStore {
 
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
-    pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize, squares: &SquareStore) -> RegionStore {
+    pub fn check_square(
+        &mut self,
+        sqrx: &SomeSquare,
+        dom: usize,
+        act: usize,
+        squares: &SquareStore,
+    ) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
         let mut rmvec = Vec::<usize>::new();
         let mut inx = 0;
 
         for grpx in &mut self.avec {
-
             if grpx.region.is_superset_of_state(&sqrx.state) {
-
                 if grpx.check_square(&sqrx, squares) == false {
                     if sqrx.results.pn > grpx.pn {
                         println!(
@@ -72,7 +75,12 @@ impl GroupStore {
                     } else {
                         println!(
                             "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
-                            dom, act, sqrx.state, sqrx.rules.formatted_string() , &grpx.region, grpx.rules.formatted_string()
+                            dom,
+                            act,
+                            sqrx.state,
+                            sqrx.rules.formatted_string(),
+                            &grpx.region,
+                            grpx.rules.formatted_string()
                         );
                     }
 
@@ -85,7 +93,10 @@ impl GroupStore {
 
         // Remove the groups
         for inx in rmvec.iter().rev() {
-            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!(
+                "\nDom {} Act {} Group {} deleted",
+                dom, act, self.avec[*inx].region
+            );
             remove_unordered(&mut self.avec, *inx);
         }
 
@@ -107,7 +118,6 @@ impl GroupStore {
 
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-
         for grpx in &self.avec {
             if grpx.region.is_superset_of(&reg) {
                 return true;
@@ -128,7 +138,6 @@ impl GroupStore {
 
     /// Return regions of any group is a superset, or equal, to a region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
-
         let mut rs = RegionStore::new();
 
         for grpx in &self.avec {
@@ -139,32 +148,31 @@ impl GroupStore {
         rs
     }
 
-//    /// Find and remove a given group, identified by region.
-//    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
-//
-//        // Find a matching grop region
-//        let mut fnd = false;
-//        let mut inx = 0;
-//
-//        for grpx in &mut self.avec {
-//            if grpx.region == *reg {
-//                fnd = true;
-//                break;
-//            }
-//            inx += 1;
-//        }
-//
-//        // Remove the group
-//        if fnd {
-//            remove_unordered(&mut self.avec, inx);
-//        }
-//
-//        fnd
-//    }
+    //    /// Find and remove a given group, identified by region.
+    //    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
+    //
+    //        // Find a matching grop region
+    //        let mut fnd = false;
+    //        let mut inx = 0;
+    //
+    //        for grpx in &mut self.avec {
+    //            if grpx.region == *reg {
+    //                fnd = true;
+    //                break;
+    //            }
+    //            inx += 1;
+    //        }
+    //
+    //        // Remove the group
+    //        if fnd {
+    //            remove_unordered(&mut self.avec, inx);
+    //        }
+    //
+    //        fnd
+    //    }
 
     /// Find and remove any subset groups.
     fn remove_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {
-
         // Accumulate indicies of groups that are subsets
         let mut rmvec = Vec::<usize>::new();
         let mut inx = 0;
@@ -177,7 +185,10 @@ impl GroupStore {
 
         // Remove the groups
         for inx in rmvec.iter().rev() {
-            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!(
+                "\nDom {} Act {} Group {} deleted",
+                dom, act, self.avec[*inx].region
+            );
             remove_unordered(&mut self.avec, *inx);
         }
 
@@ -186,7 +197,6 @@ impl GroupStore {
 
     /// Add a group.
     pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
-
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
             let regs = self.supersets_of(&grp.region);
@@ -216,14 +226,11 @@ impl GroupStore {
         dom: usize,
         act: usize,
     ) -> usize {
-
         let mut rmvec = Vec::<usize>::new();
         let mut inx = 0;
 
         for grpx in &mut self.avec {
-
             if grpx.region.is_superset_of_state(&init) {
-
                 if !grpx.check_sample(&init, &rslt) {
                     rmvec.push(inx);
                 }
@@ -232,7 +239,10 @@ impl GroupStore {
         }
 
         for inx in rmvec.iter().rev() {
-            println!("\nDom {} Act {} Group {} deleted", dom, act, self.avec[*inx].region);
+            println!(
+                "\nDom {} Act {} Group {} deleted",
+                dom, act, self.avec[*inx].region
+            );
             remove_unordered(&mut self.avec, *inx);
         }
 
@@ -255,9 +265,9 @@ impl GroupStore {
     }
 
     /// Return an iterator
-//    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
-//        self.avec.iter_mut()
-//    }
+    //    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
+    //        self.avec.iter_mut()
+    //    }
 
     /// Return the number of groups.
     pub fn len(&self) -> usize {
@@ -266,7 +276,6 @@ impl GroupStore {
 
     /// Find a group that matches a region, return a mutable reference.
     pub fn find_mut(&mut self, val: &SomeRegion) -> Option<&mut SomeGroup> {
-
         for grpx in &mut self.avec {
             if grpx.region == *val {
                 return Some(grpx);
@@ -277,7 +286,6 @@ impl GroupStore {
 
     /// Find a group that matches a region, return a reference.
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
-
         for grpx in &self.avec {
             if grpx.region == *val {
                 return Some(grpx);
@@ -285,7 +293,6 @@ impl GroupStore {
         }
         None
     }
-
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

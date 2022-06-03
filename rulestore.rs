@@ -30,8 +30,6 @@ impl fmt::Display for RuleStore {
 
 impl PartialEq for RuleStore {
     fn eq(&self, other: &Self) -> bool {
-        
-
         if self.len() != other.len() {
             return false;
         }
@@ -39,7 +37,7 @@ impl PartialEq for RuleStore {
         if self.initial_region() != other.initial_region() {
             return false;
         }
-        
+
         if self.len() == 1 {
             return self.avec[0] == other.avec[0];
         }
@@ -54,7 +52,7 @@ impl PartialEq for RuleStore {
                 if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
                     return true;
                 }
-                
+
                 return false;
             }
 
@@ -83,15 +81,23 @@ impl RuleStore {
 
     /// Return if a square result rulestore is valid
     pub fn is_valid(&self) -> bool {
-        if self.len() == 0 { return true; }
+        if self.len() == 0 {
+            return true;
+        }
 
-        if self.len() == 1 { return self.avec[0].is_valid(); } // single rule is valid, or not
+        if self.len() == 1 {
+            return self.avec[0].is_valid();
+        } // single rule is valid, or not
 
-        if self.len() > 2 { return false; }
+        if self.len() > 2 {
+            return false;
+        }
 
         // Length must be 2.  The two rules are different and the initial regions are the same, or not.
-        self.avec[0].is_valid() && self.avec[1].is_valid() &&
-        self.avec[0] != self.avec[1] && self.avec[0].initial_region() == self.avec[1].initial_region()
+        self.avec[0].is_valid()
+            && self.avec[1].is_valid()
+            && self.avec[0] != self.avec[1]
+            && self.avec[0].initial_region() == self.avec[1].initial_region()
     }
 
     /// Return the length of a RuleStore.
@@ -145,15 +151,17 @@ impl RuleStore {
             }
 
             if self.first().is_subset_of(&other.first())
-                    && self.second().is_subset_of(&other.second()) {
+                && self.second().is_subset_of(&other.second())
+            {
                 return true;
             }
 
             if self.first().is_subset_of(&other.second())
-                    && self.second().is_subset_of(&other.first()) {
+                && self.second().is_subset_of(&other.first())
+            {
                 return true;
             }
-            
+
             return false;
         }
 
@@ -243,8 +251,11 @@ impl RuleStore {
 
             let rul0 = self.avec[0].union(&other.avec[0]);
             let rul1 = self.avec[1].union(&other.avec[1]);
- 
-            if rul0.is_valid_union() && rul1.is_valid_union() && rul0.initial_region() == rul1.initial_region() {
+
+            if rul0.is_valid_union()
+                && rul1.is_valid_union()
+                && rul0.initial_region() == rul1.initial_region()
+            {
                 ordera = true;
             }
 
@@ -253,7 +264,10 @@ impl RuleStore {
             let rul2 = self.avec[0].union(&other.avec[1]);
             let rul3 = self.avec[1].union(&other.avec[0]);
 
-            if rul2.is_valid_union() && rul3.is_valid_union() && rul2.initial_region() == rul3.initial_region() {
+            if rul2.is_valid_union()
+                && rul3.is_valid_union()
+                && rul2.initial_region() == rul3.initial_region()
+            {
                 orderb = true;
             }
 
@@ -266,7 +280,7 @@ impl RuleStore {
             // which presents problems for future unions, intersections and equality tests.
             //
             // You could choose only one of the two options, I prefer (XX, Xx), but if there are two such alternating positions,
-            // you may have to decide between a wrong choice, and a wrong choice. 
+            // you may have to decide between a wrong choice, and a wrong choice.
             //
             // Disallowing this kind of union can be seen as preventing an X initial bit in that position.
             if ordera && orderb {
@@ -317,7 +331,7 @@ impl RuleStore {
                     return Some(ars);
                 }
             } else {
-//                println!("invalid union {}", &rulx);
+                //                println!("invalid union {}", &rulx);
                 if let Some(ruly) = rulx.valid_subset() {
                     ars.push(ruly);
                     return Some(ars);
@@ -347,7 +361,10 @@ impl RuleStore {
                     rul1 = rulz;
                 }
             }
-            if rul0.is_valid_union() && rul1.is_valid_union() && rul0.initial_region() == rul1.initial_region() {
+            if rul0.is_valid_union()
+                && rul1.is_valid_union()
+                && rul0.initial_region() == rul1.initial_region()
+            {
                 ordera = true;
             }
 
@@ -369,7 +386,10 @@ impl RuleStore {
                 }
             }
 
-            if rul2.is_valid_union() && rul3.is_valid_union() && rul2.initial_region() == rul3.initial_region() {
+            if rul2.is_valid_union()
+                && rul3.is_valid_union()
+                && rul2.initial_region() == rul3.initial_region()
+            {
                 orderb = true;
             }
 
@@ -428,7 +448,7 @@ impl RuleStore {
         //println!("can_form_union: 2 returning F");
         Truth::F
     }
-    
+
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRule> {
         self.avec.iter()
@@ -452,13 +472,12 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-
             // Intersect by order1
             let mut order1 = true;
 
             let int00 = self[0].intersection(&other[0]);
             let int11 = self[1].intersection(&other[1]);
-            
+
             if int00.is_valid_intersection() == false {
                 order1 = false;
             } else {
@@ -490,7 +509,7 @@ impl RuleStore {
                 let mut ord1 = Self::new();
                 ord1.push(int00);
                 ord1.push(int11);
-                
+
                 let mut ord2 = Self::new();
                 ord2.push(int01);
                 ord2.push(int10);
@@ -636,7 +655,10 @@ mod tests {
             let mut rul_str4 = RuleStore::new();
             rul_str4.push(SomeRule::new_from_string(1, "00/11/11/10/00").unwrap());
             if rul_str3 != rul_str4 {
-                return Err(format!("test_intersection 1 {} ne {}", &rul_str3, &rul_str4));
+                return Err(format!(
+                    "test_intersection 1 {} ne {}",
+                    &rul_str3, &rul_str4
+                ));
             }
         } else {
             return Err(format!("test_intersection 1 failed?"));
@@ -694,7 +716,6 @@ mod tests {
 
     #[test]
     fn test_is_subset_of() -> Result<(), String> {
-
         // Compare one-rule RuleStores.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx").unwrap());
@@ -737,7 +758,6 @@ mod tests {
 
     #[test]
     fn test_is_superset_of_rule() -> Result<(), String> {
-
         // Compare a rule to a one-rule RuleStore.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx").unwrap());

@@ -6,7 +6,7 @@ use crate::removeunordered::remove_unordered;
 
 use std::fmt;
 use std::ops::Index; // IndexMut
-use std::slice::{ Iter, IterMut};
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -76,7 +76,7 @@ impl NeedStore {
 
     /// Append a Needstore.
     pub fn append(&mut self, other: &mut NeedStore) {
-        self.avec.append(&mut other.avec);  // empties other.avec
+        self.avec.append(&mut other.avec); // empties other.avec
     }
 
     /// Return a mutable iterator.
@@ -93,7 +93,6 @@ impl NeedStore {
     pub fn remove_unordered(&mut self, inx: usize) {
         remove_unordered(&mut self.avec, inx);
     }
-
 } // end impl NeedStore
 
 impl Index<usize> for NeedStore {

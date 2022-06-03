@@ -1,11 +1,11 @@
 //! The SquareStore struct.  A HashMap of SomeSquare structs.
 
+use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::pn::Pn;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -55,7 +55,7 @@ impl SquareStore {
     }
 
     /// Return a list of squares in a given region.
-    pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec::<&SomeSquare> {
+    pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
         let mut ret_vec = Vec::<&SomeSquare>::new();
 
         for (key, sqrx) in &self.ahash {
@@ -108,9 +108,8 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, sqry) in &self.ahash {
-            if sqry.results.pn != Pn::One &&
-               sqry.results.pnc == false {
-                   states.push(key.clone());
+            if sqry.results.pn != Pn::One && sqry.results.pnc == false {
+                states.push(key.clone());
             }
         }
 
@@ -142,5 +141,4 @@ impl SquareStore {
 
         states
     }
-
 } // end impl SquareStore

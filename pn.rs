@@ -74,10 +74,18 @@ impl PartialOrd for Pn {
 impl PartialEq for Pn {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Pn::One, Pn::One) => { return true; }
-            (Pn::Two, Pn::Two) => { return true; }
-            (Pn::Unpredictable, Pn::Unpredictable) => { return true; }
-            _ => { return false; }
+            (Pn::One, Pn::One) => {
+                return true;
+            }
+            (Pn::Two, Pn::Two) => {
+                return true;
+            }
+            (Pn::Unpredictable, Pn::Unpredictable) => {
+                return true;
+            }
+            _ => {
+                return false;
+            }
         }
     }
 }
@@ -94,10 +102,16 @@ pub enum Pn {
 
 impl Pn {
     pub fn num_samples_needed(&self) -> usize {
-    match self {
-            Pn::One => { return 2; }
-            Pn::Two => { return 4; }
-            Pn::Unpredictable => { return 3; }
+        match self {
+            Pn::One => {
+                return 2;
+            }
+            Pn::Two => {
+                return 4;
+            }
+            Pn::Unpredictable => {
+                return 3;
+            }
         }
     }
 }
@@ -110,7 +124,6 @@ mod tests {
     // Should be One < Two < Unpredictable
     #[test]
     fn pn_comparisons() -> Result<(), String> {
-
         assert!(Pn::Unpredictable.partial_cmp(&Pn::Unpredictable).unwrap() == Ordering::Equal);
         assert!(Pn::Unpredictable.partial_cmp(&Pn::Two).unwrap() == Ordering::Greater);
         assert!(Pn::Unpredictable.partial_cmp(&Pn::One).unwrap() == Ordering::Greater);

@@ -4,15 +4,20 @@
 //! by actions that make changes outside the program.
 
 use crate::change::SomeChange;
-use crate::state::SomeState;
 use crate::mask::SomeMask;
+use crate::state::SomeState;
 use rand::Rng;
 
 // The number of bits is set by the line of code that creates
 // the first current state, with 1, or more, integers.
 
-/// Take an action given the domain number, action number, current_state and last change mask (if any). 
-pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
+/// Take an action given the domain number, action number, current_state and last change mask (if any).
+pub fn take_action(
+    dom_num: usize,
+    act_num: usize,
+    cur_state: &SomeState,
+    cmask: Option<&SomeMask>,
+) -> SomeState {
     if dom_num == 0 {
         if act_num == 0 {
             return dom0_act0(cur_state, cmask);
@@ -57,7 +62,6 @@ pub fn take_action(dom_num: usize, act_num: usize, cur_state: &SomeState, cmask:
 /// Domain 0, act 0, actions, given the current state.
 /// The SomeMask argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
-
     if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
         || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
@@ -84,7 +88,7 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
                 sample_num = 2;
             }
         }
-    
+
         if sample_num == 2 {
             let new_state = cur.toggle_bits(vec![1]);
             println!(
@@ -326,4 +330,3 @@ pub fn dom1_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     );
     return new_state;
 }
-

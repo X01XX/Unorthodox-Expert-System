@@ -38,7 +38,9 @@ impl SomeState {
 
     // Return a new state, with random bits set to one.
     pub fn new_random(num_ints: usize) -> Self {
-        Self { bts: SomeBits::new_random(num_ints) }
+        Self {
+            bts: SomeBits::new_random(num_ints),
+        }
     }
 
     /// Return a State from a string.
@@ -51,10 +53,12 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-
         for chr in str.chars() {
             if chr != 's' && chr != 'S' {
-                return Err(format!("Did not understand the string {}, first character?", str));
+                return Err(format!(
+                    "Did not understand the string {}, first character?",
+                    str
+                ));
             }
             break;
         }
@@ -105,7 +109,6 @@ impl SomeState {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }
-
 } // end impl SomeState
 
 /// Clone trait for SomeState
@@ -125,7 +128,10 @@ mod tests {
     // This uses SomeBits::distance, so only a basic test is done.
     #[test]
     fn test_distance() -> Result<(), String> {
-        if 2 != SomeState::new_from_string(2, "s0x0").unwrap().distance(&SomeState::new_from_string(2, "s0x11").unwrap()) {
+        if 2 != SomeState::new_from_string(2, "s0x0")
+            .unwrap()
+            .distance(&SomeState::new_from_string(2, "s0x11").unwrap())
+        {
             return Err(format!("SomeState::distance 1 failed"));
         }
         Ok(())
@@ -134,16 +140,30 @@ mod tests {
     // Test SomeState::is_adjacent
     #[test]
     fn test_is_adjacent() -> Result<(), String> {
-        if SomeState::new_from_string(2, "s0x0").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap()) {
+        if SomeState::new_from_string(2, "s0x0")
+            .unwrap()
+            .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
+        {
             return Err(format!("SomeState::is_adjacent 1 failed"));
         }
-        if SomeState::new_from_string(2, "s0x1").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())  == false {
+        if SomeState::new_from_string(2, "s0x1")
+            .unwrap()
+            .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
+            == false
+        {
             return Err(format!("SomeState::is_adjacent 2 failed"));
         }
-        if SomeState::new_from_string(2, "s0x0").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap()) {
+        if SomeState::new_from_string(2, "s0x0")
+            .unwrap()
+            .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
+        {
             return Err(format!("SomeState::is_adjacent 3 failed"));
         }
-        if SomeState::new_from_string(2, "s0x100").unwrap().is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())  == false {
+        if SomeState::new_from_string(2, "s0x100")
+            .unwrap()
+            .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
+            == false
+        {
             return Err(format!("SomeState::is_adjacent 4 failed"));
         }
         Ok(())
@@ -169,7 +189,12 @@ mod tests {
     // This uses SomeBits::b_and, so only a basic test is done.
     #[test]
     fn test_s_and() -> Result<(), String> {
-        let test_and = SomeState::new(SomeState::new_from_string(2, "s0x6666").unwrap().bts.b_and(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts));
+        let test_and = SomeState::new(
+            SomeState::new_from_string(2, "s0x6666")
+                .unwrap()
+                .bts
+                .b_and(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts),
+        );
         if test_and != SomeState::new_from_string(2, "s0x4264").unwrap() {
             return Err(format!("SomeState::s_and 1 failed"));
         }
@@ -180,7 +205,12 @@ mod tests {
     // This uses SomeBits::b_not, so only a basic test is done.
     #[test]
     fn test_s_not() -> Result<(), String> {
-        let test_not = SomeState::new(SomeState::new_from_string(2, "s0x5a5a").unwrap().bts.b_not());
+        let test_not = SomeState::new(
+            SomeState::new_from_string(2, "s0x5a5a")
+                .unwrap()
+                .bts
+                .b_not(),
+        );
         if test_not != SomeState::new_from_string(2, "s0xa5a5").unwrap() {
             return Err(format!("SomeState::s_not 1 failed"));
         }
@@ -191,7 +221,12 @@ mod tests {
     // This uses SomeBits::b_or, so only a basic test is done.
     #[test]
     fn test_s_or() -> Result<(), String> {
-        let test_or = SomeState::new(SomeState::new_from_string(2, "s0x2111").unwrap().bts.b_or(&SomeState::new_from_string(2, "s0x428a").unwrap().bts));
+        let test_or = SomeState::new(
+            SomeState::new_from_string(2, "s0x2111")
+                .unwrap()
+                .bts
+                .b_or(&SomeState::new_from_string(2, "s0x428a").unwrap().bts),
+        );
         if test_or != SomeState::new_from_string(2, "s0x639b").unwrap() {
             return Err(format!("SomeState::s_or 1 failed"));
         }
@@ -202,7 +237,12 @@ mod tests {
     // This uses SomeBits::b_xor, so only a basic test is done.
     #[test]
     fn test_s_xor() -> Result<(), String> {
-        let test_xor = SomeState::new(SomeState::new_from_string(2, "s0x6666").unwrap().bts.b_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts));
+        let test_xor = SomeState::new(
+            SomeState::new_from_string(2, "s0x6666")
+                .unwrap()
+                .bts
+                .b_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts),
+        );
         if test_xor != SomeState::new_from_string(2, "s0xa51b").unwrap() {
             return Err(format!("SomeState::s_xor 1 failed"));
         }
@@ -212,7 +252,11 @@ mod tests {
     // Test SomeState::toggle_bits
     #[test]
     fn test_toggle_bits() -> Result<(), String> {
-        if SomeState::new_from_string(2, "s0x505").unwrap().toggle_bits(vec![1,8,11]) !=  SomeState::new_from_string(2, "s0xc07").unwrap() {
+        if SomeState::new_from_string(2, "s0x505")
+            .unwrap()
+            .toggle_bits(vec![1, 8, 11])
+            != SomeState::new_from_string(2, "s0xc07").unwrap()
+        {
             return Err(format!("SomeState::toggle_bits 1 failed"));
         }
         Ok(())

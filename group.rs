@@ -3,6 +3,8 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
+use crate::combine;
+use crate::compare::Compare;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -10,9 +12,7 @@ use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-use crate::compare::Compare;
 use crate::truth::Truth;
-use crate::combine;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -47,7 +47,6 @@ pub struct SomeGroup {
 }
 
 impl SomeGroup {
-
     /// Return a new group, given a region, RuleStore, pnc values.
     /// The RuleStore will be empty for Pn::Unpredictable squares.
     pub fn new(regionx: SomeRegion, ruls: RuleStore, pnc: bool) -> Self {
@@ -80,7 +79,6 @@ impl SomeGroup {
 
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
-
         let mut rc_str = String::from("G(");
         rc_str.push_str(&format!("{}", self.region.formatted_string()));
 
@@ -149,7 +147,6 @@ impl SomeGroup {
 
     /// Return true if a sample is compatible with a group.
     pub fn check_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
-
         let tmp_rul = SomeRule::new(&init, &rslt);
 
         match self.pn {
@@ -176,13 +173,11 @@ impl SomeGroup {
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: SomeState) {
-
         self.anchor = Some(astate.clone());
         self.limited = true;
         let state2 = self.region.far_state(&astate);
         self.region = SomeRegion::new(&astate, &state2);
     }
-
 } // end impl SomeGroup
 
 impl Compare for SomeGroup {
@@ -200,7 +195,7 @@ impl Compare for SomeGroup {
         self.region.clone()
     }
 }
- 
+
 //#[cfg(test)]
 //mod tests {
 //    use crate::group::SomeGroup;

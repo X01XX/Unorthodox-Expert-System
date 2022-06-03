@@ -46,11 +46,11 @@ use domain::SomeDomain;
 mod actions;
 mod domainstore;
 use domainstore::DomainStore;
+mod actioninterface;
 mod combine;
-mod truth;
 mod randompick;
 mod removeunordered;
-mod actioninterface;
+mod truth;
 
 use std::io;
 use std::io::{Read, Write};
@@ -126,7 +126,9 @@ fn main() {
             return;
         }
         run_left = args[1].parse::<usize>().unwrap_or_else(|err| {
-        println!("String to Number conversion error: {}", err); 0 });
+            println!("String to Number conversion error: {}", err);
+            0
+        });
         if run_left == 0 {
             usage();
             return;
@@ -148,13 +150,11 @@ fn main() {
             run_left -= 1;
             run_count += 1;
         }
-
     } // end while
 } // end main
 
 /// Do one session of finding and using rules.
 pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
-
     let mut to_end = run_to_end;
     let mut dmxs = init();
     let mut dom_num = 0;
@@ -177,7 +177,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         // Check if all needs are for the same domain, change domain number if needed
         if nds.len() > 0 {
-
             let mut need_domain = nds[0].dom_num();
             let mut same_domain = true;
 
@@ -190,7 +189,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     }
                 }
             } else {
-                
                 for ndx in nds.iter() {
                     if ndx.dom_num() != need_domain {
                         same_domain = false;
@@ -205,7 +203,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     dom_num = need_domain;
                 }
             }
-
         } // endif nds.len() > 0
 
         // See if any need can be done, for print_domain call.
@@ -229,7 +226,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         let mut cant_do = 0;
 
         if nds.len() > 0 {
-
             // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
             if need_plans.len() == 0 {
                 cant_do = nds.len();
@@ -241,7 +237,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 println!("\nNeeds that can be done: None");
             } else {
-
                 // Get count of needs that can, and cannot, be done.
                 for ndplnx in need_plans.iter() {
                     if let Some(_) = ndplnx.pln {
@@ -299,7 +294,10 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             if run_max == 1 {
                 println!("\nAction needs: None");
             } else {
-                println!("\nAction needs: None, run_count {} of {}", run_count, run_max);
+                println!(
+                    "\nAction needs: None, run_count {} of {}",
+                    run_count, run_max
+                );
             }
             if to_end {
                 if run_count < run_max {
@@ -322,51 +320,48 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     cmd.push(String::from(word));
                 }
             }
-    
+
             // Default command, just press Enter
             if cmd.len() == 0 {
                 // Process needs
                 if can_do > 0 {
                     //println!("\nAction needs: {}", nds);
-    
+
                     let np_inx = dmxs.choose_need(&nds, &need_plans, &need_can);
-    
+
                     let nd_inx = need_plans[np_inx].inx;
                     let ndx = &nds[nd_inx];
                     dom_num = ndx.dom_num();
-    
+
                     let pln = &need_plans[np_inx].pln.as_ref().unwrap();
-    
+
                     //println!("need {}, plan {}", &ndx, &pln);
-    
+
                     if pln.len() > 0 {
                         //println!("doing dmx.run_plan");
                         dmxs.run_plan(dom_num, &pln);
                     } else {
                         //println!("NOT doing dmx.run_plan");
                     }
-    
+
                     if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
                         // println!("doing dmx.take_action_need");
-    
+
                         match ndx {
-                            SomeNeed::ToRegion {
-                                ..
-                                } => {},
+                            SomeNeed::ToRegion { .. } => {}
                             _ => {
                                 dmxs.take_action_need(dom_num, &ndx);
-                                },
-                                // Add new needs here
-                            }
+                            } // Add new needs here
+                        }
                     } else {
                         // println!("NOT doing dmx.take_action_need");
                     }
                     break;
                 } // end-if can_do > 0
-    
+
                 break;
             } // end if cmd.len() == 0
-    
+
             if cmd.len() == 1 {
                 // Quit with q , exit, quit
                 if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
@@ -397,7 +392,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             if cmd.len() == 2 {
                 if cmd[0] == "cd" {
                     step_inc = 0;
-                    
+
                     // Get domain number from string
                     match dmxs.domain_num_from_string(&cmd[1]) {
                         Ok(d_num) => {
@@ -409,9 +404,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         }
                     } // end match
                     continue;
+                } else if cmd[0] == "ta" {
+                    // Take an arbirary action with the current state
 
-                } else if cmd[0] == "ta" {  // Take an arbirary action with the current state
-                    
                     // Get act number from string
                     match dmxs[dom_num].act_num_from_string(&cmd[1]) {
                         Ok(a_num) => {
@@ -424,36 +419,32 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         }
                     } // end match
                     continue;
-    
                 } else if cmd[0] == "ppd" {
                     step_inc = 0;
                     match cmd[1].parse::<usize>() {
                         Ok(n_num) => {
-    
                             if n_num >= need_can.len() {
                                 println!("Invalid Need Number: {}", cmd[1]);
                             } else {
-    
                                 let ndx = &nds[need_plans[need_can[n_num]].inx];
-    
+
                                 // Change the displayed Domain, if needed
                                 if dom_num != ndx.dom_num() {
                                     dom_num = ndx.dom_num();
                                 }
-    
+
                                 //print_domain(&dmxs, dom_num);
-    
+
                                 let pln = need_plans[need_can[n_num]].pln.as_ref().unwrap();
-    
+
                                 println!("\n{} Need: {}", &n_num, &ndx);
-    
+
                                 if ndx.satisfied_by(&dmxs[dom_num].get_current_state()) {
                                     println!("\nPlan: current state satisfies need, just take the action");
                                 } else {
                                     println!("\nPlan: \n{}", &pln.str2());
                                 }
                             }
-    
                         }
                         Err(error) => {
                             println!("\n{}", error);
@@ -461,28 +452,26 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     }
                     continue;
                 } else if cmd[0] == "dn" {
-                    
                     match cmd[1].parse::<usize>() {
                         Ok(n_num) => {
-                            
                             if n_num >= need_can.len() {
                                 println!("Invalid Need Number: {}", cmd[1]);
                                 step_inc = 0;
                             } else {
                                 let ndx = &nds[need_plans[need_can[n_num]].inx];
-    
+
                                 let inxpln = &need_plans[need_can[n_num]];
-                                
+
                                 let pln = inxpln.pln.as_ref().unwrap();
-    
+
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
-    
+
                                 dom_num = ndx.dom_num();
-    
+
                                 if pln.len() > 0 {
                                     dmxs.run_plan(dom_num, &pln);
                                 }
-    
+
                                 if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
                                     dmxs.take_action_need(dom_num, &ndx);
                                     break;
@@ -512,7 +501,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         Err(why) => {
                             println!("couldn't write {}: {}", &cmd[1], why);
                         }
-                    Ok(_) => {
+                        Ok(_) => {
                             print!("Data written");
                         }
                     }
@@ -520,28 +509,24 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     continue;
                 } // end command sd
             } // end if cmd.len() == 2
-    
+
             // Do other commands
             step_inc = do_command(&mut dmxs[dom_num], &cmd);
             if step_inc == 1 {
                 break;
             }
         } // end command loop
-        //println!("end command loop");
+          //println!("end command loop");
     } // end loop
-
 } // end do_session
-
 
 /// Do most commands entered by the user.
 /// Return a zero or one, to indicate how the step number should change.
 fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
-
     let cur_state = dm1.get_current_state();
 
     // Handle one-word commands
     if cmd.len() == 1 {
-
         if cmd[0] == "h" || cmd[0] == "help" {
             usage();
             return 0;
@@ -560,7 +545,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\nDid not understand region, {}", error);
                 }
             } // end match
-            return 0
+            return 0;
         } //end command oa
 
         if cmd[0] == "od" {
@@ -573,7 +558,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     println!("\nDid not understand region, {}", error);
                 }
             } // end match
-            return 0
+            return 0;
         } //end command od
 
         // Arbitrary change state
@@ -604,7 +589,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     if goal_region.is_superset_of_state(&cur_state) {
                         println!(
                             "\nCurrent_state {} is already in region {}",
-                            dm1.get_current_state(), goal_region
+                            dm1.get_current_state(),
+                            goal_region
                         );
                     } else {
                         if dm1.to_region(&goal_region) {
@@ -631,9 +617,8 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     if ndx.len() > 0 {
                         println!("Seek Edge Needs1 are {}", &ndx);
                     } else {
-
                         let ndx = &dm1.actions[act_num].seek_edge_needs2();
-                    
+
                         if ndx.len() > 0 {
                             println!("Seek Edge Needs2 are {}", &ndx);
                         } else {
@@ -669,7 +654,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         }
 
         if cmd[0] == "ps" {
-            
             // Get act number from string
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
@@ -709,7 +693,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             println!("\n{}", error);
                         }
                     } // end match
-
                 }
                 Err(error) => {
                     println!("\n{}", error);
@@ -719,14 +702,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         }
 
         if cmd[0] == "ps" {
-
             // Get act_num
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
-
                     // Get region
                     match dm1.region_from_string(&cmd[2]) {
-                
                         Ok(aregion) => {
                             let mut psstr = String::from(format!(
                                 "Squares of Action {} in region {} are:\n",
@@ -760,11 +740,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                     max_pn = sqrx.results.pn;
                                     max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
                                 } else if sqrx.results.pn == max_pn {
-                                        if let Some(regx) = max_pn_reg {
-                                            max_pn_reg = Some(regx.union_state(&sqrx.state));
-                                        } else {
-                                            max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
-                                        }
+                                    if let Some(regx) = max_pn_reg {
+                                        max_pn_reg = Some(regx.union_state(&sqrx.state));
+                                    } else {
+                                        max_pn_reg =
+                                            Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                                    }
                                 }
 
                                 nl_flg = 1;
@@ -800,7 +781,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             // Check if max Pn squares can form a group.
                             let mut form_group = true;
                             let mut rules_str = String::from("None");
-                            if max_pn == Pn::Unpredictable{
+                            if max_pn == Pn::Unpredictable {
                                 for stax in non_pn_stas.iter() {
                                     let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
                                     if sqrx.results.pnc {
@@ -822,7 +803,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             }
 
                             psstr.push_str(&format!("\n    Min Pn: {} Max Pn: {} Max Pn Reg {} Rules: {} Can form group: {}",
-                                &min_pn, &max_pn, &max_pn_reg.unwrap(), &rules_str, &form_group)); 
+                                &min_pn, &max_pn, &max_pn_reg.unwrap(), &rules_str, &form_group));
                             println!("{}", psstr);
                         }
                         Err(error) => {
@@ -850,15 +831,27 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                     let sqrx = dm1.actions[act_num].squares.find(anchor).unwrap();
                                     println!("\nGroup:      {}", &aregion);
                                     println!("Anchor:   {}", sqrx.formatted_string2());
-                                    let stas = dm1.actions[act_num].squares.stas_adj_reg(&SomeRegion::new(&anchor, &anchor));
+                                    let stas = dm1.actions[act_num]
+                                        .squares
+                                        .stas_adj_reg(&SomeRegion::new(&anchor, &anchor));
                                     for stax in stas.iter() {
                                         if aregion.is_superset_of_state(stax) {
                                         } else {
-                                            println!("Adjacent: {}", &dm1.actions[act_num].squares.find(stax).unwrap().formatted_string2());
+                                            println!(
+                                                "Adjacent: {}",
+                                                &dm1.actions[act_num]
+                                                    .squares
+                                                    .find(stax)
+                                                    .unwrap()
+                                                    .formatted_string2()
+                                            );
                                         }
                                     }
                                 } else {
-                                    println!("\nGroup {} is not limited by a square only in one region", &aregion);
+                                    println!(
+                                        "\nGroup {} is not limited by a square only in one region",
+                                        &aregion
+                                    );
                                 }
                             } else {
                                 println!("\nGroup with region {} not found", &aregion);
@@ -877,7 +870,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         }
 
         if cmd[0] == "rps" {
-           // Get act number from string
+            // Get act number from string
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get region from string
@@ -914,14 +907,18 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                         Ok(aregion) => {
                             // Find group
                             if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
-                                if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state1) {
+                                if let Some(sqrx) =
+                                    dm1.actions[act_num].squares.find(&grpx.region.state1)
+                                {
                                     println!("{}", &sqrx);
                                 } else {
                                     println!("{} samples needed.", &grpx.region.state1);
                                 }
 
                                 if grpx.region.state1 != grpx.region.state2 {
-                                    if let Some(sqrx) = dm1.actions[act_num].squares.find(&grpx.region.state2) {
+                                    if let Some(sqrx) =
+                                        dm1.actions[act_num].squares.find(&grpx.region.state2)
+                                    {
                                         println!("{}", &sqrx);
                                     } else {
                                         println!("{} samples needed.", &grpx.region.state2);
@@ -949,7 +946,6 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         let mut step_inc = 0;
         // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
         if cmd[0] == "ss" {
-            
             // Get act number from string
             match dm1.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
@@ -959,7 +955,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             // Get r-state from string
                             match dm1.state_from_string(&cmd[3]) {
                                 Ok(r_state) => {
-                                    println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
+                                    println!(
+                                        "Act {} take sample {} -> {}",
+                                        act_num, &i_state, &r_state
+                                    );
 
                                     dm1.eval_sample_arbitrary(act_num, &i_state, &r_state);
                                     step_inc = 1;
@@ -989,7 +988,12 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs[dom_num].boredom > 0 && can_do_flag == false {
-        print!("\nCurrent Domain: {} of {} Boredom duration {}", dom_num, dmxs.num_domains(), dmxs[dom_num].boredom);
+        print!(
+            "\nCurrent Domain: {} of {} Boredom duration {}",
+            dom_num,
+            dmxs.num_domains(),
+            dmxs[dom_num].boredom
+        );
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
     }
@@ -998,24 +1002,39 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     let cur_state = &dmxs[dom_num].get_current_state();
 
     if dmxs[dom_num].optimal_and_ints.len() > 0 && can_do_flag == false {
-
         let mut optstr = dmxs[dom_num].optimal_and_ints.formatted_string();
 
-        let opt_regs = dmxs[dom_num].optimal_and_ints.supersets_of_state(&cur_state);
+        let opt_regs = dmxs[dom_num]
+            .optimal_and_ints
+            .supersets_of_state(&cur_state);
 
         if opt_regs.len() > 0 {
             optstr = opt_regs.formatted_string();
             if opt_regs.len() != dmxs[dom_num].optimal_and_ints.len() {
-                let notin = dmxs[dom_num].optimal_and_ints.not_supersets_of_state(&dmxs[dom_num].get_current_state());
-                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}", &dmxs.step, dom_num, &cur_state, optstr, &notin);
+                let notin = dmxs[dom_num]
+                    .optimal_and_ints
+                    .not_supersets_of_state(&dmxs[dom_num].get_current_state());
+                println!(
+                    "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}",
+                    &dmxs.step, dom_num, &cur_state, optstr, &notin
+                );
             } else {
-                println!("\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
+                println!(
+                    "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}",
+                    &dmxs.step, dom_num, &cur_state, optstr
+                );
             }
         } else {
-                println!("\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}", &dmxs.step, dom_num, &cur_state, optstr);
+            println!(
+                "\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}",
+                &dmxs.step, dom_num, &cur_state, optstr
+            );
         }
     } else {
-        println!("\nStep: {} Dom: {} Current State: {}", &dmxs.step, dom_num, &cur_state);
+        println!(
+            "\nStep: {} Dom: {} Current State: {}",
+            &dmxs.step, dom_num, &cur_state
+        );
     }
 
     if dmxs.step > 500 {
@@ -1035,12 +1054,9 @@ fn usage() {
     println!(
         "\n    cd <dom num>             - Change the curently displayed Domain (CDD) to the given domain number."
     );
-    println!(
-        "\n    Press Enter (no command) - Satisfy one need that can be done, if any."
-    );
+    println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
     println!("\n\n    aj <act num> <region>    - For an Action in the CDD, and a limited group, print adJacent squares to the groups anchor");
-
 
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
@@ -1053,11 +1069,15 @@ fn usage() {
     );
     println!("\n    oa <region>              - Optimal regions Add the given region, of the CDD.");
     println!("                             - This will fail if the region is a subset of one of the displayed regions.");
-    println!("\n    od <region>              - Optimal regions Delete the given region, of the CDD.");
+    println!(
+        "\n    od <region>              - Optimal regions Delete the given region, of the CDD."
+    );
     println!("                             - This will fail if the region is not found or is a displayed intersection.");
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
-    println!("    ps <act num> <region>    - Print Squares in a given action and region, of the CDD.");
+    println!(
+        "    ps <act num> <region>    - Print Squares in a given action and region, of the CDD."
+    );
     println!(
         "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CDD."
     );

@@ -29,10 +29,10 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::state::SomeState;
 
-use std::fmt;
-use std::ops::{Index, IndexMut};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::ops::{Index, IndexMut};
 
 use crate::randompick::RandomPick;
 
@@ -86,12 +86,12 @@ impl DomainStore {
             step: 0,
         }
     }
-    
+
     /// Accessor, set the setp field.
     pub fn set_step(&mut self, anum: usize) {
         self.step = anum;
     }
-    
+
     /// Add a Domain struct to the store.
     pub fn push(&mut self, domx: SomeDomain) {
         self.avec.push(domx);
@@ -131,7 +131,7 @@ impl DomainStore {
     pub fn take_action(&mut self, dmxi: usize, actx: usize) {
         self.avec[dmxi].take_action(actx);
     }
-    
+
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> SomeState {
         self.avec[dmxi].get_current_state()
@@ -149,7 +149,6 @@ impl DomainStore {
         let mut last_priority = 0;
 
         loop {
-
             // find next lowest priority number (highest priority)needs
             let mut avec = Vec::<usize>::new();
             let mut least_priority = 9999;
@@ -170,7 +169,10 @@ impl DomainStore {
                 // Push InxPlan struct for each need, indicating no plan found.
                 let mut inxvec = Vec::<InxPlan>::with_capacity(nds.len());
                 for inx in 0..nds.len() {
-                    inxvec.push(InxPlan { inx: inx, pln: None });
+                    inxvec.push(InxPlan {
+                        inx: inx,
+                        pln: None,
+                    });
                 }
                 return inxvec;
             }
@@ -178,7 +180,6 @@ impl DomainStore {
             // Load avec with indicies to needs of the current priority.
             let mut inx = 0;
             for ndsx in nds.iter() {
-
                 if ndsx.priority() == least_priority {
                     avec.push(inx);
                 }
@@ -194,18 +195,17 @@ impl DomainStore {
             //   Process needs by groups of the same, decreasing priority (increasing priority number),
             //   until at least one has a plan.
             //
-            // Split groups into vectors of length 6 at the most. 
+            // Split groups into vectors of length 6 at the most.
             let span = 6;
 
             // Randomly pick up to 6 needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
-            let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
+            let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
             while rp1.len() > 0 {
+                let mut end = span;
 
-                let mut end = span; 
-
-                if end > rp1.len() { 
+                if end > rp1.len() {
                     end = rp1.len();
                 }
 
@@ -218,11 +218,12 @@ impl DomainStore {
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| InxPlan {
                         inx: *nd_inx,
-                        pln: self.avec[nds[*nd_inx].dom_num()].make_plan(&nds[*nd_inx].target().clone()),
+                        pln: self.avec[nds[*nd_inx].dom_num()]
+                            .make_plan(&nds[*nd_inx].target().clone()),
                     })
                     .collect::<Vec<InxPlan>>();
 
-                // If at least one plan found, return vector of InxPlan structs. 
+                // If at least one plan found, return vector of InxPlan structs.
                 for inxplnx in ndsinx_plan.iter() {
                     if let Some(_) = &inxplnx.pln {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
@@ -234,9 +235,8 @@ impl DomainStore {
 
             // Increase the lower bound of the next, least, priority number.
             last_priority = least_priority;
-
         } // end loop
-        // Unreachable, since there is no break command.
+          // Unreachable, since there is no break command.
     } // end evaluate_needs
 
     /// Choose a need, given a vector of needs,
@@ -311,9 +311,7 @@ impl DomainStore {
         //   Select needs with the shortest plans.
         match nd0 {
             // Get the largest number-X group created
-            SomeNeed::AStateMakeGroup {
-                ..
-            } => {
+            SomeNeed::AStateMakeGroup { .. } => {
                 // Get max x group num
                 let mut a_state_make_group_max_x = 0;
                 for cnp_tpl in &can_nds_pln {
@@ -324,10 +322,7 @@ impl DomainStore {
                     let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
                     match ndx {
-                        SomeNeed::AStateMakeGroup {
-                            num_x: nx,
-                            ..
-                        } => {
+                        SomeNeed::AStateMakeGroup { num_x: nx, .. } => {
                             if *nx > a_state_make_group_max_x {
                                 a_state_make_group_max_x = *nx;
                             }
@@ -344,10 +339,7 @@ impl DomainStore {
                     let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
                     match ndx {
-                        SomeNeed::AStateMakeGroup {
-                            num_x: nx,
-                            ..
-                        } => {
+                        SomeNeed::AStateMakeGroup { num_x: nx, .. } => {
                             if *nx == a_state_make_group_max_x {
                                 can_do2.push(cnp_inx);
                             }
@@ -415,10 +407,9 @@ impl DomainStore {
 
         can_nds_pln[can_do2[cd2_inx]].1
     } // end choose_need
-    
+
     /// Get a domain number from a string.
     pub fn domain_num_from_string(&self, num_str: &str) -> Result<usize, String> {
-
         match num_str.parse() {
             Ok(d_num) => {
                 if d_num >= self.num_domains() {
@@ -429,15 +420,14 @@ impl DomainStore {
             }
             Err(error) => {
                 return Err(format!("Did not understand domain number, {}", error));
-                }
-            } // end match
+            }
+        } // end match
     }
 
     /// Return the length of a DomainStore.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
-
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

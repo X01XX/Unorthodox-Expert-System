@@ -1,12 +1,12 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
+use crate::compare::Compare;
 use crate::pn::Pn;
-use crate::resultstore::ResultStore;
 use crate::region::SomeRegion;
+use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-use crate::compare::Compare;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -52,15 +52,15 @@ impl SomeSquare {
         rcsqr
     }
 
-//    /// Return the Pn value for a square.
-//    pub fn get_pn(&self) -> Pn {
-//        self.results.pn
-//    }
+    //    /// Return the Pn value for a square.
+    //    pub fn get_pn(&self) -> Pn {
+    //        self.results.pn
+    //    }
 
-//    /// Return the pnc (Pattern Number Confirmed) value for a square.
-//    pub fn get_pnc(&self) -> bool {
-//        self.results.pnc
-//    }
+    //    /// Return the pnc (Pattern Number Confirmed) value for a square.
+    //    pub fn get_pnc(&self) -> bool {
+    //        self.results.pnc
+    //    }
 
     /// Return true if the most recent sample changed some interpretation of a square.
     pub fn changed(&self) -> bool {
@@ -76,7 +76,6 @@ impl SomeSquare {
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
-
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result{}{}",
             self.str_terse(),
@@ -116,7 +115,10 @@ impl SomeSquare {
         }
 
         if sav_pn != self.results.pn {
-            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.results.pn));
+            str_info.push_str(&format!(
+                ", pn changed from {} to {}",
+                &sav_pn, &self.results.pn
+            ));
         } else {
             str_info.push_str(&format!(", pn {}", &self.results.pn));
         }
@@ -124,8 +126,7 @@ impl SomeSquare {
         if sav_pnc != self.results.pnc {
             str_info.push_str(&format!(
                 ", pnc changed from {} to {}",
-                &sav_pnc,
-                &self.results.pnc
+                &sav_pnc, &self.results.pnc
             ));
         } else {
             str_info.push_str(&format!(", pnc {}", &self.results.pnc));
@@ -149,7 +150,7 @@ impl SomeSquare {
     pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
         self.state.is_adjacent(&other.state)
     }
-    
+
     /// Return the most recent results
     pub fn most_recent_result(&self) -> &SomeState {
         self.results.most_recent_result()
@@ -182,4 +183,3 @@ impl Compare for SomeSquare {
         SomeRegion::new(&self.state, &self.state)
     }
 }
-

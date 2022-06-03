@@ -21,10 +21,8 @@ pub struct MaskStore {
 
 impl MaskStore {
     /// Return a new, empty, MaskStore struct instance.
-    pub fn new(mvec: Vec::<SomeMask>) -> Self {
-        Self {
-            avec: mvec,
-        }
+    pub fn new(mvec: Vec<SomeMask>) -> Self {
+        Self { avec: mvec }
     }
 
     /// Return the length of the store.
@@ -59,7 +57,6 @@ impl MaskStore {
 
     /// Push a given mask, deleting supersets.
     pub fn push_nosups(&mut self, mskx: SomeMask) {
-
         if self.any_subset(&mskx) {
             return;
         }
@@ -85,7 +82,6 @@ impl MaskStore {
 
     /// Push a given mask, deleting subsets.
     pub fn push_nosubs(&mut self, mskx: SomeMask) {
-
         if self.any_superset(&mskx) {
             return;
         }

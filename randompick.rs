@@ -21,7 +21,7 @@
 //
 //  for _ in 0..3 {
 //      let inx = rp1.pick().unwrap();
-//      println!("num picked is {} vector value is {}", inx, avec[inx]); 
+//      println!("num picked is {} vector value is {}", inx, avec[inx]);
 //  }
 // ..
 // num picked is 2 vector value is 22
@@ -58,7 +58,7 @@ impl RandomPick {
     }
 
     /// Pick a random item from a RandomPick vector.
-    /// If the item chosen is not at the end, the values will be swapped. 
+    /// If the item chosen is not at the end, the values will be swapped.
     /// Return the last item.
     pub fn pick(&mut self) -> Option<usize> {
         if self.items.len() == 0 {
@@ -80,7 +80,6 @@ impl RandomPick {
 /// given number of positions, 0, 1 .. -> the_len (exclusive).
 /// random 2 of 5 -> [0, 3]
 pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
-
     if x < 1 || x >= n {
         panic!(
             "random_x_of_n: Number results {} is not right for length {}",
