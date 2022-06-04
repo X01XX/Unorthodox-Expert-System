@@ -1,14 +1,14 @@
 [package]
 name = "ues"
-version = "2.3.0"
+version = "2.3.1"
 authors = ["Bitflogger<earl.dukerschein@wisc.edu>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.7.3"
-rayon = "1.5"
-serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8"
-readonly = "0.2"
+rand = "0.8.4"
+rayon = "1.5.3"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_yaml = "0.8.24"
+readonly = "0.2.1"

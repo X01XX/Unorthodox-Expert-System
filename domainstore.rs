@@ -388,7 +388,7 @@ impl DomainStore {
         assert!(can_do2.len() > 0);
 
         // Take a random choice
-        let cd2_inx = rand::thread_rng().gen_range(0, can_do2.len());
+        let cd2_inx = rand::thread_rng().gen_range(0..can_do2.len());
         //println!("inx2 = {}  can_do2 = {}", &inx2, &can_do2[inx2]);
 
         let itmx = &ndsinx_plan_all[can_nds_pln[can_do2[cd2_inx]].1];

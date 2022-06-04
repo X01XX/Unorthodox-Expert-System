@@ -66,7 +66,7 @@ impl RandomPick {
         }
 
         // Make a random pick
-        let inx = rand::thread_rng().gen_range(0, self.items.len());
+        let inx = rand::thread_rng().gen_range(0..self.items.len());
 
         let anumber = self.items[inx];
 

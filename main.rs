@@ -1118,8 +1118,11 @@ fn usage() {
 
 ///Pause for input from user.
 pub fn pause_for_input(prompt: &str) -> String {
+    // Print prompt without going to a new line
     print!("{}", prompt);
     io::stdout().flush().unwrap();
+
+    // Init and read in string
     let mut in_str = String::new();
     io::stdin()
         .read_line(&mut in_str)

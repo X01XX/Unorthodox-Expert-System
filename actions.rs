@@ -80,7 +80,7 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
 
     if cur.is_bit_set(1) {
         // ...101x, 1x10, given that the above is not true, alternate between two changes.
-        let mut sample_num = rand::thread_rng().gen_range(1, 3);
+        let mut sample_num = rand::thread_rng().gen_range(1..3);
         if let Some(amsk) = cmask {
             if amsk.is_bit_set(1) {
                 sample_num = 1;
@@ -112,7 +112,7 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         }
     } else {
         // ...000x, 0x00, given that the above is not true, alternate between 3 changes.
-        let mut sample_num = rand::thread_rng().gen_range(1, 4);
+        let mut sample_num = rand::thread_rng().gen_range(1..4);
         if let Some(amsk) = cmask {
             if amsk.is_bit_set(1) {
                 sample_num = 1;

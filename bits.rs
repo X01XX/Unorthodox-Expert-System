@@ -57,7 +57,7 @@ impl SomeBits {
     pub fn new_random(num_ints: usize) -> Self {
         let mut ints = vec![0 as u8; num_ints];
         for inx in 0..num_ints {
-            ints[inx] = rand::thread_rng().gen_range(0, u8::MAX)
+            ints[inx] = rand::thread_rng().gen_range(0..u8::MAX)
         }
         SomeBits { ints }
     }

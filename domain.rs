@@ -148,7 +148,7 @@ impl SomeDomain {
             let notsups = self
                 .optimal_and_ints
                 .not_supersets_of_state(&self.cur_state);
-            let inx = rand::thread_rng().gen_range(0, notsups.len());
+            let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToRegion {
                 dom_num: self.num,
                 act_num: 0,
@@ -178,7 +178,7 @@ impl SomeDomain {
             // selected region is not yet known.
             // Random selections may allow an accessable region to be chosen, eventually.
             // A previously unaccessable region may be come accessable with new rules.
-            let inx = rand::thread_rng().gen_range(0, notsups.len());
+            let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToRegion {
                 dom_num: self.num,
                 act_num: 0,
@@ -499,7 +499,7 @@ impl SomeDomain {
         }
 
         // Randomly choose a step.
-        let stepx = selected_steps[rand::thread_rng().gen_range(0, selected_steps.len())];
+        let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
         // Forward chaining
         if stepx.initial.is_superset_of(from_reg) {
@@ -711,7 +711,7 @@ impl SomeDomain {
         if inx_ary.len() == 1 {
             return inx_ary[0];
         }
-        return inx_ary[rand::thread_rng().gen_range(0, inx_ary.len())];
+        return inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())];
     } // end choose_a_plan
 } // end impl SomeDomain
 
@@ -1004,94 +1004,6 @@ mod tests {
 
         // Check for no more needs.
         assert!(nds4.len() == 0);
-
-        Ok(())
-    }
-
-    // Test Seek adjacent overlapping region.
-    // Create region X10X and adjacent region 1X1X.
-    // The overlapping part is region 11X1, with no squares in it.
-    // Should seek samples of the high (f) and low (d) squares of region 11X1.
-    // After two samples of each, it should produce the AddGroup need for 11X1.
-    #[test]
-    fn need_for_samples_in_adjacent_overlapping_part() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let s5 = dm0.state_from_string("s101").unwrap();
-
-        let s7 = dm0.state_from_string("s111").unwrap();
-
-        let s9 = dm0.state_from_string("s1001").unwrap();
-
-        let sb = dm0.state_from_string("s1011").unwrap();
-
-        let sc = dm0.state_from_string("s1100").unwrap();
-
-        let sd = dm0.state_from_string("s1101").unwrap();
-
-        let se = dm0.state_from_string("s1110").unwrap();
-
-        let sf = dm0.state_from_string("s1111").unwrap();
-
-        let mskf = SomeMask::new_from_string(1, "m1111").unwrap();
-
-        let reg11x1 = dm0.region_from_string("r11X1").unwrap();
-
-        // Create group for region X10X.
-        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![0]));
-
-        dm0.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &sc, &sc.toggle_bits(vec![0]));
-
-        // Add square to prevent squares (sc, s5) combining with squares (se, sb).
-        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
-        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![1]));
-
-        // Add square to prevent squares (sc, s5) combining with squares (se, sb).
-        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2, 1, 0]));
-        dm0.eval_sample_arbitrary(0, &s9, &s9.toggle_bits(vec![2, 1, 0]));
-
-        // Create group for region 1X1X.
-        dm0.eval_sample_arbitrary(0, &se, &se);
-        dm0.eval_sample_arbitrary(0, &se, &se);
-
-        dm0.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &sb, &sb.toggle_bits(vec![0]));
-
-        // Get first needs.
-        let nds1 = dm0.actions.avec[0].group_pair_needs();
-
-        // Check for two needs, targets f and d.
-        println!("dm0 {}", &dm0.actions[0]);
-        println!("nds1: {}", &nds1);
-        assert!(nds1.len() == 2);
-        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sf, &sf)));
-        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
-
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
-
-        let nds2 = dm0.actions.avec[0].group_pair_needs();
-
-        assert!(nds2.len() == 1);
-        assert!(nds1.contains_similar_need("AStateMakeGroup", &SomeRegion::new(&sd, &sd)));
-
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0]));
-
-        // Generate overlapping group.
-        let chgf = SomeChange::new(&mskf, &mskf);
-        let _nds3 = dm0.actions.get_needs(&sd, &chgf, 0);
-
-        if let Some(_grpx) = dm0.actions[0].groups.find(&reg11x1) {
-        } else {
-            return Err("Group r11X1 not found ??".to_string());
-        }
 
         Ok(())
     }
@@ -1724,6 +1636,48 @@ mod tests {
         {
         } else {
             return Err("Group rXXX1010X101010XX not found ??".to_string());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn compatible_group_intersection_needs() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
+        dm0.add_action();
+
+        let s0 = dm0.state_from_string("s000").unwrap();
+        let s3 = dm0.state_from_string("s011").unwrap();
+        let s5 = dm0.state_from_string("s101").unwrap();
+
+        dm0.eval_sample_arbitrary(0, &s0, &s0);
+        dm0.eval_sample_arbitrary(0, &s3, &s3);
+        dm0.eval_sample_arbitrary(0, &s5, &s5);
+
+        if let Some(grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r00XX").unwrap())
+        {
+            if let Some(grpy) = dm0.actions[0]
+                .groups
+                .find(&dm0.region_from_string("r0XX1").unwrap())
+            {
+                let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
+                println!("needs {}", &nds1);
+                assert!(nds1.contains_similar_need(
+                    "AStateMakeGroup",
+                    &dm0.region_from_string("r100").unwrap()
+                ));
+            } else {
+                return Err("Group r0XX1 not found ??".to_string());
+            }
+        } else {
+            return Err("Group r0X0X not found ??".to_string());
         }
 
         Ok(())
