@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
     pub b00: SomeMask,
@@ -188,49 +188,6 @@ impl SomeRule {
             b11: self.b11.m_or(&other.b11),
             b10: self.b10.m_or(&other.b10),
         }
-    }
-
-    /// Take an invalid rule, see if a valid subset exists.
-    ///
-    /// 00 + X1 = 11, 0X, return 11.
-    /// 00 + Xx = 10, 0X, return 10.
-    /// 01 + X0 = 10, 0X, return 10.
-    /// 01 + XX = 11, 0X, return 11.
-    /// 11 + X0 = 00, 1X, return 00.
-    /// 11 + Xx = 01, 1X, return 01.
-    /// 10 + X1 = 01, 1X, return 01.
-    /// 10 + XX = 00, 1X, return 00.
-    pub fn valid_subset(&self) -> Option<Self> {
-        assert!(self.is_valid_union() == false);
-
-        let ones_to_x = self.b10.m_and(&self.b11);
-        let zeros_to_x = self.b01.m_and(&self.b00);
-
-        // Check for 4 change bit-position.
-        if ones_to_x.m_and(&zeros_to_x).is_not_low() {
-            return None;
-        }
-
-        let x_mask = self.initial_region().x_mask();
-
-        // Check 1X bits are subset x_mask
-        if ones_to_x.is_subset_of(&x_mask) {
-        } else {
-            return None;
-        }
-
-        // Check 0X bits are subset x_mask.
-        if zeros_to_x.is_subset_of(&x_mask) {
-        } else {
-            return None;
-        }
-
-        Some(Self {
-            b00: self.b00.m_xor(&zeros_to_x),
-            b01: self.b01.m_xor(&zeros_to_x),
-            b11: self.b11.m_xor(&ones_to_x),
-            b10: self.b10.m_xor(&ones_to_x),
-        })
     }
 
     /// Return a logical AND of two rules.  The result may be invalid.
@@ -520,17 +477,6 @@ impl SomeRule {
     }
 } // end impl SomeRule
 
-impl Clone for SomeRule {
-    fn clone(&self) -> Self {
-        Self {
-            b00: self.b00.clone(),
-            b01: self.b01.clone(),
-            b11: self.b11.clone(),
-            b10: self.b10.clone(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::change::SomeChange;
@@ -798,64 +744,6 @@ mod tests {
         if rul3 != SomeRule::new_from_string(1, "00/01/x0/Xx/xx").unwrap() {
             return Err(format!("test_union rul3 not 00/01/x0/Xx/xx?"));
         }
-        Ok(())
-    }
-
-    /// Take an invalid rule, see if a valid subset exists.
-    ///
-    /// 00 + X1 = 11, 0X, return 11.
-    /// 00 + Xx = 10, 0X, return 10.
-    /// 01 + X0 = 10, 0X, return 10.
-    /// 01 + XX = 11, 0X, return 11.
-    /// 11 + X0 = 00, 1X, return 00.
-    /// 11 + Xx = 01, 1X, return 01.
-    /// 10 + X1 = 01, 1X, return 01.
-    /// 10 + XX = 00, 1X, return 00.
-    #[test]
-    fn test_valid_subset() -> Result<(), String> {
-        // Form a rule of X1/Xx/X0/XX/X0/Xx/X1/XX
-        let rul1 = SomeRule {
-            b00: SomeMask::new_from_string(1, "m00111001").unwrap(),
-            b01: SomeMask::new_from_string(1, "m11000110").unwrap(),
-            b11: SomeMask::new_from_string(1, "m10010011").unwrap(),
-            b10: SomeMask::new_from_string(1, "m01101100").unwrap(),
-        };
-
-        // Form a rule of 00/00/01/01/11/11/10/10
-        let rul2 = SomeRule {
-            b00: SomeMask::new_from_string(1, "m11000000").unwrap(),
-            b01: SomeMask::new_from_string(1, "m00110000").unwrap(),
-            b11: SomeMask::new_from_string(1, "m00001100").unwrap(),
-            b10: SomeMask::new_from_string(1, "m00000011").unwrap(),
-        };
-
-        // Form an invalid rule with the union of:
-        // X1/Xx/X0/XX/X0/Xx/X1/XX
-        // 00/00/01/01/11/11/10/10
-        let rul3 = rul1.union(&rul2);
-
-        let rul4 = rul3.valid_subset().unwrap();
-
-        // Form a rule of 11/10/10/11/00/01/01/00
-        let rul5 = SomeRule {
-            b00: SomeMask::new_from_string(1, "m00001001").unwrap(),
-            b01: SomeMask::new_from_string(1, "m00000110").unwrap(),
-            b11: SomeMask::new_from_string(1, "m10010000").unwrap(),
-            b10: SomeMask::new_from_string(1, "m01100000").unwrap(),
-        };
-
-        // From the invalid union of:
-        // X1/Xx/X0/XX/X0/Xx/X1/XX
-        // 00/00/01/01/11/11/10/10
-        // Should get the following valid part.
-        // 11/10/10/11/00/01/01/00
-        if rul4 != rul5 {
-            return Err(format!(
-                "test_valid_subset subset is? {}",
-                rul4.formatted_string()
-            ));
-        }
-
         Ok(())
     }
 } // end tests

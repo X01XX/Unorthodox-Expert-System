@@ -18,7 +18,7 @@ use std::ops::Index;
 use std::slice::Iter;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
 }
@@ -479,17 +479,6 @@ impl Index<usize> for RuleStore {
     type Output = SomeRule;
     fn index<'a>(&'a self, i: usize) -> &'a SomeRule {
         &self.avec[i]
-    }
-}
-
-impl Clone for RuleStore {
-    fn clone(&self) -> Self {
-        let mut rcrs = RuleStore::new();
-
-        for rulx in self.iter() {
-            rcrs.push(rulx.clone());
-        }
-        rcrs
     }
 }
 

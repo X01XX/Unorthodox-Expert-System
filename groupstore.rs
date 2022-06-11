@@ -11,7 +11,7 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for GroupStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -114,6 +114,18 @@ impl GroupStore {
             }
         }
         num_grps
+    }
+
+    /// Return the groups regions a state is in.
+    pub fn groups_state_in(&self, stax: &SomeState) -> RegionStore {
+        let mut grps = RegionStore::new();
+
+        for grpx in &self.avec {
+            if grpx.region.is_superset_of_state(stax) {
+                grps.push(grpx.region.clone());
+            }
+        }
+        grps
     }
 
     /// Return true if any group is a superset, or equal, to a region.
@@ -265,9 +277,9 @@ impl GroupStore {
     }
 
     /// Return an iterator
-    //    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
-    //        self.avec.iter_mut()
-    //    }
+    pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
+        self.avec.iter_mut()
+    }
 
     /// Return the number of groups.
     pub fn len(&self) -> usize {

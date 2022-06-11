@@ -16,7 +16,7 @@ impl fmt::Display for RegionStore {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RegionStore {
     /// A vector of regions.
     avec: Vec<SomeRegion>,
@@ -173,16 +173,16 @@ impl RegionStore {
         fnd
     }
 
-    /// Add a region, removing subset (and equal) regions.
-    pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
-        if self.contains(&reg) {
-            return false;
-        }
-
-        self.avec.push(reg);
-
-        true
-    }
+    // Add a region, removing subset (and equal) regions.
+    //    pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
+    //        if self.contains(&reg) {
+    //            return false;
+    //        }
+    //
+    //        self.avec.push(reg);
+    //
+    //        true
+    //    }
 
     /// Add a region, removing subset (and equal) regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
@@ -386,53 +386,12 @@ impl RegionStore {
         //println!("and_intersections: returning {} for {}", &ret_str, &self);
         ret_str
     }
-
-    /// Return the total number of squares represented by the regions in a store.
-    /// Take out a region, calc its number squares, then recurse on the store minus that region.
-    pub fn number_squares(&self) -> usize {
-        // Recursion end case, empty store.
-        if self.len() == 0 {
-            return 0;
-        }
-
-        // Recursion end case, one region left.
-        if self.len() == 1 {
-            return 2_u32.pow(self.avec[0].x_mask().num_one_bits() as u32) as usize;
-        }
-
-        // Extract first region, get number squares.
-        let aregion = self.avec[0].clone();
-        let num_sqrs = 2_u32.pow(aregion.x_mask().num_one_bits() as u32) as usize;
-
-        // Form a store from the remaining regions.
-        let mut new_store = RegionStore::with_capacity(self.len() - 1);
-        for inx in 1..self.len() {
-            new_store.push(self.avec[inx].clone());
-        }
-
-        // Avoid unneeded copying of the store, which would include intersection tests anyway.
-        if new_store.any_intersection(&aregion) {
-            return num_sqrs + new_store.subtract_region(&aregion).number_squares();
-        }
-        num_sqrs + new_store.number_squares()
-    }
-} // end impl RegionStore
+}
 
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
     fn index<'a>(&'a self, i: usize) -> &'a SomeRegion {
         &self.avec[i]
-    }
-}
-
-impl Clone for RegionStore {
-    fn clone(&self) -> Self {
-        let mut retrs = RegionStore::new();
-
-        for regx in self.iter() {
-            retrs.push(regx.clone());
-        }
-        retrs
     }
 }
 
@@ -459,23 +418,6 @@ mod tests {
         assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r0101").unwrap()));
         assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r0X01").unwrap()));
         assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r01x1").unwrap()));
-        Ok(())
-    }
-
-    #[test]
-    fn test_number_squares() -> Result<(), String> {
-        let mut regstr = RegionStore::with_capacity(4);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-        // Intersections, 0x01, 01x1.
-        // Intersections of intersections, 0101.
-
-        let num_sqrs = regstr.number_squares();
-        println!("results {}", num_sqrs);
-
-        assert!(num_sqrs == 9);
         Ok(())
     }
 

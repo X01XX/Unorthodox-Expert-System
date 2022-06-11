@@ -31,7 +31,7 @@ impl fmt::Display for SomePlan {
 }
 
 #[readonly::make]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SomePlan {
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
@@ -140,11 +140,3 @@ impl SomePlan {
         rc_str
     }
 } // end impl SomePlan
-
-impl Clone for SomePlan {
-    fn clone(&self) -> Self {
-        Self {
-            steps: self.steps.clone(),
-        }
-    }
-}

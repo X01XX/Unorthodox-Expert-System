@@ -3,8 +3,6 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::combine;
-use crate::compare::Compare;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -108,18 +106,62 @@ impl SomeGroup {
                     rc_str.push_str(&format!(", limiting using {}", sta1));
                 }
             }
-            None => {}
+            None => (),
         }
 
         rc_str.push_str(&format!(")"));
         rc_str
     }
 
-    /// Return true if a square is compatible with a group.
-    /// Set group pnc if needed, and possible.
+    /// Return true if a subset square is compatible with a group.
+    /// Set group pnc if needed.
     pub fn check_square(&mut self, sqrx: &SomeSquare, squares: &SquareStore) -> bool {
-        //println!("group:check_square grp {} sqr {}", &self.region, &sqrx.state);
+        //        println!(
+        //            "group:check_square grp {} sqr {}",
+        //            &self.region, &sqrx.state
+        //        );
+
+        // Check group definition.
+        if sqrx.state == self.region.state1 || sqrx.state == self.region.state2 {
+            if self.region.state1 == self.region.state2 {
+                if self.pn != sqrx.results.pn {
+                    if sqrx.results.pn > Pn::One && sqrx.results.pnc == false {
+                        return false;
+                    }
+                    self.pn = sqrx.results.pn;
+                    self.rules = sqrx.rules.clone();
+                }
+                self.pnc = sqrx.results.pnc;
+                return true;
+            } else if let Some(sqry) = squares.find(&self.region.state2) {
+                if sqrx.results.pn != sqry.results.pn {
+                    return false;
+                }
+                if sqrx.results.pn == Pn::Unpredictable {
+                    return true;
+                }
+                if sqrx.rules.can_form_union(&sqry.rules) == Truth::F {
+                    return false;
+                }
+            }
+        }
+
         // Check pnc, set if able.
+
+        // Check if square is compatible with group.
+        if sqrx.results.pn != self.pn && sqrx.results.pnc {
+            return false;
+        }
+        if sqrx.results.pn > self.pn {
+            return false;
+        }
+        if self.pn != Pn::Unpredictable {
+            if sqrx.rules.is_subset_of(&self.rules) == false {
+                return false;
+            }
+        }
+
+        // Check for a change in pnc
         if self.pnc == false {
             if sqrx.results.pnc {
                 if sqrx.state == self.region.state1 {
@@ -137,11 +179,6 @@ impl SomeGroup {
                 }
             }
         }
-
-        if combine::can_combine(self, sqrx) == Truth::F {
-            return false;
-        }
-
         true
     }
 
@@ -169,7 +206,7 @@ impl SomeGroup {
         self.limited = false;
     }
 
-    /// Set the anchor state, representing a square that is only in this group,
+    /// Set the anchor strel231.txtate, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: SomeState) {
@@ -179,22 +216,6 @@ impl SomeGroup {
         self.region = SomeRegion::new(&astate, &state2);
     }
 } // end impl SomeGroup
-
-impl Compare for SomeGroup {
-    fn get_pn_ref(&self) -> &Pn {
-        &self.pn
-    }
-    fn get_pnc(&self) -> bool {
-        //self.pnc
-        true // Group is expected to become pnc == true, when compared to squares.
-    }
-    fn get_rules_ref(&self) -> &RuleStore {
-        &self.rules
-    }
-    fn get_region(&self) -> SomeRegion {
-        self.region.clone()
-    }
-}
 
 //#[cfg(test)]
 //mod tests {

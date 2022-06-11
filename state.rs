@@ -19,7 +19,7 @@ use std::fmt;
 use std::hash::Hash;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 pub struct SomeState {
     pub bts: SomeBits,
 }
@@ -110,15 +110,6 @@ impl SomeState {
         self.bts.formatted_string('s')
     }
 } // end impl SomeState
-
-/// Clone trait for SomeState
-impl Clone for SomeState {
-    fn clone(&self) -> Self {
-        Self {
-            bts: self.bts.clone(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

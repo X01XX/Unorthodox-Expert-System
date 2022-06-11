@@ -1,12 +1,11 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
-use crate::compare::Compare;
 use crate::pn::Pn;
-use crate::region::SomeRegion;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
+use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -51,16 +50,6 @@ impl SomeSquare {
         //println!("New square {}", rcsqr);
         rcsqr
     }
-
-    //    /// Return the Pn value for a square.
-    //    pub fn get_pn(&self) -> Pn {
-    //        self.results.pn
-    //    }
-
-    //    /// Return the pnc (Pattern Number Confirmed) value for a square.
-    //    pub fn get_pnc(&self) -> bool {
-    //        self.results.pnc
-    //    }
 
     /// Return true if the most recent sample changed some interpretation of a square.
     pub fn changed(&self) -> bool {
@@ -167,19 +156,51 @@ impl SomeSquare {
         rc_str.push(']');
         rc_str
     }
-} // end impl SomeSquare
 
-impl Compare for SomeSquare {
-    fn get_pn_ref(&self) -> &Pn {
-        &self.results.pn
+    // Check if two squares can be combined.
+    pub fn can_combine(&self, sqrx: &SomeSquare) -> Truth {
+        assert!(self.state != sqrx.state);
+
+        if self.results.pnc && sqrx.results.pnc {
+            if self.results.pn != sqrx.results.pn {
+                return Truth::F;
+            }
+            if self.results.pn == Pn::Unpredictable {
+                return Truth::T;
+            }
+
+            return self.rules.can_form_union(&sqrx.rules);
+        }
+
+        if self.results.pnc {
+            // sqrx.results.pnc == false
+            if sqrx.results.pn > self.results.pn {
+                return Truth::F;
+            }
+            if self.results.pn == Pn::Unpredictable {
+                return Truth::M;
+            }
+            return self.rules.can_form_union(&sqrx.rules);
+        }
+
+        if sqrx.results.pnc {
+            // self.results.pnc == false
+            if self.results.pn > sqrx.results.pn {
+                return Truth::F;
+            }
+            if sqrx.results.pn == Pn::Unpredictable {
+                return Truth::M;
+            }
+            return self.rules.can_form_union(&sqrx.rules);
+        }
+
+        // Check for bootstrap compatible
+        if self.results.pn == Pn::One && sqrx.results.pn == Pn::One {
+            if self.rules.can_form_union(&sqrx.rules) == Truth::T {
+                return Truth::T;
+            }
+        }
+
+        Truth::M
     }
-    fn get_pnc(&self) -> bool {
-        self.results.pnc
-    }
-    fn get_rules_ref(&self) -> &RuleStore {
-        &self.rules
-    }
-    fn get_region(&self) -> SomeRegion {
-        SomeRegion::new(&self.state, &self.state)
-    }
-}
+} // end impl SomeSquare

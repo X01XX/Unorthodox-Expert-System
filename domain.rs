@@ -749,7 +749,6 @@ mod tests {
     use crate::change::SomeChange;
     use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
-    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
     use crate::state::SomeState;
 
@@ -902,10 +901,14 @@ mod tests {
             return Err("Group r1 not found ??".to_string());
         }
 
+        println!("\nActs: {}", &dm0.actions[0]);
+
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
         let s1 = dm0.state_from_string("s1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![0]));
+
+        println!("\nActs: {}", &dm0.actions[0]);
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
@@ -925,6 +928,7 @@ mod tests {
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
         );
 
+        //return Err("Done".to_string());
         Ok(())
     }
 
@@ -1141,338 +1145,6 @@ mod tests {
         Ok(())
     }
 
-    // Test the expansion of a group with dissimilar external square.
-    #[test]
-    fn possible_regions_for_group_with_dis_sqrs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
-        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
-        let reg_xx0x = dm0.region_from_string("rxx0x").unwrap();
-
-        let sq2 = dm0.state_from_string("s10").unwrap();
-
-        let sq5 = dm0.state_from_string("s101").unwrap();
-
-        let sq9 = dm0.state_from_string("s1001").unwrap();
-
-        let sqc = dm0.state_from_string("s1100").unwrap();
-
-        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
-
-        // Form group r11xx
-        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
-        dm0.eval_sample_arbitrary(0, &sq9, &sq9);
-
-        // Add square 2.
-        dm0.eval_sample_arbitrary(0, &sq2, &sq5);
-
-        println!("action {}", &dm0.actions[0]);
-        assert!(dm0.actions[0].groups.len() == 2);
-
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1x0x) {
-            let mut regs_found = RegionStore::with_capacity(6);
-            let mut cnt = 0;
-            let limit = 20;
-            while regs_found.len() < 2 {
-                cnt += 1;
-                if cnt > limit {
-                    return Err(format!("failed to find 6 options in {} tries", limit));
-                }
-                let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
-                println!("regs {}", &regs_exp);
-                assert!(regs_exp.len() == 1);
-                assert!(regs_exp.contains(&reg_1xxx) || regs_exp.contains(&reg_xx0x));
-                if regs_found.contains(&regs_exp[0]) {
-                } else {
-                    regs_found.push(regs_exp[0].clone());
-                }
-            }
-        } else {
-            return Err(format!("Group 1X0X not found?"));
-        }
-
-        Ok(())
-    }
-
-    // Test the expansion of a group with a dissimilar adjacent square.
-    #[test]
-    fn possible_regions_for_group_with_adj_dis_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let reg_1x0x = dm0.region_from_string("r1x0x").unwrap();
-        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
-
-        let sq9 = dm0.state_from_string("s1001").unwrap();
-
-        let sqc = dm0.state_from_string("s1100").unwrap();
-
-        let sq5 = dm0.state_from_string("s101").unwrap();
-
-        let sq7 = dm0.state_from_string("s111").unwrap();
-
-        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
-
-        // Form group r11xx
-        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
-        dm0.eval_sample_arbitrary(0, &sq9, &sq9);
-
-        // Add square 2.
-        dm0.eval_sample_arbitrary(0, &sq5, &sq7);
-
-        println!("action {}", &dm0.actions[0]);
-        assert!(dm0.actions[0].groups.len() == 2);
-
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_1x0x) {
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
-            println!("regs {}", &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp.contains(&reg_1xxx));
-        } else {
-            return Err(format!("Group 1X0X not found?"));
-        }
-
-        Ok(())
-    }
-
-    // Test the expansion of a group with similar external adjacent square.
-    // Like when a limiting sample turns out to be similar instead of dissimilar.
-    #[test]
-    fn possible_regions_for_group_with_sim_adj_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let reg_xxx1 = dm0.region_from_string("rxxx1").unwrap();
-        let reg_x1x1 = dm0.region_from_string("rx1x1").unwrap();
-
-        let sq1 = dm0.state_from_string("s1").unwrap();
-
-        let sq5 = dm0.state_from_string("s101").unwrap();
-
-        let sqf = dm0.state_from_string("s1111").unwrap();
-
-        // Form group 1111
-        dm0.eval_sample_arbitrary(0, &sqf, &sqf);
-        println!("domain: {}", dm0.actions);
-
-        // Form group 1x1x
-        dm0.eval_sample_arbitrary(0, &sq5, &sq5);
-        println!("domain: {}", dm0.actions);
-
-        assert!(dm0.actions[0].groups.len() == 1);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) {
-            true
-        } else {
-            false
-        });
-
-        // Add similar square, 1, adjacent to 5
-        dm0.eval_sample_arbitrary(0, &sq1, &sq1);
-        println!("domain: {}", dm0.actions);
-
-        assert!(dm0.actions[0].groups.len() == 1);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_xxx1) {
-            true
-        } else {
-            false
-        });
-
-        Ok(())
-    }
-
-    // Test the expansion of a group with similar external square.
-    #[test]
-    fn possible_regions_for_group_with_sim_sqr() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let reg_11xx = dm0.region_from_string("r11xx").unwrap();
-        let reg_x1x1 = dm0.region_from_string("rx1x1").unwrap();
-        let reg_x10x = dm0.region_from_string("rx10x").unwrap();
-        let reg_1xxx = dm0.region_from_string("r1xxx").unwrap();
-        let reg_xxxx = dm0.region_from_string("rxxxx").unwrap();
-
-        let sq5 = dm0.state_from_string("s101").unwrap();
-
-        let sqc = dm0.state_from_string("s1100").unwrap();
-
-        let sqf = dm0.state_from_string("s1111").unwrap();
-
-        let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
-
-        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
-
-        // Form group r11xx
-        dm0.eval_sample_arbitrary(0, &sqc, &sqc);
-        println!("domain: {}", dm0.actions);
-
-        dm0.eval_sample_arbitrary(0, &sqf, &sqf);
-        println!("domain: {}", dm0.actions);
-
-        // Add square 5, forming groups rx1x1, x10x.
-        dm0.eval_sample_arbitrary(0, &sq5, &sq5);
-        println!("domain: {}", dm0.actions);
-
-        assert!(dm0.actions[0].groups.len() == 3);
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_11xx) {
-            true
-        } else {
-            false
-        });
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x1x1) {
-            true
-        } else {
-            false
-        });
-        assert!(if let Some(_) = dm0.actions[0].groups.find(&reg_x10x) {
-            true
-        } else {
-            false
-        });
-
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_11xx) {
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
-            println!("for {} seek regs {}", &reg_11xx, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp.contains(&reg_xxxx));
-
-            // Test non-sim-expansion under change mask, reverts to no-sim, no-dis, under change mask.
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
-            println!("for {} seek regs {}", &reg_11xx, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp.contains(&reg_1xxx));
-        }
-
-        Ok(())
-    }
-
-    // Test the expansion of a group with no external squares.
-    #[test]
-    fn possible_regions_for_group_no_dis_or_sim_sqrs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            1,
-            SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
-        );
-        dm0.add_action();
-
-        let reg_110x = dm0.region_from_string("r110x").unwrap();
-
-        let sq0 = dm0.state_from_string("s0").unwrap();
-
-        let sqc = dm0.state_from_string("s1100").unwrap();
-
-        let sqd = dm0.state_from_string("s1101").unwrap();
-
-        dm0.eval_sample_arbitrary(0, &sqd, &sq0);
-
-        let reg_sqd = SomeRegion::new(&sqd, &sqd);
-
-        let chg_mask5 = SomeMask::new_from_string(1, "m101").unwrap();
-        let chg_mask6 = SomeMask::new_from_string(1, "m110").unwrap();
-        let chg_mask7 = SomeMask::new_from_string(1, "m111").unwrap();
-        let chg_maskf = SomeMask::new_from_string(1, "m1111").unwrap();
-
-        // Test logic for a group, with no external similar, or dissimilar, squares.
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_sqd) {
-            // Test with 3-bit change mask
-            let mut regs_found = RegionStore::with_capacity(6);
-
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_maskf);
-            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp[0].x_mask().num_one_bits() == 4);
-            assert!(regs_exp[0].x_mask().m_and(&chg_maskf.m_not()).is_low());
-            assert!(regs_exp[0].is_superset_of(&reg_sqd));
-            if regs_found.contains(&regs_exp[0]) {
-            } else {
-                regs_found.push(regs_exp[0].clone());
-            }
-
-            println!("regs found {}", &regs_found);
-
-            // Test with 3-bit change mask.
-            let mut regs_found = RegionStore::with_capacity(3);
-
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask7);
-            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp[0].x_mask().num_one_bits() == 3);
-            assert!(regs_exp[0].x_mask().m_and(&chg_mask7.m_not()).is_low());
-            assert!(regs_exp[0].is_superset_of(&reg_sqd));
-            if regs_found.contains(&regs_exp[0]) {
-            } else {
-                regs_found.push(regs_exp[0].clone());
-            }
-
-            println!("regs found {}", &regs_found);
-
-            // Test with 2-bit change mask.
-            let mut regs_found = RegionStore::with_capacity(2);
-
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
-            println!("for {} seek regs {}", &reg_sqd, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp[0].x_mask().num_one_bits() == 2);
-            assert!(regs_exp[0].x_mask().m_and(&chg_mask5.m_not()).is_low());
-            assert!(regs_exp[0].is_superset_of(&reg_sqd));
-            if regs_found.contains(&regs_exp[0]) {
-            } else {
-                regs_found.push(regs_exp[0].clone());
-            }
-
-            println!("regs found {}", &regs_found);
-        } else {
-            return Err(format!("Group r1101 not found!"));
-        }
-
-        dm0.eval_sample_arbitrary(0, &sqc, &sq0); // Group r110x
-
-        if let Some(grpx) = dm0.actions[0].groups.find(&reg_110x) {
-            // Test region with 1 X, with 2-bit change mask.
-
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask6);
-            println!("for {} seek regs {}", &reg_110x, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp[0].x_mask().num_one_bits() == 3);
-            assert!(regs_exp[0].is_superset_of(&reg_110x));
-
-            // Test region with 1 X, with 2-bit change mask that includes a region X-bit position.
-            let regs_exp = dm0.actions[0].possible_regions_for_group(&grpx, &chg_mask5);
-            println!("for {} seek regs {}", &reg_110x, &regs_exp);
-            assert!(regs_exp.len() == 1);
-            assert!(regs_exp[0].x_mask().num_one_bits() == 2);
-            assert!(regs_exp[0].is_superset_of(&reg_110x));
-        } else {
-            return Err(format!("Group r110x not found!"));
-        }
-
-        Ok(())
-    }
-
     /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.
     ///
     /// Sample a square, 0111, in the group, once.  There should be no change.
@@ -1480,67 +1152,71 @@ mod tests {
     /// Sample the square a second time, with the same result, proving it cannot have an
     /// alternting result.
     ///
-    /// Then group X1X1 should be invalidated and removed.
+    /// Then group X1X1 should be invalidatprintln!("\nActs: {}", &dm0.actions);ed and removed.
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(
+        let mut dm0 = SomeDomain::new(
             0,
             1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
-        dm1.add_action();
+        dm0.add_action();
 
-        let s5 = dm1.state_from_string("s101").unwrap();
+        let s5 = dm0.state_from_string("s101").unwrap();
 
-        let s4 = dm1.state_from_string("s100").unwrap();
+        let s4 = dm0.state_from_string("s100").unwrap();
 
-        let sf = dm1.state_from_string("s1111").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
 
-        let se = dm1.state_from_string("s1110").unwrap();
+        let se = dm0.state_from_string("s1110").unwrap();
 
-        let s7 = dm1.state_from_string("s111").unwrap();
+        let s7 = dm0.state_from_string("s111").unwrap();
 
-        let rx1x1 = dm1.region_from_string("rx1x1").unwrap();
+        let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
 
-        dm1.eval_sample_arbitrary(0, &s5, &s5);
-        dm1.eval_sample_arbitrary(0, &s5, &s4);
-        dm1.eval_sample_arbitrary(0, &s5, &s5);
-        dm1.eval_sample_arbitrary(0, &s5, &s4);
+        dm0.eval_sample_arbitrary(0, &s5, &s5);
+        dm0.eval_sample_arbitrary(0, &s5, &s4);
+        dm0.eval_sample_arbitrary(0, &s5, &s5);
+        dm0.eval_sample_arbitrary(0, &s5, &s4);
 
-        dm1.eval_sample_arbitrary(0, &sf, &se);
-        dm1.eval_sample_arbitrary(0, &sf, &sf);
-        dm1.eval_sample_arbitrary(0, &sf, &se);
-        dm1.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(0, &sf, &se);
+        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(0, &sf, &se);
+        dm0.eval_sample_arbitrary(0, &sf, &sf);
 
-        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
-            dm1.eval_sample_arbitrary(0, &s7, &s7);
+        println!("\nActs: {}", &dm0.actions[0]);
 
-            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
-                dm1.eval_sample_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
+        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+            dm0.eval_sample_arbitrary(0, &s7, &s7);
 
-                if let Some(_) = dm1.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dm1.actions[0]);
-                    //println!(" {}", dm1.actions[0].squares);
+            if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+                dm0.eval_sample_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
+
+                if let Some(_) = dm0.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dm0.actions[0]);
+                    //println!(" {}", dm0.actions[0].squares);
                     return Err(String::from("failed, rx1x1 should have been deleted"));
                 } else {
-                    //println!("\nActs: {}", &dm1.actions[0]);
-                    //println!("       Sqrs: ({})", dm1.actions[0].squares);
-                    return Ok(());
+                    //println!("\nActs: {}", &dm0.actions[0]);
+                    //println!("       Sqrs: ({})", dm0.actions[0].squares);
+                    //return Ok(());
                 }
             } else {
-                //println!("\nActs: {}", &dm1.actions[0]);
-                //println!("       Sqrs: ({})", dm1.actions[0].squares);
+                //println!("\nActs: {}", &dm0.actions[0]);
+                //println!("       Sqrs: ({})", dm0.actions[0].squares);
                 //println!("Group deleted too soon!");
                 return Err(String::from("failed, rx1x1 deleted too soon"));
             }
         } else {
-            //println!("\nActs: {}", &dm1.actions[0]);
+            //println!("\nActs: {}", &dm0.actions[0]);
             return Err(String::from(
                 "failed, group rx1x1 was not formed by two squares",
             ));
         }
+        //return Err(String::from("Done!",));
+        Ok(())
     } // end group_pn_2_union_then_invalidation
 
     // Form a group, X1X1 from two squares that have unpredictable results.
@@ -1551,47 +1227,47 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm1 = SomeDomain::new(
+        let mut dm0 = SomeDomain::new(
             0,
             1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
-        dm1.add_action();
+        dm0.add_action();
 
-        let s5 = dm1.state_from_string("s101").unwrap();
+        let s5 = dm0.state_from_string("s101").unwrap();
 
-        let s4 = dm1.state_from_string("s100").unwrap();
+        let s4 = dm0.state_from_string("s100").unwrap();
 
-        let sf = dm1.state_from_string("s1111").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
 
-        let se = dm1.state_from_string("s1110").unwrap();
+        let se = dm0.state_from_string("s1110").unwrap();
 
-        let s7 = dm1.state_from_string("s111").unwrap();
+        let s7 = dm0.state_from_string("s111").unwrap();
 
-        let rx1x1 = dm1.region_from_string("rx1x1").unwrap();
+        let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
 
         //println!(
         //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
         //    s5, s4, sf, se, rx1x1
         //);
-        dm1.eval_sample_arbitrary(0, &s5, &s5);
-        dm1.eval_sample_arbitrary(0, &s5, &s4);
-        dm1.eval_sample_arbitrary(0, &s5, &se);
+        dm0.eval_sample_arbitrary(0, &s5, &s5);
+        dm0.eval_sample_arbitrary(0, &s5, &s4);
+        dm0.eval_sample_arbitrary(0, &s5, &se);
 
-        dm1.eval_sample_arbitrary(0, &sf, &se);
-        dm1.eval_sample_arbitrary(0, &sf, &sf);
-        dm1.eval_sample_arbitrary(0, &sf, &s4);
+        dm0.eval_sample_arbitrary(0, &sf, &se);
+        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(0, &sf, &s4);
 
-        if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
-            println!("\nActs: {}", &dm1.actions[0]);
-            dm1.eval_sample_arbitrary(0, &s7, &s7);
+        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+            println!("\nActs: {}", &dm0.actions[0]);
+            dm0.eval_sample_arbitrary(0, &s7, &s7);
 
-            if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
-                dm1.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
-                if let Some(_regx) = dm1.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dm1.actions[0]);
-                    //println!(" {}", dm1.actions[0].get_squares());
+            if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+                dm0.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
+                if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+                    //println!("\nActs: {}", &dm0.actions[0]);
+                    //println!(" {}", dm0.actions[0].get_squares());
                     return Err(String::from(
                         "Four samples for s7 failed to invalidate group xx1x1",
                     ));
@@ -1599,12 +1275,12 @@ mod tests {
                     return Ok(());
                 }
             } else {
-                //println!("\nActs: {}", &dm1.actions[0]);
-                //println!("       Sqrs: ({})", dm1.actions[0].get_squares());
+                //println!("\nActs: {}", &dm0.actions[0]);
+                //println!("       Sqrs: ({})", dm0.actions[0].get_squares());
                 return Err(String::from("Group deleted too soon"));
             }
         } else {
-            //println!("\nActs: {}", &dm1.actions[0]);
+            //println!("\nActs: {}", &dm0.actions[0]);
             return Err(String::from("group rx1x1 was not formed by two squares!"));
         }
     } // end group_pn_u_union_then_invalidation
@@ -1659,6 +1335,8 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s3, &s3);
         dm0.eval_sample_arbitrary(0, &s5, &s5);
 
+        println!("\nActs: {}", &dm0.actions[0]);
+
         if let Some(grpx) = dm0.actions[0]
             .groups
             .find(&dm0.region_from_string("r00XX").unwrap())
@@ -1679,7 +1357,60 @@ mod tests {
         } else {
             return Err("Group r0X0X not found ??".to_string());
         }
+        //return Err("Done!".to_string());
+        Ok(())
+    }
 
+    #[test]
+    fn seek_edge_needs() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
+        dm0.add_action();
+
+        // Establish group XXXX
+        let s0 = dm0.state_from_string("s0000").unwrap();
+        let sf = dm0.state_from_string("s1111").unwrap();
+
+        dm0.eval_sample_arbitrary(0, &s0, &s0);
+        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        // Establish pnc for group XXXX
+        dm0.eval_sample_arbitrary(0, &s0, &s0);
+        dm0.eval_sample_arbitrary(0, &sf, &sf);
+
+        println!("\nActs: {}", &dm0.actions);
+
+        // Break group XXXX
+        let s5 = dm0.state_from_string("s0101").unwrap();
+        //        let s3 = dm0.state_from_string("s0011").unwrap();
+
+        dm0.eval_sample_arbitrary(0, &s5, &s0);
+
+        println!("\nActs: {}", &dm0.actions);
+        assert!(dm0.actions[0]
+            .seek_edge
+            .contains(&dm0.region_from_string("rx1x1").unwrap()));
+
+        let needs = dm0.actions[0].seek_edge_needs2();
+        println!("needs: {}", &needs);
+
+        let sd = dm0.state_from_string("s1101").unwrap();
+        dm0.eval_sample_arbitrary(0, &sd, &sd);
+
+        let needs = dm0.actions[0].seek_edge_needs1();
+        println!("needs2: {}", &needs);
+        assert!(needs.len() == 1);
+
+        dm0.eval_sample_arbitrary(0, &sd, &sd);
+        let needs = dm0.actions[0].seek_edge_needs1();
+        println!("needs3: {}", &needs);
+
+        println!("\nActs: {}", &dm0.actions);
+
+        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

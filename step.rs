@@ -13,7 +13,7 @@ impl fmt::Display for SomeStep {
 }
 
 #[readonly::make]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SomeStep {
     pub initial: SomeRegion,
     pub act_num: usize,
@@ -93,16 +93,3 @@ impl SomeStep {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 } // end impl SomeStep
-
-impl Clone for SomeStep {
-    fn clone(&self) -> Self {
-        Self {
-            initial: self.initial.clone(),
-            act_num: self.act_num,
-            result: self.result.clone(),
-            rule: self.rule.clone(),
-            alt_rule: self.alt_rule,
-            group_reg: self.group_reg.clone(),
-        }
-    }
-}

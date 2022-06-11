@@ -112,7 +112,7 @@ impl fmt::Display for SomeNeed {
                 targ_state: sta,
                 in_group: greg,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample State {}, between {} and {})",
+                "N(Dom {} Act {} Pri {} Sample State {}, between {} and {} to seek edge)",
                 dm, an, pri, &sta, &greg.state1, &greg.state2
             ),
             SomeNeed::AddGroup {
@@ -236,7 +236,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::StateNotInGroup {
                 dom_num: dm,
@@ -252,7 +252,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::ContradictoryIntersection {
                 dom_num: dm,
@@ -270,7 +270,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::ToRegion {
                 dom_num: dm,
@@ -286,7 +286,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::SampleRegion {
                 dom_num: dm,
@@ -302,7 +302,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::LimitGroup {
                 dom_num: dm,
@@ -322,7 +322,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::StateAdditionalSample {
                 dom_num: dm,
@@ -340,7 +340,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::AddGroup { group_region, .. } => match other {
                 SomeNeed::AddGroup {
@@ -352,7 +352,7 @@ impl PartialEq for SomeNeed {
                     }
                 }
 
-                _ => {}
+                _ => (),
             },
             SomeNeed::RemoveGroupAnchor { group_region: greg } => match other {
                 SomeNeed::RemoveGroupAnchor {
@@ -362,7 +362,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::SetGroupLimited {
                 group_region: greg,
@@ -376,7 +376,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::SeekEdge {
                 dom_num: dm,
@@ -394,7 +394,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::InactivateSeekEdge { reg: regx } => match other {
                 SomeNeed::InactivateSeekEdge { reg: regy } => {
@@ -402,7 +402,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             SomeNeed::AddSeekEdge { reg: regx } => match other {
                 SomeNeed::AddSeekEdge { reg: regy } => {
@@ -410,7 +410,7 @@ impl PartialEq for SomeNeed {
                         return true;
                     }
                 }
-                _ => {}
+                _ => (),
             },
             // Add new needs here
         };

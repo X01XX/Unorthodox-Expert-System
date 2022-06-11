@@ -87,6 +87,7 @@ impl SquareStore {
             sqrx.state,
             &sqrx.first_result()
         );
+        assert!(self.find(&sqrx.state).is_none());
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 

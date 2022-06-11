@@ -327,7 +327,7 @@ impl DomainStore {
                                 a_state_make_group_max_x = *nx;
                             }
                         }
-                        _ => {}
+                        _ => (),
                     } // end match ndx
                 } // next cnp_tup
 
@@ -344,7 +344,7 @@ impl DomainStore {
                                 can_do2.push(cnp_inx);
                             }
                         }
-                        _ => {}
+                        _ => (),
                     } // end match ndx
 
                     cnp_inx += 1;
@@ -362,7 +362,7 @@ impl DomainStore {
                                 min_plan_len = plnx.len();
                             }
                         }
-                        None => {}
+                        None => (),
                     }
                 }
 
@@ -377,7 +377,7 @@ impl DomainStore {
                                 can_do2.push(cnp_inx);
                             }
                         }
-                        None => {}
+                        None => (),
                     }
 
                     cnp_inx += 1;

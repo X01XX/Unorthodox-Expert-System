@@ -35,7 +35,7 @@ impl fmt::Display for SomeBits {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 
 /// SomeBits struct, just an unsigned integer vector.
 /// This structure sets the type of integer.
@@ -361,7 +361,7 @@ impl SomeBits {
         cnt == 1
     }
 
-    /// Return a copy, shifted 1 to the left, and 1 added.
+    // Return a copy, shifted 1 to the left, and 1 added.
     pub fn push_1(&self) -> Self {
         let num_ints = self.num_ints();
 
@@ -482,17 +482,6 @@ impl SomeBits {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
 } // end impl SomeBits
-
-/// Create a clone of an instance.
-impl Clone for SomeBits {
-    fn clone(&self) -> Self {
-        let mut v1 = Vec::<u8>::with_capacity(self.len());
-        for num in self.ints.iter() {
-            v1.push(*num);
-        }
-        Self { ints: v1 }
-    }
-}
 
 #[cfg(test)]
 mod tests {

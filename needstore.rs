@@ -16,11 +16,11 @@ impl fmt::Display for NeedStore {
 
         rc_str.push_str("\n[");
 
-        for stax in &self.avec {
+        for needx in &self.avec {
             if flg == 1 {
                 rc_str.push_str(&String::from(",\n "));
             }
-            rc_str.push_str(&format!("{}", &stax));
+            rc_str.push_str(&format!("{}", &needx));
             flg = 1;
         }
         rc_str.push(']');

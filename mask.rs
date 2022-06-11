@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 /// SomeMask struct, just some bits.
 pub struct SomeMask {
     pub bts: SomeBits,
@@ -149,11 +149,6 @@ impl SomeMask {
         self.bts.num_ints()
     }
 
-    /// Return the expected length of a formatted string.
-    pub fn formatted_string_length(&self) -> usize {
-        self.bts.formatted_string_length()
-    }
-
     /// Return a formatted string.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('m')
@@ -190,14 +185,6 @@ impl SomeMask {
         Self::new(self.bts.push_0())
     }
 } // end impl SomeMask
-
-impl Clone for SomeMask {
-    fn clone(&self) -> Self {
-        Self {
-            bts: self.bts.clone(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

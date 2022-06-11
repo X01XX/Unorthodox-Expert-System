@@ -16,7 +16,7 @@ impl fmt::Display for StepStore {
 }
 
 #[readonly::make]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StepStore {
     /// A vector for steps.
     pub avec: Vec<SomeStep>,
@@ -385,16 +385,6 @@ impl Index<usize> for StepStore {
     type Output = SomeStep;
     fn index<'a>(&'a self, i: usize) -> &'a SomeStep {
         &self.avec[i]
-    }
-}
-
-impl Clone for StepStore {
-    fn clone(&self) -> Self {
-        let mut rcstp = Self::with_capacity(self.len());
-        for stpx in self.avec.iter() {
-            rcstp.push(stpx.clone());
-        }
-        rcstp
     }
 }
 

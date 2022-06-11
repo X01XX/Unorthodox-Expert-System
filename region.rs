@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 /// SomeRegion struct
 pub struct SomeRegion {
     /// First state defining a region.
@@ -169,10 +169,10 @@ impl SomeRegion {
         s1
     }
 
-    /// Return true if two regions are adjacent.
-    pub fn is_adjacent(&self, other: &Self) -> bool {
-        self.diff_mask(&other).just_one_bit()
-    }
+    // Return true if two regions are adjacent.
+    //    pub fn is_adjacent(&self, other: &Self) -> bool {
+    //        self.diff_mask(&other).just_one_bit()
+    //    }
 
     /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
@@ -315,14 +315,14 @@ impl SomeRegion {
         )
     }
 
-    /// Return a region with masked X-bits set to zeros.
-    /// The region states may not represent a samples state.
-    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
-        Self::new(
-            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
-        )
-    }
+    // Return a region with masked X-bits set to zeros.
+    // The region states may not represent a samples state.
+    //    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+    //        Self::new(
+    //            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
+    //            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+    //        )
+    //    }
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
@@ -340,10 +340,10 @@ impl SomeRegion {
             .m_and(&self.diff_mask_state(&reg1.state2))
     }
 
-    /// Return the number of different (non-x) bits with another region.
-    pub fn distance(&self, reg1: &SomeRegion) -> usize {
-        self.diff_mask(&reg1).num_one_bits()
-    }
+    // Return the number of different (non-x) bits with another region.
+    //    pub fn distance(&self, reg1: &SomeRegion) -> usize {
+    //        self.diff_mask(&reg1).num_one_bits()
+    //    }
 
     /// Return states in a region, given a list of states.
     pub fn states_in(&self, stas: &StateStore) -> StateStore {
@@ -357,21 +357,6 @@ impl SomeRegion {
 
         stsin
     }
-
-    /// Given two adjacent regions, return an overlapping region.
-    pub fn overlapping_part(&self, other: &Self) -> Self {
-        assert!(self.is_adjacent(&other));
-
-        let adj_bit = self.diff_mask(&other);
-
-        self.intersection(&other).set_to_x(&adj_bit) // a strange use of the intersection logic
-    }
-
-    /// Toggle non-x bits in a region, given a mask.
-    //    pub fn toggle_bits(&self, tbits: &SomeMask) -> Self {
-    //        let stxor = SomeState::new(tbits.bts.clone());
-    //        Self::new(&self.state1.s_xor(&stxor), &self.state2.s_xor(&stxor))
-    //    }
 
     /// Given a region, and a second region, return the
     /// first region - the second
@@ -433,29 +418,7 @@ impl SomeRegion {
             f_ones.m_and(&t_zeros).m_and(&to_not_x),
         ))
     }
-
-    /// Return the adjacent part to another, adjacent, region.
-    pub fn adjacent_part_to(&self, other: &SomeRegion) -> SomeRegion {
-        assert!(self.is_adjacent(other));
-
-        let x_bits = self.x_mask();
-        let ones = other.ones_mask();
-        let zeros = other.zeros_mask();
-
-        let regx = self.set_to_ones(&x_bits.m_and(&ones));
-
-        regx.set_to_zeros(&x_bits.m_and(&zeros))
-    }
 } // end impl SomeRegion
-
-impl Clone for SomeRegion {
-    fn clone(&self) -> Self {
-        Self {
-            state1: self.state1.clone(),
-            state2: self.state2.clone(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -487,22 +450,6 @@ mod tests {
         let rul1 = reg1.rule_to_region(&reg2).unwrap();
         println!("rul1 {}", &rul1);
         assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101").unwrap());
-        Ok(())
-    }
-
-    #[test]
-    fn test_adjacent_part_to() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(1, "r01Xx0x").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "rxx0x11").unwrap();
-
-        let reg1a = reg1.adjacent_part_to(&reg2);
-        println!("\nreg1 {} adj part to {} is {}", &reg1, &reg2, &reg1a);
-        assert!(reg1a == SomeRegion::new_from_string(1, "r00010x01").unwrap());
-
-        let reg2a = reg2.adjacent_part_to(&reg1);
-        println!("reg2 {} adj part to {} is {}", &reg2, &reg1, &reg2a);
-        assert!(reg2a == SomeRegion::new_from_string(1, "r00010x11").unwrap());
-
         Ok(())
     }
 
@@ -588,18 +535,6 @@ mod tests {
         Ok(())
     }
 
-    // Test distance
-    #[test]
-    fn test_distance() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(2, "rXXX000111").unwrap();
-        let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
-
-        if reg0.distance(&reg1) != 2 {
-            return Err(format!("test_distance result != 2?"));
-        }
-        Ok(())
-    }
-
     // Test far_reg
     #[test]
     fn test_far_reg() -> Result<(), String> {
@@ -661,25 +596,6 @@ mod tests {
         let reg2 = SomeRegion::new_from_string(1, "r0XX111X").unwrap();
         if reg0.intersects(&reg2) {
             return Err(format!("test_intersects 2 True?"));
-        }
-
-        Ok(())
-    }
-
-    // Test is_adjacent.
-    #[test]
-    fn test_is_adjacent() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-
-        let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
-
-        if reg0.intersects(&reg1) == false {
-            return Err(format!("test_is_adjacent 1 False?"));
-        }
-
-        let reg2 = SomeRegion::new_from_string(1, "r0XX101X").unwrap();
-        if reg0.intersects(&reg2) {
-            return Err(format!("test_is_adjacent 2 True?"));
         }
 
         Ok(())
@@ -807,19 +723,6 @@ mod tests {
         Ok(())
     }
 
-    // Test overlapping_part.
-    #[test]
-    fn test_overlapping_part() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        let reg1 = SomeRegion::new_from_string(1, "r0XX111X").unwrap();
-
-        if reg0.overlapping_part(&reg1) != SomeRegion::new_from_string(1, "r1011XX").unwrap() {
-            return Err(format!("test_overlapping_part not r1011XX?"));
-        }
-
-        Ok(())
-    }
-
     // Test set_to_ones.
     #[test]
     fn test_set_to_ones() -> Result<(), String> {
@@ -828,19 +731,6 @@ mod tests {
 
         if reg0.set_to_ones(&msk1) != SomeRegion::new_from_string(1, "rX10X111").unwrap() {
             return Err(format!("test_set_to_ones not rX10X111?"));
-        }
-
-        Ok(())
-    }
-
-    // Test set_to_x.
-    #[test]
-    fn test_set_to_x() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        let msk1 = SomeMask::new_from_string(1, "m111").unwrap();
-
-        if reg0.set_to_x(&msk1) != SomeRegion::new_from_string(1, "rX10XXXX").unwrap() {
-            return Err(format!("test_set_to_x not rX10XXXX?"));
         }
 
         Ok(())

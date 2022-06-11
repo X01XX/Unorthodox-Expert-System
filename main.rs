@@ -16,8 +16,9 @@ mod bits;
 mod group;
 mod groupstore;
 mod mask;
-mod maskstore;
+//mod maskstore;
 mod need;
+use need::SomeNeed;
 mod region;
 use region::SomeRegion;
 mod change;
@@ -26,28 +27,25 @@ use regionstore::RegionStore;
 mod resultstore;
 mod rule;
 mod rulestore;
-use crate::rulestore::RuleStore;
-mod compare;
+use rulestore::RuleStore;
 mod square;
 mod squarestore;
 mod state;
 use state::SomeState;
 mod statestore;
-use crate::statestore::StateStore;
-use need::SomeNeed;
+use statestore::StateStore;
 mod domain;
+use domain::SomeDomain;
 mod needstore;
 mod plan;
 mod pn;
-use crate::pn::Pn;
-mod step;
-mod stepstore;
-use domain::SomeDomain;
+use pn::Pn;
 mod actions;
 mod domainstore;
+mod step;
+mod stepstore;
 use domainstore::DomainStore;
 mod actioninterface;
-mod combine;
 mod randompick;
 mod removeunordered;
 mod truth;
@@ -348,7 +346,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         // println!("doing dmx.take_action_need");
 
                         match ndx {
-                            SomeNeed::ToRegion { .. } => {}
+                            SomeNeed::ToRegion { .. } => (),
                             _ => {
                                 dmxs.take_action_need(dom_num, &ndx);
                             } // Add new needs here
@@ -382,9 +380,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     break;
                 } else if cmd[0] == "left" {
                     println!("left-overs: {}", &dmxs[0].actions[0].left_overs());
-                    continue;
-                } else if cmd[0] == "vert" {
-                    dmxs[0].actions[0].vertices();
                     continue;
                 }
             }
@@ -522,8 +517,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
 /// Do most commands entered by the user.
 /// Return a zero or one, to indicate how the step number should change.
-fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
-    let cur_state = dm1.get_current_state();
+fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
+    let cur_state = dmx.get_current_state();
 
     // Handle one-word commands
     if cmd.len() == 1 {
@@ -536,9 +531,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
     // Handle two-word commands
     if cmd.len() == 2 {
         if cmd[0] == "oa" {
-            match dm1.region_from_string(&cmd[1]) {
+            match dmx.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
-                    let val = dm1.add_optimal(goal_region.clone());
+                    let val = dmx.add_optimal(goal_region.clone());
                     println!("Add Optimal region {} result {}", goal_region, val);
                 }
                 Err(error) => {
@@ -549,9 +544,9 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         } //end command oa
 
         if cmd[0] == "od" {
-            match dm1.region_from_string(&cmd[1]) {
+            match dmx.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
-                    let val = dm1.delete_optimal(&goal_region);
+                    let val = dmx.delete_optimal(&goal_region);
                     println!("Delete Optimal region {} result {}", goal_region, val);
                 }
                 Err(error) => {
@@ -564,10 +559,10 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         // Arbitrary change state
         if cmd[0] == "cs" {
             // Get state from string
-            match dm1.state_from_string(&cmd[1]) {
+            match dmx.state_from_string(&cmd[1]) {
                 Ok(a_state) => {
                     println!("Changed state to {}", a_state);
-                    dm1.set_state(&a_state);
+                    dmx.set_state(&a_state);
                     return 1;
                 }
                 Err(error) => {
@@ -580,7 +575,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         if cmd[0] == "to" {
             let mut step_inc = 0;
             // Get region from string
-            match dm1.region_from_string(&cmd[1]) {
+            match dmx.region_from_string(&cmd[1]) {
                 Ok(goal_region) => {
                     println!(
                         "\nChange Current_state {} to region {}",
@@ -589,11 +584,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     if goal_region.is_superset_of_state(&cur_state) {
                         println!(
                             "\nCurrent_state {} is already in region {}",
-                            dm1.get_current_state(),
+                            dmx.get_current_state(),
                             goal_region
                         );
                     } else {
-                        if dm1.to_region(&goal_region) {
+                        if dmx.to_region(&goal_region) {
                             println!("\nChange to region succeeded");
                             step_inc = 1;
                         } else {
@@ -610,14 +605,14 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "ibn" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
-                    let ndx = &dm1.actions[act_num].seek_edge_needs1();
+                    let ndx = &dmx.actions[act_num].seek_edge_needs1();
 
                     if ndx.len() > 0 {
                         println!("Seek Edge Needs1 are {}", &ndx);
                     } else {
-                        let ndx = &dm1.actions[act_num].seek_edge_needs2();
+                        let ndx = &dmx.actions[act_num].seek_edge_needs2();
 
                         if ndx.len() > 0 {
                             println!("Seek Edge Needs2 are {}", &ndx);
@@ -636,13 +631,13 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         if cmd[0] == "ss" {
             let mut step_inc = 0;
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     println!("Act {} sample State {}", act_num, cur_state);
-                    dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                        dom_num: dm1.num,
+                    dmx.take_action_need(&SomeNeed::StateNotInGroup {
+                        dom_num: dmx.num,
                         act_num: act_num,
-                        targ_state: dm1.get_current_state(),
+                        targ_state: dmx.get_current_state(),
                     });
                     step_inc = 1;
                 }
@@ -655,11 +650,11 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "ps" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     println!(
                         "Squares of Action {} are:\n{}\n",
-                        &act_num, &dm1.actions[act_num].squares
+                        &act_num, &dmx.actions[act_num].squares
                     );
                 }
                 Err(error) => {
@@ -675,15 +670,15 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         if cmd[0] == "ss" {
             let mut step_inc = 0;
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get state from string
-                    match dm1.state_from_string(&cmd[2]) {
+                    match dmx.state_from_string(&cmd[2]) {
                         Ok(a_state) => {
                             println!("Act {} sample State {}", act_num, a_state);
-                            dm1.set_state(&a_state);
-                            dm1.take_action_need(&SomeNeed::StateNotInGroup {
-                                dom_num: dm1.num,
+                            dmx.set_state(&a_state);
+                            dmx.take_action_need(&SomeNeed::StateNotInGroup {
+                                dom_num: dmx.num,
                                 act_num: act_num,
                                 targ_state: a_state,
                             });
@@ -703,17 +698,17 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "ps" {
             // Get act_num
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get region
-                    match dm1.region_from_string(&cmd[2]) {
+                    match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
                             let mut psstr = String::from(format!(
                                 "Squares of Action {} in region {} are:\n",
                                 &act_num, &aregion
                             ));
 
-                            let stas = dm1.actions[act_num].squares.stas_in_reg(&aregion);
+                            let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
                             if stas.len() == 0 {
                                 println!("No squares in region {}", &aregion);
                                 return 0;
@@ -729,7 +724,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                     psstr.push_str(",\n");
                                 }
 
-                                let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
                                 psstr.push_str(&format!("    {}", &sqrx));
 
                                 if sqrx.results.pn < min_pn {
@@ -755,7 +750,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             let mut rules: Option<RuleStore> = None;
                             let mut non_pn_stas = StateStore::new();
                             for stax in stas.iter() {
-                                let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
                                 if sqrx.results.pn == max_pn {
                                     if max_pn < Pn::Unpredictable {
                                         if let Some(ruls) = rules {
@@ -783,7 +778,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             let mut rules_str = String::from("None");
                             if max_pn == Pn::Unpredictable {
                                 for stax in non_pn_stas.iter() {
-                                    let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
                                     if sqrx.results.pnc {
                                         form_group = false;
                                     }
@@ -792,7 +787,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                 if let Some(ruls) = rules {
                                     rules_str = ruls.formatted_string();
                                     for stax in non_pn_stas.iter() {
-                                        let sqrx = dm1.actions[act_num].squares.find(stax).unwrap();
+                                        let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
                                         if sqrx.rules.is_subset_of(&ruls) == false {
                                             form_group = false;
                                         }
@@ -821,17 +816,17 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "aj" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get region
-                    match dm1.region_from_string(&cmd[2]) {
+                    match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
-                            if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
+                            if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
                                 if let Some(anchor) = &grpx.anchor {
-                                    let sqrx = dm1.actions[act_num].squares.find(anchor).unwrap();
+                                    let sqrx = dmx.actions[act_num].squares.find(anchor).unwrap();
                                     println!("\nGroup:      {}", &aregion);
                                     println!("Anchor:   {}", sqrx.formatted_string2());
-                                    let stas = dm1.actions[act_num]
+                                    let stas = dmx.actions[act_num]
                                         .squares
                                         .stas_adj_reg(&SomeRegion::new(&anchor, &anchor));
                                     for stax in stas.iter() {
@@ -839,7 +834,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                         } else {
                                             println!(
                                                 "Adjacent: {}",
-                                                &dm1.actions[act_num]
+                                                &dmx.actions[act_num]
                                                     .squares
                                                     .find(stax)
                                                     .unwrap()
@@ -871,14 +866,14 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "rps" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get region from string
-                    match dm1.region_from_string(&cmd[2]) {
+                    match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
-                            let sta_1s = dm1.actions[act_num]
+                            let sta_1s = dmx.actions[act_num]
                                 .squares
-                                .states_in_1_region(&dm1.actions[act_num].groups.regions());
+                                .states_in_1_region(&dmx.actions[act_num].groups.regions());
 
                             println!(
                                 "Squares in one region, in {} are {}",
@@ -900,15 +895,15 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
         if cmd[0] == "gps" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get region from string
-                    match dm1.region_from_string(&cmd[2]) {
+                    match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
                             // Find group
-                            if let Some(grpx) = dm1.actions[act_num].groups.find(&aregion) {
+                            if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
                                 if let Some(sqrx) =
-                                    dm1.actions[act_num].squares.find(&grpx.region.state1)
+                                    dmx.actions[act_num].squares.find(&grpx.region.state1)
                                 {
                                     println!("{}", &sqrx);
                                 } else {
@@ -917,7 +912,7 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 
                                 if grpx.region.state1 != grpx.region.state2 {
                                     if let Some(sqrx) =
-                                        dm1.actions[act_num].squares.find(&grpx.region.state2)
+                                        dmx.actions[act_num].squares.find(&grpx.region.state2)
                                     {
                                         println!("{}", &sqrx);
                                     } else {
@@ -947,20 +942,20 @@ fn do_command(dm1: &mut SomeDomain, cmd: &Vec<String>) -> usize {
         // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
         if cmd[0] == "ss" {
             // Get act number from string
-            match dm1.act_num_from_string(&cmd[1]) {
+            match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     // Get i-state from string
-                    match dm1.state_from_string(&cmd[2]) {
+                    match dmx.state_from_string(&cmd[2]) {
                         Ok(i_state) => {
                             // Get r-state from string
-                            match dm1.state_from_string(&cmd[3]) {
+                            match dmx.state_from_string(&cmd[3]) {
                                 Ok(r_state) => {
                                     println!(
                                         "Act {} take sample {} -> {}",
                                         act_num, &i_state, &r_state
                                     );
 
-                                    dm1.eval_sample_arbitrary(act_num, &i_state, &r_state);
+                                    dmx.eval_sample_arbitrary(act_num, &i_state, &r_state);
                                     step_inc = 1;
                                 }
                                 Err(error) => {
@@ -1128,11 +1123,11 @@ pub fn pause_for_input(prompt: &str) -> String {
         .read_line(&mut in_str)
         .expect("Failed to read line");
 
-    in_str
+    in_str.trim().to_string()
 }
 
 /// Load data from a given path string.
-fn load_data(path_str: &String) -> Result<DomainStore, String> {
+fn load_data(path_str: &str) -> Result<DomainStore, String> {
     let path = Path::new(path_str);
     let display = path.display();
 
@@ -1164,7 +1159,7 @@ fn load_data(path_str: &String) -> Result<DomainStore, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, path_str: &String) -> Result<bool, String> {
+fn store_data(dmxs: &DomainStore, path_str: &str) -> Result<bool, String> {
     let serialized_r = serde_yaml::to_string(&dmxs);
     match serialized_r {
         Ok(serialized) => {
