@@ -3,30 +3,7 @@
 //! This is meant to allow a set of numbers to be chosen randomly,
 //! while allowing the remaining numbers to be chosen later,
 //! potentially until all numbers are chosen.
-//
-// Example
-// ..
-// Cargo.toml
-//  [dependencies]
-//  rand = "0.7.3"
-//
-// main.rs
-//  mod randompick;
-//  use crate::randompick::RandomPick;
-//
-//  let avec = vec![20, 21, 22, 23, 24, 254, 26]; // <a vector of options>
-//  let mut rp1 = RandomPick::new(avec.len());    // put numbers 0..avec.len() into a vector.
-//
-//  Randomly pick three numbers, as indicies into the vector
-//
-//  for _ in 0..3 {
-//      let inx = rp1.pick().unwrap();
-//      println!("num picked is {} vector value is {}", inx, avec[inx]);
-//  }
-// ..
-// num picked is 2 vector value is 22
-// num picked is 0 vector value is 20
-// num picked is 4 vector value is 24
+//!
 
 use crate::removeunordered::remove_unordered;
 use rand::Rng;
@@ -76,9 +53,8 @@ impl RandomPick {
     }
 } // End RandomPick
 
-/// Get a random choice of a number of unique numbers (num_results) to a
-/// given number of positions, 0, 1 .. -> the_len (exclusive).
-/// random 2 of 5 -> [0, 3]
+/// Get a random choice of a number of unique numbers in a range.
+/// e.g. random_x_of_n(2, 5) -> [0, 3]
 pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
     if x < 1 || x >= n {
         panic!(
@@ -97,3 +73,31 @@ pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
 
     x_vec
 } // end random_x_of_n
+
+#[cfg(test)]
+mod tests {
+    use crate::randompick::RandomPick;
+
+    #[test]
+    //  Randomly pick numbers, as indicies into a vector, until the vector value satisfies some criteria.
+    fn pick_an_odd_number() -> Result<(), String> {
+
+        // Init a number vector.
+        let avec = vec![20, 21, 22, 23, 24, 254, 26]; // <a vector of options>
+
+        // Init a RandomPick struct, with the range 0..avec.len().
+        let mut rp1 = RandomPick::new(avec.len());
+
+        // Pick index numbers until the vector item is an odd number.
+        loop {
+            if let Some(inx) = rp1.pick() {
+                println!("num picked is {} vector value is {}", inx, avec[inx]);
+                if avec[inx] % 2 == 1 {
+                    return Ok(());
+                }
+            } else {
+                return Err("No odd number was found".to_string());
+            }
+        }
+    }
+}

@@ -188,7 +188,7 @@ impl SomeMask {
 
 #[cfg(test)]
 mod tests {
-    use crate::mask::SomeMask;
+    use super::*;
 
     // Test SomeMask::half_mask, num_one_bits
     #[test]

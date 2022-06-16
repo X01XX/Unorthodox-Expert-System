@@ -1,6 +1,17 @@
 //! The SomeDomain struct, representing a pseudo Karnaugh Map with a specific number of bits.
 //!
 //! Contains a vector of Action structs, the current state, and a few other fields.
+//!
+//! Generates needs to improve the understanding of rules.
+//!
+//! Generates needs to seek optimal regions. 
+//!
+//! Generates plans to satisfy needs.
+//!
+//! Executes a plan to satisfy a need.
+//!
+//! When the current state is in an optimal region, the bordom value is extended if the position
+//! is in an intersection of multiple optimal regions.
 
 use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
@@ -746,8 +757,8 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::change::SomeChange;
-    use crate::domain::SomeDomain;
     use crate::mask::SomeMask;
     use crate::regionstore::RegionStore;
     use crate::state::SomeState;
