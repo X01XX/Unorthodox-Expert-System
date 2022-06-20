@@ -4,7 +4,7 @@
 //!
 //! Generates needs to improve the understanding of rules.
 //!
-//! Generates needs to seek optimal regions. 
+//! Generates needs to seek optimal regions.
 //!
 //! Generates plans to satisfy needs.
 //!

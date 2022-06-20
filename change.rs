@@ -1,6 +1,5 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
-use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -42,8 +41,8 @@ impl SomeChange {
     /// Return a new SomeChange struct instance, set to zeros.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
-            b01: SomeMask::new(SomeBits::new(num_ints)),
-            b10: SomeMask::new(SomeBits::new(num_ints)),
+            b01: SomeMask::new_low(num_ints),
+            b10: SomeMask::new_low(num_ints),
         }
     }
 

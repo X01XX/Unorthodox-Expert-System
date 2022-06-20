@@ -230,35 +230,17 @@ impl GroupStore {
     }
 
     /// Check groups with a given sample.
-    /// Return the number of groups that are deleted.
-    pub fn check_sample(
-        &mut self,
-        init: &SomeState,
-        rslt: &SomeState,
-        dom: usize,
-        act: usize,
-    ) -> usize {
-        let mut rmvec = Vec::<usize>::new();
-        let mut inx = 0;
-
+    /// Return true if any groups are invalidated.
+    pub fn any_groups_invalidated(&mut self, init: &SomeState, rslt: &SomeState) -> bool {
         for grpx in &mut self.avec {
             if grpx.region.is_superset_of_state(&init) {
                 if !grpx.check_sample(&init, &rslt) {
-                    rmvec.push(inx);
+                    return true;
                 }
             }
-            inx += 1;
         }
 
-        for inx in rmvec.iter().rev() {
-            println!(
-                "\nDom {} Act {} Group {} deleted",
-                dom, act, self.avec[*inx].region
-            );
-            remove_unordered(&mut self.avec, *inx);
-        }
-
-        rmvec.len()
+        false
     }
 
     /// Return a RegionStore of regions of each group.

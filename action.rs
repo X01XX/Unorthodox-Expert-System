@@ -43,12 +43,17 @@ impl fmt::Display for SomeAction {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
             // Count the number of states in a group that are also in only one region
-            let mut cnt = 0;
-            for stax in stas_in.iter() {
-                if regs.state_in_1_region(stax) {
-                    cnt += 1;
-                }
-            }
+            //            let mut cnt = 0;
+            //            for stax in stas_in.iter() {
+            //                if regs.state_in_1_region(stax) {
+            //                    cnt += 1;
+            //                }
+            //            }
+
+            let cnt: usize = stas_in
+                .iter()
+                .map(|x| if regs.state_in_1_region(x) { 1 } else { 0 })
+                .sum();
 
             rc_str.push_str(&format!(
                 "{}{} num Sqrs: {} in1: {})",
@@ -288,18 +293,12 @@ impl SomeAction {
         }
 
         // Get num groups that might be invalidated
-        let num_grps_invalidated = self.groups.check_sample(cur, new_state, dom, self.num);
+        let any_grps_invalidated = self.groups.any_groups_invalidated(cur, new_state);
 
         // Get num active groups in
         let num_grps_in = self.groups.num_groups_state_in(cur);
-        if num_grps_invalidated > 0 {
-            println!(
-                "Dom {} Act {} sqr {} in {} groups, invalidated {}",
-                dom, self.num, cur, num_grps_in, num_grps_invalidated
-            );
-        }
 
-        if num_grps_invalidated > 0 || num_grps_in == 0 {
+        if any_grps_invalidated || num_grps_in == 0 {
             self.eval_sample(cur, new_state, dom);
         }
     } // end eval_step_sample
@@ -711,7 +710,7 @@ impl SomeAction {
                     }
                     SomeNeed::SetGroupLimited {
                         group_region: greg,
-                        cstate: sta1,
+                        anchor: sta1,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             println!(
@@ -1314,7 +1313,7 @@ impl SomeAction {
                     // Set the group limited
                     ret_nds.push(SomeNeed::SetGroupLimited {
                         group_region: greg.clone(),
-                        cstate: anchor_sta.clone(),
+                        anchor: anchor_sta.clone(),
                     });
                 } else {
                     // Get additional samples of the far state

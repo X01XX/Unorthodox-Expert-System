@@ -2,7 +2,7 @@
 //!
 //! Uses two states (they can be the same) to represent a region, which includes every state between them.
 //!
-//! Can serve as a store for any two states.
+//! The two states used to make the region, can be keys to two squares.
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
@@ -64,9 +64,9 @@ impl SomeRegion {
     /// A state string can be used, like "s101010" or s0x34", making
     /// a region with no X bit positions.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        let mut bts_high = SomeBits::new(num_ints);
+        let mut bts_high = SomeBits::new_low(num_ints);
 
-        let mut bts_low = SomeBits::new(num_ints);
+        let mut bts_low = SomeBits::new_low(num_ints);
 
         let mut inx = -1;
 
@@ -170,9 +170,9 @@ impl SomeRegion {
     }
 
     // Return true if two regions are adjacent.
-    //    pub fn is_adjacent(&self, other: &Self) -> bool {
-    //        self.diff_mask(&other).just_one_bit()
-    //    }
+    pub fn is_adjacent(&self, other: &Self) -> bool {
+        self.diff_mask(&other).just_one_bit()
+    }
 
     /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
@@ -422,11 +422,62 @@ impl SomeRegion {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::mask::SomeMask;
-    use crate::region::SomeRegion;
+    use crate::randompick::RandomPick;
     use crate::regionstore::RegionStore;
     use crate::state::SomeState;
     use crate::statestore::StateStore;
+
+    // Test new_from_string, using randomly chosen digits.
+    #[test]
+    fn test_new_from_string() -> Result<(), String> {
+        // Init possible hexadecimal digits.
+        let chars = "01Xx01Xx01Xx01Xx";
+
+        // Check 16 times.
+        for _ in 0..16 {
+            let mut inxs = RandomPick::new(16);
+
+            // Init strings
+            let mut reg_from_str = String::from("r");
+            let mut reg_expected_str = String::from("r");
+
+            for x in 0..16 {
+                if let Some(inx) = inxs.pick() {
+                    // Add to the source string of a bits instance.
+                    reg_from_str.push(chars.as_bytes()[inx] as char);
+
+                    // Add to the expected output of instance.formatted_string()
+                    if x > 0 && x % 8 == 0 {
+                        reg_expected_str.push('_');
+                    }
+                    reg_expected_str.push(chars.as_bytes()[inx] as char);
+                }
+            }
+
+            // Get new bits instance.
+            let reg_instance = SomeRegion::new_from_string(2, &reg_from_str).unwrap();
+
+            // Get string from bits instance.
+            let reg_instance_str = reg_instance.formatted_string();
+
+            // Compare the bits string and predicted string.
+            match reg_instance_str == reg_expected_str {
+                true => {
+                    println!("reg   {} instance", reg_instance_str);
+                    println!("equal {} expected", reg_expected_str);
+                }
+                _ => {
+                    return Err(format!(
+                        "reg {} instance not equal {} expected!",
+                        reg_instance_str, reg_expected_str
+                    ))
+                }
+            }
+        }
+        Ok(())
+    }
 
     #[test]
     fn test_rule_to_region() -> Result<(), String> {

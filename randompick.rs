@@ -81,7 +81,6 @@ mod tests {
     #[test]
     //  Randomly pick numbers, as indicies into a vector, until the vector value satisfies some criteria.
     fn pick_an_odd_number() -> Result<(), String> {
-
         // Init a number vector.
         let avec = vec![20, 21, 22, 23, 24, 254, 26]; // <a vector of options>
 

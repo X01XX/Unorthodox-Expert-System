@@ -12,7 +12,6 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
 use crate::bits::SomeBits;
-use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -92,7 +91,7 @@ impl SomeState {
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &SomeState) -> bool {
-        SomeMask::new(self.bts.b_xor(&other.bts)).just_one_bit()
+        self.bts.b_xor(&other.bts).just_one_bit()
     }
 
     /// Return the number of one bits that are different between two states.
@@ -113,20 +112,7 @@ impl SomeState {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::SomeState;
-
-    // Test SomeState::distance
-    // This uses SomeBits::distance, so only a basic test is done.
-    #[test]
-    fn test_distance() -> Result<(), String> {
-        if 2 != SomeState::new_from_string(2, "s0x0")
-            .unwrap()
-            .distance(&SomeState::new_from_string(2, "s0x11").unwrap())
-        {
-            return Err(format!("SomeState::distance 1 failed"));
-        }
-        Ok(())
-    }
+    use super::*;
 
     // Test SomeState::is_adjacent
     #[test]
@@ -135,130 +121,27 @@ mod tests {
             .unwrap()
             .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
         {
-            return Err(format!("SomeState::is_adjacent 1 failed"));
+            return Err(format!("Test 1 failed"));
         }
         if SomeState::new_from_string(2, "s0x1")
             .unwrap()
             .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
             == false
         {
-            return Err(format!("SomeState::is_adjacent 2 failed"));
+            return Err(format!("Test 2 failed"));
         }
         if SomeState::new_from_string(2, "s0x0")
             .unwrap()
             .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
         {
-            return Err(format!("SomeState::is_adjacent 3 failed"));
+            return Err(format!("Test 3 failed"));
         }
         if SomeState::new_from_string(2, "s0x100")
             .unwrap()
             .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
             == false
         {
-            return Err(format!("SomeState::is_adjacent 4 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::is_bit_set
-    // This uses SomeBits::is_bit_set, so only a basic test is done.
-    #[test]
-    fn test_is_bit_set() -> Result<(), String> {
-        let test_sta = SomeState::new_from_string(2, "s0x5aa5").unwrap();
-
-        if test_sta.is_bit_set(0) == false {
-            return Err(format!("SomeState::is_bit_set 0 failed"));
-        }
-
-        if test_sta.is_bit_set(1) {
-            return Err(format!("SomeState::is_bit_set 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::s_and
-    // This uses SomeBits::b_and, so only a basic test is done.
-    #[test]
-    fn test_s_and() -> Result<(), String> {
-        let test_and = SomeState::new(
-            SomeState::new_from_string(2, "s0x6666")
-                .unwrap()
-                .bts
-                .b_and(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts),
-        );
-        if test_and != SomeState::new_from_string(2, "s0x4264").unwrap() {
-            return Err(format!("SomeState::s_and 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::s_not
-    // This uses SomeBits::b_not, so only a basic test is done.
-    #[test]
-    fn test_s_not() -> Result<(), String> {
-        let test_not = SomeState::new(
-            SomeState::new_from_string(2, "s0x5a5a")
-                .unwrap()
-                .bts
-                .b_not(),
-        );
-        if test_not != SomeState::new_from_string(2, "s0xa5a5").unwrap() {
-            return Err(format!("SomeState::s_not 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::s_or
-    // This uses SomeBits::b_or, so only a basic test is done.
-    #[test]
-    fn test_s_or() -> Result<(), String> {
-        let test_or = SomeState::new(
-            SomeState::new_from_string(2, "s0x2111")
-                .unwrap()
-                .bts
-                .b_or(&SomeState::new_from_string(2, "s0x428a").unwrap().bts),
-        );
-        if test_or != SomeState::new_from_string(2, "s0x639b").unwrap() {
-            return Err(format!("SomeState::s_or 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::s_xor
-    // This uses SomeBits::b_xor, so only a basic test is done.
-    #[test]
-    fn test_s_xor() -> Result<(), String> {
-        let test_xor = SomeState::new(
-            SomeState::new_from_string(2, "s0x6666")
-                .unwrap()
-                .bts
-                .b_xor(&SomeState::new_from_string(2, "s0xc37d").unwrap().bts),
-        );
-        if test_xor != SomeState::new_from_string(2, "s0xa51b").unwrap() {
-            return Err(format!("SomeState::s_xor 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState::toggle_bits
-    #[test]
-    fn test_toggle_bits() -> Result<(), String> {
-        if SomeState::new_from_string(2, "s0x505")
-            .unwrap()
-            .toggle_bits(vec![1, 8, 11])
-            != SomeState::new_from_string(2, "s0xc07").unwrap()
-        {
-            return Err(format!("SomeState::toggle_bits 1 failed"));
-        }
-        Ok(())
-    }
-
-    // Test SomeState.clone
-    #[test]
-    fn test_clone() -> Result<(), String> {
-        let tmp = SomeState::new_from_string(2, "s0x505").unwrap();
-        if tmp != tmp.clone() {
-            return Err(format!("SomeState::clone 1 failed"));
+            return Err(format!("Test 4 failed"));
         }
         Ok(())
     }
