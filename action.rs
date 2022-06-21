@@ -25,6 +25,7 @@ use crate::truth::Truth;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::collections::VecDeque;
 
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -512,20 +513,11 @@ impl SomeAction {
     /// Return needs for states that are not in a group.
     /// The Domain current state for which there are no samples.
     /// A pn > 1 state that needs more samples.
-    pub fn state_not_in_group_needs(&self, cur_state: &SomeState) -> NeedStore {
+    pub fn state_not_in_group_needs(&self, cur_state: &SomeState, memory: &VecDeque<SomeState>) -> NeedStore {
         let mut nds = NeedStore::new();
 
         // Check if current state is in any groups
-        let mut in_grp = false;
-        for grpx in self.groups.iter() {
-            if grpx.region.is_superset_of_state(cur_state) {
-                in_grp = true;
-                break;
-            }
-        }
-
-        // If not, generate need
-        if in_grp == false {
+        if self.groups.any_superset_of_state(cur_state) == false {
             nds.push(SomeNeed::StateNotInGroup {
                 dom_num: 0, // will be set later
                 act_num: self.num,
@@ -533,22 +525,34 @@ impl SomeAction {
             });
         }
 
-        // Look for a pn > 1, pnc == false, not in group squares
-        // Extra samples are needed to gain pnc, then the first group.
-        let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
-
-        for stax in sqrs_pngt1.iter() {
-            if self.groups.any_superset_of_state(&stax) {
+        // Check memory
+        for stax in memory.iter() {
+            if stax == cur_state {
                 continue;
             }
-
-            if in_grp || stax != cur_state {
+            if self.groups.any_superset_of_state(stax) == false {
                 nds.push(SomeNeed::StateNotInGroup {
                     dom_num: 0, // will be set later
                     act_num: self.num,
                     targ_state: stax.clone(),
                 });
             }
+        } // next stax
+        
+        // Look for a pn > 1, pnc == false, not in group squares
+        // Extra samples are needed to gain pnc, then the first group.
+        let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
+
+        for stax in sqrs_pngt1.iter() {
+            if stax == cur_state || self.groups.any_superset_of_state(&stax) {
+                continue;
+            }
+
+            nds.push(SomeNeed::StateNotInGroup {
+                dom_num: 0, // will be set later
+                act_num: self.num,
+                targ_state: stax.clone(),
+            });
         }
 
         nds
@@ -563,6 +567,7 @@ impl SomeAction {
         cur_state: &SomeState,
         agg_chgs: &SomeChange,
         dom: usize,
+        memory: &VecDeque::<SomeState>,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
@@ -573,7 +578,7 @@ impl SomeAction {
             cnt += 1;
 
             // Look for needs for states not in groups
-            let mut ndx = self.state_not_in_group_needs(cur_state);
+            let mut ndx = self.state_not_in_group_needs(cur_state, memory);
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
             }

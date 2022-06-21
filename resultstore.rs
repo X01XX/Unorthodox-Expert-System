@@ -63,12 +63,13 @@ impl ResultStore {
             self.astore[self.num_results % MAX_RESULTS] = st;
         }
 
-        self.num_results += 1;
-        assert!(self.num_results < 100);
-
+        // Avoid overflow.  Overflow to zero will not work.
         if self.num_results == usize::MAX {
-            self.num_results = (self.num_results % MAX_RESULTS) + MAX_RESULTS;
+            self.num_results = MAX_RESULTS + (self.num_results % MAX_RESULTS);
         }
+
+        self.num_results += 1;
+        assert!(self.num_results < 100); // remove, if needed.
 
         let pnx = self.calc_pn();
 
@@ -175,8 +176,8 @@ impl ResultStore {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::pn::Pn;
-    use crate::resultstore::{ResultStore, MAX_RESULTS};
     use crate::state::SomeState;
 
     // Test ResultStore::add_result for Pn::One

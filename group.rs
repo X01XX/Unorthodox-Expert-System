@@ -81,20 +81,25 @@ impl SomeGroup {
         rc_str.push_str(&format!("{}", self.region.formatted_string()));
 
         rc_str.push_str(&format!(", pn: {}", self.pn));
-        rc_str.push_str(&format!(", pnc: {}", self.pnc));
-        if self.limited {
-            rc_str.push_str(&format!(", limited"));
+
+        if self.pnc {
+            rc_str.push_str(&format!(", pnc: t,"));
+        } else {
+            rc_str.push_str(&format!(", pnc: f,"));
         }
+//        if self.limited {
+//            rc_str.push_str(&format!(", limited"));
+//        }
 
         match self.pn {
             Pn::One => {
-                rc_str.push_str(&format!(", {}", self.rules));
+                rc_str.push_str(&format!(" {}", self.rules));
             }
             Pn::Two => {
-                rc_str.push_str(&format!(", {}", self.rules));
+                rc_str.push_str(&format!(" {}", self.rules));
             }
             Pn::Unpredictable => {
-                rc_str.push_str(", [Unpredictable]");
+                rc_str.push_str(" R[Unpredictable]");
             }
         }
 

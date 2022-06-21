@@ -28,6 +28,7 @@ use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::collections::VecDeque;
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,6 +48,8 @@ impl fmt::Display for SomeDomain {
         write!(f, "{}", rc_str)
     }
 }
+
+pub const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
@@ -68,6 +71,10 @@ pub struct SomeDomain {
     optimal: RegionStore,
     /// RegionStore to add all possible intersections of the optimal states to discern.
     pub optimal_and_ints: RegionStore,
+    /// Memory of recent current states.
+    /// Using VecDeque allows memory to be read in most-recent to least-recent order,
+    /// with self.memory.iter().
+    pub memory: VecDeque::<SomeState>,
 }
 
 impl SomeDomain {
@@ -88,6 +95,7 @@ impl SomeDomain {
             boredom: 0,
             optimal_and_ints: optimal.and_intersections(),
             optimal: optimal,
+            memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
         };
     }
 
@@ -130,7 +138,7 @@ impl SomeDomain {
         // Sample the current state, for any reason, does not require any changes.
         let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
 
-        let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num);
+        let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
 
         if let Some(ndx) = self.check_optimal() {
             nst.push(ndx);
@@ -257,7 +265,13 @@ impl SomeDomain {
             }
         }
 
-        // Set the state.
+        // Update memory.
+        if self.memory.len() == MAX_MEMORY {
+            self.memory.pop_back();
+        }
+        self.memory.push_front(self.cur_state.clone());
+
+        // Set current state.
         self.cur_state = new_state.clone();
     }
 
@@ -893,7 +907,7 @@ mod tests {
         dm0.add_action();
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
+        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
 
         assert!(nds1.len() == 1);
         assert!(
@@ -955,7 +969,7 @@ mod tests {
         dm0.add_action();
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
+        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
 
         assert!(nds1.len() == 1);
         assert!(
