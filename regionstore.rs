@@ -397,12 +397,10 @@ impl Index<usize> for RegionStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::region::SomeRegion;
-    use crate::regionstore::RegionStore;
-    use crate::state::SomeState;
+    use super::*;
 
     #[test]
-    fn test_and_intersections() -> Result<(), String> {
+    fn and_intersections() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
         regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
@@ -422,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_region() -> Result<(), String> {
+    fn remove_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(3);
 
         let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
@@ -440,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn test_subtract_region() -> Result<(), String> {
+    fn subtract_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
         regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
@@ -463,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn test_subtract() -> Result<(), String> {
+    fn subtract() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
         regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
@@ -489,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn test_union() -> Result<(), String> {
+    fn union() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(2);
         assert!(regstr.union() == None);
 
@@ -506,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn test_push_nosups() -> Result<(), String> {
+    fn push_nosups() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -527,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn test_push_nosubs() -> Result<(), String> {
+    fn push_nosubs() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -548,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn test_state_in_1_region() -> Result<(), String> {
+    fn state_in_1_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -566,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn test_not_supersets_of_state() -> Result<(), String> {
+    fn not_supersets_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -587,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    fn test_supersets_of_state() -> Result<(), String> {
+    fn supersets_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -607,7 +605,7 @@ mod tests {
     }
 
     #[test]
-    fn test_any_superset_of_state() -> Result<(), String> {
+    fn any_superset_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -625,7 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn test_any_intersection() -> Result<(), String> {
+    fn any_intersection() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -643,7 +641,7 @@ mod tests {
     }
 
     #[test]
-    fn test_any_subset_of() -> Result<(), String> {
+    fn any_subset_of() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -659,7 +657,7 @@ mod tests {
     }
 
     #[test]
-    fn test_any_superset_of() -> Result<(), String> {
+    fn any_superset_of() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
         regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());

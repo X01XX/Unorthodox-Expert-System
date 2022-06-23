@@ -190,9 +190,8 @@ impl SomeMask {
 mod tests {
     use super::*;
 
-    // Test SomeMask::half_mask, num_one_bits
     #[test]
-    fn test_half_mask() -> Result<(), String> {
+    fn half_mask() -> Result<(), String> {
         let test_msk = SomeMask::new_from_string(2, "m0x5aa5").unwrap().half_mask();
 
         if test_msk.num_one_bits() != 4 {
@@ -201,19 +200,6 @@ mod tests {
                 test_msk.num_one_bits()
             ));
         }
-        Ok(())
-    }
-
-    #[test]
-    fn test_split() -> Result<(), String> {
-        let test_msk = SomeMask::new_from_string(2, "m0x050a").unwrap();
-        let one_bits: Vec<SomeMask> = test_msk.split();
-
-        assert!(one_bits.len() == 4);
-        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0400").unwrap()));
-        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0100").unwrap()));
-        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0008").unwrap()));
-        assert!(one_bits.contains(&SomeMask::new_from_string(2, "m0x0002").unwrap()));
         Ok(())
     }
 }

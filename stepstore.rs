@@ -196,14 +196,11 @@ impl StepStore {
                 let stpy = stpx.restrict_result_region(&regy);
 
                 regy = stpy.initial.clone();
-                //println!("stepstore pushing {}  regy {}", stpy, regy);
                 rc_steps.push(stpy);
-            //println!("push worked");
             } else {
-                //println!("stepstore restrict result {} does not intersect {}", regy, stpx.result);
                 return None;
             }
-        } //next stepx
+        } //next inx
 
         if rc_steps.len() > 1 {
             rc_steps.reverse();
@@ -278,13 +275,26 @@ impl StepStore {
         ret_vec
     } // end steps_by_change_bit
 
-    // Return aggregate changes
-    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
-        let mut schg = SomeChange::new_low(num_ints);
-        for stpx in &self.avec {
-            schg = schg.c_or(&stpx.rule.change());
+    // Return num_ints used in stepstore
+    fn num_ints(&self) -> Option<usize> {
+        if self.len() == 0 {
+            return None;
         }
-        schg
+        Some(self.avec[0].num_ints())
+    }
+
+    // Return aggregate changes
+    pub fn aggregate_changes(&self) -> Option<SomeChange> {
+
+        if let Some(num_ints) = self.num_ints() {
+
+            let mut schg = SomeChange::new_low(num_ints);
+            for stpx in &self.avec {
+                schg = schg.c_or(&stpx.rule.change());
+            }
+            return Some(schg);
+        }
+        None
     }
 
     /// Return a StepStore after checking for shortcuts.
@@ -390,13 +400,11 @@ impl Index<usize> for StepStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::region::SomeRegion;
-    use crate::step::SomeStep;
-    use crate::stepstore::StepStore;
+    use super::*;
 
     // Test the link function. This also tests the len, push, result, initial, restrict_initial_region and restrict_result_region functions.
     #[test]
-    fn test_link() -> Result<(), String> {
+    fn link() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
         let reg2 = SomeRegion::new_from_string(1, "r0x1x").unwrap();
         let reg3 = SomeRegion::new_from_string(1, "r1x1x").unwrap();

@@ -177,12 +177,10 @@ impl ResultStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pn::Pn;
-    use crate::state::SomeState;
 
     // Test ResultStore::add_result for Pn::One
     #[test]
-    fn test_add_result_pn_one() -> Result<(), String> {
+    fn add_result_pn_one() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
 
         if rslt_str.pn != Pn::One {
@@ -235,7 +233,7 @@ mod tests {
 
     // Test ResultStore::add_result for Pn::Two
     #[test]
-    fn test_add_result_pn_two() -> Result<(), String> {
+    fn add_result_pn_two() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
         rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
@@ -315,7 +313,7 @@ mod tests {
 
     // Test ResultStore::add_result for Pn::Unpredictable
     #[test]
-    fn test_add_result_pn_unpredictable() -> Result<(), String> {
+    fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
         rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
@@ -393,7 +391,7 @@ mod tests {
 
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
-    fn test_add_result_misc() -> Result<(), String> {
+    fn add_result_misc() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x500").unwrap());
         rslt_str.add_result(SomeState::new_from_string(2, "s0x501").unwrap());
         rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap());

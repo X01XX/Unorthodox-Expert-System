@@ -104,8 +104,8 @@ impl Pn {}
 
 #[cfg(test)]
 mod tests {
-    use crate::pn::Pn;
-    use std::cmp::Ordering;
+    use super::*;
+
     // Check ordering of Pn values.
     // Should be One < Two < Unpredictable
     #[test]

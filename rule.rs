@@ -42,6 +42,7 @@ impl fmt::Display for SomeRule {
 impl SomeRule {
     /// Return a new SomeRule instance given an initial state and the corresponding result state.
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
+        assert!(initial.num_ints() == result.num_ints());
         Self {
             b00: SomeMask::new(initial.bts.b_not().b_and(&result.bts.b_not())),
             b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
@@ -51,6 +52,9 @@ impl SomeRule {
     }
 
     pub fn new_from_masks(b00: SomeMask, b01: SomeMask, b11: SomeMask, b10: SomeMask) -> Self {
+        assert!(b00.num_ints() == b01.num_ints());
+        assert!(b00.num_ints() == b11.num_ints());
+        assert!(b00.num_ints() == b10.num_ints());
         Self {
             b00: b00,
             b01: b01,
@@ -142,12 +146,11 @@ impl SomeRule {
         *self == tmprul
     }
 
-    /// Return true if a rule is a superset of another.
-    pub fn _is_superset_of(&self, other: &Self) -> bool {
-        let tmprul = self.intersection(other);
-
-        *other == tmprul
-    }
+    // Return true if a rule is a superset of another.
+//    pub fn is_superset_of(&self, other: &Self) -> bool {
+//        let tmprul = self.intersection(other);
+//        *other == tmprul
+//    }
 
     /// Return true is a rule is valid
     pub fn is_valid(&self) -> bool {
@@ -366,13 +369,7 @@ impl SomeRule {
     /// Of the changes in a rule, the rule initial region may be manipulated to
     /// focus in on the desired changes.
     ///
-    /// The arguments b01 and b10 are masks of changes that are sought.
-    ///
-    /// It is expected that b01 & b10 would be all zeros, e.g. you do not need
-    /// 0->1 and 1->0 in the same bit position.
-    ///
-    /// It is expected that b01 and b10 are not both all zeros, otherwise
-    /// no change would be sought.
+    /// The change argument contains masks of changes (b01, b10) that are sought.
     ///
     /// For changes that are sought, for bit positions that are X->1, X->0, or X->x,
     /// the X value can be changed to focus on the desired change.
@@ -475,37 +472,58 @@ impl SomeRule {
             b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
         }
     }
+
 } // end impl SomeRule
 
 #[cfg(test)]
 mod tests {
-    use crate::change::SomeChange;
-    use crate::mask::SomeMask;
-    use crate::region::SomeRegion;
-    use crate::rule::SomeRule;
-    use crate::state::SomeState;
+    use super::*;
+    use crate::bits::SomeBits;
 
     #[test]
-    fn test_initial_region() -> Result<(), String> {
-        let sta = SomeState::new_from_string(1, "s1010").unwrap();
-        let st6 = SomeState::new_from_string(1, "s0110").unwrap();
-        let regx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s1001").unwrap());
-        let regy = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0101").unwrap());
+    fn new_all()  -> Result<(), String> {
+        let rule_from_states = SomeRule::new(&SomeState::new_from_string(1, "s0101").unwrap(),
+                                             &SomeState::new_from_string(1, "s0011").unwrap());
 
-        if regx.initial_region() != SomeRegion::new(&sta, &sta) {
-            return Err(format!("test_initial_region 1 initial region not r1010?"));
+        let rule_from_masks = SomeRule::new_from_masks(SomeMask::new(SomeBits::new(vec![248u8])),
+                                                       SomeMask::new(SomeBits::new(vec![2u8])),
+                                                       SomeMask::new(SomeBits::new(vec![1u8])),
+                                                       SomeMask::new(SomeBits::new(vec![4u8])));
+
+        let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();
+
+        if rule_from_states != rule_from_masks {
+            return Err(format!("rule_from_states {} != rule_from_masks {} ?", rule_from_states, rule_from_masks));
         }
 
-        let regz = regx.union(&regy);
-        if regz.initial_region() != SomeRegion::new_from_string(1, "rXX10").unwrap() {
-            return Err(format!("test_initial_region 2 initial region not rXX10?"));
+        if rule_from_states != rule_from_string {
+            return Err(format!("rule_from_stats {} != rule_from_string {} ?", rule_from_states, rule_from_string));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_intersection() -> Result<(), String> {
+    fn initial_region_result_region() -> Result<(), String> {
+        let sta = SomeState::new_from_string(1, "s1010").unwrap();
+        let st6 = SomeState::new_from_string(1, "s0110").unwrap();
+        let regx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s1001").unwrap());
+        let regy = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0101").unwrap());
+
+        if regx.initial_region() != SomeRegion::new(&sta, &sta) {
+            return Err(format!("Region not r1010?"));
+        }
+
+        let regz = regx.union(&regy);
+        if regz.initial_region() != SomeRegion::new_from_string(1, "rXX10").unwrap() {
+            return Err(format!("Region not rXX10?"));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn intersection() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1").unwrap();
         let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx").unwrap();
         let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11").unwrap();
@@ -522,71 +540,71 @@ mod tests {
     }
 
     #[test]
-    fn test_is_subset_of() -> Result<(), String> {
+    fn is_subset_of() -> Result<(), String> {
         let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx").unwrap();
         let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11").unwrap();
 
         if rul3.is_subset_of(&rul2) == false {
-            return Err(format!("test_is_subset_of: not a subset?"));
+            return Err(format!("Result 1 false?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_is_valid_intersection() -> Result<(), String> {
+    fn is_valid_intersection() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "XX").unwrap();
         let rul2 = SomeRule::new_from_string(1, "X1").unwrap();
         let rul3 = SomeRule::new_from_string(1, "00").unwrap();
 
         let int12 = rul1.intersection(&rul2);
         if int12.is_valid_intersection() == false {
-            return Err(format!("test_is_valid_intersection 1 returned False?"));
+            return Err(format!("Result 1 False?"));
         }
 
         let int23 = rul2.intersection(&rul3);
         if int23.is_valid_intersection() {
-            return Err(format!("test_is_valid_intersection 2 returned True?"));
+            return Err(format!("Result 2  True?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_is_valid_union() -> Result<(), String> {
+    fn is_valid_union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "01").unwrap();
         let rul3 = rul1.union(&rul2);
         if rul3.is_valid_union() {
-            return Err(format!("test_is_valid_union 1 True?"));
+            return Err(format!("Result 1 True?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "11").unwrap();
         let rul2 = SomeRule::new_from_string(1, "10").unwrap();
         let rul3 = rul1.union(&rul2);
         if rul3.is_valid_union() {
-            return Err(format!("test_is_valid_union 2 True?"));
+            return Err(format!("Result 2 True?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "11").unwrap();
         let rul2 = SomeRule::new_from_string(1, "01").unwrap();
         let rul3 = rul1.union(&rul2);
         if rul3.is_valid_union() == false {
-            return Err(format!("test_is_valid_union 3 False?"));
+            return Err(format!("Result 3 False?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "x1").unwrap();
         let rul2 = SomeRule::new_from_string(1, "00").unwrap();
         let rul3 = rul1.union(&rul2);
         if rul3.is_valid_union() {
-            return Err(format!("test_is_valid_union 4 True?"));
+            return Err(format!("Result 4 True?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_mutually_exclusive() -> Result<(), String> {
+    fn mutually_exclusive() -> Result<(), String> {
         // The results of rules, (10 vs 01) do not intersect the initial regions (00, 00).
         // Running either rule precludes running the other.
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
@@ -596,7 +614,7 @@ mod tests {
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) == false {
-            return Err(format!("test_mutually_exclusive 1 False?"));
+            return Err(format!("Result 1 False?"));
         }
 
         // The results of rules (10, 01) intersect one of the initial regions (00, 10),
@@ -608,7 +626,7 @@ mod tests {
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) == false {
-            return Err(format!("test_mutually_exclusive 1 False?"));
+            return Err(format!("Result 2 False?"));
         }
 
         // The results of rules (1X, X0) intersects both of the initial regions (XX, XX),
@@ -620,14 +638,14 @@ mod tests {
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) {
-            return Err(format!("test_mutually_exclusive 1 True?"));
+            return Err(format!("Result 3 True?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_order_bad() -> Result<(), String> {
+    fn order_bad() -> Result<(), String> {
         // The results of rules (10, 01) intersect one of the initial regions (00, 10),
         // so one rul1 should be run before rul2.
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
@@ -641,48 +659,48 @@ mod tests {
         println!("1->2 {}", rul1.order_bad(&rul2, &chg1));
         println!("2->1 {}", rul2.order_bad(&rul1, &chg1));
         if rul1.order_bad(&rul2, &chg1) == false {
-            return Err(format!("test_order_bad 1 False?"));
+            return Err(format!("Result 1 False?"));
         }
         if rul2.order_bad(&rul1, &chg1) == false {
-            return Err(format!("test_order_bad 2 False?"));
+            return Err(format!("Result 2 False?"));
         }
         if rul1.order_bad(&rul3, &chg1) {
-            return Err(format!("test_order_bad 3 True?"));
+            return Err(format!("Result 3 True?"));
         }
         if rul2.order_bad(&rul3, &chg1) {
-            return Err(format!("test_order_bad 4 True?"));
+            return Err(format!("Result 4 True?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_parse_for_changes() -> Result<(), String> {
+    fn parse_for_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m1010").unwrap(),
-            &SomeMask::new_from_string(1, "m101").unwrap(),
+            &SomeMask::new_from_string(1, "m1010").unwrap(), // b01
+            &SomeMask::new_from_string(1, "m0101").unwrap(), // b10
         );
         let rul2 = rul1.parse_for_changes(&chg1).unwrap();
 
         println!("rul2 {}", &rul2);
 
-        if rul2 != SomeRule::new_from_string(1, "/01/10/01/10").unwrap() {
-            return Err(format!("test_parse_for_changes rul2 not /01/10/01/10?"));
+        if rul2 != SomeRule::new_from_string(1, "01/10/01/10").unwrap() {
+            return Err(format!("rul2 not 01/10/01/10?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_restrict_initial_region() -> Result<(), String> {
+    fn restrict_initial_region() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx").unwrap();
         let rul2 = rul1.restrict_initial_region(&SomeRegion::new_from_string(1, "r10X1").unwrap());
 
         println!("rul2 = {}", rul2);
         if rul2 != SomeRule::new_from_string(1, "11/00/Xx/10").unwrap() {
             return Err(format!(
-                "test_restrict_initial_region rul2 not 11/00/Xx/10?"
+                "rul2 not 11/00/Xx/10?"
             ));
         }
 
@@ -690,13 +708,13 @@ mod tests {
     }
 
     #[test]
-    fn test_restrict_result_region() -> Result<(), String> {
+    fn restrict_result_region() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "Xx/Xx/XX/XX").unwrap();
         let rul2 = rul1.restrict_result_region(&SomeRegion::new_from_string(1, "r1010").unwrap());
 
         println!("rul = {}", rul2);
         if rul2 != SomeRule::new_from_string(1, "01/10/11/00").unwrap() {
-            return Err(format!("test_restrict_result_region rul2 not 01/10/11/00?"));
+            return Err(format!("rul2 not 01/10/11/00?"));
         }
 
         Ok(())
@@ -704,7 +722,7 @@ mod tests {
 
     // Also tests result_region
     #[test]
-    fn test_result_from_initial_region() -> Result<(), String> {
+    fn result_from_initial_region() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "Xx/XX/x1/x0/xx/xx").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "rx00110").unwrap();
 
@@ -712,14 +730,14 @@ mod tests {
         println!("reg2 {}", reg2);
 
         if reg2 != SomeRegion::new_from_string(1, "rX01010").unwrap() {
-            return Err(format!("test_result_from_initial_region reg2 not X01010?"));
+            return Err(format!("reg2 not X01010?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_result_from_initial_state() -> Result<(), String> {
+    fn result_from_initial_state() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "Xx/XX/x1/x0/xx/xx").unwrap();
         let sta1 = SomeState::new_from_string(1, "s000110").unwrap();
 
@@ -728,21 +746,21 @@ mod tests {
         println!("sta2 {}", &sta2);
 
         if sta2 != SomeState::new_from_string(1, "s101010").unwrap() {
-            return Err(format!("test_result_from_initial_state sta2 not 001010?"));
+            return Err(format!("sta2 not 001010?"));
         }
 
         Ok(())
     }
 
     #[test]
-    fn test_union() -> Result<(), String> {
+    fn union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "00/01/00/01/xx").unwrap();
         let rul2 = SomeRule::new_from_string(1, "00/01/10/10/11").unwrap();
         let rul3 = rul1.union(&rul2);
 
         println!("rul3 = {}", &rul3);
         if rul3 != SomeRule::new_from_string(1, "00/01/x0/Xx/xx").unwrap() {
-            return Err(format!("test_union rul3 not 00/01/x0/Xx/xx?"));
+            return Err(format!("rul3 not 00/01/x0/Xx/xx?"));
         }
         Ok(())
     }

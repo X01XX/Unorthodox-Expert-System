@@ -39,6 +39,11 @@ impl SomeStep {
         }
     }
 
+    /// Return the number integers used in making bit patterns used in an instance.
+    pub fn num_ints(&self) -> usize {
+        self.initial.num_ints()
+    }
+
     /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         assert!(self.initial.intersects(&reg));

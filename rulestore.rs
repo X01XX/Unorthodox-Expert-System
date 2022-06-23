@@ -34,8 +34,8 @@ impl PartialEq for RuleStore {
             return false;
         }
 
-        if self.initial_region() != other.initial_region() {
-            return false;
+        if self.len() == 0 {
+            return true;
         }
 
         if self.len() == 1 {
@@ -44,18 +44,6 @@ impl PartialEq for RuleStore {
 
         // For two rules, order does not matter
         if self.len() == 2 {
-            if self.initial_region().x_mask().is_low() {
-                if self.avec[0] == other.avec[0] && self.avec[1] == other.avec[1] {
-                    return true;
-                }
-
-                if self.avec[0] == other.avec[1] && self.avec[1] == other.avec[0] {
-                    return true;
-                }
-
-                return false;
-            }
-
             if let Some(rulesx) = self.intersection(&other) {
                 if rulesx.initial_region() == self.initial_region() {
                     return true;
@@ -93,7 +81,7 @@ impl RuleStore {
             return false;
         }
 
-        // Length must be 2.  The two rules are different and the initial regions are the same, or not.
+        // Length must be 2.  The two rules are different and the initial regions are the same.
         self.avec[0].is_valid()
             && self.avec[1].is_valid()
             && self.avec[0] != self.avec[1]
@@ -107,23 +95,13 @@ impl RuleStore {
     }
 
     /// Add a rule to a RuleStore.
+    /// If there are two rules, they will have at least one incompatibility,
+    /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
     pub fn push(&mut self, val: SomeRule) {
         assert!(self.avec.len() < 2);
 
         self.avec.push(val);
         assert!(self.is_valid());
-    }
-
-    /// Return a reference to the first rule.
-    pub fn first(&self) -> &SomeRule {
-        assert!(self.avec.len() > 0);
-        &self.avec[0]
-    }
-
-    /// Return a reference to the second rule.
-    pub fn second(&self) -> &SomeRule {
-        assert!(self.avec.len() > 1);
-        &self.avec[1]
     }
 
     /// Return true if one RuleStore is a subset of another.
@@ -136,10 +114,10 @@ impl RuleStore {
 
         if self.len() == 1 {
             if other.len() == 1 {
-                return self.first().is_subset_of(&other.first());
+                return self[0].is_subset_of(&other[0]);
             } else if other.len() == 2 {
-                return self.first().is_subset_of(&other.first())
-                    || self.first().is_subset_of(&other.second());
+                return self[0].is_subset_of(&other[0])
+                    || self[0].is_subset_of(&other[1]);
             } else {
                 panic!("Unexpected rulestore length!");
             }
@@ -150,14 +128,14 @@ impl RuleStore {
                 return false;
             }
 
-            if self.first().is_subset_of(&other.first())
-                && self.second().is_subset_of(&other.second())
+            if self[0].is_subset_of(&other[0])
+                && self[1].is_subset_of(&other[1])
             {
                 return true;
             }
 
-            if self.first().is_subset_of(&other.second())
-                && self.second().is_subset_of(&other.first())
+            if self[0].is_subset_of(&other[1])
+                && self[1].is_subset_of(&other[0])
             {
                 return true;
             }
@@ -171,15 +149,15 @@ impl RuleStore {
     /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
         if self.len() == 1 {
-            return other.is_subset_of(&self.first());
+            return other.is_subset_of(&self[0]);
         }
 
         if self.len() == 2 {
-            if other.is_subset_of(&self.first()) {
+            if other.is_subset_of(&self[0]) {
                 return true;
             }
 
-            return other.is_subset_of(&self.second());
+            return other.is_subset_of(&self[1]);
         }
 
         panic!("unexpected rulestore length!");
@@ -429,6 +407,8 @@ impl RuleStore {
 
     /// Return the result of restricting the initial region of rules.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
+        assert!(self.len() > 0);
+        assert!(regx.intersects(&self.initial_region()));
         let mut rcrs = Self::new();
 
         for rulx in self.avec.iter() {
@@ -484,13 +464,11 @@ impl Index<usize> for RuleStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::region::SomeRegion;
-    use crate::rule::SomeRule;
-    use crate::rulestore::RuleStore;
+    use super::*;
 
     // Test restrict_initial_region and initial_region
     #[test]
-    fn test_restrict_initial_region() -> Result<(), String> {
+    fn restrict_initial_region() -> Result<(), String> {
         // Produce R[00/00/00/00/00/XX/XX/11, 00/00/00/00/00/XX/XX/10].
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/11/11").unwrap());
@@ -518,7 +496,7 @@ mod tests {
     }
 
     #[test]
-    fn test_intersection() -> Result<(), String> {
+    fn intersection() -> Result<(), String> {
         // Intersect two single-rule RuleStores, it should work.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx").unwrap());
@@ -591,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_subset_of() -> Result<(), String> {
+    fn is_subset_of() -> Result<(), String> {
         // Compare one-rule RuleStores.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx").unwrap());
@@ -633,7 +611,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_superset_of_rule() -> Result<(), String> {
+    fn is_superset_of_rule() -> Result<(), String> {
         // Compare a rule to a one-rule RuleStore.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx").unwrap());
@@ -672,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn test_union() -> Result<(), String> {
+    fn union() -> Result<(), String> {
         // Produce /X0/X1/XX/Xx/XX.
         let mut rul_str1 = RuleStore::new();
         rul_str1.push(SomeRule::new_from_string(1, "00/01/00/01/xx").unwrap());

@@ -136,19 +136,21 @@ impl SomeDomain {
         // Get all changes that can be made, to avoid needs that have no chance
         // of being satisfied.
         // Sample the current state, for any reason, does not require any changes.
-        let agg_chgs = self.actions.get_aggregate_changes(self.num_ints);
+        if let Some(agg_chgs) = self.actions.aggregate_changes() {
 
-        let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
+            let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
 
-        if let Some(ndx) = self.check_optimal() {
-            nst.push(ndx);
+            if let Some(ndx) = self.check_optimal() {
+                nst.push(ndx);
+            }
+
+            for ndx in nst.iter_mut() {
+                ndx.set_dom(self.num);
+            }
+
+            return nst;
         }
-
-        for ndx in nst.iter_mut() {
-            ndx.set_dom(self.num);
-        }
-
-        nst
+        NeedStore::new()
     }
 
     /// Do functions related to the wish to be in an optimum region.
@@ -266,7 +268,7 @@ impl SomeDomain {
         }
 
         // Update memory.
-        if self.memory.len() == MAX_MEMORY {
+        if self.memory.len() >= MAX_MEMORY {
             self.memory.pop_back();
         }
         self.memory.push_front(self.cur_state.clone());
@@ -432,10 +434,13 @@ impl SomeDomain {
         //println!("\nforward_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        let can_change = steps_str.aggregate_changes(self.num_ints);
-        if required_change.is_subset_of(&can_change) {
+        if let Some(can_change) = steps_str.aggregate_changes() {
+            if required_change.is_subset_of(&can_change) {
+            } else {
+                // println!("forward_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+                return None;
+            }
         } else {
-            // println!("forward_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
             return None;
         }
 
@@ -772,10 +777,7 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::change::SomeChange;
     use crate::mask::SomeMask;
-    use crate::regionstore::RegionStore;
-    use crate::state::SomeState;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -1080,7 +1082,7 @@ mod tests {
     }
 
     #[test]
-    fn test_limit_group_needs() -> Result<(), String> {
+    fn limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
         let mut dm0 = SomeDomain::new(
             0,

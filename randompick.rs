@@ -76,7 +76,7 @@ pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
-    use crate::randompick::RandomPick;
+    use super::*;
 
     #[test]
     //  Randomly pick numbers, as indicies into a vector, until the vector value satisfies some criteria.

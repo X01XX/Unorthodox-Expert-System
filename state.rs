@@ -91,7 +91,7 @@ impl SomeState {
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &SomeState) -> bool {
-        self.bts.b_xor(&other.bts).just_one_bit()
+        self.bts.is_adjacent(&other.bts)
     }
 
     /// Return the number of one bits that are different between two states.
@@ -109,40 +109,3 @@ impl SomeState {
         self.bts.formatted_string('s')
     }
 } // end impl SomeState
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Test SomeState::is_adjacent
-    #[test]
-    fn test_is_adjacent() -> Result<(), String> {
-        if SomeState::new_from_string(2, "s0x0")
-            .unwrap()
-            .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
-        {
-            return Err(format!("Test 1 failed"));
-        }
-        if SomeState::new_from_string(2, "s0x1")
-            .unwrap()
-            .is_adjacent(&SomeState::new_from_string(2, "s0x11").unwrap())
-            == false
-        {
-            return Err(format!("Test 2 failed"));
-        }
-        if SomeState::new_from_string(2, "s0x0")
-            .unwrap()
-            .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
-        {
-            return Err(format!("Test 3 failed"));
-        }
-        if SomeState::new_from_string(2, "s0x100")
-            .unwrap()
-            .is_adjacent(&SomeState::new_from_string(2, "s0x1100").unwrap())
-            == false
-        {
-            return Err(format!("Test 4 failed"));
-        }
-        Ok(())
-    }
-}

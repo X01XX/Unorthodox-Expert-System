@@ -1652,19 +1652,33 @@ impl SomeAction {
         grpx: &SomeGroup,
         grpy: &SomeGroup,
     ) -> SomeNeed {
-        //println!("cont_int_region_needs {} for grp {} and grp {} ", &regx, &grpx.region, &grpy.region);
+        //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", &regx, &grpx.region, &grpx.rules, &grpy.region, &grpy.rules);
         // Check for any squares in the region
         let stas_in = self.squares.stas_in_reg(regx);
 
         if stas_in.len() == 0 {
+            let ruls1;
+            if grpx.rules.len() == 0 {
+                ruls1 = RuleStore::new();
+            } else {
+                ruls1 = grpx.rules.restrict_initial_region(regx);
+            }
+
+            let ruls2;
+            if grpy.rules.len() == 0 {
+                ruls2 = RuleStore::new();
+            } else {
+                ruls2 = grpy.rules.restrict_initial_region(regx);
+            }
+
             return SomeNeed::ContradictoryIntersection {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
                 goal_reg: regx.clone(),
                 group1: grpx.region.clone(),
-                ruls1: grpx.rules.restrict_initial_region(regx),
+                ruls1,
                 group2: grpy.region.clone(),
-                ruls2: grpy.rules.restrict_initial_region(regx),
+                ruls2,
             };
         }
 
@@ -1698,14 +1712,28 @@ impl SomeAction {
             inx = rand::thread_rng().gen_range(0..stas_check.len());
         }
 
+        let ruls1;
+        if grpx.rules.len() == 0 {
+            ruls1 = RuleStore::new();
+        } else {
+            ruls1 = grpx.rules.restrict_initial_region(regx);
+        }
+
+        let ruls2;
+        if grpy.rules.len() == 0 {
+            ruls2 = RuleStore::new();
+        } else {
+            ruls2 = grpy.rules.restrict_initial_region(regx);
+        }
+
         SomeNeed::ContradictoryIntersection {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
             goal_reg: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
             group1: grpx.region.clone(),
-            ruls1: grpx.rules.restrict_initial_region(regx),
+            ruls1,
             group2: grpy.region.clone(),
-            ruls2: grpy.rules.restrict_initial_region(regx),
+            ruls2,
         }
     } // end cont_int_region_needs
 

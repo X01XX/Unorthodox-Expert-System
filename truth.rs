@@ -94,8 +94,7 @@ impl Truth {
 
 #[cfg(test)]
 mod tests {
-    use crate::truth::Truth;
-    use std::cmp::Ordering;
+    use super::*;
 
     // Check ordering of Truth values.
     // Should be F < M < T
