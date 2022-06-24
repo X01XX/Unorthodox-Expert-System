@@ -286,6 +286,9 @@ impl RuleStore {
 
     /// Return Truth value of a possible union.
     pub fn can_form_union(&self, other: &Self) -> Truth {
+        assert!(self.len() > 0);
+        assert!(other.len() > 0);
+
         // Handle Pn1 vs. Pn2.
         // The Pn1 type should not have enough samples to be pnc.
         if self.len() < other.len() {
