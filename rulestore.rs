@@ -108,6 +108,10 @@ impl RuleStore {
     /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
     /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        if self.len() > other.len() {
+            return false;
+        }
+
         if self.initial_region().is_subset_of(&other.initial_region()) == false {
             return false;
         }
@@ -118,15 +122,10 @@ impl RuleStore {
             } else if other.len() == 2 {
                 return self[0].is_subset_of(&other[0])
                     || self[0].is_subset_of(&other[1]);
-            } else {
-                panic!("Unexpected rulestore length!");
             }
         }
 
         if self.len() == 2 {
-            if other.len() != 2 {
-                return false;
-            }
 
             if self[0].is_subset_of(&other[0])
                 && self[1].is_subset_of(&other[1])
@@ -146,21 +145,23 @@ impl RuleStore {
         panic!("unexpected rulestore length!");
     }
 
+    /// Return true if a RuleStore is a superset of another.
+    pub fn is_superset_of(&self, other: &RuleStore) -> bool {
+        other.is_subset_of(self)
+    }
+
     /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
         if self.len() == 1 {
-            return other.is_subset_of(&self[0]);
+            return self[0].is_superset_of(other);
         }
-
+        
         if self.len() == 2 {
-            if other.is_subset_of(&self[0]) {
-                return true;
-            }
-
-            return other.is_subset_of(&self[1]);
+            return self[0].is_superset_of(other) ||
+                   self[1].is_superset_of(other);
         }
 
-        panic!("unexpected rulestore length!");
+         panic!("unexpected rulestore length!");
     }
 
     /// Return the union of two RuleStores.

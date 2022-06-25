@@ -43,14 +43,6 @@ impl fmt::Display for SomeAction {
         for grpx in self.groups.iter() {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
-            // Count the number of states in a group that are also in only one region
-            //            let mut cnt = 0;
-            //            for stax in stas_in.iter() {
-            //                if regs.state_in_1_region(stax) {
-            //                    cnt += 1;
-            //                }
-            //            }
-
             let cnt: usize = stas_in
                 .iter()
                 .map(|x| if regs.state_in_1_region(x) { 1 } else { 0 })
@@ -339,7 +331,8 @@ impl SomeAction {
             //println!("square not pn == One or pnc == true {}", sqry);
             return false;
         }
-        true
+
+        self.can_combine_check_between(&sqrx, &sqry)
     }
 
     /// Check a square, referenced by state, against valid groups.
@@ -464,7 +457,7 @@ impl SomeAction {
                             }
 
                             let regy = SomeRegion::new(&sqrx.state, &regx.state2);
-                            assert!(self.check_region_for_group(&regy));
+                            //assert!(self.check_region_for_group(&regy));
                             self.groups.push(
                                 SomeGroup::new(regy, ruls, sqrx.results.pnc && sqry.results.pnc),
                                 dom,
@@ -705,12 +698,13 @@ impl SomeAction {
                                 println!("\nDom {} Act {} Group {} is an additional calculation, {} and {} not sampled yet",
                                               dom, self.num, &group_region, &group_region.state1, &group_region.state2);
                             }
-                            assert!(self.check_region_for_group(&group_region));
-                            self.groups.push(
-                                SomeGroup::new(group_region.clone(), rules.clone(), pnc),
-                                dom,
-                                self.num,
-                            );
+                            if self.check_region_for_group(&group_region) {
+                                self.groups.push(
+                                    SomeGroup::new(group_region.clone(), rules.clone(), pnc),
+                                    dom,
+                                    self.num,
+                                );
+                            }
                         }
                     }
                     SomeNeed::SetGroupLimited {
@@ -1393,7 +1387,9 @@ impl SomeAction {
     /// Return true if there is no incompatible squares inbetween two compatible squares.
     fn can_combine_check_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
         // println!("action:can_combine_check_between sqr {} and sqr {}", sqr1.state, sqr2.state);
-        assert!(sqr1.state != sqr2.state);
+        if sqr1.state == sqr2.state {
+            return true;
+        }
 
         // Calc region formed by the two squares
         let regx = SomeRegion::new(&sqr1.state, &sqr2.state);
@@ -1410,25 +1406,22 @@ impl SomeAction {
             return true;
         }
 
-        // Check if any square pairs are incompatible
+        let rules = sqr1.rules.union(&sqr2.rules).unwrap();
+
         for sqrx in sqrs_in_reg {
-            if sqrx.state != sqr1.state {
-                if sqrx.results.pn > sqr1.results.pn {
-                    return false;
-                }
-                if sqrx.can_combine(sqr1) == Truth::F {
-                    return false;
-                }
+            if sqrx == sqr1 || sqrx == sqr2 {
+                continue;
             }
-            if sqrx.state != sqr2.state {
-                if sqrx.results.pn > sqr2.results.pn {
-                    return false;
-                }
-                if sqrx.can_combine(sqr2) == Truth::F {
-                    return false;
-                }
+
+            if sqrx.results.pnc && sqrx.results.pn != sqr1.results.pn {
+                return false;
+            }
+
+            if rules.is_superset_of(&sqrx.rules) == false {
+                return false;
             }
         }
+
         true
     }
 
@@ -1615,6 +1608,7 @@ impl SomeAction {
 
         // If contradictory, return needs to resolve
         if rulsx != rulsy {
+
             // Check if a valid sub-region of the intersection exists
             if let Some(rulsxy) = rulsx.intersection(&rulsy) {
                 // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
@@ -1816,6 +1810,10 @@ impl SomeAction {
                 continue;
             }
 
+            if self.can_combine(&sqrx, &sqry) != Truth::T {
+                continue;
+            }
+
             // Create region, sqrx.state becomes regx.state1
             let regx = SomeRegion::new(&sqrx.state, &sqry.state);
 
@@ -1823,13 +1821,15 @@ impl SomeAction {
                 continue;
             }
 
+            if self.can_combine_check_between(&sqrx, &sqry) == false {
+                continue;
+            }
+
             if rsx.any_superset_of(&regx) {
                 continue;
             }
 
-            if self.can_combine(&sqrx, &sqry) == Truth::T {
-                rsx.push_nosubs(regx);
-            }
+            rsx.push_nosubs(regx);
         } // end for
 
         // Print possible regions

@@ -147,10 +147,10 @@ impl SomeRule {
     }
 
     // Return true if a rule is a superset of another.
-//    pub fn is_superset_of(&self, other: &Self) -> bool {
-//        let tmprul = self.intersection(other);
-//        *other == tmprul
-//    }
+    pub fn is_superset_of(&self, other: &Self) -> bool {
+        let tmprul = self.intersection(other);
+        *other == tmprul
+    }
 
     /// Return true is a rule is valid
     pub fn is_valid(&self) -> bool {

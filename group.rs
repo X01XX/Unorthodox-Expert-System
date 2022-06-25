@@ -10,7 +10,7 @@ use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-use crate::truth::Truth;
+//use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -129,6 +129,7 @@ impl SomeGroup {
         // Check group definition.
         if sqrx.state == self.region.state1 || sqrx.state == self.region.state2 {
             if self.region.state1 == self.region.state2 {
+                // Allow change to one-state group
                 if self.pn != sqrx.results.pn {
                     if sqrx.results.pn > Pn::One && sqrx.results.pnc == false {
                         return false;
@@ -138,53 +139,51 @@ impl SomeGroup {
                 }
                 self.pnc = sqrx.results.pnc;
                 return true;
-            } else if let Some(sqry) = squares.find(&self.region.state2) {
+            } else if sqrx.state == self.region.state1 {
+                let sqry = squares.find(&self.region.state2).unwrap();
                 if sqrx.results.pn != sqry.results.pn {
                     return false;
                 }
                 if sqrx.results.pn == Pn::Unpredictable {
                     return true;
                 }
-                if sqrx.rules.can_form_union(&sqry.rules) == Truth::F {
+                if self.pnc == false {
+                    if sqrx.results.pnc && sqry.results.pnc {
+                        self.pnc = true;
+                    }
+                }
+                return true;
+            } else { // must == state2
+                let sqry = squares.find(&self.region.state1).unwrap();
+                if sqrx.results.pn != sqry.results.pn {
                     return false;
                 }
+                if sqrx.results.pn == Pn::Unpredictable {
+                    return true;
+                }
+                if self.pnc == false {
+                    if sqrx.results.pnc && sqry.results.pnc {
+                        self.pnc = true;
+                    }
+                }
+                return true;
             }
         }
 
-        // Check pnc, set if able.
-
         // Check if square is compatible with group.
-        if sqrx.results.pn != self.pn && sqrx.results.pnc {
-            return false;
-        }
         if sqrx.results.pn > self.pn {
             return false;
         }
-        if self.pn != Pn::Unpredictable {
-            if sqrx.rules.is_subset_of(&self.rules) == false {
-                return false;
-            }
+
+        if sqrx.results.pn != self.pn && sqrx.results.pnc {
+            return false;
         }
 
-        // Check for a change in pnc
-        if self.pnc == false {
-            if sqrx.results.pnc {
-                if sqrx.state == self.region.state1 {
-                    if let Some(sqry) = squares.find(&self.region.state2) {
-                        if sqry.results.pnc {
-                            self.set_pnc();
-                        }
-                    }
-                } else if sqrx.state == self.region.state2 {
-                    if let Some(sqry) = squares.find(&self.region.state1) {
-                        if sqry.results.pnc {
-                            self.set_pnc();
-                        }
-                    }
-                }
-            }
+        if self.pn == Pn::Unpredictable {
+            return true;
         }
-        true
+
+        sqrx.rules.is_subset_of(&self.rules)
     }
 
     /// Return true if a sample is compatible with a group.
