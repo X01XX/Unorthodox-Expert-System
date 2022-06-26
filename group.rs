@@ -87,9 +87,9 @@ impl SomeGroup {
         } else {
             rc_str.push_str(&format!(", pnc: f,"));
         }
-//        if self.limited {
-//            rc_str.push_str(&format!(", limited"));
-//        }
+        //        if self.limited {
+        //            rc_str.push_str(&format!(", limited"));
+        //        }
 
         match self.pn {
             Pn::One => {
@@ -130,39 +130,40 @@ impl SomeGroup {
         if sqrx.state == self.region.state1 || sqrx.state == self.region.state2 {
             if self.region.state1 == self.region.state2 {
                 // Allow change to one-state group
-                if self.pn != sqrx.results.pn {
-                    if sqrx.results.pn > Pn::One && sqrx.results.pnc == false {
+                if self.pn != sqrx.pn {
+                    if sqrx.pn > Pn::One && sqrx.pnc == false {
                         return false;
                     }
-                    self.pn = sqrx.results.pn;
+                    self.pn = sqrx.pn;
                     self.rules = sqrx.rules.clone();
                 }
-                self.pnc = sqrx.results.pnc;
+                self.pnc = sqrx.pnc;
                 return true;
             } else if sqrx.state == self.region.state1 {
                 let sqry = squares.find(&self.region.state2).unwrap();
-                if sqrx.results.pn != sqry.results.pn {
+                if sqrx.pn != sqry.pn {
                     return false;
                 }
-                if sqrx.results.pn == Pn::Unpredictable {
+                if sqrx.pn == Pn::Unpredictable {
                     return true;
                 }
                 if self.pnc == false {
-                    if sqrx.results.pnc && sqry.results.pnc {
+                    if sqrx.pnc && sqry.pnc {
                         self.pnc = true;
                     }
                 }
                 return true;
-            } else { // must == state2
+            } else {
+                // must == state2
                 let sqry = squares.find(&self.region.state1).unwrap();
-                if sqrx.results.pn != sqry.results.pn {
+                if sqrx.pn != sqry.pn {
                     return false;
                 }
-                if sqrx.results.pn == Pn::Unpredictable {
+                if sqrx.pn == Pn::Unpredictable {
                     return true;
                 }
                 if self.pnc == false {
-                    if sqrx.results.pnc && sqry.results.pnc {
+                    if sqrx.pnc && sqry.pnc {
                         self.pnc = true;
                     }
                 }
@@ -171,15 +172,18 @@ impl SomeGroup {
         }
 
         // Check if square is compatible with group.
-        if sqrx.results.pn > self.pn {
+        if sqrx.pn > self.pn {
             return false;
         }
 
-        if sqrx.results.pn != self.pn && sqrx.results.pnc {
+        if sqrx.pn != self.pn && sqrx.pnc {
             return false;
         }
 
         if self.pn == Pn::Unpredictable {
+            if sqrx.pn != Pn::Unpredictable && sqrx.pnc {
+                return false;
+            }
             return true;
         }
 

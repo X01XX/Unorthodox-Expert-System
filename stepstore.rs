@@ -285,9 +285,7 @@ impl StepStore {
 
     // Return aggregate changes
     pub fn aggregate_changes(&self) -> Option<SomeChange> {
-
         if let Some(num_ints) = self.num_ints() {
-
             let mut schg = SomeChange::new_low(num_ints);
             for stpx in &self.avec {
                 schg = schg.c_or(&stpx.rule.change());

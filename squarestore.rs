@@ -109,7 +109,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, sqry) in &self.ahash {
-            if sqry.results.pn != Pn::One && sqry.results.pnc == false {
+            if sqry.pn != Pn::One && sqry.pnc == false {
                 states.push(key.clone());
             }
         }

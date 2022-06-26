@@ -14,9 +14,9 @@ impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rc_str = String::from("S[");
         rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.results.pn));
-        rc_str.push_str(&format!(", pnc: {}", &self.results.pnc));
-        rc_str.push_str(&format!(", ch: {}", &self.changed()));
+        rc_str.push_str(&format!(", pn: {}", &self.pn));
+        rc_str.push_str(&format!(", pnc: {}", &self.pnc));
+        rc_str.push_str(&format!(", ch: {}", &self.changed));
         rc_str.push_str(&format!(", rslts: {}", &self.results));
 
         rc_str.push_str(&format!(", {}", self.rules));
@@ -41,25 +41,25 @@ pub struct SomeSquare {
     pub state: SomeState,     // State that an action was taken on.
     pub results: ResultStore, // Circular list of most recent results.
     pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
+    pub pn: Pn,               // Square Pattern number.
+    pub pnc: bool,            // Pattern number confirmed.
+    pub changed: bool,        // Last result changed the pn or pnc field.
 }
 
 impl SomeSquare {
     /// Return a new Square instance.
     pub fn new(state: SomeState, result_state: SomeState) -> Self {
-        let mut rcsqr = Self {
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new(&state, &result_state));
+
+        Self {
             state: state.clone(),
             results: ResultStore::new(result_state.clone()),
-            rules: RuleStore::new(),
-        };
-
-        rcsqr.rules.push(SomeRule::new(&state, &result_state));
-        //println!("New square {}", rcsqr);
-        rcsqr
-    }
-
-    /// Return true if the most recent sample changed some interpretation of a square.
-    pub fn changed(&self) -> bool {
-        self.results.changed
+            rules,
+            pn: Pn::One,
+            pnc: false,
+            changed: true,
+        }
     }
 
     /// Return a string representing a square.
@@ -74,17 +74,24 @@ impl SomeSquare {
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result{}{}",
             self.str_terse(),
-            format!(" {} ", self.results.num_results + 1),
+            format!(" {} ", self.results.len() + 1),
             &st
         ));
 
-        let sav_pn = self.results.pn;
-        let sav_pnc = self.results.pnc;
+        let sav_pn = self.pn;
+        let sav_pnc = self.pnc;
 
-        let rc = self.results.add_result(st);
+        self.pn = self.results.add_result(st);
+        self.pnc = self.calc_pnc();
 
-        if rc {
-            match self.results.pn {
+        if self.pn != sav_pn || self.pnc != sav_pnc {
+            self.changed = true;
+        } else {
+            self.changed = false;
+        }
+
+        if self.changed {
+            match self.pn {
                 Pn::One => {
                     if self.rules.len() != 1 {
                         self.rules = RuleStore::new();
@@ -109,26 +116,20 @@ impl SomeSquare {
             }
         }
 
-        if sav_pn != self.results.pn {
-            str_info.push_str(&format!(
-                ", pn changed from {} to {}",
-                &sav_pn, &self.results.pn
-            ));
+        if self.pn != sav_pn {
+            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.pn));
         } else {
-            str_info.push_str(&format!(", pn {}", &self.results.pn));
+            str_info.push_str(&format!(", pn {}", &self.pn));
         }
 
-        if sav_pnc != self.results.pnc {
-            str_info.push_str(&format!(
-                ", pnc changed from {} to {}",
-                &sav_pnc, &self.results.pnc
-            ));
+        if self.pnc != sav_pnc {
+            str_info.push_str(&format!(", pnc changed from {} to {}", &sav_pnc, &self.pnc));
         } else {
-            str_info.push_str(&format!(", pnc {}", &self.results.pnc));
+            str_info.push_str(&format!(", pnc {}", &self.pnc));
         }
 
         println!("{}", &str_info);
-        rc
+        self.changed
     }
 
     /// Return the number of results stored for the square.
@@ -154,9 +155,9 @@ impl SomeSquare {
     pub fn formatted_string2(&self) -> String {
         let mut rc_str = String::from("S[");
         rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.results.pn));
-        rc_str.push_str(&format!(", pnc: {}", &self.results.pnc));
-        rc_str.push_str(&format!(", ch: {}", &self.changed()));
+        rc_str.push_str(&format!(", pn: {}", &self.pn));
+        rc_str.push_str(&format!(", pnc: {}", &self.pnc));
+        rc_str.push_str(&format!(", ch: {}", &self.changed));
         rc_str.push_str(&format!(", {}", self.rules));
 
         rc_str.push(']');
@@ -167,11 +168,11 @@ impl SomeSquare {
     pub fn can_combine(&self, sqrx: &SomeSquare) -> Truth {
         assert!(*self != *sqrx);
 
-        if self.results.pnc && sqrx.results.pnc {
-            if self.results.pn != sqrx.results.pn {
+        if self.pnc && sqrx.pnc {
+            if self.pn != sqrx.pn {
                 return Truth::F;
             }
-            if self.results.pn == Pn::Unpredictable {
+            if self.pn == Pn::Unpredictable {
                 return Truth::T;
             }
 
@@ -179,18 +180,18 @@ impl SomeSquare {
         }
 
         // Check for bootstrap compatible
-        if self.results.pn == Pn::One && sqrx.results.pn == Pn::One {
+        if self.pn == Pn::One && sqrx.pn == Pn::One {
             if self.rules.can_form_union(&sqrx.rules) == Truth::T {
                 return Truth::T;
             }
         }
 
-        if self.results.pnc {
-            // so sqrx.results.pnc == false
-            if sqrx.results.pn > self.results.pn {
+        if self.pnc {
+            // so sqrx.pnc == false
+            if sqrx.pn > self.pn {
                 return Truth::F;
             }
-            if self.results.pn == Pn::Unpredictable {
+            if self.pn == Pn::Unpredictable {
                 return Truth::M;
             }
             if self.rules.can_form_union(&sqrx.rules) != Truth::F {
@@ -199,12 +200,12 @@ impl SomeSquare {
             return Truth::F;
         }
 
-        if sqrx.results.pnc {
-            // so self.results.pnc == false
-            if self.results.pn > sqrx.results.pn {
+        if sqrx.pnc {
+            // so self.pnc == false
+            if self.pn > sqrx.pn {
                 return Truth::F;
             }
-            if sqrx.results.pn == Pn::Unpredictable {
+            if sqrx.pn == Pn::Unpredictable {
                 return Truth::M;
             }
             if self.rules.can_form_union(&sqrx.rules) != Truth::F {
@@ -214,6 +215,22 @@ impl SomeSquare {
         }
 
         Truth::M
+    }
+
+    // Return the pnc value.
+    fn calc_pnc(&self) -> bool {
+        if self.pn == Pn::Unpredictable {
+            return true;
+        }
+
+        if self.pn == Pn::One && self.results.len() > 1 {
+            return true;
+        }
+
+        if self.pn == Pn::Two && self.results.len() > 3 {
+            return true;
+        }
+        false
     }
 } // end impl SomeSquare
 
@@ -226,12 +243,15 @@ mod tests {
     #[test]
     #[should_panic]
     fn can_combine_not_same() {
+        let sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
-        let sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-
-        let sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
         sqr1.can_combine(&sqr2);
 
@@ -241,29 +261,36 @@ mod tests {
     // Test can_combine Pn == One
     #[test]
     fn can_combine_pn_one_one() -> Result<(), String> {
-
         // Test two squares with only one sample each.
         // Allow a true result for bootstrapping.
-        let sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
-        let sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
         if sqr1.can_combine(&sqr2) != Truth::T {
             return Err(String::from("Test 1 failed?"));
         }
 
         // Create a square incompatible to sqr1 to produce M result.
-        let mut sqr3 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        let mut sqr3 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()),
+        );
 
         if sqr1.can_combine(&sqr3) != Truth::M {
             return Err(String::from("Test 2 failed?"));
         }
 
         // Add to sqr3 to make it pnc.
-        sqr3.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        sqr3.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
 
         if sqr1.can_combine(&sqr3) != Truth::F {
             return Err(String::from("Test 3 failed?"));
@@ -279,20 +306,27 @@ mod tests {
     // Test can_combine Pn == One and Pn == two
     #[test]
     fn can_combine_pn_one_two() -> Result<(), String> {
-
         // Create sqr1 pn 1 pnc f.
-        let sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
         // Create sqr2 pn 2 pnc f, one result compatible to sqr1.
-        let mut sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let mut sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
 
         // Create sqr3 pn 1 pnc f, incompatible to any result in sqr2.
-        let sqr3 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()),
-                                   SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        let sqr3 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()),
+        );
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
         if sqr1.can_combine(&sqr2) != Truth::M {
@@ -305,24 +339,32 @@ mod tests {
         }
 
         // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
-        let mut sqr4 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let mut sqr4 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
-        sqr4.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        sqr4.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
         if sqr4.can_combine(&sqr2) != Truth::F {
             return Err(String::from("Test 3 failed?"));
         }
 
-        // Exersize other branch of code. 
+        // Exersize other branch of code.
         if sqr2.can_combine(&sqr4) != Truth::F {
             return Err(String::from("Test 4 failed?"));
         }
 
         // Add to sqr2 to make it pnc.
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1101").unwrap(),
+        ));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
 
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
@@ -354,18 +396,25 @@ mod tests {
     // Test can_combine Pn == two
     #[test]
     fn can_combine_pn_two_two() -> Result<(), String> {
-
         // Create sqr1 pn 2 pnc f.
-        let mut sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let mut sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
 
         // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let mut sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
         if sqr1.can_combine(&sqr2) != Truth::M {
@@ -373,10 +422,14 @@ mod tests {
         }
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
-        let mut sqr3 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let mut sqr3 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
-        sqr3.add_result(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        sqr3.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1101").unwrap(),
+        ));
 
         // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
         if sqr1.can_combine(&sqr3) != Truth::M {
@@ -384,22 +437,30 @@ mod tests {
         }
 
         // Make sqr1 pnc.
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1101").unwrap(),
+        ));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
         if sqr1.can_combine(&sqr2) != Truth::M {
             return Err(String::from("Test 3 failed?"));
         }
-        
+
         // Exersize other branch of code.
         if sqr2.can_combine(&sqr1) != Truth::M {
             return Err(String::from("Test 4 failed?"));
         }
 
         // Add to sqr2 to make it pnc.
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
 
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
         if sqr1.can_combine(&sqr2) != Truth::T {
@@ -412,12 +473,20 @@ mod tests {
         }
 
         // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
-        let mut sqr4 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        let mut sqr4 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()),
+        );
 
-        sqr4.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-        sqr4.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
-        sqr4.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        sqr4.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
+        sqr4.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
+        sqr4.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
         if sqr1.can_combine(&sqr4) != Truth::F {
@@ -425,12 +494,20 @@ mod tests {
         }
 
         // Create sqr5, combinable with sqr1, but results in reverse order.
-        let mut sqr5 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        let mut sqr5 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()),
+        );
 
-        sqr5.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-        sqr5.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
-        sqr5.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        sqr5.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
+        sqr5.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
+        sqr5.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
         if sqr1.can_combine(&sqr5) != Truth::T {
@@ -443,17 +520,24 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == 1
     #[test]
     fn can_combine_pn_u_one() -> Result<(), String> {
-
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let mut sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1000").unwrap()));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1000").unwrap(),
+        ));
 
         // Create sqr2 pn 1 pnc f.
-        let mut sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        let mut sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
         if sqr1.can_combine(&sqr2) != Truth::M {
@@ -466,7 +550,9 @@ mod tests {
         }
 
         // Make sqr2 pnc == true.
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
         if sqr1.can_combine(&sqr2) != Truth::F {
@@ -479,18 +565,27 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == 2
     #[test]
     fn can_combine_pn_u_two() -> Result<(), String> {
-
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let mut sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1000").unwrap()));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1000").unwrap(),
+        ));
 
         // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-         sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        let mut sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()),
+        );
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
         if sqr1.can_combine(&sqr2) != Truth::M {
@@ -503,8 +598,12 @@ mod tests {
         }
 
         // Make sqr2 pnc == true.
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0101").unwrap()));
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0101").unwrap(),
+        ));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
         if sqr1.can_combine(&sqr2) != Truth::F {
@@ -517,20 +616,31 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == Unpredictable
     #[test]
     fn can_combine_pn_u_u() -> Result<(), String> {
-
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()));
+        let mut sqr1 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "1101").unwrap()),
+        );
 
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1100").unwrap()));
-        sqr1.add_result(SomeState::new(SomeBits::new_from_string(1, "1000").unwrap()));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1100").unwrap(),
+        ));
+        sqr1.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "1000").unwrap(),
+        ));
 
         // Create sqr2 pn U pnc T.
-        let mut sqr2 = SomeSquare::new(SomeState::new(SomeBits::new_from_string(1, "0001").unwrap()),
-                                       SomeState::new(SomeBits::new_from_string(1, "0001").unwrap()));
+        let mut sqr2 = SomeSquare::new(
+            SomeState::new(SomeBits::new_from_string(1, "0001").unwrap()),
+            SomeState::new(SomeBits::new_from_string(1, "0001").unwrap()),
+        );
 
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0010").unwrap()));
-        sqr2.add_result(SomeState::new(SomeBits::new_from_string(1, "0100").unwrap()));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0010").unwrap(),
+        ));
+        sqr2.add_result(SomeState::new(
+            SomeBits::new_from_string(1, "0100").unwrap(),
+        ));
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
         if sqr1.can_combine(&sqr2) != Truth::T {

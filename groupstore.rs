@@ -62,15 +62,15 @@ impl GroupStore {
         for grpx in &mut self.avec {
             if grpx.region.is_superset_of_state(&sqrx.state) {
                 if grpx.check_square(&sqrx, squares) == false {
-                    if sqrx.results.pn > grpx.pn {
+                    if sqrx.pn > grpx.pn {
                         println!(
                             "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.results.pn , &grpx.region, grpx.pn
+                            dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
                         );
-                    } else if sqrx.results.pn < grpx.pn && sqrx.results.pnc {
+                    } else if sqrx.pn < grpx.pn && sqrx.pnc {
                         println!(
                             "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.results.pn , &grpx.region, grpx.pn
+                            dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
                         );
                     } else {
                         println!(

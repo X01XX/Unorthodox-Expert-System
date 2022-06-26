@@ -472,7 +472,6 @@ impl SomeRule {
             b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
         }
     }
-
 } // end impl SomeRule
 
 #[cfg(test)]
@@ -481,23 +480,33 @@ mod tests {
     use crate::bits::SomeBits;
 
     #[test]
-    fn new_all()  -> Result<(), String> {
-        let rule_from_states = SomeRule::new(&SomeState::new_from_string(1, "s0101").unwrap(),
-                                             &SomeState::new_from_string(1, "s0011").unwrap());
+    fn new_all() -> Result<(), String> {
+        let rule_from_states = SomeRule::new(
+            &SomeState::new_from_string(1, "s0101").unwrap(),
+            &SomeState::new_from_string(1, "s0011").unwrap(),
+        );
 
-        let rule_from_masks = SomeRule::new_from_masks(SomeMask::new(SomeBits::new(vec![248u8])),
-                                                       SomeMask::new(SomeBits::new(vec![2u8])),
-                                                       SomeMask::new(SomeBits::new(vec![1u8])),
-                                                       SomeMask::new(SomeBits::new(vec![4u8])));
+        let rule_from_masks = SomeRule::new_from_masks(
+            SomeMask::new(SomeBits::new(vec![248u8])),
+            SomeMask::new(SomeBits::new(vec![2u8])),
+            SomeMask::new(SomeBits::new(vec![1u8])),
+            SomeMask::new(SomeBits::new(vec![4u8])),
+        );
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();
 
         if rule_from_states != rule_from_masks {
-            return Err(format!("rule_from_states {} != rule_from_masks {} ?", rule_from_states, rule_from_masks));
+            return Err(format!(
+                "rule_from_states {} != rule_from_masks {} ?",
+                rule_from_states, rule_from_masks
+            ));
         }
 
         if rule_from_states != rule_from_string {
-            return Err(format!("rule_from_stats {} != rule_from_string {} ?", rule_from_states, rule_from_string));
+            return Err(format!(
+                "rule_from_stats {} != rule_from_string {} ?",
+                rule_from_states, rule_from_string
+            ));
         }
 
         Ok(())
@@ -699,9 +708,7 @@ mod tests {
 
         println!("rul2 = {}", rul2);
         if rul2 != SomeRule::new_from_string(1, "11/00/Xx/10").unwrap() {
-            return Err(format!(
-                "rul2 not 11/00/Xx/10?"
-            ));
+            return Err(format!("rul2 not 11/00/Xx/10?"));
         }
 
         Ok(())

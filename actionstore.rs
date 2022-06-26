@@ -54,7 +54,13 @@ impl ActionStore {
     }
 
     /// Get needs for all actions in the store.
-    pub fn get_needs(&mut self, cur: &SomeState, agg_chgs: &SomeChange, dom: usize, memory: &VecDeque::<SomeState>) -> NeedStore {
+    pub fn get_needs(
+        &mut self,
+        cur: &SomeState,
+        agg_chgs: &SomeChange,
+        dom: usize,
+        memory: &VecDeque<SomeState>,
+    ) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
@@ -105,7 +111,6 @@ impl ActionStore {
     /// Return the maximum reachable region for all actions
     pub fn aggregate_changes(&self) -> Option<SomeChange> {
         if let Some(num_ints) = self.num_ints() {
-
             let mut agg_chg = SomeChange::new_low(num_ints);
 
             // Or each action change

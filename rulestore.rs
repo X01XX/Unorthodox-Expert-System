@@ -120,22 +120,16 @@ impl RuleStore {
             if other.len() == 1 {
                 return self[0].is_subset_of(&other[0]);
             } else if other.len() == 2 {
-                return self[0].is_subset_of(&other[0])
-                    || self[0].is_subset_of(&other[1]);
+                return self[0].is_subset_of(&other[0]) || self[0].is_subset_of(&other[1]);
             }
         }
 
         if self.len() == 2 {
-
-            if self[0].is_subset_of(&other[0])
-                && self[1].is_subset_of(&other[1])
-            {
+            if self[0].is_subset_of(&other[0]) && self[1].is_subset_of(&other[1]) {
                 return true;
             }
 
-            if self[0].is_subset_of(&other[1])
-                && self[1].is_subset_of(&other[0])
-            {
+            if self[0].is_subset_of(&other[1]) && self[1].is_subset_of(&other[0]) {
                 return true;
             }
 
@@ -155,13 +149,12 @@ impl RuleStore {
         if self.len() == 1 {
             return self[0].is_superset_of(other);
         }
-        
+
         if self.len() == 2 {
-            return self[0].is_superset_of(other) ||
-                   self[1].is_superset_of(other);
+            return self[0].is_superset_of(other) || self[1].is_superset_of(other);
         }
 
-         panic!("unexpected rulestore length!");
+        panic!("unexpected rulestore length!");
     }
 
     /// Return the union of two RuleStores.

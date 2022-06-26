@@ -18,19 +18,12 @@ impl fmt::Display for ResultStore {
     }
 }
 
-#[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
-    pub astore: Vec<SomeState>,
+    astore: Vec<SomeState>,
     /// Number results seen so far.
-    pub num_results: usize,
-    /// Pattern number, One, Two or Unpredicatble.
-    pub pn: Pn,
-    /// True on first sample, pn or pnc change.
-    pub changed: bool,
-    /// Pattern number confirmed.
-    pub pnc: bool,
+    num_results: usize,
 }
 
 impl ResultStore {
@@ -39,9 +32,6 @@ impl ResultStore {
         let mut ret = Self {
             astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
             num_results: 1,
-            pn: Pn::One,
-            changed: true,
-            pnc: false,
         };
         ret.astore.push(st);
         ret
@@ -53,10 +43,8 @@ impl ResultStore {
     }
 
     /// Add a result to a circular buffer.
-    /// Return true if the pattern number or pnc changed.
-    pub fn add_result(&mut self, st: SomeState) -> bool {
-        self.changed = false;
-
+    /// Return the pattern number enum.
+    pub fn add_result(&mut self, st: SomeState) -> Pn {
         if self.astore.len() < MAX_RESULTS {
             self.astore.push(st);
         } else {
@@ -71,30 +59,7 @@ impl ResultStore {
         self.num_results += 1;
         assert!(self.num_results < 100); // remove, if needed.
 
-        let pnx = self.calc_pn();
-
-        // Check if pn changed
-        if self.pn != pnx {
-            self.pn = pnx;
-            self.changed = true;
-            self.pnc = false;
-        }
-
-        // calc, or recalc, pnc
-        if self.pnc == false {
-            if self.pn == Pn::Unpredictable {
-                self.pnc = true;
-                self.changed = true;
-            } else if self.pn == Pn::One && self.astore.len() > 1 {
-                self.pnc = true;
-                self.changed = true;
-            } else if self.pn == Pn::Two && self.astore.len() > 3 {
-                self.pnc = true;
-                self.changed = true;
-            }
-        }
-
-        self.changed
+        self.calc_pn()
     }
 
     /// Return the first result.
@@ -116,28 +81,38 @@ impl ResultStore {
     /// Due to the way the function is used, the minimum number of results will be two.
     /// Assume the Pn value was correct before adding the most recent result.
     fn calc_pn(&self) -> Pn {
-        let most_recent = self.most_recent_result();
-
-        if self.pn == Pn::One {
-            if *most_recent == self.astore[(self.num_results - 2) % MAX_RESULTS] {
-                return Pn::One;
-            }
+        if self.astore.len() == 1 {
+            return Pn::One;
         }
 
-        // Not Pn::One at this point.
+        // Check for Pn::One.
+        let mut pn_one = true;
+        for inx in 1..self.astore.len() {
+            if self.astore[inx] != self.astore[0] {
+                pn_one = false;
+            }
+        }
+        if pn_one {
+            return Pn::One;
+        }
+
         if self.astore.len() == 2 {
             return Pn::Two;
         }
 
-        // num_results > 2 at this point.
-        if self.pn == Pn::Two {
-            if *most_recent == self.astore[(self.num_results - 3) % MAX_RESULTS] {
-                return Pn::Two;
+        if self.astore.len() > 2 {
+            if self.astore[0] != self.astore[2] {
+                return Pn::Unpredictable;
             }
         }
 
-        // Not Pn::Two at this point.
-        Pn::Unpredictable
+        if self.astore.len() > 3 {
+            if self.astore[1] != self.astore[3] {
+                return Pn::Unpredictable;
+            }
+        }
+
+        Pn::Two
     }
 
     /// Return the expected length of a string to represent a ResultStore.
@@ -183,44 +158,16 @@ mod tests {
     fn add_result_pn_one() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
 
-        if rslt_str.pn != Pn::One {
-            return Err(format!("test_add_result_pn_one 1 Pn NE One?"));
-        }
-
-        if rslt_str.pnc {
-            return Err(format!("test_add_result_pn_one 2 pnc True?"));
-        }
-
-        if rslt_str.changed == false {
-            return Err(format!("test_add_result_pn_one 3 changed is False?"));
-        }
-
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
-        if rslt_str.pn != Pn::One {
+        let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+        if pn != Pn::One {
             return Err(format!("test_add_result_pn_one 4 Pn NE One?"));
-        }
-
-        if rslt_str.pnc == false {
-            return Err(format!("test_add_result_pn_one 5 pnc False?"));
-        }
-
-        if rslt_str.changed == false {
-            return Err(format!("test_add_result_pn_one 6 changed is False?"));
         }
 
         // Test additional adds.
         for _ in 0..8 {
-            rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
-            if rslt_str.pn != Pn::One {
+            let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+            if pn != Pn::One {
                 return Err(format!("test_add_result_pn_one 7 Pn NE One?"));
-            }
-
-            if rslt_str.pnc == false {
-                return Err(format!("test_add_result_pn_one 8 pnc False?"));
-            }
-
-            if rslt_str.changed {
-                return Err(format!("test_add_result_pn_one 9 changed is True?"));
             }
         }
 
@@ -235,76 +182,36 @@ mod tests {
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
-        if rslt_str.pn != Pn::Two {
+        if pn != Pn::Two {
             return Err(format!("test_add_result_pn_two 1 Pn NE Two?"));
         }
 
-        if rslt_str.pnc {
-            return Err(format!("test_add_result_pn_two 2 pnc True?"));
-        }
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
 
-        if rslt_str.changed == false {
-            return Err(format!("test_add_result_pn_two 3 changed is False?"));
-        }
-
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
-
-        if rslt_str.pn != Pn::Two {
+        if pn != Pn::Two {
             return Err(format!("test_add_result_pn_two 4 Pn NE Two?"));
         }
 
-        if rslt_str.pnc {
-            return Err(format!("test_add_result_pn_two 5 pnc True?"));
-        }
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
-        if rslt_str.changed {
-            return Err(format!("test_add_result_pn_two 6 changed is True?"));
-        }
-
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
-
-        if rslt_str.pn != Pn::Two {
+        if pn != Pn::Two {
             return Err(format!("test_add_result_pn_two 7 Pn NE Two?"));
-        }
-
-        if rslt_str.pnc == false {
-            return Err(format!("test_add_result_pn_two 8 pnc False?"));
-        }
-
-        if rslt_str.changed == false {
-            return Err(format!("test_add_result_pn_two 9 changed is False?"));
         }
 
         // Test additional adds.
         for _ in 0..4 {
-            rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
 
-            if rslt_str.pn != Pn::Two {
+            if pn != Pn::Two {
                 return Err(format!("test_add_result_pn_two 10 Pn NE Two?"));
             }
 
-            if rslt_str.pnc == false {
-                return Err(format!("test_add_result_pn_two 11 pnc False?"));
-            }
+            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
-            if rslt_str.changed {
-                return Err(format!("test_add_result_pn_two 12 changed is True?"));
-            }
-
-            rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
-
-            if rslt_str.pn != Pn::Two {
+            if pn != Pn::Two {
                 return Err(format!("test_add_result_pn_two 13 Pn NE Two?"));
-            }
-
-            if rslt_str.pnc == false {
-                return Err(format!("test_add_result_pn_two 14 pnc False?"));
-            }
-
-            if rslt_str.changed {
-                return Err(format!("test_add_result_pn_two 15 changed is True?"));
             }
         }
 
@@ -316,73 +223,33 @@ mod tests {
     fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
         let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
-        if rslt_str.pn != Pn::Two {
+        if pn != Pn::Two {
             return Err(format!("test_add_result_pn_unpredictable 1 Pn NE Two?"));
         }
 
-        if rslt_str.pnc {
-            return Err(format!("test_add_result_pn_unpredictable 2 pnc True?"));
-        }
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap()); // two results, but out of order
 
-        if rslt_str.changed == false {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 3 changed is False?"
-            ));
-        }
-
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap()); // two results, but out of order
-
-        if rslt_str.pn != Pn::Unpredictable {
+        if pn != Pn::Unpredictable {
             return Err(format!(
                 "test_add_result_pn_unpredictable 4 Pn NE Unpredictable?"
             ));
         }
 
-        if rslt_str.pnc == false {
-            return Err(format!("test_add_result_pn_unpredictable 5 pnc False?"));
-        }
-
-        if rslt_str.changed == false {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 6 changed is False?"
-            ));
-        }
-
         // Test three different results.
         rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
-        if rslt_str.pn != Pn::Two {
+        if pn != Pn::Two {
             return Err(format!("test_add_result_pn_unpredictable 7 Pn NE Two?"));
         }
 
-        if rslt_str.pnc {
-            return Err(format!("test_add_result_pn_unpredictable 8 pnc True?"));
-        }
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap()); // two results, but out of order
 
-        if rslt_str.changed == false {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 9 changed is False?"
-            ));
-        }
-
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap()); // two results, but out of order
-
-        if rslt_str.pn != Pn::Unpredictable {
+        if pn != Pn::Unpredictable {
             return Err(format!(
                 "test_add_result_pn_unpredictable 10 Pn NE Unpredictable?"
-            ));
-        }
-
-        if rslt_str.pnc == false {
-            return Err(format!("test_add_result_pn_unpredictable 11 pnc False?"));
-        }
-
-        if rslt_str.changed == false {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 12 changed is False?"
             ));
         }
 

@@ -478,8 +478,14 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let reg1 = SomeRegion::new(&SomeState::new_from_string(1, "s1010").unwrap(), &SomeState::new_from_string(1, "s0101").unwrap());
-        let reg2 = SomeRegion::new(&SomeState::new_from_string(1, "s0001").unwrap(), &SomeState::new_from_string(1, "s1110").unwrap());
+        let reg1 = SomeRegion::new(
+            &SomeState::new_from_string(1, "s1010").unwrap(),
+            &SomeState::new_from_string(1, "s0101").unwrap(),
+        );
+        let reg2 = SomeRegion::new(
+            &SomeState::new_from_string(1, "s0001").unwrap(),
+            &SomeState::new_from_string(1, "s1110").unwrap(),
+        );
         assert!(reg1.eq(&reg2));
 
         Ok(())
@@ -490,7 +496,7 @@ mod tests {
         let mut reg0 = SomeRegion::new_from_string(1, "r101XX1").unwrap();
         let mut reg1 = SomeRegion::new_from_string(1, "rXX0011").unwrap();
         assert!(reg0.is_adjacent(&reg1));
-        
+
         reg0 = SomeRegion::new_from_string(1, "rX10X01X").unwrap();
         reg1 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
         assert!(reg0.is_adjacent(&reg1) == false);
@@ -726,7 +732,7 @@ mod tests {
 
     #[test]
     fn diff_mask_state() -> Result<(), String> {
-        let reg0  = SomeRegion::new_from_string(1, "rXX0011").unwrap();
+        let reg0 = SomeRegion::new_from_string(1, "rXX0011").unwrap();
         let state0 = SomeState::new_from_string(1, "s010101").unwrap();
 
         if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m110").unwrap() {
@@ -856,5 +862,4 @@ mod tests {
 
         Ok(())
     }
-
 } // end tests

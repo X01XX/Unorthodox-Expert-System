@@ -27,8 +27,8 @@ use crate::stepstore::StepStore;
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::collections::VecDeque;
+use std::fmt;
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,7 +74,7 @@ pub struct SomeDomain {
     /// Memory of recent current states.
     /// Using VecDeque allows memory to be read in most-recent to least-recent order,
     /// with self.memory.iter().
-    pub memory: VecDeque::<SomeState>,
+    pub memory: VecDeque<SomeState>,
 }
 
 impl SomeDomain {
@@ -137,8 +137,9 @@ impl SomeDomain {
         // of being satisfied.
         // Sample the current state, for any reason, does not require any changes.
         if let Some(agg_chgs) = self.actions.aggregate_changes() {
-
-            let mut nst = self.actions.get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
+            let mut nst =
+                self.actions
+                    .get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
 
             if let Some(ndx) = self.check_optimal() {
                 nst.push(ndx);
@@ -909,7 +910,8 @@ mod tests {
         dm0.add_action();
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
+        let nds1 = dm0.actions.avec[0]
+            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
 
         assert!(nds1.len() == 1);
         assert!(
@@ -971,7 +973,8 @@ mod tests {
         dm0.add_action();
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
+        let nds1 = dm0.actions.avec[0]
+            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
 
         assert!(nds1.len() == 1);
         assert!(

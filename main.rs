@@ -377,9 +377,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else if cmd[0] == "dcs" {
                     step_inc = 0;
                     break;
-                } else if cmd[0] == "left" {
-                    println!("left-overs: {}", &dmxs[0].actions[0].left_overs());
-                    continue;
+                    //                } else if cmd[0] == "left" {
+                    //                    println!("left-overs: {}", &dmxs[0].actions[0].left_overs());
+                    //                    continue;
                 }
             }
 
@@ -602,31 +602,6 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             return step_inc;
         } //end command to
 
-        if cmd[0] == "ibn" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    let ndx = &dmx.actions[act_num].seek_edge_needs1();
-
-                    if ndx.len() > 0 {
-                        println!("Seek Edge Needs1 are {}", &ndx);
-                    } else {
-                        let ndx = &dmx.actions[act_num].seek_edge_needs2();
-
-                        if ndx.len() > 0 {
-                            println!("Seek Edge Needs2 are {}", &ndx);
-                        } else {
-                            println!("No needs found");
-                        }
-                    }
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return 0;
-        }
-
         if cmd[0] == "ss" {
             let mut step_inc = 0;
             // Get act number from string
@@ -726,14 +701,14 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                 let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
                                 psstr.push_str(&format!("    {}", &sqrx));
 
-                                if sqrx.results.pn < min_pn {
-                                    min_pn = sqrx.results.pn;
+                                if sqrx.pn < min_pn {
+                                    min_pn = sqrx.pn;
                                 }
 
-                                if sqrx.results.pn > max_pn {
-                                    max_pn = sqrx.results.pn;
+                                if sqrx.pn > max_pn {
+                                    max_pn = sqrx.pn;
                                     max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
-                                } else if sqrx.results.pn == max_pn {
+                                } else if sqrx.pn == max_pn {
                                     if let Some(regx) = max_pn_reg {
                                         max_pn_reg = Some(regx.union_state(&sqrx.state));
                                     } else {
@@ -750,7 +725,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             let mut non_pn_stas = StateStore::new();
                             for stax in stas.iter() {
                                 let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                if sqrx.results.pn == max_pn {
+                                if sqrx.pn == max_pn {
                                     if max_pn < Pn::Unpredictable {
                                         if let Some(ruls) = rules {
                                             if let Some(ruls2) = ruls.union(&sqrx.rules) {
@@ -778,7 +753,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             if max_pn == Pn::Unpredictable {
                                 for stax in non_pn_stas.iter() {
                                     let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                    if sqrx.results.pnc {
+                                    if sqrx.pnc {
                                         form_group = false;
                                     }
                                 }
