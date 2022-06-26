@@ -1424,18 +1424,18 @@ mod tests {
             .seek_edge
             .contains(&dm0.region_from_string("rx1x1").unwrap()));
 
-        let needs = dm0.actions[0].seek_edge_needs2();
+        let needs = dm0.actions[0].seek_edge_needs2(&dm0.region_from_string("rx1x1").unwrap());
         println!("needs: {}", &needs);
 
         let sd = dm0.state_from_string("s1101").unwrap();
         dm0.eval_sample_arbitrary(0, &sd, &sd);
 
-        let needs = dm0.actions[0].seek_edge_needs1();
+        let needs = dm0.actions[0].seek_edge_needs();
         println!("needs2: {}", &needs);
         assert!(needs.len() == 1);
 
         dm0.eval_sample_arbitrary(0, &sd, &sd);
-        let needs = dm0.actions[0].seek_edge_needs1();
+        let needs = dm0.actions[0].seek_edge_needs();
         println!("needs3: {}", &needs);
 
         println!("\nActs: {}", &dm0.actions);
