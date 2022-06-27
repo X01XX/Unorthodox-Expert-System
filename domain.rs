@@ -226,7 +226,7 @@ impl SomeDomain {
         r_state: &SomeState,
     ) {
         // May break canned setup, so its best to use all, or no, arbitrary samples.
-        self.actions[act_num].eval_arbitrary_sample(i_state, r_state, self.num);
+        self.actions[act_num].eval_sample(i_state, r_state, self.num);
         self.set_state(&r_state);
     }
 
@@ -1407,7 +1407,7 @@ mod tests {
 
         dm0.eval_sample_arbitrary(0, &s0, &s0);
         dm0.eval_sample_arbitrary(0, &sf, &sf);
-        // Establish pnc for group XXXX
+        // Establish pnc for group XXXX.
         dm0.eval_sample_arbitrary(0, &s0, &s0);
         dm0.eval_sample_arbitrary(0, &sf, &sf);
 
@@ -1415,7 +1415,6 @@ mod tests {
 
         // Break group XXXX
         let s5 = dm0.state_from_string("s0101").unwrap();
-        //        let s3 = dm0.state_from_string("s0011").unwrap();
 
         dm0.eval_sample_arbitrary(0, &s5, &s0);
 
@@ -1424,23 +1423,59 @@ mod tests {
             .seek_edge
             .contains(&dm0.region_from_string("rx1x1").unwrap()));
 
-        let needs = dm0.actions[0].seek_edge_needs2(&dm0.region_from_string("rx1x1").unwrap());
-        println!("needs: {}", &needs);
+        let needs = dm0.actions[0].seek_edge_needs();
+        println!("needs1: {}", &needs);
 
-        let sd = dm0.state_from_string("s1101").unwrap();
-        dm0.eval_sample_arbitrary(0, &sd, &sd);
+        assert!(needs.len() == 1);
+        assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101").unwrap()));
+
+        dm0.eval_sample_arbitrary(0, &s5, &s0);
 
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs2: {}", &needs);
         assert!(needs.len() == 1);
+        if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()) {
+            // Seek even closer sample s1101
+            let sd = dm0.state_from_string("s1101").unwrap();
+            dm0.eval_sample_arbitrary(0, &sd, &s0);
+            let needs = dm0.actions[0].seek_edge_needs();
+            println!("needs3: {}", &needs);
+            assert!(needs.len() == 1);
+            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()));
 
-        dm0.eval_sample_arbitrary(0, &sd, &sd);
-        let needs = dm0.actions[0].seek_edge_needs();
-        println!("needs3: {}", &needs);
+            dm0.eval_sample_arbitrary(0, &sd, &s0);
+            let needs = dm0.actions[0].seek_edge_needs();
+            println!("needs4: {}", &needs);
+            assert!(needs.contains_similar_need("AddSeekEdge", &dm0.region_from_string("r11x1").unwrap()));
+            // At the next run of get_needs, r11x1 will replace the superset region rx1x1, then
+            // r11x1 will be deleted because its defining squares are adjacent.
+
+        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap()) {
+            // Seek even closer sample s0111
+            let s7 = dm0.state_from_string("s0111").unwrap();
+            dm0.eval_sample_arbitrary(0, &s7, &s0);
+            let needs = dm0.actions[0].seek_edge_needs();
+            println!("needs3: {}", &needs);
+            assert!(needs.len() == 1);
+            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap()));
+
+            dm0.eval_sample_arbitrary(0, &s7, &s0);
+            let needs = dm0.actions[0].seek_edge_needs();
+            println!("needs4: {}", &needs);
+            assert!(needs.contains_similar_need("AddSeekEdge", &dm0.region_from_string("rx111").unwrap()));
+            // At the next run of get_needs, rx111 will replace the superset region rx1x1, then
+            // rx111 will be deleted because its defining squares are adjacent.
+
+        } else {
+            panic!("unexpected need!");
+        }
+
+        let needs = dm0.get_needs();
+        assert!(dm0.actions[0].seek_edge.len() == 0);
 
         println!("\nActs: {}", &dm0.actions);
+        println!("needs9: {}", &needs);
 
-        //assert!(1 == 2);
         Ok(())
     }
 } // end tests
