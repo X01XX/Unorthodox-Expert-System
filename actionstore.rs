@@ -57,7 +57,6 @@ impl ActionStore {
     pub fn get_needs(
         &mut self,
         cur: &SomeState,
-        agg_chgs: &SomeChange,
         dom: usize,
         memory: &VecDeque<SomeState>,
     ) -> NeedStore {
@@ -67,7 +66,7 @@ impl ActionStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, agg_chgs, dom, memory))
+            .map(|actx| actx.get_needs(cur, dom, memory))
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
