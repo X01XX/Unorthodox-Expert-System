@@ -136,22 +136,19 @@ impl SomeDomain {
         // Get all changes that can be made, to avoid needs that have no chance
         // of being satisfied.
         // Sample the current state, for any reason, does not require any changes.
-        if let Some(agg_chgs) = self.actions.aggregate_changes() {
-            let mut nst =
-                self.actions
-                    .get_needs(&self.cur_state, &agg_chgs, self.num, &self.memory);
+        let mut nst = self
+            .actions
+            .get_needs(&self.cur_state, self.num, &self.memory);
 
-            if let Some(ndx) = self.check_optimal() {
-                nst.push(ndx);
-            }
-
-            for ndx in nst.iter_mut() {
-                ndx.set_dom(self.num);
-            }
-
-            return nst;
+        if let Some(ndx) = self.check_optimal() {
+            nst.push(ndx);
         }
-        NeedStore::new()
+
+        for ndx in nst.iter_mut() {
+            ndx.set_dom(self.num);
+        }
+
+        return nst;
     }
 
     /// Do functions related to the wish to be in an optimum region.
@@ -217,15 +214,14 @@ impl SomeDomain {
     }
 
     /// Evaluate an arbitrary sample given by the user.
-    /// This tends to break things for an action, unless all samples are arbitrary,
-    /// like for testing a wholly different series of samples/results.
+    /// This tends to break things for an action, unless all samples are arbitrary.
+    /// Useful for testing a wholly different series of samples/results.
     pub fn eval_sample_arbitrary(
         &mut self,
         act_num: usize,
         i_state: &SomeState,
         r_state: &SomeState,
     ) {
-        // May break canned setup, so its best to use all, or no, arbitrary samples.
         self.actions[act_num].eval_sample(i_state, r_state, self.num);
         self.set_state(&r_state);
     }
@@ -243,7 +239,7 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state.
-    /// A sample made for a rule-path should not be saved if the result is expected.
+    /// A sample made for a rule-path should not be saved as a new square if the result is as expected.
     pub fn take_action(&mut self, act_num: usize) {
         let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
 
@@ -252,7 +248,7 @@ impl SomeDomain {
         self.set_state(&astate);
     }
 
-    /// Accessor, set the cur_state field.
+    /// Set the current state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
         // Check optimal regions and boredom duration.
         if self.optimal_and_ints.len() > 1 {
@@ -280,7 +276,7 @@ impl SomeDomain {
 
     /// Run a plan.
     pub fn run_plan(&mut self, pln: &SomePlan) {
-        self.run_plan2(pln, 0); // Init depth counter.
+        self.run_plan2(pln, 3); // Init depth counter.
     }
 
     /// Run a plan, with a recursion depth check.
@@ -292,7 +288,7 @@ impl SomeDomain {
     ///   If the alternate result has no changes, the action can be immediately tried again.
     ///   If the alternate result changes something, a re-plan-to-goal is done.
     fn run_plan2(&mut self, pln: &SomePlan, depth: usize) {
-        if depth > 3 {
+        if depth == 0 {
             println!("\nDepth exceeded, at plan {}", &pln);
             return;
         }
@@ -353,7 +349,7 @@ impl SomeDomain {
                     &pln.result_region(),
                     &planx.str_terse()
                 );
-                return self.run_plan2(&planx, depth + 1);
+                return self.run_plan2(&planx, depth - 1);
             }
             println!(
                 "A plan from {} to {} is not found",
@@ -778,7 +774,6 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mask::SomeMask;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -1096,81 +1091,57 @@ mod tests {
         dm0.add_action();
 
         // Set up two groups.
-        // Changes for each sample set up two, and only two groups.
-        // Changes for bit three insure the seeking external dissimilar squares
-        // that differ by the third bit.  Like D and 5, 0 and 8.
-        let s0 = dm0.state_from_string("s0").unwrap();
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![3]));
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![3]));
+        // XX0X->XX0X, XXX1->1XX1. Thr left bit is X->X, and X->1 respectively.
+        let s04 = dm0.state_from_string("s0100").unwrap();
+        dm0.eval_sample_arbitrary(0, &s04, &s04);
+        dm0.eval_sample_arbitrary(0, &s04, &s04);
 
-        let s7 = dm0.state_from_string("s111").unwrap();
-        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![3]));
-        dm0.eval_sample_arbitrary(0, &s7, &s7.toggle_bits(vec![3]));
+        let s07 = dm0.state_from_string("s0111").unwrap();
+        let s0f = dm0.state_from_string("s1111").unwrap();
+        dm0.eval_sample_arbitrary(0, &s07, &s0f);
+        dm0.eval_sample_arbitrary(0, &s07, &s0f);
 
-        let sd = dm0.state_from_string("s1101").unwrap();
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0, 1, 3]));
-        dm0.eval_sample_arbitrary(0, &sd, &sd.toggle_bits(vec![0, 1, 3]));
-
-        let sa = dm0.state_from_string("s1010").unwrap();
-        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0, 1, 3]));
-        dm0.eval_sample_arbitrary(0, &sa, &sa.toggle_bits(vec![0, 1, 3]));
+        let sf9 = dm0.state_from_string("s11111001").unwrap();
+        dm0.eval_sample_arbitrary(0, &sf9, &sf9);
+        dm0.eval_sample_arbitrary(0, &sf9, &sf9);
 
         println!("dm0 {}", &dm0.actions[0]);
 
-        // Directly run limit_groups_needs.
-        let agg_chg = SomeChange::new(
-            &SomeMask::new_from_string(1, "m1111").unwrap(),
-            &SomeMask::new_from_string(1, "m1111").unwrap(),
-        );
-        let nds1 = dm0.actions[0].limit_groups_needs(&agg_chg);
+        let grpx = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
+            .unwrap();
+        let nds1 = dm0.actions[0].limit_group_needs(grpx);
 
-        // Check for needs of adjacent, external, squares to 0 (8), 7 (F), A (2) , D (5).
-        println!("needs are {}", nds1);
-        assert!(nds1.len() == 2);
-        assert!(
-            nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r1111").unwrap())
-                || nds1
-                    .contains_similar_need("LimitGroup", &dm0.region_from_string("r1000").unwrap())
-        );
-        assert!(
-            nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap())
-                || nds1
-                    .contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap())
-        );
+        // Check for needs of adjacent, external, squares to 4, in XX0X, which is 6.
+        println!("needs1 are {}", nds1);
+        assert!(nds1.len() == 1);
+        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
 
-        // Start homing in with sample of 5, adjacent, external, to D in 1XXX.
-        let s5 = dm0.state_from_string("s101").unwrap();
-        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
-        let nds2 = dm0.get_needs();
+        // First sample of state 6, adjacent, external, to 4 in XXXXXX0X.
+        let s06 = dm0.state_from_string("s0110").unwrap();
+        let s0d = dm0.state_from_string("s1110").unwrap();
+        dm0.eval_sample_arbitrary(0, &s06, &s0d);
+        let nds2 = dm0.actions[0].limit_groups_needs();
 
-        // Check for second need for 5, to reach pnc for 5.
-        assert!(nds2.len() == 2);
-        assert!(nds2.contains_similar_need("LimitGroup", &dm0.region_from_string("r101").unwrap()));
+        // Check for second need for 6, to reach pnc for 6.
+        println!("needs2 are {}", nds2);
+        assert!(nds2.len() == 1);
+        assert!(nds2.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
 
-        // Get second sample for 5.
-        dm0.eval_sample_arbitrary(0, &s5, &s5.toggle_bits(vec![3]));
-        let nds3 = dm0.get_needs();
+        dm0.eval_sample_arbitrary(0, &s06, &s0d);
 
-        // Check for need of square 10, far from square 5, in 0XXX.
-        assert!(nds3.len() == 1);
-        assert!(nds3.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
-
-        // Get sample of 2, far from 5 in 0XXX.
-        // In 1XXX, A is already far from D, and is pnc, so no further needs for 1XXX.
-        let s2 = dm0.state_from_string("s10").unwrap();
-        dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
-        let nds4 = dm0.get_needs();
-
-        // Check for need of second sample of square 10, to reach pnc.
-        assert!(nds4.len() == 1);
-        assert!(nds4.contains_similar_need("LimitGroup", &dm0.region_from_string("r10").unwrap()));
-
-        // Take second sample of square 10.
-        dm0.eval_sample_arbitrary(0, &s2, &s2.toggle_bits(vec![3]));
-        let nds5 = dm0.get_needs();
-
-        // The two groups, 0XXX and 1XXX, should be limited, and have no further needs.
-        assert!(nds5.len() == 0);
+        // Don't reuse grpx, from above, it runs into an immutable borrow problem.
+        let grpx = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
+            .unwrap();
+        let nds3 = dm0.actions[0].limit_group_needs(&grpx);
+        println!("needs3 are {}", nds3);
+        assert!(nds3.contains_similar_need(
+            "SetGroupLimited",
+            &dm0.region_from_string("rXXXXXX0X").unwrap()
+        ));
 
         Ok(())
     }
@@ -1441,31 +1412,36 @@ mod tests {
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert!(needs.len() == 1);
-            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()));
+            assert!(
+                needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap())
+            );
 
             dm0.eval_sample_arbitrary(0, &sd, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
-            assert!(needs.contains_similar_need("AddSeekEdge", &dm0.region_from_string("r11x1").unwrap()));
+            assert!(needs
+                .contains_similar_need("AddSeekEdge", &dm0.region_from_string("r11x1").unwrap()));
             // At the next run of get_needs, r11x1 will replace the superset region rx1x1, then
             // r11x1 will be deleted because its defining squares are adjacent.
-
-        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap()) {
+        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
+        {
             // Seek even closer sample s0111
             let s7 = dm0.state_from_string("s0111").unwrap();
             dm0.eval_sample_arbitrary(0, &s7, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert!(needs.len() == 1);
-            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap()));
+            assert!(
+                needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
+            );
 
             dm0.eval_sample_arbitrary(0, &s7, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
-            assert!(needs.contains_similar_need("AddSeekEdge", &dm0.region_from_string("rx111").unwrap()));
+            assert!(needs
+                .contains_similar_need("AddSeekEdge", &dm0.region_from_string("rx111").unwrap()));
             // At the next run of get_needs, rx111 will replace the superset region rx1x1, then
             // rx111 will be deleted because its defining squares are adjacent.
-
         } else {
             panic!("unexpected need!");
         }

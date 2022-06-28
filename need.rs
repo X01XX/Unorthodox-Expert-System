@@ -556,16 +556,15 @@ impl SomeNeed {
             SomeNeed::SampleRegion { goal_reg, .. } => return goal_reg.clone(),
             SomeNeed::StateAdditionalSample { targ_state, .. } => {
                 return SomeRegion::new(targ_state, targ_state)
-            },
+            }
             SomeNeed::SeekEdge { targ_state, .. } => {
                 return SomeRegion::new(targ_state, targ_state)
-            },
+            }
             SomeNeed::LimitGroup { targ_state, .. } => {
                 return SomeRegion::new(targ_state, targ_state)
-            },
-            SomeNeed::AddSeekEdge { reg, .. } => {
-                return reg.clone()
-            },
+            }
+            SomeNeed::AddSeekEdge { reg, .. } => return reg.clone(),
+            SomeNeed::SetGroupLimited { group_region, .. } => return group_region.clone(),
             _ => panic!(
                 "target: should not be called for this need {}",
                 self.type_string()
