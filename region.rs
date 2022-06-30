@@ -574,8 +574,8 @@ mod tests {
     #[test]
     fn zeros_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
-        if reg0.zeros_mask() != SomeMask::new_from_string(1, "m11001010").unwrap() {
-            return Err(format!("Result not m11001010?"));
+        if reg0.zeros_mask() != SomeMask::new_from_string(1, "m0b11001010").unwrap() {
+            return Err(format!("Result not m0b11001010?"));
         }
         Ok(())
     }
@@ -584,8 +584,8 @@ mod tests {
     fn ones_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
 
-        if reg0.ones_mask() != SomeMask::new_from_string(1, "m101").unwrap() {
-            return Err(format!("Result not m101?"));
+        if reg0.ones_mask() != SomeMask::new_from_string(1, "m0b101").unwrap() {
+            return Err(format!("Result not m0b101?"));
         }
         Ok(())
     }
@@ -593,8 +593,8 @@ mod tests {
     #[test]
     fn x_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
-        if reg0.x_mask() != SomeMask::new_from_string(1, "m110000").unwrap() {
-            return Err(format!("Result not m110000?"));
+        if reg0.x_mask() != SomeMask::new_from_string(1, "m0b110000").unwrap() {
+            return Err(format!("Result not m0b110000?"));
         }
         Ok(())
     }
@@ -711,7 +711,7 @@ mod tests {
     #[test]
     fn set_to_zeros() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        let msk1 = SomeMask::new_from_string(1, "m111").unwrap();
+        let msk1 = SomeMask::new_from_string(1, "m0b111").unwrap();
 
         if reg0.set_to_zeros(&msk1) != SomeRegion::new_from_string(1, "rX10X000").unwrap() {
             return Err(format!("Result not rX10X000?"));
@@ -722,7 +722,7 @@ mod tests {
     #[test]
     fn set_to_ones() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        let msk1 = SomeMask::new_from_string(1, "m111").unwrap();
+        let msk1 = SomeMask::new_from_string(1, "m0b111").unwrap();
 
         if reg0.set_to_ones(&msk1) != SomeRegion::new_from_string(1, "rX10X111").unwrap() {
             return Err(format!("Result not rX10X111?"));
@@ -735,8 +735,8 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rXX0011").unwrap();
         let state0 = SomeState::new_from_string(1, "s010101").unwrap();
 
-        if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m110").unwrap() {
-            return Err(format!("Result not m110?"));
+        if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m0b110").unwrap() {
+            return Err(format!("Result not m0b110?"));
         }
         Ok(())
     }
@@ -747,8 +747,8 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
         let diff = reg0.diff_mask(&reg1);
 
-        if diff != SomeMask::new_from_string(2, "m100010100").unwrap() {
-            return Err(format!("Result {} not m100010100?", diff));
+        if diff != SomeMask::new_from_string(2, "m0b100010100").unwrap() {
+            return Err(format!("Result {} not m0b100010100?", diff));
         }
         Ok(())
     }

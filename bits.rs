@@ -83,46 +83,32 @@ impl SomeBits {
     /// Underscore character is ignored.
     /// 0X can be used as a prefix to indicate hexadecimal input.
     ///
-    /// if let Ok(bts) = SomeBits::new_from_string(1, "0101")) {
+    /// if let Ok(bts) = SomeBits::new_from_string(1, "0b0101")) {
     ///    println!("bts {}", &bts);
     /// } else {
     ///    panic!("Invalid bits string");
     /// }
     /// A prefix of "0x" can be used to specify hexadecimal characters.
+    ///
+    /// The number of digits can greater than any integer can hold, since the bits
+    /// struct is a vector of integers.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         let mut bts = SomeBits::new_low(num_ints);
 
-        let mut base = 2;
+        let base;
 
-        let mut zf = false;
-        let mut xf = false;
-
-        let mut inx = 0;
-        for chr in str.chars() {
-            if inx == 0 && chr == '0' {
-                zf = true;
-            }
-            if inx == 1 {
-                if chr == 'x' || chr == 'X' {
-                    xf = true;
-                }
-            }
-            inx += 1;
-            if inx > 1 {
-                break;
-            }
-        }
-
-        let mut str2 = str;
-        if zf && xf {
+        if &str[0..2] == "0b" {
+            base = 2;
+        } else if &str[0..2] == "0x" {
             base = 16;
-            str2 = &str2[2..];
+        } else {
+            return Err(format!("should start with 0b or 0x instead of {}", str));
         }
 
         let lsb = num_ints - 1;
         let shift_num = NUM_BITS_PER_INT - 4;
 
-        for chr in str2.chars() {
+        for chr in str[2..].chars() {
             if chr == '_' {
                 continue;
             }
@@ -216,25 +202,9 @@ impl SomeBits {
     }
 
     /// Return a Bits struct with specified bit(s) changed.
-    pub fn toggle_bits(&self, bit_nums: Vec<usize>) -> Self {
-        let mut ary2 = self.ints.clone();
-
-        let num_ints = self.num_ints();
-        let num_bits = num_ints * NUM_BITS_PER_INT as usize;
-        let lsi = num_ints - 1; // least significant integer
-
-        for bit_num in bit_nums {
-            if bit_num >= num_bits {
-                panic!("bit num {} is too large", &bit_num);
-            }
-
-            let bit_pos = bit_num % NUM_BITS_PER_INT; // calc bit index
-
-            let int_num = lsi - (bit_num / NUM_BITS_PER_INT); // calc integer index
-
-            ary2[int_num] = ary2[int_num] ^ ALL_BIT_MASKS[bit_pos]; // toggle the bit
-        }
-        Self { ints: ary2 }
+    pub fn toggle_bits(&self, bit_nums: &str) -> Self {
+        let bitsx = SomeBits::new_from_string(self.num_ints(), bit_nums).unwrap();
+        self.b_xor(&bitsx)
     }
 
     /// Return true if a bit is one at a given position.
@@ -509,10 +479,10 @@ mod tests {
     fn new() -> Result<(), String> {
         let bitx = SomeBits::new(vec![5 as u8, 4 as u8]);
         if bitx.ints[0] != 5 {
-            return Err(format!("Result not 5?"));
+            return Err(format!("Test 1 failed"));
         }
         if bitx.ints[1] != 4 {
-            return Err(format!("Result not 4?"));
+            return Err(format!("Test 2 failed"));
         }
         Ok(())
     }
@@ -1122,14 +1092,14 @@ mod tests {
     fn toggle_bits() -> Result<(), String> {
         if SomeBits::new_from_string(2, "0x505")
             .unwrap()
-            .toggle_bits(vec![1, 8, 11])
+            .toggle_bits("0x0902")
             != SomeBits::new_from_string(2, "0xc07").unwrap()
         {
             return Err(format!("Test 1 failed?"));
         }
         if SomeBits::new_from_string(2, "0x5050")
             .unwrap()
-            .toggle_bits(vec![0, 12])
+            .toggle_bits("0x1001")
             != SomeBits::new_from_string(2, "0x4051").unwrap()
         {
             return Err(format!("Test 2 failed?"));

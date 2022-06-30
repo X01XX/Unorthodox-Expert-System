@@ -619,7 +619,7 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "00/01").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m11").unwrap(),
+            &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) == false {
@@ -631,7 +631,7 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "01/00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "10/01").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m11").unwrap(),
+            &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) == false {
@@ -643,7 +643,7 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "x1/xx").unwrap();
         let rul2 = SomeRule::new_from_string(1, "xx/x0").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m11").unwrap(),
+            &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
         if rul1.mutually_exclusive(&rul2, &chg1) {
@@ -661,7 +661,7 @@ mod tests {
         let rul2 = SomeRule::new_from_string(1, "10/01").unwrap();
         let rul3 = SomeRule::new_from_string(1, "xx/xx").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m11").unwrap(),
+            &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
 
@@ -687,8 +687,8 @@ mod tests {
     fn parse_for_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx").unwrap();
         let chg1 = SomeChange::new(
-            &SomeMask::new_from_string(1, "m1010").unwrap(), // b01
-            &SomeMask::new_from_string(1, "m0101").unwrap(), // b10
+            &SomeMask::new_from_string(1, "m0b1010").unwrap(), // b01
+            &SomeMask::new_from_string(1, "m0b0101").unwrap(), // b10
         );
         let rul2 = rul1.parse_for_changes(&chg1).unwrap();
 

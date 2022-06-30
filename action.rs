@@ -936,7 +936,7 @@ impl SomeAction {
 
         // Find squares in one group for each group, that may be an anchor
         for grpx in self.groups.iter() {
-            if grpx.pnc == false {
+            if grpx.pnc == false || grpx.limited {
                 continue;
             }
 
@@ -1042,28 +1042,28 @@ impl SomeAction {
 
         // Check if a limited group anchor is still rated the best
         // If so, skip further processing.
-        if let Some(anchor) = &grpx.anchor {
-            // handle the rare case of anchors with the same rating
-            let mut in_flag = false;
-            for crfx in cfmv_max.iter() {
-                if crfx[0] == *anchor {
-                    in_flag = true;
-                    break;
-                }
-            }
-
-            if in_flag {
-                // println!(
-                //     "group {} anchor {} rating limited at {}",
-                //     &greg, &anchor, max_num
-                //  );
-                return ret_nds;
-            } else {
-                ret_nds.push(SomeNeed::RemoveGroupAnchor {
-                    group_region: grpx.region.clone(),
-                });
-            }
-        }
+        //        if let Some(anchor) = &grpx.anchor {
+        //            // handle the rare case of anchors with the same rating
+        //            let mut in_flag = false;
+        //            for crfx in cfmv_max.iter() {
+        //                if crfx[0] == *anchor {
+        //                    in_flag = true;
+        //                    break;
+        //                }
+        //            }
+        //
+        //            if in_flag {
+        //                // println!(
+        //                //     "group {} anchor {} rating limited at {}",
+        //                //     &greg, &anchor, max_num
+        //                //  );
+        //                return ret_nds;
+        //            } else {
+        //                ret_nds.push(SomeNeed::RemoveGroupAnchor {
+        //                    group_region: grpx.region.clone(),
+        //                });
+        //            }
+        //        }
 
         // Select an anchor
         let mut cfm_max = &cfmv_max[0];

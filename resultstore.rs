@@ -160,19 +160,19 @@ mod tests {
 
         let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
         if pn != Pn::One {
-            return Err(format!("test_add_result_pn_one 4 Pn NE One?"));
+            return Err(format!("Test 1 Pn NE One?"));
         }
 
         // Test additional adds.
         for _ in 0..8 {
             let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
             if pn != Pn::One {
-                return Err(format!("test_add_result_pn_one 7 Pn NE One?"));
+                return Err(format!("Test 2 Pn NE One?"));
             }
         }
 
         if rslt_str.len() != MAX_RESULTS {
-            return Err(format!("test_add_result_pn_one 10 len GT MAX_RESULTS?"));
+            return Err(format!("Test 3 len GT MAX_RESULTS?"));
         }
 
         Ok(())
@@ -185,19 +185,19 @@ mod tests {
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
         if pn != Pn::Two {
-            return Err(format!("test_add_result_pn_two 1 Pn NE Two?"));
+            return Err(format!("Test 1 Pn NE Two?"));
         }
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
 
         if pn != Pn::Two {
-            return Err(format!("test_add_result_pn_two 4 Pn NE Two?"));
+            return Err(format!("Test 2 Pn NE Two?"));
         }
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
         if pn != Pn::Two {
-            return Err(format!("test_add_result_pn_two 7 Pn NE Two?"));
+            return Err(format!("Test 3 Pn NE Two?"));
         }
 
         // Test additional adds.
@@ -205,13 +205,13 @@ mod tests {
             pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
 
             if pn != Pn::Two {
-                return Err(format!("test_add_result_pn_two 10 Pn NE Two?"));
+                return Err(format!("Test 4 Pn NE Two?"));
             }
 
             pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
             if pn != Pn::Two {
-                return Err(format!("test_add_result_pn_two 13 Pn NE Two?"));
+                return Err(format!("Test 5 Pn NE Two?"));
             }
         }
 
@@ -226,15 +226,13 @@ mod tests {
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
         if pn != Pn::Two {
-            return Err(format!("test_add_result_pn_unpredictable 1 Pn NE Two?"));
+            return Err(format!("Test 1 Pn NE Two?"));
         }
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap()); // two results, but out of order
 
         if pn != Pn::Unpredictable {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 4 Pn NE Unpredictable?"
-            ));
+            return Err(format!("Test 2 Pn NE Unpredictable?"));
         }
 
         // Test three different results.
@@ -242,15 +240,13 @@ mod tests {
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
 
         if pn != Pn::Two {
-            return Err(format!("test_add_result_pn_unpredictable 7 Pn NE Two?"));
+            return Err(format!("Test 3 Pn NE Two?"));
         }
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap()); // two results, but out of order
 
         if pn != Pn::Unpredictable {
-            return Err(format!(
-                "test_add_result_pn_unpredictable 10 Pn NE Unpredictable?"
-            ));
+            return Err(format!("Test 4 Pn NE Unpredictable?"));
         }
 
         Ok(())
@@ -268,17 +264,15 @@ mod tests {
         rslt_str.add_result(SomeState::new_from_string(2, "s0x506").unwrap());
 
         if *rslt_str.first() != SomeState::new_from_string(2, "s0x504").unwrap() {
-            return Err(format!("test_add_result_misc 1 first not s0x0504?"));
+            return Err(format!("Test 1 first not s0x0504?"));
         }
 
         if *rslt_str.second() != SomeState::new_from_string(2, "s0x505").unwrap() {
-            return Err(format!("test_add_result_misc 2 second not s0x0505?"));
+            return Err(format!("Test 2 second not s0x0505?"));
         }
 
         if *rslt_str.most_recent_result() != SomeState::new_from_string(2, "s0x506").unwrap() {
-            return Err(format!(
-                "test_add_result_misc 3 most_recent_result not s0x0506?"
-            ));
+            return Err(format!("Test 3 most_recent_result not s0x0506?"));
         }
 
         Ok(())

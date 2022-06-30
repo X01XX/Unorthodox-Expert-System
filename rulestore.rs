@@ -476,18 +476,18 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "11/00/11").unwrap());
 
         if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            println!("test_restrict_initial_region 1 union worked {}", &rul_str3);
             let regx = SomeRegion::new_from_string(1, "r101").unwrap();
             let rul_str4 = rul_str3.restrict_initial_region(&regx);
-            println!("test_restrict_initial_region 2 worked is {}", &rul_str4);
+            println!("Restrict_initial_region worked, is {}", &rul_str4);
+
             if rul_str4.initial_region() != regx {
-                return Err(format!("test_restrict_initial_region 1 element 0 failed?"));
+                return Err(format!("Test 1 failed"));
             }
             if rul_str4[1].initial_region() != regx {
-                return Err(format!("test_restrict_initial_region 1 element 1 failed?"));
+                return Err(format!("Test 2 failed"));
             }
         } else {
-            return Err(format!("test_restrict_initial_region 1 union failed?"));
+            return Err(format!("Test 3 failed"));
         }
         Ok(())
     }
@@ -502,17 +502,14 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00").unwrap());
 
         if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
-            println!("test_intersection 1 worked = {}", &rul_str3);
+            println!("test_intersection 1 passed = {}", &rul_str3);
             let mut rul_str4 = RuleStore::new();
             rul_str4.push(SomeRule::new_from_string(1, "00/11/11/10/00").unwrap());
             if rul_str3 != rul_str4 {
-                return Err(format!(
-                    "test_intersection 1 {} ne {}",
-                    &rul_str3, &rul_str4
-                ));
+                return Err(format!("Test 1 failed"));
             }
         } else {
-            return Err(format!("test_intersection 1 failed?"));
+            return Err(format!("Test 2 failed"));
         }
 
         // Produce failure due to bit 3, Xx intersect 11 = null.
@@ -522,8 +519,8 @@ mod tests {
         let mut rul_str2 = RuleStore::new();
         rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00").unwrap());
 
-        if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
-            return Err(format!("test_intersection 2 worked = {}?", &rul_str3));
+        if let Some(_rul_str3) = rul_str1.intersection(&rul_str2) {
+            return Err(format!("Test 2 failed"));
         }
 
         // Intersect two two-rule RuleStores, it should work.
@@ -536,17 +533,17 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00").unwrap());
 
         if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
-            println!("test_intersection 3 worked = {}", &rul_str3);
+            println!("Test 3 passed = {}", &rul_str3);
             let rulx = SomeRule::new_from_string(1, "00/11/11/10/00").unwrap();
             if rul_str3[0] != rulx && rul_str3[1] != rulx {
-                return Err(format!("test_intersection 3 00/11/11/10/00 not in result?"));
+                return Err(format!("Test 3 failed, 00/11/11/10/00 not in result"));
             }
             let rulx = SomeRule::new_from_string(1, "01/11/11/10/00").unwrap();
             if rul_str3[0] != rulx && rul_str3[1] != rulx {
-                return Err(format!("test_intersection 3 01/11/11/10/00 not in result?"));
+                return Err(format!("Test 3 failed, 01/11/11/10/00 not in result"));
             }
         } else {
-            return Err(format!("test_intersection 3 failed?"));
+            return Err(format!("Test 4 failed"));
         }
 
         // Intersect two two-rule RuleStores, it should not work, due to the left-most bit.
@@ -558,8 +555,8 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/10/00").unwrap());
         rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/11/00").unwrap());
 
-        if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
-            return Err(format!("test_intersection 4 worked = {}", &rul_str3));
+        if let Some(_rul_str3) = rul_str1.intersection(&rul_str2) {
+            return Err(format!("Test 4 failed"));
         }
 
         Ok(())
@@ -575,16 +572,15 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "00/11/11/10/00").unwrap());
 
         if rul_str2.is_subset_of(&rul_str1) {
-            println!("test_is_subset_of 1 worked");
         } else {
-            return Err(format!("test_is_subset_of 1 failed?"));
+            return Err(format!("Test 1 failed"));
         }
 
         let mut rul_str2 = RuleStore::new();
         rul_str2.push(SomeRule::new_from_string(1, "00/10/11/10/00").unwrap());
 
         if rul_str2.is_subset_of(&rul_str1) {
-            return Err(format!("test_is_subset_of 2 worked?"));
+            return Err(format!("Test 2 failed"));
         }
 
         // Compare two two-rule RuleStores.
@@ -598,11 +594,11 @@ mod tests {
 
         if rul_str2.is_subset_of(&rul_str1) {
         } else {
-            return Err(format!("test_is_subset_of 3 failed?"));
+            return Err(format!("Test 3 failed"));
         }
 
         if rul_str1.is_subset_of(&rul_str2) {
-            return Err(format!("test_is_subset_of 4 worked?"));
+            return Err(format!("Test 4 failed"));
         }
         Ok(())
     }
@@ -616,15 +612,14 @@ mod tests {
         let rul2 = SomeRule::new_from_string(1, "00/11/11/10/00").unwrap();
 
         if rul_str1.is_superset_of_rule(&rul2) {
-            println!("test_is_superset_of_rule 1 worked");
         } else {
-            return Err(format!("test_is_superset_of_rule 1 failed?"));
+            return Err(format!("Test 1 failed"));
         }
 
         let rul2 = SomeRule::new_from_string(1, "00/10/11/10/00").unwrap();
 
         if rul_str1.is_superset_of_rule(&rul2) {
-            return Err(format!("test_is_superset_of_rule 2 worked?"));
+            return Err(format!("Test 2 failed"));
         }
 
         // Compare rule to a two-rule RuleStore.
@@ -636,12 +631,12 @@ mod tests {
 
         if rul_str1.is_superset_of_rule(&rul2) {
         } else {
-            return Err(format!("test_is_superset_of_rule 3 failed?"));
+            return Err(format!("Test 3 failed"));
         }
 
         let rul2 = SomeRule::new_from_string(1, "00/00/11/10/00").unwrap();
         if rul_str1.is_superset_of_rule(&rul2) {
-            return Err(format!("test_is_superset_of_rule 4 worked?"));
+            return Err(format!("Test 4 failed"));
         }
         Ok(())
     }
@@ -655,10 +650,9 @@ mod tests {
         let mut rul_str2 = RuleStore::new();
         rul_str2.push(SomeRule::new_from_string(1, "10/11/11/10/xx").unwrap());
 
-        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            println!("test_union 1 worked = {}", &rul_str3);
+        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
         } else {
-            return Err(format!("test_union 1 failed?"));
+            return Err(format!("Test 1 failed"));
         }
 
         // Fail due to bit 1 being 0X.
@@ -668,8 +662,8 @@ mod tests {
         let mut rul_str2 = RuleStore::new();
         rul_str2.push(SomeRule::new_from_string(1, "10/11/11/00/xx").unwrap());
 
-        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            println!("test_union 2 worked {}?", &rul_str3);
+        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
+            return Err(format!("Test 2 failed"));
         }
 
         // Produce R[00/00/00/00/00/XX/XX/11, 00/00/00/00/00/XX/XX/10].
@@ -681,10 +675,9 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "11/00/10").unwrap());
         rul_str2.push(SomeRule::new_from_string(1, "11/00/11").unwrap());
 
-        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            println!("test_union 3 worked {}", &rul_str3);
+        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
         } else {
-            return Err(format!("union 3 failed?"));
+            return Err(format!("Test 3 failed"));
         }
 
         // Fail due to bit 1 forming 0X.
@@ -696,10 +689,8 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "11/00/10").unwrap());
         rul_str2.push(SomeRule::new_from_string(1, "11/00/11").unwrap());
 
-        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            return Err(format!("test_union 4 worked {}?", &rul_str3));
-        } else {
-            println!("union 4 failed");
+        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
+            return Err(format!("Test 4 failed"));
         }
 
         // Fail due to X1 and X0 forming (XX, Xx) and (X0, X1)
@@ -711,10 +702,8 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "11/00/X0").unwrap());
         rul_str2.push(SomeRule::new_from_string(1, "11/00/X1").unwrap());
 
-        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
-            return Err(format!("test_union 5 worked {}?", &rul_str3));
-        } else {
-            println!("union 5 failed");
+        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
+            return Err(format!("Test 5 failed"));
         }
 
         Ok(())

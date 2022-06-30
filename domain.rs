@@ -424,17 +424,17 @@ impl SomeDomain {
 
         // Calculate the minimum bit changes needed.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
-        // println!("forward_depth_first_search2: required_change {}", &required_change);
+        //println!("random_depth_first_search2: required_change {}", &required_change);
 
         // Get a vector of steps (from rules) that make part of the needed changes.
         let steps_str: StepStore = self.actions.get_steps(&required_change);
-        //println!("\nforward_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
+        //println!("\nrandom_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
         if let Some(can_change) = steps_str.aggregate_changes() {
             if required_change.is_subset_of(&can_change) {
             } else {
-                // println!("forward_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+                //println!("random_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
                 return None;
             }
         } else {
@@ -750,6 +750,9 @@ fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
 
 /// Return true if any single-bit change vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
+    if by_change.len() < 2 {
+        return false;
+    }
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
@@ -794,20 +797,20 @@ mod tests {
         let sf = dm0.state_from_string("s1111").unwrap();
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits("0x01"));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits(vec![1]));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits(vec![1]));
+        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits("0x02"));
+        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits("0x02"));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits(vec![2]));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits(vec![2]));
+        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits("0x04"));
+        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits("0x04"));
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
-        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits(vec![3])); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits("0x08"));
+        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits("0x08")); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s111").unwrap());
@@ -853,20 +856,20 @@ mod tests {
         let sb = dm0.state_from_string("s1011").unwrap();
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits("0x01"));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits(vec![1]));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits(vec![1]));
+        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits("0x02"));
+        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits("0x02"));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits(vec![2]));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits(vec![2]));
+        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits("0x04"));
+        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits("0x04"));
 
         // Create group for region X0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits(vec![3]));
-        dm0.eval_sample_arbitrary(3, &sb, &sb.toggle_bits(vec![3]));
+        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits("0x08"));
+        dm0.eval_sample_arbitrary(3, &sb, &sb.toggle_bits("0x08"));
 
         println!("\nActs: {}", &dm0.actions);
 
@@ -930,7 +933,7 @@ mod tests {
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
         let s1 = dm0.state_from_string("s1").unwrap();
-        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits("0x01"));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
@@ -1058,8 +1061,8 @@ mod tests {
         let sd = dm0.state_from_string("s1101").unwrap();
 
         // Create group for region XX0X.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![0]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
 
         dm0.eval_sample_arbitrary(0, &sd, &sd);
         dm0.eval_sample_arbitrary(0, &sd, &sd);
@@ -1304,8 +1307,8 @@ mod tests {
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits(vec![4]));
-        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits(vec![4]));
+        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x10"));
+        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits("0x10"));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups

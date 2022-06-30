@@ -52,22 +52,30 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        for chr in str.chars() {
-            if chr != 's' && chr != 'S' {
-                return Err(format!(
-                    "Did not understand the string {}, first character?",
-                    str
-                ));
-            }
-            break;
+        if &str[0..1] != "s" && &str[0..1] != "S" {
+            return Err(format!(
+                "Did not understand the string {}, first character?",
+                str
+            ));
         }
 
-        match SomeBits::new_from_string(num_ints, &str[1..]) {
-            Ok(bts) => {
-                return Ok(SomeState::new(bts));
+        if str.len() > 2 && (&str[1..3] == "0b" || &str[1..3] == "0x") {
+            match SomeBits::new_from_string(num_ints, &(&str[1..])) {
+                Ok(bts) => {
+                    return Ok(SomeState::new(bts));
+                }
+                Err(error) => {
+                    return Err(error);
+                }
             }
-            Err(error) => {
-                return Err(error);
+        } else {
+            match SomeBits::new_from_string(num_ints, &("0b".to_owned() + &str[1..])) {
+                Ok(bts) => {
+                    return Ok(SomeState::new(bts));
+                }
+                Err(error) => {
+                    return Err(error);
+                }
             }
         }
     } // end new_from_string
@@ -78,7 +86,7 @@ impl SomeState {
     }
 
     /// Toggle the bits of a state, given a vector of numbers.
-    pub fn toggle_bits(&self, nums: Vec<usize>) -> Self {
+    pub fn toggle_bits(&self, nums: &str) -> Self {
         SomeState {
             bts: self.bts.toggle_bits(nums),
         }
