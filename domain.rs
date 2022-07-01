@@ -21,9 +21,11 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
+use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -459,13 +461,24 @@ impl SomeDomain {
         }
 
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let steps_by_change_vov: Vec<Vec<&SomeStep>> =
+        let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
             steps_str.steps_by_change_bit(&required_change);
 
         // Check if any pair of single-bit changes, all steps, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
             //println!("forward_depth_first_search2: mutually exclusive change rules found");
             return None;
+        }
+
+        // Check for steps that should be done after all the others.
+        // To void some backtracking.
+        if steps_by_change_vov.len() > 1 {
+            let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, &required_change);
+            if inxs.len() > 0 {
+                for inx in inxs.iter().rev() {
+                    remove_unordered(&mut steps_by_change_vov, *inx);
+                }
+            }
         }
 
         // Check for single-bit vectors where no rules have an initial-region that
@@ -526,6 +539,7 @@ impl SomeDomain {
         }
 
         // Randomly choose a step.
+        assert!(selected_steps.len() > 0);
         let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
         // Forward chaining
@@ -663,6 +677,7 @@ impl SomeDomain {
     } // end act_num_from_string
 
     /// Return the index value of a chosen Plan
+    /// TODO better criteria.
     fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
         assert!(ret_plans.len() > 0);
 
@@ -712,7 +727,6 @@ impl SomeDomain {
                     }
                 }
             }
-
             rates_vec.push(rate);
         }
 
@@ -780,6 +794,66 @@ fn all_mutually_exclusive_changes(
             }
         } //next refy
     } // next refx
+    true
+}
+
+/// Return a vector of sorted indicies, of step vectors that should be done later
+/// than all other steps.
+fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
+    let mut inxs = Vec::<usize>::new();
+
+    for inx in 0..by_change.len() {
+        let mut later_flag = true;
+
+        for iny in 0..by_change.len() {
+            if iny == inx {
+                continue;
+            }
+            if step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) == false {
+                later_flag = false;
+                break;
+            }
+        } // next iny
+
+        if later_flag {
+            inxs.push(inx);
+        }
+    } //next inx
+
+    if inxs.len() > 1 {
+        inxs.sort();
+    }
+    inxs
+}
+
+/// Return true if the order of step vectors, arg one to arg two, is bad.
+fn step_vecs_order_bad(
+    vec_x: &Vec<&SomeStep>,
+    vec_y: &Vec<&SomeStep>,
+    wanted: &SomeChange,
+) -> bool {
+    assert!(vec_x.len() > 0);
+    assert!(vec_y.len() > 0);
+    for refx in vec_x.iter() {
+        for refy in vec_y.iter() {
+            if ptr_eq(*refx, *refy) {
+                return false;
+            }
+            if refx.rule.order_bad(&refy.rule, wanted) == false {
+                return false;
+            }
+        } //next refy
+    } // next refx
+      //    let mut strx = "order bad [".to_string();
+      //    for stpx in vec_x.iter() {
+      //        strx.push_str(&format!(" {}", stpx));
+      //    }
+      //    strx.push_str("] to [");
+      //    for stpy in vec_y.iter() {
+      //        strx.push_str(&format!(" {}", stpy));
+      //    }
+      //    strx.push_str(&format!("] wanted {}", wanted));
+      //    println!("{}", strx);
     true
 }
 
