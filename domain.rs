@@ -750,28 +750,25 @@ fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
 
 /// Return true if any single-bit change vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
-    if by_change.len() < 2 {
-        return false;
-    }
+
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
             for refx in by_change[inx].iter() {
                 for refy in by_change[iny].iter() {
                     if ptr_eq(*refx, *refy) {
-                        return false;
+                        continue;
                     }
                     if refx.mutually_exclusive(refy, wanted) {
                         //println!("step {} mutually exclusive to step {}", refx, refy);
-                    } else {
-                        return false;
+                        return true;
                     }
                 } //next numy
             } // next refx
         } // next iny
     } // next inx
 
-    true
+    false
 }
 
 #[cfg(test)]
