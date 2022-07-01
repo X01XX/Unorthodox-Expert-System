@@ -750,25 +750,37 @@ fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
 
 /// Return true if any single-bit change vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
-
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
-            for refx in by_change[inx].iter() {
-                for refy in by_change[iny].iter() {
-                    if ptr_eq(*refx, *refy) {
-                        continue;
-                    }
-                    if refx.mutually_exclusive(refy, wanted) {
-                        //println!("step {} mutually exclusive to step {}", refx, refy);
-                        return true;
-                    }
-                } //next numy
-            } // next refx
+            if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
+                return true;
+            }
         } // next iny
     } // next inx
 
     false
+}
+
+/// Return true if all combinations of steps are mutually exclusive
+fn all_mutually_exclusive_changes(
+    vec_x: &Vec<&SomeStep>,
+    vec_y: &Vec<&SomeStep>,
+    wanted: &SomeChange,
+) -> bool {
+    for refx in vec_x.iter() {
+        for refy in vec_y.iter() {
+            if ptr_eq(*refx, *refy) {
+                return false;
+            }
+            if refx.mutually_exclusive(refy, wanted) {
+                //println!("step {} mutually exclusive to step {}", refx, refy);
+            } else {
+                return false;
+            }
+        } //next refy
+    } // next refx
+    true
 }
 
 #[cfg(test)]
