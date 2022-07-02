@@ -876,21 +876,51 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                         Ok(aregion) => {
                             // Find group
                             if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-                                if let Some(sqrx) =
-                                    dmx.actions[act_num].squares.find(&grpx.region.state1)
-                                {
-                                    println!("{}", &sqrx);
-                                } else {
-                                    println!("{} samples needed.", &grpx.region.state1);
-                                }
-
-                                if grpx.region.state1 != grpx.region.state2 {
+                                if let Some(astate) = &grpx.anchor {
+                                    
                                     if let Some(sqrx) =
-                                        dmx.actions[act_num].squares.find(&grpx.region.state2)
+                                        dmx.actions[act_num].squares.find(&astate)
                                     {
-                                        println!("{}", &sqrx);
+                                        println!("anchor   {}", &sqrx);
                                     } else {
-                                        println!("{} samples needed.", &grpx.region.state2);
+                                        println!("anchor   {} not found?", &grpx.region.state1);
+                                    }
+
+                                    let bit_masks = grpx.region.x_mask().m_not().split();
+                                    for mskx in bit_masks.iter() {
+                                        let adj = SomeState::new(astate.bts.b_xor(&mskx.bts));
+                                        if let Some(adjsqr) = dmx.actions[act_num].squares.find(&adj) {
+                                            println!("adjacent {}", adjsqr);
+                                        }
+                                    }
+
+                                    if grpx.region.state1 != grpx.region.state2 {
+                                        let sta_far = grpx.region.far_state(&astate);
+                                        if let Some(sqrx) =
+                                            dmx.actions[act_num].squares.find(&sta_far)
+                                        {
+                                        println!("far      {}", &sqrx);
+                                        } else {
+                                        println!("far      {} not found?", &grpx.region.state2);
+                                        }
+                                    }
+                                } else {
+                                    if let Some(sqrx) =
+                                        dmx.actions[act_num].squares.find(&grpx.region.state1)
+                                    {
+                                        println!("state1   {}", &sqrx);
+                                    } else {
+                                        println!("state1   {} not found?", &grpx.region.state1);
+                                    }
+
+                                    if grpx.region.state1 != grpx.region.state2 {
+                                        if let Some(sqrx) =
+                                            dmx.actions[act_num].squares.find(&grpx.region.state2)
+                                        {
+                                        println!("state2   {}", &sqrx);
+                                        } else {
+                                        println!("state2   {} not found?", &grpx.region.state2);
+                                        }
                                     }
                                 }
                             } else {

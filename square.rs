@@ -15,11 +15,19 @@ impl fmt::Display for SomeSquare {
         let mut rc_str = String::from("S[");
         rc_str.push_str(&format!("{}", &self.state));
         rc_str.push_str(&format!(", pn: {}", &self.pn));
-        rc_str.push_str(&format!(", pnc: {}", &self.pnc));
-        rc_str.push_str(&format!(", ch: {}", &self.changed));
-        rc_str.push_str(&format!(", rslts: {}", &self.results));
+        if self.pnc {
+            rc_str.push_str(", pnc: t");
+        } else {
+            rc_str.push_str(", pnc: f");
+        }
 
+        if self.changed {
+            rc_str.push_str(", ch: t");
+        } else {
+            rc_str.push_str(", ch: f");
+        }
         rc_str.push_str(&format!(", {}", self.rules));
+        rc_str.push_str(&format!(", rslts: {}", &self.results));
 
         rc_str.push(']');
 
