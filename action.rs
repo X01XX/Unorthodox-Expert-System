@@ -82,6 +82,8 @@ pub struct SomeAction {
     pub aggregate_changes: SomeChange,
     /// Interface to an action that does something.
     do_something: ActionInterface,
+    /// Trigger cleanup logic after a new sample.
+    cleanup_trigger: usize,
 }
 
 impl SomeAction {
@@ -96,6 +98,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             aggregate_changes: SomeChange::new_low(num_ints),
             do_something: ActionInterface::new(),
+            cleanup_trigger: 20,
         }
     }
 
@@ -154,6 +157,9 @@ impl SomeAction {
 
     /// Evaluate a sample.
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
+        if self.cleanup_trigger > 0 {
+            self.cleanup_trigger -= 1;
+        }
         if self.store_sample(&initial, &result, dom) {
             self.check_square_new_sample(&initial, dom);
         }
@@ -167,6 +173,10 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
+        if self.cleanup_trigger > 0 {
+            self.cleanup_trigger -= 1;
+        }
+
         // Processing for all samples.
         self.eval_sample(initial, result, dom);
 
@@ -278,6 +288,10 @@ impl SomeAction {
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
+        if self.cleanup_trigger > 0 {
+            self.cleanup_trigger -= 1;
+        }
+
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
@@ -654,7 +668,19 @@ impl SomeAction {
                                 "\nDom {} Act {} Group {} limited using {}",
                                 dom, self.num, greg, sta1
                             );
-                            grpx.set_anchor(sta1.clone());
+                            grpx.set_limited();
+                        }
+                    }
+                    SomeNeed::SetGroupAnchor {
+                        group_region: greg,
+                        anchor: sta1,
+                    } => {
+                        if let Some(grpx) = self.groups.find_mut(&greg) {
+                            println!(
+                                "\nDom {} Act {} Group {} setting anchor to {}",
+                                dom, self.num, greg, sta1
+                            );
+                            grpx.set_anchor(&sta1);
                         }
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
@@ -698,6 +724,9 @@ impl SomeAction {
                         SomeNeed::SetGroupLimited { .. } => {
                             inxs.push(inx);
                         }
+                        SomeNeed::SetGroupAnchor { .. } => {
+                            inxs.push(inx);
+                        }
                         SomeNeed::InactivateSeekEdge { .. } => {
                             inxs.push(inx);
                         }
@@ -710,12 +739,86 @@ impl SomeAction {
                 for inx in inxs.iter().rev() {
                     nds.remove_unordered(*inx);
                 }
+
+                // Do cleanup
+                if self.cleanup_trigger == 0 || nds.len() == 0 {
+                    self.cleanup(&nds);
+                    self.cleanup_trigger = 10;
+                }
+
                 return nds;
             }
 
             nds = NeedStore::new();
         } // end loop
     } // end get_needs
+
+    /// Cleanup, that is delete unneeded squares
+    fn cleanup(&mut self, needs: &NeedStore) {
+        let stas = self.squares.all_square_states();
+
+        for stax in stas.iter() {
+            // Check needs
+            let mut in_needs = false;
+            for ndx in needs.iter() {
+                if ndx.target().is_superset_of_state(stax) {
+                    in_needs = true;
+                    break;
+                }
+            }
+            if in_needs {
+                continue;
+            }
+
+            let mut in_groups = false;
+            for grpx in self.groups.iter() {
+                if grpx.region.state1 == *stax || grpx.region.state2 == *stax {
+                    in_groups = true;
+                    break;
+                }
+                if let Some(stay) = &grpx.anchor {
+                    if stay == stax {
+                        in_groups = true;
+                        break;
+                    }
+                }
+            }
+            if in_groups {
+                continue;
+            }
+
+            let mut adj_anchor = false;
+            for grpx in self.groups.iter() {
+                if let Some(stay) = &grpx.anchor {
+                    if stax.is_adjacent(&stay) {
+                        adj_anchor = true;
+                        break;
+                    }
+                }
+            }
+            if adj_anchor {
+                continue;
+            }
+
+            let mut in_seek = false;
+            for regx in self.seek_edge.iter() {
+                if regx.is_superset_of_state(stax) {
+                    in_seek = true;
+                    break;
+                }
+            }
+            if in_seek {
+                continue;
+            }
+
+            if self.groups.num_groups_state_in(stax) == 0 {
+                continue;
+            }
+
+            // println!("sqr {} unneeded", stax);
+            self.squares.remove(stax);
+        } // next stax
+    } // end cleanup
 
     /// When a group is invalidated by a new sample, something was wrong within that group.
     ///
@@ -952,134 +1055,119 @@ impl SomeAction {
     pub fn limit_group_needs(&self, grpx: &SomeGroup) -> NeedStore {
         let mut ret_nds = NeedStore::new();
 
-        let stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
+        if grpx.limited && grpx.anchor.is_some() {
+            println!("limit group needs for {}?", grpx.region);
+            return ret_nds;
+        }
 
-        // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.x_mask().m_not().split();
+        if grpx.anchor.is_none() {
+            let stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
 
-        // For each state, sta1, only in the group region, greg:
-        //
-        //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
-        //
-        //  Calculate a rate for each sta1 option, based on the number of adjacent states
-        //  in only one group.
-        let mut max_rate = 0;
+            // For each state, sta1, only in the group region, greg:
+            //
+            //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
+            //
+            //  Calculate a rate for each sta1 option, based on the number of adjacent states
+            //  in only one group.
+            let mut max_rate = 0;
 
-        // Create a StateStore composed of anchor, far, and adjacent-external states.
-        let mut cfmv_max = Vec::<StateStore>::new();
+            // Create a StateStore composed of anchor, far, and adjacent-external states.
+            let mut cfmv_max = Vec::<SomeState>::new();
 
-        for stax in stas_in.iter() {
-            if self.groups.num_groups_state_in(&stax) != 1 {
-                continue;
-            }
-
-            let mut cfmx = StateStore::new();
-
-            cfmx.push(stax.clone());
-
-            let mut sta_rate = 1;
-
-            // Rate anchor
-            if let Some(sqrx) = self.squares.find(stax) {
-                if sqrx.pnc {
-                    sta_rate += 5;
-                } else {
-                    sta_rate += sqrx.len_results();
-                }
-            }
-
-            cfmx.push(grpx.region.far_state(&stax));
-
-            // Rate far state
-            if let Some(sqrx) = self.squares.find(&cfmx[1]) {
-                if sqrx.pnc {
-                    sta_rate += 4; // LT anchor value, so (pnc anchor, non-pnc far) NE (non-pnc anchor, pnc far)
-                } else {
-                    sta_rate += sqrx.len_results();
-                }
-            }
-
-            // Rate adjacent external states
-            for edge_bit in edge_msks.iter() {
-                let sta_adj = SomeState::new(stax.bts.b_xor(&edge_bit.bts));
-                //println!(
-                //    "checking {} adjacent to {} external to {}",
-                //    &sta_adj, &stax, &greg
-                //);
-
-                if self.groups.num_groups_state_in(&sta_adj) == 1 {
-                    //println!("{} is in only one group", &sta_adj);
-                    sta_rate += 100;
+            for stax in stas_in.iter() {
+                if self.groups.num_groups_state_in(&stax) != 1 {
+                    continue;
                 }
 
-                cfmx.push(sta_adj.clone());
+                let mut sta_rate = 1;
 
-                if let Some(sqrx) = self.squares.find(&sta_adj) {
+                // Rate anchor
+                if let Some(sqrx) = self.squares.find(stax) {
                     if sqrx.pnc {
                         sta_rate += 5;
                     } else {
                         sta_rate += sqrx.len_results();
                     }
                 }
+
+                // Rate far state
+                let sta_far = grpx.region.far_state(&stax);
+                if let Some(sqrx) = self.squares.find(&sta_far) {
+                    if sqrx.pnc {
+                        sta_rate += 4; // LT anchor value, so (pnc anchor, non-pnc far) NE (non-pnc anchor, pnc far)
+                    } else {
+                        sta_rate += sqrx.len_results();
+                    }
+                }
+
+                // Get masks of edge bits to use to limit group.
+                let edge_msks = grpx.region.x_mask().m_not().split();
+
+                // Rate adjacent external states
+                for edge_bit in edge_msks.iter() {
+                    let sta_adj = SomeState::new(stax.bts.b_xor(&edge_bit.bts));
+                    //println!(
+                    //    "checking {} adjacent to {} external to {}",
+                    //    &sta_adj, &stax, &greg
+                    //);
+
+                    if self.groups.num_groups_state_in(&sta_adj) == 1 {
+                        //println!("{} is in only one group", &sta_adj);
+                        sta_rate += 100;
+                    }
+
+                    if let Some(sqrx) = self.squares.find(&sta_adj) {
+                        if sqrx.pnc {
+                            sta_rate += 5;
+                        } else {
+                            sta_rate += sqrx.len_results();
+                        }
+                    }
+                } // next edge_bit
+
+                //println!("group {} anchor {} rating {}", &greg, &cfmx[0], sta_rate);
+
+                // Accumulate highest rated anchors
+                if sta_rate > max_rate {
+                    max_rate = sta_rate;
+                    cfmv_max = Vec::<SomeState>::new();
+                }
+                //println!("rate {} is {}", cfmx[0], sta_rate);
+                if sta_rate == max_rate {
+                    cfmv_max.push(stax.clone());
+                }
             } // next stax
 
-            //println!("group {} anchor {} rating {}", &greg, &cfmx[0], sta_rate);
-
-            // Accumulate highest rated anchors
-            if sta_rate > max_rate {
-                max_rate = sta_rate;
-                cfmv_max = Vec::<StateStore>::new();
+            if cfmv_max.len() == 0 {
+                return ret_nds;
             }
-            //println!("rate {} is {}", cfmx[0], sta_rate);
-            if sta_rate == max_rate {
-                cfmv_max.push(cfmx);
-            }
-        } // next stax
 
-        if cfmv_max.len() == 0 {
+            // Select an anchor
+            let mut cfm_max = &cfmv_max[0];
+            if cfmv_max.len() > 1 {
+                cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
+            }
+            ret_nds.push(SomeNeed::SetGroupAnchor {
+                group_region: grpx.region.clone(),
+                anchor: cfm_max.clone(),
+            });
             return ret_nds;
         }
-
-        // Check if a limited group anchor is still rated the best
-        // If so, skip further processing.
-        //        if let Some(anchor) = &grpx.anchor {
-        //            // handle the rare case of anchors with the same rating
-        //            let mut in_flag = false;
-        //            for crfx in cfmv_max.iter() {
-        //                if crfx[0] == *anchor {
-        //                    in_flag = true;
-        //                    break;
-        //                }
-        //            }
-        //
-        //            if in_flag {
-        //                // println!(
-        //                //     "group {} anchor {} rating limited at {}",
-        //                //     &greg, &anchor, max_num
-        //                //  );
-        //                return ret_nds;
-        //            } else {
-        //                ret_nds.push(SomeNeed::RemoveGroupAnchor {
-        //                    group_region: grpx.region.clone(),
-        //                });
-        //            }
-        //        }
-
-        // Select an anchor
-        let mut cfm_max = &cfmv_max[0];
-        if cfmv_max.len() > 1 {
-            cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
-        }
-
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
         // If the group far state has not been sampled, or not enough, return a need for that.
         //
         // Else limit the group.
-        let anchor_sta = &cfm_max[0];
+        let anchor_sta;
+        if let Some(stax) = &grpx.anchor {
+            anchor_sta = stax.clone();
+        } else {
+            println!("No anchor for group {}?", grpx);
+            panic!("Done");
+        }
 
-        let anchor_sqr = self.squares.find(anchor_sta).unwrap();
+        let anchor_sqr = self.squares.find(&anchor_sta).unwrap();
         if anchor_sqr.pnc {
             // println!("group {} anchor {} pnc", &greg, &anchor_sta);
         } else {
@@ -1098,20 +1186,17 @@ impl SomeAction {
         let mut nds_grp = NeedStore::new(); // needs for more samples
         let mut nds_grp_add = NeedStore::new(); // needs for added group
 
-        //print!("cfm_mask ");
-        //for stax in cfm_max.iter() {
-        //    print!(" {}", &stax);
-        //}
-        //println!(" ");
+        // Get masks of edge bits to use to limit group.
+        let edge_msks = grpx.region.x_mask().m_not().split();
 
-        for inx in 2..cfm_max.len() {
-            //println!("cfm_max num {} ", inx);
+        //let stax = anchor_sta.clone();
 
-            let adj_sta = &cfm_max[inx];
+        for mskx in edge_msks.iter() {
+            let adj_sta = SomeState::new(anchor_sta.bts.b_xor(&mskx.bts));
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 
-            if let Some(adj_sqr) = self.squares.find(adj_sta) {
+            if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
                     if anchor_sqr.can_combine(&adj_sqr) == Truth::T {
                         let regz = SomeRegion::new(&anchor_sta, &adj_sta);
@@ -1163,34 +1248,36 @@ impl SomeAction {
 
         // Process far state, after the anchor and adjacent, external, checks have been made.
         // Instead of checking every adjacent square internal to the group.
-        if let Some(sqrf) = self.squares.find(&cfm_max[1]) {
-            if sqrf.pnc {
-                // Set the group limited
-                ret_nds.push(SomeNeed::SetGroupLimited {
-                    group_region: grpx.region.clone(),
-                    anchor: anchor_sta.clone(),
-                });
+        if grpx.region.state1 != grpx.region.state2 {
+            let sta_far = grpx.region.far_state(&anchor_sta);
+            if let Some(sqrf) = self.squares.find(&sta_far) {
+                if sqrf.pnc {
+                    // Set the group limited
+                    ret_nds.push(SomeNeed::SetGroupLimited {
+                        group_region: grpx.region.clone(),
+                        anchor: anchor_sta.clone(),
+                    });
+                } else {
+                    // Get additional samples of the far state
+                    ret_nds.push(SomeNeed::LimitGroup {
+                        dom_num: 0, // will be set in domain code
+                        act_num: self.num,
+                        anchor: anchor_sta.clone(),
+                        targ_state: sta_far.clone(),
+                        for_group: grpx.region.clone(),
+                    });
+                }
             } else {
-                // Get additional samples of the far state
+                // Get the first sample of the far state
                 ret_nds.push(SomeNeed::LimitGroup {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    targ_state: cfm_max[1].clone(),
+                    targ_state: sta_far.clone(),
                     for_group: grpx.region.clone(),
                 });
             }
-        } else {
-            // Get the first sample of the far state
-            ret_nds.push(SomeNeed::LimitGroup {
-                dom_num: 0, // will be set in domain code
-                act_num: self.num,
-                anchor: anchor_sta.clone(),
-                targ_state: cfm_max[1].clone(),
-                for_group: grpx.region.clone(),
-            });
         }
-
         //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
     } // end limit_group_needs

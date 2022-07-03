@@ -42,6 +42,21 @@ impl SquareStore {
         }
     }
 
+    /// Remove a square
+    pub fn remove(&mut self, stax: &SomeState) {
+        self.ahash.remove(stax);
+    }
+
+    /// Return the states for all squares.
+    pub fn all_square_states(&self) -> StateStore {
+        let mut rc_store = StateStore::new();
+
+        for (key, _) in &self.ahash {
+            rc_store.push(key.clone());
+        }
+        rc_store
+    }
+
     /// Return a list of squares in a given region.
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
         let mut rc_store = StateStore::new();

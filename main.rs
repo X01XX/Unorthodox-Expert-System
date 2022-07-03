@@ -796,31 +796,12 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
                             if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-                                if let Some(anchor) = &grpx.anchor {
-                                    let sqrx = dmx.actions[act_num].squares.find(anchor).unwrap();
-                                    println!("\nGroup:      {}", &aregion);
-                                    println!("Anchor:   {}", sqrx.formatted_string2());
-                                    let stas = dmx.actions[act_num]
-                                        .squares
-                                        .stas_adj_reg(&SomeRegion::new(&anchor, &anchor));
-                                    for stax in stas.iter() {
-                                        if aregion.is_superset_of_state(stax) {
-                                        } else {
-                                            println!(
-                                                "Adjacent: {}",
-                                                &dmx.actions[act_num]
-                                                    .squares
-                                                    .find(stax)
-                                                    .unwrap()
-                                                    .formatted_string2()
-                                            );
-                                        }
-                                    }
-                                } else {
-                                    println!(
-                                        "\nGroup {} is not limited by a square only in one region",
-                                        &aregion
-                                    );
+                                println!("\n  {}", &aregion);
+                                let stas_adj =
+                                    dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
+                                for stax in stas_adj.iter() {
+                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                                    println!("{}", sqrx);
                                 }
                             } else {
                                 println!("\nGroup with region {} not found", &aregion);
@@ -877,10 +858,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             // Find group
                             if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
                                 if let Some(astate) = &grpx.anchor {
-                                    
-                                    if let Some(sqrx) =
-                                        dmx.actions[act_num].squares.find(&astate)
-                                    {
+                                    if let Some(sqrx) = dmx.actions[act_num].squares.find(&astate) {
                                         println!("anchor   {}", &sqrx);
                                     } else {
                                         println!("anchor   {} not found?", &grpx.region.state1);
@@ -889,7 +867,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                     let bit_masks = grpx.region.x_mask().m_not().split();
                                     for mskx in bit_masks.iter() {
                                         let adj = SomeState::new(astate.bts.b_xor(&mskx.bts));
-                                        if let Some(adjsqr) = dmx.actions[act_num].squares.find(&adj) {
+                                        if let Some(adjsqr) =
+                                            dmx.actions[act_num].squares.find(&adj)
+                                        {
                                             println!("adjacent {}", adjsqr);
                                         }
                                     }
@@ -899,9 +879,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                         if let Some(sqrx) =
                                             dmx.actions[act_num].squares.find(&sta_far)
                                         {
-                                        println!("far      {}", &sqrx);
+                                            println!("far      {}", &sqrx);
                                         } else {
-                                        println!("far      {} not found?", &grpx.region.state2);
+                                            println!("far      {} not found?", &grpx.region.state2);
                                         }
                                     }
                                 } else {
@@ -917,9 +897,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                         if let Some(sqrx) =
                                             dmx.actions[act_num].squares.find(&grpx.region.state2)
                                         {
-                                        println!("state2   {}", &sqrx);
+                                            println!("state2   {}", &sqrx);
                                         } else {
-                                        println!("state2   {} not found?", &grpx.region.state2);
+                                            println!("state2   {} not found?", &grpx.region.state2);
                                         }
                                     }
                                 }
@@ -1051,11 +1031,11 @@ fn usage() {
     println!("\nSession Commands:");
     println!("\n    h | help                 - Help list display (this list).");
     println!(
-        "\n    cd <dom num>             - Change the curently displayed Domain (CDD) to the given domain number."
+        "\n    cd <dom num>             - Change the Curently Displayed Domain (CDD) to the given domain number."
     );
     println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
-    println!("\n\n    aj <act num> <region>    - For an Action in the CDD, and a limited group, print adJacent squares to the groups anchor");
+    println!("\n\n    aj <act num> <region>    - For an Action in the CDD, print adJacent squares to the groups anchor");
 
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");

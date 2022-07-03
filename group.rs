@@ -210,18 +210,37 @@ impl SomeGroup {
     /// Clear the anchor, it is no longer only in one group,
     /// or is superceeded by a higher rated anchor.
     pub fn set_anchor_off(&mut self) {
+        assert!(self.anchor.is_some());
+
         self.anchor = None;
         self.limited = false;
+    }
+
+    /// Set limited to true.
+    pub fn set_limited(&mut self) {
+        assert!(self.limited == false);
+
+        self.limited = true;
+
+        if let Some(astate) = &self.anchor {
+            if self.region.state1 == self.region.state2 {
+                if self.region.state1 != *astate {
+                    self.region = SomeRegion::new(astate, astate);
+                }
+            } else {
+                if self.region.state1 != *astate && self.region.state2 != *astate {
+                    let state2 = self.region.far_state(astate);
+                    self.region = SomeRegion::new(astate, &state2);
+                }
+            }
+        }
     }
 
     /// Set the anchor strel231.txtate, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: SomeState) {
+    pub fn set_anchor(&mut self, astate: &SomeState) {
         self.anchor = Some(astate.clone());
-        self.limited = true;
-        let state2 = self.region.far_state(&astate);
-        self.region = SomeRegion::new(&astate, &state2);
     }
 } // end impl SomeGroup
 

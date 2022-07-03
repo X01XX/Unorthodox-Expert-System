@@ -1197,12 +1197,25 @@ mod tests {
             .groups
             .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
             .unwrap();
+
         let nds1 = dm0.actions[0].limit_group_needs(grpx);
 
         // Check for needs of adjacent, external, squares to 4, in XX0X, which is 6.
         println!("needs1 are {}", nds1);
         assert!(nds1.len() == 1);
-        assert!(nds1.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
+        assert!(match &nds1[0] {
+            SomeNeed::SetGroupAnchor { anchor, .. } => {
+                if *anchor == SomeState::new_from_string(1, "s0100").unwrap() {
+                    dm0.get_needs();
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        });
+
+        println!("dm0 {}", &dm0.actions[0]);
 
         // First sample of state 6, adjacent, external, to 4 in XXXXXX0X.
         let s06 = dm0.state_from_string("s0110").unwrap();
@@ -1213,23 +1226,49 @@ mod tests {
         // Check for second need for 6, to reach pnc for 6.
         println!("needs2 are {}", nds2);
         assert!(nds2.len() == 1);
-        assert!(nds2.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
+        assert!(match &nds2[0] {
+            SomeNeed::RemoveGroupAnchor { group_region, .. } => {
+                if *group_region == SomeRegion::new_from_string(1, "rXXXXXxx1").unwrap() {
+                    dm0.get_needs();
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        });
+
+        let nds3 = dm0.actions[0].limit_groups_needs();
+        println!("needs3 are {}", nds3);
+        assert!(nds3.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
 
         dm0.eval_sample_arbitrary(0, &s06, &s0d);
+        let nds4 = &mut dm0.actions[0].limit_groups_needs();
+        println!("needs4 are {}", nds4);
 
-        // Don't reuse grpx, from above, it runs into an immutable borrow problem.
-        let grpx = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
-            .unwrap();
-        let nds3 = dm0.actions[0].limit_group_needs(&grpx);
-        println!("needs3 are {}", nds3);
-        assert!(nds3.contains_similar_need(
-            "SetGroupLimited",
-            &dm0.region_from_string("rXXXXXX0X").unwrap()
-        ));
+        for nedx in nds4.iter() {
+            if match nedx {
+                SomeNeed::SetGroupLimited {
+                    group_region,
+                    anchor,
+                } => {
+                    if *group_region == SomeRegion::new_from_string(1, "rXXXXXx0X").unwrap() {
+                        if *anchor == SomeState::new_from_string(1, "s0100").unwrap() {
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            } {
+                return Ok(());
+            }
+        }
 
-        Ok(())
+        return Err("expected need not found".to_string());
     }
 
     /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.

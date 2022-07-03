@@ -124,6 +124,10 @@ impl fmt::Display for SomeNeed {
                 group_region,
                 anchor,
             } => format!("N(set group {} limited by {})", group_region, anchor),
+            SomeNeed::SetGroupAnchor {
+                group_region,
+                anchor,
+            } => format!("N(set group {} anchor {})", group_region, anchor),
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
             }
@@ -206,6 +210,10 @@ pub enum SomeNeed {
     /// Housekeeping, set a group to limited, using a state
     /// that is only in that group, has adjacent, external, dissimilar squares.
     SetGroupLimited {
+        group_region: SomeRegion,
+        anchor: SomeState,
+    },
+    SetGroupAnchor {
         group_region: SomeRegion,
         anchor: SomeState,
     },
@@ -378,6 +386,20 @@ impl PartialEq for SomeNeed {
                 }
                 _ => (),
             },
+            SomeNeed::SetGroupAnchor {
+                group_region,
+                anchor,
+            } => match other {
+                SomeNeed::SetGroupAnchor {
+                    group_region: group_region_2,
+                    anchor: anchor_2,
+                } => {
+                    if group_region == group_region_2 && anchor == anchor_2 {
+                        return true;
+                    }
+                }
+                _ => (),
+            },
             SomeNeed::SeekEdge {
                 dom_num,
                 act_num,
@@ -439,6 +461,7 @@ impl SomeNeed {
             SomeNeed::AddGroup { .. } => format!("AddGroup"),
             SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
             SomeNeed::SetGroupLimited { .. } => format!("SetGroupLimited"),
+            SomeNeed::SetGroupAnchor { .. } => format!("SetGroupAnchor"),
             SomeNeed::InactivateSeekEdge { reg: _ } => format!("InactivateSeekEdge"),
             SomeNeed::AddSeekEdge { reg: _ } => format!("AddSeekEdge"),
         }; // end match
@@ -565,6 +588,7 @@ impl SomeNeed {
             }
             SomeNeed::AddSeekEdge { reg, .. } => return reg.clone(),
             SomeNeed::SetGroupLimited { group_region, .. } => return group_region.clone(),
+            SomeNeed::SetGroupAnchor { group_region, .. } => return group_region.clone(),
             _ => panic!(
                 "target: should not be called for this need {}",
                 self.type_string()
