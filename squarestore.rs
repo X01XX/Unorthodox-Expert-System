@@ -47,6 +47,11 @@ impl SquareStore {
         self.ahash.remove(stax);
     }
 
+    /// Return the number of squares stored.
+    pub fn len(&self) -> usize {
+        self.ahash.len()
+    }
+
     /// Return the states for all squares.
     pub fn all_square_states(&self) -> StateStore {
         let mut rc_store = StateStore::new();

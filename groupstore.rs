@@ -5,8 +5,8 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
-use crate::squarestore::SquareStore;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -47,13 +47,7 @@ impl GroupStore {
 
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
-    pub fn check_square(
-        &mut self,
-        sqrx: &SomeSquare,
-        dom: usize,
-        act: usize,
-        squares: &SquareStore,
-    ) -> RegionStore {
+    pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
         let mut regs_invalid = RegionStore::new();
 
         let mut rmvec = Vec::<usize>::new();
@@ -61,7 +55,7 @@ impl GroupStore {
 
         for grpx in &mut self.avec {
             if grpx.region.is_superset_of_state(&sqrx.state) {
-                if grpx.check_square(&sqrx, squares) == false {
+                if grpx.check_square(&sqrx) == false {
                     if sqrx.pn > grpx.pn {
                         println!(
                             "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
@@ -136,6 +130,17 @@ impl GroupStore {
             }
         }
         false
+    }
+
+    /// Return a list of anchor states.
+    pub fn anchor_states(&self) -> StateStore {
+        let mut anchors = StateStore::new();
+        for grpx in &self.avec {
+            if let Some(anchor) = &grpx.anchor {
+                anchors.push(anchor.clone());
+            }
+        }
+        anchors
     }
 
     /// Return true if any group is a superset, or equal, to a region.
@@ -286,6 +291,22 @@ impl GroupStore {
             }
         }
         None
+    }
+
+    /// Set the anchor for a group.
+    pub fn set_anchor(
+        &mut self,
+        grp_reg: &SomeRegion,
+        anchor: &SomeState,
+        rate: (usize, usize, usize),
+    ) {
+        for grpx in &mut self.avec {
+            if grpx.region == *grp_reg {
+                grpx.set_anchor(anchor, rate);
+                return;
+            }
+        }
+        panic!("Group not found");
     }
 } // end impl GroupStore
 

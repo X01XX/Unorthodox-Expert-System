@@ -8,9 +8,7 @@ use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
-use crate::squarestore::SquareStore;
 use crate::state::SomeState;
-//use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -38,10 +36,8 @@ pub struct SomeGroup {
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
-    /// Flag used to check for other groups that are close.
-    /// So a new group is checked against all others, until no
-    /// more needs are generated.
-    pub pair_needs: bool,
+    /// Rate of anchor
+    pub anchor_rate: (usize, usize, usize),
 }
 
 impl SomeGroup {
@@ -66,7 +62,7 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
-            pair_needs: true,
+            anchor_rate: (0, 0, 0),
         }
     }
 
@@ -120,7 +116,7 @@ impl SomeGroup {
 
     /// Return true if a subset square is compatible with a group.
     /// Set group pnc if needed.
-    pub fn check_square(&mut self, sqrx: &SomeSquare, squares: &SquareStore) -> bool {
+    pub fn check_square(&mut self, sqrx: &SomeSquare) -> bool {
         //        println!(
         //            "group:check_square grp {} sqr {}",
         //            &self.region, &sqrx.state
@@ -139,35 +135,8 @@ impl SomeGroup {
                 }
                 self.pnc = sqrx.pnc;
                 return true;
-            } else if sqrx.state == self.region.state1 {
-                let sqry = squares.find(&self.region.state2).unwrap();
-                if sqrx.pn != sqry.pn {
-                    return false;
-                }
-                if sqrx.pn == Pn::Unpredictable {
-                    return true;
-                }
-                if self.pnc == false {
-                    if sqrx.pnc && sqry.pnc {
-                        self.pnc = true;
-                    }
-                }
-                return true;
             } else {
-                // must == state2
-                let sqry = squares.find(&self.region.state1).unwrap();
-                if sqrx.pn != sqry.pn {
-                    return false;
-                }
-                if sqrx.pn == Pn::Unpredictable {
-                    return true;
-                }
-                if self.pnc == false {
-                    if sqrx.pnc && sqry.pnc {
-                        self.pnc = true;
-                    }
-                }
-                return true;
+                return sqrx.pn == self.pn;
             }
         }
 
@@ -181,9 +150,6 @@ impl SomeGroup {
         }
 
         if self.pn == Pn::Unpredictable {
-            if sqrx.pn != Pn::Unpredictable && sqrx.pnc {
-                return false;
-            }
             return true;
         }
 
@@ -214,6 +180,7 @@ impl SomeGroup {
 
         self.anchor = None;
         self.limited = false;
+        self.anchor_rate = (0, 0, 0);
     }
 
     /// Set limited to true.
@@ -239,8 +206,10 @@ impl SomeGroup {
     /// Set the anchor strel231.txtate, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: &SomeState) {
+    pub fn set_anchor(&mut self, astate: &SomeState, rate: (usize, usize, usize)) {
+        self.limited = false;
         self.anchor = Some(astate.clone());
+        self.anchor_rate = rate;
     }
 } // end impl SomeGroup
 

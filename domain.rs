@@ -860,6 +860,7 @@ fn step_vecs_order_bad(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::statestore::StateStore;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -1198,7 +1199,7 @@ mod tests {
             .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
             .unwrap();
 
-        let nds1 = dm0.actions[0].limit_group_needs(grpx);
+        let nds1 = dm0.actions[0].limit_group_needs(grpx, &StateStore::new());
 
         // Check for needs of adjacent, external, squares to 4, in XX0X, which is 6.
         println!("needs1 are {}", nds1);
@@ -1248,16 +1249,9 @@ mod tests {
 
         for nedx in nds4.iter() {
             if match nedx {
-                SomeNeed::SetGroupLimited {
-                    group_region,
-                    anchor,
-                } => {
+                SomeNeed::SetGroupLimited { group_region } => {
                     if *group_region == SomeRegion::new_from_string(1, "rXXXXXx0X").unwrap() {
-                        if *anchor == SomeState::new_from_string(1, "s0100").unwrap() {
-                            true
-                        } else {
-                            false
-                        }
+                        true
                     } else {
                         false
                     }

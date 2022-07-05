@@ -120,13 +120,13 @@ impl fmt::Display for SomeNeed {
             SomeNeed::RemoveGroupAnchor { group_region } => {
                 format!("N(Remove anchor for group {})", group_region)
             }
-            SomeNeed::SetGroupLimited {
-                group_region,
-                anchor,
-            } => format!("N(set group {} limited by {})", group_region, anchor),
+            SomeNeed::SetGroupLimited { group_region } => {
+                format!("N(set group {} limited)", group_region)
+            }
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
+                ..
             } => format!("N(set group {} anchor {})", group_region, anchor),
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
@@ -209,13 +209,11 @@ pub enum SomeNeed {
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
     /// that is only in that group, has adjacent, external, dissimilar squares.
-    SetGroupLimited {
-        group_region: SomeRegion,
-        anchor: SomeState,
-    },
+    SetGroupLimited { group_region: SomeRegion },
     SetGroupAnchor {
         group_region: SomeRegion,
         anchor: SomeState,
+        rate: (usize, usize, usize),
     },
     /// Housekeeping, inactivate a region in the seek_edge vector.
     InactivateSeekEdge { reg: SomeRegion },
@@ -372,15 +370,11 @@ impl PartialEq for SomeNeed {
                 }
                 _ => (),
             },
-            SomeNeed::SetGroupLimited {
-                group_region,
-                anchor,
-            } => match other {
+            SomeNeed::SetGroupLimited { group_region } => match other {
                 SomeNeed::SetGroupLimited {
                     group_region: group_region_2,
-                    anchor: anchor_2,
                 } => {
-                    if group_region == group_region_2 && anchor == anchor_2 {
+                    if group_region == group_region_2 {
                         return true;
                     }
                 }
@@ -389,10 +383,12 @@ impl PartialEq for SomeNeed {
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
+                ..
             } => match other {
                 SomeNeed::SetGroupAnchor {
                     group_region: group_region_2,
                     anchor: anchor_2,
+                    ..
                 } => {
                     if group_region == group_region_2 && anchor == anchor_2 {
                         return true;
