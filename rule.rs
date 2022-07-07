@@ -454,10 +454,8 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.then_to2(&other);
         }
-        let rul_between = self
-            .result_region()
-            .rule_to_region(&other.initial_region())
-            .unwrap();
+        let rul_between = SomeRule::region_to_region(&self.result_region(), &other.initial_region());
+
         self.then_to2(&rul_between).then_to2(&other)
     }
     /// Combine two rules in sequence.
@@ -472,6 +470,82 @@ impl SomeRule {
             b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
         }
     }
+
+    /// Return a rule for translating from region to region.
+    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
+    /// 0->0 instead of 0->X), the second region.
+    /// The minimum changes are sought, so X->x and x->X become X->X.
+    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+
+        let from_x = from.x_mask();
+        let from_1 = from.ones_mask().m_or(&from_x);
+        let from_0 = from.zeros_mask().m_or(&from_x);
+
+        let to_x   = to.x_mask();
+        let to_1   = to.ones_mask();
+        let to_0   = to.zeros_mask();
+
+        Self {
+            b00: from_0.m_and(&to_0.m_or(&to_x)),
+            b01: from_0.m_and(&to_1),
+            b11: from_1.m_and(&to_1.m_or(&to_x)),
+            b10: from_1.m_and(&to_0),
+        }
+    }
+
+    /// Return a rule for translating from region to state.
+    pub fn region_to_state(from: &SomeRegion, to: &SomeState) -> SomeRule {
+
+        let from_x = from.x_mask();
+        let from_1 = from.ones_mask().m_or(&from_x);
+        let from_0 = from.zeros_mask().m_or(&from_x);
+
+        let to_1   = to.to_mask();
+        let to_0   = to_1.m_not();
+
+        Self {
+            b00: from_0.m_and(&to_0),
+            b01: from_0.m_and(&to_1),
+            b11: from_1.m_and(&to_1),
+            b10: from_1.m_and(&to_0),
+        }
+    }
+
+    /// Return a rule for translating from state to region.
+    pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
+
+        let from_1 = from.to_mask();
+        let from_0 = from_1.m_not();
+
+        let to_x   = to.x_mask();
+        let to_1   = to.ones_mask();
+        let to_0   = to.zeros_mask();
+
+        Self {
+            b00: from_0.m_and(&to_0.m_or(&to_x)),
+            b01: from_0.m_and(&to_1),
+            b11: from_1.m_and(&to_1.m_or(&to_x)),
+            b10: from_1.m_and(&to_0),
+        }
+    }
+
+    /// Return a rule for translating from state to state.
+    pub fn state_to_state(from: &SomeState, to: &SomeState) -> SomeRule {
+
+        let from_1 = from.to_mask();
+        let from_0 = from_1.m_not();
+
+        let to_1   = to.to_mask();
+        let to_0   = to_1.m_not();
+
+        Self {
+            b00: from_0.m_and(&to_0),
+            b01: from_0.m_and(&to_1),
+            b11: from_1.m_and(&to_1),
+            b10: from_1.m_and(&to_0),
+        }
+    }
+
 } // end impl SomeRule
 
 #[cfg(test)]
@@ -769,6 +843,34 @@ mod tests {
         if rul3 != SomeRule::new_from_string(1, "00/01/x0/Xx/xx").unwrap() {
             return Err(format!("rul3 not 00/01/x0/Xx/xx?"));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn region_to_region() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(2, "r000_111_xxx").unwrap();
+        let reg2 = SomeRegion::new_from_string(2, "r01x_01x_01x").unwrap();
+
+        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
+        println!("rul1 is {}", &rul1);
+        assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
+
+        // Test proper subset region.
+        let reg1 = SomeRegion::new_from_string(1, "r0011").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "rx01x").unwrap();
+        let rul2 = SomeRule::region_to_region(&reg1, &reg2);
+        println!("rul2 is {}", &rul2);
+        if rul2.result_region() != reg1 {
+            return Err(format!("Result not r0011?"));
+        }
+
+        // Test intersecting regions.
+        let reg1 = SomeRegion::new_from_string(1, "r010x").unwrap();
+        let reg2 = SomeRegion::new_from_string(1, "rx1x1").unwrap();
+        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
+        println!("rul1 {}", &rul1);
+        assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101").unwrap());
+
         Ok(())
     }
 } // end tests

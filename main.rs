@@ -1,13 +1,13 @@
 // Main function for an Unorthodox Expert System
 
-#![allow(
-dead_code,
+//#![allow(
+//dead_code,
 //  unused_variables,
 //  unused_macros,
 //  unused_imports,
 //  unused_assignments,
 //  unused_mut
-)]
+//)]
 
 use std::env;
 mod action;

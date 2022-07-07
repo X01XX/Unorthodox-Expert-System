@@ -25,6 +25,7 @@ use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::randompick::RandomPick;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -444,9 +445,10 @@ impl SomeDomain {
         }
 
         // Check if one step makes the required change, the end point of any search.
-        for stepx in steps_str.iter() {
-            if stepx.initial.intersects(from_reg) {
-                let stepy = stepx.restrict_initial_region(from_reg);
+        let mut rand_inx = RandomPick::new(steps_str.len());
+        while let Some(inx) = rand_inx.pick() {
+            if steps_str[inx].initial.intersects(from_reg) {
+                let stepy = steps_str[inx].restrict_initial_region(from_reg);
 
                 if goal_reg.is_superset_of(&stepy.result) {
                     //println!("forward_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
@@ -599,6 +601,9 @@ impl SomeDomain {
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
+
+        // TODO check if changes are possible, like random_depth_first_search2 does
+
         let num_depth = 3 * required_change.number_changes();
 
         let mut plans = (0..6)

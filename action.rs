@@ -349,11 +349,13 @@ impl SomeAction {
             if anchor_rate > grpx.anchor_rate {
                 if (0, 0, 0) != grpx.anchor_rate {
                     if anchor_rate > grpx.anchor_rate {
-                        println!(
-                            "Changing group {} anchor from {:?} to {:?}",
-                            grpx.region, grpx.anchor_rate, anchor_rate
-                        );
-                        self.groups.set_anchor(&grps_in[0], key, anchor_rate);
+                        if let Some(anchor) = &grpx.anchor {
+                            println!(
+                                "Changing group {} anchor from {} {:?} to {} {:?}",
+                                grpx.region, anchor, grpx.anchor_rate, key, anchor_rate
+                            );
+                            self.groups.set_anchor(&grps_in[0], key, anchor_rate);
+                        }
                     }
                 }
             }

@@ -399,6 +399,7 @@ impl Index<usize> for StepStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rule::SomeRule;
 
     // Test the link function. This also tests the len, push, result, initial, restrict_initial_region and restrict_result_region functions.
     #[test]
@@ -410,14 +411,14 @@ mod tests {
         let reg5 = SomeRegion::new_from_string(1, "r101x").unwrap();
         let reg6 = SomeRegion::new_from_string(1, "r000x").unwrap();
 
-        let step1 = SomeStep::new(0, reg1.rule_to_region(&reg2).unwrap(), false, reg1.clone());
-        let step2 = SomeStep::new(0, reg2.rule_to_region(&reg3).unwrap(), false, reg2.clone());
+        let step1 = SomeStep::new(0, SomeRule::region_to_region(&reg1, &reg2), false, reg1.clone());
+        let step2 = SomeStep::new(0, SomeRule::region_to_region(&reg2, &reg3), false, reg2.clone());
         let mut stp_str1 = StepStore::with_capacity(2);
         stp_str1.push(step1);
         stp_str1.push(step2);
 
-        let step4 = SomeStep::new(0, reg4.rule_to_region(&reg5).unwrap(), false, reg4.clone());
-        let step5 = SomeStep::new(0, reg5.rule_to_region(&reg6).unwrap(), false, reg5.clone());
+        let step4 = SomeStep::new(0, SomeRule::region_to_region(&reg4, &reg5), false, reg4.clone());
+        let step5 = SomeStep::new(0, SomeRule::region_to_region(&reg5, &reg6), false, reg5.clone());
         let mut stp_str2 = StepStore::with_capacity(2);
         stp_str2.push(step4);
         stp_str2.push(step5);

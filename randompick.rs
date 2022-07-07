@@ -88,15 +88,12 @@ mod tests {
         let mut rp1 = RandomPick::new(avec.len());
 
         // Pick index numbers until the vector item is an odd number.
-        loop {
-            if let Some(inx) = rp1.pick() {
-                println!("num picked is {} vector value is {}", inx, avec[inx]);
-                if avec[inx] % 2 == 1 {
-                    return Ok(());
-                }
-            } else {
-                return Err("No odd number was found".to_string());
+        while let Some(inx) = rp1.pick() {
+            println!("num picked is {} vector value is {}", inx, avec[inx]);
+            if avec[inx] % 2 == 1 {
+                return Ok(());
             }
         }
+        Err("No odd number was found".to_string())
     }
 }

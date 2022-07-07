@@ -6,7 +6,6 @@
 
 use crate::bits::{SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
-use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 
@@ -389,35 +388,6 @@ impl SomeRegion {
         self.state1.num_ints()
     }
 
-    /// Return a rule for moving from one region to another.
-    /// The result of the rule may be equal, or subset, of the second region.
-    pub fn rule_to_region(&self, to: &SomeRegion) -> Option<SomeRule> {
-        // Check for rule that needs no change.
-        if to.is_superset_of(self) {
-            // Could return a rule that does nothing, but this probably only
-            // happens from a logic problem.
-            return None;
-        }
-
-        let f_ones = SomeMask::new(self.state1.bts.b_or(&self.state2.bts));
-        let f_zeros = SomeMask::new(self.state1.bts.b_not().b_or(&self.state2.bts.b_not()));
-
-        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
-
-        let to_not_x = to.x_mask().m_not();
-
-        Some(SomeRule::new_from_masks(
-            // b00
-            f_zeros.m_and(&t_zeros),
-            // b01
-            f_zeros.m_and(&t_ones).m_and(&to_not_x),
-            // b11
-            f_ones.m_and(&t_ones),
-            // b10
-            f_ones.m_and(&t_zeros).m_and(&to_not_x),
-        ))
-    }
 } // end impl SomeRegion
 
 #[cfg(test)]
@@ -837,29 +807,4 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn rule_to_region() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(2, "r000_111_xxx").unwrap();
-        let reg2 = SomeRegion::new_from_string(2, "r01x_01x_01x").unwrap();
-
-        let rul1 = reg1.rule_to_region(&reg2).unwrap();
-        println!("rule is {}", &rul1);
-        assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
-
-        // Test proper subset region.
-        let reg1 = SomeRegion::new_from_string(1, "r0011").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "rx01x").unwrap();
-        if let Some(_) = reg1.rule_to_region(&reg2) {
-            return Err(format!("Result not None?"));
-        }
-
-        // Test intersecting regions.
-        let reg1 = SomeRegion::new_from_string(1, "r010x").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "rx1x1").unwrap();
-        let rul1 = reg1.rule_to_region(&reg2).unwrap();
-        println!("rul1 {}", &rul1);
-        assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101").unwrap());
-
-        Ok(())
-    }
 } // end tests

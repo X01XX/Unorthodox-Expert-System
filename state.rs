@@ -12,6 +12,7 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
 use crate::bits::SomeBits;
+use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -115,5 +116,10 @@ impl SomeState {
     /// Return a string used to represent a state.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
+    }
+
+    /// Return a mask from a state.
+    pub fn to_mask(&self) -> SomeMask {
+        SomeMask::new(self.bts.clone())
     }
 } // end impl SomeState
