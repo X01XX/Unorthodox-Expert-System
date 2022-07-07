@@ -455,7 +455,6 @@ impl SomeRule {
             return self.then_to2(&other);
         }
         let rul_between = SomeRule::region_to_region(&self.result_region(), &other.initial_region());
-
         self.then_to2(&rul_between).then_to2(&other)
     }
     /// Combine two rules in sequence.
@@ -870,6 +869,48 @@ mod tests {
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
         println!("rul1 {}", &rul1);
         assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101").unwrap());
+
+        Ok(())
+    }
+
+    #[test]
+    fn region_to_state() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
+        let sta1 = SomeState::new_from_string(1,  "s011010").unwrap();
+
+        let rul1 = SomeRule::region_to_state(&reg1, &sta1);
+        let rul2 = SomeRule::new_from_string(1, "00/11/01/10/x1/x0").unwrap();
+        println!("rul1 {}", &rul1);
+        println!("rul2 {}", &rul2);
+        assert!(rul1 == rul2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn state_to_region() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(1,  "s011010").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
+
+        let rul1 = SomeRule::state_to_region(&sta1, &reg1);
+        let rul2 = SomeRule::new_from_string(1, "00/11/10/01/11/00").unwrap();
+        println!("rul1 {}", &rul1);
+        println!("rul2 {}", &rul2);
+        assert!(rul1 == rul2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn state_to_state() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(1, "s0110").unwrap();
+        let sta2 = SomeState::new_from_string(1, "s0101").unwrap();
+
+        let rul1 = SomeRule::state_to_state(&sta1, &sta2);
+        let rul2 = SomeRule::new_from_string(1, "00/11/10/01").unwrap();
+        println!("rul1 {}", &rul1);
+        println!("rul2 {}", &rul2);
+        assert!(rul1 == rul2);
 
         Ok(())
     }

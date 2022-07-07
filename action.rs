@@ -807,16 +807,20 @@ impl SomeAction {
                 continue;
             }
 
-            let mut adj_anchor = false;
+            let mut rel_anchor = false;
             for grpx in self.groups.iter() {
                 if let Some(stay) = &grpx.anchor {
                     if stax.is_adjacent(&stay) {
-                        adj_anchor = true;
+                        rel_anchor = true;
+                        break;
+                    }
+                    if *stax == grpx.region.far_state(stay) {
+                        rel_anchor = true;
                         break;
                     }
                 }
             }
-            if adj_anchor {
+            if rel_anchor {
                 continue;
             }
 
