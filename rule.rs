@@ -454,7 +454,8 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.then_to2(&other);
         }
-        let rul_between = SomeRule::region_to_region(&self.result_region(), &other.initial_region());
+        let rul_between =
+            SomeRule::region_to_region(&self.result_region(), &other.initial_region());
         self.then_to2(&rul_between).then_to2(&other)
     }
     /// Combine two rules in sequence.
@@ -475,14 +476,13 @@ impl SomeRule {
     /// 0->0 instead of 0->X), the second region.
     /// The minimum changes are sought, so X->x and x->X become X->X.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-
         let from_x = from.x_mask();
         let from_1 = from.ones_mask().m_or(&from_x);
         let from_0 = from.zeros_mask().m_or(&from_x);
 
-        let to_x   = to.x_mask();
-        let to_1   = to.ones_mask();
-        let to_0   = to.zeros_mask();
+        let to_x = to.x_mask();
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
 
         Self {
             b00: from_0.m_and(&to_0.m_or(&to_x)),
@@ -494,13 +494,12 @@ impl SomeRule {
 
     /// Return a rule for translating from region to state.
     pub fn region_to_state(from: &SomeRegion, to: &SomeState) -> SomeRule {
-
         let from_x = from.x_mask();
         let from_1 = from.ones_mask().m_or(&from_x);
         let from_0 = from.zeros_mask().m_or(&from_x);
 
-        let to_1   = to.to_mask();
-        let to_0   = to_1.m_not();
+        let to_1 = to.to_mask();
+        let to_0 = to_1.m_not();
 
         Self {
             b00: from_0.m_and(&to_0),
@@ -512,13 +511,12 @@ impl SomeRule {
 
     /// Return a rule for translating from state to region.
     pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
-
         let from_1 = from.to_mask();
         let from_0 = from_1.m_not();
 
-        let to_x   = to.x_mask();
-        let to_1   = to.ones_mask();
-        let to_0   = to.zeros_mask();
+        let to_x = to.x_mask();
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
 
         Self {
             b00: from_0.m_and(&to_0.m_or(&to_x)),
@@ -530,12 +528,11 @@ impl SomeRule {
 
     /// Return a rule for translating from state to state.
     pub fn state_to_state(from: &SomeState, to: &SomeState) -> SomeRule {
-
         let from_1 = from.to_mask();
         let from_0 = from_1.m_not();
 
-        let to_1   = to.to_mask();
-        let to_0   = to_1.m_not();
+        let to_1 = to.to_mask();
+        let to_0 = to_1.m_not();
 
         Self {
             b00: from_0.m_and(&to_0),
@@ -544,7 +541,6 @@ impl SomeRule {
             b10: from_1.m_and(&to_0),
         }
     }
-
 } // end impl SomeRule
 
 #[cfg(test)]
@@ -876,7 +872,7 @@ mod tests {
     #[test]
     fn region_to_state() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
-        let sta1 = SomeState::new_from_string(1,  "s011010").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s011010").unwrap();
 
         let rul1 = SomeRule::region_to_state(&reg1, &sta1);
         let rul2 = SomeRule::new_from_string(1, "00/11/01/10/x1/x0").unwrap();
@@ -889,7 +885,7 @@ mod tests {
 
     #[test]
     fn state_to_region() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(1,  "s011010").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s011010").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
 
         let rul1 = SomeRule::state_to_region(&sta1, &reg1);

@@ -19,13 +19,13 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
+use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::randompick::RandomPick;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -1206,8 +1206,6 @@ mod tests {
             .groups
             .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
             .unwrap();
-
-        
 
         let nds1 = dm0.actions[0].limit_group_needs(grpx, &StateStore::new());
 

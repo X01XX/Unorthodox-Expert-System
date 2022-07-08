@@ -1085,17 +1085,28 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         <p>
         For each action:
         </p>
-	<p>Bootstrapping:</p>
+	<p>Bootstrapping.</p>
         <p class="indent1">
      If the result of the current state cannot be predicted, sample it.
      </p>
      <p class="indent1">
-        The first samples of this kind can be used to form regions that can be used, with some errors,
-        to change the current state to a state needed to improve the regions.
+        The first samples of this kind, that is only a single sample of each square, can be combined in pairs, to form regions.
      </p>
      <p class="indent1">
-	Errors in the first regions lead to unexpected, but needed, samples, which lead to new regions.
+        Some new regions will be invalidated when they do not predict the result of sampling a state within them.
      </p>
+     <p class="indent1">
+        Other new regions will work and allow getting mutiple samples of states used to form the first regions.
+     </p>
+     <p class="indent1">
+        The error rate of the regions formed would start high and trend downward.
+     </p>
+        <p>
+	Making regions using pairs of similar squares, easily leads to intersecting regions that share a defining square.
+        </p>
+     <p class="indent1">
+        Such intersecting regions should be checked for the possibility of combining them.
+        </p>
          <p>
         Keep a list of superset non-falsified regions of squares with compatible samples.
         </p>
@@ -1112,22 +1123,24 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Identify and resolve contradictory intersections.
         </p>
      <p class="indent1">
-        Contradictory intersections can be identified by reviewing the intersections of a newly created region with existing regions.
+        Contradictory intersections can be identified by reviewing the intersections (of more than one square) of a newly created region with existing regions.
+        </p>
+     <p class="indent1">
+        An intesection of two regions may be wholly similar, wholly dissimilar, or partially dissimilar.
         </p>
         <p>
         Use squares that appear to be in only one region to limit regions.
         </p>
         <p class="indent1">
-        A square used to limit a region may become overlapped by later processing, causing that square to not be useful in limiting the region.
+	Sample the squares, adjacent to the limiting square, outside of the region.
         </p>
       <p class="indent1">
         If an external adjacent square turns out to be similar instead of dissimilar, form a region from the two.
         </p>
-      <p class="indent1">
-        If there is more than one adjacent, dissimilar, external square, this defines a vertex of the solution,
-	where edges intersect.
+        <p class="indent1">
+        A square used to limit a region may become overlapped by later processing, causing that square to not be useful in limiting the region.
         </p>
-      <p>
+      <p class="indent1">
         Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
         </p>
       <p>
@@ -1155,7 +1168,12 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p> 
  State-Change Rules attempt to make sense of how a state or region changes when an activity or action can be executed that may result in a state change.
  State-Change Rules are a working point-in-time understanding of logic based on a limited number of recent samples.
+    </p>
+    <p>
  State-Change Rules can be vexing, but they simply depend on something being predictable.
+    </p>
+    <p> 
+    So everything is contingent, it works as expected, until it doesn't. Similar to Real Life.
     </p>
     <h3>Single bit State-Change Rules</h3>
     <p> 
@@ -1723,7 +1741,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 05/12/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/08/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1923,7 +1941,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
        Calculate a rule to change r000_111_XXX to r01X_01X_01X.
        </p>
        <p class="indent1">
-       From a rule that does not change r000_111_XXX at all, four modifications are needed:
+       From a rule that does not change r000_111_XXX at all, all changes are 0->0 and 1->1, four modifications are needed:
        </p>
        <p class="indent2">
        For 0->1, a 0->0 change is replaced by 0->1.

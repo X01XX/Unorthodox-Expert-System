@@ -387,7 +387,6 @@ impl SomeRegion {
     pub fn num_ints(&self) -> usize {
         self.state1.num_ints()
     }
-
 } // end impl SomeRegion
 
 #[cfg(test)]
@@ -806,5 +805,4 @@ mod tests {
         }
         Ok(())
     }
-
 } // end tests

@@ -173,7 +173,6 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-
         // Processing for all samples.
         self.eval_sample(initial, result, dom);
 
@@ -285,7 +284,6 @@ impl SomeAction {
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
-
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
