@@ -85,7 +85,7 @@ pub struct SomeAction {
     pub aggregate_changes: SomeChange,
     /// Interface to an action that does something.
     do_something: ActionInterface,
-    /// Trigger cleanup logic after a new sample.
+    /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,
 }
 
@@ -101,7 +101,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             aggregate_changes: SomeChange::new_low(num_ints),
             do_something: ActionInterface::new(),
-            cleanup_trigger: 20,
+            cleanup_trigger: 5,
         }
     }
 
@@ -160,9 +160,6 @@ impl SomeAction {
 
     /// Evaluate a sample.
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
-        if self.cleanup_trigger > 0 {
-            self.cleanup_trigger -= 1;
-        }
         if self.store_sample(&initial, &result, dom) {
             self.check_square_new_sample(&initial, dom);
         }
@@ -176,9 +173,6 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-        if self.cleanup_trigger > 0 {
-            self.cleanup_trigger -= 1;
-        }
 
         // Processing for all samples.
         self.eval_sample(initial, result, dom);
@@ -291,9 +285,6 @@ impl SomeAction {
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
-        if self.cleanup_trigger > 0 {
-            self.cleanup_trigger -= 1;
-        }
 
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
@@ -323,6 +314,9 @@ impl SomeAction {
         }
 
         // println!("No square found for state {}", cur.str());
+        if self.cleanup_trigger > 0 {
+            self.cleanup_trigger -= 1;
+        }
         self.squares.insert(
             SomeSquare::new(cur.clone(), new_state.clone()),
             dom,
@@ -759,9 +753,9 @@ impl SomeAction {
                 }
 
                 // Do cleanup
-                if self.cleanup_trigger == 0 || nds.len() == 0 {
+                if self.cleanup_trigger == 0 {
                     self.cleanup(&nds);
-                    self.cleanup_trigger = 10;
+                    self.cleanup_trigger = 5;
                 }
 
                 return nds;
@@ -792,35 +786,31 @@ impl SomeAction {
 
             let mut in_groups = false;
             for grpx in self.groups.iter() {
-                if grpx.region.state1 == *stax || grpx.region.state2 == *stax {
-                    in_groups = true;
-                    break;
-                }
-                if let Some(stay) = &grpx.anchor {
-                    if stay == stax {
+                if grpx.region.is_superset_of_state(stax) {
+                    if grpx.region.state1 == *stax || grpx.region.state2 == *stax {
                         in_groups = true;
                         break;
+                    }
+                    if let Some(stay) = &grpx.anchor {
+                        if stay == stax {
+                            in_groups = true;
+                            break;
+                        }
+                        if *stax == grpx.region.far_state(stay) {
+                            in_groups = true;
+                            break;
+                        }
+                    }
+                } else {
+                    if let Some(stay) = &grpx.anchor {
+                        if stax.is_adjacent(&stay) {
+                            in_groups = true;
+                            break;
+                        }
                     }
                 }
             }
             if in_groups {
-                continue;
-            }
-
-            let mut rel_anchor = false;
-            for grpx in self.groups.iter() {
-                if let Some(stay) = &grpx.anchor {
-                    if stax.is_adjacent(&stay) {
-                        rel_anchor = true;
-                        break;
-                    }
-                    if *stax == grpx.region.far_state(stay) {
-                        rel_anchor = true;
-                        break;
-                    }
-                }
-            }
-            if rel_anchor {
                 continue;
             }
 
@@ -839,7 +829,6 @@ impl SomeAction {
                 continue;
             }
 
-            // println!("sqr {} unneeded", stax);
             sqr_del.push(stax.clone());
             self.squares.remove(stax);
         } // next stax
