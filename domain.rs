@@ -1199,10 +1199,15 @@ mod tests {
 
         println!("dm0 {}", &dm0.actions[0]);
 
+        // Set group pnc
+        dm0.actions[0].additional_group_state_samples();
+
         let grpx = dm0.actions[0]
             .groups
             .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
             .unwrap();
+
+        
 
         let nds1 = dm0.actions[0].limit_group_needs(grpx, &StateStore::new());
 

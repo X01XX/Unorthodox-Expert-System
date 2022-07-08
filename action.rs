@@ -1134,78 +1134,76 @@ impl SomeAction {
         sta_rate
     }
 
-    /// Return the limiting need for a group.
+    /// Return the limiting needs for a group.
     pub fn limit_group_needs(&self, grpx: &SomeGroup, anchors: &StateStore) -> NeedStore {
+        assert!(grpx.limited == false);
+        assert!(grpx.pnc);
+
+        if let Some(anchor) = &grpx.anchor {
+            return self.limit_group_needs2(grpx, anchor);
+        }
+
         let mut ret_nds = NeedStore::new();
 
-        if grpx.limited && grpx.anchor.is_some() {
-            println!("limit group needs for {}?", grpx.region);
+        let stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
+
+        // For each state, sta1, only in the group region, greg:
+        //
+        //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
+        //
+        //  Calculate a rate for each sta1 option, based on the number of adjacent states
+        //  in only one group.
+        let mut max_rate = (0, 0, 0);
+
+        // Create a StateStore composed of anchor, far, and adjacent-external states.
+        let mut cfmv_max = Vec::<SomeState>::new();
+
+        for stax in stas_in.iter() {
+            if self.groups.num_groups_state_in(&stax) != 1 {
+                continue;
+            }
+
+            let sta_rate = self.group_anchor_rate(&grpx, stax, anchors);
+
+            //println!("group {} anchor {} rating {}", &greg, &cfmx[0], sta_rate);
+
+            // Accumulate highest rated anchors
+            if sta_rate > max_rate {
+                max_rate = sta_rate;
+                cfmv_max = Vec::<SomeState>::new();
+            }
+            //println!("rate {} is {}", cfmx[0], sta_rate);
+            if sta_rate == max_rate {
+                cfmv_max.push(stax.clone());
+            }
+        } // next stax
+
+        if cfmv_max.len() == 0 {
             return ret_nds;
         }
 
-        if grpx.anchor.is_none() {
-            let stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
-
-            // For each state, sta1, only in the group region, greg:
-            //
-            //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
-            //
-            //  Calculate a rate for each sta1 option, based on the number of adjacent states
-            //  in only one group.
-            let mut max_rate = (0, 0, 0);
-
-            // Create a StateStore composed of anchor, far, and adjacent-external states.
-            let mut cfmv_max = Vec::<SomeState>::new();
-
-            for stax in stas_in.iter() {
-                if self.groups.num_groups_state_in(&stax) != 1 {
-                    continue;
-                }
-
-                let sta_rate = self.group_anchor_rate(&grpx, stax, anchors);
-
-                //println!("group {} anchor {} rating {}", &greg, &cfmx[0], sta_rate);
-
-                // Accumulate highest rated anchors
-                if sta_rate > max_rate {
-                    max_rate = sta_rate;
-                    cfmv_max = Vec::<SomeState>::new();
-                }
-                //println!("rate {} is {}", cfmx[0], sta_rate);
-                if sta_rate == max_rate {
-                    cfmv_max.push(stax.clone());
-                }
-            } // next stax
-
-            if cfmv_max.len() == 0 {
-                return ret_nds;
-            }
-
-            // Select an anchor
-            let mut cfm_max = &cfmv_max[0];
-            if cfmv_max.len() > 1 {
-                cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
-            }
-            ret_nds.push(SomeNeed::SetGroupAnchor {
-                group_region: grpx.region.clone(),
-                anchor: cfm_max.clone(),
-                rate: max_rate,
-            });
-            return ret_nds;
+        // Select an anchor
+        let mut cfm_max = &cfmv_max[0];
+        if cfmv_max.len() > 1 {
+            cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
         }
+        ret_nds.push(SomeNeed::SetGroupAnchor {
+            group_region: grpx.region.clone(),
+            anchor: cfm_max.clone(),
+            rate: max_rate,
+        });
+        ret_nds
+    } // end limit_group_needs
+
+    /// Return the limiting needs for a group with an achor chosen.
+    pub fn limit_group_needs2(&self, grpx: &SomeGroup, anchor_sta: &SomeState) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
         // If the group far state has not been sampled, or not enough, return a need for that.
         //
         // Else limit the group.
-        let anchor_sta;
-        if let Some(stax) = &grpx.anchor {
-            anchor_sta = stax.clone();
-        } else {
-            println!("No anchor for group {}?", grpx);
-            panic!("Done");
-        }
+        let mut ret_nds = NeedStore::new();
 
         let anchor_sqr = self.squares.find(&anchor_sta).unwrap();
         if anchor_sqr.pnc {
@@ -1319,7 +1317,7 @@ impl SomeAction {
         }
         //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
-    } // end limit_group_needs
+    } // end limit_group_needs2
 
     /// Check needs for intersecting groups.
     pub fn group_pair_needs(&self) -> NeedStore {

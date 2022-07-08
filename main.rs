@@ -1,13 +1,13 @@
 // Main function for an Unorthodox Expert System
 
-//#![allow(
-//dead_code,
-//  unused_variables,
+#![allow(
+dead_code,
+//unused_variables,
 //  unused_macros,
 //  unused_imports,
 //  unused_assignments,
 //  unused_mut
-//)]
+)]
 
 use std::env;
 mod action;
@@ -1016,9 +1016,7 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
         );
     }
 
-    if dmxs.step > 500 {
-        assert!(1 == 2);
-    }
+    assert!(dmxs.step < 500); // Remove for continuous use
 }
 
 /// Display usage options.
