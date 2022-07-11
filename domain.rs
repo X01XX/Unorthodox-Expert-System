@@ -489,14 +489,14 @@ impl SomeDomain {
         let mut asym_inx = Vec::<usize>::new();
         let mut inx = 0;
         for vecx in steps_by_change_vov.iter() {
-            let mut no_asym = true;
+            let mut all_asym = true;
             for stepx in vecx.iter() {
                 if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
-                    no_asym = false;
+                    all_asym = false;
                     break;
                 }
             }
-            if no_asym {
+            if all_asym {
                 asym_inx.push(inx);
             }
             inx += 1;
@@ -522,20 +522,32 @@ impl SomeDomain {
                     }
                 }
             }
-        } else {
-            // find min number of steps for any bit-change
-            let mut min_steps = 99;
-            for vecx in steps_by_change_vov.iter() {
-                if vecx.len() < min_steps {
-                    min_steps = vecx.len();
+
+            // Randomly choose a step.
+            assert!(selected_steps.len() > 0);
+            let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
+
+            // Asymmetrical chaining
+            if let Some(first_steps) =
+                self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
+            {
+                let stepy = stepx.restrict_initial_region(&first_steps.result());
+                if let Some(next_steps) =
+                    self.random_depth_first_search(&stepy.result, goal_reg, depth - 1)
+                {
+                    if let Some(steps1) = first_steps.link(&StepStore::new_with_step(stepy)) {
+                        return steps1.link(&next_steps);
+                    }
                 }
             }
-            // Assemble possible steps
-            for vecx in steps_by_change_vov.iter() {
-                if vecx.len() == min_steps {
-                    for stepx in vecx.iter() {
-                        selected_steps.push(stepx);
-                    }
+            return None;
+        }
+
+        // Assemble steps for forward or backward chaining.
+        for vecx in steps_by_change_vov.iter() {
+            for stepx in vecx.iter() {
+                if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
+                    selected_steps.push(stepx);
                 }
             }
         }
@@ -564,20 +576,6 @@ impl SomeDomain {
                 return prev_steps.link(&StepStore::new_with_step(stepy));
             }
             return None;
-        }
-
-        // Asymmetrical chaining
-        if let Some(first_steps) =
-            self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
-        {
-            let stepy = stepx.restrict_initial_region(&first_steps.result());
-            if let Some(next_steps) =
-                self.random_depth_first_search(&stepy.result, goal_reg, depth - 1)
-            {
-                if let Some(steps1) = first_steps.link(&StepStore::new_with_step(stepy)) {
-                    return steps1.link(&next_steps);
-                }
-            }
         }
 
         None
