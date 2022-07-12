@@ -70,6 +70,22 @@ impl SomeSquare {
         }
     }
 
+    /// Return a rate for a square, to determine an anchor weight.
+    /// Squares that are pnc are equal weight.
+    /// Other squares are the weight of their number of results stored,
+    /// presumably LT 4.
+    pub fn rate(&self) -> usize {
+        if self.pnc {
+            match self.pn {
+                Pn::One => return 4,
+                Pn::Two => return 4,
+                Pn::Unpredictable => return 4,
+            }
+        }
+
+        self.len_results()
+    }
+
     /// Return a string representing a square.
     pub fn str_terse(&self) -> String {
         self.state.formatted_string()

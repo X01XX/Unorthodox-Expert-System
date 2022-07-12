@@ -126,7 +126,6 @@ impl fmt::Display for SomeNeed {
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
-                ..
             } => format!("N(set group {} anchor {})", group_region, anchor),
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
@@ -213,7 +212,6 @@ pub enum SomeNeed {
     SetGroupAnchor {
         group_region: SomeRegion,
         anchor: SomeState,
-        rate: (usize, usize, usize),
     },
     /// Housekeeping, inactivate a region in the seek_edge vector.
     InactivateSeekEdge { reg: SomeRegion },
@@ -383,12 +381,10 @@ impl PartialEq for SomeNeed {
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
-                ..
             } => match other {
                 SomeNeed::SetGroupAnchor {
                     group_region: group_region_2,
                     anchor: anchor_2,
-                    ..
                 } => {
                     if group_region == group_region_2 && anchor == anchor_2 {
                         return true;

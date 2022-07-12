@@ -81,7 +81,7 @@ pub struct SomeAction {
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
-    /// Changes that the group rules can do. Generally this will expand at first, then plateau, but might regress if something gets stuck.
+    // Changes that the group rules can do. Generally this will expand at first, then plateau, but might regress if something gets stuck.
     pub aggregate_changes: SomeChange,
     /// Interface to an action that does something.
     do_something: ActionInterface,
@@ -161,7 +161,35 @@ impl SomeAction {
     /// Evaluate a sample.
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
         if self.store_sample(&initial, &result, dom) {
+
             self.check_square_new_sample(&initial, dom);
+
+            // Check for anchor change
+            // Some groups may be invalidated and/or created in the previous step.
+            let sqrx = self.squares.find(initial).unwrap();
+            if sqrx.len_results() == 1 && self.groups.num_groups_state_in(initial) == 1 {
+                let grps_in: RegionStore = self.groups.groups_state_in(initial);
+                let grpx = self.groups.find(&grps_in[0]).unwrap();
+
+                if let Some(anchor) = &grpx.anchor {
+                    if anchor == initial { return; }
+
+                    let anchor_states = self.groups.anchor_states();
+
+                    // The current anchor rate may have changed, so recalculate it.
+                    let anchor_rate = self.group_anchor_rate(&grpx, anchor, &anchor_states);
+
+                    let sqr_rate    = self.group_anchor_rate(&grpx, initial, &anchor_states);
+                    
+                    if sqr_rate > anchor_rate {
+                        println!(
+                            "Changing group {} anchor from {} {:?} to {} {:?}",
+                            grpx.region, anchor, anchor_rate, initial, sqr_rate
+                        );
+                        self.groups.set_anchor(&grps_in[0], initial);
+                    }
+                }
+            }
         }
     }
 
@@ -333,25 +361,6 @@ impl SomeAction {
         //println!("check_square_new_sample for {}", key);
 
         let sqrx = self.squares.find(&key).unwrap();
-
-        if self.groups.num_groups_state_in(key) == 1 {
-            let grps_in: RegionStore = self.groups.groups_state_in(key);
-            let grpx = self.groups.find(&grps_in[0]).unwrap();
-            let anchor_rate = self.group_anchor_rate(&grpx, key, &self.groups.anchor_states());
-            if anchor_rate > grpx.anchor_rate {
-                if (0, 0, 0) != grpx.anchor_rate {
-                    if anchor_rate > grpx.anchor_rate {
-                        if let Some(anchor) = &grpx.anchor {
-                            println!(
-                                "Changing group {} anchor from {} {:?} to {} {:?}",
-                                grpx.region, anchor, grpx.anchor_rate, key, anchor_rate
-                            );
-                            self.groups.set_anchor(&grps_in[0], key, anchor_rate);
-                        }
-                    }
-                }
-            }
-        }
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
@@ -673,7 +682,6 @@ impl SomeAction {
                     }
                     SomeNeed::SetGroupLimited {
                         group_region: greg,
-                        // anchor: sta1,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             println!("\nDom {} Act {} Group {} limited", dom, self.num, greg);
@@ -683,14 +691,13 @@ impl SomeAction {
                     SomeNeed::SetGroupAnchor {
                         group_region: greg,
                         anchor: sta1,
-                        rate,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             println!(
                                 "\nDom {} Act {} Group {} setting anchor to {}",
                                 dom, self.num, greg, sta1
                             );
-                            grpx.set_anchor(&sta1, *rate);
+                            grpx.set_anchor(&sta1);
                         }
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
@@ -1084,21 +1091,13 @@ impl SomeAction {
         let mut sta_rate = (0, 0, 0);
 
         if let Some(sqrx) = self.squares.find(stax) {
-            if sqrx.pnc {
-                sta_rate.2 += 5;
-            } else {
-                sta_rate.2 += sqrx.len_results();
-            }
+            sta_rate.2 += sqrx.rate();
         }
 
         // Rate far state
         let sta_far = grpx.region.far_state(&stax);
         if let Some(sqrx) = self.squares.find(&sta_far) {
-            if sqrx.pnc {
-                sta_rate.2 += 4; // LT anchor value, so (pnc anchor, non-pnc far) NE (non-pnc anchor, pnc far)
-            } else {
-                sta_rate.2 += sqrx.len_results();
-            }
+            sta_rate.2 += sqrx.rate();
         }
 
         // Get masks of edge bits to use to limit group.
@@ -1121,11 +1120,7 @@ impl SomeAction {
             }
 
             if let Some(sqrx) = self.squares.find(&sta_adj) {
-                if sqrx.pnc {
-                    sta_rate.2 += 5;
-                } else {
-                    sta_rate.2 += sqrx.len_results();
-                }
+                sta_rate.2 += sqrx.rate();
             }
         } // next edge_bit
 
@@ -1188,7 +1183,6 @@ impl SomeAction {
         ret_nds.push(SomeNeed::SetGroupAnchor {
             group_region: grpx.region.clone(),
             anchor: cfm_max.clone(),
-            rate: max_rate,
         });
         ret_nds
     } // end limit_group_needs
@@ -1224,8 +1218,6 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         let edge_msks = grpx.region.x_mask().m_not().split();
-
-        //let stax = anchor_sta.clone();
 
         for mskx in edge_msks.iter() {
             let adj_sta = SomeState::new(anchor_sta.bts.b_xor(&mskx.bts));

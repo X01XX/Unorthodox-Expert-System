@@ -22,22 +22,25 @@ impl fmt::Display for SomeGroup {
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SomeGroup {
-    /// Region the group covers.  Formed by two Pn equal squares.
-    /// All squares sampled in between are compatable.
+    /// Region the group covers.  Formed by two Pn-equal squares.
+    /// All squares sampled in between should be compatable.
     /// <SomeRegion>.state1 and .state2 are keys to the squares that formed the region.
+    /// <SomeRegion>.state1 and .state2 may be equal, that is only one square makes the region.
+    /// If the squares are Pn::One, they may need more samples.
     pub region: SomeRegion,
     /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
     pub pn: Pn,
-    /// Pnc indicator
+    /// Pnc indicator, the boolean And of the two squares pnc values.
     pub pnc: bool,
-    /// Rules formed by two squares.
+    /// Rules formed by two squares.  Will be an empty RuleStore for Pn::Unpredictable.
     pub rules: RuleStore,
-    /// Set to true when a state only in the group has all adjacent states checked    
+    /// Set to true when a state only in the group has all adjacent states outside
+    /// of the group region checked.
+    /// When some external adjacent states are checked, but some are unreachable, hard to reach,
+    /// or no longer reachable, the group may represent something speculative.
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
-    /// Rate of anchor
-    pub anchor_rate: (usize, usize, usize),
 }
 
 impl SomeGroup {
@@ -62,7 +65,6 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
-            anchor_rate: (0, 0, 0),
         }
     }
 
@@ -180,7 +182,6 @@ impl SomeGroup {
 
         self.anchor = None;
         self.limited = false;
-        self.anchor_rate = (0, 0, 0);
     }
 
     /// Set limited to true.
@@ -206,10 +207,9 @@ impl SomeGroup {
     /// Set the anchor strel231.txtate, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: &SomeState, rate: (usize, usize, usize)) {
+    pub fn set_anchor(&mut self, astate: &SomeState) { //, rate: (usize, usize, usize)) {
         self.limited = false;
         self.anchor = Some(astate.clone());
-        self.anchor_rate = rate;
     }
 } // end impl SomeGroup
 
