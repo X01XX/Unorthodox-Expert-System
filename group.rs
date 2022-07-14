@@ -207,7 +207,8 @@ impl SomeGroup {
     /// Set the anchor strel231.txtate, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: &SomeState) { //, rate: (usize, usize, usize)) {
+    pub fn set_anchor(&mut self, astate: &SomeState) {
+        //, rate: (usize, usize, usize)) {
         self.limited = false;
         self.anchor = Some(astate.clone());
     }

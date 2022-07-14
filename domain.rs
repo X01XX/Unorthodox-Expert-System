@@ -1094,14 +1094,8 @@ mod tests {
         println!("needs {}", nds2);
 
         assert!(nds2.len() == 2);
-        assert!(nds2.contains_similar_need(
-            "StateAdditionalSample",
-            &dm0.region_from_string("r1").unwrap()
-        ));
-        assert!(nds2.contains_similar_need(
-            "StateAdditionalSample",
-            &dm0.region_from_string("r10").unwrap()
-        ));
+        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(0, &s2, &s2);
@@ -1110,10 +1104,7 @@ mod tests {
         //println!("needs {}", nds3);
 
         assert!(nds3.len() == 1);
-        assert!(nds3.contains_similar_need(
-            "StateAdditionalSample",
-            &dm0.region_from_string("r1").unwrap()
-        ));
+        assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
 
         // Satisfy second need.
         dm0.eval_sample_arbitrary(0, &s1, &s1);

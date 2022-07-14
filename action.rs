@@ -161,7 +161,6 @@ impl SomeAction {
     /// Evaluate a sample.
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
         if self.store_sample(&initial, &result, dom) {
-
             self.check_square_new_sample(&initial, dom);
 
             // Check for anchor change
@@ -172,15 +171,17 @@ impl SomeAction {
                 let grpx = self.groups.find(&grps_in[0]).unwrap();
 
                 if let Some(anchor) = &grpx.anchor {
-                    if anchor == initial { return; }
+                    if anchor == initial {
+                        return;
+                    }
 
                     let anchor_states = self.groups.anchor_states();
 
                     // The current anchor rate may have changed, so recalculate it.
                     let anchor_rate = self.group_anchor_rate(&grpx, anchor, &anchor_states);
 
-                    let sqr_rate    = self.group_anchor_rate(&grpx, initial, &anchor_states);
-                    
+                    let sqr_rate = self.group_anchor_rate(&grpx, initial, &anchor_states);
+
                     if sqr_rate > anchor_rate {
                         println!(
                             "Changing group {} anchor from {} {:?} to {} {:?}",
@@ -270,12 +271,16 @@ impl SomeAction {
                     if sqr3.can_combine(&sqr1) == Truth::F {
                         if sqr1.pnc && sqr3.pnc {
                             if sqr1.is_adjacent(&sqr3) {
-                                println!("Dom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr1.state, &sqr3.state, &greg);
+                                println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr1.state, &sqr3.state, &greg);
                                 self.seek_edge.remove_region(greg);
                                 make_groups_from.push(sqr1.state.clone());
                                 make_groups_from.push(sqr3.state.clone());
                             } else {
                                 let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
+                                println!(
+                                    "\nDom {} Act {} replace seek edge {} with {}",
+                                    dom, self.num, &greg, &even_closer_reg
+                                );
                                 self.seek_edge.push_nosups(even_closer_reg);
                             }
                         }
@@ -284,7 +289,7 @@ impl SomeAction {
                     if sqr3.can_combine(&sqr2) == Truth::F {
                         if sqr2.pnc && sqr3.pnc {
                             if sqr2.is_adjacent(&sqr3) {
-                                println!("Dom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr2.state, &sqr3.state, &greg);
+                                println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr2.state, &sqr3.state, &greg);
                                 self.seek_edge.remove_region(greg);
                                 make_groups_from.push(sqr2.state.clone());
                                 if make_groups_from.contains(&sqr3.state) == false {
@@ -680,9 +685,7 @@ impl SomeAction {
                         );
                         try_again = true;
                     }
-                    SomeNeed::SetGroupLimited {
-                        group_region: greg,
-                    } => {
+                    SomeNeed::SetGroupLimited { group_region: greg } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
                             println!("\nDom {} Act {} Group {} limited", dom, self.num, greg);
                             grpx.set_limited();
@@ -702,11 +705,16 @@ impl SomeAction {
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
                         if let Some(grpx) = self.groups.find_mut(&greg) {
+                            println!(
+                                "\nDom {} Act {} Group {} remove anchor",
+                                dom, self.num, greg
+                            );
                             try_again = true;
                             grpx.set_anchor_off();
                         }
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
+                        println!("\nDom {} Act {} remove seek edge {}", dom, self.num, regx);
                         self.seek_edge.remove_region(&regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
@@ -759,7 +767,7 @@ impl SomeAction {
 
                 // Do cleanup
                 if self.cleanup_trigger == 0 {
-                    self.cleanup(&nds);
+                    self.cleanup(dom, &nds);
                     self.cleanup_trigger = 5;
                 }
 
@@ -771,7 +779,7 @@ impl SomeAction {
     } // end get_needs
 
     /// Cleanup, that is delete unneeded squares
-    fn cleanup(&mut self, needs: &NeedStore) {
+    fn cleanup(&mut self, dom: usize, needs: &NeedStore) {
         let stas = self.squares.all_square_states();
 
         let mut sqr_del = StateStore::new();
@@ -838,7 +846,10 @@ impl SomeAction {
             self.squares.remove(stax);
         } // next stax
         if sqr_del.len() > 0 {
-            println!("Act {} deleted unneeded squares {}", self.num, sqr_del);
+            println!(
+                "\nDom {} Act {} deleted unneeded squares {}",
+                dom, self.num, sqr_del
+            );
         }
     } // end cleanup
 
@@ -1002,23 +1013,21 @@ impl SomeAction {
 
             let sqrx = self.squares.find(&grpx.region.state1).unwrap();
             if sqrx.pnc == false {
-                ret_nds.push(SomeNeed::StateAdditionalSample {
+                ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
-                    far: grpx.region.state2.clone(),
                 });
             }
 
             let sqry = self.squares.find(&grpx.region.state2).unwrap();
             if sqry.pnc == false {
-                ret_nds.push(SomeNeed::StateAdditionalSample {
+                ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
                     targ_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
-                    far: grpx.region.state1.clone(),
                 });
             }
 

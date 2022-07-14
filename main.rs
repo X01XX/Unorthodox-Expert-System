@@ -1067,7 +1067,6 @@ fn usage() {
     );
     println!("\n    ta <act-num>             - Take Action with the current state.");
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
-    println!("\n    vert                     - Print vertices and edges in domain 0, action 0.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");

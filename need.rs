@@ -50,14 +50,6 @@ impl fmt::Display for SomeNeed {
             SomeNeed::ToRegion {
                 dom_num, goal_reg, ..
             } => format!("N(Dom {} Pri {} To Region {})", dom_num, pri, goal_reg,),
-            SomeNeed::SampleRegion {
-                dom_num,
-                act_num,
-                goal_reg,
-            } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {})",
-                dom_num, act_num, pri, goal_reg,
-            ),
             SomeNeed::LimitGroup {
                 dom_num,
                 act_num,
@@ -84,24 +76,16 @@ impl fmt::Display for SomeNeed {
                     )
                 }
             }
-            SomeNeed::StateAdditionalSample {
+            SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
                 targ_state,
                 grp_reg,
-                far,
             } => {
-                if far == targ_state {
-                    format!(
-                        "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {})",
-                        dom_num, act_num, pri, targ_state, grp_reg
-                    )
-                } else {
-                    format!(
-                        "N(Dom {} Act {} Pri {} Get additional sample of state {} for region {} far {})",
-                        dom_num, act_num, pri, targ_state, grp_reg, far
-                    )
-                }
+                format!(
+                    "N(Dom {} Act {} Pri {} Get additional sample of state {} to confirm group {})",
+                    dom_num, act_num, pri, targ_state, grp_reg
+                )
             }
 
             SomeNeed::SeekEdge {
@@ -173,12 +157,11 @@ pub enum SomeNeed {
         anchor: SomeState,
     },
     /// Get an additional sample of a state.
-    StateAdditionalSample {
+    ConfirmGroup {
         dom_num: usize,
         act_num: usize,
         targ_state: SomeState,
         grp_reg: SomeRegion,
-        far: SomeState,
     },
     /// Sample a state to find a new edge in the total solution.
     SeekEdge {
@@ -189,12 +172,6 @@ pub enum SomeNeed {
     },
     /// Move current state to a given region.
     ToRegion {
-        dom_num: usize,
-        act_num: usize,
-        goal_reg: SomeRegion,
-    },
-    /// Sample a given region, to get a sample in only one region.
-    SampleRegion {
         dom_num: usize,
         act_num: usize,
         goal_reg: SomeRegion,
@@ -288,22 +265,6 @@ impl PartialEq for SomeNeed {
                 }
                 _ => (),
             },
-            SomeNeed::SampleRegion {
-                dom_num,
-                act_num,
-                goal_reg,
-            } => match other {
-                SomeNeed::SampleRegion {
-                    dom_num: dom_num_2,
-                    act_num: act_num_2,
-                    goal_reg: goal_reg_2,
-                } => {
-                    if dom_num == dom_num_2 && act_num == act_num_2 && goal_reg == goal_reg_2 {
-                        return true;
-                    }
-                }
-                _ => (),
-            },
             SomeNeed::LimitGroup {
                 dom_num,
                 act_num,
@@ -328,13 +289,13 @@ impl PartialEq for SomeNeed {
                 }
                 _ => (),
             },
-            SomeNeed::StateAdditionalSample {
+            SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
                 targ_state,
                 ..
             } => match other {
-                SomeNeed::StateAdditionalSample {
+                SomeNeed::ConfirmGroup {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     targ_state: targ_state_2,
@@ -446,9 +407,8 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { .. } => format!("StateNotInGroup"),
             SomeNeed::ContradictoryIntersection { .. } => format!("ContradictoryIntersection"),
             SomeNeed::ToRegion { .. } => format!("ToRegion"),
-            SomeNeed::SampleRegion { .. } => format!("SampleRegion"),
             SomeNeed::LimitGroup { .. } => format!("LimitGroup"),
-            SomeNeed::StateAdditionalSample { .. } => format!("StateAdditionalSample"),
+            SomeNeed::ConfirmGroup { .. } => format!("ConfirmGroup"),
             SomeNeed::SeekEdge { .. } => format!("SeekEdge"),
             SomeNeed::AddGroup { .. } => format!("AddGroup"),
             SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
@@ -466,12 +426,11 @@ impl SomeNeed {
         match self {
             SomeNeed::AStateMakeGroup { .. } => return 3,
             SomeNeed::StateNotInGroup { .. } => return 4,
-            SomeNeed::ContradictoryIntersection { .. } => return 2,
+            SomeNeed::ContradictoryIntersection { .. } => return 1,
             SomeNeed::ToRegion { .. } => return 9,
-            SomeNeed::SampleRegion { .. } => return 8,
             SomeNeed::LimitGroup { .. } => return 8,
-            SomeNeed::StateAdditionalSample { .. } => return 5,
-            SomeNeed::SeekEdge { .. } => return 1,
+            SomeNeed::ConfirmGroup { .. } => return 5,
+            SomeNeed::SeekEdge { .. } => return 2,
             _ => return 9999,
         } // end match ndx
     } // end priority
@@ -499,12 +458,7 @@ impl SomeNeed {
                     return true;
                 }
             }
-            SomeNeed::SampleRegion { goal_reg, .. } => {
-                if goal_reg.is_superset_of_state(&cur_state) {
-                    return true;
-                }
-            }
-            SomeNeed::StateAdditionalSample { targ_state, .. } => {
+            SomeNeed::ConfirmGroup { targ_state, .. } => {
                 if cur_state == targ_state {
                     return true;
                 }
@@ -534,8 +488,7 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { act_num, .. } => return *act_num,
             SomeNeed::ContradictoryIntersection { act_num, .. } => return *act_num,
             SomeNeed::ToRegion { act_num, .. } => return *act_num,
-            SomeNeed::SampleRegion { act_num, .. } => return *act_num,
-            SomeNeed::StateAdditionalSample { act_num, .. } => return *act_num,
+            SomeNeed::ConfirmGroup { act_num, .. } => return *act_num,
             SomeNeed::SeekEdge { act_num, .. } => return *act_num,
             SomeNeed::LimitGroup { act_num, .. } => return *act_num,
             _ => panic!("act_num: not known for need {}", self.type_string()),
@@ -549,8 +502,7 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { dom_num, .. } => return *dom_num,
             SomeNeed::ContradictoryIntersection { dom_num, .. } => return *dom_num,
             SomeNeed::ToRegion { dom_num, .. } => return *dom_num,
-            SomeNeed::SampleRegion { dom_num, .. } => return *dom_num,
-            SomeNeed::StateAdditionalSample { dom_num, .. } => return *dom_num,
+            SomeNeed::ConfirmGroup { dom_num, .. } => return *dom_num,
             SomeNeed::SeekEdge { dom_num, .. } => return *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => return *dom_num,
             _ => panic!("dom_num: not known for need {}", self.type_string()),
@@ -568,8 +520,7 @@ impl SomeNeed {
             }
             SomeNeed::ContradictoryIntersection { goal_reg, .. } => return goal_reg.clone(),
             SomeNeed::ToRegion { goal_reg, .. } => return goal_reg.clone(),
-            SomeNeed::SampleRegion { goal_reg, .. } => return goal_reg.clone(),
-            SomeNeed::StateAdditionalSample { targ_state, .. } => {
+            SomeNeed::ConfirmGroup { targ_state, .. } => {
                 return SomeRegion::new(targ_state, targ_state)
             }
             SomeNeed::SeekEdge { targ_state, .. } => {
@@ -592,21 +543,12 @@ impl SomeNeed {
     pub fn set_dom(&mut self, num: usize) {
         match self {
             SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num = num,
-
             SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num = num,
-
             SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num = num,
-
             SomeNeed::ToRegion { dom_num, .. } => *dom_num = num,
-
-            SomeNeed::SampleRegion { dom_num, .. } => *dom_num = num,
-
-            SomeNeed::StateAdditionalSample { dom_num, .. } => *dom_num = num,
-
+            SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num = num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num = num,
-
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num = num,
-
             _ => {
                 panic!(
                     "set_dom: should not be called for this need {}",

@@ -3,8 +3,8 @@
 //! These actions are for testing and learning, they should eventually be replaced
 //! by actions that make changes outside the program.
 
-use crate::change::SomeChange;
 use crate::mask::SomeMask;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 use rand::Rng;
 
@@ -62,24 +62,16 @@ pub fn take_action(
 /// Domain 0, act 0, actions, given the current state.
 /// The SomeMask argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
+    let new_state;
+
     if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
         || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
     {
         // ....X1X1
-
-        let new_state = cur.toggle_bits("0x01");
-        println!(
-            "\nDom 0 Act 0 {} -> {} change: {}",
-            cur,
-            new_state,
-            SomeChange::new_from_to(&cur, &new_state)
-        );
-        return new_state;
-    }
-
-    if cur.is_bit_set(1) {
-        // ...101x, 1x10, given that the above is not true, alternate between two changes.
+        new_state = cur.toggle_bits("0x01");
+    } else if cur.is_bit_set(1) {
+        // ...101x, 1x10, alternate between two changes.
         let mut sample_num = rand::thread_rng().gen_range(1..3);
         if let Some(amsk) = cmask {
             if amsk.is_bit_set(1) {
@@ -90,28 +82,14 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         }
 
         if sample_num == 2 {
-            let new_state = cur.toggle_bits("0x02");
-            println!(
-                "\nDom 0 Act 0 {} -> {} change: {}",
-                cur,
-                new_state,
-                SomeChange::new_from_to(&cur, &new_state)
-            );
-            return new_state;
+            new_state = cur.toggle_bits("0x02");
         } else if sample_num == 1 {
-            let new_state = cur.toggle_bits("0x04");
-            println!(
-                "\nDom 0 Act 0 {} -> {} change: {}",
-                cur,
-                new_state,
-                SomeChange::new_from_to(&cur, &new_state)
-            );
-            return new_state;
+            new_state = cur.toggle_bits("0x04");
         } else {
             panic!("1/2 change failed!");
         }
     } else {
-        // ...000x, 0x00, given that the above is not true, alternate between 3 changes.
+        // ...000x, 0x00, alternate between 3 changes.
         let mut sample_num = rand::thread_rng().gen_range(1..4);
         if let Some(amsk) = cmask {
             if amsk.is_bit_set(1) {
@@ -124,36 +102,23 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         }
 
         if sample_num == 3 {
-            let new_state = cur.toggle_bits("0x02");
-            println!(
-                "\nDom 0 Act 0 {} -> {} change: {}",
-                cur,
-                new_state,
-                SomeChange::new_from_to(&cur, &new_state)
-            );
-            return new_state;
+            new_state = cur.toggle_bits("0x02");
         } else if sample_num == 1 {
-            let new_state = cur.toggle_bits("0x04");
-            println!(
-                "\nDom 0 Act 0 {} -> {} change: {}",
-                cur,
-                new_state,
-                SomeChange::new_from_to(&cur, &new_state)
-            );
-            return new_state;
+            new_state = cur.toggle_bits("0x04");
         } else if sample_num == 2 {
-            let new_state = cur.toggle_bits("0x08");
-            println!(
-                "\nDom 0 Act 0 {} -> {} change: {}",
-                cur,
-                new_state,
-                SomeChange::new_from_to(&cur, &new_state)
-            );
-            return new_state;
+            new_state = cur.toggle_bits("0x08");
         } else {
             panic!("1/2/3 change failed");
         }
     }
+
+    println!(
+        "\nDom 0 Act 0 {} -> {} R[{}]",
+        cur,
+        new_state,
+        SomeRule::new(&cur, &new_state)
+    );
+    new_state
 } // end action0
 
 /// Domain 0, act 1, actions, given the current state.
@@ -161,12 +126,12 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x02");
     println!(
-        "\nDom 0 Act 1 {} -> {} change: {}",
+        "\nDom 0 Act 1 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 2, actions, given the current state.
@@ -174,12 +139,12 @@ pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x04");
     println!(
-        "\nDom 0 Act 2 {} -> {} change: {}",
+        "\nDom 0 Act 2 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 3, actions, given the current state.
@@ -187,12 +152,12 @@ pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x08");
     println!(
-        "\nDom 0 Act 3 {} -> {} change: {}",
+        "\nDom 0 Act 3 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 4, actions, given the current state.
@@ -200,12 +165,12 @@ pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x10");
     println!(
-        "\nDom 0 Act 4 {} -> {} change: {}",
+        "\nDom 0 Act 4 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 5, actions, given the current state.
@@ -213,12 +178,12 @@ pub fn dom0_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act5(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x20");
     println!(
-        "\nDom 0 Act 5 {} -> {} change: {}",
+        "\nDom 0 Act 5 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 6, actions, given the current state.
@@ -226,12 +191,12 @@ pub fn dom0_act5(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act6(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x0c");
     println!(
-        "\nDom 0 Act 6 {} -> {} change: {}",
+        "\nDom 0 Act 6 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 7, actions, given the current state.
@@ -239,12 +204,12 @@ pub fn dom0_act6(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act7(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0xc0");
     println!(
-        "\nDom 0 Act 7 {} -> {} change: {}",
+        "\nDom 0 Act 7 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 0, act 8, actions, given the current state.
@@ -257,12 +222,12 @@ pub fn dom0_act7(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom0_act8(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x40");
     println!(
-        "\nDom 0 Act 8 {} -> {} change: {}",
+        "\nDom 0 Act 8 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 // Domain 1 actions
@@ -272,12 +237,12 @@ pub fn dom0_act8(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom1_act0(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x0040");
     println!(
-        "\nDom 1 Act 0 {} -> {} change: {}",
+        "\nDom 1 Act 0 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 1, act 1, actions, given the current state.
@@ -285,12 +250,12 @@ pub fn dom1_act0(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom1_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x80");
     println!(
-        "\nDom 1 Act 1 {} -> {} change: {}",
+        "\nDom 1 Act 1 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 1, act 2, actions, given the current state.
@@ -298,12 +263,12 @@ pub fn dom1_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom1_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x0100");
     println!(
-        "\nDom 1 Act 2 {} -> {} change: {}",
+        "\nDom 1 Act 2 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 
 /// Domain 1, act 3, actions, given the current state.
@@ -311,22 +276,22 @@ pub fn dom1_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 pub fn dom1_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0x0200");
     println!(
-        "\nDom 1 Act 3 {} -> {} change: {}",
+        "\nDom 1 Act 3 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
 /// Domain 1, act 3, actions, given the current state.
 /// Toggle all bits
 pub fn dom1_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
     let new_state = cur.toggle_bits("0xfc3f");
     println!(
-        "\nDom 1 Act 4 {} -> {} change: {}",
+        "\nDom 1 Act 4 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeChange::new_from_to(&cur, &new_state)
+        SomeRule::new(&cur, &new_state)
     );
-    return new_state;
+    new_state
 }
