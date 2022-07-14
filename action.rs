@@ -115,44 +115,30 @@ impl SomeAction {
         self.aggregate_changes.b01.num_ints()
     }
 
-    /// Return Truth enum for the combination of any two squares,
+    /// Return Truth enum for the combination of any two different squares,
     /// and the squares between them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.state != sqry.state);
 
         let cmbx = sqrx.can_combine(&sqry);
+
         if cmbx == Truth::F {
             return cmbx;
         }
 
-        // Check for Pn::Unpredictable region, cmbx may be Truth::T or Truth::M.
-        if sqrx.pn == Pn::Unpredictable || sqry.pn == Pn::Unpredictable {
-            if self.no_incompatible_pn_square_in_region(
-                &SomeRegion::new(&sqrx.state, &sqry.state),
-                Pn::Unpredictable,
-            ) == false
-            {
-                return Truth::F;
-            } else {
-                return cmbx;
-            }
-        }
-
         // Check for Pn values not equal, but more samples may allow the combination.
-        if sqrx.pn != sqry.pn {
+        if cmbx == Truth::M {
             if self
                 .no_incompatible_square_pair_in_region(&SomeRegion::new(&sqrx.state, &sqry.state))
                 == false
             {
                 return Truth::F;
-            } else {
-                return cmbx;
             }
-        }
-
-        // Check for cmbx == Truth::T or Truth::M, while Pn values are equal, One or Two.
-        if self.check_subsets_between(sqrx, sqry) == false {
-            return Truth::F;
+        } else {
+            // cmbx must be Truth::T
+            if self.check_subsets_between(sqrx, sqry) == false {
+                return Truth::F;
+            }
         }
 
         cmbx
@@ -1381,27 +1367,18 @@ impl SomeAction {
     /// Return true if there is no incompatible squares between two compatible squares.
     fn check_subsets_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
         // println!("action:can_combine_check_between sqr {} and sqr {}", sqr1.state, sqr2.state);
-        if sqr1.state == sqr2.state {
-            return true;
-        }
-        if sqr1.can_combine(sqr2) != Truth::T {
-            return false;
-        }
+        assert!(sqr1.state != sqr2.state);
+        assert!(sqr1.can_combine(sqr2) == Truth::T);
 
         // Calc region formed by the two squares
         let regx = SomeRegion::new(&sqr1.state, &sqr2.state);
 
+        if sqr1.pn == Pn::Unpredictable {
+            return self.no_incompatible_pn_square_in_region(&regx, Pn::Unpredictable);
+        }
+
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(&regx);
-
-        if sqr1.pn == Pn::Unpredictable {
-            for sqrx in sqrs_in_reg {
-                if sqrx.pnc && sqrx.pn != Pn::Unpredictable {
-                    return false;
-                }
-            }
-            return true;
-        }
 
         let rules = sqr1.rules.union(&sqr2.rules).unwrap();
 

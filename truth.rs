@@ -49,7 +49,7 @@ impl PartialOrd for Truth {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Truth {
     /// Boolean True.
     T,
@@ -59,59 +59,13 @@ pub enum Truth {
     M,
 }
 
-impl PartialEq for Truth {
-    /// Return true if two Truth enums are equal.
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            Truth::T => match other {
-                Truth::T => true,
-                _ => false,
-            },
-            Truth::F => match other {
-                Truth::F => true,
-                _ => false,
-            },
-            Truth::M => match other {
-                Truth::M => true,
-                _ => false,
-            },
-        } // end match
-    }
-}
-impl Eq for Truth {}
-
 impl Truth {
     /// Return a string for a Truth value.
     pub fn formatted_string(&self) -> String {
-        let rc_str = match self {
+        match self {
             Truth::T => String::from("T"),
             Truth::F => String::from("F"),
             Truth::M => String::from("M"),
-        };
-        rc_str
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Check ordering of Truth values.
-    // Should be F < M < T
-    #[test]
-    fn truth_comparisons() -> Result<(), String> {
-        assert!(Truth::T.partial_cmp(&Truth::T).unwrap() == Ordering::Equal);
-        assert!(Truth::T.partial_cmp(&Truth::M).unwrap() == Ordering::Greater);
-        assert!(Truth::T.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
-
-        assert!(Truth::M.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
-        assert!(Truth::M.partial_cmp(&Truth::M).unwrap() == Ordering::Equal);
-        assert!(Truth::M.partial_cmp(&Truth::F).unwrap() == Ordering::Greater);
-
-        assert!(Truth::F.partial_cmp(&Truth::T).unwrap() == Ordering::Less);
-        assert!(Truth::F.partial_cmp(&Truth::M).unwrap() == Ordering::Less);
-        assert!(Truth::F.partial_cmp(&Truth::F).unwrap() == Ordering::Equal);
-
-        Ok(())
+        }
     }
 }
