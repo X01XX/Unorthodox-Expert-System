@@ -124,7 +124,12 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
 /// Domain 0, act 1, actions, given the current state.
 /// Toggle bit 1. ....../Xx/.
 pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
-    let new_state = cur.toggle_bits("0x02");
+    let new_state;
+    if cur.is_bit_set(1) == false {
+        new_state = cur.toggle_bits("0x02");
+    } else {
+        new_state = cur.toggle_bits("0x04");
+    }
     println!(
         "\nDom 0 Act 1 {} -> {} R[{}]",
         cur,
@@ -137,7 +142,12 @@ pub fn dom0_act1(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 /// Domain 0, act 2, actions, given the current state.
 /// Toggle bit 2. ...../Xx/..
 pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
-    let new_state = cur.toggle_bits("0x04");
+    let new_state;
+    if cur.is_bit_set(1) == false {
+        new_state = cur.toggle_bits("0x04");
+    } else {
+        new_state = cur.toggle_bits("0x02");
+    }
     println!(
         "\nDom 0 Act 2 {} -> {} R[{}]",
         cur,
@@ -150,7 +160,12 @@ pub fn dom0_act2(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 /// Domain 0, act 3, actions, given the current state.
 /// Toggle bit 3. ..../Xx/...
 pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
-    let new_state = cur.toggle_bits("0x08");
+    let new_state;
+    if cur.is_bit_set(3) == false {
+        new_state = cur.toggle_bits("0x08");
+    } else {
+        new_state = cur.toggle_bits("0x10");
+    }
     println!(
         "\nDom 0 Act 3 {} -> {} R[{}]",
         cur,
@@ -163,7 +178,12 @@ pub fn dom0_act3(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
 /// Domain 0, act 4, actions, given the current state.
 /// Toggle bit 4. .../Xx/...
 pub fn dom0_act4(cur: &SomeState, _cmask: Option<&SomeMask>) -> SomeState {
-    let new_state = cur.toggle_bits("0x10");
+    let new_state;
+    if cur.is_bit_set(3) == false {
+        new_state = cur.toggle_bits("0x10");
+    } else {
+        new_state = cur.toggle_bits("0x08");
+    }
     println!(
         "\nDom 0 Act 4 {} -> {} R[{}]",
         cur,

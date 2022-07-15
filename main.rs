@@ -468,8 +468,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                                 if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
                                     dmxs.take_action_need(dom_num, &ndx);
-                                    break;
                                 }
+                                break;
                             }
                         }
                         Err(error) => {

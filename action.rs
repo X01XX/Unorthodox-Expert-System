@@ -126,6 +126,10 @@ impl SomeAction {
             return cmbx;
         }
 
+        if sqrx.pn == Pn::One && cmbx == Truth::M {
+            return cmbx;
+        }
+
         // Check for Pn values not equal, but more samples may allow the combination.
         if cmbx == Truth::M {
             if self
@@ -1317,9 +1321,17 @@ impl SomeAction {
         for inx in 0..(self.groups.len() - 1) {
             let grpx = &self.groups[inx];
 
+            if grpx.pn != Pn::One && grpx.pnc == false {
+                continue;
+            }
+
             // Pair grpx with every group after it in the GroupStore
             for iny in (inx + 1)..self.groups.len() {
                 let grpy = &self.groups[iny];
+
+                if grpy.pn != Pn::One && grpy.pnc == false {
+                    continue;
+                }
 
                 if grpx.region.intersects(&grpy.region) {
                     let mut ndx = self.group_pair_intersection_needs(&grpx, &grpy);
@@ -1342,6 +1354,22 @@ impl SomeAction {
         for inx in 0..(sqrs_in_reg.len() - 1) {
             for iny in (inx + 1)..sqrs_in_reg.len() {
                 if sqrs_in_reg[inx].can_combine(&sqrs_in_reg[iny]) == Truth::F {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Return true if all pairs of squares in a region have a combination value of Truth::T.
+    fn all_true_square_pairs_in_region(&self, regx: &SomeRegion) -> bool {
+        // Get squares in the region.
+        let sqrs_in_reg = self.squares.squares_in_reg(regx);
+
+        // Check if any square pairs are incompatible
+        for inx in 0..(sqrs_in_reg.len() - 1) {
+            for iny in (inx + 1)..sqrs_in_reg.len() {
+                if sqrs_in_reg[inx].can_combine(&sqrs_in_reg[iny]) != Truth::T {
                     return false;
                 }
             }
@@ -1432,13 +1460,22 @@ impl SomeAction {
 
         // Check the far states from the anchors, form pairs.
         let mut num_samples = 0;
-        let mut pnc = false;
         let mut pairs = Vec::<(SomeState, &SomeSquare)>::new();
         for sqrx in anchor_sqrs.iter() {
             let sta2 = regx.far_state(&sqrx.state);
             if let Some(sqr2) = self.squares.find(&sta2) {
-                if sqr2.pnc {
-                    pnc = true;
+                if sqr2.pnc && sqrx.pnc || sqrx.pn == Pn::One && sqr2.pn == Pn::One {
+                    let rules;
+                    if sqrx.pn == Pn::Unpredictable {
+                        rules = RuleStore::new();
+                    } else {
+                        rules = sqrx.rules.union(&sqr2.rules).unwrap();
+                    }
+                    nds.push(SomeNeed::AddGroup {
+                        group_region: SomeRegion::new(&sqr2.state, &sqrx.state),
+                        rules,
+                    });
+                    return nds;
                 }
                 if sqr2.len_results() > num_samples {
                     pairs = Vec::<(SomeState, &SomeSquare)>::new();
@@ -1450,26 +1487,6 @@ impl SomeAction {
             } else {
                 if num_samples == 0 {
                     pairs.push((sta2, sqrx));
-                }
-            }
-        }
-
-        // Check for defining squares
-        if pnc {
-            for pairx in pairs.iter() {
-                let sqr2 = self.squares.find(&pairx.0).unwrap();
-                if sqr2.pnc {
-                    let rules;
-                    if sqr2.pn == Pn::Unpredictable {
-                        rules = RuleStore::new();
-                    } else {
-                        rules = sqr2.rules.union(&pairx.1.rules).unwrap();
-                    }
-                    nds.push(SomeNeed::AddGroup {
-                        group_region: SomeRegion::new(&sqr2.state, &pairx.1.state),
-                        rules,
-                    });
-                    return nds;
                 }
             }
         }
@@ -1566,8 +1583,14 @@ impl SomeAction {
 
         // rulsx == rulsy
         if self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn) {
-            if self.no_incompatible_square_pair_in_region(&reg_both) {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            if grpx.pn == Pn::One {
+                if self.all_true_square_pairs_in_region(&reg_both) {
+                    return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+                }
+            } else {
+                if self.no_incompatible_square_pair_in_region(&reg_both) {
+                    return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+                }
             }
         }
 

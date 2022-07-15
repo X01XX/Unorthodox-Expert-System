@@ -424,13 +424,13 @@ impl SomeNeed {
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
+            SomeNeed::ContradictoryIntersection { .. } => return 1,
+            SomeNeed::SeekEdge { .. } => return 2,
             SomeNeed::AStateMakeGroup { .. } => return 3,
             SomeNeed::StateNotInGroup { .. } => return 4,
-            SomeNeed::ContradictoryIntersection { .. } => return 1,
-            SomeNeed::ToRegion { .. } => return 9,
-            SomeNeed::LimitGroup { .. } => return 8,
             SomeNeed::ConfirmGroup { .. } => return 5,
-            SomeNeed::SeekEdge { .. } => return 2,
+            SomeNeed::LimitGroup { .. } => return 6,
+            SomeNeed::ToRegion { .. } => return 7,
             _ => return 9999,
         } // end match ndx
     } // end priority

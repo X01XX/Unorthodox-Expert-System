@@ -1042,7 +1042,7 @@ mod tests {
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
         );
 
-        //return Err("Done".to_string());
+        // Err("Done".to_string());
         Ok(())
     }
 
@@ -1259,7 +1259,7 @@ mod tests {
             }
         }
 
-        return Err("expected need not found".to_string());
+        Err("expected need not found".to_string())
     }
 
     /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.
@@ -1332,7 +1332,7 @@ mod tests {
                 "failed, group rx1x1 was not formed by two squares",
             ));
         }
-        //return Err(String::from("Done!",));
+        // Err(String::from("Done!",))
         Ok(())
     } // end group_pn_2_union_then_invalidation
 
@@ -1474,7 +1474,7 @@ mod tests {
         } else {
             return Err("Group r0X0X not found ??".to_string());
         }
-        //return Err("Done!".to_string());
+        // Err("Done!".to_string())
         Ok(())
     }
 
@@ -1568,6 +1568,83 @@ mod tests {
         println!("\nActs: {}", &dm0.actions);
         println!("needs9: {}", &needs);
 
+        Ok(())
+    }
+
+    #[test]
+    fn astate_make_group() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(
+            0,
+            1,
+            SomeState::new_from_string(1, "s1").unwrap(),
+            RegionStore::new(),
+        );
+        dm0.add_action();
+
+        // Sample 1
+        let sdb = dm0.state_from_string("s1101_1011").unwrap();
+        let sd9 = dm0.state_from_string("s1101_1001").unwrap();
+        let ndx = SomeNeed::StateNotInGroup {
+            dom_num: 0,
+            act_num: 0,
+            targ_state: sdb.clone(),
+        };
+        dm0.actions[0].eval_need_sample(&sdb, &ndx, &sd9, 0);
+
+        // Sample 2
+        let se5 = dm0.state_from_string("s1110_0101").unwrap();
+        let se7 = dm0.state_from_string("s1110_0111").unwrap();
+        let ndx = SomeNeed::StateNotInGroup {
+            dom_num: 0,
+            act_num: 0,
+            targ_state: se5.clone(),
+        };
+        dm0.actions[0].eval_need_sample(&se5, &ndx, &se7, 0);
+
+        // Sample 3
+        let s25 = dm0.state_from_string("s0010_0101").unwrap();
+        let s27 = dm0.state_from_string("s0010_0111").unwrap();
+        let ndx = SomeNeed::StateNotInGroup {
+            dom_num: 0,
+            act_num: 0,
+            targ_state: s25.clone(),
+        };
+        dm0.actions[0].eval_need_sample(&s25, &ndx, &s27, 0);
+
+        // Sample 4
+        let s2c = dm0.state_from_string("s0010_1100").unwrap();
+        let s2e = dm0.state_from_string("s0010_1110").unwrap();
+        let ndx = SomeNeed::StateNotInGroup {
+            dom_num: 0,
+            act_num: 0,
+            targ_state: s2c.clone(),
+        };
+        dm0.actions[0].eval_need_sample(&s2c, &ndx, &s2e, 0);
+
+        // Sample 5
+        let sd3 = dm0.state_from_string("s1101_0011").unwrap();
+        let sd1 = dm0.state_from_string("s1101_0001").unwrap();
+        let ndx = SomeNeed::AStateMakeGroup {
+            dom_num: 0,
+            act_num: 0,
+            targ_state: sd3.clone(),
+            for_reg: dm0.region_from_string("rxxxx_xxxx").unwrap(),
+            far: dm0.state_from_string("s0010_1100").unwrap(),
+            num_x: 8,
+        };
+        dm0.actions[0].eval_need_sample(&sd3, &ndx, &sd1, 0);
+
+        println!("\nActs: {}", &dm0.actions);
+        assert!(dm0.actions[0].groups.len() == 1);
+        if let Some(_grpx) = dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rxxxx_xxxx").unwrap())
+        {
+        } else {
+            return Err("Group rxxxx_xxxx not found ??".to_string());
+        }
+
+        //Err("Done!".to_string())
         Ok(())
     }
 } // end tests
