@@ -119,6 +119,18 @@ impl RegionStore {
         ret_store
     }
 
+    /// Return the number of supersets of a state.
+    pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
+        let mut ret = 0;
+
+        for regx in &self.avec {
+            if regx.is_superset_of_state(&sta) {
+                ret += 1;
+            }
+        }
+        ret
+    }
+
     /// Return a RegionStore of not supersets of a state.
     pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
         let mut ret_store = Self::new();

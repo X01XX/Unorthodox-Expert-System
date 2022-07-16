@@ -968,10 +968,11 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs[dom_num].boredom > 0 && can_do_flag == false {
         print!(
-            "\nCurrent Domain: {} of {} Boredom duration {}",
+            "\nCurrent Domain: {} of {} Boredom duration {} limit {}",
             dom_num,
             dmxs.num_domains(),
-            dmxs[dom_num].boredom
+            dmxs[dom_num].boredom,
+            dmxs[dom_num].boredom_limit(),
         );
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
@@ -980,18 +981,16 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
-    if dmxs[dom_num].optimal_and_ints.len() > 0 && can_do_flag == false {
-        let mut optstr = dmxs[dom_num].optimal_and_ints.formatted_string();
+    if dmxs[dom_num].optimal.len() > 0 && can_do_flag == false {
+        let mut optstr = dmxs[dom_num].optimal.formatted_string();
 
-        let opt_regs = dmxs[dom_num]
-            .optimal_and_ints
-            .supersets_of_state(&cur_state);
+        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&cur_state);
 
         if opt_regs.len() > 0 {
             optstr = opt_regs.formatted_string();
-            if opt_regs.len() != dmxs[dom_num].optimal_and_ints.len() {
+            if opt_regs.len() != dmxs[dom_num].optimal.len() {
                 let notin = dmxs[dom_num]
-                    .optimal_and_ints
+                    .optimal
                     .not_supersets_of_state(&dmxs[dom_num].get_current_state());
                 println!(
                     "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}",

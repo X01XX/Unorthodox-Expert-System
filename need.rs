@@ -49,7 +49,10 @@ impl fmt::Display for SomeNeed {
             ),
             SomeNeed::ToRegion {
                 dom_num, goal_reg, ..
-            } => format!("N(Dom {} Pri {} To Region {})", dom_num, pri, goal_reg,),
+            } => format!(
+                "N(Dom {} Pri {} To Optimal Region {})",
+                dom_num, pri, goal_reg,
+            ),
             SomeNeed::LimitGroup {
                 dom_num,
                 act_num,

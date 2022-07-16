@@ -71,9 +71,9 @@ pub struct SomeDomain {
     /// Zero, or more, optimal regions that are sought if there are no needs.
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
-    optimal: RegionStore,
+    pub optimal: RegionStore,
     /// RegionStore to add all possible intersections of the optimal states to discern.
-    pub optimal_and_ints: RegionStore,
+    optimal_and_ints: RegionStore,
     /// Memory of recent current states.
     /// Using VecDeque allows memory to be read in most-recent to least-recent order,
     /// with self.memory.iter().
@@ -154,52 +154,44 @@ impl SomeDomain {
         return nst;
     }
 
+    /// Return the boredom limit, if any.
+    pub fn boredom_limit(&self) -> usize {
+        // Get the optimal regions the current state is in.
+        let num_sups = self
+            .optimal_and_ints
+            .number_supersets_of_state(&self.cur_state);
+
+        3 * num_sups
+    }
+
     /// Do functions related to the wish to be in an optimum region.
     /// Increment the boredom duration, if needed.
     /// Return a need to move to another optimal region, if needed.
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
         // Check if there are no optimal regions.
-        if self.optimal_and_ints.len() == 0 {
+        if self.optimal.len() == 0 {
             return None;
         }
+
+        let limit = self.boredom_limit();
+
+        if self.optimal.any_superset_of_state(&self.cur_state) {
+            self.boredom += 1;
+            if self.boredom <= limit {
+                return None;
+            }
+        } else {
+            self.boredom = 0;
+        }
+
+        // Get regions the current state is not in.
+        let notsups = self
+            .optimal_and_ints
+            .not_supersets_of_state(&self.cur_state);
 
         // If the current state is not in at least one optimal region,
         // return a need to move to an optimal region.
-        let sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
-        if sups.len() == 0 {
-            let notsups = self
-                .optimal_and_ints
-                .not_supersets_of_state(&self.cur_state);
-            let inx = rand::thread_rng().gen_range(0..notsups.len());
-            return Some(SomeNeed::ToRegion {
-                dom_num: self.num,
-                act_num: 0,
-                goal_reg: notsups[inx].clone(),
-            });
-        }
-
-        // Get the optimal regions the current state is not in.
-        let mut notsups = self
-            .optimal_and_ints
-            .not_supersets_of_state(&self.cur_state);
-        if notsups.len() == 0 {
-            return None;
-        }
-
-        self.boredom += 1;
-
-        if self.boredom > (3 * sups.len()) {
-            // Boredom action trigger.
-
-            // Get intersections, if any.
-            notsups = notsups.and_intersections();
-
-            println!("\nDom {}: I'm bored lets move to {}", self.num, &notsups);
-
-            // Some optimal regions may not be accessable, a plan to get to the
-            // selected region is not yet known.
-            // Random selections may allow an accessable region to be chosen, eventually.
-            // A previously unaccessable region may be come accessable with new rules.
+        if notsups.len() > 0 {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToRegion {
                 dom_num: self.num,
