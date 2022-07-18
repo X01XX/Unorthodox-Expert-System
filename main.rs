@@ -66,6 +66,7 @@ fn init() -> DomainStore {
     let num_ints = 1;
     let init_state = SomeState::new_random(num_ints);
 
+    // Set up optimal regions.
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(num_ints, "r0x0x").unwrap());
     regstr.push(SomeRegion::new_from_string(num_ints, "r0xx1").unwrap());
@@ -73,12 +74,37 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::new_from_string(num_ints, "r1110").unwrap());
     // Intersections, 0x01, 01x1.
     // Intersections of intersections, 0101.
+
+    // Create domain 0.
+    let mut dom0 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
+
+    // Add actions 0 through 8;
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+    dom0.add_action();
+
+    // Add the domain to the DomainStore.
+    dmxs.push(dom0);
+
+    // Initialize a domain, with number of integers = 2, initial state, optimal region.
+
+    let num_ints = 2;
+    let init_state = SomeState::new_random(num_ints);
+
+    // Set up optimal region.
+    let mut regstr = RegionStore::with_capacity(1);
+    regstr.push(SomeRegion::new_from_string(num_ints, "rXXXXXX10_1XXX_XXXX").unwrap());
+
+    // Create domain 1.
     let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
 
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
+    // Add actions 0 through 4.
     dom1.add_action();
     dom1.add_action();
     dom1.add_action();
@@ -87,24 +113,6 @@ fn init() -> DomainStore {
 
     // Add the domain to the DomainStore.
     dmxs.push(dom1);
-
-    // Initialize a domain, with number of integers = 2, initial state, optimal region.
-
-    let num_ints = 2;
-    let init_state = SomeState::new_random(num_ints);
-
-    let mut regstr = RegionStore::with_capacity(1);
-    regstr.push(SomeRegion::new_from_string(num_ints, "rXXXXXX10_1XXX_XXXX").unwrap());
-    let mut dom2 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
-
-    dom2.add_action();
-    dom2.add_action();
-    dom2.add_action();
-    dom2.add_action();
-    dom2.add_action();
-
-    // Add the domain to the DomainStore.
-    dmxs.push(dom2);
 
     dmxs
 }

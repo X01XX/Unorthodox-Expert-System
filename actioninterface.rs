@@ -31,10 +31,16 @@ impl ActionInterface {
         act_num: usize,
         cur_state: &SomeState,
     ) -> SomeState {
-        let amsk = self.ahash.get(&cur_state);
-        let ret_state = take_action(dom_num, act_num, &cur_state, amsk);
-        let dif = SomeMask::new(cur_state.bts.b_xor(&ret_state.bts));
-        self.ahash.insert(cur_state.clone(), dif);
+        let ret_state;
+
+        if dom_num == 0 && act_num == 0 {
+            let amsk = self.ahash.get(&cur_state);
+            ret_state = take_action(dom_num, act_num, &cur_state, amsk);
+            let dif = SomeMask::new(cur_state.bts.b_xor(&ret_state.bts));
+            self.ahash.insert(cur_state.clone(), dif);
+        } else {
+            ret_state = take_action(dom_num, act_num, &cur_state, None);
+        }
 
         ret_state
     }
