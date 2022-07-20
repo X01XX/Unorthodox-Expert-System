@@ -224,11 +224,7 @@ impl SomeDomain {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        let act_num = ndx.act_num();
-
-        let astate = self.actions[ndx.act_num()].take_action(self.num, &self.cur_state);
-
-        self.actions[act_num].eval_need_sample(&self.cur_state, ndx, &astate, self.num);
+        let astate = self.actions[ndx.act_num()].take_action_need(self.num, &self.cur_state, ndx);
 
         self.set_state(&astate);
     }
@@ -237,8 +233,6 @@ impl SomeDomain {
     /// A sample made for a rule-path should not be saved as a new square if the result is as expected.
     pub fn take_action(&mut self, act_num: usize) {
         let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
-
-        self.actions[act_num].eval_sample(&self.cur_state, &astate, self.num);
 
         self.set_state(&astate);
     }
@@ -299,8 +293,6 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
 
-            self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
-
             let prev_state = self.cur_state.clone();
 
             self.set_state(&astate);
@@ -316,8 +308,6 @@ impl SomeDomain {
                 println!("Try action a second time");
 
                 let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
-
-                self.actions[stpx.act_num].eval_step_sample(&self.cur_state, &astate, self.num);
 
                 self.set_state(&astate);
 
@@ -855,7 +845,6 @@ fn step_vecs_order_bad(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::statestore::StateStore;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -1038,7 +1027,7 @@ mod tests {
         Ok(())
     }
 
-    // Test additional_group_state_samples.
+    // Test confirm_group_needs.
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
@@ -1082,7 +1071,7 @@ mod tests {
             return Err("Group rXX not found ??".to_string());
         }
 
-        let nds2 = dm0.actions[0].additional_group_state_samples();
+        let nds2 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds2);
 
         assert!(nds2.len() == 2);
@@ -1092,7 +1081,7 @@ mod tests {
         // Satisfy one need.
         dm0.eval_sample_arbitrary(0, &s2, &s2);
 
-        let nds3 = dm0.actions[0].additional_group_state_samples();
+        let nds3 = dm0.actions[0].confirm_group_needs();
         //println!("needs {}", nds3);
 
         assert!(nds3.len() == 1);
@@ -1101,7 +1090,7 @@ mod tests {
         // Satisfy second need.
         dm0.eval_sample_arbitrary(0, &s1, &s1);
 
-        let nds4 = dm0.actions[0].additional_group_state_samples();
+        let nds4 = dm0.actions[0].confirm_group_needs();
         //println!("needs {}", nds4);
 
         // Check for no more needs.
@@ -1126,20 +1115,21 @@ mod tests {
         );
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0").unwrap();
-        let s6 = dm0.state_from_string("s110").unwrap();
-        let sd = dm0.state_from_string("s1101").unwrap();
+        let s00 = dm0.state_from_string("s0").unwrap();
+        let s01 = dm0.state_from_string("s01").unwrap();
+        let s06 = dm0.state_from_string("s110").unwrap();
+        let s0d = dm0.state_from_string("s1101").unwrap();
 
         // Create group for region XX0X.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &s00, &s01);
+        dm0.eval_sample_arbitrary(0, &s00, &s01);
 
-        dm0.eval_sample_arbitrary(0, &sd, &sd);
-        dm0.eval_sample_arbitrary(0, &sd, &sd);
+        dm0.eval_sample_arbitrary(0, &s0d, &s0d);
+        dm0.eval_sample_arbitrary(0, &s0d, &s0d);
 
         // Create group X1XX
-        dm0.eval_sample_arbitrary(0, &s6, &s6);
-        dm0.eval_sample_arbitrary(0, &s6, &s6);
+        dm0.eval_sample_arbitrary(0, &s06, &s06);
+        dm0.eval_sample_arbitrary(0, &s06, &s06);
 
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
@@ -1163,16 +1153,10 @@ mod tests {
         );
         dm0.add_action();
 
-        // Set up two groups.
-        // XX0X->XX0X, XXX1->1XX1. Thr left bit is X->X, and X->1 respectively.
-        let s04 = dm0.state_from_string("s0100").unwrap();
+        // Set up group XXXX_XX0X->XXXX_XX0X
+        let s04 = dm0.state_from_string("s00000100").unwrap();
         dm0.eval_sample_arbitrary(0, &s04, &s04);
         dm0.eval_sample_arbitrary(0, &s04, &s04);
-
-        let s07 = dm0.state_from_string("s0111").unwrap();
-        let s0f = dm0.state_from_string("s1111").unwrap();
-        dm0.eval_sample_arbitrary(0, &s07, &s0f);
-        dm0.eval_sample_arbitrary(0, &s07, &s0f);
 
         let sf9 = dm0.state_from_string("s11111001").unwrap();
         dm0.eval_sample_arbitrary(0, &sf9, &sf9);
@@ -1181,77 +1165,33 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         // Set group pnc
-        dm0.actions[0].additional_group_state_samples();
-
-        let grpx = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("rXXXXXX0X").unwrap())
-            .unwrap();
-
-        let nds1 = dm0.actions[0].limit_group_needs(grpx, &StateStore::new());
-
-        // Check for needs of adjacent, external, squares to 4, in XX0X, which is 6.
-        println!("needs1 are {}", nds1);
-        assert!(nds1.len() == 1);
-        assert!(match &nds1[0] {
-            SomeNeed::SetGroupAnchor { anchor, .. } => {
-                if *anchor == SomeState::new_from_string(1, "s0100").unwrap() {
-                    dm0.get_needs();
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        });
-
+        let grp_reg = dm0.region_from_string("rXXXX_XX0X").unwrap();
+        dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        // First sample of state 6, adjacent, external, to 4 in XXXXXX0X.
-        let s06 = dm0.state_from_string("s0110").unwrap();
-        let s0d = dm0.state_from_string("s1110").unwrap();
-        dm0.eval_sample_arbitrary(0, &s06, &s0d);
+        let nds1 = dm0.actions[0].limit_groups_needs();
+        println!("needs1 are {}", nds1);
+        assert!(nds1.contains_similar_need("SetGroupAnchor", &grp_reg));
+
+        dm0.actions[0].set_group_anchor(&grp_reg, &s04);
+        println!("dm0 {}", &dm0.actions[0]);
+
         let nds2 = dm0.actions[0].limit_groups_needs();
-
-        // Check for second need for 6, to reach pnc for 6.
         println!("needs2 are {}", nds2);
-        assert!(nds2.len() == 1);
-        assert!(match &nds2[0] {
-            SomeNeed::RemoveGroupAnchor { group_region, .. } => {
-                if *group_region == SomeRegion::new_from_string(1, "rXXXXXxx1").unwrap() {
-                    dm0.get_needs();
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        });
 
+        let s06 = dm0.state_from_string("s00000110").unwrap();
+        assert!(nds2.contains_similar_need("LimitGroup", &SomeRegion::new(&s06, &s06)));
+
+        let s02 = dm0.state_from_string("s00000010").unwrap();
+        dm0.eval_sample_arbitrary(0, &s06, &s02);
+        dm0.eval_sample_arbitrary(0, &s06, &s02);
+
+        println!("dm0 {}", &dm0.actions[0]);
         let nds3 = dm0.actions[0].limit_groups_needs();
         println!("needs3 are {}", nds3);
-        assert!(nds3.contains_similar_need("LimitGroup", &dm0.region_from_string("r0110").unwrap()));
+        assert!(nds3.contains_similar_need("SetGroupLimited", &grp_reg));
 
-        dm0.eval_sample_arbitrary(0, &s06, &s0d);
-        let nds4 = &mut dm0.actions[0].limit_groups_needs();
-        println!("needs4 are {}", nds4);
-
-        for nedx in nds4.iter() {
-            if match nedx {
-                SomeNeed::SetGroupLimited { group_region } => {
-                    if *group_region == SomeRegion::new_from_string(1, "rXXXXXx0X").unwrap() {
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            } {
-                return Ok(());
-            }
-        }
-
-        Err("expected need not found".to_string())
+        Ok(())
     }
 
     /// Form a group, X1X1 from two squares that have alternating (pn=Two) results.

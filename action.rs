@@ -27,6 +27,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
 
+/// Number of new squares added before a cleanup check is run.
+const CLEANUP: usize = 5;
+
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rc_str = String::from("A(ID: ");
@@ -101,7 +104,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             aggregate_changes: SomeChange::new_low(num_ints),
             do_something: ActionInterface::new(),
-            cleanup_trigger: 5,
+            cleanup_trigger: CLEANUP,
         }
     }
 
@@ -168,7 +171,12 @@ impl SomeAction {
                     let anchor_states = self.groups.anchor_states();
 
                     // The current anchor rate may have changed, so recalculate it.
-                    let anchor_rate = self.group_anchor_rate(&grpx, anchor, &anchor_states);
+                    let anchor_rate;
+                    if self.groups.num_groups_state_in(anchor) == 1 {
+                        anchor_rate = self.group_anchor_rate(&grpx, anchor, &anchor_states);
+                    } else {
+                        anchor_rate = (0, 0, 0);
+                    }
 
                     let sqr_rate = self.group_anchor_rate(&grpx, initial, &anchor_states);
 
@@ -301,9 +309,61 @@ impl SomeAction {
                     }
                 }
             } // end match SeekEdgeNeed
+
+            SomeNeed::ConfirmGroup { grp_reg, .. } => {
+                self.set_group_pnc(&grp_reg);
+            }
+
             _ => (),
         } // end match ndx
     } // end eval_need_sample
+
+    /// Check a group for pnc, set it if needed
+    pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
+        if let Some(grpx) = self.groups.find_mut(grp_reg) {
+            if grpx.pnc {
+                println!(
+                    "ConfirmGroup {} already pnc and ConfirmGroup need?",
+                    grpx.region
+                );
+            } else {
+                if let Some(sqr1) = self.squares.find(&grpx.region.state1) {
+                    if sqr1.pnc {
+                        if let Some(sqr2) = self.squares.find(&grpx.region.state2) {
+                            if sqr2.pnc {
+                                grpx.set_pnc();
+                            }
+                        } else {
+                            println!(
+                                "ConfirmGroup {} state2 {} square not found?",
+                                grpx.region, grpx.region.state2
+                            );
+                        }
+                    }
+                } else {
+                    println!(
+                        "ConfirmGroup {} state1 {} square not found?",
+                        grpx.region, grpx.region.state1
+                    );
+                }
+            }
+        } else {
+            println!("ConfirmGroup {} group not found?", grp_reg);
+        }
+    }
+
+    /// Set a group anchor.
+    pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
+        if let Some(grpx) = self.groups.find_mut(grp_reg) {
+            if grpx.pnc {
+                grpx.set_anchor(anchor);
+            } else {
+                println!("set_group_anchor {} not pnc?", grpx.region);
+            }
+        } else {
+            println!("set_group_anchor {} group not found?", grp_reg);
+        }
+    }
 
     /// Evaluate the sample taken for a step in a plan.
     pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
@@ -594,7 +654,7 @@ impl SomeAction {
             }
 
             // Check for additional samples for group states needs
-            let mut ndx = self.additional_group_state_samples();
+            let mut ndx = self.confirm_group_needs();
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
             }
@@ -758,7 +818,7 @@ impl SomeAction {
                 // Do cleanup
                 if self.cleanup_trigger == 0 {
                     self.cleanup(dom, &nds);
-                    self.cleanup_trigger = 5;
+                    self.cleanup_trigger = CLEANUP;
                 }
 
                 return nds;
@@ -992,8 +1052,8 @@ impl SomeAction {
 
     /// Get additional sample needs for the states that form a group.
     /// Should only affect groups with Pn::One
-    pub fn additional_group_state_samples(&mut self) -> NeedStore {
-        //println!("additional_group_state_sample");
+    pub fn confirm_group_needs(&mut self) -> NeedStore {
+        //println!("confirm_group_needs");
         let mut ret_nds = NeedStore::new();
 
         for grpx in self.groups.iter_mut() {
@@ -1020,14 +1080,10 @@ impl SomeAction {
                     grp_reg: grpx.region.clone(),
                 });
             }
-
-            if sqrx.pnc && sqry.pnc {
-                grpx.set_pnc();
-            }
         } // next grpx
 
         ret_nds
-    } // end additional_group_state_samples
+    } // end confirm_group_needs
 
     /// Check for squares-in-one-group (anchor) needs.
     ///
@@ -1186,7 +1242,7 @@ impl SomeAction {
         ret_nds
     } // end limit_group_needs
 
-    /// Return the limiting needs for a group with an achor chosen.
+    /// Return the limiting needs for a group with an anchor chosen.
     pub fn limit_group_needs2(&self, grpx: &SomeGroup, anchor_sta: &SomeState) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
@@ -1814,8 +1870,22 @@ impl SomeAction {
         rsx
     } // end possible_regions_from_square
 
+    /// Take an action for a need.
+    pub fn take_action_need(
+        &mut self,
+        dom: usize,
+        cur_state: &SomeState,
+        ndx: &SomeNeed,
+    ) -> SomeState {
+        let astate = self.do_something.take_action(dom, self.num, cur_state);
+        self.eval_need_sample(cur_state, ndx, &astate, dom);
+        astate
+    }
+
     /// Take an action with the current state.
     pub fn take_action(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
-        self.do_something.take_action(dom, self.num, cur_state)
+        let astate = self.do_something.take_action(dom, self.num, cur_state);
+        self.eval_sample(cur_state, &astate, dom);
+        astate
     }
 } // end impl SomeAction
