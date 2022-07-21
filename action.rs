@@ -311,7 +311,13 @@ impl SomeAction {
             } // end match SeekEdgeNeed
 
             SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                self.set_group_pnc(&grp_reg);
+                if let Some(sqr1) = self.squares.find(&grp_reg.state1) {
+                    if let Some(sqr2) = self.squares.find(&grp_reg.state2) {
+                        if sqr1.pnc && sqr2.pnc {
+                            self.set_group_pnc(&grp_reg);
+                        }
+                    }
+                }
             }
 
             _ => (),
@@ -1079,6 +1085,12 @@ impl SomeAction {
                     targ_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
                 });
+            }
+
+            // Group may have become pnc due to a sample from running a plan, rather than a specific
+            // need, which is handled in eval_need_sample.
+            if sqrx.pnc && sqry.pnc {
+                grpx.set_pnc();
             }
         } // next grpx
 

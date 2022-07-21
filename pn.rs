@@ -96,7 +96,7 @@ pub enum Pn {
     One,
     /// Two predictable results (order matters) for a state.
     Two,
-    /// Unpredicable results.
+    /// No pattern number, unpredictable.
     Unpredictable,
 }
 
