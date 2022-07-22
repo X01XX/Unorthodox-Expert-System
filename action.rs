@@ -84,8 +84,6 @@ pub struct SomeAction {
     /// Closer and closer dissimilar squares are sought, producing smaller and smaller
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
-    // Changes that the group rules can do. Generally this will expand at first, then plateau, but might regress if something gets stuck.
-    pub aggregate_changes: SomeChange,
     /// Interface to an action that does something.
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
@@ -96,13 +94,12 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(inx: usize, num_ints: usize) -> Self {
+    pub fn new(inx: usize) -> Self {
         SomeAction {
             num: inx,
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            aggregate_changes: SomeChange::new_low(num_ints),
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
         }
@@ -111,11 +108,6 @@ impl SomeAction {
     /// Set the action number
     pub fn set_num(&mut self, anum: usize) {
         self.num = anum;
-    }
-
-    /// Return the number of integers used in the bits instances
-    pub fn num_ints(&self) -> usize {
-        self.aggregate_changes.b01.num_ints()
     }
 
     /// Return Truth enum for the combination of any two different squares,
@@ -305,7 +297,6 @@ impl SomeAction {
                         for stax in make_groups_from {
                             self.create_groups_from_square(&stax, dom);
                         }
-                        self.aggregate_changes = self.calc_aggregate_changes();
                     }
                 }
             } // end match SeekEdgeNeed
@@ -417,7 +408,6 @@ impl SomeAction {
     /// Add a group for the square if the square is in no valid group.
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
-    /// Update aggregate_changes, if any groups are added or deleted.
     fn check_square_new_sample(&mut self, key: &SomeState, dom: usize) {
         //println!("check_square_new_sample for {}", key);
 
@@ -464,7 +454,6 @@ impl SomeAction {
         if grps_in.len() == 0 || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
             self.create_groups_from_square(&key, dom);
             if regs_invalid.len() == 0 {
-                self.aggregate_changes = self.calc_aggregate_changes();
                 return;
             }
         }
@@ -481,8 +470,6 @@ impl SomeAction {
                 self.create_groups_from_square(keyx, dom);
             }
         }
-
-        self.aggregate_changes = self.calc_aggregate_changes();
     } // end check_square_new_sample
 
     /// Check groups due to a new, or updated, square.
@@ -559,23 +546,6 @@ impl SomeAction {
 
         return;
     } // end create_groups_from_square
-
-    /// Return the aggregate changes for an action
-    fn calc_aggregate_changes(&self) -> SomeChange {
-        let mut ret_cngs = SomeChange::new_low(self.num_ints());
-
-        for grpx in self.groups.iter() {
-            if grpx.pn != Pn::Unpredictable {
-                let rules = &grpx.rules;
-
-                for rulex in rules.iter() {
-                    ret_cngs = ret_cngs.c_or(&rulex.change());
-                }
-            }
-        }
-
-        ret_cngs
-    }
 
     /// Return needs for states that are not in a group.
     /// The Domain current state for which there are no samples.

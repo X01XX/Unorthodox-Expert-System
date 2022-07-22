@@ -98,29 +98,6 @@ impl ActionStore {
         //println!("actionstore:get_steps possible steps: {}", stps.str());
         stps_agg
     }
-
-    /// Return the number of integers used for low-level bit patterns.
-    fn num_ints(&self) -> Option<usize> {
-        if self.len() == 0 {
-            return None;
-        }
-        Some(self.avec[0].num_ints())
-    }
-
-    /// Return the maximum reachable region for all actions
-    pub fn aggregate_changes(&self) -> Option<SomeChange> {
-        if let Some(num_ints) = self.num_ints() {
-            let mut agg_chg = SomeChange::new_low(num_ints);
-
-            // Or each action change
-            for actx in self.avec.iter() {
-                agg_chg = agg_chg.c_or(&actx.aggregate_changes);
-            }
-
-            return Some(agg_chg);
-        }
-        None
-    }
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
