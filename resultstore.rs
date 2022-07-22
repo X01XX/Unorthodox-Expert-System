@@ -1,4 +1,80 @@
 //! The ResultStore struct.  Saves up to 4 results of an action for a single state.
+//!
+//! Possible sequences of two (there could be more in practice) different result values:
+//!
+//! First Sample
+//!  Pn::One  ['X']
+//!  Pn::One  ['Y']
+//!
+//! Second Sample
+//!  Pn::One  ['X', 'X'] from Pn::One  ['X'] + X
+//!  Pn::One  ['Y', 'Y'] from Pn::One  ['Y'] + Y
+//!  Pn::Two  ['X', 'Y'] from Pn::One  ['X'] + Y
+//!  Pn::Two  ['Y', 'X'] from Pn::One  ['Y'] + X
+//!
+//! Third Sample
+//!  Pn::One  ['X', 'X', 'X'] from Pn::One  ['X', 'X'] + X
+//!  Pn::One  ['Y', 'Y', 'Y'] from Pn::One  ['Y', 'Y'] + Y
+//!  Pn::Two  ['X', 'Y', 'X'] from Pn::Two  ['X', 'Y'] + X
+//!  Pn::Two  ['Y', 'X', 'Y'] from Pn::Two  ['Y', 'X'] + Y
+//!  Pn::None ['X', 'X', 'Y'] from Pn::One  ['X', 'X'] + Y
+//!  Pn::None ['X', 'Y', 'Y'] from Pn::Two  ['X', 'Y'] + Y
+//!  Pn::None ['Y', 'X', 'X'] from Pn::Two  ['Y', 'X'] + X
+//!  Pn::None ['Y', 'Y', 'X'] from Pn::One  ['Y', 'Y'] + X
+//!
+//! Fourth Sample
+//!  Pn::One  ['X', 'X', 'X', 'X'] from Pn::One  ['X', 'X', 'X'] + X
+//!  Pn::One  ['Y', 'Y', 'Y', 'Y'] from Pn::One  ['Y', 'Y', 'Y'] + Y
+//!  Pn::Two  ['X', 'Y', 'X', 'Y'] from Pn::Two  ['X', 'Y', 'X'] + Y
+//!  Pn::Two  ['Y', 'X', 'Y', 'X'] from Pn::Two  ['Y', 'X', 'Y'] + X
+//!  Pn::None ['X', 'X', 'X', 'Y'] from Pn::One  ['X', 'X', 'X'] + Y
+//!  Pn::None ['X', 'X', 'Y', 'X'] from Pn::None ['X', 'X', 'Y'] + X
+//!  Pn::None ['X', 'X', 'Y', 'Y'] from Pn::None ['X', 'X', 'Y'] + Y
+//!  Pn::None ['X', 'Y', 'X', 'X'] from Pn::Two  ['X', 'Y', 'X'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'X'] from Pn::None ['X', 'Y', 'Y'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'Y'] from Pn::None ['X', 'Y', 'Y'] + Y
+//!  Pn::None ['Y', 'X', 'X', 'X'] from Pn::None ['Y', 'X', 'X'] + X
+//!  Pn::None ['Y', 'X', 'X', 'Y'] from Pn::None ['Y', 'X', 'X'] + Y
+//!  Pn::None ['Y', 'X', 'Y', 'Y'] from Pn::Two  ['Y', 'X', 'Y'] + Y
+//!  Pn::None ['Y', 'Y', 'X', 'X'] from Pn::None ['Y', 'Y', 'X'] + X
+//!  Pn::None ['Y', 'Y', 'X', 'Y'] from Pn::None ['Y', 'Y', 'X'] + Y
+//!  Pn::None ['Y', 'Y', 'Y', 'X'] from Pn::One  ['Y', 'Y', 'Y'] + X
+//!
+//! Fifth Sample (the first sample is dropped)
+//!  Pn::One  ['X', 'X', 'X', 'X'] from Pn::One  ['X', 'X', 'X', 'X'] + X
+//!  Pn::One  ['Y', 'Y', 'Y', 'Y'] from Pn::None ['X', 'Y', 'Y', 'Y'] + Y
+//!  Pn::One  ['X', 'X', 'X', 'X'] from Pn::None ['Y', 'X', 'X', 'X'] + X
+//!  Pn::One  ['Y', 'Y', 'Y', 'Y'] from Pn::One  ['Y', 'Y', 'Y', 'Y'] + Y
+//!  Pn::Two  ['X', 'Y', 'X', 'Y'] from Pn::None ['X', 'X', 'Y', 'X'] + Y
+//!  Pn::Two  ['Y', 'X', 'Y', 'X'] from Pn::Two  ['X', 'Y', 'X', 'Y'] + X
+//!  Pn::Two  ['X', 'Y', 'X', 'Y'] from Pn::Two  ['Y', 'X', 'Y', 'X'] + Y
+//!  Pn::Two  ['Y', 'X', 'Y', 'X'] from Pn::None ['Y', 'Y', 'X', 'Y'] + X
+//!  Pn::None ['X', 'X', 'X', 'Y'] from Pn::One  ['X', 'X', 'X', 'X'] + Y
+//!  Pn::None ['X', 'X', 'Y', 'X'] from Pn::None ['X', 'X', 'X', 'Y'] + X
+//!  Pn::None ['X', 'X', 'Y', 'Y'] from Pn::None ['X', 'X', 'X', 'Y'] + Y
+//!  Pn::None ['X', 'Y', 'X', 'X'] from Pn::None ['X', 'X', 'Y', 'X'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'X'] from Pn::None ['X', 'X', 'Y', 'Y'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'Y'] from Pn::None ['X', 'X', 'Y', 'Y'] + Y
+//!  Pn::None ['Y', 'X', 'X', 'X'] from Pn::None ['X', 'Y', 'X', 'X'] + X
+//!  Pn::None ['Y', 'X', 'X', 'Y'] from Pn::None ['X', 'Y', 'X', 'X'] + Y
+//!  Pn::None ['Y', 'X', 'Y', 'Y'] from Pn::Two  ['X', 'Y', 'X', 'Y'] + Y
+//!  Pn::None ['Y', 'Y', 'X', 'X'] from Pn::None ['X', 'Y', 'Y', 'X'] + X
+//!  Pn::None ['Y', 'Y', 'X', 'Y'] from Pn::None ['X', 'Y', 'Y', 'X'] + Y
+//!  Pn::None ['Y', 'Y', 'Y', 'X'] from Pn::None ['X', 'Y', 'Y', 'Y'] + X
+//!  Pn::None ['X', 'X', 'X', 'Y'] from Pn::None ['Y', 'X', 'X', 'X'] + Y
+//!  Pn::None ['X', 'X', 'Y', 'X'] from Pn::None ['Y', 'X', 'X', 'Y'] + X
+//!  Pn::None ['X', 'X', 'Y', 'Y'] from Pn::None ['Y', 'X', 'X', 'Y'] + Y
+//!  Pn::None ['X', 'Y', 'X', 'X'] from Pn::Two  ['Y', 'X', 'Y', 'X'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'X'] from Pn::None ['Y', 'X', 'Y', 'Y'] + X
+//!  Pn::None ['X', 'Y', 'Y', 'Y'] from Pn::None ['Y', 'X', 'Y', 'Y'] + Y
+//!  Pn::None ['Y', 'X', 'X', 'X'] from Pn::None ['Y', 'Y', 'X', 'X'] + X
+//!  Pn::None ['Y', 'X', 'X', 'Y'] from Pn::None ['Y', 'Y', 'X', 'X'] + Y
+//!  Pn::None ['Y', 'X', 'Y', 'Y'] from Pn::None ['Y', 'Y', 'X', 'Y'] + Y
+//!  Pn::None ['Y', 'Y', 'X', 'X'] from Pn::None ['Y', 'Y', 'Y', 'X'] + X
+//!  Pn::None ['Y', 'Y', 'X', 'Y'] from Pn::None ['Y', 'Y', 'Y', 'X'] + Y
+//!  Pn::None ['Y', 'Y', 'Y', 'X'] from Pn::One  ['Y', 'Y', 'Y', 'Y'] + X
+//!
+//! End
 
 use crate::pn::Pn;
 use crate::state::SomeState;
