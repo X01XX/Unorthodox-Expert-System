@@ -601,13 +601,13 @@ impl SomeDomain {
             return Some(plans.remove(0));
         }
         if plans.len() > 1 {
-            //println!("forward_depth_first_search returned plan");
+            //println!("make_plan returned plan");
             let inx = self.choose_a_plan(&plans);
             return Some(plans.remove(inx));
         }
 
         // No plan to return.
-        //println!("random_depth_first_search did not return a plan");
+        //println!("make_plan did not return a plan");
         None
     } // end make plan
 
@@ -828,16 +828,7 @@ fn step_vecs_order_bad(
             }
         } //next refy
     } // next refx
-      //    let mut strx = "order bad [".to_string();
-      //    for stpx in vec_x.iter() {
-      //        strx.push_str(&format!(" {}", stpx));
-      //    }
-      //    strx.push_str("] to [");
-      //    for stpy in vec_y.iter() {
-      //        strx.push_str(&format!(" {}", stpy));
-      //    }
-      //    strx.push_str(&format!("] wanted {}", wanted));
-      //    println!("{}", strx);
+
     true
 }
 

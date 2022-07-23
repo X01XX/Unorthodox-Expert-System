@@ -48,8 +48,7 @@ impl ActionStore {
     }
 
     /// Add a SomeAction struct to the store.
-    pub fn push(&mut self, mut actx: SomeAction) {
-        actx.set_num(self.avec.len());
+    pub fn push(&mut self, actx: SomeAction) {
         self.avec.push(actx);
     }
 

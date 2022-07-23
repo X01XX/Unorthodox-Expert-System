@@ -1562,14 +1562,19 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     It should be run some number of times before giving up.
     </p>
     <p class="indent1">
-    Of the bit-changes that contain only rules that require splitting the rule-path search into two parts, aggregate the rules from those bit-changes
-    with the least number of rules.
+    Asymmetrical Chaining
     </p>
     <p class="indent2">
-    If there are no such bit-changes, aggregate the rules from any bit-changes with the lowest number of rules.
+    Of the bit-changes that contain only rules that do not have an initial region that intersects the from-region, and 
+    no result region that intersects the goal-region, aggregate the rules and randomly choose one.
     </p>
     <p class="indent2">
-    Randomly choose one of the selected rules.
+    Use recursion to go from the from-region to the rule initial-region. Restrict the rule initial-region.
+    Use recursion to find a path from the restricted rule result-region to the goal-region.
+    </p>
+    <p class="indent1">
+    Otherwise, randomly pick a rule that has an initial region that intersects the from-region, or a result region
+    that intersects the goal-region.
     </p>
     <p class="indent1">
     Forward Chaining
@@ -1584,13 +1589,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent2">
     If the result-region of the selected rule intersects the goal-region, restrict the result-region of the rule. Use recursion
     to find a path from the from-region to the restricted rule initial-region.
-    </p>
-    <p class="indent1">
-    Asymmetrical Chaining
-    </p>
-    <p class="indent2">
-    Otherwise, use recursion to go from the from-region to the rule initial-region. Restrict the rule initial-region.
-    Use recursion to find a path from the restricted rule result-region to the goal-region.
     </p>
     <p class="indent1">
     Keep a count of the recursion depth, and fail the process at some point.  
@@ -1741,7 +1739,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 07/08/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/23/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1757,6 +1755,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 <p>It was shown in the first section that you cannot add a bit to a 2-bit axis to draw a larger K-Map.<p>
 
   <p>A 5-bit K-Map might be printed as multiple 4-bit maps, 0XXXX, 1XXXX, but you would need a special talent, which I do not have, to visually make sense of multiple K-Maps.</p>
+
+  <p>You can add more bits, but the number of K-Maps goes up exponentially.</p>
 
 <h3>Splitting up bits</h3>
   <p>

@@ -105,11 +105,6 @@ impl SomeAction {
         }
     }
 
-    /// Set the action number
-    pub fn set_num(&mut self, anum: usize) {
-        self.num = anum;
-    }
-
     /// Return Truth enum for the combination of any two different squares,
     /// and the squares between them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
@@ -498,10 +493,6 @@ impl SomeAction {
             num_grps_in,
         );
 
-        //        if num_grps_in > 0 {
-        //            return;
-        //        }
-
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
         // Get possible regions, sqrx.state will be <region>.state1
@@ -544,7 +535,6 @@ impl SomeAction {
             self.num,
         );
 
-        return;
     } // end create_groups_from_square
 
     /// Return needs for states that are not in a group.
@@ -986,7 +976,7 @@ impl SomeAction {
             }
         }
 
-        return ret_nds;
+        ret_nds
     } // end seek_edge_needs
 
     /// Generate needs for seek_edge regions that have no squares between the region defining states.
