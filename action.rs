@@ -85,6 +85,8 @@ pub struct SomeAction {
     /// regions, until a pair of adjacent, dissimilar, squares are found.
     pub seek_edge: RegionStore,
     /// Interface to an action that does something.
+    /// Storing a function pointer runs into problems with the parallel crate
+    /// and the serialization crate.
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,

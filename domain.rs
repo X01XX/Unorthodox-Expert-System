@@ -380,7 +380,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         depth: usize,
-    ) -> Option<StepStore> {
+    ) -> Option<SomePlan> {
         if let Some(steps) = self.random_depth_first_search2(from_reg, goal_reg, depth) {
             if let Some(steps2) = steps.shortcuts() {
                 return Some(steps2);
@@ -395,13 +395,13 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         depth: usize,
-    ) -> Option<StepStore> {
+    ) -> Option<SomePlan> {
         //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
 
         // Check if from_reg is at the goal, no steps are needed.
         if goal_reg.is_superset_of(from_reg) {
             //println!("from {} subset goal {} ?", from_reg, goal_reg);
-            return Some(StepStore::new());
+            return Some(SomePlan::new());
         }
 
         // Check if change is possible
@@ -433,7 +433,7 @@ impl SomeDomain {
 
                 if goal_reg.is_superset_of(&stepy.result) {
                     //println!("forward_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
-                    return Some(StepStore::new_with_step(stepy));
+                    return Some(SomePlan::new_with_step(stepy));
                 }
             }
         }
@@ -512,11 +512,11 @@ impl SomeDomain {
             if let Some(first_steps) =
                 self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
             {
-                let stepy = stepx.restrict_initial_region(&first_steps.result());
+                let stepy = stepx.restrict_initial_region(&first_steps.result_region());
                 if let Some(next_steps) =
                     self.random_depth_first_search(&stepy.result, goal_reg, depth - 1)
                 {
-                    if let Some(steps1) = first_steps.link(&StepStore::new_with_step(stepy)) {
+                    if let Some(steps1) = first_steps.link(&SomePlan::new_with_step(stepy)) {
                         return steps1.link(&next_steps);
                     }
                 }
@@ -543,7 +543,7 @@ impl SomeDomain {
             if let Some(next_steps) =
                 self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
             {
-                return StepStore::new_with_step(stepy).link(&next_steps);
+                return SomePlan::new_with_step(stepy).link(&next_steps);
             }
             return None;
         }
@@ -554,7 +554,7 @@ impl SomeDomain {
             if let Some(prev_steps) =
                 self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1)
             {
-                return prev_steps.link(&StepStore::new_with_step(stepy));
+                return prev_steps.link(&SomePlan::new_with_step(stepy));
             }
             return None;
         }
@@ -570,7 +570,7 @@ impl SomeDomain {
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
-            return Some(SomePlan::new(StepStore::new()));
+            return Some(SomePlan::new());
         }
 
         // Try to make a plan several times.
@@ -589,7 +589,7 @@ impl SomeDomain {
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(
                 |_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
-                    Some(x) => Some(SomePlan::new(x)),
+                    Some(x) => Some(x),
                     None => None,
                 },
             )

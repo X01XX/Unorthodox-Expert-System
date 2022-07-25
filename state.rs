@@ -53,7 +53,7 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        if &str[0..1] != "s" && &str[0..1] != "S" {
+        if &str[0..1] != "s" {
             return Err(format!(
                 "Did not understand the string {}, first character?",
                 str

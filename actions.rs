@@ -8,9 +8,6 @@ use crate::rule::SomeRule;
 use crate::state::SomeState;
 use rand::Rng;
 
-// The number of bits is set by the line of code that creates
-// the first current state, with 1, or more, integers.
-
 /// Take an action given the domain number, action number, current_state and last change mask (if any).
 pub fn take_action(
     dom_num: usize,

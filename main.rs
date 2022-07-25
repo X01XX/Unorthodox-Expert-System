@@ -1122,7 +1122,7 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
     // Open a file, returns `io::Result<File>`
     match File::open(&path) {
         Err(why) => {
-            return Err(format!("couldn't read {}: {}", display, why));
+            return Err(format!("couldn't open {}: {}", display, why));
         }
         Ok(mut afile) => {
             let mut serialized = String::new();

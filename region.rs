@@ -73,9 +73,9 @@ impl SomeRegion {
             inx += 1;
 
             if inx == 0 {
-                if ch == 'r' || ch == 'R' {
+                if ch == 'r' {
                     continue;
-                } else if ch == 's' || ch == 'S' {
+                } else if ch == 's' {
                     let state_r = SomeState::new_from_string(num_ints, &str);
                     match state_r {
                         Ok(a_state) => {
@@ -314,8 +314,7 @@ impl SomeRegion {
         )
     }
 
-    // Return a region with masked X-bits set to zeros.
-    // The region states may not represent a samples state.
+    // Return a region with masked bit positions set to X.
     //    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
     //        Self::new(
     //            &SomeState::new(self.state1.bts.b_or(&msk.bts)),

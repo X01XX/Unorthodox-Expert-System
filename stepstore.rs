@@ -59,67 +59,6 @@ impl StepStore {
         self.avec.append(&mut val.avec); // empties val.avec
     }
 
-    /// Check if a StepStore is a valid sequence of steps.
-    /// There are greater than zero steps.
-    /// Each step changes something.
-    /// Sequential step pairs result and initial regions are equal.
-    /// Steps do not form a loop.
-    pub fn is_valid_sequence(&self) -> bool {
-        if self.len() == 0 {
-            return false;
-        }
-        if self.len() > 1 {
-            for inx in 1..self.len() {
-                if self[inx].initial == self[inx].result {
-                    return false;
-                }
-                if self[inx - 1].result == self[inx].initial {
-                } else {
-                    return false;
-                }
-            }
-        }
-        if self.initial().intersects(&self.result()) {
-            return false;
-        }
-        true
-    }
-
-    /// Link two stepstores together, return Some(StepStore).
-    /// Restrict StepStores that have an intersection of the result and
-    /// initial regions.
-    /// Restricting the steps, forward and backward, from that intersection may
-    /// cause a break in the path, which is why None may be returned.
-    pub fn link(&self, other: &Self) -> Option<Self> {
-        if self.result().intersects(&other.initial()) == false {
-            println!("stepstore:link: problem {} and {} ", self, other);
-        }
-
-        // Sanity checks
-        assert!(self.len() > 0);
-        assert!(other.len() > 0);
-        assert!(self.result().intersects(&other.initial()));
-
-        // Restrict the StepStores, forward and backward.
-        if self.result().intersects(&other.initial()) {
-            let regx = self.result().intersection(&other.initial());
-
-            if let Some(mut steps1) = self.restrict_result_region(&regx) {
-                if let Some(mut steps2) = other.restrict_initial_region(&regx) {
-                    steps1.append(&mut steps2);
-
-                    //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-                    if steps1.is_valid_sequence() {
-                        return Some(steps1);
-                    } else {
-                        return None;
-                    }
-                }
-            }
-        }
-        None
-    } // end link
-
     /// Return an immutable iterator for a StepStore.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.avec.iter()
@@ -163,60 +102,14 @@ impl StepStore {
         rc_str
     }
 
-    /// Return a new Some(StepStore) after restricting the initial region.
-    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
-        let mut rc_steps = StepStore::with_capacity(self.len());
-
-        let mut regy = regx.clone();
-
-        for stpx in self.iter() {
-            if regy.intersects(&stpx.initial) {
-                let stpy = stpx.restrict_initial_region(&regy);
-                regy = stpy.result.clone();
-
-                rc_steps.push(stpy);
-            } else {
-                return None;
-            }
-        } //next stepx
-
-        Some(rc_steps)
-    }
-
-    /// Return a new Some(StepStore) after restricting the result region.
-    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
-        let mut rc_steps = StepStore::with_capacity(self.len());
-
-        let mut regy = regx.clone();
-
-        for inx in (0..self.len()).rev() {
-            let stpx = &self.avec[inx];
-
-            if regy.intersects(&stpx.result) {
-                let stpy = stpx.restrict_result_region(&regy);
-
-                regy = stpy.initial.clone();
-                rc_steps.push(stpy);
-            } else {
-                return None;
-            }
-        } //next inx
-
-        if rc_steps.len() > 1 {
-            rc_steps.reverse();
-        }
-
-        Some(rc_steps)
-    }
-
-    pub fn initial(&self) -> SomeRegion {
+    pub fn initial_region(&self) -> &SomeRegion {
         assert!(self.len() > 0);
-        self[0].initial.clone()
+        &self[0].initial
     }
 
-    pub fn result(&self) -> SomeRegion {
+    pub fn result_region(&self) -> &SomeRegion {
         assert!(self.len() > 0);
-        self[self.len() - 1].result.clone()
+        &self[self.len() - 1].result
     }
 
     /// Given a number of steps, and a required change, return a vector of vectors
@@ -294,170 +187,11 @@ impl StepStore {
         }
         None
     }
-
-    /// Return a StepStore after checking for shortcuts.
-    /// Return None if no shortcuts found.
-    pub fn shortcuts(&self) -> Option<StepStore> {
-        if self.len() == 1 {
-            return None;
-        }
-
-        // CHeck for repeating initial region
-        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
-        for inx in 0..self.len() {
-            let initx = self[inx].initial.clone();
-            let mut found = false;
-            for reg_inx_tup in reg_inx.iter_mut() {
-                if reg_inx_tup.0 == initx {
-                    reg_inx_tup.1.push(inx);
-                    found = true;
-                }
-            }
-            if found == false {
-                reg_inx.push((initx, vec![inx]));
-            }
-        } // next inx
-
-        // Process one shortcut
-        if reg_inx.len() < self.len() {
-            let mut steps2: StepStore;
-            //println!("shortcut initial found for {}", self);
-            for tupx in reg_inx.iter() {
-                if tupx.1.len() > 1 {
-                    //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = StepStore::new();
-                    let mut inx = 0;
-                    for stepx in self.iter() {
-                        if inx < tupx.1[0] || inx >= tupx.1[1] {
-                            steps2.push(stepx.clone());
-                        }
-                        inx += 1;
-                    }
-                    // Remove shortcuts recursively, one by one.
-                    //println!("shortcut step2 {}", steps2);
-                    if let Some(steps3) = steps2.shortcuts() {
-                        return Some(steps3);
-                    }
-
-                    return Some(steps2);
-                }
-            }
-        }
-
-        // Check for repeating result
-        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
-        for inx in 0..self.len() {
-            let rsltx = self[inx].result.clone();
-            let mut found = false;
-            for reg_inx_tup in reg_inx.iter_mut() {
-                if reg_inx_tup.0 == rsltx {
-                    reg_inx_tup.1.push(inx);
-                    found = true;
-                }
-            }
-            if found == false {
-                reg_inx.push((rsltx, vec![inx]));
-            }
-        } // next inx
-
-        // Process one shortcut
-        if reg_inx.len() < self.len() {
-            let mut steps2: StepStore;
-            //println!("shortcut result found for {}", self);
-            for tupx in reg_inx.iter() {
-                if tupx.1.len() > 1 {
-                    //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = StepStore::new();
-                    let mut inx = 0;
-                    for stepx in self.iter() {
-                        if inx <= tupx.1[0] || inx > tupx.1[1] {
-                            steps2.push(stepx.clone());
-                        }
-                        inx += 1;
-                    }
-                    // Remove shortcuts recursively, one by one.
-                    //println!("shortcut step2 {}", steps2);
-                    if let Some(steps3) = steps2.shortcuts() {
-                        return Some(steps3);
-                    }
-                    return Some(steps2);
-                }
-            }
-        }
-
-        None
-    }
 } // end impl StepStore
 
 impl Index<usize> for StepStore {
     type Output = SomeStep;
     fn index<'a>(&'a self, i: usize) -> &'a SomeStep {
         &self.avec[i]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::rule::SomeRule;
-
-    // Test the link function. This also tests the len, push, result, initial, restrict_initial_region and restrict_result_region functions.
-    #[test]
-    fn link() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "r0x1x").unwrap();
-        let reg3 = SomeRegion::new_from_string(1, "r1x1x").unwrap();
-        let reg4 = SomeRegion::new_from_string(1, "r111x").unwrap();
-        let reg5 = SomeRegion::new_from_string(1, "r101x").unwrap();
-        let reg6 = SomeRegion::new_from_string(1, "r000x").unwrap();
-
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg1, &reg2),
-            false,
-            reg1.clone(),
-        );
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg2, &reg3),
-            false,
-            reg2.clone(),
-        );
-        let mut stp_str1 = StepStore::with_capacity(2);
-        stp_str1.push(step1);
-        stp_str1.push(step2);
-
-        let step4 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg4, &reg5),
-            false,
-            reg4.clone(),
-        );
-        let step5 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg5, &reg6),
-            false,
-            reg5.clone(),
-        );
-        let mut stp_str2 = StepStore::with_capacity(2);
-        stp_str2.push(step4);
-        stp_str2.push(step5);
-
-        println!("stp1 {}", &stp_str1);
-        println!("stp2 {}", &stp_str2);
-
-        let stp_str3 = stp_str1.link(&stp_str2).unwrap();
-        println!("stp3 {}", &stp_str3);
-        assert!(stp_str3.len() == 4);
-        assert!(stp_str3.initial() == SomeRegion::new_from_string(1, "r010x").unwrap());
-        assert!(stp_str3.result() == reg6);
-
-        let stp_str4 = stp_str2.link(&stp_str1).unwrap();
-        println!("stp4 {}", &stp_str4);
-        assert!(stp_str4.len() == 4);
-        assert!(stp_str4.initial() == reg4);
-        assert!(stp_str4.result() == SomeRegion::new_from_string(1, "r101x").unwrap());
-
-        Ok(())
     }
 }

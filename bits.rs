@@ -126,8 +126,6 @@ impl SomeBits {
                     bts = bts.shift_left();
                 } else if chr == '1' {
                     bts = bts.push_1();
-                } else if chr == '_' {
-                    continue;
                 } else {
                     return Err(format!(
                         "Did not understand the string {}, invalid character?",

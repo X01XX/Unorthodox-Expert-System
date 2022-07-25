@@ -46,7 +46,7 @@ impl SomeMask {
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
-        if &str[0..1] != "m" && &str[0..1] != "M" {
+        if &str[0..1] != "m" {
             return Err(format!("Initial character should be m"));
         }
 
