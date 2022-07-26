@@ -2,6 +2,9 @@
 //!
 //! These actions are for testing and learning, they should eventually be replaced
 //! by actions that make changes outside the program.
+//!
+//! Storing a function pointer in the SomeAction runs into problems with the parallel crate
+//! and the serialization crate.
 
 use crate::mask::SomeMask;
 use crate::rule::SomeRule;

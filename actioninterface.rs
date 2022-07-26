@@ -2,6 +2,8 @@ use crate::actions::take_action;
 use crate::mask::SomeMask;
 /// A filter between the internal states/functions, and a
 /// function that does something.
+/// Storing a function pointer in the SomeAction runs into problems with the parallel crate
+/// and the serialization crate.
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,7 @@ use std::collections::HashMap;
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct ActionInterface {
-    /// Store states and most-recent change seen
+    /// Store states and most-recent change seen, only used for demonstration action dom0_act0.
     pub ahash: HashMap<SomeState, SomeMask>,
 }
 

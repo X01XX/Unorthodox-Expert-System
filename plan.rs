@@ -43,11 +43,15 @@ impl SomePlan {
     /// Check the steps to insure one leads to the next.
     /// The StepStore may be empty.
     pub fn new() -> Self {
-        Self { steps: StepStore::new() }
+        Self {
+            steps: StepStore::new(),
+        }
     }
 
     pub fn new_with_step(stepx: SomeStep) -> Self {
-        Self { steps: StepStore::new_with_step(stepx) }
+        Self {
+            steps: StepStore::new_with_step(stepx),
+        }
     }
 
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
@@ -80,7 +84,7 @@ impl SomePlan {
     /// Each step changes something.
     /// Sequential step pairs result and initial regions are equal.
     /// Steps do not form a loop.
-    pub fn is_valid_plan(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         if self.len() == 0 {
             return false;
         }
@@ -98,10 +102,23 @@ impl SomePlan {
                 }
             }
         }
+
+        let rslt = self.result_region();
+
         // Steps as a whole cause a change.
-        if self.initial_region() == self.result_region() {
+        if self.initial_region() == rslt {
             return false;
         }
+
+        // Result does not repeat.
+        if self.len() > 1 {
+            for inx in 0..(self.len() - 1) {
+                if self.steps[inx].result == *rslt {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 
@@ -157,7 +174,7 @@ impl SomePlan {
                     steps1.append(&mut steps2);
 
                     //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-                    if steps1.is_valid_plan() {
+                    if steps1.is_valid() {
                         return Some(steps1);
                     } else {
                         return None;
@@ -175,7 +192,7 @@ impl SomePlan {
             return None;
         }
 
-        // CHeck for repeating initial region
+        // Check for repeating initial region
         let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
             let initx = self.steps[inx].initial.clone();
@@ -291,13 +308,13 @@ impl SomePlan {
     /// Return the initial region of a plan that contains at least one step.
     pub fn initial_region(&self) -> &SomeRegion {
         assert!(self.len() > 0);
-        return &self.steps.initial_region();
+        &self.steps[0].initial
     }
 
     /// Return the result region of a plan that contains at least one step.
     pub fn result_region(&self) -> &SomeRegion {
         assert!(self.len() > 0);
-        return &self.steps.result_region();
+        &self[self.len() - 1].result
     }
 
     pub fn str2(&self) -> String {
@@ -351,7 +368,8 @@ mod tests {
     use super::*;
     use crate::rule::SomeRule;
 
-    // Test the link function. This also tests the len, push, result, initial, restrict_initial_region and restrict_result_region functions.
+    // Test the link function. This also tests the len, push, result_region, initial_region,
+    // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
@@ -398,15 +416,133 @@ mod tests {
 
         let stp_str3 = stp_str1.link(&stp_str2).unwrap();
         println!("stp3 {}", &stp_str3);
-        assert!(stp_str3.len() == 4);
-        assert!(stp_str3.initial_region() == &SomeRegion::new_from_string(1, "r010x").unwrap());
-        assert!(stp_str3.result_region() == &reg6);
+        if stp_str3.len() != 4 {
+            return Err(format!("Len NE 4? {}", stp_str3).to_string());
+        }
+        let reg45 = SomeRegion::new_from_string(1, "r010x").unwrap();
+        if stp_str3.initial_region() != &reg45 {
+            return Err(format!(
+                "initial {} NE {} ?",
+                stp_str3.initial_region(),
+                reg45
+            ));
+        }
+        if stp_str3.result_region() != &reg6 {
+            return Err(format!(
+                "initial {} NE {} ?",
+                stp_str3.result_region(),
+                reg6
+            ));
+        }
 
-        let stp_str4 = stp_str2.link(&stp_str1).unwrap();
-        println!("stp4 {}", &stp_str4);
-        assert!(stp_str4.len() == 4);
-        assert!(stp_str4.initial_region() == &reg4);
-        assert!(stp_str4.result_region() == &SomeRegion::new_from_string(1, "r101x").unwrap());
+        // Result 101X appears twice when linked in this order, so its invalid.
+        if let Some(stp_str4) = stp_str2.link(&stp_str1) {
+            return Err(format!("stp4 {} valid?", &stp_str4).to_string());
+        } else {
+            println!("Link not valid, as expected");
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn shortcuts() -> Result<(), String> {
+        let mut pln1 = SomePlan::new();
+
+        let reg0 = SomeRegion::new_from_string(1, "r0000").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0001").unwrap();
+        let reg3 = SomeRegion::new_from_string(1, "r0011").unwrap();
+        let reg5 = SomeRegion::new_from_string(1, "r0101").unwrap();
+        let reg7 = SomeRegion::new_from_string(1, "r0111").unwrap();
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg1, &reg3),
+            false,
+            reg1.clone(),
+        );
+        pln1.push(step1);
+
+        let step2 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg3, &reg7),
+            false,
+            reg3.clone(),
+        );
+        pln1.push(step2);
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg7, &reg5),
+            false,
+            reg7.clone(),
+        );
+        pln1.push(step3);
+
+        let step4 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg5, &reg1),
+            false,
+            reg5.clone(),
+        );
+        pln1.push(step4);
+
+        let step5 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg1, &reg0),
+            false,
+            reg5.clone(),
+        );
+        pln1.push(step5);
+
+        println!("pln1: {}", pln1);
+
+        if let Some(pln1s) = pln1.shortcuts() {
+            println!("shortcut found: {}", pln1s);
+            assert!(pln1s.len() == 1);
+            if pln1s.len() != 1 {
+                return Err(format!("Len NE 1? {}", pln1s).to_string());
+            }
+            if pln1s.initial_region() != &reg1 {
+                return Err(format!(
+                    "Initial region {} NE {} ?",
+                    pln1s.initial_region(),
+                    reg1
+                ));
+            }
+            if pln1s.result_region() != &reg0 {
+                return Err(format!(
+                    "result region {} NE {} ?",
+                    pln1s.result_region(),
+                    reg0
+                ));
+            }
+        } else {
+            return Err(format!("No shortcut found for {}?", pln1).to_string());
+        }
+
+        let mut pln2 = SomePlan::new();
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg1, &reg3),
+            false,
+            reg1.clone(),
+        );
+        pln2.push(step1);
+
+        let step2 = SomeStep::new(
+            0,
+            SomeRule::region_to_region(&reg3, &reg7),
+            false,
+            reg3.clone(),
+        );
+        pln2.push(step2);
+
+        if let Some(pln2s) = pln2.shortcuts() {
+            return Err(format!("shortcut found for {} is {} ?", pln2, pln2s).to_string());
+        }
+        println!("no shortcut found for pln2");
 
         Ok(())
     }

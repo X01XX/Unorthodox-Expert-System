@@ -2,7 +2,6 @@
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
-use crate::region::SomeRegion;
 use crate::step::SomeStep;
 
 use std::fmt;
@@ -100,16 +99,6 @@ impl StepStore {
         rc_str.push(']');
 
         rc_str
-    }
-
-    pub fn initial_region(&self) -> &SomeRegion {
-        assert!(self.len() > 0);
-        &self[0].initial
-    }
-
-    pub fn result_region(&self) -> &SomeRegion {
-        assert!(self.len() > 0);
-        &self[self.len() - 1].result
     }
 
     /// Given a number of steps, and a required change, return a vector of vectors
