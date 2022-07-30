@@ -96,13 +96,13 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(inx: usize) -> Self {
+    pub fn new(dom_num: usize, act_num: usize) -> Self {
         SomeAction {
-            num: inx,
+            num: act_num,
             groups: GroupStore::new(),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            do_something: ActionInterface::new(),
+            do_something: ActionInterface::new(dom_num, act_num),
             cleanup_trigger: CLEANUP,
         }
     }
@@ -118,8 +118,8 @@ impl SomeAction {
             return cmbx;
         }
 
-        if sqrx.pn == Pn::One && cmbx == Truth::M {
-            return cmbx;
+        if sqrx.pn == Pn::One && sqry.pn == Pn::One && cmbx == Truth::M {
+            return Truth::F;
         }
 
         // Check for Pn values not equal, but more samples may allow the combination.
@@ -536,7 +536,6 @@ impl SomeAction {
             dom,
             self.num,
         );
-
     } // end create_groups_from_square
 
     /// Return needs for states that are not in a group.
@@ -802,6 +801,7 @@ impl SomeAction {
 
         let mut sqr_del = StateStore::new();
 
+        // Don'n delete squares currently in needs.
         for stax in stas.iter() {
             // Check needs
             let mut in_needs = false;
@@ -815,6 +815,7 @@ impl SomeAction {
                 continue;
             }
 
+            // Don't delete squares in groups.
             let mut in_groups = false;
             for grpx in self.groups.iter() {
                 if grpx.region.is_superset_of_state(stax) {
@@ -845,6 +846,7 @@ impl SomeAction {
                 continue;
             }
 
+            // Don't delete squares in seek edge regions.
             let mut in_seek = false;
             for regx in self.seek_edge.iter() {
                 if regx.is_superset_of_state(stax) {
@@ -856,13 +858,20 @@ impl SomeAction {
                 continue;
             }
 
+            // Don't delete squares that are not in a group.
+            // That is, squares with Pn: > One that need more samples.
             if self.groups.num_groups_state_in(stax) == 0 {
                 continue;
             }
 
+            // Save for later display
             sqr_del.push(stax.clone());
+
+            // Delete the square
             self.squares.remove(stax);
         } // next stax
+
+        // Display squares deleted.
         if sqr_del.len() > 0 {
             println!(
                 "\nDom {} Act {} deleted unneeded squares {}",
@@ -1392,16 +1401,14 @@ impl SomeAction {
     }
 
     /// Return true if all pairs of squares in a region have a combination value of Truth::T.
-    fn all_true_square_pairs_in_region(&self, regx: &SomeRegion) -> bool {
+    fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
         // Check if any square pairs are incompatible
-        for inx in 0..(sqrs_in_reg.len() - 1) {
-            for iny in (inx + 1)..sqrs_in_reg.len() {
-                if sqrs_in_reg[inx].can_combine(&sqrs_in_reg[iny]) != Truth::T {
-                    return false;
-                }
+        for sqrx in sqrs_in_reg {
+            if sqrx.rules.is_subset_of(rules) == false {
+                return false;
             }
         }
         true
@@ -1570,20 +1577,20 @@ impl SomeAction {
 
         let mut nds = NeedStore::new();
 
-        let reg_both = grpx.region.union(&grpy.region);
-
-        if grpx.pn == Pn::Unpredictable && grpy.pn == Pn::Unpredictable {
-            if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
-            }
-            return nds;
-        }
-
         let reg_int = grpx.region.intersection(&grpy.region);
 
         if grpx.pn != grpy.pn {
             let mut nds = NeedStore::new();
-            nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
+            nds.push(self.cont_int_region_need(&reg_int, &grpx, &grpy));
+            return nds;
+        }
+
+        let reg_both = grpx.region.union(&grpy.region);
+
+        if grpx.pn == Pn::Unpredictable || grpy.pn == Pn::Unpredictable {
+            if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
+                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            }
             return nds;
         }
 
@@ -1602,23 +1609,18 @@ impl SomeAction {
 
                 //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
 
-                nds.push(self.cont_int_region_needs(&regy, &grpx, &grpy));
+                nds.push(self.cont_int_region_need(&regy, &grpx, &grpy));
             } else {
                 //println!("pn2 whole intersection is bad");
-                nds.push(self.cont_int_region_needs(&reg_int, &grpx, &grpy));
+                nds.push(self.cont_int_region_need(&reg_int, &grpx, &grpy));
             }
 
             return nds;
         }
 
-        // rulsx == rulsy
-        if self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn) {
-            if grpx.pn == Pn::One {
-                if self.all_true_square_pairs_in_region(&reg_both) {
-                    return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
-                }
-            } else {
-                if self.no_incompatible_square_pair_in_region(&reg_both) {
+        if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
+            if self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn) {
+                if self.all_subset_rules_in_region(&reg_both, &rulsxy) {
                     return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
                 }
             }
@@ -1631,7 +1633,7 @@ impl SomeAction {
     /// If no prior samples in the intersection, seek one.
     /// If a prior sampled square is pnc, panic.
     /// If prior samples found, seek additional samples.
-    fn cont_int_region_needs(
+    fn cont_int_region_need(
         &self,
         regx: &SomeRegion,
         grpx: &SomeGroup,
@@ -1720,7 +1722,7 @@ impl SomeAction {
             group2: grpy.region.clone(),
             ruls2,
         }
-    } // end cont_int_region_needs
+    } // end cont_int_region_need
 
     /// Get possible steps that can be used to make at least part of a
     /// given change.
@@ -1851,14 +1853,14 @@ impl SomeAction {
         cur_state: &SomeState,
         ndx: &SomeNeed,
     ) -> SomeState {
-        let astate = self.do_something.take_action(dom, self.num, cur_state);
+        let astate = self.do_something.take_action(cur_state);
         self.eval_need_sample(cur_state, ndx, &astate, dom);
         astate
     }
 
     /// Take an action with the current state.
     pub fn take_action(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
-        let astate = self.do_something.take_action(dom, self.num, cur_state);
+        let astate = self.do_something.take_action(cur_state);
         self.eval_sample(cur_state, &astate, dom);
         astate
     }

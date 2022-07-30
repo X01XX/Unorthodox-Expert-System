@@ -129,7 +129,7 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        let actx = SomeAction::new(self.actions.len());
+        let actx = SomeAction::new(self.num, self.actions.len());
         self.actions.push(actx);
     }
 
