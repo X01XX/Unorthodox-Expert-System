@@ -1489,13 +1489,12 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Two PN 1 states, with combinable rules, can be combined, if there are no PN > 1 states between them, and no states with rules that are not a subset of their combined rules.
     </p>
     <p>
-    Two PN 2 PNC states can be combined if one of the two possible combinations of rules is valid.
+    Two PN 2 PNC states can be combined if exactly one of the two possible combinations of rules is valid.
     That is [s1.rule1 union s2.rule1] and [s1.rule2 union s2.rule2] or [s1.rule1 union s2.rule2] and [s1.rule2 union s2.rule1].
     And there are no PN-not-2, PNC, states between them.  And there are no state rules between them that are not subsets of their combined rules.
-    <p>
     </p>
     <p>
-    If two PN 2 PNC states can be combined in both ways, due to [0->0, 0->1] and [1->1, 1->0], it will produce two sets of rules, one with [X->1, X->0], one with [X->x, X->X]. This causes various problems, which to choose, how to form unions, intersections, determine equality, so the two states should not form a union.
+    For exactly one combination to be valid, the two states must both have at least one bit position where they are both 0->0, 0->1 or 1->1, 1->0.
     </p>
     <h3>Contradictory Intersections</h3>
     <p>
@@ -1745,7 +1744,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 07/30/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/31/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

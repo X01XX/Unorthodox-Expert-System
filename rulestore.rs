@@ -216,9 +216,6 @@ impl RuleStore {
         }
 
         if self.len() == 2 {
-            //assert!(self.initial_region().x_mask().is_low());
-            //assert!(other.initial_region().x_mask().is_low());
-
             let mut ordera = false;
 
             let rul0 = self.avec[0].union(&other.avec[0]);
@@ -243,18 +240,11 @@ impl RuleStore {
                 orderb = true;
             }
 
-            // For any two-result state, there must be a 01 and 00, alternating change bit,
-            // or a 10 and 11 alternating change bit.
+            // For any Pn::Two RuleStore, there must be at least one single-bit position of 0->1 and 0->0 alternating result,
+            // or a 1->0 and 1->1 alternating result.
             //
-            // The predictive power is in the alternation, one sample after another for a specific bit position and value.
-            //
-            // Making a union of the two different bits (other bit positions being compatible) makes either (XX, Xx) or (X0, X1),
-            // which presents problems for future unions, intersections and equality tests.
-            //
-            // You could choose only one of the two options, I prefer (XX, Xx), but if there are two such alternating positions,
-            // you may have to decide between a wrong choice, and a wrong choice.
-            //
-            // Disallowing this kind of union can be seen as preventing an X initial bit in that position.
+            // To join two Pn::Two RuleStores in one of two possible sequences, there must be at least one matching initial single-bit position
+            // with an alternating result.
             if ordera && orderb {
                 return None;
             }

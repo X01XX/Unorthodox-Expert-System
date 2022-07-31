@@ -111,10 +111,12 @@ impl SomeAction {
     /// and the squares between them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.state != sqry.state);
+        println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
         let cmbx = sqrx.can_combine(&sqry);
 
         if cmbx == Truth::F {
+            println!("can_combine skip 1");
             return cmbx;
         }
 
@@ -1789,17 +1791,19 @@ impl SomeAction {
     /// Remove subset combinations.
     /// Return the regions resulting from successful combinations.
     pub fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
-        //println!("possible_group_regions from sqr {}", &sqrx.state);
+        println!("possible_group_regions from sqr {}", &sqrx.state);
 
         let mut rsx = RegionStore::new();
 
         // Collect possible region, deleting subset regions
         for (_key, sqry) in &self.squares.ahash {
             if sqry.state == sqrx.state {
+                println!("skip 1 square {}", sqry.state);
                 continue;
             }
 
             if sqrx.pn != sqry.pn {
+                println!("skip 2 square {}", sqry.state);
                 continue;
             }
 
@@ -1807,14 +1811,17 @@ impl SomeAction {
             let regx = SomeRegion::new(&sqrx.state, &sqry.state);
 
             if self.groups.any_superset_of(&regx) {
+                println!("skip 3 square {}", sqry.state);
                 continue;
             }
 
             if rsx.any_superset_of(&regx) {
+                println!("skip 4 square {}", sqry.state);
                 continue;
             }
 
             if self.can_combine(&sqrx, &sqry) != Truth::T {
+                println!("skip 5 square {}", sqry.state);
                 continue;
             }
 
@@ -1865,3 +1872,45 @@ impl SomeAction {
         astate
     }
 } // end impl SomeAction
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test making a group from two Pn::Two squares.
+    #[test]
+    fn possible_region() -> Result<(), String> {
+        let mut act0 = SomeAction::new(0, 0);
+
+        // Set up 2-result square sf.
+        let sf = SomeState::new_from_string(1, "s1111").unwrap();
+        let se = SomeState::new_from_string(1, "s1110").unwrap();
+
+        act0.eval_sample(&sf, &sf, 0);
+        act0.eval_sample(&sf, &se, 0);
+        act0.eval_sample(&sf, &sf, 0);
+        act0.eval_sample(&sf, &se, 0);
+
+        // Set up 2-result square s1.
+        let s1 = SomeState::new_from_string(1, "s0001").unwrap();
+        let s0 = SomeState::new_from_string(1, "s0000").unwrap();
+        act0.eval_sample(&s1, &s1, 0);
+        act0.eval_sample(&s1, &s0, 0);
+        act0.eval_sample(&s1, &s1, 0);
+        act0.eval_sample(&s1, &s0, 0);
+        println!("Act: {}", &act0);
+
+        let memory = VecDeque::<SomeState>::new();
+        let nds = act0.get_needs(&s1, 0, &memory);
+        println!("needs: {}", nds);
+
+        if nds.len() > 0 {
+            return Err(format!("Unexpected needs?"));
+        }
+        if act0.groups.len() != 1 {
+            return Err(format!("Unexpected groups?"));
+        }
+
+        Ok(())
+    }
+}
