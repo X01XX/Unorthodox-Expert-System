@@ -111,12 +111,11 @@ impl SomeAction {
     /// and the squares between them.
     pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.state != sqry.state);
-        println!("can_combine: {} and {}?", sqrx.state, sqry.state);
+        //println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
         let cmbx = sqrx.can_combine(&sqry);
 
         if cmbx == Truth::F {
-            println!("can_combine skip 1");
             return cmbx;
         }
 
@@ -1791,19 +1790,17 @@ impl SomeAction {
     /// Remove subset combinations.
     /// Return the regions resulting from successful combinations.
     pub fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
-        println!("possible_group_regions from sqr {}", &sqrx.state);
+        //println!("possible_group_regions from sqr {}", &sqrx.state);
 
         let mut rsx = RegionStore::new();
 
         // Collect possible region, deleting subset regions
         for (_key, sqry) in &self.squares.ahash {
             if sqry.state == sqrx.state {
-                println!("skip 1 square {}", sqry.state);
                 continue;
             }
 
             if sqrx.pn != sqry.pn {
-                println!("skip 2 square {}", sqry.state);
                 continue;
             }
 
@@ -1811,17 +1808,14 @@ impl SomeAction {
             let regx = SomeRegion::new(&sqrx.state, &sqry.state);
 
             if self.groups.any_superset_of(&regx) {
-                println!("skip 3 square {}", sqry.state);
                 continue;
             }
 
             if rsx.any_superset_of(&regx) {
-                println!("skip 4 square {}", sqry.state);
                 continue;
             }
 
             if self.can_combine(&sqrx, &sqry) != Truth::T {
-                println!("skip 5 square {}", sqry.state);
                 continue;
             }
 
