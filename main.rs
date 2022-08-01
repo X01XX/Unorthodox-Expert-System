@@ -976,11 +976,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs[dom_num].boredom > 0 && can_do_flag == false {
         print!(
-            "\nCurrent Domain: {} of {} Boredom duration {} limit {}",
+            "\nCurrent Domain: {} of {}",
             dom_num,
             dmxs.num_domains(),
-            dmxs[dom_num].boredom,
-            dmxs[dom_num].boredom_limit(),
         );
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
@@ -1000,10 +998,17 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
                 let notin = dmxs[dom_num]
                     .optimal
                     .not_supersets_of_state(&dmxs[dom_num].get_current_state());
-                println!(
-                    "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}",
-                    &dmxs.step, dom_num, &cur_state, optstr, &notin
-                );
+                if dmxs[dom_num].boredom > dmxs[dom_num].boredom_limit() {
+                    println!(
+                        "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}  Bored! (or satiated)",
+                        &dmxs.step, dom_num, &cur_state, optstr, &notin
+                    );
+                } else {
+                    println!(
+                        "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}  Boredom duration {} limit {}",
+                        &dmxs.step, dom_num, &cur_state, optstr, &notin, dmxs[dom_num].boredom, dmxs[dom_num].boredom_limit()
+                    );
+                }
             } else {
                 println!(
                     "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}",
