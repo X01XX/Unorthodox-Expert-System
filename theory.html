@@ -1204,18 +1204,25 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <li>0 &#8594; 1, 0 &#8594; 1 = 0 &#8594; 1</li>
  <li>1 &#8594; 1, 1 &#8594; 1 = 1 &#8594; 1</li>
  <li>1 &#8594; 0, 1 &#8594; 0 = 1 &#8594; 0</li>
- <li>0 &#8594; 0, 0 &#8594; 1 = 0 &#8594; X (disallowed)</li>
+ </ul>
+    <ul class="indent1">
  <li>0 &#8594; 0, 1 &#8594; 1 = X &#8594; X</li>
  <li>0 &#8594; 0, 1 &#8594; 0 = X &#8594; 0</li>
  <li>0 &#8594; 1, 1 &#8594; 1 = X &#8594; 1</li>
  <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; x</li>
+ </ul>
+    <ul class="indent1">
+ <li>0 &#8594; 0, 0 &#8594; 1 = 0 &#8594; X (disallowed)</li>
  <li>1 &#8594; 1, 1 &#8594; 0 = 1 &#8594; X (disallowed)</li>
     </ul>
     <p>
- The allowed combinations are by similar changes (or lack of change) and/or similar results.
+    Combinations of the same one-bit rules, the first set of four, produce the same.
     </p>
     <p>
- The combinations that result in 0&#8594;X and 1&#8594;X, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
+    Combinations where the initial bits are different, the second set of four, will always be valid.
+    </p>
+    <p>
+ Combinations that result in 0&#8594;X and 1&#8594;X, the third set, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
     </p>
     <p>
  Combinations of more than two different 1-bit rules will always combine to one of 0&#8594;X and/or 1&#8594;X, and are disallowed.
@@ -1744,7 +1751,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 07/31/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 08/02/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
