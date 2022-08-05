@@ -33,4 +33,4 @@ Assume a device with a state made of a number of bits, actions that can change t
 After some testing of actions, the device can develop rules which can then be used to put the device into an optimal state.
 If something happens to change the state of the device to a non-optimal state, the device can again run rules to put it into an optimal state.
 
-At a higher level, maybe something gets "bored", so the optimum state changes.  At some level are we following something like: food -> shelter -> rest -> food ?
+At a higher level, maybe something gets "bored", or "satiated", so the optimum state changes.  At some level are we following something like: food -> shelter -> rest -> food ?
