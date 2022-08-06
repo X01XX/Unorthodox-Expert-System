@@ -383,9 +383,13 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         if let Some(steps) = self.random_depth_first_search2(from_reg, goal_reg, depth) {
             if let Some(steps2) = steps.shortcuts() {
-                return Some(steps2);
+                if steps2.is_valid() {
+                    return Some(steps2);
+                }
             }
-            return Some(steps);
+            if steps.is_valid() {
+                return Some(steps);
+            }
         }
         None
     }
@@ -440,6 +444,7 @@ impl SomeDomain {
 
         // Check depth
         if depth == 0 {
+            //println!("depth limit exceeded");
             return None;
         }
 
@@ -514,11 +519,10 @@ impl SomeDomain {
             {
                 let stepy = stepx.restrict_initial_region(&first_steps.result_region());
                 if let Some(next_steps) =
-                    self.random_depth_first_search(&stepy.result, goal_reg, depth - 1)
+                    self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
                 {
-                    if let Some(steps1) = first_steps.link(&SomePlan::new_with_step(stepy)) {
-                        return steps1.link(&next_steps);
-                    }
+                    let steps1 = first_steps.link(&SomePlan::new_with_step(stepy));
+                    return Some(steps1.link(&next_steps));
                 }
             }
             return None;
@@ -543,7 +547,7 @@ impl SomeDomain {
             if let Some(next_steps) =
                 self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
             {
-                return SomePlan::new_with_step(stepy).link(&next_steps);
+                return Some(SomePlan::new_with_step(stepy).link(&next_steps));
             }
             return None;
         }
@@ -554,7 +558,7 @@ impl SomeDomain {
             if let Some(prev_steps) =
                 self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1)
             {
-                return prev_steps.link(&SomePlan::new_with_step(stepy));
+                return Some(prev_steps.link(&SomePlan::new_with_step(stepy)));
             }
             return None;
         }
@@ -566,17 +570,14 @@ impl SomeDomain {
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
     pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
-        //println!("make_plan start");
+        //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
             return Some(SomePlan::new());
         }
 
-        // Try to make a plan several times.
-        //let mut plans = Vec::<SomePlan>::new();
         let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
-        //println!("make_plan: from {} to {}", cur_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);

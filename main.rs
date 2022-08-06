@@ -975,11 +975,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs[dom_num].boredom > 0 && can_do_flag == false {
-        print!(
-            "\nCurrent Domain: {} of {}",
-            dom_num,
-            dmxs.num_domains(),
-        );
+        print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains(),);
     } else {
         print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
     }

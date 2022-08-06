@@ -48,45 +48,48 @@ impl SomePlan {
         }
     }
 
+    /// Return a new plan with one given step.
     pub fn new_with_step(stepx: SomeStep) -> Self {
         Self {
             steps: StepStore::new_with_step(stepx),
         }
     }
 
-    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
+    /// Return a plan where the result region of a known, valid, plan is restricted by a region
+    /// known to intersect the plans result region.
+    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
+        assert!(self.len() > 0);
+        assert!(regx.intersects(self.result_region()));
+
         let mut steps = StepStore::with_capacity(self.len());
 
-        let mut regy = regx.clone();
+        let mut cur_reg = regx.clone();
 
         for inx in (0..self.len()).rev() {
             let stpx = &self.steps[inx];
 
-            if regy.intersects(&stpx.result) {
-                let stpy = stpx.restrict_result_region(&regy);
+            let stpy = stpx.restrict_result_region(&cur_reg);
 
-                regy = stpy.initial.clone();
-                steps.push(stpy);
-            } else {
-                return None;
-            }
+            cur_reg = stpy.initial.clone();
+
+            steps.push(stpy);
         } //next inx
 
         if steps.len() > 1 {
             steps.reverse();
         }
 
-        Some(Self { steps })
+        Self { steps }
     }
 
     /// Check if a plan is a valid sequence of steps.
-    /// There are greater than zero steps.
     /// Each step changes something.
     /// Sequential step pairs result and initial regions are equal.
-    /// Steps do not form a loop.
+    /// The result appears only once in the chain of steps.
+    /// The initial and result regions of the whole plan are not the same.
     pub fn is_valid(&self) -> bool {
         if self.len() == 0 {
-            return false;
+            return true;
         }
 
         if self.len() > 1 {
@@ -122,23 +125,25 @@ impl SomePlan {
         true
     }
 
-    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
+    /// Return a plan where the initial region of a known, valid, plan is restricted by a region
+    /// known to intersect the plans initial region.
+    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
+        assert!(self.len() > 0);
+        assert!(regx.intersects(self.initial_region()));
+
         let mut steps = StepStore::with_capacity(self.len());
 
-        let mut regy = regx.clone();
+        let mut cur_reg = regx.clone();
 
         for stepx in self.iter() {
-            if regy.intersects(&stepx.initial) {
-                let stepy = stepx.restrict_initial_region(&regy);
-                regy = stepy.result.clone();
+            let stepy = stepx.restrict_initial_region(&cur_reg);
 
-                steps.push(stepy);
-            } else {
-                return None;
-            }
+            cur_reg = stepy.result.clone();
+
+            steps.push(stepy);
         } //next stepx
 
-        Some(Self { steps })
+        Self { steps }
     }
 
     /// Append a StepStore to a StepStore.
@@ -146,7 +151,7 @@ impl SomePlan {
         self.steps.append(&mut val.steps); // empties val.avec
     }
 
-    /// Add a step to a StepStore.
+    /// Add a step to a SomePlan.
     pub fn push(&mut self, stepx: SomeStep) {
         if self.len() > 0 {
             assert!(self.result_region() == &stepx.initial);
@@ -154,40 +159,43 @@ impl SomePlan {
         self.steps.push(stepx);
     }
 
-    /// Link two SomePlans together, return Some(SomePlan).
-    /// Restrict StepStores that have an intersection of the result and
-    /// initial regions.
-    /// Restricting the steps, forward and backward, from that intersection may
-    /// cause a break in the path, which is why None may be returned.
-    pub fn link(&self, other: &Self) -> Option<Self> {
+    /// Return the result of linking two plans together, that are known to have a result/initial intersection.
+    pub fn link(&self, other: &Self) -> Self {
         // Sanity checks
         assert!(self.len() > 0);
         assert!(other.len() > 0);
         assert!(self.result_region().intersects(&other.initial_region()));
 
         // Restrict the StepStores, forward and backward.
-        if self.result_region().intersects(&other.initial_region()) {
-            let regx = self.result_region().intersection(&other.initial_region());
+        let regx = self.result_region().intersection(&other.initial_region());
 
-            if let Some(mut steps1) = self.restrict_result_region(&regx) {
-                if let Some(mut steps2) = other.restrict_initial_region(&regx) {
-                    steps1.append(&mut steps2);
+        let mut steps1 = self.restrict_result_region(&regx);
+        let mut steps2 = other.restrict_initial_region(&regx);
+        steps1.append(&mut steps2);
 
-                    //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-                    if steps1.is_valid() {
-                        return Some(steps1);
-                    } else {
-                        return None;
-                    }
-                }
-            }
-        }
-        None
+        //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
+        return steps1;
     } // end link
 
     /// Return a plan after checking for shortcuts.
     /// Return None if no shortcuts found.
     pub fn shortcuts(&self) -> Option<Self> {
+        if let Some(mut planx) = self.shortcuts2() {
+            // First shortcut found, any others?
+            loop {
+                if let Some(plany) = planx.shortcuts2() {
+                    planx = plany;
+                } else {
+                    return Some(planx);
+                }
+            }
+        }
+        None
+    }
+
+    /// Return a plan after checking for one shortcut.
+    /// Return None if no shortcut found.
+    pub fn shortcuts2(&self) -> Option<Self> {
         if self.len() == 1 {
             return None;
         }
@@ -414,7 +422,7 @@ mod tests {
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
 
-        let stp_str3 = stp_str1.link(&stp_str2).unwrap();
+        let stp_str3 = stp_str1.link(&stp_str2);
         println!("stp3 {}", &stp_str3);
         if stp_str3.len() != 4 {
             return Err(format!("Len NE 4? {}", stp_str3).to_string());
@@ -436,7 +444,8 @@ mod tests {
         }
 
         // Result 101X appears twice when linked in this order, so its invalid.
-        if let Some(stp_str4) = stp_str2.link(&stp_str1) {
+        let stp_str4 = stp_str2.link(&stp_str1);
+        if stp_str4.is_valid() {
             return Err(format!("stp4 {} valid?", &stp_str4).to_string());
         } else {
             println!("Link not valid, as expected");
