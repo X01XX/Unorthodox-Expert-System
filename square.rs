@@ -21,11 +21,6 @@ impl fmt::Display for SomeSquare {
             rc_str.push_str(", pnc: f");
         }
 
-        if self.changed {
-            rc_str.push_str(", ch: t");
-        } else {
-            rc_str.push_str(", ch: f");
-        }
         rc_str.push_str(&format!(", {}", self.rules));
         rc_str.push_str(&format!(", rslts: {}", &self.results));
 
@@ -51,7 +46,6 @@ pub struct SomeSquare {
     pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
     pub pn: Pn,               // Square Pattern number.
     pub pnc: bool,            // Pattern number confirmed.
-    pub changed: bool,        // Last result changed the pn or pnc field.
 }
 
 impl SomeSquare {
@@ -66,7 +60,6 @@ impl SomeSquare {
             rules,
             pn: Pn::One,
             pnc: false,
-            changed: true,
         }
     }
 
@@ -108,13 +101,10 @@ impl SomeSquare {
         self.pn = self.results.add_result(st);
         self.pnc = self.calc_pnc();
 
+        let mut changed = false;
         if self.pn != sav_pn || self.pnc != sav_pnc {
-            self.changed = true;
-        } else {
-            self.changed = false;
-        }
+            changed = true;
 
-        if self.changed {
             match self.pn {
                 Pn::One => {
                     if self.rules.len() != 1 {
@@ -153,7 +143,7 @@ impl SomeSquare {
         }
 
         println!("{}", &str_info);
-        self.changed
+        changed
     }
 
     /// Return the number of results stored for the square.
@@ -181,7 +171,6 @@ impl SomeSquare {
         rc_str.push_str(&format!("{}", &self.state));
         rc_str.push_str(&format!(", pn: {}", &self.pn));
         rc_str.push_str(&format!(", pnc: {}", &self.pnc));
-        rc_str.push_str(&format!(", ch: {}", &self.changed));
         rc_str.push_str(&format!(", {}", self.rules));
 
         rc_str.push(']');
@@ -270,7 +259,6 @@ mod tests {
             SomeState::new(SomeBits::new_from_string(1, "0b0101").unwrap()),
             SomeState::new(SomeBits::new_from_string(1, "0b0101").unwrap()),
         );
-        assert!(sqrx.changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc == false);
 
@@ -278,7 +266,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed && sqrx.changed);
+        assert!(changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 
@@ -286,7 +274,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false && sqrx.changed == false);
+        assert!(changed == false);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 
@@ -294,7 +282,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0100").unwrap(),
         ));
-        assert!(changed && sqrx.changed);
+        assert!(changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
@@ -302,7 +290,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false && sqrx.changed == false);
+        assert!(changed == false);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
@@ -310,7 +298,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0100").unwrap(),
         ));
-        assert!(changed && sqrx.changed);
+        assert!(changed);
         assert!(sqrx.pn == Pn::Two);
         assert!(sqrx.pnc);
 
@@ -318,7 +306,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false && sqrx.changed == false);
+        assert!(changed == false);
         assert!(sqrx.pn == Pn::Two);
         assert!(sqrx.pnc);
 
@@ -326,7 +314,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed && sqrx.changed);
+        assert!(changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
@@ -334,7 +322,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false && sqrx.changed == false);
+        assert!(changed == false);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
@@ -342,7 +330,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed && sqrx.changed);
+        assert!(changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 

@@ -365,9 +365,7 @@ impl SomeAction {
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
-            sqrx.add_result(new_state.clone());
-
-            if sqrx.changed {
+            if sqrx.add_result(new_state.clone()) {
                 self.check_square_new_sample(cur, dom);
             }
             return;

@@ -21,7 +21,7 @@
 //!  Pn::None ['X', 'Y', 'Y'] from Pn::Two  ['X', 'Y'] + Y
 //!  Pn::None ['Y', 'X', 'X'] from Pn::Two  ['Y', 'X'] + X
 //!  Pn::None ['Y', 'Y', 'X'] from Pn::One  ['Y', 'Y'] + X
-//!
+//!most_recent_result
 //! Fourth Sample
 //!  Pn::One  ['X', 'X', 'X', 'X'] from Pn::One  ['X', 'X', 'X'] + X
 //!  Pn::One  ['Y', 'Y', 'Y', 'Y'] from Pn::One  ['Y', 'Y', 'Y'] + Y
@@ -155,16 +155,12 @@ impl ResultStore {
 
     /// Calculate the Pattern Number, after adding a result.
     /// Due to the way the function is used, the minimum number of results will be two.
-    /// Assume the Pn value was correct before adding the most recent result.
     fn calc_pn(&self) -> Pn {
-        if self.astore.len() == 1 {
-            return Pn::One;
-        }
 
         // Check for Pn::One.
         let mut pn_one = true;
         for inx in 1..self.astore.len() {
-            if self.astore[inx] != self.astore[0] {
+            if self.astore[inx] !=  self.astore[0] {
                 pn_one = false;
             }
         }
@@ -172,19 +168,15 @@ impl ResultStore {
             return Pn::One;
         }
 
-        if self.astore.len() == 2 {
-            return Pn::Two;
-        }
-
+        // Check for not Pn::Two
         if self.astore.len() > 2 {
             if self.astore[0] != self.astore[2] {
                 return Pn::Unpredictable;
             }
-        }
-
-        if self.astore.len() > 3 {
-            if self.astore[1] != self.astore[3] {
-                return Pn::Unpredictable;
+            if self.astore.len() > 3 {
+                if self.astore[1] != self.astore[3] {
+                    return Pn::Unpredictable;
+                }
             }
         }
 
