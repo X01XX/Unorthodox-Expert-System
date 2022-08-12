@@ -78,6 +78,25 @@ impl SomeBits {
         SomeBits { ints }
     }
 
+    /// Return a SomeBits instance that is the combintation of two.
+    pub fn combine(bitvec: &Vec::<&SomeBits>) -> Self {
+
+        let mut num_ints = 0;
+        for bitsx in bitvec.iter() {
+            num_ints += bitsx.num_ints();
+        }
+
+        let mut avec = Vec::<u8>::with_capacity(num_ints);
+
+        for bitsx in bitvec.iter() {
+            for num in bitsx.ints.iter() {
+                avec.push(*num);
+            }
+        }
+
+        SomeBits::new(avec)
+    }
+
     /// Return a bits instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     /// Underscore character is ignored.
@@ -465,6 +484,7 @@ impl SomeBits {
     pub fn push_0(&self) -> Self {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
+
 } // end impl SomeBits
 
 #[cfg(test)]
