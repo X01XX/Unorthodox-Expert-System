@@ -428,6 +428,35 @@ impl DomainStore {
     pub fn len(&self) -> usize {
         self.avec.len()
     }
+
+    /// Combine a list of states, to produce a larger state.
+    pub fn combine_states(&self) -> SomeState {
+        let mut ret_state = self[0].cur_state.clone();
+
+        for inx in 1..self.len() {
+            ret_state = ret_state.combine(&self[inx].cur_state);
+        }
+
+        ret_state
+    }
+
+    /// Split a state to match domains
+    pub fn split_state(&self, _astate: &SomeState) -> Vec<SomeState> {
+        let ret_vec = Vec::<SomeState>::new();
+
+        let mut place = 0;
+        for domx in self.avec.iter() {
+            let num_ints = domx.num_ints;
+
+            println!("dom {} num_ints {}", domx.num, num_ints);
+            for inx in place..(place + num_ints) {
+                println!("inx = {}", inx);
+            }
+            place += num_ints;
+        }
+
+        ret_vec
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -440,5 +469,72 @@ impl Index<usize> for DomainStore {
 impl IndexMut<usize> for DomainStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
         &mut self.avec[i]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::regionstore::RegionStore;
+
+    // Test combine
+    #[test]
+    fn combine_states() -> Result<(), String> {
+        // Init a DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
+
+        // Create domain 0.
+        let dom0 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        dmxs.push(dom0);
+
+        // Create domain 1.
+        let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
+        let dom1 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        dmxs.push(dom1);
+
+        let st3 = dmxs.combine_states();
+        println!("st3: {}", st3);
+
+        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
+
+        if st3 != st4 {
+            return Err(format!("{} ne {} ?", st3, st4));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn split_state() -> Result<(), String> {
+        // Init a DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
+
+        // Create domain 0.
+        let dom0 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        dmxs.push(dom0);
+
+        // Create domain 1.
+        let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
+        let dom1 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        dmxs.push(dom1);
+
+        let st3 = dmxs.combine_states();
+        println!("st3: {}", st3);
+
+        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
+
+        if st3 != st4 {
+            return Err(format!("{} ne {} ?", st3, st4));
+        }
+
+        dmxs.split_state(&st3);
+
+        //assert!(1 == 2);
+
+        Ok(())
     }
 }

@@ -64,7 +64,7 @@ pub struct SomeDomain {
     /// Actions the Domain can take.
     pub actions: ActionStore,
     /// The Current, internal, State.
-    cur_state: SomeState,
+    pub cur_state: SomeState,
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub boredom: usize,
@@ -83,8 +83,10 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(dom: usize, num_ints: usize, start_state: SomeState, optimal: RegionStore) -> Self {
+    pub fn new(dom: usize, start_state: SomeState, optimal: RegionStore) -> Self {
         // Check that optimal regions, if any, are the same number of ints.
+        let num_ints = start_state.num_ints();
+
         for regx in optimal.iter() {
             assert!(regx.num_ints() == num_ints);
         }
@@ -843,7 +845,6 @@ mod tests {
     fn make_plan_direct() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -901,7 +902,6 @@ mod tests {
     fn make_plan_asymmetric() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -960,7 +960,6 @@ mod tests {
     fn need_for_state_not_in_group() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1023,7 +1022,6 @@ mod tests {
     fn need_additional_group_state_samples() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1100,7 +1098,6 @@ mod tests {
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1138,7 +1135,6 @@ mod tests {
         // Init domain with one action.
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1198,7 +1194,6 @@ mod tests {
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1269,7 +1264,6 @@ mod tests {
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1332,7 +1326,6 @@ mod tests {
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            2,
             SomeState::new_from_string(2, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1361,7 +1354,6 @@ mod tests {
     fn compatible_group_intersection_needs() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1405,7 +1397,6 @@ mod tests {
     fn seek_edge_needs() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );
@@ -1498,7 +1489,6 @@ mod tests {
     fn astate_make_group() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(
             0,
-            1,
             SomeState::new_from_string(1, "s1").unwrap(),
             RegionStore::new(),
         );

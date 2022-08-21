@@ -79,8 +79,7 @@ impl SomeBits {
     }
 
     /// Return a SomeBits instance that is the combintation of two.
-    pub fn combine(bitvec: &Vec::<&SomeBits>) -> Self {
-
+    pub fn combine(bitvec: &Vec<&SomeBits>) -> Self {
         let mut num_ints = 0;
         for bitsx in bitvec.iter() {
             num_ints += bitsx.num_ints();
@@ -484,7 +483,6 @@ impl SomeBits {
     pub fn push_0(&self) -> Self {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
-
 } // end impl SomeBits
 
 #[cfg(test)]

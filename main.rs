@@ -76,7 +76,7 @@ fn init() -> DomainStore {
     // Intersections of intersections, 0101.
 
     // Create domain 0.
-    let mut dom0 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
+    let mut dom0 = SomeDomain::new(dmxs.len(), init_state, regstr);
 
     // Add actions 0 through 8;
     dom0.add_action();
@@ -102,7 +102,7 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::new_from_string(num_ints, "rXXXXXX10_1XXX_XXXX").unwrap());
 
     // Create domain 1.
-    let mut dom1 = SomeDomain::new(dmxs.len(), num_ints, init_state, regstr);
+    let mut dom1 = SomeDomain::new(dmxs.len(), init_state, regstr);
 
     // Add actions 0 through 4.
     dom1.add_action();

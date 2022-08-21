@@ -156,11 +156,10 @@ impl ResultStore {
     /// Calculate the Pattern Number, after adding a result.
     /// Due to the way the function is used, the minimum number of results will be two.
     fn calc_pn(&self) -> Pn {
-
         // Check for Pn::One.
         let mut pn_one = true;
         for inx in 1..self.astore.len() {
-            if self.astore[inx] !=  self.astore[0] {
+            if self.astore[inx] != self.astore[0] {
                 pn_one = false;
             }
         }

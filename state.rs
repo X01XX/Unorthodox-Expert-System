@@ -44,15 +44,14 @@ impl SomeState {
     }
 
     /// Combine a list of states, to produce a larger state.
-    pub fn combine(statevec: &Vec::<&SomeState>) -> Self {
+    pub fn combine(self, other: &SomeState) -> Self {
+        let mut bitsvec = Vec::<&SomeBits>::with_capacity(2);
 
-        let mut bitsvec = Vec::<&SomeBits>::with_capacity(statevec.len());
+        bitsvec.push(&self.bts);
+        bitsvec.push(&other.bts);
 
-        for statex in statevec.iter() {
-            bitsvec.push(&statex.bts);
-        }
         Self {
-            bts: SomeBits::combine(&bitsvec)
+            bts: SomeBits::combine(&bitsvec),
         }
     }
 
@@ -144,14 +143,14 @@ mod tests {
     // Test combine
     #[test]
     fn combine() -> Result<(), String> {
-
         let st1 = SomeState::new_from_string(1, "s0x12").unwrap();
-        let st2 = SomeState::new_from_string(1, "s0xab").unwrap();
-        let avec = vec!(&st1, &st2);
-        let st3 = SomeState::combine(&avec);
+        let st2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
+
+        let st3 = st1.combine(&st2);
         println!("st3: {}", st3);
-        let st4 = SomeState::new_from_string(2, "s0x12ab").unwrap();
-        
+
+        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
+
         if st3 != st4 {
             return Err(format!("{} ne {} ?", st3, st4));
         }
