@@ -58,8 +58,32 @@ use std::process;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
+
+    // Load optimal regions
+    let mut optimal = Vec::<RegionStore>::new();
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    optimal.push(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    optimal.push(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    optimal.push(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    optimal.push(regstr);
+
     // Start a DomainStore
-    let mut dmxs = DomainStore::new();
+    let mut dmxs = DomainStore::new(optimal);
 
     // Initialize a domain, with number of integers = 1, initial state, optimal region.
 
@@ -220,6 +244,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 }
             }
         }
+
+        println!("\nAll domain states: {}", dmxs.all_current_states());
 
         print_domain(&dmxs, dom_num, can_do_flag);
         //println!("session loop 3");

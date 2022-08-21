@@ -28,6 +28,8 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
+use crate::regionstore::RegionStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -76,14 +78,32 @@ pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
     /// Current step number of the user interface.
     pub step: usize, // The current step number in the UI.
+    /// A counter to indicate the number of steps the current state is in the same optimal region
+    /// before getting bored.
+    pub boredom: usize,
+    /// Zero, or more, optimal regions that are sought if there are no needs.
+    /// This may be changed from the UI, see the help display for the commands "oa" and "od".
+    /// If more than one region, boredom may cause the program to run rules to switch to a different region.
+    pub optimal: Vec<RegionStore>,
+    /// RegionStore to add all possible intersections of the optimal states to discern.
+    optimal_and_ints: Vec<RegionStore>,
 }
 
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
-    pub fn new() -> Self {
+    pub fn new(optimal: Vec::<RegionStore>) -> Self {
+
+        let mut optimal_and_ints = optimal.clone();
+        if optimal.len() > 1 {
+            optimal_and_ints = Self::optimal_and_ints(&optimal);
+        }
+
         Self {
             avec: Vec::<SomeDomain>::with_capacity(5),
             step: 0,
+            boredom: 0,
+            optimal_and_ints,
+            optimal: optimal,
         }
     }
 
@@ -457,6 +477,44 @@ impl DomainStore {
 
         ret_vec
     }
+
+    /// Return a StateStore of all domain current states.
+    pub fn all_current_states(&self) -> StateStore {
+
+        let mut all_states = StateStore::with_capacity(self.len());
+
+        for domx in self.avec.iter() {
+            all_states.push(domx.cur_state.clone());
+        }
+
+        all_states
+    }
+
+    fn optimal_and_ints(optimal: &Vec::<RegionStore>) -> Vec::<RegionStore> {
+
+        let mut optimal_and_ints = Vec::<RegionStore>::new();
+        for regstrx in optimal.iter() {
+            optimal_and_ints.push(regstrx.clone());
+        }
+
+        for inx in 0..(optimal_and_ints.len() - 1) {
+
+            for iny in (inx + 1)..optimal_and_ints.len() {
+
+                if let Some(an_int) = optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny]) {
+
+                    if optimal_and_ints[inx].subset_each(&an_int) ||
+                        optimal_and_ints[iny].subset_each(&an_int) {
+                    } else {
+                        optimal_and_ints.push(an_int);
+                    }
+                }
+            }
+        }
+
+        optimal_and_ints
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -481,7 +539,7 @@ mod tests {
     #[test]
     fn combine_states() -> Result<(), String> {
         // Init a DomainStore.
-        let mut dmxs = DomainStore::new();
+        let mut dmxs = DomainStore::new(vec![RegionStore::new()]);
 
         let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
 
@@ -509,7 +567,7 @@ mod tests {
     #[test]
     fn split_state() -> Result<(), String> {
         // Init a DomainStore.
-        let mut dmxs = DomainStore::new();
+        let mut dmxs = DomainStore::new(vec![RegionStore::new()]);
 
         let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
 
@@ -522,19 +580,57 @@ mod tests {
         let dom1 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
         dmxs.push(dom1);
 
-        let st3 = dmxs.combine_states();
-        println!("st3: {}", st3);
-
         let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
 
-        if st3 != st4 {
-            return Err(format!("{} ne {} ?", st3, st4));
+        dmxs.split_state(&st4);
+
+        //assert!(1 == 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn all_current_states() -> Result<(), String> {
+        // Init a DomainStore.
+        let mut dmxs = DomainStore::new(vec![RegionStore::new()]);
+
+        let init_state1 = SomeState::new_from_string(1, "s0x12").unwrap();
+
+        // Create domain 0.
+        let dom0 = SomeDomain::new(dmxs.len(), init_state1.clone(), RegionStore::new());
+        dmxs.push(dom0);
+
+        // Create domain 1.
+        let init_state2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
+        let dom1 = SomeDomain::new(dmxs.len(), init_state2.clone(), RegionStore::new());
+        dmxs.push(dom1);
+
+        let all_states = dmxs.all_current_states();
+        println!("all states {}", all_states);
+
+        if all_states.len() != 2 {
+            return Err(format!("Invalid length {}", all_states.len()));
         }
 
-        dmxs.split_state(&st3);
+        if all_states[0] != init_state1 {
+            return Err(format!("Invalid first state {}", all_states[0]));
+        }
+
+        if all_states[1] != init_state2 {
+            return Err(format!("Invalid second state {}", all_states[1]));
+        }
 
         //assert!(1 == 2);
 
         Ok(())
     }
 }
+
+//#[cfg(test)]
+//mod tests {
+//    use super::*;
+//
+//    #[test]
+//    fn make_plan_direct() -> Result<(), String> {
+//    }
+//}

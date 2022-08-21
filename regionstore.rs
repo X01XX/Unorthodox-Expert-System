@@ -398,6 +398,34 @@ impl RegionStore {
         //println!("and_intersections: returning {} for {}", &ret_str, &self);
         ret_str
     }
+
+    // Return an intersection of each region, in order, of two RegionStores.
+    pub fn intersect_each(&self, other: &RegionStore) -> Option<RegionStore> {
+        assert!(self.len() == other.len());
+        
+        let mut ret = RegionStore::with_capacity(self.len());
+
+        for inx in 0..self.len() {
+            if self[inx].intersects(&other[inx]) {
+                ret.push(self[inx].intersection(&other[inx]));
+            } else {
+                return None;
+            }
+        }
+
+        Some(ret)
+    }
+
+    // Return true if each region in a RegionStore is a subset, in order, of two RegionStores.
+    pub fn subset_each(&self, other: &RegionStore) -> bool {
+        for inx in 0..self.len() {
+            if self[inx].is_subset_of(&other[inx]) {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl Index<usize> for RegionStore {
