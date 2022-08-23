@@ -15,8 +15,8 @@ impl fmt::Display for SomeStep {
 #[readonly::make]
 #[derive(Debug, Clone)]
 pub struct SomeStep {
-    pub initial: SomeRegion,
     pub act_num: usize,
+    pub initial: SomeRegion,
     pub result: SomeRegion,
     pub rule: SomeRule,
     pub alt_rule: bool,
@@ -30,8 +30,8 @@ impl SomeStep {
 
         let result = rule.result_region();
         Self {
-            initial,
             act_num,
+            initial,
             result,
             rule,
             alt_rule,
@@ -51,8 +51,8 @@ impl SomeStep {
         let rule_new = self.rule.restrict_initial_region(reg);
 
         Self {
-            initial: rule_new.initial_region(),
             act_num: self.act_num,
+            initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
             alt_rule: self.alt_rule,
@@ -67,8 +67,8 @@ impl SomeStep {
         let rule_new = self.rule.restrict_result_region(reg);
 
         Self {
-            initial: rule_new.initial_region(),
             act_num: self.act_num,
+            initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
             alt_rule: self.alt_rule,

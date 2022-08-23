@@ -7,6 +7,7 @@
 //! Housekeeping needs, like limiting a group.
 
 use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 
@@ -52,6 +53,12 @@ impl fmt::Display for SomeNeed {
             } => format!(
                 "N(Dom {} Pri {} To Optimal Region {})",
                 dom_num, pri, goal_reg,
+            ),
+            SomeNeed::ToRegion2 {
+                goal_regs,
+            } => format!(
+                "N(Pri {} To Optimal Regions {})",
+                pri, goal_regs,
             ),
             SomeNeed::LimitGroup {
                 dom_num,
@@ -179,6 +186,10 @@ pub enum SomeNeed {
         act_num: usize,
         goal_reg: SomeRegion,
     },
+    /// Move current state to given regions.
+    ToRegion2 {
+        goal_regs: RegionStore,
+    },
     /// Housekeeping, add a group.
     AddGroup {
         group_region: SomeRegion,
@@ -263,6 +274,18 @@ impl PartialEq for SomeNeed {
                     ..
                 } => {
                     if dom_num == dom_num_2 && goal_reg == goal_reg_2 {
+                        return true;
+                    }
+                }
+                _ => (),
+            },
+            SomeNeed::ToRegion2 {
+                goal_regs,
+            } => match other {
+                SomeNeed::ToRegion2 {
+                    goal_regs: goal_regs_2,
+                } => {
+                    if goal_regs == goal_regs_2 {
                         return true;
                     }
                 }
@@ -410,6 +433,7 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { .. } => format!("StateNotInGroup"),
             SomeNeed::ContradictoryIntersection { .. } => format!("ContradictoryIntersection"),
             SomeNeed::ToRegion { .. } => format!("ToRegion"),
+            SomeNeed::ToRegion2 { .. } => format!("ToRegion2"),
             SomeNeed::LimitGroup { .. } => format!("LimitGroup"),
             SomeNeed::ConfirmGroup { .. } => format!("ConfirmGroup"),
             SomeNeed::SeekEdge { .. } => format!("SeekEdge"),
@@ -433,7 +457,8 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { .. } => return 4,
             SomeNeed::ConfirmGroup { .. } => return 5,
             SomeNeed::LimitGroup { .. } => return 6,
-            SomeNeed::ToRegion { .. } => return 7,
+            SomeNeed::ToRegion { .. } => return 8,
+            SomeNeed::ToRegion2 { .. } => return 7,
             _ => return 9999,
         } // end match ndx
     } // end priority
@@ -508,7 +533,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { dom_num, .. } => return *dom_num,
             SomeNeed::SeekEdge { dom_num, .. } => return *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => return *dom_num,
-            _ => panic!("dom_num: not known for need {}", self.type_string()),
+            _ => panic!("dom_num: not known for need {}", self),
         } //end match self
     } // end dom_num
 

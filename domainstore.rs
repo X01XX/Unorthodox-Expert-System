@@ -78,15 +78,16 @@ pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
     /// Current step number of the user interface.
     pub step: usize, // The current step number in the UI.
-    /// A counter to indicate the number of steps the current state is in the same optimal region
-    /// before getting bored.
+    /// A counter to indicate the number of steps the current state is in the same optimal region.
     pub boredom: usize,
+    /// A limit for becomming bored, then moving to another optimal state.
+    pub boredom_limit: usize,
     /// Zero, or more, optimal regions that are sought if there are no needs.
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
     pub optimal: Vec<RegionStore>,
     /// RegionStore to add all possible intersections of the optimal states to discern.
-    optimal_and_ints: Vec<RegionStore>,
+    pub optimal_and_ints: Vec<RegionStore>,
 }
 
 impl DomainStore {
@@ -102,6 +103,7 @@ impl DomainStore {
             avec: Vec::<SomeDomain>::with_capacity(5),
             step: 0,
             boredom: 0,
+            boredom_limit: 0,
             optimal_and_ints,
             optimal: optimal,
         }
@@ -134,11 +136,27 @@ impl DomainStore {
             nds_agg.append(&mut nst);
         }
 
+//        if let Some(ndx) = self.check_optimal() {
+//            nds_agg.push(ndx);
+//        }
+        // Check optimal regions and boredom duration.
+        if self.optimal.len() > 1 {
+            let all_states = self.all_current_states();
+            let opt_sups = DomainStore::optimal_supersets_of_states(&all_states, &self.optimal);
+
+            if opt_sups.len() == 0 {
+                self.boredom = 0;
+            } else {
+                self.boredom += 1;
+            }
+        }
+
         nds_agg
     }
 
-    /// Run a plan for a given Domain
-    pub fn run_plan(&mut self, dmxi: usize, pln: &SomePlan) {
+    /// Run a plan for a given Domain.
+    /// Return true if the plan ran to completion.
+    pub fn run_plan(&mut self, dmxi: usize, pln: &SomePlan) -> bool {
         self.avec[dmxi].run_plan(pln)
     }
 
@@ -515,6 +533,177 @@ impl DomainStore {
         optimal_and_ints
     }
 
+    /// Return the boredom limit, given the current domain states, if any.
+    pub fn boredom_limit(&self, stas: &StateStore) -> usize {
+        // Get the optimal regions the current state is in.
+        let num_sups = self.number_supersets_of_states(stas);
+
+        3 * num_sups
+    }
+
+    /// Do functions related to the wish to be in an optimum region.
+    /// Increment the boredom duration, if needed.
+    /// Return a need to move to another optimal region, if needed.
+    pub fn check_optimal(&mut self) -> Option<SomeNeed> {
+        // Check if there are no optimal regions.
+        if self.optimal.len() == 0 {
+            return None;
+        }
+
+        let all_states = self.all_current_states();
+
+        let limit = self.boredom_limit(&all_states);
+
+        if self.any_supersets_of_states(&all_states) {
+            self.boredom += 1;
+            if self.boredom <= limit {
+                return None;
+            }
+        } else {
+            self.boredom = 0;
+        }
+
+        // Get regions the current state is not in.
+        let notsups = DomainStore::optimal_not_supersets_of_states(&all_states, &self.optimal);
+
+        // If the current state is not in at least one optimal region,
+        // return a need to move to an optimal region.
+        if notsups.len() > 0 {
+            let inx = rand::thread_rng().gen_range(0..notsups.len());
+            return Some(SomeNeed::ToRegion2 { goal_regs: notsups[inx].clone() });
+        }
+
+        None
+    }
+
+    /// Return the number of supersets of a StateStore
+    pub fn number_supersets_of_states(&self, stas: &StateStore) -> usize {
+        let mut ret = 0;
+
+        for regsx in self.optimal.iter() {
+            if regsx.is_superset_of_states(stas) {
+                ret += 1;
+            }
+        }
+        ret
+    }
+
+    /// Return a Vector of RegionStores not supersets of a given StateStore.
+    pub fn optimal_not_supersets_of_states(stas: &StateStore, optimal: &Vec<RegionStore>) -> Vec::<RegionStore> {
+        let mut ret_store = Vec::<RegionStore>::new();
+
+        for regsx in optimal.iter() {
+            if regsx.is_superset_of_states(stas) {
+            } else {
+                ret_store.push(regsx.clone());
+            }
+        }
+        ret_store
+    }
+
+    /// Return true if any RegionStore is a superset of a StateStore.
+    pub fn any_supersets_of_states(&self, stas: &StateStore) -> bool {
+
+        for regsx in self.optimal_and_ints.iter() {
+            if regsx.is_superset_of_states(&stas) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return list of optimal regions that are superset of a StateStore.
+    pub fn optimal_supersets_of_states(stas: &StateStore, optimal: &Vec<RegionStore>) -> Vec::<RegionStore> {
+        let mut ret = Vec::<RegionStore>::new();
+        for regsx in optimal.iter() {
+            if regsx.is_superset_of_states(&stas) {
+                ret.push(regsx.clone());
+            }
+        }
+        ret
+    }
+
+    // Print current states and optimal information.
+    /// Return true if the current states are in an optimal region.
+    pub fn print_optimal(&self) -> bool {
+        let mut ret = false;
+
+        let all_states = self.all_current_states();
+        let optimal_supersets = DomainStore::optimal_supersets_of_states(&all_states, &self.optimal);
+        if optimal_supersets.len() == 0 {
+            print!("\nAll Current states: {} in optimal regions: None, not in ", all_states);
+            for optx in self.optimal.iter() {
+                print!(" {}", optx);
+            }
+        } else {
+            ret = true;
+            print!("\nAll Current states: {} in optimal regions: ", all_states);
+            for optx in optimal_supersets.iter() {
+                print!(" {}", optx);
+            }
+            print!(", not in: ");
+            let optimal_not_supersets = DomainStore::optimal_not_supersets_of_states(&all_states, &self.optimal);
+            for optx in optimal_not_supersets.iter() {
+                print!(" {}", optx);
+            }
+        }
+
+        println!(", Boredom level = {} of limit {}", self.boredom, self.boredom_limit);
+        println!(" ");
+        ret
+    }
+    
+    pub fn goto_optimal(&mut self, optimal: &Vec<RegionStore>) {
+        //println!("goto_optimal - start");
+        let all_states = self.all_current_states();
+        let optimal_not_supersets = DomainStore::optimal_not_supersets_of_states(&all_states, &optimal);
+        if optimal_not_supersets.len() > 0 {
+            if self.any_supersets_of_states(&all_states) {
+                println!("\nGo to another optimal state!");
+            } else {
+                println!("\nGo to an optimal state!");
+            }
+
+            // Pick a random optional region set
+            let mut rp1 = RandomPick::new(optimal_not_supersets.len());
+
+            // Try each optimal region set until one is satisfied or not.
+            while let Some(inx) = rp1.pick() {
+                println!("Try to go to {}", optimal_not_supersets[inx]);
+                let mut planvec = Vec::<SomePlan>::with_capacity(all_states.len());
+                for (domx, regx) in optimal_not_supersets[inx].iter().enumerate() {
+                    if regx.is_superset_of_state(&all_states[domx]) {
+                        planvec.push(SomePlan::new());
+                    } else {
+                        if let Some(planx) = self.avec[domx].make_plan(regx) {
+                            planvec.push(planx);
+                        }
+                    }
+                }
+                if planvec.len() == all_states.len() {
+                    let mut ok = true;
+                    for (domx, planx) in planvec.iter().enumerate() {
+                        if planx.len() > 0 {
+                            if self.avec[domx].run_plan(planx) {
+                            } else {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        let all_states = self.all_current_states();
+                        self.boredom = 0;
+                        self.boredom_limit = self.boredom_limit(&all_states);
+                        //self.print_optimal();
+                        return;
+                    }
+                }
+            } // end of random pick
+            self.boredom = 0;
+        }
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -533,6 +722,7 @@ impl IndexMut<usize> for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 
     // Test combine
@@ -544,12 +734,12 @@ mod tests {
         let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
 
         // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        let dom0 = SomeDomain::new(dmxs.len(), init_state);
         dmxs.push(dom0);
 
         // Create domain 1.
         let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        let dom1 = SomeDomain::new(dmxs.len(), init_state);
         dmxs.push(dom1);
 
         let st3 = dmxs.combine_states();
@@ -572,12 +762,12 @@ mod tests {
         let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
 
         // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        let dom0 = SomeDomain::new(dmxs.len(), init_state);
         dmxs.push(dom0);
 
         // Create domain 1.
         let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state, RegionStore::new());
+        let dom1 = SomeDomain::new(dmxs.len(), init_state);
         dmxs.push(dom1);
 
         let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
@@ -597,12 +787,12 @@ mod tests {
         let init_state1 = SomeState::new_from_string(1, "s0x12").unwrap();
 
         // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state1.clone(), RegionStore::new());
+        let dom0 = SomeDomain::new(dmxs.len(), init_state1.clone());
         dmxs.push(dom0);
 
         // Create domain 1.
         let init_state2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state2.clone(), RegionStore::new());
+        let dom1 = SomeDomain::new(dmxs.len(), init_state2.clone());
         dmxs.push(dom1);
 
         let all_states = dmxs.all_current_states();
@@ -624,13 +814,98 @@ mod tests {
 
         Ok(())
     }
+    
+    #[test]
+    fn check_optimal() -> Result<(), String> {
+
+        // Load optimal regions
+        let mut optimal = Vec::<RegionStore>::new();
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        optimal.push(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        optimal.push(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        optimal.push(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        optimal.push(regstr);
+
+        // Start a DomainStore
+        let mut dmxs = DomainStore::new(optimal);
+
+        // Initialize a domain, with number of integers = 1, initial state, optimal region.
+
+        let num_ints = 1;
+        let init_state = SomeState::new_random(num_ints);
+
+        // Create domain 0.
+        let mut dom0 = SomeDomain::new(dmxs.len(), init_state);
+
+    // Add actions 0 through 8;
+    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+//    dom0.add_action();
+
+        // Add the domain to the DomainStore.
+        dmxs.push(dom0);
+
+        // Initialize a domain, with number of integers = 2, initial state, optimal region.
+
+        let num_ints = 2;
+        let init_state = SomeState::new_random(num_ints);
+
+        // Create domain 1.
+        let mut dom1 = SomeDomain::new(dmxs.len(), init_state);
+
+        // Add actions 0 through 4.
+        dom1.add_action();
+//    dom1.add_action();
+//    dom1.add_action();
+//    dom1.add_action();
+//    dom1.add_action();
+
+        // Add the domain to the DomainStore.
+        dmxs.push(dom1);
+
+        println!("Optimal and ints:");
+        for regstrx in dmxs.optimal_and_ints.iter() {
+            println!("regstrx: {}", regstrx);
+        }
+
+        let all_states = dmxs.all_current_states();
+        println!("\nCurr st: {}", all_states);
+
+        println!("\nNumber supersets: {}", dmxs.number_supersets_of_states(&all_states));
+
+        if let Some(needx) = dmxs.check_optimal() {
+            println!("\nCheck_optimal returns {}", needx);
+        } else {
+            println!("\nCheck_otimal returns None");
+        }
+
+        println!("\nBoredom level {} Boredom_limit {}", dmxs.boredom, dmxs.boredom_limit(&all_states));
+
+        println!(" ");
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 }
 
-//#[cfg(test)]
-//mod tests {
-//    use super::*;
-//
-//    #[test]
-//    fn make_plan_direct() -> Result<(), String> {
-//    }
-//}

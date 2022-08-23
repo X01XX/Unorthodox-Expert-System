@@ -21,7 +21,6 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
@@ -40,11 +39,6 @@ impl fmt::Display for SomeDomain {
         rc_str.push_str(&self.num.to_string());
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
-        if self.optimal_and_ints.len() > 0 {
-            rc_str.push_str(&format!(", Optimal Regions: {}", &self.optimal_and_ints));
-        } else {
-            rc_str.push_str(&format!(", Optimal Regions: None"));
-        }
 
         rc_str.push_str(")");
 
@@ -67,29 +61,15 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
-    pub boredom: usize,
-    /// Zero, or more, optimal regions that are sought if there are no needs.
-    /// This may be changed from the UI, see the help display for the commands "oa" and "od".
-    /// If more than one region, boredom may cause the program to run rules to switch to a different region.
-    pub optimal: RegionStore,
-    /// RegionStore to add all possible intersections of the optimal states to discern.
-    optimal_and_ints: RegionStore,
-    /// Memory of recent current states.
-    /// Using VecDeque allows memory to be read in most-recent to least-recent order,
-    /// with self.memory.iter().
     pub memory: VecDeque<SomeState>,
 }
 
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(dom: usize, start_state: SomeState, optimal: RegionStore) -> Self {
+    pub fn new(dom: usize, start_state: SomeState) -> Self {
         // Check that optimal regions, if any, are the same number of ints.
         let num_ints = start_state.num_ints();
-
-        for regx in optimal.iter() {
-            assert!(regx.num_ints() == num_ints);
-        }
 
         // Set up a domain instance with the correct value for num_ints
         return SomeDomain {
@@ -97,9 +77,6 @@ impl SomeDomain {
             num_ints,
             actions: ActionStore::new(),
             cur_state: start_state,
-            boredom: 0,
-            optimal_and_ints: optimal.and_intersections(),
-            optimal: optimal,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
         };
     }
@@ -107,26 +84,6 @@ impl SomeDomain {
     /// Return a copy of the current , internal, state.
     pub fn get_current_state(&self) -> SomeState {
         self.cur_state.clone()
-    }
-
-    /// Add a region, no subsets, to the optimal region store.
-    /// Return true if added.
-    pub fn add_optimal(&mut self, areg: SomeRegion) -> bool {
-        if self.optimal.push_nosubs(areg) {
-            self.optimal_and_ints = self.optimal.and_intersections();
-            return true;
-        }
-        false
-    }
-
-    /// Delete a region from the optimal region store.
-    /// Return true if deleted.
-    pub fn delete_optimal(&mut self, areg: &SomeRegion) -> bool {
-        if self.optimal.remove_region(areg) {
-            self.optimal_and_ints = self.optimal.and_intersections();
-            return true;
-        }
-        false
     }
 
     /// Add a SomeAction instance to the store.
@@ -144,64 +101,15 @@ impl SomeDomain {
             .actions
             .get_needs(&self.cur_state, self.num, &self.memory);
 
-        if let Some(ndx) = self.check_optimal() {
-            nst.push(ndx);
-        }
+//        if let Some(ndx) = self.check_optimal() {
+//            nst.push(ndx);
+//        }
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
         }
 
         return nst;
-    }
-
-    /// Return the boredom limit, if any.
-    pub fn boredom_limit(&self) -> usize {
-        // Get the optimal regions the current state is in.
-        let num_sups = self
-            .optimal_and_ints
-            .number_supersets_of_state(&self.cur_state);
-
-        3 * num_sups
-    }
-
-    /// Do functions related to the wish to be in an optimum region.
-    /// Increment the boredom duration, if needed.
-    /// Return a need to move to another optimal region, if needed.
-    pub fn check_optimal(&mut self) -> Option<SomeNeed> {
-        // Check if there are no optimal regions.
-        if self.optimal.len() == 0 {
-            return None;
-        }
-
-        let limit = self.boredom_limit();
-
-        if self.optimal.any_superset_of_state(&self.cur_state) {
-            self.boredom += 1;
-            if self.boredom <= limit {
-                return None;
-            }
-        } else {
-            self.boredom = 0;
-        }
-
-        // Get regions the current state is not in.
-        let notsups = self
-            .optimal_and_ints
-            .not_supersets_of_state(&self.cur_state);
-
-        // If the current state is not in at least one optimal region,
-        // return a need to move to an optimal region.
-        if notsups.len() > 0 {
-            let inx = rand::thread_rng().gen_range(0..notsups.len());
-            return Some(SomeNeed::ToRegion {
-                dom_num: self.num,
-                act_num: 0,
-                goal_reg: notsups[inx].clone(),
-            });
-        }
-
-        None
     }
 
     /// Return the total number of actions.
@@ -240,19 +148,6 @@ impl SomeDomain {
 
     /// Set the current state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
-        // Check optimal regions and boredom duration.
-        if self.optimal_and_ints.len() > 1 {
-            let opt_sups = self.optimal_and_ints.supersets_of_state(&self.cur_state);
-
-            if opt_sups.len() == 0 {
-                self.boredom = 0;
-            } else {
-                let opt_sups_new = self.optimal_and_ints.supersets_of_state(&new_state);
-                if opt_sups != opt_sups_new {
-                    self.boredom = 0;
-                }
-            }
-        }
 
         // Update memory.
         if self.memory.len() >= MAX_MEMORY {
@@ -264,9 +159,9 @@ impl SomeDomain {
         self.cur_state = new_state.clone();
     }
 
-    /// Run a plan.
-    pub fn run_plan(&mut self, pln: &SomePlan) {
-        self.run_plan2(pln, 3); // Init depth counter.
+    /// Run a plan, return true if it runs to completion.
+    pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
+        self.run_plan2(pln, 3) // Init depth counter.
     }
 
     /// Run a plan, with a recursion depth check.
@@ -277,10 +172,10 @@ impl SomeDomain {
     /// sample to be the alternate result.
     ///   If the alternate result has no changes, the action can be immediately tried again.
     ///   If the alternate result changes something, a re-plan-to-goal is done.
-    fn run_plan2(&mut self, pln: &SomePlan, depth: usize) {
+    fn run_plan2(&mut self, pln: &SomePlan, depth: usize) -> bool {
         if depth == 0 {
             println!("\nDepth exceeded, at plan {}", &pln);
-            return;
+            return false;
         }
 
         if pln.initial_region().is_superset_of_state(&self.cur_state) == false {
@@ -288,7 +183,7 @@ impl SomeDomain {
                 "\nCurrent state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
             );
-            return;
+            return false;
         }
 
         for stpx in pln.iter() {
@@ -325,7 +220,7 @@ impl SomeDomain {
             // Try re-plan to goal
             if pln.result_region().is_superset_of_state(&self.cur_state) {
                 println!("The unexpected result is in the goal region");
-                return;
+                return true;
             }
 
             if let Some(planx) = self.make_plan(pln.result_region()) {
@@ -335,15 +230,17 @@ impl SomeDomain {
                     &pln.result_region(),
                     &planx.str_terse()
                 );
-                return self.run_plan2(&planx, depth - 1);
+                return self.run_plan2(&planx, depth - 1)
             }
             println!(
                 "A plan from {} to {} is not found",
                 &self.cur_state,
                 &pln.result_region(),
             );
-            return;
+            return false;
         } // next stpx
+        
+        pln.result_region().is_superset_of_state(&self.cur_state)
     } // end run_plan2
 
     /// Return the steps of a plan to go from a given state/region to a given region.
@@ -846,7 +743,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
         dm0.add_action();
@@ -903,7 +799,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
         dm0.add_action();
@@ -961,7 +856,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1023,7 +917,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1099,7 +992,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1136,7 +1028,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1195,7 +1086,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1265,7 +1155,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1327,7 +1216,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(2, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1355,7 +1243,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1398,7 +1285,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 
@@ -1490,7 +1376,6 @@ mod tests {
         let mut dm0 = SomeDomain::new(
             0,
             SomeState::new_from_string(1, "s1").unwrap(),
-            RegionStore::new(),
         );
         dm0.add_action();
 

@@ -90,17 +90,8 @@ fn init() -> DomainStore {
     let num_ints = 1;
     let init_state = SomeState::new_random(num_ints);
 
-    // Set up optimal regions.
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(num_ints, "r0x0x").unwrap());
-    regstr.push(SomeRegion::new_from_string(num_ints, "r0xx1").unwrap());
-    regstr.push(SomeRegion::new_from_string(num_ints, "rx1x1").unwrap());
-    regstr.push(SomeRegion::new_from_string(num_ints, "r1110").unwrap());
-    // Intersections, 0x01, 01x1.
-    // Intersections of intersections, 0101.
-
     // Create domain 0.
-    let mut dom0 = SomeDomain::new(dmxs.len(), init_state, regstr);
+    let mut dom0 = SomeDomain::new(dmxs.len(), init_state);
 
     // Add actions 0 through 8;
     dom0.add_action();
@@ -121,12 +112,8 @@ fn init() -> DomainStore {
     let num_ints = 2;
     let init_state = SomeState::new_random(num_ints);
 
-    // Set up optimal region.
-    let mut regstr = RegionStore::with_capacity(1);
-    regstr.push(SomeRegion::new_from_string(num_ints, "rXXXXXX10_1XXX_XXXX").unwrap());
-
     // Create domain 1.
-    let mut dom1 = SomeDomain::new(dmxs.len(), init_state, regstr);
+    let mut dom1 = SomeDomain::new(dmxs.len(), init_state);
 
     // Add actions 0 through 4.
     dom1.add_action();
@@ -247,7 +234,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         println!("\nAll domain states: {}", dmxs.all_current_states());
 
-        print_domain(&dmxs, dom_num, can_do_flag);
+        print_domain(&mut dmxs, dom_num, can_do_flag);
         //println!("session loop 3");
 
         // Vector for position = display index, val = need_plans index
@@ -564,28 +551,30 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
     // Handle two-word commands
     if cmd.len() == 2 {
         if cmd[0] == "oa" {
-            match dmx.region_from_string(&cmd[1]) {
-                Ok(goal_region) => {
-                    let val = dmx.add_optimal(goal_region.clone());
-                    println!("Add Optimal region {} result {}", goal_region, val);
-                }
-                Err(error) => {
-                    println!("\nDid not understand region, {}", error);
-                }
-            } // end match
+            println!("todo");
+//            match dmx.region_from_string(&cmd[1]) {
+//                Ok(goal_region) => {
+//                    let val = dmx.add_optimal(goal_region.clone());
+//                    println!("Add Optimal region {} result {}", goal_region, val);
+//                }
+//                Err(error) => {
+//                    println!("\nDid not understand region, {}", error);
+//                }
+//            } // end match
             return 0;
         } //end command oa
 
         if cmd[0] == "od" {
-            match dmx.region_from_string(&cmd[1]) {
-                Ok(goal_region) => {
-                    let val = dmx.delete_optimal(&goal_region);
-                    println!("Delete Optimal region {} result {}", goal_region, val);
-                }
-                Err(error) => {
-                    println!("\nDid not understand region, {}", error);
-                }
-            } // end match
+            println!("todo");
+//            match dmx.region_from_string(&cmd[1]) {
+//                Ok(goal_region) => {
+//                    let val = dmx.delete_optimal(&goal_region);
+//                    println!("Delete Optimal region {} result {}", goal_region, val);
+//                }
+//                Err(error) => {
+//                    println!("\nDid not understand region, {}", error);
+//                }
+//            } // end match
             return 0;
         } //end command od
 
@@ -999,57 +988,30 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 } // end do_command
 
 /// Print a domain.
-fn print_domain(dmxs: &DomainStore, dom_num: usize, can_do_flag: bool) {
-    if dmxs[dom_num].boredom > 0 && can_do_flag == false {
-        print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains(),);
-    } else {
-        print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains());
-    }
+fn print_domain(dmxs: &mut DomainStore, dom_num: usize, can_do_flag: bool) {
+
+    print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains(),);
+
     println!("\nActs: {}", &dmxs[dom_num].actions);
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
-    if dmxs[dom_num].optimal.len() > 0 && can_do_flag == false {
-        let mut optstr = dmxs[dom_num].optimal.formatted_string();
+    println!(
+        "\nStep: {} Dom: {} Current State: {}",
+        &dmxs.step, dom_num, &cur_state
+    );
 
-        let opt_regs = dmxs[dom_num].optimal.supersets_of_state(&cur_state);
-
-        if opt_regs.len() > 0 {
-            optstr = opt_regs.formatted_string();
-            if opt_regs.len() != dmxs[dom_num].optimal.len() {
-                let notin = dmxs[dom_num]
-                    .optimal
-                    .not_supersets_of_state(&dmxs[dom_num].get_current_state());
-                if dmxs[dom_num].boredom > dmxs[dom_num].boredom_limit() {
-                    println!(
-                        "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}  Bored! (or satiated)",
-                        &dmxs.step, dom_num, &cur_state, optstr, &notin
-                    );
-                } else {
-                    println!(
-                        "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {} not in {}  Boredom duration {} limit {}",
-                        &dmxs.step, dom_num, &cur_state, optstr, &notin, dmxs[dom_num].boredom, dmxs[dom_num].boredom_limit()
-                    );
-                }
-            } else {
-                println!(
-                    "\nStep: {} Dom: {} Current State: {} in Optimal Regions: {}",
-                    &dmxs.step, dom_num, &cur_state, optstr
-                );
-            }
-        } else {
-            println!(
-                "\nStep: {} Dom: {} Current State: {} Not in Optimal Regions: {}",
-                &dmxs.step, dom_num, &cur_state, optstr
-            );
+    if dmxs.optimal.len() > 0 && can_do_flag == false {
+        dmxs.print_optimal();
+        let all_states = dmxs.all_current_states();
+        let opt_sups = DomainStore::optimal_supersets_of_states(&all_states, &dmxs.optimal);
+        //println!("len: {} cur bordom {}", opt_sups.len(), dmxs.boredom);
+        if opt_sups.len() == 0 || dmxs.boredom > (opt_sups.len() * 3) {
+            let opt_not_sups = DomainStore::optimal_not_supersets_of_states(&all_states, &dmxs.optimal_and_ints);
+            dmxs.goto_optimal(&opt_not_sups);
+            dmxs.print_optimal();
         }
-    } else {
-        println!(
-            "\nStep: {} Dom: {} Current State: {}",
-            &dmxs.step, dom_num, &cur_state
-        );
     }
-
     assert!(dmxs.step < 500); // Remove for continuous use
 }
 
