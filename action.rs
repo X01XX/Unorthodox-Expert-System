@@ -800,61 +800,44 @@ impl SomeAction {
 
         let mut sqr_del = StateStore::new();
 
-        // Don'n delete squares currently in needs.
-        for stax in stas.iter() {
+        // Don't delete squares currently in needs.
+        'next_stax: for stax in stas.iter() {
             // Check needs
-            let mut in_needs = false;
             for ndx in needs.iter() {
                 if ndx.target().is_superset_of_state(stax) {
-                    in_needs = true;
-                    break;
+                    continue 'next_stax;
                 }
-            }
-            if in_needs {
-                continue;
             }
 
             // Don't delete squares in groups.
-            let mut in_groups = false;
+            // let mut in_groups = false;
             for grpx in self.groups.iter() {
                 if grpx.region.is_superset_of_state(stax) {
                     if grpx.region.state1 == *stax || grpx.region.state2 == *stax {
-                        in_groups = true;
-                        break;
+                        continue 'next_stax;
                     }
                     if let Some(stay) = &grpx.anchor {
                         if stay == stax {
-                            in_groups = true;
-                            break;
+                            continue 'next_stax;
                         }
                         if *stax == grpx.region.far_state(stay) {
-                            in_groups = true;
-                            break;
+                            continue 'next_stax;
                         }
                     }
                 } else {
                     if let Some(stay) = &grpx.anchor {
                         if stax.is_adjacent(&stay) {
-                            in_groups = true;
-                            break;
+                            continue 'next_stax;
                         }
                     }
                 }
             }
-            if in_groups {
-                continue;
-            }
 
             // Don't delete squares in seek edge regions.
-            let mut in_seek = false;
             for regx in self.seek_edge.iter() {
                 if regx.is_superset_of_state(stax) {
-                    in_seek = true;
-                    break;
+                    continue 'next_stax;
                 }
-            }
-            if in_seek {
-                continue;
             }
 
             // Don't delete squares that are not in a group.
@@ -891,7 +874,7 @@ impl SomeAction {
 
         let mut new_regs = RegionStore::new();
 
-        for regx in self.seek_edge.iter() {
+        'next_regx: for regx in self.seek_edge.iter() {
             //print!("seek_edge_needs: checking reg {} ", &regx);
             // Get the squares represented by the states that form the region
             let sqr1 = self.squares.find(&regx.state1).unwrap();
@@ -939,11 +922,8 @@ impl SomeAction {
             }
 
             // Look for a square with pnc == true.
-            let mut found_pnc = false;
             for sqrx in sqrs_in2.iter() {
                 if sqrx.pnc {
-                    found_pnc = true;
-
                     let cnb1 = sqrx.can_combine(&sqr1);
                     let cnb2 = sqrx.can_combine(&sqr2);
 
@@ -957,11 +937,8 @@ impl SomeAction {
                             new_regs.push_nosups(SomeRegion::new(&sqrx.state, &sqr2.state));
                         }
                     }
-                    break;
+                    continue 'next_regx;
                 }
-            }
-            if found_pnc {
-                continue;
             }
 
             // Generate need for squares with pnc == false

@@ -686,22 +686,18 @@ fn all_mutually_exclusive_changes(
 fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
     let mut inxs = Vec::<usize>::new();
 
-    for inx in 0..by_change.len() {
-        let mut later_flag = true;
+    'next_inx: for inx in 0..by_change.len() {
 
         for iny in 0..by_change.len() {
             if iny == inx {
                 continue;
             }
             if step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) == false {
-                later_flag = false;
-                break;
+                continue 'next_inx;
             }
         } // next iny
 
-        if later_flag {
-            inxs.push(inx);
-        }
+        inxs.push(inx);
     } //next inx
 
     if inxs.len() > 1 {

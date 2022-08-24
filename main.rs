@@ -64,22 +64,22 @@ fn init() -> DomainStore {
 
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX1X_1XXX_XXXX").unwrap());
     optimal.push(regstr);
 
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX1_1XXX_XXXX").unwrap());
     optimal.push(regstr);
 
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX00_0XXX_XXXX").unwrap());
     optimal.push(regstr);
 
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX0_0XXX_XXXX").unwrap());
     optimal.push(regstr);
 
     // Start a DomainStore
