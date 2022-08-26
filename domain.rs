@@ -140,8 +140,8 @@ impl SomeDomain {
 
     /// Take an action with the current state.
     /// A sample made for a rule-path should not be saved as a new square if the result is as expected.
-    pub fn take_action(&mut self, act_num: usize) {
-        let astate = self.actions[act_num].take_action(self.num, &self.cur_state);
+    pub fn take_action_step(&mut self, act_num: usize) {
+        let astate = self.actions[act_num].take_action_step(self.num, &self.cur_state);
 
         self.set_state(&astate);
     }
@@ -187,7 +187,7 @@ impl SomeDomain {
         }
 
         for stpx in pln.iter() {
-            let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
+            let astate = self.actions[stpx.act_num].take_action_step(self.num, &self.cur_state);
 
             let prev_state = self.cur_state.clone();
 
@@ -203,7 +203,7 @@ impl SomeDomain {
             if prev_state == self.cur_state && stpx.alt_rule {
                 println!("Try action a second time");
 
-                let astate = self.actions[stpx.act_num].take_action(self.num, &self.cur_state);
+                let astate = self.actions[stpx.act_num].take_action_step(self.num, &self.cur_state);
 
                 self.set_state(&astate);
 
@@ -372,19 +372,15 @@ impl SomeDomain {
         // is a superset of the from-region, and the result-region does not intersect the
         // goal-region.
         let mut asym_inx = Vec::<usize>::new();
-        let mut inx = 0;
-        for vecx in steps_by_change_vov.iter() {
-            let mut all_asym = true;
+
+        'next_vecx: for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
+
             for stepx in vecx.iter() {
                 if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
-                    all_asym = false;
-                    break;
+                    continue 'next_vecx;
                 }
             }
-            if all_asym {
-                asym_inx.push(inx);
-            }
-            inx += 1;
+            asym_inx.push(inx);
         } // next vecx
 
         // Init selected steps
@@ -624,12 +620,11 @@ impl SomeDomain {
 
         // Gather highest rated plan indexes
         let mut inx_ary = Vec::<usize>::new();
-        let mut inx = 0;
-        for rets in rates_vec.iter() {
+
+        for (inx, rets) in rates_vec.iter().enumerate() {
             if *rets == max_rate {
                 inx_ary.push(inx);
             }
-            inx += 1;
         }
 
         // Choose a step
@@ -771,7 +766,7 @@ mod tests {
             assert!(aplan.len() == 4);
             assert!(*aplan.result_region() == toreg);
         } else {
-            return Err("no plan found to r1000?".to_string());
+            return Err(String::from("no plan found to r1000?"));
         }
 
         // Get plan for 8 to 7
@@ -781,7 +776,7 @@ mod tests {
             assert!(aplan.len() == 4);
             assert!(*aplan.result_region() == toreg);
         } else {
-            return Err("no plan found to r111?".to_string());
+            return Err(String::from("no plan found to r111?"));
         }
 
         Ok(())
@@ -830,7 +825,7 @@ mod tests {
             assert!(aplan.len() == 5);
             assert!(*aplan.result_region() == toreg);
         } else {
-            return Err("No plan found s111 to r1100?".to_string());
+            return Err(String::from("No plan found s111 to r1100?"));
         }
 
         // Get plan for C to 7
@@ -840,7 +835,7 @@ mod tests {
             assert!(aplan.len() == 5);
             assert!(*aplan.result_region() == toreg);
         } else {
-            return Err("No plan found s1100 to r111?".to_string());
+            return Err(String::from("No plan found s1100 to r111?"));
         }
 
         Ok(())
@@ -873,7 +868,7 @@ mod tests {
             .find(&dm0.region_from_string("r1").unwrap())
         {
         } else {
-            return Err("Group r1 not found ??".to_string());
+            return Err(String::from("Group r1 not found ??"));
         }
 
         println!("\nActs: {}", &dm0.actions[0]);
@@ -889,7 +884,7 @@ mod tests {
             .groups
             .find(&dm0.region_from_string("r1").unwrap())
         {
-            return Err("Group r1  found ??".to_string());
+            return Err(String::from("Group r1  found ??"));
         }
 
         // Check needs for pn > 1 and not in group, and current state not in a group.
@@ -903,7 +898,7 @@ mod tests {
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
         );
 
-        // Err("Done".to_string());
+        // Err(String::from("Done"));
         Ok(())
     }
 
@@ -934,7 +929,7 @@ mod tests {
             .find(&dm0.region_from_string("r1").unwrap())
         {
         } else {
-            return Err("Group r1 not found ??".to_string());
+            return Err(String::from("Group r1 not found ??"));
         }
 
         // Expand group
@@ -946,7 +941,7 @@ mod tests {
             .find(&dm0.region_from_string("rXX").unwrap())
         {
         } else {
-            return Err("Group rXX not found ??".to_string());
+            return Err(String::from("Group rXX not found ??"));
         }
 
         let nds2 = dm0.actions[0].confirm_group_needs();
@@ -1136,7 +1131,7 @@ mod tests {
                 "failed, group rx1x1 was not formed by two squares",
             ));
         }
-        // Err(String::from("Done!",))
+        // Err(String::from("Done!"))
         Ok(())
     } // end group_pn_2_union_then_invalidation
 
@@ -1228,7 +1223,7 @@ mod tests {
             .find(&dm0.region_from_string("rXXX1010X101010XX").unwrap())
         {
         } else {
-            return Err("Group rXXX1010X101010XX not found ??".to_string());
+            return Err(String::from("Group rXXX1010X101010XX not found ??"));
         }
 
         Ok(())
@@ -1267,12 +1262,12 @@ mod tests {
                     &dm0.region_from_string("r100").unwrap()
                 ));
             } else {
-                return Err("Group r0XX1 not found ??".to_string());
+                return Err(String::from("Group r0XX1 not found ??"));
             }
         } else {
-            return Err("Group r0X0X not found ??".to_string());
+            return Err(String::from("Group r0X0X not found ??"));
         }
-        // Err("Done!".to_string())
+        // Err(String::from("Done!"))
         Ok(())
     }
 
@@ -1435,10 +1430,10 @@ mod tests {
             .find(&dm0.region_from_string("rxxxx_xxxx").unwrap())
         {
         } else {
-            return Err("Group rxxxx_xxxx not found ??".to_string());
+            return Err(String::from("Group rxxxx_xxxx not found ??"));
         }
 
-        //Err("Done!".to_string())
+        //Err(String::from("Done!"))
         Ok(())
     }
 } // end tests

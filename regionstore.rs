@@ -170,7 +170,7 @@ impl RegionStore {
         let mut fnd = false;
         let mut inx = 0;
 
-        for regx in &mut self.avec {
+        for regx in self.avec.iter() {
             if regx == reg {
                 fnd = true;
                 break;
@@ -207,12 +207,11 @@ impl RegionStore {
 
         // Identify subsets
         let mut rmvec = Vec::<usize>::new();
-        let mut inx = 0;
-        for regx in &mut self.avec {
+
+        for (inx, regx) in self.avec.iter().enumerate() {
             if regx.is_subset_of(&reg) {
                 rmvec.push(inx);
             }
-            inx += 1;
         }
 
         // Remove identified regions, in reverse order
@@ -235,12 +234,11 @@ impl RegionStore {
 
         // Identify supersets
         let mut rmvec = Vec::<usize>::new();
-        let mut inx = 0;
-        for regx in &mut self.avec {
+
+        for (inx, regx) in self.avec.iter().enumerate() {
             if regx.is_superset_of(&reg) {
                 rmvec.push(inx);
             }
-            inx += 1;
         }
 
         // Remove identified regions, in reverse (highest index) order
@@ -468,10 +466,18 @@ mod tests {
         let reg_ints = regstr.and_intersections();
         println!("results {}", reg_ints);
 
-        assert!(reg_ints.len() == 7);
-        assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r0101").unwrap()));
-        assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r0X01").unwrap()));
-        assert!(reg_ints.contains(&SomeRegion::new_from_string(1, "r01x1").unwrap()));
+        if reg_ints.len() != 7 {
+            return Err(String::from("reg_ints len != 7?"));
+        }
+        if reg_ints.contains(&SomeRegion::new_from_string(1, "r0101").unwrap()) == false {
+            return Err(String::from("reg_ints does not contain r0101?"));
+        }
+        if reg_ints.contains(&SomeRegion::new_from_string(1, "r0X01").unwrap()) == false {
+            return Err(String::from("reg_ints does not contain r0X01?"));
+        }
+        if reg_ints.contains(&SomeRegion::new_from_string(1, "r01x1").unwrap()) == false {
+            return Err(String::from("reg_ints does not contain r01x1?"));
+        }
         Ok(())
     }
 
@@ -554,7 +560,7 @@ mod tests {
             println!("regx {}", &regx);
             assert!(regx == SomeRegion::new_from_string(2, "rxxx1xxxx").unwrap());
         } else {
-            return Err(format!("Union returns None?"));
+            return Err(String::from("Union returns None?"));
         }
         Ok(())
     }

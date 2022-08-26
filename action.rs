@@ -756,8 +756,8 @@ impl SomeAction {
 
                 // Filter out housekeeping needs, if any.
                 let mut inxs = Vec::<usize>::with_capacity(nds.len());
-                let mut inx = 0;
-                for ndx in nds.iter() {
+
+                for (inx, ndx) in nds.iter().enumerate() {
                     match ndx {
                         SomeNeed::AddGroup { .. } => {
                             inxs.push(inx);
@@ -773,7 +773,6 @@ impl SomeAction {
                         }
                         _ => (),
                     }
-                    inx += 1;
                 }
 
                 // Remove houskeeping needs, from highest to lowest index.
@@ -1835,9 +1834,9 @@ impl SomeAction {
     }
 
     /// Take an action with the current state.
-    pub fn take_action(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
+    pub fn take_action_step(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
         let astate = self.do_something.take_action(cur_state);
-        self.eval_sample(cur_state, &astate, dom);
+        self.eval_step_sample(cur_state, &astate, dom);
         astate
     }
 } // end impl SomeAction
@@ -1874,10 +1873,10 @@ mod tests {
         println!("needs: {}", nds);
 
         if nds.len() > 0 {
-            return Err(format!("Unexpected needs?"));
+            return Err(String::from("Unexpected needs?"));
         }
         if act0.groups.len() != 1 {
-            return Err(format!("Unexpected groups?"));
+            return Err(String::from("Unexpected groups?"));
         }
 
         Ok(())

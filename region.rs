@@ -67,10 +67,7 @@ impl SomeRegion {
 
         let mut bts_low = SomeBits::new_low(num_ints);
 
-        let mut inx = -1;
-
-        for ch in str.chars() {
-            inx += 1;
+        for (inx, ch) in str.chars().enumerate() {
 
             if inx == 0 {
                 if ch == 'r' {
@@ -141,8 +138,7 @@ impl SomeRegion {
         let num_ints = self.state1.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
 
-        let mut inx = 0;
-        for valb in (0..num_bits).rev() {
+        for (inx, valb) in (0..num_bits).rev().enumerate() {
             if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
                 s1.push('_');
             }
@@ -162,7 +158,6 @@ impl SomeRegion {
                     s1.push('0');
                 }
             }
-            inx += 1;
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
         }
         s1
@@ -480,12 +475,12 @@ mod tests {
         println!("{}", &sta1);
         println!("{}", &reg0.diff_mask_state(&sta1));
         if reg0.is_adjacent_state(&sta1) == false {
-            return Err(format!("Result 1 False?"));
+            return Err(String::from("Result 1 False?"));
         }
 
         let sta2 = SomeState::new_from_string(1, "s1001110").unwrap();
         if reg0.is_adjacent_state(&sta2) {
-            return Err(format!("Result 2 True?"));
+            return Err(String::from("Result 2 True?"));
         }
         Ok(())
     }
@@ -496,12 +491,12 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
 
         if reg0.intersects(&reg1) == false {
-            return Err(format!("Result 1 False?"));
+            return Err(String::from("Result 1 False?"));
         }
 
         let reg2 = SomeRegion::new_from_string(1, "r0XX111X").unwrap();
         if reg0.intersects(&reg2) {
-            return Err(format!("Result 2 True?"));
+            return Err(String::from("Result 2 True?"));
         }
         Ok(())
     }
@@ -513,7 +508,7 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
 
         if reg0.intersection(&reg1) != SomeRegion::new_from_string(1, "r010110X").unwrap() {
-            return Err(format!("Result not r010110X?"));
+            return Err(String::from("Result not r010110X?"));
         }
         Ok(())
     }
@@ -524,17 +519,17 @@ mod tests {
 
         let sta1 = SomeState::new_from_string(1, "s1100").unwrap();
         if reg0.is_superset_of_state(&sta1) == false {
-            return Err(format!("Result 1 False?"));
+            return Err(String::from("Result 1 False?"));
         }
 
         let sta2 = SomeState::new_from_string(1, "s0000").unwrap();
         if reg0.is_superset_of_state(&sta2) {
-            return Err(format!("Result 2 True?"));
+            return Err(String::from("Result 2 True?"));
         }
 
         let sta3 = SomeState::new_from_string(1, "s0010").unwrap();
         if reg0.is_superset_of_state(&sta3) {
-            return Err(format!("Result 2 True?"));
+            return Err(String::from("Result 2 True?"));
         }
         Ok(())
     }
@@ -543,7 +538,7 @@ mod tests {
     fn zeros_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
         if reg0.zeros_mask() != SomeMask::new_from_string(1, "m0b11001010").unwrap() {
-            return Err(format!("Result not m0b11001010?"));
+            return Err(String::from("Result not m0b11001010?"));
         }
         Ok(())
     }
@@ -553,7 +548,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
 
         if reg0.ones_mask() != SomeMask::new_from_string(1, "m0b101").unwrap() {
-            return Err(format!("Result not m0b101?"));
+            return Err(String::from("Result not m0b101?"));
         }
         Ok(())
     }
@@ -562,7 +557,7 @@ mod tests {
     fn x_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
         if reg0.x_mask() != SomeMask::new_from_string(1, "m0b110000").unwrap() {
-            return Err(format!("Result not m0b110000?"));
+            return Err(String::from("Result not m0b110000?"));
         }
         Ok(())
     }
@@ -573,7 +568,7 @@ mod tests {
         let state0 = SomeState::new_from_string(1, "s1011").unwrap();
 
         if reg0.far_state(&state0) != SomeState::new_from_string(1, "s101").unwrap() {
-            return Err(format!("Result not s101?"));
+            return Err(String::from("Result not s101?"));
         }
         Ok(())
     }
@@ -584,7 +579,7 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(2, "r01X01000000").unwrap();
 
         if reg0.far_reg(&reg1) != SomeRegion::new_from_string(2, "r10X01000000").unwrap() {
-            return Err(format!("Result not r10X01000000?"));
+            return Err(String::from("Result not r10X01000000?"));
         }
         Ok(())
     }
@@ -596,17 +591,17 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
         if reg0.is_subset_of(&reg1) == false {
-            return Err(format!("Result 1 False?"));
+            return Err(String::from("Result 1 False?"));
         }
 
         let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
 
         if reg0.is_subset_of(&reg2) == false {
-            return Err(format!("Result 2 False?"));
+            return Err(String::from("Result 2 False?"));
         }
 
         if reg2.is_subset_of(&reg0) {
-            return Err(format!("Result 3 True?"));
+            return Err(String::from("Result 3 True?"));
         }
         Ok(())
     }
@@ -618,17 +613,17 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
         if reg0.is_superset_of(&reg1) == false {
-            return Err(format!("Result 1 False?"));
+            return Err(String::from("Result 1 False?"));
         }
 
         let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
 
         if reg2.is_superset_of(&reg0) == false {
-            return Err(format!("Result 2 False?"));
+            return Err(String::from("Result 2 False?"));
         }
 
         if reg0.is_superset_of(&reg2) {
-            return Err(format!("Result 3 True?"));
+            return Err(String::from("Result 3 True?"));
         }
         Ok(())
     }
@@ -639,7 +634,7 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(2, "r01X01X01X").unwrap();
 
         if reg0.union(&reg1) != SomeRegion::new_from_string(2, "rX1X0XXXXX").unwrap() {
-            return Err(format!("Result not rX1X0XXXXX?"));
+            return Err(String::from("Result not rX1X0XXXXX?"));
         }
         Ok(())
     }
@@ -650,7 +645,7 @@ mod tests {
         let state0 = SomeState::new_from_string(1, "s101001").unwrap();
 
         if reg0.union_state(&state0) != SomeRegion::new_from_string(1, "rXXXX01").unwrap() {
-            return Err(format!("Result not rXXXX01?"));
+            return Err(String::from("Result not rXXXX01?"));
         }
         Ok(())
     }
@@ -660,7 +655,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rX0X1").unwrap();
 
         if reg0.high_state() != SomeState::new_from_string(1, "s1011").unwrap() {
-            return Err(format!("Result s1011?"));
+            return Err(String::from("Result s1011?"));
         }
         Ok(())
     }
@@ -671,7 +666,7 @@ mod tests {
 
         if reg0.low_state() != SomeState::new_from_string(1, "s1").unwrap() {
             println!("low state {}", &reg0.low_state());
-            return Err(format!("Result not s1?"));
+            return Err(String::from("Result not s1?"));
         }
         Ok(())
     }
@@ -682,7 +677,7 @@ mod tests {
         let msk1 = SomeMask::new_from_string(1, "m0b111").unwrap();
 
         if reg0.set_to_zeros(&msk1) != SomeRegion::new_from_string(1, "rX10X000").unwrap() {
-            return Err(format!("Result not rX10X000?"));
+            return Err(String::from("Result not rX10X000?"));
         }
         Ok(())
     }
@@ -693,7 +688,7 @@ mod tests {
         let msk1 = SomeMask::new_from_string(1, "m0b111").unwrap();
 
         if reg0.set_to_ones(&msk1) != SomeRegion::new_from_string(1, "rX10X111").unwrap() {
-            return Err(format!("Result not rX10X111?"));
+            return Err(String::from("Result not rX10X111?"));
         }
         Ok(())
     }
@@ -704,7 +699,7 @@ mod tests {
         let state0 = SomeState::new_from_string(1, "s010101").unwrap();
 
         if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m0b110").unwrap() {
-            return Err(format!("Result not m0b110?"));
+            return Err(String::from("Result not m0b110?"));
         }
         Ok(())
     }
@@ -800,7 +795,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
 
         if reg0.num_x() != 2 {
-            return Err(format!("Result not 2?"));
+            return Err(String::from("Result not 2?"));
         }
         Ok(())
     }

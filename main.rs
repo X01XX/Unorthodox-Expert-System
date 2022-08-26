@@ -48,6 +48,8 @@ mod actioninterface;
 mod randompick;
 mod removeunordered;
 mod truth;
+mod optimalregionsstore;
+use crate::optimalregionsstore::OptimalRegionsStore;
 
 use std::io;
 use std::io::{Read, Write};
@@ -60,7 +62,7 @@ use std::process;
 fn init() -> DomainStore {
 
     // Load optimal regions
-    let mut optimal = Vec::<RegionStore>::new();
+    let mut optimal = OptimalRegionsStore::new();
 
     let mut regstr = RegionStore::with_capacity(2);
     regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
@@ -283,9 +285,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     println!("\nNeeds that can be done: None");
                 } else {
                     println!("\nNeeds that can be done:");
-                    let mut inx = 0;
+
                     let mut disp = 0;
-                    for ndplnx in need_plans.iter() {
+                    for (inx, ndplnx) in need_plans.iter().enumerate() {
                         if let Some(plnx) = &ndplnx.pln {
                             if plnx.len() > 0 {
                                 println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
@@ -295,7 +297,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                             need_can.push(inx);
                             disp += 1;
                         }
-                        inx += 1;
                     } // next ndplnx
                 }
             } // end  if need_plans.len() == 0 {} else
@@ -425,7 +426,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     // Get act number from string
                     match dmxs[dom_num].act_num_from_string(&cmd[1]) {
                         Ok(a_num) => {
-                            dmxs.take_action(dom_num, a_num);
+                            dmxs.take_action_step(dom_num, a_num);
                             break;
                         }
                         Err(error) => {
@@ -1004,11 +1005,10 @@ fn print_domain(dmxs: &mut DomainStore, dom_num: usize, can_do_flag: bool) {
     if dmxs.optimal.len() > 0 && can_do_flag == false {
         dmxs.print_optimal();
         let all_states = dmxs.all_current_states();
-        let opt_sups = DomainStore::optimal_supersets_of_states(&all_states, &dmxs.optimal);
+        let opt_sups = dmxs.optimal.supersets_of_states(&all_states);
         //println!("len: {} cur bordom {}", opt_sups.len(), dmxs.boredom);
         if opt_sups.len() == 0 || dmxs.boredom > (opt_sups.len() * 3) {
-            let opt_not_sups = DomainStore::optimal_not_supersets_of_states(&all_states, &dmxs.optimal_and_ints);
-            dmxs.goto_optimal(&opt_not_sups);
+            dmxs.change_optimal_state();
             dmxs.print_optimal();
         }
     }
