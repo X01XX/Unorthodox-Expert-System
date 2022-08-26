@@ -642,59 +642,6 @@ mod tests {
     use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 
-    // Test combine
-    #[test]
-    fn combine_states() -> Result<(), String> {
-        // Init a DomainStore.
-        let mut dmxs = DomainStore::new(OptimalRegionsStore::new());
-
-        let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
-
-        // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state);
-        dmxs.push(dom0);
-
-        // Create domain 1.
-        let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state);
-        dmxs.push(dom1);
-
-        let st3 = dmxs.combine_states();
-        println!("st3: {}", st3);
-
-        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
-
-        if st3 != st4 {
-            return Err(format!("{} ne {} ?", st3, st4));
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn split_state() -> Result<(), String> {
-        // Init a DomainStore.
-        let mut dmxs = DomainStore::new(OptimalRegionsStore::new());
-
-        let init_state = SomeState::new_from_string(1, "s0x12").unwrap();
-
-        // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state);
-        dmxs.push(dom0);
-
-        // Create domain 1.
-        let init_state = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state);
-        dmxs.push(dom1);
-
-        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
-
-        let stvec = dmxs.split_state(&st4);
-        println!("dom 0: {} dom 1: {}", stvec[0], stvec[1]);
-
-        Ok(())
-    }
-
     #[test]
     fn all_current_states() -> Result<(), String> {
         // Init a DomainStore.
