@@ -146,6 +146,14 @@ impl SomeDomain {
         self.set_state(&astate);
     }
 
+    /// Take an action with the current state.
+    /// Save sample if it is not in a group, or invalidates a group.
+    pub fn take_action_arbitrary(&mut self, act_num: usize) {
+        let astate = self.actions[act_num].take_action_arbitrary(self.num, &self.cur_state);
+
+        self.set_state(&astate);
+    }
+
     /// Set the current state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
 

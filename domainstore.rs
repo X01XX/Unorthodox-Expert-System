@@ -170,6 +170,11 @@ impl DomainStore {
         self.avec[dmxi].take_action_step(actx);
     }
 
+    /// Take an arbitrary action
+    pub fn take_action_arbitrary(&mut self, dmxi: usize, actx: usize) {
+        self.avec[dmxi].take_action_arbitrary(actx);
+    }
+
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> SomeState {
         self.avec[dmxi].get_current_state()
@@ -457,34 +462,28 @@ impl DomainStore {
         self.avec.len()
     }
 
-    /// Combine all domain current states, producing a larger state.
-    /// Possible future use.
-    pub fn combine_states(&self) -> SomeState {
-        let mut ret_state = self[0].cur_state.clone();
+// Combine all domain current states, producing a larger state.
+// Possible future use.
+//    pub fn combine_states(&self) -> SomeState {
+//        let mut ret_state = self[0].cur_state.clone();
+//        for inx in 1..self.len() {
+//            ret_state = ret_state.combine(&self[inx].cur_state);
+//        }
+//        ret_state
+//    }
 
-        for inx in 1..self.len() {
-            ret_state = ret_state.combine(&self[inx].cur_state);
-        }
-
-        ret_state
-    }
-
-    /// Split a state into states that match the size of each domain current state.
-    /// Possible future use.
-    pub fn split_state(&self, astate: &SomeState) -> Vec<SomeState> {
-        let mut ret_vec = Vec::<SomeState>::new();
-
-        let mut place = 0;
-        for domx in self.avec.iter() {
-            let num_ints = domx.num_ints;
-
-            ret_vec.push(astate.clone().slice(place, place + num_ints));
-
-            place += num_ints;
-        }
-
-        ret_vec
-    }
+// Split a state into states that match the size of each domain current state.
+// Possible future use.
+//    pub fn split_state(&self, astate: &SomeState) -> Vec<SomeState> {
+//        let mut ret_vec = Vec::<SomeState>::new();
+//        let mut place = 0;
+//        for domx in self.avec.iter() {
+//            let num_ints = domx.num_ints;
+//            ret_vec.push(astate.clone().slice(place, place + num_ints));
+//            place += num_ints;
+//        }
+//        ret_vec
+//    }
 
     /// Return a StateStore of all domain current states.
     pub fn all_current_states(&self) -> StateStore {

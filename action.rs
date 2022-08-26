@@ -1839,6 +1839,24 @@ impl SomeAction {
         self.eval_step_sample(cur_state, &astate, dom);
         astate
     }
+
+    /// Take an action with the current state.
+    pub fn take_action_arbitrary(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
+        //println!("action {} take_action_arbitrary", self.num);
+        let astate = self.do_something.take_action(cur_state);
+
+        if self.groups.any_superset_of_state(&cur_state) {
+            self.eval_step_sample(cur_state, &astate, dom);
+        } else {
+            let ndx = SomeNeed::StateNotInGroup {
+                dom_num: dom,
+                act_num: self.num,
+                targ_state: cur_state.clone(),
+            };
+            self.eval_need_sample(cur_state, &ndx, &astate, dom);
+        }
+        astate
+    }
 } // end impl SomeAction
 
 #[cfg(test)]

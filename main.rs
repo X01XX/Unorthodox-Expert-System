@@ -420,21 +420,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         }
                     } // end match
                     continue;
-                } else if cmd[0] == "ta" {
-                    // Take an arbirary action with the current state
-
-                    // Get act number from string
-                    match dmxs[dom_num].act_num_from_string(&cmd[1]) {
-                        Ok(a_num) => {
-                            dmxs.take_action_step(dom_num, a_num);
-                            break;
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                            step_inc = 0;
-                        }
-                    } // end match
-                    continue;
                 } else if cmd[0] == "ppd" {
                     step_inc = 0;
                     match cmd[1].parse::<usize>() {
@@ -632,11 +617,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
             match dmx.act_num_from_string(&cmd[1]) {
                 Ok(act_num) => {
                     println!("Act {} sample State {}", act_num, cur_state);
-                    dmx.take_action_need(&SomeNeed::StateNotInGroup {
-                        dom_num: dmx.num,
-                        act_num: act_num,
-                        targ_state: dmx.get_current_state(),
-                    });
+                    dmx.take_action_arbitrary(act_num);
                     step_inc = 1;
                 }
                 Err(error) => {
@@ -675,11 +656,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                         Ok(a_state) => {
                             println!("Act {} sample State {}", act_num, a_state);
                             dmx.set_state(&a_state);
-                            dmx.take_action_need(&SomeNeed::StateNotInGroup {
-                                dom_num: dmx.num,
-                                act_num: act_num,
-                                targ_state: a_state,
-                            });
+                            dmx.take_action_arbitrary(act_num);
                             step_inc = 1;
                         }
                         Err(error) => {
@@ -1040,12 +1017,12 @@ fn usage() {
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
-    println!("\n    oa <region>              - Optimal regions Add the given region, of the CDD.");
-    println!("                             - This will fail if the region is a subset of one of the displayed regions.");
-    println!(
-        "\n    od <region>              - Optimal regions Delete the given region, of the CDD."
-    );
-    println!("                             - This will fail if the region is not found or is a displayed intersection.");
+//    println!("\n    oa <region>              - Optimal regions Add the given region, of the CDD.");
+//    println!("                             - This will fail if the region is a subset of one of the displayed regions.");
+//    println!(
+//        "\n    od <region>              - Optimal regions Delete the given region, of the CDD."
+//    );
+//    println!("                             - This will fail if the region is not found or is a displayed intersection.");
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!(
@@ -1061,7 +1038,6 @@ fn usage() {
     println!(
         "    ss <act num> <state> <result-state> - Sample State, for a given action, state and arbitrary result, for the CDD."
     );
-    println!("\n    ta <act-num>             - Take Action with the current state.");
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
