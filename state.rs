@@ -44,6 +44,7 @@ impl SomeState {
     }
 
     /// Combine a list of states, to produce a larger state.
+    /// Possible future use.
     pub fn combine(self, other: &SomeState) -> Self {
         let mut bitsvec = Vec::<&SomeBits>::with_capacity(2);
 
@@ -52,6 +53,14 @@ impl SomeState {
 
         Self {
             bts: SomeBits::combine(&bitsvec),
+        }
+    }
+
+    /// Return a slice of a state.
+    /// Possible future use.
+    pub fn slice(self, start: usize, end: usize) -> Self {
+        Self {
+            bts: self.bts.slice(start, end),
         }
     }
 

@@ -224,12 +224,11 @@ impl SomePlan {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
                     steps2 = SomePlan::new();
-                    let mut inx = 0;
-                    for stepx in self.iter() {
+
+                    for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
                             steps2.push(stepx.clone());
                         }
-                        inx += 1;
                     }
                     // Remove shortcuts recursively, one by one.
                     //println!("shortcut step2 {}", steps2);
@@ -266,12 +265,11 @@ impl SomePlan {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
                     steps2 = SomePlan::new();
-                    let mut inx = 0;
-                    for stepx in self.iter() {
+
+                    for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {
                             steps2.push(stepx.clone());
                         }
-                        inx += 1;
                     }
                     // Remove shortcuts recursively, one by one.
                     //println!("shortcut step2 {}", steps2);

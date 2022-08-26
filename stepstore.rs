@@ -134,23 +134,17 @@ impl StepStore {
         // Add step index numbers to the return vector.
         for stepx in self.avec.iter() {
             // Check for matching b01 changes
-            let mut b01_inx = 0;
-            for b01x in b01.iter() {
+            for (inx, b01x) in b01.iter().enumerate() {
                 if stepx.rule.b01.m_and(b01x).is_not_low() {
-                    ret_vec[b01_inx].push(stepx);
+                    ret_vec[inx].push(stepx);
                 }
-
-                b01_inx += 1;
             } // next b01x
 
             // Check for matching b10 changes
-            let mut b10_inx = b01_len;
-            for b10x in b10.iter() {
+            for (inx, b10x) in b10.iter().enumerate() {
                 if stepx.rule.b10.m_and(b10x).is_not_low() {
-                    ret_vec[b10_inx].push(stepx);
+                    ret_vec[inx + b01_len].push(stepx);
                 }
-
-                b10_inx += 1;
             } // next b01x
         } // next stepx
 

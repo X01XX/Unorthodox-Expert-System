@@ -51,9 +51,8 @@ impl GroupStore {
         let mut regs_invalid = RegionStore::new();
 
         let mut rmvec = Vec::<usize>::new();
-        let mut inx = 0;
 
-        for grpx in &mut self.avec {
+        for (inx, grpx) in self.avec.iter_mut().enumerate() {
             if grpx.region.is_superset_of_state(&sqrx.state) {
                 if grpx.check_square(&sqrx) == false {
                     if sqrx.pn > grpx.pn {
@@ -82,7 +81,6 @@ impl GroupStore {
                     rmvec.push(inx);
                 }
             }
-            inx += 1;
         } // next grpx
 
         // Remove the groups
@@ -165,39 +163,39 @@ impl GroupStore {
         rs
     }
 
-    //    /// Find and remove a given group, identified by region.
-    //    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
-    //
-    //        // Find a matching grop region
-    //        let mut fnd = false;
-    //        let mut inx = 0;
-    //
-    //        for grpx in &mut self.avec {
-    //            if grpx.region == *reg {
-    //                fnd = true;
-    //                break;
-    //            }
-    //            inx += 1;
-    //        }
-    //
-    //        // Remove the group
-    //        if fnd {
-    //            remove_unordered(&mut self.avec, inx);
-    //        }
-    //
-    //        fnd
-    //    }
+//    /// Find and remove a given group, identified by region.
+//    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
+//
+//        // Find a matching group region
+//        let mut fnd = false;
+//        let mut inx = 0;
+//
+//        for grpx in &mut self.avec {
+//           
+//            if grpx.region == *reg {
+//                fnd = true;
+//                break;
+//            }
+//            inx += 1;
+//        }
+//
+//        // Remove the group
+//        if fnd {
+//            remove_unordered(&mut self.avec, inx);
+//        }
+//
+//        fnd
+//    }
 
     /// Find and remove any subset groups.
     fn remove_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {
         // Accumulate indicies of groups that are subsets
         let mut rmvec = Vec::<usize>::new();
-        let mut inx = 0;
-        for grpx in &mut self.avec {
+
+        for (inx, grpx) in &mut self.avec.iter().enumerate() {
             if grpx.region.is_subset_of(&reg) {
                 rmvec.push(inx);
             }
-            inx += 1;
         }
 
         // Remove the groups
