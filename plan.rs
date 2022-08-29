@@ -27,13 +27,19 @@ use std::fmt;
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", &self.steps.formatted_string("P"))
+        write!(
+            f,
+            "{}",
+            &self.steps.formatted_string(&format!("P:{}", &self.dom_num))
+        )
     }
 }
 
 #[readonly::make]
 #[derive(Debug, Clone)]
 pub struct SomePlan {
+    /// Domain indicator
+    pub dom_num: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
 }
@@ -42,15 +48,17 @@ impl SomePlan {
     /// Return a new plan, using a given StepStore.
     /// Check the steps to insure one leads to the next.
     /// The StepStore may be empty.
-    pub fn new() -> Self {
+    pub fn new(dom_num: usize) -> Self {
         Self {
+            dom_num,
             steps: StepStore::new(),
         }
     }
 
     /// Return a new plan with one given step.
-    pub fn new_with_step(stepx: SomeStep) -> Self {
+    pub fn new_with_step(dom_num: usize, stepx: SomeStep) -> Self {
         Self {
+            dom_num,
             steps: StepStore::new_with_step(stepx),
         }
     }
@@ -79,7 +87,10 @@ impl SomePlan {
             steps.reverse();
         }
 
-        Self { steps }
+        Self {
+            dom_num: self.dom_num,
+            steps,
+        }
     }
 
     /// Check if a plan is a valid sequence of steps.
@@ -143,7 +154,10 @@ impl SomePlan {
             steps.push(stepy);
         } //next stepx
 
-        Self { steps }
+        Self {
+            dom_num: self.dom_num,
+            steps,
+        }
     }
 
     /// Append a StepStore to a StepStore.
@@ -200,7 +214,7 @@ impl SomePlan {
             return None;
         }
 
-        // Check for repeating initial region
+        // Check for repeating Action needs: Noneinitial region
         let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
             let initx = self.steps[inx].initial.clone();
@@ -223,7 +237,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = SomePlan::new();
+                    steps2 = SomePlan::new(self.dom_num);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
@@ -264,7 +278,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = SomePlan::new();
+                    steps2 = SomePlan::new(self.dom_num);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {
@@ -286,7 +300,7 @@ impl SomePlan {
 
     /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
-        let mut rs = String::from("P[");
+        let mut rs = format!("P:{}[", self.dom_num);
 
         let mut flg = 0;
         for stpx in self.steps.iter() {
@@ -397,7 +411,7 @@ mod tests {
             false,
             reg2.clone(),
         );
-        let mut stp_str1 = SomePlan::new();
+        let mut stp_str1 = SomePlan::new(0);
         stp_str1.push(step1);
         stp_str1.push(step2);
 
@@ -413,7 +427,7 @@ mod tests {
             false,
             reg5.clone(),
         );
-        let mut stp_str2 = SomePlan::new();
+        let mut stp_str2 = SomePlan::new(0);
         stp_str2.push(step4);
         stp_str2.push(step5);
 
@@ -454,7 +468,7 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let mut pln1 = SomePlan::new();
+        let mut pln1 = SomePlan::new(0);
 
         let reg0 = SomeRegion::new_from_string(1, "r0000").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "r0001").unwrap();
@@ -528,7 +542,7 @@ mod tests {
             return Err(format!("No shortcut found for {}?", pln1).to_string());
         }
 
-        let mut pln2 = SomePlan::new();
+        let mut pln2 = SomePlan::new(0);
 
         let step1 = SomeStep::new(
             0,

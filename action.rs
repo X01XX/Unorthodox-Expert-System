@@ -803,8 +803,10 @@ impl SomeAction {
         'next_stax: for stax in stas.iter() {
             // Check needs
             for ndx in needs.iter() {
-                if ndx.target().is_superset_of_state(stax) {
-                    continue 'next_stax;
+                for targx in ndx.target().iter() {
+                    if targx.is_superset_of_state(stax) {
+                        continue 'next_stax;
+                    }
                 }
             }
 

@@ -1,11 +1,10 @@
-/// Implement a struct for Optimal RegionsStores.
-
-use crate::statestore::StateStore;
 use crate::regionstore::RegionStore;
+/// Implement a struct for Optimal RegionsStores.
+use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
-use std::ops::{Index};
-use std::slice::{Iter};
+use std::ops::Index;
+use std::slice::Iter;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -63,7 +62,6 @@ impl OptimalRegionsStore {
 
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &StateStore) -> bool {
-
         for regsx in self.optimal.iter() {
             if regsx.is_superset_of_states(&stas) {
                 return true;
@@ -85,7 +83,6 @@ impl OptimalRegionsStore {
 
     /// Return a copy of the optimal RegionStores, and intersections.
     pub fn and_intersections(&self) -> Self {
-
         let mut optimal_and_ints = OptimalRegionsStore::new();
 
         for regstrx in self.optimal.iter() {
@@ -93,9 +90,7 @@ impl OptimalRegionsStore {
         }
 
         for inx in 0..(self.len() - 1) {
-
             for iny in (inx + 1)..self.len() {
-
                 if let Some(an_int) = self[inx].intersect_each(&self[iny]) {
                     optimal_and_ints.push(an_int);
                 }

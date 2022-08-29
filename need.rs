@@ -10,6 +10,8 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
+use crate::target::SomeTarget;
+use crate::targetstore::TargetStore;
 
 use std::fmt;
 
@@ -54,12 +56,9 @@ impl fmt::Display for SomeNeed {
                 "N(Dom {} Pri {} To Optimal Region {})",
                 dom_num, pri, goal_reg,
             ),
-            SomeNeed::ToRegion2 {
-                goal_regs,
-            } => format!(
-                "N(Pri {} To Optimal Regions {})",
-                pri, goal_regs,
-            ),
+            SomeNeed::ToOptimalRegion { goal_regs } => {
+                format!("N(Pri {} To Optimal Regions {})", pri, goal_regs,)
+            }
             SomeNeed::LimitGroup {
                 dom_num,
                 act_num,
@@ -187,9 +186,7 @@ pub enum SomeNeed {
         goal_reg: SomeRegion,
     },
     /// Move current state to given regions.
-    ToRegion2 {
-        goal_regs: RegionStore,
-    },
+    ToOptimalRegion { goal_regs: RegionStore },
     /// Housekeeping, add a group.
     AddGroup {
         group_region: SomeRegion,
@@ -279,10 +276,8 @@ impl PartialEq for SomeNeed {
                 }
                 _ => (),
             },
-            SomeNeed::ToRegion2 {
-                goal_regs,
-            } => match other {
-                SomeNeed::ToRegion2 {
+            SomeNeed::ToOptimalRegion { goal_regs } => match other {
+                SomeNeed::ToOptimalRegion {
                     goal_regs: goal_regs_2,
                 } => {
                     if goal_regs == goal_regs_2 {
@@ -433,7 +428,7 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { .. } => format!("StateNotInGroup"),
             SomeNeed::ContradictoryIntersection { .. } => format!("ContradictoryIntersection"),
             SomeNeed::ToRegion { .. } => format!("ToRegion"),
-            SomeNeed::ToRegion2 { .. } => format!("ToRegion2"),
+            SomeNeed::ToOptimalRegion { .. } => format!("ToOptimalRegion"),
             SomeNeed::LimitGroup { .. } => format!("LimitGroup"),
             SomeNeed::ConfirmGroup { .. } => format!("ConfirmGroup"),
             SomeNeed::SeekEdge { .. } => format!("SeekEdge"),
@@ -458,7 +453,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { .. } => return 5,
             SomeNeed::LimitGroup { .. } => return 6,
             SomeNeed::ToRegion { .. } => return 8,
-            SomeNeed::ToRegion2 { .. } => return 7,
+            SomeNeed::ToOptimalRegion { .. } => return 7,
             _ => return 9999,
         } // end match ndx
     } // end priority
@@ -538,28 +533,72 @@ impl SomeNeed {
     } // end dom_num
 
     /// Return a region for a need target.
-    pub fn target(&self) -> SomeRegion {
+    pub fn target(&self) -> TargetStore {
         match self {
-            SomeNeed::AStateMakeGroup { targ_state, .. } => {
-                return SomeRegion::new(targ_state, targ_state)
+            SomeNeed::AStateMakeGroup {
+                dom_num,
+                targ_state,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    SomeRegion::new(targ_state, targ_state),
+                ))
             }
-            SomeNeed::StateNotInGroup { targ_state, .. } => {
-                return SomeRegion::new(targ_state, targ_state)
+            SomeNeed::StateNotInGroup {
+                dom_num,
+                targ_state,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    SomeRegion::new(targ_state, targ_state),
+                ))
             }
-            SomeNeed::ContradictoryIntersection { goal_reg, .. } => return goal_reg.clone(),
-            SomeNeed::ToRegion { goal_reg, .. } => return goal_reg.clone(),
-            SomeNeed::ConfirmGroup { targ_state, .. } => {
-                return SomeRegion::new(targ_state, targ_state)
+            SomeNeed::ContradictoryIntersection {
+                dom_num, goal_reg, ..
+            } => return TargetStore::new_with_target(SomeTarget::new(*dom_num, goal_reg.clone())),
+            SomeNeed::ToRegion {
+                dom_num, goal_reg, ..
+            } => return TargetStore::new_with_target(SomeTarget::new(*dom_num, goal_reg.clone())),
+
+            SomeNeed::ConfirmGroup {
+                dom_num,
+                targ_state,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    SomeRegion::new(targ_state, targ_state),
+                ))
             }
-            SomeNeed::SeekEdge { targ_state, .. } => {
-                return SomeRegion::new(targ_state, targ_state)
+            SomeNeed::SeekEdge {
+                dom_num,
+                targ_state,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    SomeRegion::new(targ_state, targ_state),
+                ))
             }
-            SomeNeed::LimitGroup { targ_state, .. } => {
-                return SomeRegion::new(targ_state, targ_state)
+            SomeNeed::LimitGroup {
+                dom_num,
+                targ_state,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    SomeRegion::new(targ_state, targ_state),
+                ))
             }
-            SomeNeed::AddSeekEdge { reg, .. } => return reg.clone(),
-            SomeNeed::SetGroupLimited { group_region, .. } => return group_region.clone(),
-            SomeNeed::SetGroupAnchor { group_region, .. } => return group_region.clone(),
+            SomeNeed::ToOptimalRegion { goal_regs, .. } => {
+                let mut targ = TargetStore::new();
+                for (dom_numx, goalx) in goal_regs.iter().enumerate() {
+                    targ.push(SomeTarget::new(dom_numx, goalx.clone()));
+                }
+                return targ;
+            }
             _ => panic!(
                 "target: should not be called for this need {}",
                 self.type_string()

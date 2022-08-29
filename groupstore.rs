@@ -163,29 +163,29 @@ impl GroupStore {
         rs
     }
 
-//    /// Find and remove a given group, identified by region.
-//    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
-//
-//        // Find a matching group region
-//        let mut fnd = false;
-//        let mut inx = 0;
-//
-//        for grpx in &mut self.avec {
-//           
-//            if grpx.region == *reg {
-//                fnd = true;
-//                break;
-//            }
-//            inx += 1;
-//        }
-//
-//        // Remove the group
-//        if fnd {
-//            remove_unordered(&mut self.avec, inx);
-//        }
-//
-//        fnd
-//    }
+    //    /// Find and remove a given group, identified by region.
+    //    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
+    //
+    //        // Find a matching group region
+    //        let mut fnd = false;
+    //        let mut inx = 0;
+    //
+    //        for grpx in &mut self.avec {
+    //
+    //            if grpx.region == *reg {
+    //                fnd = true;
+    //                break;
+    //            }
+    //            inx += 1;
+    //        }
+    //
+    //        // Remove the group
+    //        if fnd {
+    //            remove_unordered(&mut self.avec, inx);
+    //        }
+    //
+    //        fnd
+    //    }
 
     /// Find and remove any subset groups.
     fn remove_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {

@@ -26,10 +26,12 @@
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
+use crate::optimalregionsstore::OptimalRegionsStore;
 use crate::plan::SomePlan;
+use crate::planstore::PlanStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::optimalregionsstore::OptimalRegionsStore;
+use crate::targetstore::TargetStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -68,7 +70,7 @@ pub struct InxPlan {
     /// Index to a need in a NeedStore.
     pub inx: usize,
     /// Plan to satisfy need (may be empty if the current state satisfies the need), or None.
-    pub pln: Option<SomePlan>,
+    pub plans: Option<PlanStore>,
 }
 
 #[readonly::make]
@@ -93,7 +95,6 @@ pub struct DomainStore {
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
     pub fn new(optimal: OptimalRegionsStore) -> Self {
-
         let mut optimal_and_ints = optimal.clone();
         if optimal.len() > 1 {
             optimal_and_ints = optimal.and_intersections();
@@ -136,28 +137,42 @@ impl DomainStore {
             nds_agg.append(&mut nst);
         }
 
-//        if let Some(ndx) = self.check_optimal() {
-//            nds_agg.push(ndx);
-//        }
-        // Check optimal regions and boredom duration.
-        if self.optimal.len() > 1 {
-            let all_states = self.all_current_states();
-            let opt_sups = self.optimal.supersets_of_states(&all_states);
+        nds_agg
+    }
 
-            if opt_sups.len() == 0 {
-                self.boredom = 0;
-            } else {
-                self.boredom += 1;
+    /// Run a vector of plans.
+    pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
+        if plans.len() == 1 {
+            for planx in plans.iter() {
+                if planx.len() > 0 {
+                    if self.run_plan(&planx) == false {
+                        return false;
+                    }
+                }
             }
+            return true;
         }
 
-        nds_agg
+        let mut vecx: Vec<bool> = self
+            .avec
+            .par_iter_mut() // .par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|domx| domx.run_plans(plans))
+            .collect::<Vec<bool>>();
+
+        // Check for any false value
+        for valx in vecx.iter_mut() {
+            if *valx == false {
+                return false;
+            }
+        }
+        self.boredom = 0;
+        true
     }
 
     /// Run a plan for a given Domain.
     /// Return true if the plan ran to completion.
-    pub fn run_plan(&mut self, dmxi: usize, pln: &SomePlan) -> bool {
-        self.avec[dmxi].run_plan(pln)
+    pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
+        self.avec[pln.dom_num].run_plan(pln)
     }
 
     /// Take an action to satisfy a need
@@ -214,7 +229,7 @@ impl DomainStore {
                 for inx in 0..nds.len() {
                     inxvec.push(InxPlan {
                         inx: inx,
-                        pln: None,
+                        plans: None,
                     });
                 }
                 return inxvec;
@@ -257,16 +272,12 @@ impl DomainStore {
 
                 let ndsinx_plan = avec2
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-                    .map(|nd_inx| InxPlan {
-                        inx: *nd_inx,
-                        pln: self.avec[nds[*nd_inx].dom_num()]
-                            .make_plan(&nds[*nd_inx].target().clone()),
-                    })
+                    .map(|nd_inx| self.make_plans(*nd_inx, &nds[*nd_inx].target()))
                     .collect::<Vec<InxPlan>>();
 
                 // If at least one plan found, return vector of InxPlan structs.
                 for inxplnx in ndsinx_plan.iter() {
-                    if let Some(_) = &inxplnx.pln {
+                    if let Some(_) = &inxplnx.plans {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
                         //println!("domainstore::evaluate_needs returning vec pri {} num items {}", least_priority, ndsinx_plan.len());
                         return ndsinx_plan;
@@ -277,8 +288,29 @@ impl DomainStore {
             // Increase the lower bound of the next, least, priority number.
             last_priority = least_priority;
         } // end loop
-        // Unreachable, since there is no break command.
+          // Unreachable, since there is no break command.
     } // end evaluate_needs
+
+    // Return an InxPlan struct.
+    pub fn make_plans(&self, inx: usize, targets: &TargetStore) -> InxPlan {
+        let mut plans = PlanStore::new();
+
+        for targx in targets.iter() {
+            if let Some(planx) = self.avec[targx.dom_num].make_plan(&targx.region) {
+                plans.push(planx);
+            }
+        }
+        if plans.len() == 0 || plans.len() < targets.len() {
+            return InxPlan {
+                inx: inx,
+                plans: None,
+            };
+        }
+        InxPlan {
+            inx: inx,
+            plans: Some(plans),
+        }
+    }
 
     /// Choose a need, given a vector of needs,
     /// a vector of InxPlans Vec::<{ inx: need vector index, pln: Some(plan}>
@@ -392,7 +424,7 @@ impl DomainStore {
                 for cnp_tpl in &can_nds_pln {
                     let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-                    match &itmx.pln {
+                    match &itmx.plans {
                         Some(plnx) => {
                             if plnx.len() < min_plan_len {
                                 min_plan_len = plnx.len();
@@ -406,7 +438,7 @@ impl DomainStore {
                 for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
                     let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-                    match &itmx.pln {
+                    match &itmx.plans {
                         Some(plnx) => {
                             if plnx.len() == min_plan_len {
                                 can_do2.push(inx);
@@ -429,7 +461,7 @@ impl DomainStore {
 
         let ndx = &nds[itmx.inx]; // get need using tuple index
 
-        if let Some(pln) = &itmx.pln {
+        if let Some(pln) = &itmx.plans {
             println!(
                 "\nNeed chosen: {} {} {}",
                 &can_nds_pln[can_do2[cd2_inx]].0,
@@ -462,32 +494,31 @@ impl DomainStore {
         self.avec.len()
     }
 
-// Combine all domain current states, producing a larger state.
-// Possible future use.
-//    pub fn combine_states(&self) -> SomeState {
-//        let mut ret_state = self[0].cur_state.clone();
-//        for inx in 1..self.len() {
-//            ret_state = ret_state.combine(&self[inx].cur_state);
-//        }
-//        ret_state
-//    }
+    // Combine all domain current states, producing a larger state.
+    // Possible future use.
+    //    pub fn combine_states(&self) -> SomeState {
+    //        let mut ret_state = self[0].cur_state.clone();
+    //        for inx in 1..self.len() {
+    //            ret_state = ret_state.combine(&self[inx].cur_state);
+    //        }
+    //        ret_state
+    //    }
 
-// Split a state into states that match the size of each domain current state.
-// Possible future use.
-//    pub fn split_state(&self, astate: &SomeState) -> Vec<SomeState> {
-//        let mut ret_vec = Vec::<SomeState>::new();
-//        let mut place = 0;
-//        for domx in self.avec.iter() {
-//            let num_ints = domx.num_ints;
-//            ret_vec.push(astate.clone().slice(place, place + num_ints));
-//            place += num_ints;
-//        }
-//        ret_vec
-//    }
+    // Split a state into states that match the size of each domain current state.
+    // Possible future use.
+    //    pub fn split_state(&self, astate: &SomeState) -> Vec<SomeState> {
+    //        let mut ret_vec = Vec::<SomeState>::new();
+    //        let mut place = 0;
+    //        for domx in self.avec.iter() {
+    //            let num_ints = domx.num_ints;
+    //            ret_vec.push(astate.clone().slice(place, place + num_ints));
+    //            place += num_ints;
+    //        }
+    //        ret_vec
+    //    }
 
     /// Return a StateStore of all domain current states.
     pub fn all_current_states(&self) -> StateStore {
-
         let mut all_states = StateStore::with_capacity(self.len());
 
         for domx in self.avec.iter() {
@@ -514,10 +545,14 @@ impl DomainStore {
             return None;
         }
 
+        // Get all domain states
         let all_states = self.all_current_states();
 
+        // Check boredom limit
         let limit = self.boredom_limit(&all_states);
+        self.boredom_limit = limit;
 
+        // Check current status within an optimal region, or not.
         if self.optimal.any_supersets_of_states(&all_states) {
             self.boredom += 1;
             if self.boredom <= limit {
@@ -534,7 +569,9 @@ impl DomainStore {
         // return a need to move to an optimal region.
         if notsups.len() > 0 {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
-            return Some(SomeNeed::ToRegion2 { goal_regs: notsups[inx].clone() });
+            return Some(SomeNeed::ToOptimalRegion {
+                goal_regs: notsups[inx].clone(),
+            });
         }
 
         None
@@ -548,7 +585,10 @@ impl DomainStore {
         let all_states = self.all_current_states();
         let optimal_supersets = self.optimal.supersets_of_states(&all_states);
         if optimal_supersets.len() == 0 {
-            print!("\nAll Current states: {} in optimal regions: None, not in ", all_states);
+            print!(
+                "\nAll Current states: {} in optimal regions: None, not in ",
+                all_states
+            );
             for optx in self.optimal.iter() {
                 print!(" {}", optx);
             }
@@ -565,62 +605,13 @@ impl DomainStore {
             }
         }
 
-        println!(", Boredom level = {} of limit {}", self.boredom, self.boredom_limit);
+        println!(
+            ", Boredom level = {} of limit {}",
+            self.boredom, self.boredom_limit
+        );
         println!(" ");
         ret
     }
-
-    /// Change the current state to be within an optimal region that it is not currently in.
-    pub fn change_optimal_state(&mut self) {
-        //println!("change_optimal_state - start");
-        let all_states = self.all_current_states();
-
-        let optimal_not_supersets = self.optimal.not_supersets_of_states(&all_states);
-
-        if optimal_not_supersets.len() > 0 {
-            if self.optimal.any_supersets_of_states(&all_states) {
-                println!("\nGo to another optimal state!");
-            } else {
-                println!("\nGo to an optimal state!");
-            }
-
-            // Pick a random optional region set
-            let mut rp1 = RandomPick::new(optimal_not_supersets.len());
-
-            // Try each optimal region set until one is satisfied or not.
-            'next_inx: while let Some(inx) = rp1.pick() {
-                println!("Try to go from {} to {}", all_states, optimal_not_supersets[inx]);
-                let mut planvec = Vec::<SomePlan>::with_capacity(all_states.len());
-                for (domx, regx) in optimal_not_supersets[inx].iter().enumerate() {
-                    if regx.is_superset_of_state(&all_states[domx]) {
-                        planvec.push(SomePlan::new());
-                    } else {
-                        if let Some(planx) = self.avec[domx].make_plan(regx) {
-                            planvec.push(planx);
-                        }
-                    }
-                }
-                if planvec.len() == all_states.len() {
-
-                    for (domx, planx) in planvec.iter().enumerate() {
-                        if planx.len() > 0 {
-                            if self.avec[domx].run_plan(planx) {
-                            } else {
-                                continue 'next_inx;
-                            }
-                        }
-                    }
-                    let all_states = self.all_current_states();
-                    self.boredom = 0;
-                    self.boredom_limit = self.boredom_limit(&all_states);
-                    //self.print_optimal();
-                    return;
-                }
-            } // end of random pick
-            self.boredom = 0;
-        }
-    }
-
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -677,10 +668,9 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[test]
     fn check_optimal() -> Result<(), String> {
-
         // Load optimal regions
         let mut optimal = OptimalRegionsStore::new();
 
@@ -743,7 +733,10 @@ mod tests {
         let all_states = dmxs.all_current_states();
         println!("\nCurr st: {}", all_states);
 
-        println!("\nNumber supersets: {}", dmxs.optimal.number_supersets_of_states(&all_states));
+        println!(
+            "\nNumber supersets: {}",
+            dmxs.optimal.number_supersets_of_states(&all_states)
+        );
 
         if let Some(needx) = dmxs.check_optimal() {
             println!("\nCheck_optimal returns {}", needx);
@@ -751,7 +744,11 @@ mod tests {
             println!("\nCheck_otimal returns None");
         }
 
-        println!("\nBoredom level {} Boredom_limit {}", dmxs.boredom, dmxs.boredom_limit(&all_states));
+        println!(
+            "\nBoredom level {} Boredom_limit {}",
+            dmxs.boredom,
+            dmxs.boredom_limit(&all_states)
+        );
 
         println!(" ");
 
@@ -759,4 +756,3 @@ mod tests {
         Ok(())
     }
 }
-

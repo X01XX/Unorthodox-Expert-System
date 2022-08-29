@@ -19,6 +19,7 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
+use crate::planstore::PlanStore;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
@@ -101,9 +102,9 @@ impl SomeDomain {
             .actions
             .get_needs(&self.cur_state, self.num, &self.memory);
 
-//        if let Some(ndx) = self.check_optimal() {
-//            nst.push(ndx);
-//        }
+        //        if let Some(ndx) = self.check_optimal() {
+        //            nst.push(ndx);
+        //        }
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -156,7 +157,6 @@ impl SomeDomain {
 
     /// Set the current state field.
     pub fn set_state(&mut self, new_state: &SomeState) {
-
         // Update memory.
         if self.memory.len() >= MAX_MEMORY {
             self.memory.pop_back();
@@ -165,6 +165,20 @@ impl SomeDomain {
 
         // Set current state.
         self.cur_state = new_state.clone();
+    }
+
+    /// Run the first plan in a PlanStore that matches the current domain number.
+    /// Subrtafuge to allow running plans in parallel.
+    pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
+        for planx in plans.iter() {
+            if planx.dom_num == self.num {
+                if planx.len() == 0 {
+                    return true;
+                }
+                return self.run_plan(planx);
+            }
+        }
+        false
     }
 
     /// Run a plan, return true if it runs to completion.
@@ -238,7 +252,7 @@ impl SomeDomain {
                     &pln.result_region(),
                     &planx.str_terse()
                 );
-                return self.run_plan2(&planx, depth - 1)
+                return self.run_plan2(&planx, depth - 1);
             }
             println!(
                 "A plan from {} to {} is not found",
@@ -247,7 +261,7 @@ impl SomeDomain {
             );
             return false;
         } // next stpx
-        
+
         pln.result_region().is_superset_of_state(&self.cur_state)
     } // end run_plan2
 
@@ -312,7 +326,7 @@ impl SomeDomain {
         // Check if from_reg is at the goal, no steps are needed.
         if goal_reg.is_superset_of(from_reg) {
             //println!("from {} subset goal {} ?", from_reg, goal_reg);
-            return Some(SomePlan::new());
+            return Some(SomePlan::new(self.num));
         }
 
         // Check if change is possible
@@ -344,7 +358,7 @@ impl SomeDomain {
 
                 if goal_reg.is_superset_of(&stepy.result) {
                     //println!("forward_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
-                    return Some(SomePlan::new_with_step(stepy));
+                    return Some(SomePlan::new_with_step(self.num, stepy));
                 }
             }
         }
@@ -382,7 +396,6 @@ impl SomeDomain {
         let mut asym_inx = Vec::<usize>::new();
 
         'next_vecx: for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
-
             for stepx in vecx.iter() {
                 if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
                     continue 'next_vecx;
@@ -424,7 +437,7 @@ impl SomeDomain {
                 if let Some(next_steps) =
                     self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
                 {
-                    let steps1 = first_steps.link(&SomePlan::new_with_step(stepy));
+                    let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
                     return Some(steps1.link(&next_steps));
                 }
             }
@@ -450,7 +463,7 @@ impl SomeDomain {
             if let Some(next_steps) =
                 self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
             {
-                return Some(SomePlan::new_with_step(stepy).link(&next_steps));
+                return Some(SomePlan::new_with_step(self.num, stepy).link(&next_steps));
             }
             return None;
         }
@@ -461,7 +474,7 @@ impl SomeDomain {
             if let Some(prev_steps) =
                 self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1)
             {
-                return Some(prev_steps.link(&SomePlan::new_with_step(stepy)));
+                return Some(prev_steps.link(&SomePlan::new_with_step(self.num, stepy)));
             }
             return None;
         }
@@ -477,7 +490,7 @@ impl SomeDomain {
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
-            return Some(SomePlan::new());
+            return Some(SomePlan::new(self.num));
         }
 
         let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
@@ -690,7 +703,6 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
     let mut inxs = Vec::<usize>::new();
 
     'next_inx: for inx in 0..by_change.len() {
-
         for iny in 0..by_change.len() {
             if iny == inx {
                 continue;
@@ -739,10 +751,7 @@ mod tests {
     // from s0111 to s1000.
     #[test]
     fn make_plan_direct() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -795,10 +804,7 @@ mod tests {
     // then step back into the glide path to get to the goal.
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -852,10 +858,7 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -913,10 +916,7 @@ mod tests {
     // Test confirm_group_needs.
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -988,10 +988,7 @@ mod tests {
     // different results expected from the least significant bit.
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         let s00 = dm0.state_from_string("s0").unwrap();
@@ -1024,10 +1021,7 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         // Set up group XXXX_XX0X->XXXX_XX0X
@@ -1048,7 +1042,19 @@ mod tests {
 
         let nds1 = dm0.actions[0].limit_groups_needs();
         println!("needs1 are {}", nds1);
-        assert!(nds1.contains_similar_need("SetGroupAnchor", &grp_reg));
+
+        let mut found = false;
+        for needx in nds1.iter() {
+            match needx {
+                SomeNeed::SetGroupAnchor { group_region, .. } => {
+                    if *group_region == grp_reg {
+                        found = true;
+                    }
+                }
+                _ => (),
+            }
+        }
+        assert!(found);
 
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
@@ -1066,7 +1072,19 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
         let nds3 = dm0.actions[0].limit_groups_needs();
         println!("needs3 are {}", nds3);
-        assert!(nds3.contains_similar_need("SetGroupLimited", &grp_reg));
+
+        let mut found = false;
+        for needx in nds3.iter() {
+            match needx {
+                SomeNeed::SetGroupLimited { group_region, .. } => {
+                    if *group_region == grp_reg {
+                        found = true;
+                    }
+                }
+                _ => (),
+            }
+        }
+        assert!(found);
 
         Ok(())
     }
@@ -1082,10 +1100,7 @@ mod tests {
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -1151,10 +1166,7 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s101").unwrap();
@@ -1212,10 +1224,7 @@ mod tests {
     // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(2, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(2, "s1").unwrap());
         dm0.add_action();
 
         let s0 = dm0.state_from_string("s0001010010101000").unwrap();
@@ -1239,10 +1248,7 @@ mod tests {
 
     #[test]
     fn compatible_group_intersection_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         let s0 = dm0.state_from_string("s000").unwrap();
@@ -1281,10 +1287,7 @@ mod tests {
 
     #[test]
     fn seek_edge_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         // Establish group XXXX
@@ -1334,8 +1337,20 @@ mod tests {
             dm0.eval_sample_arbitrary(0, &sd, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
-            assert!(needs
-                .contains_similar_need("AddSeekEdge", &dm0.region_from_string("r11x1").unwrap()));
+            let mut found = false;
+            let regexp = dm0.region_from_string("r11x1").unwrap();
+            for needx in needs.iter() {
+                match needx {
+                    SomeNeed::AddSeekEdge { reg } => {
+                        if *reg == regexp {
+                            found = true;
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            assert!(found);
+
             // At the next run of get_needs, r11x1 will replace the superset region rx1x1, then
             // r11x1 will be deleted because its defining squares are adjacent.
         } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
@@ -1353,8 +1368,20 @@ mod tests {
             dm0.eval_sample_arbitrary(0, &s7, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
-            assert!(needs
-                .contains_similar_need("AddSeekEdge", &dm0.region_from_string("rx111").unwrap()));
+            let mut found = false;
+            let regexp = dm0.region_from_string("rx111").unwrap();
+            for needx in needs.iter() {
+                match needx {
+                    SomeNeed::AddSeekEdge { reg } => {
+                        if *reg == regexp {
+                            found = true;
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            assert!(found);
+
             // At the next run of get_needs, rx111 will replace the superset region rx1x1, then
             // rx111 will be deleted because its defining squares are adjacent.
         } else {
@@ -1372,10 +1399,7 @@ mod tests {
 
     #[test]
     fn astate_make_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(
-            0,
-            SomeState::new_from_string(1, "s1").unwrap(),
-        );
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
         dm0.add_action();
 
         // Sample 1

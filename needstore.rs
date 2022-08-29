@@ -32,7 +32,7 @@ impl fmt::Display for NeedStore {
 #[derive(Debug)]
 #[readonly::make]
 pub struct NeedStore {
-    /// A vector od SomeNeed instances.
+    /// A vector of SomeNeed instances.
     avec: Vec<SomeNeed>,
 }
 
@@ -59,8 +59,10 @@ impl NeedStore {
     pub fn contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
         for nedx in &self.avec {
             if nedx.type_string() == type_string {
-                if nedx.target() == *target {
-                    return true;
+                for targx in nedx.target().iter() {
+                    if targx.region == *target {
+                        return true;
+                    }
                 }
             }
         }
@@ -85,7 +87,7 @@ impl NeedStore {
         self.avec.iter_mut()
     }
 
-    /// Return a vactor iterator.
+    /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeNeed> {
         self.avec.iter()
     }

@@ -868,7 +868,7 @@ mod tests {
         println!("rul1 {}", &rul1);
         if rul1.result_region() != SomeRegion::new_from_string(1, "r0101").unwrap() {
             return Err(String::from("rul1 esult ne r0101?"));
-        } 
+        }
 
         Ok(())
     }

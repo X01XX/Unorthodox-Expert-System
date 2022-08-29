@@ -401,7 +401,7 @@ impl RegionStore {
     // Return an intersection of each region, in order, of two RegionStores.
     pub fn intersect_each(&self, other: &RegionStore) -> Option<RegionStore> {
         assert!(self.len() == other.len());
-        
+
         let mut ret = RegionStore::with_capacity(self.len());
 
         for inx in 0..self.len() {
@@ -439,7 +439,6 @@ impl RegionStore {
 
         true
     }
-
 }
 
 impl Index<usize> for RegionStore {

@@ -68,7 +68,6 @@ impl SomeRegion {
         let mut bts_low = SomeBits::new_low(num_ints);
 
         for (inx, ch) in str.chars().enumerate() {
-
             if inx == 0 {
                 if ch == 'r' {
                     continue;
