@@ -153,9 +153,10 @@ impl DomainStore {
             return true;
         }
 
+        // Only run for seeking an optimal region, when the number of domains is GT 1.
         let mut vecx: Vec<bool> = self
             .avec
-            .par_iter_mut() // .par_iter for parallel, .iter for easier reading of diagnostic messages
+            .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.run_plans(plans))
             .collect::<Vec<bool>>();
 
@@ -166,6 +167,7 @@ impl DomainStore {
             }
         }
         self.boredom = 0;
+        self.boredom_limit = self.set_boredom_limit();
         true
     }
 
@@ -528,12 +530,13 @@ impl DomainStore {
         all_states
     }
 
-    /// Return the boredom limit, given the current domain states, if any.
-    pub fn boredom_limit(&self, stas: &StateStore) -> usize {
+    /// Set and return the boredom limit.
+    pub fn set_boredom_limit(&mut self) -> usize {
         // Get the optimal regions the current state is in.
-        let num_sups = self.optimal.number_supersets_of_states(stas);
-
-        3 * num_sups
+        let all_states = self.all_current_states();
+        let num_sups = self.optimal.number_supersets_of_states(&all_states);
+        self.boredom_limit = 3 * num_sups;
+        self.boredom_limit
     }
 
     /// Do functions related to the wish to be in an optimum region.
@@ -548,18 +551,15 @@ impl DomainStore {
         // Get all domain states
         let all_states = self.all_current_states();
 
-        // Check boredom limit
-        let limit = self.boredom_limit(&all_states);
-        self.boredom_limit = limit;
-
         // Check current status within an optimal region, or not.
         if self.optimal.any_supersets_of_states(&all_states) {
             self.boredom += 1;
-            if self.boredom <= limit {
+            if self.boredom <= self.boredom_limit {
                 return None;
             }
         } else {
             self.boredom = 0;
+            self.boredom_limit = 0;
         }
 
         // Get regions the current state is not in.
@@ -747,7 +747,7 @@ mod tests {
         println!(
             "\nBoredom level {} Boredom_limit {}",
             dmxs.boredom,
-            dmxs.boredom_limit(&all_states)
+            dmxs.boredom_limit
         );
 
         println!(" ");

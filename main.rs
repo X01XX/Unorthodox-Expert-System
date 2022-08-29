@@ -447,22 +447,25 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 println!("Invalid Need Number: {}", cmd[1]);
                             } else {
                                 let ndx = &nds[need_plans[need_can[n_num]].inx];
-
-                                // Change the displayed Domain, if needed
-                                if dom_num != ndx.dom_num() {
-                                    dom_num = ndx.dom_num();
-                                }
-
-                                //print_domain(&dmxs, dom_num);
-
                                 let pln = need_plans[need_can[n_num]].plans.as_ref().unwrap();
 
                                 println!("\n{} Need: {}", &n_num, &ndx);
+                                match ndx {
+                                    SomeNeed::ToOptimalRegion { .. } => {
+                                        println!("\n{}", &pln.str2());
+                                    }
+                                    _ => {
+                                        // Change the displayed Domain, if needed
+                                        if dom_num != ndx.dom_num() {
+                                            dom_num = ndx.dom_num();
+                                        }
 
-                                if ndx.satisfied_by(&dmxs[dom_num].get_current_state()) {
-                                    println!("\nPlan: current state satisfies need, just take the action");
-                                } else {
-                                    println!("\nPlan: \n{}", &pln.str2());
+                                        if ndx.satisfied_by(&dmxs[dom_num].get_current_state()) {
+                                            println!("\nPlan: current state satisfies need, just take the action");
+                                        } else {
+                                            println!("\n{}", &pln.str2());
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -486,14 +489,17 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
 
-                                dom_num = ndx.dom_num();
-
                                 if pln.len() > 0 {
                                     dmxs.run_plans(&pln);
                                 }
 
-                                if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                                    dmxs.take_action_need(dom_num, &ndx);
+                                match ndx {
+                                    SomeNeed::ToOptimalRegion { .. } => (),
+                                    _ => {
+                                        if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
+                                            dmxs.take_action_need(ndx.dom_num(), &ndx);
+                                        }
+                                    }
                                 }
                                 break;
                             }

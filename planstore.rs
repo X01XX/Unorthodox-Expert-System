@@ -60,13 +60,10 @@ impl PlanStore {
     pub fn str2(&self) -> String {
         let mut rc_str = String::new();
 
-        let mut not_first = false;
         for planx in self.avec.iter() {
-            if not_first {
-                rc_str.push_str(", ");
-            }
+            rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
             rc_str.push_str(&planx.str2());
-            not_first = true;
+            rc_str.push('\n');
         }
         rc_str
     }
