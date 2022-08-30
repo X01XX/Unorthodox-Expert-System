@@ -49,7 +49,6 @@ mod optimalregionsstore;
 mod randompick;
 mod removeunordered;
 mod truth;
-use crate::optimalregionsstore::OptimalRegionsStore;
 mod planstore;
 mod target;
 mod targetstore;
@@ -63,31 +62,9 @@ use std::process;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
-    // Load optimal regions
-    let mut optimal = OptimalRegionsStore::new();
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX1X_1XXX_XXXX").unwrap());
-    optimal.push(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX1_1XXX_XXXX").unwrap());
-    optimal.push(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX00_0XXX_XXXX").unwrap());
-    optimal.push(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX0_0XXX_XXXX").unwrap());
-    optimal.push(regstr);
 
     // Start a DomainStore
-    let mut dmxs = DomainStore::new(optimal);
+    let mut dmxs = DomainStore::new();
 
     // Initialize a domain, with number of integers = 1, initial state, optimal region.
 
@@ -128,6 +105,27 @@ fn init() -> DomainStore {
 
     // Add the domain to the DomainStore.
     dmxs.push(dom1);
+
+    // Load optimal regions
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX1X_1XXX_XXXX").unwrap());
+    dmxs.add_optimal(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX1_1XXX_XXXX").unwrap());
+    dmxs.add_optimal(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXX00_0XXX_XXXX").unwrap());
+    dmxs.add_optimal(regstr);
+
+    let mut regstr = RegionStore::with_capacity(2);
+    regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+    regstr.push(SomeRegion::new_from_string(2, "rXXXXXXX0_0XXX_XXXX").unwrap());
+    dmxs.add_optimal(regstr);
 
     dmxs
 }

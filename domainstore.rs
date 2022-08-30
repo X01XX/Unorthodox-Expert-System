@@ -32,6 +32,7 @@ use crate::planstore::PlanStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::targetstore::TargetStore;
+use crate::regionstore::RegionStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -94,19 +95,29 @@ pub struct DomainStore {
 
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
-    pub fn new(optimal: OptimalRegionsStore) -> Self {
-        let mut optimal_and_ints = optimal.clone();
-        if optimal.len() > 1 {
-            optimal_and_ints = optimal.and_intersections();
-        }
+    pub fn new() -> Self {
 
         Self {
-            avec: Vec::<SomeDomain>::with_capacity(5),
+            avec: Vec::<SomeDomain>::new(),
             step: 0,
             boredom: 0,
             boredom_limit: 0,
-            optimal_and_ints,
-            optimal: optimal,
+            optimal_and_ints: OptimalRegionsStore::new(),
+            optimal: OptimalRegionsStore::new(),
+        }
+    }
+
+    /// Add an optimal region.
+    /// One region for each domain.
+    /// The logical "and" of each domain region given.
+    pub fn add_optimal(&mut self, regstr: RegionStore) {
+        assert!(regstr.len() == self.avec.len());
+
+        self.optimal.push(regstr);
+        if self.optimal.len() == 1 {
+            self.optimal_and_ints = self.optimal.clone();
+        } else {
+            self.optimal_and_ints = self.optimal.and_intersections();
         }
     }
 
@@ -116,7 +127,10 @@ impl DomainStore {
     }
 
     /// Add a Domain struct to the store.
+    /// Add optimal regions after the last domain has been added.
     pub fn push(&mut self, domx: SomeDomain) {
+        assert!(self.optimal.len() == 0);
+
         self.avec.push(domx);
     }
 
@@ -142,6 +156,9 @@ impl DomainStore {
 
     /// Run a vector of plans.
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
+        assert!(plans.len() > 0);
+
+        // Run a plan for one domain.
         if plans.len() == 1 {
             for planx in plans.iter() {
                 if planx.len() > 0 {
@@ -153,22 +170,22 @@ impl DomainStore {
             return true;
         }
 
-        // Only run for seeking an optimal region, when the number of domains is GT 1.
-        let mut vecx: Vec<bool> = self
-            .avec
-            .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|domx| domx.run_plans(plans))
-            .collect::<Vec<bool>>();
+        if plans.len() == self.avec.len() {
+            // Run plans in parallel for achieving a state in an optimal region, when the number of domains is GT 1.
+            if self
+                .avec
+                .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
+                .map(|domx| domx.run_plan(&plans[domx.num]))
+                .filter(|b| *b)
+                .collect::<Vec<bool>>().len() == plans.len() {  // Does the number of true returns equal the number of plans run?
 
-        // Check for any false value
-        for valx in vecx.iter_mut() {
-            if *valx == false {
-                return false;
+                self.boredom = 0;
+                self.boredom_limit = self.set_boredom_limit();
+                return true;
             }
         }
-        self.boredom = 0;
-        self.boredom_limit = self.set_boredom_limit();
-        true
+
+        false
     }
 
     /// Run a plan for a given Domain.
@@ -636,7 +653,7 @@ mod tests {
     #[test]
     fn all_current_states() -> Result<(), String> {
         // Init a DomainStore.
-        let mut dmxs = DomainStore::new(OptimalRegionsStore::new());
+        let mut dmxs = DomainStore::new();
 
         let init_state1 = SomeState::new_from_string(1, "s0x12").unwrap();
 
@@ -671,31 +688,9 @@ mod tests {
 
     #[test]
     fn check_optimal() -> Result<(), String> {
-        // Load optimal regions
-        let mut optimal = OptimalRegionsStore::new();
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        optimal.push(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        optimal.push(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        optimal.push(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        optimal.push(regstr);
 
         // Start a DomainStore
-        let mut dmxs = DomainStore::new(optimal);
+        let mut dmxs = DomainStore::new();
 
         // Initialize a domain, with number of integers = 1, initial state, optimal region.
 
@@ -724,6 +719,27 @@ mod tests {
 
         // Add the domain to the DomainStore.
         dmxs.push(dom1);
+
+        // Load optimal regions
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        dmxs.add_optimal(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        dmxs.add_optimal(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        dmxs.add_optimal(regstr);
+
+        let mut regstr = RegionStore::with_capacity(2);
+        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
+        dmxs.add_optimal(regstr);
 
         println!("Optimal and ints:");
         for regstrx in dmxs.optimal_and_ints.iter() {

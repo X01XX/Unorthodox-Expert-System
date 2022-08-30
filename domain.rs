@@ -19,7 +19,6 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
-use crate::planstore::PlanStore;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
@@ -167,22 +166,13 @@ impl SomeDomain {
         self.cur_state = new_state.clone();
     }
 
-    /// Run the first plan in a PlanStore that matches the current domain number.
-    /// Subrtafuge to allow running plans in parallel.
-    pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
-        for planx in plans.iter() {
-            if planx.dom_num == self.num {
-                if planx.len() == 0 {
-                    return true;
-                }
-                return self.run_plan(planx);
-            }
-        }
-        false
-    }
-
     /// Run a plan, return true if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
+        assert!(pln.dom_num == self.num);
+
+        if pln.len() == 0 {
+            return true;
+        }
         self.run_plan2(pln, 3) // Init depth counter.
     }
 
