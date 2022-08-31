@@ -61,9 +61,11 @@ impl PlanStore {
         let mut rc_str = String::new();
 
         for planx in self.avec.iter() {
-            rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
-            rc_str.push_str(&planx.str2());
-            rc_str.push('\n');
+            if planx.len() > 0 {
+                rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
+                rc_str.push_str(&planx.str2());
+                rc_str.push('\n');
+            }
         }
         rc_str
     }
@@ -73,11 +75,13 @@ impl PlanStore {
 
         let mut not_first = false;
         for planx in self.avec.iter() {
-            if not_first {
-                rc_str.push_str(", ");
+            if planx.len() > 0 {
+                if not_first {
+                    rc_str.push_str(", ");
+                }
+                rc_str.push_str(&planx.str_terse());
+                not_first = true;
             }
-            rc_str.push_str(&planx.str_terse());
-            not_first = true;
         }
         rc_str
     }

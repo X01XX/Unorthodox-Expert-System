@@ -21,6 +21,7 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
+use crate::mask::SomeMask;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -196,7 +197,7 @@ impl SomeAction {
         // Additional processing for selected kinds of need
         match ndx {
             SomeNeed::AStateMakeGroup {
-                targ_state: sta,
+                target_state: sta,
                 for_reg,
                 far,
                 ..
@@ -237,7 +238,7 @@ impl SomeAction {
             } // end process AStateMakeGroup Need
 
             SomeNeed::SeekEdge {
-                targ_state: sta,
+                target_state: sta,
                 in_group: greg,
                 ..
             } => {
@@ -552,7 +553,7 @@ impl SomeAction {
             nds.push(SomeNeed::StateNotInGroup {
                 dom_num: 0, // will be set later
                 act_num: self.num,
-                targ_state: cur_state.clone(),
+                target_state: cur_state.clone(),
             });
         }
 
@@ -565,7 +566,7 @@ impl SomeAction {
                 nds.push(SomeNeed::StateNotInGroup {
                     dom_num: 0, // will be set later
                     act_num: self.num,
-                    targ_state: stax.clone(),
+                    target_state: stax.clone(),
                 });
             }
         } // next stax
@@ -582,7 +583,7 @@ impl SomeAction {
             nds.push(SomeNeed::StateNotInGroup {
                 dom_num: 0, // will be set later
                 act_num: self.num,
-                targ_state: stax.clone(),
+                target_state: stax.clone(),
             });
         }
 
@@ -598,6 +599,7 @@ impl SomeAction {
         cur_state: &SomeState,
         dom: usize,
         memory: &VecDeque<SomeState>,
+        changes_mask: &SomeMask,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
@@ -635,7 +637,7 @@ impl SomeAction {
             }
 
             // Check for squares in-one-group needs
-            let mut ndx = self.limit_groups_needs();
+            let mut ndx = self.limit_groups_needs(changes_mask);
             if ndx.len() > 0 {
                 nds.append(&mut ndx);
             }
@@ -887,7 +889,7 @@ impl SomeAction {
                 ret_nds.push(SomeNeed::SeekEdge {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqr1.state.clone(),
+                    target_state: sqr1.state.clone(),
                     in_group: regx.clone(),
                 });
                 continue;
@@ -897,7 +899,7 @@ impl SomeAction {
                 ret_nds.push(SomeNeed::SeekEdge {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqr2.state.clone(),
+                    target_state: sqr2.state.clone(),
                     in_group: regx.clone(),
                 });
                 continue;
@@ -947,7 +949,7 @@ impl SomeAction {
                 ret_nds.push(SomeNeed::SeekEdge {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: sqrx.state.clone(),
+                    target_state: sqrx.state.clone(),
                     in_group: regx.clone(),
                 });
             }
@@ -996,7 +998,7 @@ impl SomeAction {
         ret_nds.push(SomeNeed::SeekEdge {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
-            targ_state: seek_state,
+            target_state: seek_state,
             in_group: regx.clone(),
         });
         //println!(" ");
@@ -1020,7 +1022,7 @@ impl SomeAction {
                 ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: grpx.region.state1.clone(),
+                    target_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
                 });
             }
@@ -1030,7 +1032,7 @@ impl SomeAction {
                 ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: 0, // set this in domain get_needs
                     act_num: self.num,
-                    targ_state: grpx.region.state2.clone(),
+                    target_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
                 });
             }
@@ -1055,7 +1057,7 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn limit_groups_needs(&self) -> NeedStore {
+    pub fn limit_groups_needs(&self, changes_mask: &SomeMask) -> NeedStore {
         //println!("limit_groups_needs chg {}", agg_chgs);
 
         let mut ret_nds = NeedStore::new();
@@ -1082,7 +1084,7 @@ impl SomeAction {
                 continue;
             }
 
-            let mut ndx = self.limit_group_needs(grpx, &anchors);
+            let mut ndx = self.limit_group_needs(grpx, &anchors, changes_mask);
             if ndx.len() > 0 {
                 ret_nds.append(&mut ndx);
             }
@@ -1143,12 +1145,12 @@ impl SomeAction {
     }
 
     /// Return the limiting needs for a group.
-    pub fn limit_group_needs(&self, grpx: &SomeGroup, anchors: &StateStore) -> NeedStore {
+    pub fn limit_group_needs(&self, grpx: &SomeGroup, anchors: &StateStore, changes_mask: &SomeMask) -> NeedStore {
         assert!(grpx.limited == false);
         assert!(grpx.pnc);
 
         if let Some(anchor) = &grpx.anchor {
-            return self.limit_group_needs2(grpx, anchor);
+            return self.limit_group_needs2(grpx, anchor, changes_mask);
         }
 
         let mut ret_nds = NeedStore::new();
@@ -1203,7 +1205,7 @@ impl SomeAction {
     } // end limit_group_needs
 
     /// Return the limiting needs for a group with an anchor chosen.
-    pub fn limit_group_needs2(&self, grpx: &SomeGroup, anchor_sta: &SomeState) -> NeedStore {
+    pub fn limit_group_needs2(&self, grpx: &SomeGroup, anchor_sta: &SomeState, changes_mask: &SomeMask) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
@@ -1221,7 +1223,7 @@ impl SomeAction {
                 dom_num: 0, // will be set in domain code
                 act_num: self.num,
                 anchor: anchor_sta.clone(),
-                targ_state: anchor_sta.clone(),
+                target_state: anchor_sta.clone(),
                 for_group: grpx.region.clone(),
             });
             return ret_nds;
@@ -1232,7 +1234,7 @@ impl SomeAction {
         let mut nds_grp_add = NeedStore::new(); // needs for added group
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.x_mask().m_not().split();
+        let edge_msks = grpx.region.x_mask().m_not().m_and(changes_mask).split();
 
         for mskx in edge_msks.iter() {
             let adj_sta = SomeState::new(anchor_sta.bts.b_xor(&mskx.bts));
@@ -1260,7 +1262,7 @@ impl SomeAction {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
-                        targ_state: adj_sta.clone(),
+                        target_state: adj_sta.clone(),
                         for_group: grpx.region.clone(),
                     });
                 }
@@ -1269,7 +1271,7 @@ impl SomeAction {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    targ_state: adj_sta.clone(),
+                    target_state: adj_sta.clone(),
                     for_group: grpx.region.clone(),
                 });
             }
@@ -1305,7 +1307,7 @@ impl SomeAction {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
-                        targ_state: sta_far.clone(),
+                        target_state: sta_far.clone(),
                         for_group: grpx.region.clone(),
                     });
                 }
@@ -1315,7 +1317,7 @@ impl SomeAction {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    targ_state: sta_far.clone(),
+                    target_state: sta_far.clone(),
                     for_group: grpx.region.clone(),
                 });
             }
@@ -1511,7 +1513,7 @@ impl SomeAction {
                 nds.push(SomeNeed::AStateMakeGroup {
                     dom_num: 0, // Will be set later.
                     act_num: self.num,
-                    targ_state: pairx.1.state.clone(),
+                    target_state: pairx.1.state.clone(),
                     for_reg: regx.clone(),
                     far: pairx.0.clone(),
                     num_x: regx.num_x(),
@@ -1522,7 +1524,7 @@ impl SomeAction {
                     nds.push(SomeNeed::AStateMakeGroup {
                         dom_num: 0, // Will be set later.
                         act_num: self.num,
-                        targ_state: pairx.0.clone(),
+                        target_state: pairx.0.clone(),
                         for_reg: regx.clone(),
                         far: pairx.1.state.clone(),
                         num_x: regx.num_x(),
@@ -1532,7 +1534,7 @@ impl SomeAction {
                 nds.push(SomeNeed::AStateMakeGroup {
                     dom_num: 0, // Will be set later.
                     act_num: self.num,
-                    targ_state: pairx.0.clone(),
+                    target_state: pairx.0.clone(),
                     for_reg: regx.clone(),
                     far: pairx.1.state.clone(),
                     num_x: regx.num_x(),
@@ -1638,7 +1640,7 @@ impl SomeAction {
             return SomeNeed::ContradictoryIntersection {
                 dom_num: 0, // set this in domain get_needs
                 act_num: self.num,
-                goal_reg: regx.clone(),
+                target_region: regx.clone(),
                 group1: grpx.region.clone(),
                 ruls1,
                 group2: grpy.region.clone(),
@@ -1693,7 +1695,7 @@ impl SomeAction {
         SomeNeed::ContradictoryIntersection {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
-            goal_reg: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
+            target_region: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
             group1: grpx.region.clone(),
             ruls1,
             group2: grpy.region.clone(),
@@ -1853,11 +1855,22 @@ impl SomeAction {
             let ndx = SomeNeed::StateNotInGroup {
                 dom_num: dom,
                 act_num: self.num,
-                targ_state: cur_state.clone(),
+                target_state: cur_state.clone(),
             };
             self.eval_need_sample(cur_state, &ndx, &astate, dom);
         }
         astate
+    }
+
+    /// Return a change with all changes that can be made for the action.
+    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
+        let mut ret_chn = SomeChange::new_low(num_ints);
+        for grpx in self.groups.iter() {
+            for rulx in grpx.rules.iter() {
+                ret_chn = ret_chn.c_or(&rulx.change());
+            }
+        }
+        ret_chn
     }
 } // end impl SomeAction
 
@@ -1889,7 +1902,7 @@ mod tests {
         println!("Act: {}", &act0);
 
         let memory = VecDeque::<SomeState>::new();
-        let nds = act0.get_needs(&s1, 0, &memory);
+        let nds = act0.get_needs(&s1, 0, &memory, &SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs: {}", nds);
 
         if nds.len() > 0 {

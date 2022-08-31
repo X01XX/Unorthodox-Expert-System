@@ -43,27 +43,6 @@ impl SomeState {
         }
     }
 
-    /// Combine a list of states, to produce a larger state.
-    /// Possible future use.
-    pub fn combine(self, other: &SomeState) -> Self {
-        let mut bitsvec = Vec::<&SomeBits>::with_capacity(2);
-
-        bitsvec.push(&self.bts);
-        bitsvec.push(&other.bts);
-
-        Self {
-            bts: SomeBits::combine(&bitsvec),
-        }
-    }
-
-    /// Return a slice of a state.
-    /// Possible future use.
-    pub fn slice(self, start: usize, end: usize) -> Self {
-        Self {
-            bts: self.bts.slice(start, end),
-        }
-    }
-
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
@@ -145,25 +124,3 @@ impl SomeState {
     }
 } // end impl SomeState
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Test combine
-    #[test]
-    fn combine() -> Result<(), String> {
-        let st1 = SomeState::new_from_string(1, "s0x12").unwrap();
-        let st2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
-
-        let st3 = st1.combine(&st2);
-        println!("st3: {}", st3);
-
-        let st4 = SomeState::new_from_string(3, "s0x12abcd").unwrap();
-
-        if st3 != st4 {
-            return Err(format!("{} ne {} ?", st3, st4));
-        }
-
-        Ok(())
-    }
-}

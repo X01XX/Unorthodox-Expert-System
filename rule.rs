@@ -546,7 +546,7 @@ impl SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
+    use crate::bits::{SomeBits, Bitint};
 
     #[test]
     fn new_all() -> Result<(), String> {
@@ -556,10 +556,10 @@ mod tests {
         );
 
         let rule_from_masks = SomeRule::new_from_masks(
-            SomeMask::new(SomeBits::new(vec![248u8])),
-            SomeMask::new(SomeBits::new(vec![2u8])),
-            SomeMask::new(SomeBits::new(vec![1u8])),
-            SomeMask::new(SomeBits::new(vec![4u8])),
+            SomeMask::new(SomeBits::new(vec![Bitint::MAX ^ 7])),
+            SomeMask::new(SomeBits::new(vec![2 as Bitint])),
+            SomeMask::new(SomeBits::new(vec![1 as Bitint])),
+            SomeMask::new(SomeBits::new(vec![4 as Bitint])),
         );
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();

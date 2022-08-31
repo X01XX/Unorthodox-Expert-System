@@ -7,20 +7,19 @@
 //!   Counting bits starts at the right-most bit of the right-most int,
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
-//! The integer type/size could be increased, search for and change "u8" and "08b" references in this file,
+//! The integer type/size can be increased, change "u8", below, the format string literal "08b" in the formatted_string function,
+//! and the value of the constant NUM_BITS_PER_INT.
+//!
 //! test.rs, and change the constants, below, as needed.
 //!
+
+pub type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
 pub const NUM_BITS_PER_INT: usize = 8;
 
-/// Masks, powers of 2, to isolate any bit-position of a single integer.
-/// Isolate bit 0 with: integer & ALL_BIT_MASKS\[0\]
-/// Isolate bit 5 with: integer & ALL_BIT_MASKS\[5\];
-const ALL_BIT_MASKS: [u8; NUM_BITS_PER_INT] = [1, 2, 4, 8, 16, 32, 64, 128];
-
 /// The highest bit position in an integer.
-const INT_HIGH_BIT: u8 = 1 << (NUM_BITS_PER_INT - 1);
+const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -43,12 +42,12 @@ impl fmt::Display for SomeBits {
 /// The vector has an index of 0, 1, .., as expected.
 /// The bits are 15, 14, 13 ..., with the first bit in the vector being the highest.
 pub struct SomeBits {
-    pub ints: Vec<u8>,
+    pub ints: Vec<Bitint>,
 }
 
 impl SomeBits {
     /// Create a SomeBits instance with a given vector.
-    pub fn new(avec: Vec<u8>) -> SomeBits {
+    pub fn new(avec: Vec<Bitint>) -> SomeBits {
         assert!(avec.len() > 0);
         SomeBits { ints: avec }
     }
@@ -57,7 +56,7 @@ impl SomeBits {
     pub fn new_low(num_ints: usize) -> SomeBits {
         assert!(num_ints > 0);
         SomeBits {
-            ints: vec![0 as u8; num_ints],
+            ints: vec![0 as Bitint; num_ints],
         }
     }
 
@@ -65,15 +64,15 @@ impl SomeBits {
     pub fn new_high(num_ints: usize) -> SomeBits {
         assert!(num_ints > 0);
         SomeBits {
-            ints: vec![u8::MAX as u8; num_ints],
+            ints: vec![Bitint::MAX as Bitint; num_ints],
         }
     }
 
     /// Return a new bits instance, with a random value.
     pub fn new_random(num_ints: usize) -> Self {
-        let mut ints = vec![0 as u8; num_ints];
+        let mut ints = vec![0 as Bitint; num_ints];
         for inx in 0..num_ints {
-            ints[inx] = rand::thread_rng().gen_range(0..u8::MAX)
+            ints[inx] = rand::thread_rng().gen_range(0..Bitint::MAX)
         }
         SomeBits { ints }
     }
@@ -85,7 +84,7 @@ impl SomeBits {
             num_ints += bitsx.num_ints();
         }
 
-        let mut avec = Vec::<u8>::with_capacity(num_ints);
+        let mut avec = Vec::<Bitint>::with_capacity(num_ints);
 
         for bitsx in bitvec.iter() {
             for num in bitsx.ints.iter() {
@@ -183,7 +182,7 @@ impl SomeBits {
                 }
                 bts = bts.shift_left4();
 
-                bts.ints[lsb] += numx as u8;
+                bts.ints[lsb] += numx as Bitint;
             }
         } // next inx
 
@@ -233,6 +232,7 @@ impl SomeBits {
 
     /// Return true if a bit is one at a given position.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
+
         let num_ints = self.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
         let lsi = num_ints - 1;
@@ -245,12 +245,12 @@ impl SomeBits {
 
         let int_num = lsi - (bit_num / NUM_BITS_PER_INT); // calc integer index
 
-        self.ints[int_num] & ALL_BIT_MASKS[bit_pos] > 0 // test bit
+        self.ints[int_num] & (1 << bit_pos) > 0
     }
 
     /// Bitwise NOT of a Bits stuct.
     pub fn b_not(&self) -> Self {
-        let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
+        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for intx in self.ints.iter() {
             ary2.push(!intx);
@@ -263,7 +263,7 @@ impl SomeBits {
     pub fn b_and(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
-        let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
+        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (inx, intx) in self.ints.iter().enumerate() {
             ary2.push(intx & other.ints[inx]);
@@ -275,7 +275,7 @@ impl SomeBits {
     pub fn b_or(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
-        let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
+        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (inx, intx) in self.ints.iter().enumerate() {
             ary2.push(intx | other.ints[inx]);
@@ -287,7 +287,7 @@ impl SomeBits {
     pub fn b_xor(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
-        let mut ary2 = Vec::<u8>::with_capacity(self.ints.len());
+        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (inx, intx) in self.ints.iter().enumerate() {
             ary2.push(intx ^ other.ints[inx]);
@@ -313,7 +313,7 @@ impl SomeBits {
     /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
         for intx in self.ints.iter() {
-            if *intx != u8::MAX {
+            if *intx != Bitint::MAX {
                 return false;
             }
         }
@@ -384,9 +384,9 @@ impl SomeBits {
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {
-        let mut ints2 = vec![0 as u8; self.num_ints()];
+        let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
-        let mut carry: u8 = 0;
+        let mut carry: Bitint = 0;
         let mut next_carry;
 
         for int_inx in (0..self.ints.len()).rev() {
@@ -407,9 +407,9 @@ impl SomeBits {
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant 4 bit values are lost.
     pub fn shift_left4(&self) -> Self {
-        let mut ints2 = vec![0 as u8; self.num_ints()];
+        let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
-        let mut carry: u8 = 0;
+        let mut carry: Bitint = 0;
         let mut next_carry;
 
         for int_inx in (0..self.ints.len()).rev() {
@@ -475,12 +475,14 @@ impl SomeBits {
             if fil == 1 {
                 astr.push(' ');
             }
-            for i in (0..NUM_BITS_PER_INT).rev() {
-                if (intx & ALL_BIT_MASKS[i]) == 0 {
+            let mut cur_bit = INT_HIGH_BIT;
+            while cur_bit > 0 {
+                if (intx & cur_bit) == 0 {
                     astr.push(' ');
                 } else {
                     astr.push('v');
                 }
+                cur_bit = cur_bit >> 1;
             }
             fil = 1;
         }
@@ -501,7 +503,7 @@ mod tests {
     // Test new
     #[test]
     fn new() -> Result<(), String> {
-        let bitx = SomeBits::new(vec![5 as u8, 4 as u8]);
+        let bitx = SomeBits::new(vec![5 as Bitint, 4 as Bitint]);
         if bitx.ints[0] != 5 {
             return Err(String::from("Test 1 failed"));
         }
@@ -528,38 +530,32 @@ mod tests {
             let mut inxs = RandomPick::new(hex_to_bits.len());
 
             // Init strings
-            let mut bits_from_str = String::from("0x");
-            let mut bits_expected_str = String::from("b");
+            let mut bits_hex_str = String::from("0x");
+            let mut bits_bin_str = String::from("0b");
 
-            for x in 0..4 {
+            for _ in 0..4 {
                 if let Some(inx) = inxs.pick() {
                     // Add to the source string of a bits instance.
-                    bits_from_str.push(chars.as_bytes()[inx] as char);
+                    bits_hex_str.push(chars.as_bytes()[inx] as char);
 
-                    // Add to the expected output of instance.formatted_string()
-                    if x > 0 && x % 2 == 0 {
-                        bits_expected_str.push('_');
-                    }
-                    bits_expected_str.push_str(hex_to_bits[inx]);
+                    bits_bin_str.push_str(hex_to_bits[inx]);
                 }
             }
 
-            // Get new bits instance.
-            let bits_instance = SomeBits::new_from_string(2, &bits_from_str).unwrap();
-
-            // Get string from bits instance.
-            let bits_instance_str = bits_instance.formatted_string('b');
+            // Get new bits values
+            let bits_hex = SomeBits::new_from_string(2, &bits_hex_str).unwrap();
+            let bits_bin = SomeBits::new_from_string(2, &bits_bin_str).unwrap();
 
             // Compare the bits string and predicted string.
-            match bits_instance_str == bits_expected_str {
+            match bits_hex == bits_bin {
                 true => {
-                    println!("bits  {} instance", bits_instance_str);
-                    println!("equal {} expected", bits_expected_str);
+                    println!("bits  {} hex", bits_hex_str);
+                    println!("equal {} bin", bits_bin_str);
                 }
                 _ => {
                     return Err(format!(
-                        "bits {} instance not equal {} expected!",
-                        bits_instance_str, bits_expected_str
+                        "bits hex {} instance not equal bin {}!",
+                        bits_hex_str, bits_bin_str
                     ))
                 }
             }
@@ -704,7 +700,7 @@ mod tests {
     // Test SomeBits::distance
     #[test]
     fn distance() -> Result<(), String> {
-        if 0 != SomeBits::new(vec![0 as u8; 2])
+        if 0 != SomeBits::new(vec![0 as Bitint; 2])
             .distance(&SomeBits::new_from_string(2, "0x0").unwrap())
         {
             return Err(String::from("Result  1 not 0?"));
@@ -730,44 +726,18 @@ mod tests {
     // Test SomeBits::high_bit_set
     #[test]
     fn high_bit_set() -> Result<(), String> {
-        let mut test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x0").unwrap());
-        if test_bool {
+        let mut btest = SomeBits::new_from_string(1, "0x1").unwrap();
+
+        if btest.high_bit_set() {
             return Err(String::from("Result 1 true?"));
         }
 
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x5").unwrap());
-        if test_bool {
-            return Err(String::from("Result 2 true?"));
+        for _ in 0..(NUM_BITS_PER_INT - 1) {
+            btest = btest.shift_left();
         }
 
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0x50").unwrap());
-        if test_bool {
-            return Err(String::from("Result 3 true?"));
-        }
-
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(1, "0xa0").unwrap());
-        if test_bool == false {
-            return Err(String::from("Result 4 false?"));
-        }
-
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x00a0").unwrap());
-        if test_bool {
-            return Err(String::from("Result 5 true?"));
-        }
-
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x5a0").unwrap());
-        if test_bool {
-            return Err(String::from("Result 6 true?"));
-        }
-
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0x5000").unwrap());
-        if test_bool {
-            return Err(String::from("Result 7 true?"));
-        }
-
-        test_bool = SomeBits::high_bit_set(&SomeBits::new_from_string(2, "0xa000").unwrap());
-        if test_bool == false {
-            return Err(String::from("Result 8 fales?"));
+        if btest.high_bit_set() == false {
+            return Err(String::from("Result 2 false?"));
         }
 
         Ok(())
@@ -847,20 +817,18 @@ mod tests {
     // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
-        if SomeBits::new_from_string(1, "0xa5").unwrap().is_high() {
+        let mut btest = SomeBits::new_from_string(1, "0x1").unwrap();
+        let bone = btest.clone();
+
+        if btest.is_high() {
             return Err(String::from("Test 1 failed?"));
         }
 
-        if SomeBits::new_from_string(1, "0xff").unwrap().is_high() == false {
+        for _ in 0..(NUM_BITS_PER_INT - 1) {
+            btest = btest.shift_left().b_or(&bone);
+        }
+        if btest.is_high() == false {
             return Err(String::from("Test 2 failed?"));
-        }
-
-        if SomeBits::new_from_string(2, "0xa5").unwrap().is_high() {
-            return Err(String::from("Test 3 failed?"));
-        }
-
-        if SomeBits::new_from_string(2, "0xffff").unwrap().is_high() == false {
-            return Err(String::from("Test 4 failed?"));
         }
 
         Ok(())

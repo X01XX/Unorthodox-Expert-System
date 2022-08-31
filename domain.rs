@@ -25,6 +25,7 @@ use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::mask::SomeMask;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -99,11 +100,7 @@ impl SomeDomain {
         // Sample the current state, for any reason, does not require any changes.
         let mut nst = self
             .actions
-            .get_needs(&self.cur_state, self.num, &self.memory);
-
-        //        if let Some(ndx) = self.check_optimal() {
-        //            nst.push(ndx);
-        //        }
+            .get_needs(&self.cur_state, self.num, &self.memory, &self.aggregate_changes_mask());
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -644,6 +641,15 @@ impl SomeDomain {
         }
         return inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())];
     } // end choose_a_plan
+
+    fn aggregate_changes_mask(&self) -> SomeMask {
+        let mut chgs = SomeChange::new_low(self.num_ints);
+        for actx in self.actions.iter() {
+            chgs = chgs.c_or(&actx.aggregate_changes(self.num_ints));
+        }
+        chgs.b01.m_and(&chgs.b10)
+    }
+
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to
@@ -1030,7 +1036,7 @@ mod tests {
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds1 = dm0.actions[0].limit_groups_needs();
+        let nds1 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs1 are {}", nds1);
 
         let mut found = false;
@@ -1049,7 +1055,7 @@ mod tests {
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds2 = dm0.actions[0].limit_groups_needs();
+        let nds2 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s00000110").unwrap();
@@ -1060,7 +1066,7 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s06, &s02);
 
         println!("dm0 {}", &dm0.actions[0]);
-        let nds3 = dm0.actions[0].limit_groups_needs();
+        let nds3 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs3 are {}", nds3);
 
         let mut found = false;
@@ -1398,7 +1404,7 @@ mod tests {
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
-            targ_state: sdb.clone(),
+            target_state: sdb.clone(),
         };
         dm0.actions[0].eval_need_sample(&sdb, &ndx, &sd9, 0);
 
@@ -1408,7 +1414,7 @@ mod tests {
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
-            targ_state: se5.clone(),
+            target_state: se5.clone(),
         };
         dm0.actions[0].eval_need_sample(&se5, &ndx, &se7, 0);
 
@@ -1418,7 +1424,7 @@ mod tests {
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
-            targ_state: s25.clone(),
+            target_state: s25.clone(),
         };
         dm0.actions[0].eval_need_sample(&s25, &ndx, &s27, 0);
 
@@ -1428,7 +1434,7 @@ mod tests {
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
-            targ_state: s2c.clone(),
+            target_state: s2c.clone(),
         };
         dm0.actions[0].eval_need_sample(&s2c, &ndx, &s2e, 0);
 
@@ -1438,7 +1444,7 @@ mod tests {
         let ndx = SomeNeed::AStateMakeGroup {
             dom_num: 0,
             act_num: 0,
-            targ_state: sd3.clone(),
+            target_state: sd3.clone(),
             for_reg: dm0.region_from_string("rxxxx_xxxx").unwrap(),
             far: dm0.state_from_string("s0010_1100").unwrap(),
             num_x: 8,

@@ -587,7 +587,7 @@ impl DomainStore {
         if notsups.len() > 0 {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToOptimalRegion {
-                goal_regs: notsups[inx].clone(),
+                target_regions: notsups[inx].clone(),
             });
         }
 

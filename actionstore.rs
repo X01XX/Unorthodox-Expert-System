@@ -7,11 +7,14 @@ use crate::change::SomeChange;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
+use crate::mask::SomeMask;
+
 use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::slice::Iter;
 
 use rayon::prelude::*;
 
@@ -58,6 +61,7 @@ impl ActionStore {
         cur: &SomeState,
         dom: usize,
         memory: &VecDeque<SomeState>,
+        changes_mask: &SomeMask,
     ) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
@@ -65,7 +69,7 @@ impl ActionStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, memory))
+            .map(|actx| actx.get_needs(cur, dom, memory, changes_mask))
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
@@ -97,6 +101,12 @@ impl ActionStore {
         //println!("actionstore:get_steps possible steps: {}", stps.str());
         stps_agg
     }
+
+    /// Return an iterator
+    pub fn iter(&self) -> Iter<SomeAction> {
+        self.avec.iter()
+    }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
