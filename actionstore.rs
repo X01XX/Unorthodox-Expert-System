@@ -107,6 +107,23 @@ impl ActionStore {
         self.avec.iter()
     }
 
+    /// Return a mask of bit positions that can be changed.
+    pub fn aggregate_changes_mask(&self, num_ints: usize) -> SomeMask {
+        let vecx: Vec<SomeChange> = self
+            .avec
+            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|actx| actx.aggregate_changes(num_ints))
+            .collect::<Vec<SomeChange>>();
+
+        let mut chgs = SomeChange::new_low(num_ints);
+
+        for chgx in vecx.iter() {
+            chgs = chgs.c_or(chgx);
+        }
+
+        chgs.b01.m_and(&chgs.b10)
+    }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

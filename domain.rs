@@ -642,12 +642,9 @@ impl SomeDomain {
         return inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())];
     } // end choose_a_plan
 
+    /// Return a mask of bit positions that can be changed.
     fn aggregate_changes_mask(&self) -> SomeMask {
-        let mut chgs = SomeChange::new_low(self.num_ints);
-        for actx in self.actions.iter() {
-            chgs = chgs.c_or(&actx.aggregate_changes(self.num_ints));
-        }
-        chgs.b01.m_and(&chgs.b10)
+        self.actions.aggregate_changes_mask(self.num_ints)
     }
 
 } // end impl SomeDomain
