@@ -7,6 +7,7 @@ use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+use crate::change::SomeChange;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -35,14 +36,27 @@ impl fmt::Display for GroupStore {
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
+    pub aggregate_changes: SomeChange,
 }
 
 impl GroupStore {
     /// Return a new GroupStore.
-    pub fn new() -> Self {
+    pub fn new(num_ints: usize) -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),
+            aggregate_changes: SomeChange::new_low(num_ints),
         }
+    }
+
+    /// Calculate and set the aggregate changes mask
+    fn calc_aggregate_changes_mask(&mut self) {
+        let mut ret_chn = SomeChange::new_low(self.aggregate_changes.b01.num_ints());
+        for grpx in self.avec.iter() {
+            for rulx in grpx.rules.iter() {
+                ret_chn = ret_chn.c_or(&rulx.change());
+            }
+        }
+        self.aggregate_changes = ret_chn;
     }
 
     /// Check groups with a recently changed sqaure.
@@ -90,6 +104,10 @@ impl GroupStore {
                 dom, act, self.avec[*inx].region
             );
             remove_unordered(&mut self.avec, *inx);
+        }
+
+        if rmvec.len() > 0 {
+            self.calc_aggregate_changes_mask();
         }
 
         //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
@@ -228,6 +246,8 @@ impl GroupStore {
         // push the new group
         println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
         self.avec.push(grp);
+
+        self.calc_aggregate_changes_mask();
 
         true
     }

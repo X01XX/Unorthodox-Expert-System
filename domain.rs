@@ -76,7 +76,7 @@ impl SomeDomain {
         return SomeDomain {
             num: dom,
             num_ints,
-            actions: ActionStore::new(),
+            actions: ActionStore::new(num_ints),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
         };
@@ -89,7 +89,7 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        let actx = SomeAction::new(self.num, self.actions.len());
+        let actx = SomeAction::new(self.num, self.actions.len(), self.num_ints);
         self.actions.push(actx);
     }
 
@@ -644,7 +644,7 @@ impl SomeDomain {
 
     /// Return a mask of bit positions that can be changed.
     fn aggregate_changes_mask(&self) -> SomeMask {
-        self.actions.aggregate_changes_mask(self.num_ints)
+        self.actions.aggregate_changes_mask()
     }
 
 } // end impl SomeDomain

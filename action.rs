@@ -97,10 +97,10 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(dom_num: usize, act_num: usize) -> Self {
+    pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
         SomeAction {
             num: act_num,
-            groups: GroupStore::new(),
+            groups: GroupStore::new(num_ints),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(dom_num, act_num),
@@ -1863,14 +1863,8 @@ impl SomeAction {
     }
 
     /// Return a change with all changes that can be made for the action.
-    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
-        let mut ret_chn = SomeChange::new_low(num_ints);
-        for grpx in self.groups.iter() {
-            for rulx in grpx.rules.iter() {
-                ret_chn = ret_chn.c_or(&rulx.change());
-            }
-        }
-        ret_chn
+    pub fn aggregate_changes(&self) -> &SomeChange {
+        &self.groups.aggregate_changes
     }
 } // end impl SomeAction
 
@@ -1881,7 +1875,7 @@ mod tests {
     // Test making a group from two Pn::Two squares.
     #[test]
     fn possible_region() -> Result<(), String> {
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, 1);
 
         // Set up 2-result square sf.
         let sf = SomeState::new_from_string(1, "s1111").unwrap();

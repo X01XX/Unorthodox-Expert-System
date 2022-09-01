@@ -1,4 +1,7 @@
 //! The RegionStore, a vector of SomeRegion structs.
+//!
+//! In the case of Optimal Regions, per domain, the regions in a RegionStore
+//! may not have the same number of integers, hence the *_each functions.
 
 use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
@@ -303,7 +306,7 @@ impl RegionStore {
     //        ret_store
     //    }
 
-    // Return the union of regions in the store
+    /// Return the union of regions in the store
     pub fn union(&self) -> Option<SomeRegion> {
         if self.len() == 0 {
             return None;
@@ -351,54 +354,32 @@ impl RegionStore {
         ret_str
     }
 
-    /// Return a RegionStore with the same regions as those given, plus intersections, and intersections of intersections.
-    pub fn and_intersections(&self) -> Self {
-        // Start with a copy of the given RegionStore.
-        let mut ret_str = self.clone();
+    /// Return True if a RegionStore is a superset of all states in a StateStore.
+    pub fn is_superset_of_states(&self, stas: &StateStore) -> bool {
+        assert!(self.len() == stas.len());
 
-        // Need at least two regions to make intersections.
-        if ret_str.len() < 2 {
-            return ret_str;
+        for inx in 0..self.len() {
+            if self.avec[inx].is_superset_of_state(&stas[inx]) {
+            } else {
+                return false;
+            }
         }
 
-        // You should not delete or insert items in a list while traversing it, but pushes to
-        // the end of the list are usually OK.
-        let mut try_again = true;
-        while try_again {
-            try_again = false;
-
-            // Get the next round of intersections, by comparing all possible
-            // combinations of two regions.
-
-            let limit = ret_str.len(); // Only consider current items, not additions made below.
-
-            for inx1 in 0..(limit - 1) {
-                // Skip the last item, it does not have a next item to compare with.
-
-                // Compare the current inx1 item with all next items.
-                for inx2 in (inx1 + 1)..limit {
-                    if ret_str[inx1].intersects(&ret_str[inx2]) == false {
-                        continue;
-                    }
-
-                    let regx = ret_str[inx1].intersection(&ret_str[inx2]);
-
-                    // Skip previously seen intersections
-                    if ret_str.contains(&regx) {
-                        continue;
-                    }
-
-                    ret_str.push(regx);
-                    try_again = true; // At least one new intersection has been found.
-                } // next inx2
-            } // next inx1
-        } // end while
-
-        //println!("and_intersections: returning {} for {}", &ret_str, &self);
-        ret_str
+        true
     }
 
-    // Return an intersection of each region, in order, of two RegionStores.
+    /// Return true if each region in a RegionStore is equal, in order, of two RegionStores.
+    pub fn equal_each(&self, other: &RegionStore) -> bool {
+        for inx in 0..self.len() {
+            if self[inx] == other[inx] {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Return an intersection of each region, in order, of two RegionStores.
     pub fn intersect_each(&self, other: &RegionStore) -> Option<RegionStore> {
         assert!(self.len() == other.len());
 
@@ -415,7 +396,7 @@ impl RegionStore {
         Some(ret)
     }
 
-    // Return true if each region in a RegionStore is a subset, in order, of two RegionStores.
+    /// Return true if each region in a RegionStore is a subset, in order, of two RegionStores.
     pub fn subset_each(&self, other: &RegionStore) -> bool {
         for inx in 0..self.len() {
             if self[inx].is_subset_of(&other[inx]) {
@@ -423,20 +404,6 @@ impl RegionStore {
                 return false;
             }
         }
-        true
-    }
-
-    // Return True if a RegionStore is a superset of all states in a StateStore.
-    pub fn is_superset_of_states(&self, stas: &StateStore) -> bool {
-        assert!(self.len() == stas.len());
-
-        for inx in 0..self.len() {
-            if self.avec[inx].is_superset_of_state(&stas[inx]) {
-            } else {
-                return false;
-            }
-        }
-
         true
     }
 }
@@ -451,34 +418,6 @@ impl Index<usize> for RegionStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn and_intersections() -> Result<(), String> {
-        let mut regstr = RegionStore::with_capacity(4);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-        // Intersections, 0x01, 01x1.
-        // Intersections of intersections, 0101.
-
-        let reg_ints = regstr.and_intersections();
-        println!("results {}", reg_ints);
-
-        if reg_ints.len() != 7 {
-            return Err(String::from("reg_ints len != 7?"));
-        }
-        if reg_ints.contains(&SomeRegion::new_from_string(1, "r0101").unwrap()) == false {
-            return Err(String::from("reg_ints does not contain r0101?"));
-        }
-        if reg_ints.contains(&SomeRegion::new_from_string(1, "r0X01").unwrap()) == false {
-            return Err(String::from("reg_ints does not contain r0X01?"));
-        }
-        if reg_ints.contains(&SomeRegion::new_from_string(1, "r01x1").unwrap()) == false {
-            return Err(String::from("reg_ints does not contain r01x1?"));
-        }
-        Ok(())
-    }
 
     #[test]
     fn remove_region() -> Result<(), String> {

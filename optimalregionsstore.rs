@@ -81,23 +81,57 @@ impl OptimalRegionsStore {
         ret
     }
 
+    /// Return a string represeting an OptimalRegionsStore.
+    pub fn formatted_string(&self) -> String {
+        let mut ret_str = String::from("[");
+        let mut not_first = false;
+        for regstrx in self.optimal.iter() {
+            if not_first {
+                ret_str.push_str(", ");
+            }
+            ret_str.push_str(&regstrx.formatted_string());
+            not_first = true;
+        }
+        ret_str.push(']');
+        ret_str 
+    }
+
     /// Return a copy of the optimal RegionStores, and intersections.
     pub fn and_intersections(&self) -> Self {
+        //println!("and_intersections of {}", &self.formatted_string());
+
         let mut optimal_and_ints = OptimalRegionsStore::new();
 
         for regstrx in self.optimal.iter() {
             optimal_and_ints.push(regstrx.clone());
         }
 
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                if let Some(an_int) = self[inx].intersect_each(&self[iny]) {
-                    optimal_and_ints.push(an_int);
+        let mut changed = true;
+        while changed {
+            changed = false;
+            let lenx = optimal_and_ints.len();
+            for inx in 0..(lenx - 1) {
+                for iny in (inx + 1)..lenx {
+                    if let Some(an_int) = optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny]) {
+                        if optimal_and_ints.contains(&an_int) == false {
+                            optimal_and_ints.push(an_int);
+                            changed = true;
+                        }
+                    }
                 }
             }
         }
 
         optimal_and_ints
+    }
+
+    fn contains(&self, regstr: &RegionStore) -> bool {
+        for regstrx in self.optimal.iter() {
+            if regstrx.equal_each(regstr) {
+                return true;
+            }
+        }
+        false
     }
 }
 

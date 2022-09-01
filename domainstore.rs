@@ -580,7 +580,7 @@ impl DomainStore {
         }
 
         // Get regions the current state is not in.
-        let notsups = self.optimal.not_supersets_of_states(&all_states);
+        let notsups = self.optimal_and_ints.not_supersets_of_states(&all_states);
 
         // If the current state is not in at least one optimal region,
         // return a need to move to an optimal region.

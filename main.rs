@@ -127,6 +127,7 @@ fn init() -> DomainStore {
     regstr.push(SomeRegion::new_from_string_pad_x(2, "rXXXXXXX0_0XXX_XXXX").unwrap());
     dmxs.add_optimal(regstr);
 
+    //println!("optimal and ints: {}", dmxs.optimal_and_ints.formatted_string());
     dmxs
 }
 

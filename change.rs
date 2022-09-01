@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
     pub b01: SomeMask,
@@ -171,6 +171,10 @@ impl SomeChange {
         }
     }
 
+    /// Return the number of integers used.
+    pub fn num_ints(&self) -> usize {
+        self.b01.num_ints()
+    }
     // Return true if a change intersects another
     //    pub fn intersects(&self, other: &SomeChange) -> bool {
     //        if self.b01.m_and(&other.b01).is_not_low() {

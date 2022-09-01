@@ -35,13 +35,15 @@ impl fmt::Display for ActionStore {
 pub struct ActionStore {
     /// A vector of SomeAction structs
     pub avec: Vec<SomeAction>,
+    pub num_ints: usize,
 }
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new() -> Self {
+    pub fn new(num_ints: usize) -> Self {
         ActionStore {
             avec: Vec::<SomeAction>::with_capacity(5),
+            num_ints,
         }
     }
 
@@ -108,17 +110,12 @@ impl ActionStore {
     }
 
     /// Return a mask of bit positions that can be changed.
-    pub fn aggregate_changes_mask(&self, num_ints: usize) -> SomeMask {
-        let vecx: Vec<SomeChange> = self
-            .avec
-            .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.aggregate_changes(num_ints))
-            .collect::<Vec<SomeChange>>();
+    pub fn aggregate_changes_mask(&self) -> SomeMask {
 
-        let mut chgs = SomeChange::new_low(num_ints);
+        let mut chgs = SomeChange::new_low(self.num_ints);
 
-        for chgx in vecx.iter() {
-            chgs = chgs.c_or(chgx);
+        for actx in self.avec.iter() {
+            chgs = chgs.c_or(actx.aggregate_changes());
         }
 
         chgs.b01.m_and(&chgs.b10)
