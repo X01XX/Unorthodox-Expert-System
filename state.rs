@@ -123,4 +123,3 @@ impl SomeState {
         SomeMask::new(self.bts.clone())
     }
 } // end impl SomeState
-

@@ -546,7 +546,7 @@ impl SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::{SomeBits, Bitint};
+    use crate::bits::{Bitint, SomeBits};
 
     #[test]
     fn new_all() -> Result<(), String> {

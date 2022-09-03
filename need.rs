@@ -51,7 +51,9 @@ impl fmt::Display for SomeNeed {
                 dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2
             ),
             SomeNeed::ToRegion {
-                dom_num, target_region, ..
+                dom_num,
+                target_region,
+                ..
             } => format!(
                 "N(Dom {} Pri {} To Optimal Region {})",
                 dom_num, pri, target_region,
@@ -222,7 +224,10 @@ impl PartialEq for SomeNeed {
                     target_state: target_state_2,
                     ..
                 } => {
-                    if dom_num == dom_num_2 && act_num == act_num_2 && target_state == target_state_2 {
+                    if dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_state == target_state_2
+                    {
                         return true;
                     }
                 }
@@ -238,7 +243,10 @@ impl PartialEq for SomeNeed {
                     act_num: act_num_2,
                     target_state: target_state_2,
                 } => {
-                    if dom_num == dom_num_2 && act_num == act_num_2 && target_state == target_state_2 {
+                    if dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_state == target_state_2
+                    {
                         return true;
                     }
                 }
@@ -256,14 +264,19 @@ impl PartialEq for SomeNeed {
                     target_region: target_region_2,
                     ..
                 } => {
-                    if dom_num == dom_num_2 && act_num == act_num_2 && target_region == target_region_2 {
+                    if dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_region == target_region_2
+                    {
                         return true;
                     }
                 }
                 _ => (),
             },
             SomeNeed::ToRegion {
-                dom_num, target_region, ..
+                dom_num,
+                target_region,
+                ..
             } => match other {
                 SomeNeed::ToRegion {
                     dom_num: dom_num_2,
@@ -322,7 +335,10 @@ impl PartialEq for SomeNeed {
                     target_state: target_state_2,
                     ..
                 } => {
-                    if dom_num == dom_num_2 && act_num == act_num_2 && target_state == target_state_2 {
+                    if dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_state == target_state_2
+                    {
                         return true;
                     }
                 }
@@ -556,11 +572,25 @@ impl SomeNeed {
                 ))
             }
             SomeNeed::ContradictoryIntersection {
-                dom_num, target_region, ..
-            } => return TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
+                dom_num,
+                target_region,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    target_region.clone(),
+                ))
+            }
             SomeNeed::ToRegion {
-                dom_num, target_region, ..
-            } => return TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
+                dom_num,
+                target_region,
+                ..
+            } => {
+                return TargetStore::new_with_target(SomeTarget::new(
+                    *dom_num,
+                    target_region.clone(),
+                ))
+            }
 
             SomeNeed::ConfirmGroup {
                 dom_num,

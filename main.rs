@@ -46,12 +46,12 @@ mod stepstore;
 pub use domainstore::DomainStore;
 mod actioninterface;
 mod optimalregionsstore;
+mod planstore;
 mod randompick;
 mod removeunordered;
-mod truth;
-mod planstore;
 mod target;
 mod targetstore;
+mod truth;
 
 use std::io;
 use std::io::{Read, Write};
@@ -62,7 +62,6 @@ use std::process;
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
-
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 

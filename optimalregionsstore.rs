@@ -93,7 +93,7 @@ impl OptimalRegionsStore {
             not_first = true;
         }
         ret_str.push(']');
-        ret_str 
+        ret_str
     }
 
     /// Return a copy of the optimal RegionStores, and intersections.
@@ -112,7 +112,9 @@ impl OptimalRegionsStore {
             let lenx = optimal_and_ints.len();
             for inx in 0..(lenx - 1) {
                 for iny in (inx + 1)..lenx {
-                    if let Some(an_int) = optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny]) {
+                    if let Some(an_int) =
+                        optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny])
+                    {
                         if optimal_and_ints.contains(&an_int) == false {
                             optimal_and_ints.push(an_int);
                             changed = true;

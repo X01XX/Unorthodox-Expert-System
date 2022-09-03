@@ -16,6 +16,7 @@
 use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
+use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -25,7 +26,6 @@ use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::mask::SomeMask;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -63,6 +63,8 @@ pub struct SomeDomain {
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub memory: VecDeque<SomeState>,
+    /// Most recent aggregate changes mask
+    agg_changes: SomeMask,
 }
 
 impl SomeDomain {
@@ -79,6 +81,7 @@ impl SomeDomain {
             actions: ActionStore::new(num_ints),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
+            agg_changes: SomeMask::new_low(num_ints),
         };
     }
 
@@ -95,12 +98,23 @@ impl SomeDomain {
 
     /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
-        // Get all changes that can be made, to avoid needs that have no chance
-        // of being satisfied.
-        // Sample the current state, for any reason, does not require any changes.
-        let mut nst = self
-            .actions
-            .get_needs(&self.cur_state, self.num, &self.memory, &self.aggregate_changes_mask());
+        // Get aggregate changes mask
+        let cur_agg_mask = self.aggregate_changes_mask();
+
+        if cur_agg_mask != self.agg_changes {
+            let new_chgs = self.agg_changes.m_not().m_and(&cur_agg_mask);
+
+            if new_chgs.is_low() == false {
+                self.actions.check_limited(&new_chgs);
+            }
+
+            self.agg_changes = cur_agg_mask.clone();
+        }
+
+        // Get all needs.
+        let mut nst =
+            self.actions
+                .get_needs(&self.cur_state, self.num, &self.memory, &cur_agg_mask);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -646,7 +660,6 @@ impl SomeDomain {
     fn aggregate_changes_mask(&self) -> SomeMask {
         self.actions.aggregate_changes_mask()
     }
-
 } // end impl SomeDomain
 
 /// Return true if two references are identical, thanks to
@@ -1033,7 +1046,8 @@ mod tests {
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds1 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds1 =
+            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs1 are {}", nds1);
 
         let mut found = false;
@@ -1052,7 +1066,8 @@ mod tests {
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds2 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds2 =
+            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s00000110").unwrap();
@@ -1063,7 +1078,8 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s06, &s02);
 
         println!("dm0 {}", &dm0.actions[0]);
-        let nds3 = dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds3 =
+            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
         println!("needs3 are {}", nds3);
 
         let mut found = false;
@@ -1458,6 +1474,48 @@ mod tests {
             return Err(String::from("Group rxxxx_xxxx not found ??"));
         }
 
+        //Err(String::from("Done!"))
+        Ok(())
+    }
+
+    // Set up a limited group.
+    // Introduce a new bit position that can change.
+    // Group should go from limited = true to limited = false,
+    // So the next step would be to seek a sample of an adjacent square, if needed.
+    #[test]
+    fn limited_flag_change() -> Result<(), String> {
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1011").unwrap());
+        dm0.add_action();
+        dm0.add_action();
+
+        let s0b = dm0.state_from_string("s1011").unwrap();
+        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
+        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
+
+        dm0.get_needs();
+        println!("{}", dm0.actions[0]);
+
+        let nds = dm0.actions[0].limit_groups_needs(&dm0.agg_changes);
+        println!("needs {}", nds);
+
+        if nds.len() > 0 {
+            return Err("Needs found?".to_string());
+        }
+        if dm0.actions[0].groups[0].limited == false {
+            return Err("Limited flag is false?".to_string());
+        }
+
+        // Add a way to change bit position 0 to action 1.
+        let s0a = dm0.state_from_string("s1010").unwrap();
+        dm0.eval_sample_arbitrary(1, &s0a, &s0b);
+        dm0.eval_sample_arbitrary(1, &s0b, &s0a);
+
+        dm0.get_needs();
+        println!("{}", dm0.actions[0]);
+
+        if dm0.actions[0].groups[0].limited == true {
+            return Err("Limited flag is true?".to_string());
+        }
         //Err(String::from("Done!"))
         Ok(())
     }

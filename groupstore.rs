@@ -1,13 +1,14 @@
 //! The GroupStore struct, a vector of SomeGroup structs.
 
+use crate::change::SomeChange;
 use crate::group::SomeGroup;
+use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::change::SomeChange;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -325,6 +326,15 @@ impl GroupStore {
             }
         }
         panic!("Group not found");
+    }
+
+    /// Check limited setting in groups due to new bit that can change.
+    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+        for grpx in &mut self.avec {
+            if grpx.limited {
+                grpx.check_limited(new_chgs);
+            }
+        }
     }
 } // end impl GroupStore
 

@@ -8,6 +8,7 @@ use crate::actioninterface::ActionInterface;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
+use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::pn::Pn;
@@ -21,7 +22,6 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
-use crate::mask::SomeMask;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -446,6 +446,21 @@ impl SomeAction {
             }
         }
 
+        // Check for any effects on group limited setting
+        for grpx in self.groups.iter_mut() {
+            if grpx.limited {
+                if let Some(anchor_state) = &grpx.anchor {
+                    if anchor_state.is_adjacent(&sqrx.state) {
+                        if let Some(anchor_sqr) = self.squares.find(anchor_state) {
+                            if anchor_sqr.can_combine(sqrx) != Truth::F {
+                                grpx.set_limited_off();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Create a group for square if needed
         let grps_in = self.groups.groups_state_in(&key);
         if grps_in.len() == 0 || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
@@ -719,6 +734,7 @@ impl SomeAction {
                                 dom, self.num, greg, sta1
                             );
                             grpx.set_anchor(&sta1);
+                            try_again = true;
                         }
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
@@ -765,9 +781,6 @@ impl SomeAction {
                             inxs.push(inx);
                         }
                         SomeNeed::SetGroupLimited { .. } => {
-                            inxs.push(inx);
-                        }
-                        SomeNeed::SetGroupAnchor { .. } => {
                             inxs.push(inx);
                         }
                         SomeNeed::InactivateSeekEdge { .. } => {
@@ -1058,7 +1071,7 @@ impl SomeAction {
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
     pub fn limit_groups_needs(&self, changes_mask: &SomeMask) -> NeedStore {
-        //println!("limit_groups_needs chg {}", agg_chgs);
+        //println!("limit_groups_needs chg {}", changes_mask);
 
         let mut ret_nds = NeedStore::new();
 
@@ -1145,7 +1158,12 @@ impl SomeAction {
     }
 
     /// Return the limiting needs for a group.
-    pub fn limit_group_needs(&self, grpx: &SomeGroup, anchors: &StateStore, changes_mask: &SomeMask) -> NeedStore {
+    pub fn limit_group_needs(
+        &self,
+        grpx: &SomeGroup,
+        anchors: &StateStore,
+        changes_mask: &SomeMask,
+    ) -> NeedStore {
         assert!(grpx.limited == false);
         assert!(grpx.pnc);
 
@@ -1205,7 +1223,12 @@ impl SomeAction {
     } // end limit_group_needs
 
     /// Return the limiting needs for a group with an anchor chosen.
-    pub fn limit_group_needs2(&self, grpx: &SomeGroup, anchor_sta: &SomeState, changes_mask: &SomeMask) -> NeedStore {
+    pub fn limit_group_needs2(
+        &self,
+        grpx: &SomeGroup,
+        anchor_sta: &SomeState,
+        changes_mask: &SomeMask,
+    ) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
@@ -1321,6 +1344,10 @@ impl SomeAction {
                     for_group: grpx.region.clone(),
                 });
             }
+        } else {
+            ret_nds.push(SomeNeed::SetGroupLimited {
+                group_region: grpx.region.clone(),
+            });
         }
         //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
@@ -1866,6 +1893,11 @@ impl SomeAction {
     pub fn aggregate_changes(&self) -> &SomeChange {
         &self.groups.aggregate_changes
     }
+
+    /// Check limited setting in groups due to new bit that can change.
+    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+        self.groups.check_limited(new_chgs);
+    }
 } // end impl SomeAction
 
 #[cfg(test)]
@@ -1893,13 +1925,18 @@ mod tests {
         act0.eval_sample(&s1, &s0, 0);
         act0.eval_sample(&s1, &s1, 0);
         act0.eval_sample(&s1, &s0, 0);
-        println!("Act: {}", &act0);
 
         let memory = VecDeque::<SomeState>::new();
-        let nds = act0.get_needs(&s1, 0, &memory, &SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds = act0.get_needs(
+            &s1,
+            0,
+            &memory,
+            &SomeMask::new_from_string(1, "m1111").unwrap(),
+        );
+        println!("Act: {}", &act0);
         println!("needs: {}", nds);
 
-        if nds.len() > 0 {
+        if nds.len() != 1 {
             return Err(String::from("Unexpected needs?"));
         }
         if act0.groups.len() != 1 {

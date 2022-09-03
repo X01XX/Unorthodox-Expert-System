@@ -29,10 +29,10 @@ use crate::needstore::NeedStore;
 use crate::optimalregionsstore::OptimalRegionsStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
+use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::targetstore::TargetStore;
-use crate::regionstore::RegionStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -96,7 +96,6 @@ pub struct DomainStore {
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
     pub fn new() -> Self {
-
         Self {
             avec: Vec::<SomeDomain>::new(),
             step: 0,
@@ -177,7 +176,11 @@ impl DomainStore {
                 .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
                 .map(|domx| domx.run_plan(&plans[domx.num]))
                 .filter(|b| *b)
-                .collect::<Vec<bool>>().len() == plans.len() {  // Does the number of true returns equal the number of plans run?
+                .collect::<Vec<bool>>()
+                .len()
+                == plans.len()
+            {
+                // Does the number of true returns equal the number of plans run?
 
                 self.boredom = 0;
                 self.boredom_limit = self.set_boredom_limit();
@@ -688,7 +691,6 @@ mod tests {
 
     #[test]
     fn check_optimal() -> Result<(), String> {
-
         // Start a DomainStore
         let mut dmxs = DomainStore::new();
 
@@ -762,8 +764,7 @@ mod tests {
 
         println!(
             "\nBoredom level {} Boredom_limit {}",
-            dmxs.boredom,
-            dmxs.boredom_limit
+            dmxs.boredom, dmxs.boredom_limit
         );
 
         println!(" ");

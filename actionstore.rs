@@ -4,10 +4,10 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
+use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
-use crate::mask::SomeMask;
 
 use std::collections::VecDeque;
 
@@ -111,7 +111,6 @@ impl ActionStore {
 
     /// Return a mask of bit positions that can be changed.
     pub fn aggregate_changes_mask(&self) -> SomeMask {
-
         let mut chgs = SomeChange::new_low(self.num_ints);
 
         for actx in self.avec.iter() {
@@ -121,6 +120,12 @@ impl ActionStore {
         chgs.b01.m_and(&chgs.b10)
     }
 
+    /// Check the limited flags on groups due to new bit position that can be changed.
+    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+        for actx in self.avec.iter_mut() {
+            actx.check_limited(new_chgs);
+        }
+    }
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

@@ -3,6 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
+use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -183,6 +184,12 @@ impl SomeGroup {
         self.limited = false;
     }
 
+    /// Set limited to flase.
+    pub fn set_limited_off(&mut self) {
+        assert!(self.limited == true);
+        self.limited = false;
+    }
+
     /// Set limited to true.
     pub fn set_limited(&mut self) {
         assert!(self.limited == false);
@@ -207,9 +214,19 @@ impl SomeGroup {
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: &SomeState) {
-        //, rate: (usize, usize, usize)) {
         self.limited = false;
         self.anchor = Some(astate.clone());
+    }
+
+    /// Check limited setting in groups due to new bit that can change.
+    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+        assert!(self.limited);
+        let nonx = self.region.x_mask().m_not();
+        let positions = nonx.m_and(new_chgs);
+        if positions.is_low() == false {
+            self.limited = false;
+            //println!("resetting limit flag!");
+        }
     }
 } // end impl SomeGroup
 

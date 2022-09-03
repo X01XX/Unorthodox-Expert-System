@@ -232,7 +232,6 @@ impl SomeBits {
 
     /// Return true if a bit is one at a given position.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
-
         let num_ints = self.num_ints();
         let num_bits = num_ints * NUM_BITS_PER_INT;
         let lsi = num_ints - 1;
