@@ -316,7 +316,7 @@ impl SomeDomain {
         None
     }
 
-    pub fn random_depth_first_search2(
+    fn random_depth_first_search2(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,

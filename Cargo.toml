@@ -9,6 +9,6 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 rayon = "1.5.3"
-serde = { version = "1.0.142", features = ["derive"] }
-serde_yaml = "0.9.4"
+serde = { version = "1.0.144", features = ["derive"] }
+serde_yaml = "0.9.11"
 readonly = "0.2.2"

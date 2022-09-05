@@ -110,7 +110,7 @@ impl SomeAction {
 
     /// Return Truth enum for the combination of any two different squares,
     /// and the squares between them.
-    pub fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
+    fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
         assert!(sqrx.state != sqry.state);
         //println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
@@ -362,7 +362,7 @@ impl SomeAction {
     }
 
     /// Evaluate the sample taken for a step in a plan.
-    pub fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
+    fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
@@ -1110,7 +1110,7 @@ impl SomeAction {
     ///     The number of adjacent states that are anchors of other groups,
     ///     The number adjacent states that are in only one group,
     ///     The number of samples taken for the adjacent states.
-    pub fn group_anchor_rate(
+    fn group_anchor_rate(
         &self,
         grpx: &SomeGroup,
         stax: &SomeState,
@@ -1472,7 +1472,7 @@ impl SomeAction {
 
     /// Return needs to define a region, from the combination of two smaller regions.
     /// This assumes there are no incompatible square pairs in the region.
-    pub fn region_defining_needs(
+    fn region_defining_needs(
         &self,
         regx: &SomeRegion,
         reg1: &SomeRegion,
@@ -1794,7 +1794,7 @@ impl SomeAction {
     /// Check if any included squares invalidate a combination.
     /// Remove subset combinations.
     /// Return the regions resulting from successful combinations.
-    pub fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
+    fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
         //println!("possible_group_regions from sqr {}", &sqrx.state);
 
         let mut rsx = RegionStore::new();
