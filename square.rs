@@ -9,20 +9,21 @@ use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rc_str = String::from("S[");
-        rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.pn));
+        let _ = write!(rc_str, "{}", &self.state);
+        let _ = write!(rc_str, ", pn: {}", &self.pn);
         if self.pnc {
             rc_str.push_str(", pnc: t");
         } else {
             rc_str.push_str(", pnc: f");
         }
 
-        rc_str.push_str(&format!(", {}", self.rules));
-        rc_str.push_str(&format!(", rslts: {}", &self.results));
+        let _ = write!(rc_str, ", {}", self.rules);
+        let _ = write!(rc_str, ", rslts: {}", &self.results);
 
         rc_str.push(']');
 
@@ -55,8 +56,8 @@ impl SomeSquare {
         rules.push(SomeRule::new(&state, &result_state));
 
         Self {
-            state: state.clone(),
-            results: ResultStore::new(result_state.clone()),
+            state,
+            results: ResultStore::new(result_state),
             rules,
             pn: Pn::One,
             pnc: false,
@@ -89,9 +90,9 @@ impl SomeSquare {
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
         let mut str_info = String::from(&format!(
-            "\n  Square {} adding result{}{}",
+            "\n  Square {} adding result {} {} ",
             self.str_terse(),
-            format!(" {} ", self.results.len() + 1),
+            self.results.len(),
             &st
         ));
 
@@ -123,7 +124,7 @@ impl SomeSquare {
                     }
                 }
                 Pn::Unpredictable => {
-                    if self.rules.len() != 0 {
+                    if !self.rules.is_empty() {
                         self.rules = RuleStore::new();
                     }
                 }
@@ -131,15 +132,15 @@ impl SomeSquare {
         }
 
         if self.pn != sav_pn {
-            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.pn));
+            let _ = write!(str_info, ", pn changed from {} to {}", &sav_pn, &self.pn);
         } else {
-            str_info.push_str(&format!(", pn {}", &self.pn));
+            let _ = write!(str_info, ", pn {}", &self.pn);
         }
 
         if self.pnc != sav_pnc {
-            str_info.push_str(&format!(", pnc changed from {} to {}", &sav_pnc, &self.pnc));
+            let _ = write!(str_info, ", pnc changed from {} to {}", &sav_pnc, &self.pnc);
         } else {
-            str_info.push_str(&format!(", pnc {}", &self.pnc));
+            let _ = write!(str_info, ", pnc {}", &self.pnc);
         }
 
         println!("{}", &str_info);
@@ -168,10 +169,10 @@ impl SomeSquare {
 
     pub fn formatted_string2(&self) -> String {
         let mut rc_str = String::from("S[");
-        rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.pn));
-        rc_str.push_str(&format!(", pnc: {}", &self.pnc));
-        rc_str.push_str(&format!(", {}", self.rules));
+        let _ = write!(rc_str, "{}", &self.state);
+        let _ = write!(rc_str, ", pn: {}", &self.pn);
+        let _ = write!(rc_str, ", pnc: {}", &self.pnc);
+        let _ = write!(rc_str, ", {}", self.rules);
 
         rc_str.push(']');
         rc_str
@@ -193,10 +194,11 @@ impl SomeSquare {
         }
 
         // Check for bootstrap compatible
-        if self.pn == Pn::One && sqrx.pn == Pn::One {
-            if self.rules.can_form_union(&sqrx.rules) == Truth::T {
-                return Truth::T;
-            }
+        if self.pn == Pn::One
+            && sqrx.pn == Pn::One
+            && self.rules.can_form_union(&sqrx.rules) == Truth::T
+        {
+            return Truth::T;
         }
 
         if self.pnc {
@@ -260,7 +262,7 @@ mod tests {
             SomeState::new(SomeBits::new_from_string(1, "0b0101").unwrap()),
         );
         assert!(sqrx.pn == Pn::One);
-        assert!(sqrx.pnc == false);
+        assert!(!sqrx.pnc);
 
         // Second result, same as the first.
         let changed = sqrx.add_result(SomeState::new(
@@ -274,7 +276,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false);
+        assert!(!changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 
@@ -290,7 +292,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false);
+        assert!(!changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
@@ -306,7 +308,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false);
+        assert!(!changed);
         assert!(sqrx.pn == Pn::Two);
         assert!(sqrx.pnc);
 
@@ -322,7 +324,7 @@ mod tests {
         let changed = sqrx.add_result(SomeState::new(
             SomeBits::new_from_string(1, "0b0101").unwrap(),
         ));
-        assert!(changed == false);
+        assert!(!changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 

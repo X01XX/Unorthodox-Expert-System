@@ -5,9 +5,10 @@ use crate::region::SomeRegion;
 use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
     pub b01: SomeMask,
@@ -98,7 +99,7 @@ impl SomeChange {
 
     /// Return true if no bits are set
     pub fn is_low(&self) -> bool {
-        if self.b01.is_low() == false {
+        if !self.b01.is_low() {
             return false;
         }
         self.b10.is_low()
@@ -129,10 +130,8 @@ impl SomeChange {
 
     /// Return true if a SomeChange struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &SomeChange) -> bool {
-        if self.b01.is_subset_of(&other.b01) {
-            if self.b10.is_subset_of(&other.b10) {
-                return true;
-            }
+        if self.b01.is_subset_of(&other.b01) && self.b10.is_subset_of(&other.b10) {
+            return true;
         }
         false
     }
@@ -142,14 +141,14 @@ impl SomeChange {
         let mut strrc = String::with_capacity(10);
 
         if self.b01.is_not_low() {
-            strrc.push_str(&format!("0->1: {}", self.b01));
+            let _ = write!(strrc, "0->1: {}", self.b01);
             if self.b10.is_not_low() {
-                strrc.push_str(&format!(", 1->0: {}", self.b10));
+                let _ = write!(strrc, ", 1->0: {}", self.b10);
             }
         } else if self.b10.is_not_low() {
-            strrc.push_str(&format!("1->0: {}", self.b10));
+            let _ = write!(strrc, "1->0: {}", self.b10);
         } else {
-            strrc.push_str(&format!("(none)"));
+            let _ = write!(strrc, "(none)");
         }
 
         strrc

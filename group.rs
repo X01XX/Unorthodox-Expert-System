@@ -13,6 +13,7 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -53,7 +54,7 @@ impl SomeGroup {
         //            SomeRegion::new(&sta1, &sta2)
         //        );
         let mut pnx = Pn::One;
-        if ruls.len() == 0 {
+        if ruls.is_empty() {
             pnx = Pn::Unpredictable;
         } else if ruls.len() == 2 {
             pnx = Pn::Two;
@@ -62,7 +63,7 @@ impl SomeGroup {
         Self {
             region: regionx,
             pn: pnx,
-            pnc: pnc,
+            pnc,
             rules: ruls,
             limited: false,
             anchor: None,
@@ -77,14 +78,14 @@ impl SomeGroup {
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
         let mut rc_str = String::from("G(");
-        rc_str.push_str(&format!("{}", self.region.formatted_string()));
+        rc_str.push_str(&self.region.formatted_string());
 
-        rc_str.push_str(&format!(", pn: {}", self.pn));
+        let _ = write!(rc_str, ", pn: {}", self.pn);
 
         if self.pnc {
-            rc_str.push_str(&format!(", pnc: t,"));
+            rc_str.push_str(", pnc: t,");
         } else {
-            rc_str.push_str(&format!(", pnc: f,"));
+            rc_str.push_str(", pnc: f,");
         }
         //        if self.limited {
         //            rc_str.push_str(&format!(", limited"));
@@ -92,10 +93,10 @@ impl SomeGroup {
 
         match self.pn {
             Pn::One => {
-                rc_str.push_str(&format!(" {}", self.rules));
+                rc_str.push_str(&self.rules.formatted_string());
             }
             Pn::Two => {
-                rc_str.push_str(&format!(" {}", self.rules));
+                rc_str.push_str(&self.rules.formatted_string());
             }
             Pn::Unpredictable => {
                 rc_str.push_str(" R[Unpredictable]");
@@ -105,15 +106,15 @@ impl SomeGroup {
         match &self.anchor {
             Some(sta1) => {
                 if self.limited {
-                    rc_str.push_str(&format!(", limited using {}", sta1));
+                    let _ = write!(rc_str, ", limited using {}", sta1);
                 } else {
-                    rc_str.push_str(&format!(", limiting using {}", sta1));
+                    let _ = write!(rc_str, ", limiting using {}", sta1);
                 }
             }
             None => (),
         }
 
-        rc_str.push_str(&format!(")"));
+        rc_str.push(')');
         rc_str
     }
 
@@ -129,7 +130,7 @@ impl SomeGroup {
             if self.region.state1 == self.region.state2 {
                 // Allow change of Pn::One to Pn::Unpredictable.
                 if self.pn != sqrx.pn {
-                    if sqrx.pn > Pn::One && sqrx.pnc == false {
+                    if sqrx.pn > Pn::One && !sqrx.pnc {
                         return false;
                     }
                     self.pn = sqrx.pn;
@@ -160,18 +161,12 @@ impl SomeGroup {
 
     /// Return true if a sample is compatible with a group.
     pub fn check_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
-        let tmp_rul = SomeRule::new(&init, &rslt);
+        let tmp_rul = SomeRule::new(init, rslt);
 
         match self.pn {
-            Pn::One => {
-                return self.rules.is_superset_of_rule(&tmp_rul);
-            }
-            Pn::Two => {
-                return self.rules.is_superset_of_rule(&tmp_rul);
-            }
-            Pn::Unpredictable => {
-                return true;
-            }
+            Pn::One => self.rules.is_superset_of_rule(&tmp_rul),
+            Pn::Two => self.rules.is_superset_of_rule(&tmp_rul),
+            Pn::Unpredictable => true,
         }
     }
 
@@ -186,13 +181,13 @@ impl SomeGroup {
 
     /// Set limited to flase.
     pub fn set_limited_off(&mut self) {
-        assert!(self.limited == true);
+        assert!(self.limited);
         self.limited = false;
     }
 
     /// Set limited to true.
     pub fn set_limited(&mut self) {
-        assert!(self.limited == false);
+        assert!(!self.limited);
 
         self.limited = true;
 
@@ -201,11 +196,9 @@ impl SomeGroup {
                 if self.region.state1 != *astate {
                     self.region = SomeRegion::new(astate, astate);
                 }
-            } else {
-                if self.region.state1 != *astate && self.region.state2 != *astate {
-                    let state2 = self.region.far_state(astate);
-                    self.region = SomeRegion::new(astate, &state2);
-                }
+            } else if self.region.state1 != *astate && self.region.state2 != *astate {
+                let state2 = self.region.far_state(astate);
+                self.region = SomeRegion::new(astate, &state2);
             }
         }
     }
@@ -223,7 +216,7 @@ impl SomeGroup {
         assert!(self.limited);
         let nonx = self.region.x_mask().m_not();
         let positions = nonx.m_and(new_chgs);
-        if positions.is_low() == false {
+        if !positions.is_low() {
             self.limited = false;
             //println!("resetting limit flag!");
         }

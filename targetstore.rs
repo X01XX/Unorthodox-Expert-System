@@ -3,6 +3,7 @@
 use crate::target::SomeTarget;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::Iter;
 
@@ -18,7 +19,7 @@ impl fmt::Display for TargetStore {
             if flg == 1 {
                 rc_str.push_str(&String::from(",\n "));
             }
-            rc_str.push_str(&format!("{}", &targx));
+            let _ = write!(rc_str, "{}", &targx);
             flg = 1;
         }
         rc_str.push(']');
@@ -32,6 +33,12 @@ impl fmt::Display for TargetStore {
 pub struct TargetStore {
     /// A vector of SomeTarget instances.
     avec: Vec<SomeTarget>,
+}
+
+impl Default for TargetStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TargetStore {
@@ -65,7 +72,7 @@ impl TargetStore {
 
 impl Index<usize> for TargetStore {
     type Output = SomeTarget;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeTarget {
+    fn index(&self, i: usize) -> &SomeTarget {
         &self.avec[i]
     }
 }

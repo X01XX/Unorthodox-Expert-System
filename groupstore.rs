@@ -24,7 +24,7 @@ impl fmt::Display for GroupStore {
             if flg == 1 {
                 rc_str.push_str(",\n              ");
             }
-            rc_str.push_str(&format!("{}", &grpx.formatted_string()));
+            rc_str.push_str(&grpx.formatted_string());
             flg = 1;
         }
 
@@ -68,33 +68,31 @@ impl GroupStore {
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in self.avec.iter_mut().enumerate() {
-            if grpx.region.is_superset_of_state(&sqrx.state) {
-                if grpx.check_square(&sqrx) == false {
-                    if sqrx.pn > grpx.pn {
-                        println!(
-                            "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
-                        );
-                    } else if sqrx.pn < grpx.pn && sqrx.pnc {
-                        println!(
-                            "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
-                            dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
-                        );
-                    } else {
-                        println!(
-                            "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
-                            dom,
-                            act,
-                            sqrx.state,
-                            sqrx.rules.formatted_string(),
-                            &grpx.region,
-                            grpx.rules.formatted_string()
-                        );
-                    }
-
-                    regs_invalid.push(grpx.region.clone());
-                    rmvec.push(inx);
+            if grpx.region.is_superset_of_state(&sqrx.state) && !grpx.check_square(sqrx) {
+                if sqrx.pn > grpx.pn {
+                    println!(
+                        "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
+                        dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
+                    );
+                } else if sqrx.pn < grpx.pn && sqrx.pnc {
+                    println!(
+                        "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
+                        dom, act, sqrx.state, sqrx.pn , &grpx.region, grpx.pn
+                    );
+                } else {
+                    println!(
+                        "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
+                        dom,
+                        act,
+                        sqrx.state,
+                        sqrx.rules.formatted_string(),
+                        &grpx.region,
+                        grpx.rules.formatted_string()
+                    );
                 }
+
+                regs_invalid.push(grpx.region.clone());
+                rmvec.push(inx);
             }
         } // next grpx
 
@@ -107,7 +105,7 @@ impl GroupStore {
             remove_unordered(&mut self.avec, *inx);
         }
 
-        if rmvec.len() > 0 {
+        if !rmvec.is_empty() {
             self.calc_aggregate_changes_mask();
         }
 
@@ -142,7 +140,7 @@ impl GroupStore {
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
-            if grpx.region.is_superset_of(&reg) {
+            if grpx.region.is_superset_of(reg) {
                 return true;
             }
         }
@@ -212,7 +210,7 @@ impl GroupStore {
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in &mut self.avec.iter().enumerate() {
-            if grpx.region.is_subset_of(&reg) {
+            if grpx.region.is_subset_of(reg) {
                 rmvec.push(inx);
             }
         }
@@ -226,7 +224,7 @@ impl GroupStore {
             remove_unordered(&mut self.avec, *inx);
         }
 
-        rmvec.len() > 0
+        !rmvec.is_empty()
     }
 
     /// Add a group.
@@ -257,13 +255,10 @@ impl GroupStore {
     /// Return true if any groups are invalidated.
     pub fn any_groups_invalidated(&mut self, init: &SomeState, rslt: &SomeState) -> bool {
         for grpx in &mut self.avec {
-            if grpx.region.is_superset_of_state(&init) {
-                if !grpx.check_sample(&init, &rslt) {
-                    return true;
-                }
+            if grpx.region.is_superset_of_state(init) && !grpx.check_sample(init, rslt) {
+                return true;
             }
         }
-
         false
     }
 
@@ -340,7 +335,7 @@ impl GroupStore {
 
 impl Index<usize> for GroupStore {
     type Output = SomeGroup;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeGroup {
+    fn index(&self, i: usize) -> &SomeGroup {
         &self.avec[i]
     }
 }

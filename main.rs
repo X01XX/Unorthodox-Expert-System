@@ -10,6 +10,7 @@ dead_code,
 )]
 
 use std::env;
+use std::fmt::Write as _; // import without risk of name clashing
 mod action;
 mod actionstore;
 mod bits;
@@ -189,11 +190,11 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         let mut need_plans = dmxs.evaluate_needs(&nds);
 
         // Boredom processing if no needs, or no needs can be done.
-        if need_plans.len() == 0 {
+        if need_plans.is_empty() {
             if let Some(needx) = dmxs.check_optimal() {
                 // println!("Optimum need found {}", needx);
                 let inxx = dmxs.make_plans(0, &needx.target());
-                if let Some(_) = inxx.plans {
+                if inxx.plans.is_some() {
                     nds.push(needx);
                     need_plans.push(inxx);
                 }
@@ -208,7 +209,14 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     let mut need_domain = nds[0].dom_num();
                     let mut same_domain = true;
 
-                    if need_plans.len() > 0 {
+                    if need_plans.is_empty() {
+                        for ndx in nds.iter() {
+                            if ndx.dom_num() != need_domain {
+                                same_domain = false;
+                                break;
+                            }
+                        }
+                    } else {
                         need_domain = nds[need_plans[0].inx].dom_num();
                         for ndx in need_plans.iter() {
                             if nds[ndx.inx].dom_num() != need_domain {
@@ -216,20 +224,11 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 break;
                             }
                         }
-                    } else {
-                        for ndx in nds.iter() {
-                            if ndx.dom_num() != need_domain {
-                                same_domain = false;
-                                break;
-                            }
-                        }
                     }
 
-                    if same_domain {
-                        if dom_num != need_domain {
-                            //println!("changing domain from {} to {}", &dom_num, &need_domain);
-                            dom_num = need_domain;
-                        }
+                    if same_domain && dom_num != need_domain {
+                        //println!("changing domain from {} to {}", &dom_num, &need_domain);
+                        dom_num = need_domain;
                     }
                 }
             }
@@ -259,7 +258,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         if nds.len() > 0 {
             // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
-            if need_plans.len() == 0 {
+            if need_plans.is_empty() {
                 cant_do = nds.len();
 
                 println!("\nNeeds that cannot be done:");
@@ -271,7 +270,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             } else {
                 // Get count of needs that can, and cannot, be done.
                 for ndplnx in need_plans.iter() {
-                    if let Some(_) = ndplnx.plans {
+                    if ndplnx.plans.is_some() {
                         can_do += 1;
                     } else {
                         cant_do += 1;
@@ -284,7 +283,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else {
                     println!("\nNeeds that cannot be done:");
                     for ndplnx in need_plans.iter() {
-                        if let Some(_) = ndplnx.plans {
+                        if ndplnx.plans.is_some() {
                         } else {
                             println!("   {}", nds[ndplnx.inx]);
                         }
@@ -343,7 +342,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             //println!("start command loop");
             let mut cmd = Vec::<String>::with_capacity(10);
 
-            if to_end == false || (cant_do > 0 && can_do == 0) {
+            if !to_end || (cant_do > 0 && can_do == 0) {
                 let guess = pause_for_input("\nPress Enter or type a command: ");
 
                 for word in guess.split_whitespace() {
@@ -353,7 +352,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             }
 
             // Default command, just press Enter
-            if cmd.len() == 0 {
+            if cmd.is_empty() {
                 // Process needs
                 if can_do > 0 {
                     //println!("\nAction needs: {}", nds);
@@ -383,7 +382,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 match ndx {
                                     SomeNeed::ToRegion { .. } => (),
                                     _ => {
-                                        dmxs.take_action_need(dom_num, &ndx);
+                                        dmxs.take_action_need(dom_num, ndx);
                                     } // Add new needs here
                                 }
                             } else {
@@ -488,14 +487,14 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
 
                                 if pln.len() > 0 {
-                                    dmxs.run_plans(&pln);
+                                    dmxs.run_plans(pln);
                                 }
 
                                 match ndx {
                                     SomeNeed::ToOptimalRegion { .. } => (),
                                     _ => {
                                         if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                                            dmxs.take_action_need(ndx.dom_num(), &ndx);
+                                            dmxs.take_action_need(ndx.dom_num(), ndx);
                                         }
                                     }
                                 }
@@ -550,11 +549,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
     let cur_state = dmx.get_current_state();
 
     // Handle one-word commands
-    if cmd.len() == 1 {
-        if cmd[0] == "h" || cmd[0] == "help" {
-            usage();
-            return 0;
-        }
+    if cmd.len() == 1 && (cmd[0] == "h" || cmd[0] == "help") {
+        usage();
+        return 0;
     } // end one-word commands
 
     // Handle two-word commands
@@ -618,13 +615,11 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             dmx.get_current_state(),
                             goal_region
                         );
+                    } else if dmx.to_region(&goal_region) {
+                        println!("\nChange to region succeeded");
+                        step_inc = 1;
                     } else {
-                        if dmx.to_region(&goal_region) {
-                            println!("\nChange to region succeeded");
-                            step_inc = 1;
-                        } else {
-                            println!("\nChange to region failed");
-                        }
+                        println!("\nChange to region failed");
                     }
                 }
                 Err(error) => {
@@ -701,10 +696,10 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                     // Get region
                     match dmx.region_from_string(&cmd[2]) {
                         Ok(aregion) => {
-                            let mut psstr = String::from(format!(
+                            let mut psstr = format!(
                                 "Squares of Action {} in region {} are:\n",
                                 &act_num, &aregion
-                            ));
+                            );
 
                             let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
                             if stas.len() == 0 {
@@ -723,7 +718,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                 }
 
                                 let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                psstr.push_str(&format!("    {}", &sqrx));
+                                let _ = write!(psstr, "    {}", sqrx);
 
                                 if sqrx.pn < min_pn {
                                     min_pn = sqrx.pn;
@@ -762,11 +757,9 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                             rules = Some(sqrx.rules.clone());
                                         }
                                     }
-                                } else {
-                                    if let Some(ref regx) = max_pn_reg {
-                                        if regx.is_superset_of_state(&sqrx.state) {
-                                            non_pn_stas.push(sqrx.state.clone());
-                                        }
+                                } else if let Some(ref regx) = max_pn_reg {
+                                    if regx.is_superset_of_state(&sqrx.state) {
+                                        non_pn_stas.push(sqrx.state.clone());
                                     }
                                 }
                             }
@@ -781,23 +774,21 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                         form_group = false;
                                     }
                                 }
-                            } else {
-                                if let Some(ruls) = rules {
-                                    rules_str = ruls.formatted_string();
-                                    for stax in non_pn_stas.iter() {
-                                        let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                        if sqrx.rules.is_subset_of(&ruls) == false {
-                                            form_group = false;
-                                        }
+                            } else if let Some(ruls) = rules {
+                                rules_str = ruls.formatted_string();
+                                for stax in non_pn_stas.iter() {
+                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                                    if !sqrx.rules.is_subset_of(&ruls) {
+                                        form_group = false;
                                     }
-                                } else {
-                                    form_group = false;
                                 }
+                            } else {
+                                form_group = false;
                             }
 
-                            psstr.push_str(&format!("\n    Min Pn: {} Max Pn: {} Max Pn Reg {} Rules: {} Can form group: {}",
-                                &min_pn, &max_pn, &max_pn_reg.unwrap(), &rules_str, &form_group));
-                            println!("{}", psstr);
+                            let _ = write!(psstr, "\n    Min Pn: {} Max Pn: {} Max Pn Reg {} Rules: {} Can form group: {}",
+                                min_pn, max_pn, max_pn_reg.unwrap(), rules_str, form_group);
+                            //println!("{}", psstr);
                         }
                         Err(error) => {
                             println!("{}", &error);
@@ -882,7 +873,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             // Find group
                             if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
                                 if let Some(astate) = &grpx.anchor {
-                                    if let Some(sqrx) = dmx.actions[act_num].squares.find(&astate) {
+                                    if let Some(sqrx) = dmx.actions[act_num].squares.find(astate) {
                                         println!("anchor   {}", &sqrx);
                                     } else {
                                         println!("anchor   {} not found?", &grpx.region.state1);
@@ -899,7 +890,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                     }
 
                                     if grpx.region.state1 != grpx.region.state2 {
-                                        let sta_far = grpx.region.far_state(&astate);
+                                        let sta_far = grpx.region.far_state(astate);
                                         if let Some(sqrx) =
                                             dmx.actions[act_num].squares.find(&sta_far)
                                         {
@@ -1098,24 +1089,16 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
 
     // Open a file, returns `io::Result<File>`
     match File::open(&path) {
-        Err(why) => {
-            return Err(format!("couldn't open {}: {}", display, why));
-        }
+        Err(why) => Err(format!("couldn't open {}: {}", display, why)),
         Ok(mut afile) => {
             let mut serialized = String::new();
             match afile.read_to_string(&mut serialized) {
-                Err(why) => {
-                    return Err(format!("couldn't read {}: {}", display, why));
-                }
+                Err(why) => Err(format!("couldn't read {}: {}", display, why)),
                 Ok(_) => {
                     let deserialized_r = serde_yaml::from_str(&serialized);
                     match deserialized_r {
-                        Err(why) => {
-                            return Err(format!("couldn't deserialize {}: {}", display, why));
-                        }
-                        Ok(new_dmxs) => {
-                            return Ok(new_dmxs);
-                        }
+                        Err(why) => Err(format!("couldn't deserialize {}: {}", display, why)),
+                        Ok(new_dmxs) => Ok(new_dmxs),
                     } // end match deserialized_r
                 }
             }

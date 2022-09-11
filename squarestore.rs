@@ -10,17 +10,18 @@ use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SquareStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut flg = 0;
         let mut rc_str = String::new();
 
-        for (_key, sqrx) in &self.ahash {
+        for sqrx in self.ahash.values() {
             if flg == 1 {
                 rc_str.push_str(",\n");
             }
-            rc_str.push_str(&format!("{}", sqrx));
+            let _ = write!(rc_str, "{}", sqrx);
             flg = 1;
         }
 
@@ -32,6 +33,12 @@ impl fmt::Display for SquareStore {
 #[derive(Serialize, Deserialize)]
 pub struct SquareStore {
     pub ahash: HashMap<SomeState, SomeSquare>,
+}
+
+impl Default for SquareStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SquareStore {
@@ -56,7 +63,7 @@ impl SquareStore {
     pub fn all_square_states(&self) -> StateStore {
         let mut rc_store = StateStore::new();
 
-        for (key, _) in &self.ahash {
+        for key in self.ahash.keys() {
             rc_store.push(key.clone());
         }
         rc_store
@@ -66,7 +73,7 @@ impl SquareStore {
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
         let mut rc_store = StateStore::new();
 
-        for (key, _) in &self.ahash {
+        for key in self.ahash.keys() {
             if areg.is_superset_of_state(key) {
                 rc_store.push(key.clone());
             }
@@ -115,8 +122,8 @@ impl SquareStore {
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 
-        for (key, _sqry) in &self.ahash {
-            if regs.any_superset_of_state(key) == false {
+        for key in self.ahash.keys() {
+            if !regs.any_superset_of_state(key) {
                 states.push(key.clone());
             }
         }
@@ -129,7 +136,7 @@ impl SquareStore {
         let mut states = StateStore::new();
 
         for (key, sqry) in &self.ahash {
-            if sqry.pn != Pn::One && sqry.pnc == false {
+            if sqry.pn != Pn::One && !sqry.pnc {
                 states.push(key.clone());
             }
         }
@@ -141,7 +148,7 @@ impl SquareStore {
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
         let mut states = StateStore::new();
 
-        for (key, _sqry) in &self.ahash {
+        for key in self.ahash.keys() {
             if regs.state_in_1_region(key) {
                 states.push(key.clone());
             }
@@ -154,7 +161,7 @@ impl SquareStore {
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
         let mut states = StateStore::new();
 
-        for (key, _sqry) in &self.ahash {
+        for key in self.ahash.keys() {
             if regx.is_adjacent_state(key) {
                 states.push(key.clone());
             }

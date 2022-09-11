@@ -14,6 +14,7 @@ use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -22,6 +23,7 @@ use std::slice::Iter;
 pub struct RuleStore {
     avec: Vec<SomeRule>,
 }
+
 impl fmt::Display for RuleStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -34,7 +36,7 @@ impl PartialEq for RuleStore {
             return false;
         }
 
-        if self.len() == 0 {
+        if self.is_empty() {
             return true;
         }
 
@@ -44,7 +46,7 @@ impl PartialEq for RuleStore {
 
         // For two rules, order does not matter
         if self.len() == 2 {
-            if let Some(rulesx) = self.intersection(&other) {
+            if let Some(rulesx) = self.intersection(other) {
                 if rulesx.initial_region() == self.initial_region() {
                     return true;
                 }
@@ -59,6 +61,12 @@ impl PartialEq for RuleStore {
 
 impl Eq for RuleStore {}
 
+impl Default for RuleStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuleStore {
     /// Return a new RuleStore.
     pub fn new() -> Self {
@@ -69,7 +77,7 @@ impl RuleStore {
 
     /// Return if a square result rulestore is valid
     pub fn is_valid(&self) -> bool {
-        if self.len() == 0 {
+        if self.is_empty() {
             return true;
         }
 
@@ -94,6 +102,11 @@ impl RuleStore {
         self.avec.len()
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
+    }
+
     /// Add a rule to a RuleStore.
     /// If there are two rules, they will have at least one incompatibility,
     /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
@@ -112,7 +125,7 @@ impl RuleStore {
             return false;
         }
 
-        if self.initial_region().is_subset_of(&other.initial_region()) == false {
+        if !self.initial_region().is_subset_of(&other.initial_region()) {
             return false;
         }
 
@@ -194,7 +207,7 @@ impl RuleStore {
             return None;
         }
 
-        if self.len() == 0 {
+        if self.is_empty() {
             //return Some(Self::new());
             panic!("Unpredictable union not allowed");
         }
@@ -206,11 +219,9 @@ impl RuleStore {
         if self.len() == 1 {
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() {
-                if rulx.initial_region() == regx {
-                    ars.push(rulx);
-                    return Some(ars);
-                }
+            if rulx.is_valid_union() && rulx.initial_region() == regx {
+                ars.push(rulx);
+                return Some(ars);
             }
             return None;
         }
@@ -270,8 +281,8 @@ impl RuleStore {
 
     /// Return Truth value of a possible union.
     pub fn can_form_union(&self, other: &Self) -> Truth {
-        assert!(self.len() > 0);
-        assert!(other.len() > 0);
+        assert!(!self.is_empty());
+        assert!(!other.is_empty());
 
         // Handle Pn1 vs. Pn2.
         // The Pn1 type should not have enough samples to be pnc.
@@ -330,14 +341,11 @@ impl RuleStore {
             let int00 = self[0].intersection(&other[0]);
             let int11 = self[1].intersection(&other[1]);
 
-            if int00.is_valid_intersection() == false {
+            if !int00.is_valid_intersection()
+                || !int11.is_valid_intersection()
+                || int00.initial_region() != int11.initial_region()
+            {
                 order1 = false;
-            } else {
-                if int11.is_valid_intersection() == false {
-                    order1 = false;
-                } else if int00.initial_region() != int11.initial_region() {
-                    order1 = false;
-                }
             }
 
             // Intersect by order2
@@ -346,14 +354,11 @@ impl RuleStore {
             let int01 = self[0].intersection(&other[1]);
             let int10 = self[1].intersection(&other[0]);
 
-            if int01.is_valid_intersection() == false {
+            if !int01.is_valid_intersection()
+                || !int10.is_valid_intersection()
+                || int01.initial_region() != int10.initial_region()
+            {
                 order2 = false;
-            } else {
-                if int10.is_valid_intersection() == false {
-                    order2 = false;
-                } else if int01.initial_region() != int10.initial_region() {
-                    order2 = false;
-                }
             }
 
             // Act on results of intersections
@@ -394,12 +399,12 @@ impl RuleStore {
 
     /// Return the result of restricting the initial region of rules.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        assert!(self.len() > 0);
+        assert!(!self.is_empty());
         assert!(regx.intersects(&self.initial_region()));
         let mut rcrs = Self::new();
 
         for rulx in self.avec.iter() {
-            rcrs.push(rulx.restrict_initial_region(&regx));
+            rcrs.push(rulx.restrict_initial_region(regx));
         }
         rcrs
     }
@@ -413,7 +418,7 @@ impl RuleStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 3;
 
-        if self.avec.len() > 0 {
+        if !self.avec.is_empty() {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
@@ -433,10 +438,10 @@ impl RuleStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &strx));
+            let _ = write!(rc_str, "{}", &strx);
             flg = 1;
         }
-        rc_str.push_str("]");
+        rc_str.push(']');
 
         rc_str
     }
@@ -444,7 +449,7 @@ impl RuleStore {
 
 impl Index<usize> for RuleStore {
     type Output = SomeRule;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeRule {
+    fn index(&self, i: usize) -> &SomeRule {
         &self.avec[i]
     }
 }

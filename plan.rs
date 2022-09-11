@@ -24,6 +24,7 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -178,17 +179,17 @@ impl SomePlan {
         // Sanity checks
         assert!(self.len() > 0);
         assert!(other.len() > 0);
-        assert!(self.result_region().intersects(&other.initial_region()));
+        assert!(self.result_region().intersects(other.initial_region()));
 
         // Restrict the StepStores, forward and backward.
-        let regx = self.result_region().intersection(&other.initial_region());
+        let regx = self.result_region().intersection(other.initial_region());
 
         let mut steps1 = self.restrict_result_region(&regx);
         let mut steps2 = other.restrict_initial_region(&regx);
         steps1.append(&mut steps2);
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-        return steps1;
+        steps1
     } // end link
 
     /// Return a plan after checking for shortcuts.
@@ -225,7 +226,7 @@ impl SomePlan {
                     found = true;
                 }
             }
-            if found == false {
+            if !found {
                 reg_inx.push((initx, vec![inx]));
             }
         } // next inx
@@ -266,7 +267,7 @@ impl SomePlan {
                     found = true;
                 }
             }
-            if found == false {
+            if !found {
                 reg_inx.push((rsltx, vec![inx]));
             }
         } // next inx
@@ -307,11 +308,11 @@ impl SomePlan {
             if flg == 0 {
                 flg = 1;
             } else {
-                rs.push_str(",");
+                rs.push(',');
             }
-            rs.push_str(&format!("{}", stpx.act_num));
+            let _ = write!(rs, "{}", stpx.act_num);
         }
-        rs.push_str("]");
+        rs.push(']');
         rs
     }
 
@@ -355,7 +356,8 @@ impl SomePlan {
             let dif_bits2 = stpx.result.diff_mask(&self.steps[inx_end].result);
             let dif_num2 = dif_bits2.num_one_bits();
 
-            rc_str.push_str(&format!(
+            let _ = write!(
+                rc_str,
                 "{} Action {:02} Group {} Rule {} #dif: {} {} to #dif: {} {}\n{}\n",
                 &stpx.initial,
                 &stpx.act_num,
@@ -366,11 +368,11 @@ impl SomePlan {
                 &dif_num2,
                 &dif_bits2,
                 &df.str2()
-            ));
+            );
         }
 
         let x = self.steps.len() - 1;
-        rc_str.push_str(&format!("{}", &self.steps[x].result));
+        let _ = write!(rc_str, "{}", &self.steps[x].result);
 
         rc_str
     }
@@ -378,7 +380,7 @@ impl SomePlan {
 
 impl Index<usize> for SomePlan {
     type Output = SomeStep;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeStep {
+    fn index(&self, i: usize) -> &SomeStep {
         &self.steps[i]
     }
 }

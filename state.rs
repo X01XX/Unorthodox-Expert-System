@@ -61,22 +61,14 @@ impl SomeState {
         }
 
         if str.len() > 2 && (&str[1..3] == "0b" || &str[1..3] == "0x") {
-            match SomeBits::new_from_string(num_ints, &(&str[1..])) {
-                Ok(bts) => {
-                    return Ok(SomeState::new(bts));
-                }
-                Err(error) => {
-                    return Err(error);
-                }
+            match SomeBits::new_from_string(num_ints, &str[1..]) {
+                Ok(bts) => Ok(SomeState::new(bts)),
+                Err(error) => Err(error),
             }
         } else {
             match SomeBits::new_from_string(num_ints, &("0b".to_owned() + &str[1..])) {
-                Ok(bts) => {
-                    return Ok(SomeState::new(bts));
-                }
-                Err(error) => {
-                    return Err(error);
-                }
+                Ok(bts) => Ok(SomeState::new(bts)),
+                Err(error) => Err(error),
             }
         }
     } // end new_from_string

@@ -47,26 +47,18 @@ impl SomeMask {
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
         if &str[0..1] != "m" {
-            return Err(format!("Initial character should be m"));
+            return Err("Initial character should be m".to_string());
         }
 
         if str.len() > 2 && (&str[1..3] == "0b" || &str[1..3] == "0x") {
-            match SomeBits::new_from_string(num_ints, &(&str[1..])) {
-                Ok(bts) => {
-                    return Ok(SomeMask::new(bts));
-                }
-                Err(error) => {
-                    return Err(error);
-                }
+            match SomeBits::new_from_string(num_ints, &str[1..]) {
+                Ok(bts) => Ok(SomeMask::new(bts)),
+                Err(error) => Err(error),
             }
         } else {
             match SomeBits::new_from_string(num_ints, &("0b".to_owned() + &str[1..])) {
-                Ok(bts) => {
-                    return Ok(SomeMask::new(bts));
-                }
-                Err(error) => {
-                    return Err(error);
-                }
+                Ok(bts) => Ok(SomeMask::new(bts)),
+                Err(error) => Err(error),
             }
         }
     } // end new_from_string

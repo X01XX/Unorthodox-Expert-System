@@ -31,7 +31,7 @@ impl fmt::Display for SomeRegion {
 
 impl PartialEq for SomeRegion {
     fn eq(&self, other: &Self) -> bool {
-        if self.intersects(&other) {
+        if self.intersects(other) {
             return self.x_mask() == other.x_mask();
         }
         false
@@ -75,7 +75,7 @@ impl SomeRegion {
                 if ch == 'r' {
                     continue;
                 } else if ch == 's' {
-                    let state_r = SomeState::new_from_string(num_ints, &str);
+                    let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(SomeRegion::new(&a_state, &a_state));
@@ -150,7 +150,7 @@ impl SomeRegion {
                 if ch == 'r' {
                     continue;
                 } else if ch == 's' {
-                    let state_r = SomeState::new_from_string(num_ints, &str);
+                    let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(SomeRegion::new(&a_state, &a_state));
@@ -228,12 +228,10 @@ impl SomeRegion {
                 } else {
                     s1.push('X');
                 }
+            } else if b1 {
+                s1.push('x');
             } else {
-                if b1 {
-                    s1.push('x');
-                } else {
-                    s1.push('0');
-                }
+                s1.push('0');
             }
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
         }
@@ -242,17 +240,17 @@ impl SomeRegion {
 
     // Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        self.diff_mask(&other).just_one_bit()
+        self.diff_mask(other).just_one_bit()
     }
 
     /// Return true if a region is adjacent to a state.
     pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
-        self.diff_mask_state(&other).just_one_bit()
+        self.diff_mask_state(other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &Self) -> bool {
-        self.diff_mask(&other).is_low()
+        self.diff_mask(other).is_low()
     }
 
     /// Return the intersection of two regions.
@@ -324,7 +322,7 @@ impl SomeRegion {
 
     /// Return true if a region is a subset on another region.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        if self.intersects(&other) {
+        if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
             return x1.is_subset_of(&x2);
@@ -334,7 +332,7 @@ impl SomeRegion {
 
     /// Return true if a region is a superset on another region.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        if self.intersects(&other) {
+        if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
             return x1.is_superset_of(&x2);
@@ -433,12 +431,12 @@ impl SomeRegion {
     pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
-        if self.intersects(&other) == false {
+        if !self.intersects(other) {
             ret_vec.push(self.clone());
             return ret_vec;
         }
 
-        let reg_int = self.intersection(&other);
+        let reg_int = self.intersection(other);
 
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
 
@@ -515,7 +513,7 @@ mod tests {
 
         reg0 = SomeRegion::new_from_string(1, "rX10X01X").unwrap();
         reg1 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        assert!(reg0.is_adjacent(&reg1) == false);
+        assert!(!reg0.is_adjacent(&reg1));
 
         Ok(())
     }
@@ -527,7 +525,7 @@ mod tests {
         println!("{}", &reg0);
         println!("{}", &sta1);
         println!("{}", &reg0.diff_mask_state(&sta1));
-        if reg0.is_adjacent_state(&sta1) == false {
+        if !reg0.is_adjacent_state(&sta1) {
             return Err(String::from("Result 1 False?"));
         }
 
@@ -543,7 +541,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
 
-        if reg0.intersects(&reg1) == false {
+        if !reg0.intersects(&reg1) {
             return Err(String::from("Result 1 False?"));
         }
 
@@ -571,7 +569,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
         let sta1 = SomeState::new_from_string(1, "s1100").unwrap();
-        if reg0.is_superset_of_state(&sta1) == false {
+        if !reg0.is_superset_of_state(&sta1) {
             return Err(String::from("Result 1 False?"));
         }
 
@@ -592,7 +590,7 @@ mod tests {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
         let zmask = SomeMask::new_from_string(1, "m1010").unwrap();
 
-        if zmask.is_subset_of(&reg0.zeros_mask()) == false {
+        if !zmask.is_subset_of(&reg0.zeros_mask()) {
             return Err(String::from("1010 not a subset?"));
         }
         Ok(())
@@ -645,13 +643,13 @@ mod tests {
 
         let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
-        if reg0.is_subset_of(&reg1) == false {
+        if !reg0.is_subset_of(&reg1) {
             return Err(String::from("Result 1 False?"));
         }
 
         let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
 
-        if reg0.is_subset_of(&reg2) == false {
+        if !reg0.is_subset_of(&reg2) {
             return Err(String::from("Result 2 False?"));
         }
 
@@ -667,13 +665,13 @@ mod tests {
 
         let reg1 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
-        if reg0.is_superset_of(&reg1) == false {
+        if !reg0.is_superset_of(&reg1) {
             return Err(String::from("Result 1 False?"));
         }
 
         let reg2 = SomeRegion::new_from_string(1, "rXXXX").unwrap();
 
-        if reg2.is_superset_of(&reg0) == false {
+        if !reg2.is_superset_of(&reg0) {
             return Err(String::from("Result 2 False?"));
         }
 

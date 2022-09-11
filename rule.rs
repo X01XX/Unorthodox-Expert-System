@@ -55,12 +55,7 @@ impl SomeRule {
         assert!(b00.num_ints() == b01.num_ints());
         assert!(b00.num_ints() == b11.num_ints());
         assert!(b00.num_ints() == b10.num_ints());
-        Self {
-            b00: b00,
-            b01: b01,
-            b11: b11,
-            b10: b10,
-        }
+        Self { b00, b01, b11, b10 }
     }
 
     /// Generate a rule from a number of integers and a string,
@@ -127,16 +122,11 @@ impl SomeRule {
                 token = String::with_capacity(2);
             }
         }
-        if token.len() != 0 {
+        if !token.is_empty() {
             return Err(format!("Did not understand token {}", &token));
         }
 
-        Ok(SomeRule {
-            b00: b00,
-            b01: b01,
-            b11: b11,
-            b10: b10,
-        })
+        Ok(SomeRule { b00, b01, b11, b10 })
     }
 
     /// Return true if a rule is a subset of another.
@@ -159,12 +149,7 @@ impl SomeRule {
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
-        if self.b00.m_and(&self.b01).is_low() {
-            if self.b11.m_and(&self.b10).is_low() {
-                return true;
-            }
-        }
-        false
+        self.b00.m_and(&self.b01).is_low() && self.b11.m_and(&self.b10).is_low()
     }
 
     /// Return true if a rule is valid after an intersection,
@@ -222,7 +207,7 @@ impl SomeRule {
     /// Return the result region after applying an initial region to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_region(&self, reg: &SomeRegion) -> SomeRegion {
-        if reg.intersects(&self.initial_region()) == false {
+        if !reg.intersects(&self.initial_region()) {
             panic!("result_from_initial: given region does not intersect the ruls initial region");
         }
 
@@ -232,7 +217,7 @@ impl SomeRule {
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
-        if self.initial_region().is_superset_of_state(&sta) == false {
+        if !self.initial_region().is_superset_of_state(sta) {
             panic!(
                 "result_from_initial_state: given state is not a subset of the ruls initial region"
             );
@@ -249,7 +234,7 @@ impl SomeRule {
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let init_reg = self.initial_region();
 
-        if init_reg.intersects(&regx) == false {
+        if !init_reg.intersects(regx) {
             panic!(
                 "{} does not intersect rule initial region {}",
                 regx, init_reg
@@ -277,7 +262,7 @@ impl SomeRule {
 
         let rslt_reg = self.result_region();
 
-        if rslt_reg.intersects(&regx) == false {
+        if !rslt_reg.intersects(regx) {
             panic!(
                 "{} does not intersect rule result region {}",
                 regx, rslt_reg
@@ -298,15 +283,12 @@ impl SomeRule {
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
         let ones = SomeMask::new(reg_int.high_state().bts.clone());
 
-        let rc_rul = Self {
+        Self {
             b00: self.b00.m_and(&zeros),
             b01: self.b01.m_and(&ones),
             b11: self.b11.m_and(&ones),
             b10: self.b10.m_and(&zeros),
-        };
-
-        //println!(" giving {} with intial {}", rc_rul, rc_rul.initial_region());
-        rc_rul
+        }
     }
 
     /// Return the expected length of a string representation of SomeRule.
@@ -335,27 +317,27 @@ impl SomeRule {
                 }
             }
 
-            if b00 && b01 == false && b11 && b10 == false {
+            if b00 && !b01 && b11 && !b10 {
                 strrc.push_str("XX");
-            } else if b00 && b01 == false && b11 == false && b10 {
+            } else if b00 && !b01 && !b11 && b10 {
                 strrc.push_str("X0");
-            } else if b00 == false && b01 && b11 && b10 == false {
+            } else if !b00 && b01 && b11 && !b10 {
                 strrc.push_str("X1");
-            } else if b00 == false && b01 && b11 == false && b10 {
+            } else if !b00 && b01 && !b11 && b10 {
                 strrc.push_str("Xx");
-            } else if b00 && b01 == false && b11 == false && b10 == false {
+            } else if b00 && !b01 && !b11 && !b10 {
                 strrc.push_str("00");
-            } else if b00 == false && b01 == false && b11 && b10 == false {
+            } else if !b00 && !b01 && b11 && !b10 {
                 strrc.push_str("11");
-            } else if b00 == false && b01 == false && b11 == false && b10 {
+            } else if !b00 && !b01 && !b11 && b10 {
                 strrc.push_str("10");
-            } else if b00 == false && b01 && b11 == false && b10 == false {
+            } else if !b00 && b01 && !b11 && !b10 {
                 strrc.push_str("01");
-            } else if b00 && b01 && b11 == false && b10 == false {
+            } else if b00 && b01 && !b11 && !b10 {
                 strrc.push_str("0X");
-            } else if b00 == false && b01 == false && b11 && b10 {
+            } else if !b00 && !b01 && b11 && b10 {
                 strrc.push_str("1X");
-            } else if b00 == false && b01 == false && b11 == false && b10 == false {
+            } else if !b00 && !b01 && !b11 && !b10 {
                 // Return a new Square instance
                 strrc.push_str("dc");
             } else {
@@ -416,10 +398,8 @@ impl SomeRule {
     /// Return true if two rules are mutually exclusive.
     /// Both rules lose wanted changes, running them in any order.
     pub fn mutually_exclusive(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
-        if self.order_bad(other, wanted) {
-            if other.order_bad(self, wanted) {
-                return true;
-            }
+        if self.order_bad(other, wanted) && other.order_bad(self, wanted) {
+            return true;
         }
         false
     }
@@ -433,7 +413,7 @@ impl SomeRule {
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
         // Calc aggregate rule.
-        let rulx = self.then_to(&other);
+        let rulx = self.then_to(other);
 
         // Get a mask of the wanted changes in this rule.
         let s_wanted = self.change().c_and(wanted);
@@ -452,11 +432,11 @@ impl SomeRule {
     /// The result region of the first rule may not intersect the initial region of the second rule.
     pub fn then_to(&self, other: &SomeRule) -> Self {
         if self.result_region().intersects(&other.initial_region()) {
-            return self.then_to2(&other);
+            return self.then_to2(other);
         }
         let rul_between =
             SomeRule::region_to_region(&self.result_region(), &other.initial_region());
-        self.then_to2(&rul_between).then_to2(&other)
+        self.then_to2(&rul_between).then_to2(other)
     }
     /// Combine two rules in sequence.
     /// The result region of the first rule must intersect the initial region of the second rule.
@@ -622,7 +602,7 @@ mod tests {
         let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx").unwrap();
         let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11").unwrap();
 
-        if rul3.is_subset_of(&rul2) == false {
+        if !rul3.is_subset_of(&rul2) {
             return Err(String::from("Result 1 false?"));
         }
 
@@ -636,7 +616,7 @@ mod tests {
         let rul3 = SomeRule::new_from_string(1, "00").unwrap();
 
         let int12 = rul1.intersection(&rul2);
-        if int12.is_valid_intersection() == false {
+        if !int12.is_valid_intersection() {
             return Err(String::from("Result 1 False?"));
         }
 
@@ -667,7 +647,7 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "11").unwrap();
         let rul2 = SomeRule::new_from_string(1, "01").unwrap();
         let rul3 = rul1.union(&rul2);
-        if rul3.is_valid_union() == false {
+        if !rul3.is_valid_union() {
             return Err(String::from("Result 3 False?"));
         }
 
@@ -691,7 +671,7 @@ mod tests {
             &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
-        if rul1.mutually_exclusive(&rul2, &chg1) == false {
+        if !rul1.mutually_exclusive(&rul2, &chg1) {
             return Err(String::from("Result 1 False?"));
         }
 
@@ -703,7 +683,7 @@ mod tests {
             &SomeMask::new_from_string(1, "m0b11").unwrap(),
             &SomeMask::new_low(1),
         );
-        if rul1.mutually_exclusive(&rul2, &chg1) == false {
+        if !rul1.mutually_exclusive(&rul2, &chg1) {
             return Err(String::from("Result 2 False?"));
         }
 
@@ -736,10 +716,10 @@ mod tests {
 
         println!("1->2 {}", rul1.order_bad(&rul2, &chg1));
         println!("2->1 {}", rul2.order_bad(&rul1, &chg1));
-        if rul1.order_bad(&rul2, &chg1) == false {
+        if !rul1.order_bad(&rul2, &chg1) {
             return Err(String::from("Result 1 False?"));
         }
-        if rul2.order_bad(&rul1, &chg1) == false {
+        if !rul2.order_bad(&rul1, &chg1) {
             return Err(String::from("Result 2 False?"));
         }
         if rul1.order_bad(&rul3, &chg1) {
@@ -848,7 +828,7 @@ mod tests {
 
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
         println!("rul1 is {}", &rul1);
-        if reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)) == false {
+        if !reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)) {
             return Err(String::from("reg2 not superset rul1 initial region?"));
         }
 

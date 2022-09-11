@@ -10,6 +10,8 @@ use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
+
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -32,7 +34,7 @@ impl PartialEq for RegionStore {
             return false;
         }
         for regx in self.iter() {
-            if other.contains(regx) == false {
+            if !other.contains(regx) {
                 return false;
             }
         }
@@ -40,6 +42,12 @@ impl PartialEq for RegionStore {
     }
 }
 impl Eq for RegionStore {}
+
+impl Default for RegionStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl RegionStore {
     /// Return a new, empty, RegionStore.
@@ -74,7 +82,7 @@ impl RegionStore {
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if regx.is_superset_of(&reg) {
+            if regx.is_superset_of(reg) {
                 return true;
             }
         }
@@ -84,7 +92,7 @@ impl RegionStore {
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if regx.is_subset_of(&reg) {
+            if regx.is_subset_of(reg) {
                 return true;
             }
         }
@@ -94,7 +102,7 @@ impl RegionStore {
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
         for regx in &self.avec {
-            if regx.intersects(&reg) {
+            if regx.intersects(reg) {
                 return true;
             }
         }
@@ -104,7 +112,7 @@ impl RegionStore {
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
         for regx in &self.avec {
-            if regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(sta) {
                 return true;
             }
         }
@@ -116,7 +124,7 @@ impl RegionStore {
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
-            if regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(sta) {
                 ret_store.push(regx.clone());
             }
         }
@@ -128,7 +136,7 @@ impl RegionStore {
         let mut ret = 0;
 
         for regx in &self.avec {
-            if regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(sta) {
                 ret += 1;
             }
         }
@@ -140,7 +148,7 @@ impl RegionStore {
         let mut ret_store = Self::new();
 
         for regx in &self.avec {
-            if regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(sta) {
             } else {
                 ret_store.push(regx.clone());
             }
@@ -160,7 +168,7 @@ impl RegionStore {
         let mut cnt = 0;
 
         for regx in &self.avec {
-            if regx.is_superset_of_state(&sta) {
+            if regx.is_superset_of_state(sta) {
                 cnt += 1;
             }
         }
@@ -280,7 +288,7 @@ impl RegionStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &regx));
+            let _ = write!(rc_str, "{}", &regx);
             flg = 1;
         }
 
@@ -330,7 +338,7 @@ impl RegionStore {
 
         for regy in self.iter() {
             if regx.intersects(regy) {
-                let avec = regy.subtract(&regx);
+                let avec = regy.subtract(regx);
                 for regz in avec.iter() {
                     ret_str.push_nosubs(regz.clone());
                 }
@@ -410,7 +418,7 @@ impl RegionStore {
 
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeRegion {
+    fn index(&self, i: usize) -> &SomeRegion {
         &self.avec[i]
     }
 }
@@ -430,7 +438,7 @@ mod tests {
         regstr.push(reg1.clone());
         regstr.push(reg2.clone());
 
-        assert!(regstr.remove_region(&reg3) == false);
+        assert!(!regstr.remove_region(&reg3));
         assert!(regstr.remove_region(&reg2));
         assert!(regstr.len() == 1);
         assert!(regstr.contains(&reg1));
@@ -557,9 +565,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0100").unwrap()));
-        assert!(
-            regstr.state_in_1_region(&SomeState::new_from_string(1, "s0111").unwrap()) == false
-        );
+        assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0111").unwrap()));
         Ok(())
     }
 
@@ -616,9 +622,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0111").unwrap()));
-        assert!(
-            regstr.any_superset_of_state(&SomeState::new_from_string(1, "s1011").unwrap()) == false
-        );
+        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string(1, "s1011").unwrap()));
         Ok(())
     }
 
@@ -634,9 +638,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_intersection(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
-        assert!(
-            regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1").unwrap()) == false
-        );
+        assert!(!regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1").unwrap()));
         Ok(())
     }
 
@@ -652,7 +654,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_subset_of(&SomeRegion::new_from_string(1, "rx11x").unwrap()));
-        assert!(regstr.any_subset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()) == false);
+        assert!(!regstr.any_subset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
         Ok(())
     }
 
@@ -668,7 +670,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         assert!(regstr.any_superset_of(&SomeRegion::new_from_string(1, "r01x1").unwrap()));
-        assert!(regstr.any_superset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()) == false);
+        assert!(!regstr.any_superset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
         Ok(())
     }
 }

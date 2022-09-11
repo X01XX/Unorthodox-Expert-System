@@ -5,6 +5,7 @@ use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::{Iter, IterMut};
 
@@ -20,7 +21,7 @@ impl fmt::Display for NeedStore {
             if flg == 1 {
                 rc_str.push_str(&String::from(",\n "));
             }
-            rc_str.push_str(&format!("{}", &needx));
+            let _ = write!(rc_str, "{}", &needx);
             flg = 1;
         }
         rc_str.push(']');
@@ -34,6 +35,12 @@ impl fmt::Display for NeedStore {
 pub struct NeedStore {
     /// A vector of SomeNeed instances.
     avec: Vec<SomeNeed>,
+}
+
+impl Default for NeedStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NeedStore {
@@ -72,7 +79,7 @@ impl NeedStore {
 
     /// Add a need to the vector.
     pub fn push(&mut self, val: SomeNeed) {
-        if self.contains(&val) == false {
+        if !self.contains(&val) {
             self.avec.push(val);
         }
     }
@@ -100,7 +107,7 @@ impl NeedStore {
 
 impl Index<usize> for NeedStore {
     type Output = SomeNeed;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeNeed {
+    fn index(&self, i: usize) -> &SomeNeed {
         &self.avec[i]
     }
 }

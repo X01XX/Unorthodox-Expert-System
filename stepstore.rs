@@ -5,6 +5,7 @@ use crate::mask::SomeMask;
 use crate::step::SomeStep;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -19,6 +20,12 @@ impl fmt::Display for StepStore {
 pub struct StepStore {
     /// A vector for steps.
     pub avec: Vec<SomeStep>,
+}
+
+impl Default for StepStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StepStore {
@@ -72,7 +79,7 @@ impl StepStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if self.avec.len() > 0 {
+        if !self.avec.is_empty() {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
@@ -93,7 +100,7 @@ impl StepStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &stpx));
+            let _ = write!(rc_str, "{}", &stpx);
             flg = 1;
         }
         rc_str.push(']');
@@ -174,7 +181,7 @@ impl StepStore {
 
 impl Index<usize> for StepStore {
     type Output = SomeStep;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeStep {
+    fn index(&self, i: usize) -> &SomeStep {
         &self.avec[i]
     }
 }

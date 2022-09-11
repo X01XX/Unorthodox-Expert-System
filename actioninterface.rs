@@ -37,12 +37,12 @@ impl ActionInterface {
         let ret_state;
 
         if self.dom_num == 0 && self.act_num == 0 {
-            let amsk = self.ahash.get(&cur_state);
-            ret_state = crate::actions::take_action(self.dom_num, self.act_num, &cur_state, amsk);
+            let amsk = self.ahash.get(cur_state);
+            ret_state = crate::actions::take_action(self.dom_num, self.act_num, cur_state, amsk);
             let dif = SomeMask::new(cur_state.bts.b_xor(&ret_state.bts));
             self.ahash.insert(cur_state.clone(), dif);
         } else {
-            ret_state = take_action(self.dom_num, self.act_num, &cur_state, None);
+            ret_state = take_action(self.dom_num, self.act_num, cur_state, None);
         }
 
         ret_state

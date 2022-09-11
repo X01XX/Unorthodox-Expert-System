@@ -38,7 +38,7 @@ impl RandomPick {
     /// If the item chosen is not at the end, the values will be swapped.
     /// Return the last item.
     pub fn pick(&mut self) -> Option<usize> {
-        if self.items.len() == 0 {
+        if self.items.is_empty() {
             return None;
         }
 

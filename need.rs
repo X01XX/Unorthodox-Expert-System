@@ -68,7 +68,7 @@ impl fmt::Display for SomeNeed {
                 for_group,
                 anchor,
             } => {
-                if for_group.is_superset_of_state(&target_state) {
+                if for_group.is_superset_of_state(target_state) {
                     if target_state == anchor {
                         format!(
                             "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {})",
@@ -217,218 +217,180 @@ impl PartialEq for SomeNeed {
                 act_num,
                 target_state,
                 ..
-            } => match other {
-                SomeNeed::AStateMakeGroup {
+            } => {
+                if let SomeNeed::AStateMakeGroup {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
                     ..
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
-                        && target_state == target_state_2
-                    {
-                        return true;
-                    }
+                        && target_state == target_state_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::StateNotInGroup {
                 dom_num,
                 act_num,
                 target_state,
-            } => match other {
-                SomeNeed::StateNotInGroup {
+            } => {
+                if let SomeNeed::StateNotInGroup {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
-                        && target_state == target_state_2
-                    {
-                        return true;
-                    }
+                        && target_state == target_state_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 act_num,
                 target_region,
                 ..
-            } => match other {
-                SomeNeed::ContradictoryIntersection {
+            } => {
+                if let SomeNeed::ContradictoryIntersection {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_region: target_region_2,
                     ..
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
-                        && target_region == target_region_2
-                    {
-                        return true;
-                    }
+                        && target_region == target_region_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::ToRegion {
                 dom_num,
                 target_region,
                 ..
-            } => match other {
-                SomeNeed::ToRegion {
+            } => {
+                if let SomeNeed::ToRegion {
                     dom_num: dom_num_2,
                     target_region: target_region_2,
                     ..
-                } => {
-                    if dom_num == dom_num_2 && target_region == target_region_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return dom_num == dom_num_2 && target_region == target_region_2;
                 }
-                _ => (),
-            },
-            SomeNeed::ToOptimalRegion { target_regions } => match other {
-                SomeNeed::ToOptimalRegion {
+            }
+            SomeNeed::ToOptimalRegion { target_regions } => {
+                if let SomeNeed::ToOptimalRegion {
                     target_regions: targ_regs_2,
-                } => {
-                    if target_regions == targ_regs_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return target_regions == targ_regs_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::LimitGroup {
                 dom_num,
                 act_num,
                 target_state,
                 anchor,
                 ..
-            } => match other {
-                SomeNeed::LimitGroup {
+            } => {
+                if let SomeNeed::LimitGroup {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
                     anchor: anchor_2,
                     ..
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
                         && target_state == target_state_2
-                        && anchor == anchor_2
-                    {
-                        return true;
-                    }
+                        && anchor == anchor_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
                 target_state,
                 ..
-            } => match other {
-                SomeNeed::ConfirmGroup {
+            } => {
+                if let SomeNeed::ConfirmGroup {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
                     ..
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
-                        && target_state == target_state_2
-                    {
-                        return true;
-                    }
+                        && target_state == target_state_2;
                 }
-                _ => (),
-            },
-            SomeNeed::AddGroup { group_region, .. } => match other {
-                SomeNeed::AddGroup {
+            }
+            SomeNeed::AddGroup { group_region, .. } => {
+                if let SomeNeed::AddGroup {
                     group_region: group_region_2,
                     ..
-                } => {
-                    if group_region == group_region_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return group_region == group_region_2;
                 }
-
-                _ => (),
-            },
-            SomeNeed::RemoveGroupAnchor { group_region } => match other {
-                SomeNeed::RemoveGroupAnchor {
+            }
+            SomeNeed::RemoveGroupAnchor { group_region } => {
+                if let SomeNeed::RemoveGroupAnchor {
                     group_region: group_region_2,
-                } => {
-                    if group_region == group_region_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return group_region == group_region_2;
                 }
-                _ => (),
-            },
-            SomeNeed::SetGroupLimited { group_region } => match other {
-                SomeNeed::SetGroupLimited {
+            }
+            SomeNeed::SetGroupLimited { group_region } => {
+                if let SomeNeed::SetGroupLimited {
                     group_region: group_region_2,
-                } => {
-                    if group_region == group_region_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return group_region == group_region_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
-            } => match other {
-                SomeNeed::SetGroupAnchor {
+            } => {
+                if let SomeNeed::SetGroupAnchor {
                     group_region: group_region_2,
                     anchor: anchor_2,
-                } => {
-                    if group_region == group_region_2 && anchor == anchor_2 {
-                        return true;
-                    }
+                } = other
+                {
+                    return group_region == group_region_2 && anchor == anchor_2;
                 }
-                _ => (),
-            },
+            }
             SomeNeed::SeekEdge {
                 dom_num,
                 act_num,
                 target_state,
                 in_group,
-            } => match other {
-                SomeNeed::SeekEdge {
+            } => {
+                if let SomeNeed::SeekEdge {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
                     in_group: in_group_2,
-                } => {
-                    if dom_num == dom_num_2
+                } = other
+                {
+                    return dom_num == dom_num_2
                         && act_num == act_num_2
                         && in_group == in_group_2
-                        && target_state == target_state_2
-                    {
-                        return true;
-                    }
+                        && target_state == target_state_2;
                 }
-                _ => (),
-            },
-            SomeNeed::InactivateSeekEdge { reg } => match other {
-                SomeNeed::InactivateSeekEdge { reg: reg_2 } => {
-                    if reg == reg_2 {
-                        return true;
-                    }
+            }
+            SomeNeed::InactivateSeekEdge { reg } => {
+                if let SomeNeed::InactivateSeekEdge { reg: reg_2 } = other {
+                    return reg == reg_2;
                 }
-                _ => (),
-            },
-            SomeNeed::AddSeekEdge { reg } => match other {
-                SomeNeed::AddSeekEdge { reg: reg_2 } => {
-                    if reg == reg_2 {
-                        return true;
-                    }
+            }
+            SomeNeed::AddSeekEdge { reg } => {
+                if let SomeNeed::AddSeekEdge { reg: reg_2 } = other {
+                    return reg == reg_2;
                 }
-                _ => (),
-            },
-            // Add new needs here
+            } // Add new needs here
         };
         false
     }
@@ -439,38 +401,37 @@ impl Eq for SomeNeed {}
 impl SomeNeed {
     // Return a type string
     pub fn type_string(&self) -> String {
-        let ret_str = match self {
-            SomeNeed::AStateMakeGroup { .. } => format!("AStateMakeGroup"),
-            SomeNeed::StateNotInGroup { .. } => format!("StateNotInGroup"),
-            SomeNeed::ContradictoryIntersection { .. } => format!("ContradictoryIntersection"),
-            SomeNeed::ToRegion { .. } => format!("ToRegion"),
-            SomeNeed::ToOptimalRegion { .. } => format!("ToOptimalRegion"),
-            SomeNeed::LimitGroup { .. } => format!("LimitGroup"),
-            SomeNeed::ConfirmGroup { .. } => format!("ConfirmGroup"),
-            SomeNeed::SeekEdge { .. } => format!("SeekEdge"),
-            SomeNeed::AddGroup { .. } => format!("AddGroup"),
-            SomeNeed::RemoveGroupAnchor { .. } => format!("RemoveGroupAnchor"),
-            SomeNeed::SetGroupLimited { .. } => format!("SetGroupLimited"),
-            SomeNeed::SetGroupAnchor { .. } => format!("SetGroupAnchor"),
-            SomeNeed::InactivateSeekEdge { reg: _ } => format!("InactivateSeekEdge"),
-            SomeNeed::AddSeekEdge { reg: _ } => format!("AddSeekEdge"),
-        }; // end match
-        ret_str
+        match self {
+            SomeNeed::AStateMakeGroup { .. } => "AStateMakeGroup".to_string(),
+            SomeNeed::StateNotInGroup { .. } => "StateNotInGroup".to_string(),
+            SomeNeed::ContradictoryIntersection { .. } => "ContradictoryIntersection".to_string(),
+            SomeNeed::ToRegion { .. } => "ToRegion".to_string(),
+            SomeNeed::ToOptimalRegion { .. } => "ToOptimalRegion".to_string(),
+            SomeNeed::LimitGroup { .. } => "LimitGroup".to_string(),
+            SomeNeed::ConfirmGroup { .. } => "ConfirmGroup".to_string(),
+            SomeNeed::SeekEdge { .. } => "SeekEdge".to_string(),
+            SomeNeed::AddGroup { .. } => "AddGroup".to_string(),
+            SomeNeed::RemoveGroupAnchor { .. } => "RemoveGroupAnchor".to_string(),
+            SomeNeed::SetGroupLimited { .. } => "SetGroupLimited".to_string(),
+            SomeNeed::SetGroupAnchor { .. } => "SetGroupAnchor".to_string(),
+            SomeNeed::InactivateSeekEdge { reg: _ } => "InactivateSeekEdge".to_string(),
+            SomeNeed::AddSeekEdge { reg: _ } => "AddSeekEdge".to_string(),
+        } // end match
     } // end type_string
 
     /// Return a priority number for a need.  Lower is more important.
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
-            SomeNeed::ContradictoryIntersection { .. } => return 1,
-            SomeNeed::SeekEdge { .. } => return 2,
-            SomeNeed::AStateMakeGroup { .. } => return 3,
-            SomeNeed::StateNotInGroup { .. } => return 4,
-            SomeNeed::ConfirmGroup { .. } => return 5,
-            SomeNeed::LimitGroup { .. } => return 6,
-            SomeNeed::ToRegion { .. } => return 8,
-            SomeNeed::ToOptimalRegion { .. } => return 7,
-            _ => return 9999,
+            SomeNeed::ContradictoryIntersection { .. } => 1,
+            SomeNeed::SeekEdge { .. } => 2,
+            SomeNeed::AStateMakeGroup { .. } => 3,
+            SomeNeed::StateNotInGroup { .. } => 4,
+            SomeNeed::ConfirmGroup { .. } => 5,
+            SomeNeed::LimitGroup { .. } => 6,
+            SomeNeed::ToRegion { .. } => 8,
+            SomeNeed::ToOptimalRegion { .. } => 7,
+            _ => 9999,
         } // end match ndx
     } // end priority
 
@@ -488,12 +449,12 @@ impl SomeNeed {
                 }
             }
             SomeNeed::ContradictoryIntersection { target_region, .. } => {
-                if target_region.is_superset_of_state(&cur_state) {
+                if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
             SomeNeed::ToRegion { target_region, .. } => {
-                if target_region.is_superset_of_state(&cur_state) {
+                if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
@@ -523,13 +484,13 @@ impl SomeNeed {
     /// Return need action number.
     pub fn act_num(&self) -> usize {
         match self {
-            SomeNeed::AStateMakeGroup { act_num, .. } => return *act_num,
-            SomeNeed::StateNotInGroup { act_num, .. } => return *act_num,
-            SomeNeed::ContradictoryIntersection { act_num, .. } => return *act_num,
-            SomeNeed::ToRegion { act_num, .. } => return *act_num,
-            SomeNeed::ConfirmGroup { act_num, .. } => return *act_num,
-            SomeNeed::SeekEdge { act_num, .. } => return *act_num,
-            SomeNeed::LimitGroup { act_num, .. } => return *act_num,
+            SomeNeed::AStateMakeGroup { act_num, .. } => *act_num,
+            SomeNeed::StateNotInGroup { act_num, .. } => *act_num,
+            SomeNeed::ContradictoryIntersection { act_num, .. } => *act_num,
+            SomeNeed::ToRegion { act_num, .. } => *act_num,
+            SomeNeed::ConfirmGroup { act_num, .. } => *act_num,
+            SomeNeed::SeekEdge { act_num, .. } => *act_num,
+            SomeNeed::LimitGroup { act_num, .. } => *act_num,
             _ => panic!("act_num: not known for need {}", self.type_string()),
         } //end match self
     } // end act_num
@@ -537,13 +498,13 @@ impl SomeNeed {
     /// Return need domain number.
     pub fn dom_num(&self) -> usize {
         match self {
-            SomeNeed::AStateMakeGroup { dom_num, .. } => return *dom_num,
-            SomeNeed::StateNotInGroup { dom_num, .. } => return *dom_num,
-            SomeNeed::ContradictoryIntersection { dom_num, .. } => return *dom_num,
-            SomeNeed::ToRegion { dom_num, .. } => return *dom_num,
-            SomeNeed::ConfirmGroup { dom_num, .. } => return *dom_num,
-            SomeNeed::SeekEdge { dom_num, .. } => return *dom_num,
-            SomeNeed::LimitGroup { dom_num, .. } => return *dom_num,
+            SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num,
+            SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num,
+            SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num,
+            SomeNeed::ToRegion { dom_num, .. } => *dom_num,
+            SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num,
+            SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
+            SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
             _ => panic!("dom_num: not known for need {}", self),
         } //end match self
     } // end dom_num
@@ -555,85 +516,64 @@ impl SomeNeed {
                 dom_num,
                 target_state,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    SomeRegion::new(target_state, target_state),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::StateNotInGroup {
                 dom_num,
                 target_state,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    SomeRegion::new(target_state, target_state),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 target_region,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    target_region.clone(),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
             SomeNeed::ToRegion {
                 dom_num,
                 target_region,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    target_region.clone(),
-                ))
-            }
-
+            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
             SomeNeed::ConfirmGroup {
                 dom_num,
                 target_state,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    SomeRegion::new(target_state, target_state),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::SeekEdge {
                 dom_num,
                 target_state,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    SomeRegion::new(target_state, target_state),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::LimitGroup {
                 dom_num,
                 target_state,
                 ..
-            } => {
-                return TargetStore::new_with_target(SomeTarget::new(
-                    *dom_num,
-                    SomeRegion::new(target_state, target_state),
-                ))
-            }
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::ToOptimalRegion { target_regions, .. } => {
                 let mut targ = TargetStore::new();
                 for (dom_numx, targx) in target_regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
                 }
-                return targ;
+                targ
             }
             _ => panic!(
                 "target: should not be called for this need {}",
                 self.type_string()
             ),
-        };
+        }
     } // end target
 
     /// Set the Domain number for a need.

@@ -87,6 +87,7 @@ pub const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for ResultStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -140,12 +141,12 @@ impl ResultStore {
 
     /// Return the first result.
     pub fn first(&self) -> &SomeState {
-        &self.astore.get(0).unwrap()
+        self.astore.get(0).unwrap()
     }
 
     /// Return the second result.
     pub fn second(&self) -> &SomeState {
-        &self.astore.get(1).unwrap()
+        self.astore.get(1).unwrap()
     }
 
     /// Return the most recent result.
@@ -172,10 +173,8 @@ impl ResultStore {
             if self.astore[0] != self.astore[2] {
                 return Pn::Unpredictable;
             }
-            if self.astore.len() > 3 {
-                if self.astore[1] != self.astore[3] {
-                    return Pn::Unpredictable;
-                }
+            if self.astore.len() > 3 && self.astore[1] != self.astore[3] {
+                return Pn::Unpredictable;
             }
         }
 
@@ -186,7 +185,7 @@ impl ResultStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if self.astore.len() > 0 {
+        if !self.astore.is_empty() {
             rc_len += self.astore.len() * self.astore[0].formatted_string_length();
             if self.astore.len() > 1 {
                 rc_len += (self.astore.len() - 1) * 2;
@@ -206,11 +205,11 @@ impl ResultStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &rsltx));
+            let _ = write!(rc_str, "{}", &rsltx);
             flg = 1;
         }
 
-        rc_str.push_str(&format!("]"));
+        rc_str.push(']');
 
         rc_str
     }

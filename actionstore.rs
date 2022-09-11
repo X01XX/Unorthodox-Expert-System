@@ -13,6 +13,8 @@ use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
+
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 
@@ -23,7 +25,7 @@ impl fmt::Display for ActionStore {
         let mut rc_str = String::new();
 
         for actx in &self.avec {
-            rc_str.push_str(&format!("\n  {}", &actx));
+            let _ = write!(rc_str, "\n  {}", &actx);
         }
 
         write!(f, "{}", rc_str)
@@ -77,8 +79,8 @@ impl ActionStore {
         // Aggregate the results into one NeedStore
         let mut nds_agg = NeedStore::new();
 
-        for mut nst in vecx.iter_mut() {
-            nds_agg.append(&mut nst);
+        for nst in vecx.iter_mut() {
+            nds_agg.append(nst);
         }
 
         nds_agg
@@ -130,7 +132,7 @@ impl ActionStore {
 
 impl Index<usize> for ActionStore {
     type Output = SomeAction;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeAction {
+    fn index(&self, i: usize) -> &SomeAction {
         &self.avec[i]
     }
 }

@@ -12,6 +12,12 @@ pub struct OptimalRegionsStore {
     pub optimal: Vec<RegionStore>,
 }
 
+impl Default for OptimalRegionsStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OptimalRegionsStore {
     /// Return a new OptimalRegionsStores instance.
     pub fn new() -> Self {
@@ -63,7 +69,7 @@ impl OptimalRegionsStore {
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &StateStore) -> bool {
         for regsx in self.optimal.iter() {
-            if regsx.is_superset_of_states(&stas) {
+            if regsx.is_superset_of_states(stas) {
                 return true;
             }
         }
@@ -74,7 +80,7 @@ impl OptimalRegionsStore {
     pub fn supersets_of_states(&self, stas: &StateStore) -> Self {
         let mut ret = Self::new();
         for regsx in self.optimal.iter() {
-            if regsx.is_superset_of_states(&stas) {
+            if regsx.is_superset_of_states(stas) {
                 ret.push(regsx.clone());
             }
         }
@@ -115,7 +121,7 @@ impl OptimalRegionsStore {
                     if let Some(an_int) =
                         optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny])
                     {
-                        if optimal_and_ints.contains(&an_int) == false {
+                        if !optimal_and_ints.contains(&an_int) {
                             optimal_and_ints.push(an_int);
                             changed = true;
                         }
@@ -139,7 +145,7 @@ impl OptimalRegionsStore {
 
 impl Index<usize> for OptimalRegionsStore {
     type Output = RegionStore;
-    fn index<'a>(&'a self, i: usize) -> &'a RegionStore {
+    fn index(&self, i: usize) -> &RegionStore {
         &self.optimal[i]
     }
 }

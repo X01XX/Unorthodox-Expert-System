@@ -3,6 +3,7 @@
 use crate::plan::SomePlan;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::Iter;
 
@@ -18,7 +19,7 @@ impl fmt::Display for PlanStore {
             if flg == 1 {
                 rc_str.push_str(&String::from(",\n "));
             }
-            rc_str.push_str(&format!("{}", &planx));
+            let _ = write!(rc_str, "{}", &planx);
             flg = 1;
         }
         rc_str.push(']');
@@ -32,6 +33,12 @@ impl fmt::Display for PlanStore {
 pub struct PlanStore {
     /// A vector of SomePlan instances.
     pub avec: Vec<SomePlan>,
+}
+
+impl Default for PlanStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PlanStore {
@@ -62,7 +69,7 @@ impl PlanStore {
 
         for planx in self.avec.iter() {
             if planx.len() > 0 {
-                rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
+                let _ = write!(rc_str, "\nPlan, Domain {}:\n", planx.dom_num);
                 rc_str.push_str(&planx.str2());
                 rc_str.push('\n');
             }
@@ -89,7 +96,7 @@ impl PlanStore {
 
 impl Index<usize> for PlanStore {
     type Output = SomePlan;
-    fn index<'a>(&'a self, i: usize) -> &'a SomePlan {
+    fn index(&self, i: usize) -> &SomePlan {
         &self.avec[i]
     }
 }

@@ -6,6 +6,7 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -19,7 +20,7 @@ impl PartialEq for StateStore {
             return false;
         }
         for stax in self.iter() {
-            if other.contains(stax) == false {
+            if !other.contains(stax) {
                 return false;
             }
         }
@@ -33,6 +34,12 @@ impl Eq for StateStore {}
 pub struct StateStore {
     /// A vector of states.
     avec: Vec<SomeState>,
+}
+
+impl Default for StateStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateStore {
@@ -74,7 +81,7 @@ impl StateStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if self.avec.len() > 0 {
+        if !self.avec.is_empty() {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
@@ -94,7 +101,7 @@ impl StateStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &stax));
+            let _ = write!(rc_str, "{}", &stax);
             flg = 1;
         }
 
@@ -106,7 +113,7 @@ impl StateStore {
 
 impl Index<usize> for StateStore {
     type Output = SomeState;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeState {
+    fn index(&self, i: usize) -> &SomeState {
         &self.avec[i]
     }
 }

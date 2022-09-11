@@ -32,6 +32,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,9 +40,9 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push_str(&self.num.to_string());
 
-        rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
+        let _ = write!(rc_str, ", Current State: {}", &self.cur_state);
 
-        rc_str.push_str(")");
+        rc_str.push(')');
 
         write!(f, "{}", rc_str)
     }
@@ -75,14 +76,14 @@ impl SomeDomain {
         let num_ints = start_state.num_ints();
 
         // Set up a domain instance with the correct value for num_ints
-        return SomeDomain {
+        SomeDomain {
             num: dom,
             num_ints,
             actions: ActionStore::new(num_ints),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
             agg_changes: SomeMask::new_low(num_ints),
-        };
+        }
     }
 
     /// Return a copy of the current , internal, state.
@@ -104,7 +105,7 @@ impl SomeDomain {
         if cur_agg_mask != self.agg_changes {
             let new_chgs = self.agg_changes.m_not().m_and(&cur_agg_mask);
 
-            if new_chgs.is_low() == false {
+            if !new_chgs.is_low() {
                 self.actions.check_limited(&new_chgs);
             }
 
@@ -120,7 +121,7 @@ impl SomeDomain {
             ndx.set_dom(self.num);
         }
 
-        return nst;
+        nst
     }
 
     /// Return the total number of actions.
@@ -138,7 +139,7 @@ impl SomeDomain {
         r_state: &SomeState,
     ) {
         self.actions[act_num].eval_sample(i_state, r_state, self.num);
-        self.set_state(&r_state);
+        self.set_state(r_state);
     }
 
     /// Take an action for a need, evaluate the resulting sample.
@@ -201,7 +202,7 @@ impl SomeDomain {
             return false;
         }
 
-        if pln.initial_region().is_superset_of_state(&self.cur_state) == false {
+        if !pln.initial_region().is_superset_of_state(&self.cur_state) {
             println!(
                 "\nCurrent state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
@@ -384,7 +385,7 @@ impl SomeDomain {
         // To void some backtracking.
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, &required_change);
-            if inxs.len() > 0 {
+            if !inxs.is_empty() {
                 for inx in inxs.iter().rev() {
                     remove_unordered(&mut steps_by_change_vov, *inx);
                 }
@@ -409,7 +410,7 @@ impl SomeDomain {
         let mut selected_steps = Vec::<&SomeStep>::new();
 
         // If any asymmetrical single-bit changes found
-        if asym_inx.len() > 0 {
+        if !asym_inx.is_empty() {
             // find min number of steps for the selected bit-changes
             let mut min_steps = 99;
             for inx in asym_inx.iter() {
@@ -427,14 +428,14 @@ impl SomeDomain {
             }
 
             // Randomly choose a step.
-            assert!(selected_steps.len() > 0);
+            assert!(!selected_steps.is_empty());
             let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
             // Asymmetrical chaining
             if let Some(first_steps) =
                 self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
             {
-                let stepy = stepx.restrict_initial_region(&first_steps.result_region());
+                let stepy = stepx.restrict_initial_region(first_steps.result_region());
                 if let Some(next_steps) =
                     self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
                 {
@@ -455,7 +456,7 @@ impl SomeDomain {
         }
 
         // Randomly choose a step.
-        assert!(selected_steps.len() > 0);
+        assert!(!selected_steps.is_empty());
         let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
         // Forward chaining
@@ -505,12 +506,7 @@ impl SomeDomain {
 
         let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(
-                |_| match self.random_depth_first_search(&cur_reg, &goal_reg, num_depth) {
-                    Some(x) => Some(x),
-                    None => None,
-                },
-            )
+            .filter_map(|_| self.random_depth_first_search(&cur_reg, goal_reg, num_depth))
             .collect::<Vec<SomePlan>>();
 
         // Return one of the plans, avoiding the need to clone.
@@ -536,29 +532,25 @@ impl SomeDomain {
             return true;
         }
 
-        if let Some(pln) = self.make_plan(&goal_region) {
+        if let Some(pln) = self.make_plan(goal_region) {
             // Do the plan
             self.run_plan(&pln);
-            if goal_region.is_superset_of_state(&self.cur_state) {
-                return true;
-            } else {
-                return false;
-            }
+            goal_region.is_superset_of_state(&self.cur_state)
         } else {
-            return false;
+            false
         }
     } // end to_region
 
     /// Return a Region from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
-        SomeRegion::new_from_string(self.num_ints, &str)
+        SomeRegion::new_from_string(self.num_ints, str)
     } // end region_from_string
 
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-        SomeState::new_from_string(self.num_ints, &str)
+        SomeState::new_from_string(self.num_ints, str)
     } // end state_from_string
 
     /// Return a Action number from a string with a format that the parse method can understand.
@@ -570,18 +562,16 @@ impl SomeDomain {
                 if act_num >= self.num_actions() {
                     return Err(format!("Action number too large {}", act_num));
                 }
-                return Ok(act_num);
+                Ok(act_num)
             }
-            Err(error) => {
-                return Err(format!("\nDid not understand action number, {}", error));
-            }
+            Err(error) => Err(format!("\nDid not understand action number, {}", error)),
         }
     } // end act_num_from_string
 
     /// Return the index value of a chosen Plan
     /// TODO better criteria.
     fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
-        assert!(ret_plans.len() > 0);
+        assert!(!ret_plans.is_empty());
 
         if ret_plans.len() == 1 {
             return 0;
@@ -615,17 +605,15 @@ impl SomeDomain {
                         // For an alternating square, you want the most recent result to be NEQ the desired next result.
                         if *sqrx.most_recent_result() == stpx.result.state1 {
                             if rate > 1 {
-                                rate = rate - 2;
+                                rate -= 2;
                             } else {
                                 rate = 0;
                             }
                         }
+                    } else if rate > 1 {
+                        rate -= 2;
                     } else {
-                        if rate > 1 {
-                            rate = rate - 2;
-                        } else {
-                            rate = 0;
-                        }
+                        rate = 0;
                     }
                 }
             }
@@ -653,7 +641,7 @@ impl SomeDomain {
         if inx_ary.len() == 1 {
             return inx_ary[0];
         }
-        return inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())];
+        inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())]
     } // end choose_a_plan
 
     /// Return a mask of bit positions that can be changed.
@@ -684,8 +672,8 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
 
 /// Return true if all combinations of steps are mutually exclusive
 fn all_mutually_exclusive_changes(
-    vec_x: &Vec<&SomeStep>,
-    vec_y: &Vec<&SomeStep>,
+    vec_x: &[&SomeStep],
+    vec_y: &[&SomeStep],
     wanted: &SomeChange,
 ) -> bool {
     for refx in vec_x.iter() {
@@ -713,7 +701,7 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
             if iny == inx {
                 continue;
             }
-            if step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) == false {
+            if !step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) {
                 continue 'next_inx;
             }
         } // next iny
@@ -733,14 +721,14 @@ fn step_vecs_order_bad(
     vec_y: &Vec<&SomeStep>,
     wanted: &SomeChange,
 ) -> bool {
-    assert!(vec_x.len() > 0);
-    assert!(vec_y.len() > 0);
+    assert!(!vec_x.is_empty());
+    assert!(!vec_y.is_empty());
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
             if ptr_eq(*refx, *refy) {
                 return false;
             }
-            if refx.rule.order_bad(&refy.rule, wanted) == false {
+            if !refx.rule.order_bad(&refy.rule, wanted) {
                 return false;
             }
         } //next refy
@@ -1501,7 +1489,7 @@ mod tests {
         if nds.len() > 0 {
             return Err("Needs found?".to_string());
         }
-        if dm0.actions[0].groups[0].limited == false {
+        if !dm0.actions[0].groups[0].limited {
             return Err("Limited flag is false?".to_string());
         }
 
@@ -1513,7 +1501,7 @@ mod tests {
         dm0.get_needs();
         println!("{}", dm0.actions[0]);
 
-        if dm0.actions[0].groups[0].limited == true {
+        if dm0.actions[0].groups[0].limited {
             return Err("Limited flag is true?".to_string());
         }
         //Err(String::from("Done!"))

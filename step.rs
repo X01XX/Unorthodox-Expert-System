@@ -5,6 +5,7 @@ use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -46,7 +47,7 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
-        assert!(self.initial.intersects(&reg));
+        assert!(self.initial.intersects(reg));
 
         let rule_new = self.rule.restrict_initial_region(reg);
 
@@ -85,9 +86,9 @@ impl SomeStep {
     pub fn formatted_string(&self) -> String {
         let mut rcstr = String::with_capacity(self.formatted_string_length());
         rcstr.push('[');
-        rcstr.push_str(&format!("{}", self.initial));
-        rcstr.push_str(&format!(" -{:02}> ", self.act_num));
-        rcstr.push_str(&format!("{}", self.result));
+        let _ = write!(rcstr, "{}", self.initial);
+        let _ = write!(rcstr, " -{:02}> ", self.act_num);
+        let _ = write!(rcstr, "{}", self.result);
         rcstr.push(']');
         rcstr
     }

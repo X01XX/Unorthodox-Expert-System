@@ -20,37 +20,37 @@ pub fn take_action(
 ) -> SomeState {
     if dom_num == 0 {
         if act_num == 0 {
-            return dom0_act0(cur_state, cmask);
+            dom0_act0(cur_state, cmask)
         } else if act_num == 1 {
-            return dom0_act1(cur_state);
+            dom0_act1(cur_state)
         } else if act_num == 2 {
-            return dom0_act2(cur_state);
+            dom0_act2(cur_state)
         } else if act_num == 3 {
-            return dom0_act3(cur_state);
+            dom0_act3(cur_state)
         } else if act_num == 4 {
-            return dom0_act4(cur_state);
+            dom0_act4(cur_state)
         } else if act_num == 5 {
-            return dom0_act5(cur_state);
+            dom0_act5(cur_state)
         } else if act_num == 6 {
-            return dom0_act6(cur_state);
+            dom0_act6(cur_state)
         } else if act_num == 7 {
-            return dom0_act7(cur_state);
+            dom0_act7(cur_state)
         } else if act_num == 8 {
-            return dom0_act8(cur_state);
+            dom0_act8(cur_state)
         } else {
             panic!("Dom 0, Uknown Action number {}", act_num);
         }
     } else if dom_num == 1 {
         if act_num == 0 {
-            return dom1_act0(cur_state);
+            dom1_act0(cur_state)
         } else if act_num == 1 {
-            return dom1_act1(cur_state);
+            dom1_act1(cur_state)
         } else if act_num == 2 {
-            return dom1_act2(cur_state);
+            dom1_act2(cur_state)
         } else if act_num == 3 {
-            return dom1_act3(cur_state);
+            dom1_act3(cur_state)
         } else if act_num == 4 {
-            return dom1_act4(cur_state);
+            dom1_act4(cur_state)
         } else {
             panic!("Dom 1, Uknown Action number {}", act_num);
         }
@@ -64,8 +64,8 @@ pub fn take_action(
 pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
     let new_state;
 
-    if cur.is_bit_set(3) && cur.is_bit_set(1) == false     // ...1X0X
-        || cur.is_bit_set(3) == false && cur.is_bit_set(1) // ...0X1X
+    if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
+        || !cur.is_bit_set(3) && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
     {
         // ....X1X1
@@ -116,7 +116,7 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         "\nDom 0 Act 0 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 } // end action0
@@ -124,17 +124,16 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
 /// Domain 0, act 1, actions, given the current state.
 /// Toggle bit 1. ....../Xx/.
 pub fn dom0_act1(cur: &SomeState) -> SomeState {
-    let new_state;
-    if cur.is_bit_set(1) == false {
-        new_state = cur.toggle_bits("0x02");
+    let new_state = if cur.is_bit_set(1) {
+        cur.toggle_bits("0x04")
     } else {
-        new_state = cur.toggle_bits("0x04");
-    }
+        cur.toggle_bits("0x02")
+    };
     println!(
         "\nDom 0 Act 1 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -142,17 +141,16 @@ pub fn dom0_act1(cur: &SomeState) -> SomeState {
 /// Domain 0, act 2, actions, given the current state.
 /// Toggle bit 2. ...../Xx/..
 pub fn dom0_act2(cur: &SomeState) -> SomeState {
-    let new_state;
-    if cur.is_bit_set(1) == false {
-        new_state = cur.toggle_bits("0x04");
+    let new_state = if cur.is_bit_set(1) {
+        cur.toggle_bits("0x02")
     } else {
-        new_state = cur.toggle_bits("0x02");
-    }
+        cur.toggle_bits("0x04")
+    };
     println!(
         "\nDom 0 Act 2 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -160,17 +158,16 @@ pub fn dom0_act2(cur: &SomeState) -> SomeState {
 /// Domain 0, act 3, actions, given the current state.
 /// Toggle bit 3. ..../Xx/...
 pub fn dom0_act3(cur: &SomeState) -> SomeState {
-    let new_state;
-    if cur.is_bit_set(3) == false {
-        new_state = cur.toggle_bits("0x08");
+    let new_state = if cur.is_bit_set(3) {
+        cur.toggle_bits("0x10")
     } else {
-        new_state = cur.toggle_bits("0x10");
-    }
+        cur.toggle_bits("0x08")
+    };
     println!(
         "\nDom 0 Act 3 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -178,17 +175,16 @@ pub fn dom0_act3(cur: &SomeState) -> SomeState {
 /// Domain 0, act 4, actions, given the current state.
 /// Toggle bit 4. .../Xx/...
 pub fn dom0_act4(cur: &SomeState) -> SomeState {
-    let new_state;
-    if cur.is_bit_set(3) == false {
-        new_state = cur.toggle_bits("0x10");
+    let new_state = if cur.is_bit_set(3) {
+        cur.toggle_bits("0x08")
     } else {
-        new_state = cur.toggle_bits("0x08");
-    }
+        cur.toggle_bits("0x10")
+    };
     println!(
         "\nDom 0 Act 4 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -201,7 +197,7 @@ pub fn dom0_act5(cur: &SomeState) -> SomeState {
         "\nDom 0 Act 5 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -214,7 +210,7 @@ pub fn dom0_act6(cur: &SomeState) -> SomeState {
         "\nDom 0 Act 6 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -227,7 +223,7 @@ pub fn dom0_act7(cur: &SomeState) -> SomeState {
         "\nDom 0 Act 7 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -245,7 +241,7 @@ pub fn dom0_act8(cur: &SomeState) -> SomeState {
         "\nDom 0 Act 8 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -260,7 +256,7 @@ pub fn dom1_act0(cur: &SomeState) -> SomeState {
         "\nDom 1 Act 0 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -273,7 +269,7 @@ pub fn dom1_act1(cur: &SomeState) -> SomeState {
         "\nDom 1 Act 1 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -286,7 +282,7 @@ pub fn dom1_act2(cur: &SomeState) -> SomeState {
         "\nDom 1 Act 2 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -299,7 +295,7 @@ pub fn dom1_act3(cur: &SomeState) -> SomeState {
         "\nDom 1 Act 3 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }
@@ -311,7 +307,7 @@ pub fn dom1_act4(cur: &SomeState) -> SomeState {
         "\nDom 1 Act 4 {} -> {} R[{}]",
         cur,
         new_state,
-        SomeRule::new(&cur, &new_state)
+        SomeRule::new(cur, &new_state)
     );
     new_state
 }

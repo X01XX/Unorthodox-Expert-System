@@ -19,37 +19,23 @@ impl PartialOrd for Truth {
     fn partial_cmp(&self, other: &Truth) -> Option<Ordering> {
         match self {
             Truth::T {} => match other {
-                Truth::T => {
-                    return Some(Ordering::Equal);
-                }
-                _ => {
-                    return Some(Ordering::Greater);
-                }
+                Truth::T => Some(Ordering::Equal),
+                _ => Some(Ordering::Greater),
             },
             Truth::M {} => match other {
-                Truth::T => {
-                    return Some(Ordering::Less);
-                }
-                Truth::M => {
-                    return Some(Ordering::Equal);
-                }
-                Truth::F => {
-                    return Some(Ordering::Greater);
-                }
+                Truth::T => Some(Ordering::Less),
+                Truth::M => Some(Ordering::Equal),
+                Truth::F => Some(Ordering::Greater),
             },
             Truth::F {} => match other {
-                Truth::F => {
-                    return Some(Ordering::Equal);
-                }
-                _ => {
-                    return Some(Ordering::Less);
-                }
+                Truth::F => Some(Ordering::Equal),
+                _ => Some(Ordering::Less),
             },
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Truth {
     /// Boolean True.
     T,

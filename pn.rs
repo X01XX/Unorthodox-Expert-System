@@ -41,31 +41,17 @@ impl PartialOrd for Pn {
     fn partial_cmp(&self, other: &Pn) -> Option<Ordering> {
         match self {
             Pn::One {} => match other {
-                Pn::One => {
-                    return Some(Ordering::Equal);
-                }
-                _ => {
-                    return Some(Ordering::Less);
-                }
+                Pn::One => Some(Ordering::Equal),
+                _ => Some(Ordering::Less),
             },
             Pn::Two {} => match other {
-                Pn::One => {
-                    return Some(Ordering::Greater);
-                }
-                Pn::Two => {
-                    return Some(Ordering::Equal);
-                }
-                Pn::Unpredictable => {
-                    return Some(Ordering::Less);
-                }
+                Pn::One => Some(Ordering::Greater),
+                Pn::Two => Some(Ordering::Equal),
+                Pn::Unpredictable => Some(Ordering::Less),
             },
             Pn::Unpredictable {} => match other {
-                Pn::Unpredictable => {
-                    return Some(Ordering::Equal);
-                }
-                _ => {
-                    return Some(Ordering::Greater);
-                }
+                Pn::Unpredictable => Some(Ordering::Equal),
+                _ => Some(Ordering::Greater),
             },
         }
     }
@@ -74,18 +60,10 @@ impl PartialOrd for Pn {
 impl PartialEq for Pn {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Pn::One, Pn::One) => {
-                return true;
-            }
-            (Pn::Two, Pn::Two) => {
-                return true;
-            }
-            (Pn::Unpredictable, Pn::Unpredictable) => {
-                return true;
-            }
-            _ => {
-                return false;
-            }
+            (Pn::One, Pn::One) => true,
+            (Pn::Two, Pn::Two) => true,
+            (Pn::Unpredictable, Pn::Unpredictable) => true,
+            _ => false,
         }
     }
 }

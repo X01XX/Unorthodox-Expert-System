@@ -37,6 +37,7 @@ use crate::targetstore::TargetStore;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::{Index, IndexMut};
 
 use crate::randompick::RandomPick;
@@ -52,7 +53,7 @@ impl fmt::Display for DomainStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &mskx));
+            let _ = write!(rc_str, "{}", &mskx);
             flg = 1;
         }
         rc_str.push(']');
@@ -91,6 +92,12 @@ pub struct DomainStore {
     pub optimal: OptimalRegionsStore,
     /// RegionStore to add all possible intersections of the optimal states to discern.
     pub optimal_and_ints: OptimalRegionsStore,
+}
+
+impl Default for DomainStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DomainStore {
@@ -146,8 +153,8 @@ impl DomainStore {
         // Aggregate the results into one NeedStore
         let mut nds_agg = NeedStore::new();
 
-        for mut nst in vecx.iter_mut() {
-            nds_agg.append(&mut nst);
+        for nst in vecx.iter_mut() {
+            nds_agg.append(nst);
         }
 
         nds_agg
@@ -160,10 +167,8 @@ impl DomainStore {
         // Run a plan for one domain.
         if plans.len() == 1 {
             for planx in plans.iter() {
-                if planx.len() > 0 {
-                    if self.run_plan(&planx) == false {
-                        return false;
-                    }
+                if planx.len() > 0 && !self.run_plan(planx) {
+                    return false;
                 }
             }
             return true;
@@ -235,10 +240,8 @@ impl DomainStore {
 
             for ndsx in nds.iter() {
                 let pri = ndsx.priority();
-                if pri > last_priority {
-                    if pri < least_priority {
-                        least_priority = pri;
-                    }
+                if pri > last_priority && pri < least_priority {
+                    least_priority = pri;
                 }
             }
 
@@ -249,10 +252,7 @@ impl DomainStore {
                 // Push InxPlan struct for each need, indicating no plan found.
                 let mut inxvec = Vec::<InxPlan>::with_capacity(nds.len());
                 for inx in 0..nds.len() {
-                    inxvec.push(InxPlan {
-                        inx: inx,
-                        plans: None,
-                    });
+                    inxvec.push(InxPlan { inx, plans: None });
                 }
                 return inxvec;
             }
@@ -299,7 +299,7 @@ impl DomainStore {
 
                 // If at least one plan found, return vector of InxPlan structs.
                 for inxplnx in ndsinx_plan.iter() {
-                    if let Some(_) = &inxplnx.plans {
+                    if inxplnx.plans.is_some() {
                         //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
                         //println!("domainstore::evaluate_needs returning vec pri {} num items {}", least_priority, ndsinx_plan.len());
                         return ndsinx_plan;
@@ -323,13 +323,10 @@ impl DomainStore {
             }
         }
         if plans.len() == 0 || plans.len() < targets.len() {
-            return InxPlan {
-                inx: inx,
-                plans: None,
-            };
+            return InxPlan { inx, plans: None };
         }
         InxPlan {
-            inx: inx,
+            inx,
             plans: Some(plans),
         }
     }
@@ -346,10 +343,10 @@ impl DomainStore {
     pub fn choose_need(
         &self,
         nds: &NeedStore,
-        ndsinx_plan_all: &Vec<InxPlan>,
+        ndsinx_plan_all: &[InxPlan],
         need_can: &Vec<usize>, // indicies to ndsinx_plan_all
     ) -> usize {
-        assert!(need_can.len() > 0);
+        assert!(!need_can.is_empty());
 
         // Find highest priority needs
         let mut min_pri = std::usize::MAX;
@@ -385,7 +382,7 @@ impl DomainStore {
         // Make second selection, index to can_nds_pln
         let mut can_do2 = Vec::<usize>::new();
 
-        assert!(can_nds_pln.len() > 0);
+        assert!(!can_nds_pln.is_empty());
 
         // Get the first need, in a group of needs with the same priority/type
         let cnp_inx = can_nds_pln[0].1;
@@ -414,14 +411,11 @@ impl DomainStore {
 
                     let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
-                    match ndx {
-                        SomeNeed::AStateMakeGroup { num_x: nx, .. } => {
-                            if *nx > a_state_make_group_max_x {
-                                a_state_make_group_max_x = *nx;
-                            }
+                    if let SomeNeed::AStateMakeGroup { num_x: nx, .. } = ndx {
+                        if *nx > a_state_make_group_max_x {
+                            a_state_make_group_max_x = *nx;
                         }
-                        _ => (),
-                    } // end match ndx
+                    }
                 } // next cnp_tup
 
                 // Save indicies for the max-X group created needs
@@ -430,14 +424,11 @@ impl DomainStore {
 
                     let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
 
-                    match ndx {
-                        SomeNeed::AStateMakeGroup { num_x: nx, .. } => {
-                            if *nx == a_state_make_group_max_x {
-                                can_do2.push(cnp_inx);
-                            }
+                    if let SomeNeed::AStateMakeGroup { num_x: nx, .. } = ndx {
+                        if *nx == a_state_make_group_max_x {
+                            can_do2.push(cnp_inx);
                         }
-                        _ => (),
-                    } // end match ndx
+                    }
                 }
             } // end match AStateMakeGroup
             _ => {
@@ -472,7 +463,7 @@ impl DomainStore {
             } // End match all other needs
         } // End match nd0
 
-        assert!(can_do2.len() > 0);
+        assert!(!can_do2.is_empty());
 
         // Take a random choice
         let cd2_inx = rand::thread_rng().gen_range(0..can_do2.len());
@@ -500,20 +491,23 @@ impl DomainStore {
         match num_str.parse() {
             Ok(d_num) => {
                 if d_num >= self.num_domains() {
-                    return Err(format!("\nDomain number too large, {}", d_num));
+                    Err(format!("\nDomain number too large, {}", d_num))
                 } else {
-                    return Ok(d_num);
+                    Ok(d_num)
                 }
             }
-            Err(error) => {
-                return Err(format!("Did not understand domain number, {}", error));
-            }
+            Err(error) => Err(format!("Did not understand domain number, {}", error)),
         } // end match
     }
 
     /// Return the length of a DomainStore.
     pub fn len(&self) -> usize {
         self.avec.len()
+    }
+
+    /// Return true if the store is empty
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
     }
 
     // Combine all domain current states, producing a larger state.
@@ -636,13 +630,13 @@ impl DomainStore {
 
 impl Index<usize> for DomainStore {
     type Output = SomeDomain;
-    fn index<'a>(&'a self, i: usize) -> &'a SomeDomain {
+    fn index(&self, i: usize) -> &SomeDomain {
         &self.avec[i]
     }
 }
 
 impl IndexMut<usize> for DomainStore {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
         &mut self.avec[i]
     }
 }
