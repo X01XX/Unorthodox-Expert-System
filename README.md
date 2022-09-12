@@ -5,7 +5,7 @@ A number of important processes can be run in parallel, without being slowed dow
 
 There is extensive use of Boolean Algebra.
 
-Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html. Squares that are only in one region have a special significance.
+Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html. Also, squares that are only in one region have a special significance.
 
 Run under Rust, a command help screen will display.  
 
