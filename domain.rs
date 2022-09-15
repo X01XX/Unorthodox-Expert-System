@@ -182,7 +182,7 @@ impl SomeDomain {
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
         assert!(pln.dom_num == self.num);
 
-        if pln.len() == 0 {
+        if pln.is_empty() {
             return true;
         }
         self.run_plan2(pln, 3) // Init depth counter.
@@ -1059,7 +1059,7 @@ mod tests {
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s00000110").unwrap();
-        assert!(nds2.contains_similar_need("LimitGroup", &SomeRegion::new(&s06, &s06)));
+        assert!(nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(&s06, &s06)));
 
         let s02 = dm0.state_from_string("s00000010").unwrap();
         dm0.eval_sample_arbitrary(0, &s06, &s02);
@@ -1486,7 +1486,7 @@ mod tests {
         let nds = dm0.actions[0].limit_groups_needs(&dm0.agg_changes);
         println!("needs {}", nds);
 
-        if nds.len() > 0 {
+        if !nds.is_empty() {
             return Err("Needs found?".to_string());
         }
         if !dm0.actions[0].groups[0].limited {

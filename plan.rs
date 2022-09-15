@@ -67,7 +67,7 @@ impl SomePlan {
     /// Return a plan where the result region of a known, valid, plan is restricted by a region
     /// known to intersect the plans result region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
-        assert!(self.len() > 0);
+        assert!(!self.is_empty());
         assert!(regx.intersects(self.result_region()));
 
         let mut steps = StepStore::with_capacity(self.len());
@@ -100,7 +100,7 @@ impl SomePlan {
     /// The result appears only once in the chain of steps.
     /// The initial and result regions of the whole plan are not the same.
     pub fn is_valid(&self) -> bool {
-        if self.len() == 0 {
+        if self.is_empty() {
             return true;
         }
 
@@ -140,7 +140,7 @@ impl SomePlan {
     /// Return a plan where the initial region of a known, valid, plan is restricted by a region
     /// known to intersect the plans initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        assert!(self.len() > 0);
+        assert!(!self.is_empty());
         assert!(regx.intersects(self.initial_region()));
 
         let mut steps = StepStore::with_capacity(self.len());
@@ -168,7 +168,7 @@ impl SomePlan {
 
     /// Add a step to a SomePlan.
     pub fn push(&mut self, stepx: SomeStep) {
-        if self.len() > 0 {
+        if !self.is_empty() {
             assert!(self.result_region() == &stepx.initial);
         }
         self.steps.push(stepx);
@@ -177,8 +177,8 @@ impl SomePlan {
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
     pub fn link(&self, other: &Self) -> Self {
         // Sanity checks
-        assert!(self.len() > 0);
-        assert!(other.len() > 0);
+        assert!(!self.is_empty());
+        assert!(!other.is_empty());
         assert!(self.result_region().intersects(other.initial_region()));
 
         // Restrict the StepStores, forward and backward.
@@ -321,6 +321,11 @@ impl SomePlan {
         self.steps.len()
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.steps.len() == 0
+    }
+
     /// Return a step iterator.
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
@@ -328,13 +333,13 @@ impl SomePlan {
 
     /// Return the initial region of a plan that contains at least one step.
     pub fn initial_region(&self) -> &SomeRegion {
-        assert!(self.len() > 0);
+        assert!(!self.is_empty());
         &self.steps[0].initial
     }
 
     /// Return the result region of a plan that contains at least one step.
     pub fn result_region(&self) -> &SomeRegion {
-        assert!(self.len() > 0);
+        assert!(!self.is_empty());
         &self[self.len() - 1].result
     }
 

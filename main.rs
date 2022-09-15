@@ -202,7 +202,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         }
 
         // Check if all needs are for the same domain, change domain number if needed
-        if nds.len() > 0 {
+        if !nds.is_empty() {
             match nds[0] {
                 SomeNeed::ToOptimalRegion { .. } => (),
                 _ => {
@@ -232,7 +232,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     }
                 }
             }
-        } // endif nds.len() > 0
+        } // endif !nds.is_empty()
 
         // See if any need can be done, for print_domain call.
         //        let mut can_do_flag = false;
@@ -256,7 +256,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         let mut can_do = 0;
         let mut cant_do = 0;
 
-        if nds.len() > 0 {
+        if !nds.is_empty() {
             // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
             if need_plans.is_empty() {
                 cant_do = nds.len();
@@ -299,7 +299,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     let mut disp = 0;
                     for (inx, ndplnx) in need_plans.iter().enumerate() {
                         if let Some(plnx) = &ndplnx.plans {
-                            if plnx.len() > 0 {
+                            if !plnx.is_empty() {
                                 println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
                             } else {
                                 println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
@@ -366,7 +366,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                     //println!("need {}, plan {}", &ndx, &pln);
 
-                    if pln.len() > 0 {
+                    if !pln.is_empty() {
                         //println!("doing dmx.run_plan");
                         dmxs.run_plans(pln);
                     } else {
@@ -486,7 +486,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
 
-                                if pln.len() > 0 {
+                                if !pln.is_empty() {
                                     dmxs.run_plans(pln);
                                 }
 
@@ -702,7 +702,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                             );
 
                             let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
-                            if stas.len() == 0 {
+                            if stas.is_empty() {
                                 println!("No squares in region {}", &aregion);
                                 return 0;
                             }
@@ -992,7 +992,7 @@ fn print_domain(dmxs: &mut DomainStore, dom_num: usize) {
         &dmxs.step, dom_num, &cur_state
     );
 
-    assert!(dmxs.step < 500); // Remove for continuous use
+    assert!(dmxs.step < 800); // Remove for continuous use
 }
 
 /// Display usage options.

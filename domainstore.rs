@@ -135,7 +135,7 @@ impl DomainStore {
     /// Add a Domain struct to the store.
     /// Add optimal regions after the last domain has been added.
     pub fn push(&mut self, domx: SomeDomain) {
-        assert!(self.optimal.len() == 0);
+        assert!(self.optimal.is_empty());
 
         self.avec.push(domx);
     }
@@ -162,12 +162,12 @@ impl DomainStore {
 
     /// Run a vector of plans.
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
-        assert!(plans.len() > 0);
+        assert!(!plans.is_empty());
 
         // Run a plan for one domain.
         if plans.len() == 1 {
             for planx in plans.iter() {
-                if planx.len() > 0 && !self.run_plan(planx) {
+                if !planx.is_empty() && !self.run_plan(planx) {
                     return false;
                 }
             }
@@ -280,7 +280,7 @@ impl DomainStore {
             // The length of rp1 goes down as numbers are chosen.
             let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
-            while rp1.len() > 0 {
+            while !rp1.is_empty() {
                 let mut end = span;
 
                 if end > rp1.len() {
@@ -322,7 +322,7 @@ impl DomainStore {
                 plans.push(planx);
             }
         }
-        if plans.len() == 0 || plans.len() < targets.len() {
+        if plans.is_empty() || plans.len() < targets.len() {
             return InxPlan { inx, plans: None };
         }
         InxPlan {
@@ -558,7 +558,7 @@ impl DomainStore {
     /// Return a need to move to another optimal region, if needed.
     pub fn check_optimal(&mut self) -> Option<SomeNeed> {
         // Check if there are no optimal regions.
-        if self.optimal.len() == 0 {
+        if self.optimal.is_empty() {
             return None;
         }
 
@@ -581,7 +581,7 @@ impl DomainStore {
 
         // If the current state is not in at least one optimal region,
         // return a need to move to an optimal region.
-        if notsups.len() > 0 {
+        if !notsups.is_empty() {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToOptimalRegion {
                 target_regions: notsups[inx].clone(),
@@ -598,7 +598,7 @@ impl DomainStore {
 
         let all_states = self.all_current_states();
         let optimal_supersets = self.optimal.supersets_of_states(&all_states);
-        if optimal_supersets.len() == 0 {
+        if optimal_supersets.is_empty() {
             print!(
                 "\nAll Current states: {} in optimal regions: None, not in ",
                 all_states

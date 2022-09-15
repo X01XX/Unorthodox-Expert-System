@@ -41,7 +41,7 @@ impl fmt::Display for SomeAction {
         rc_str += &String::from(", number squares: ");
         rc_str += &self.squares.len().to_string();
 
-        if self.seek_edge.len() > 0 {
+        if !self.seek_edge.is_empty() {
             let _ = write!(rc_str, ", seek_edge within: {}", self.seek_edge);
         }
 
@@ -455,9 +455,9 @@ impl SomeAction {
 
         // Create a group for square if needed
         let grps_in = self.groups.groups_state_in(key);
-        if grps_in.len() == 0 || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
+        if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
             self.create_groups_from_square(key, dom);
-            if regs_invalid.len() == 0 {
+            if regs_invalid.is_empty() {
                 return;
             }
         }
@@ -617,19 +617,19 @@ impl SomeAction {
 
             // Look for needs for states not in groups
             let mut ndx = self.state_not_in_group_needs(cur_state, memory);
-            if ndx.len() > 0 {
+            if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
 
             // Look for needs to find a new edge in an invalidated group
             let mut ndx = self.seek_edge_needs();
-            if ndx.len() > 0 {
+            if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
 
             // Check for additional samples for group states needs
             let mut ndx = self.confirm_group_needs();
-            if ndx.len() > 0 {
+            if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
 
@@ -638,13 +638,13 @@ impl SomeAction {
             // Overlapping groups that form a contradictory intersection.
             let mut ndx = self.group_pair_needs();
             //println!("Ran group_pair_needs");
-            if ndx.len() > 0 {
+            if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
 
             // Check for squares in-one-group needs
             let mut ndx = self.limit_groups_needs(changes_mask);
-            if ndx.len() > 0 {
+            if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
 
@@ -855,7 +855,7 @@ impl SomeAction {
         } // next stax
 
         // Display squares deleted.
-        if sqr_del.len() > 0 {
+        if !sqr_del.is_empty() {
             println!(
                 "\nDom {} Act {} deleted unneeded squares {}",
                 dom, self.num, sqr_del
@@ -909,7 +909,7 @@ impl SomeAction {
             // No squares between
             if sqrs_in.len() == 2 {
                 let mut ndx = self.seek_edge_needs2(regx);
-                if ndx.len() > 0 {
+                if !ndx.is_empty() {
                     ret_nds.append(&mut ndx);
                 }
                 continue;
@@ -957,7 +957,7 @@ impl SomeAction {
 
         // Apply new seek edge regions
         // After get_needs does the housekeeping, it will run this again
-        if new_regs.len() > 0 {
+        if !new_regs.is_empty() {
             ret_nds = NeedStore::new();
             for regx in new_regs.iter() {
                 ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
@@ -1059,11 +1059,13 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new();
 
-        let anchors = self.groups.anchor_states();
+        let mut anchors = StateStore::new();
 
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
             if let Some(stax) = &grpx.anchor {
+                anchors.push(stax.clone());
+
                 if self.groups.num_groups_state_in(stax) != 1 {
                     ret_nds.push(SomeNeed::RemoveGroupAnchor {
                         group_region: grpx.region.clone(),
@@ -1071,7 +1073,7 @@ impl SomeAction {
                 }
             }
         }
-        if ret_nds.len() > 0 {
+        if !ret_nds.is_empty() {
             return ret_nds;
         }
 
@@ -1081,8 +1083,13 @@ impl SomeAction {
                 continue;
             }
 
-            let mut ndx = self.limit_group_needs(grpx, &anchors, changes_mask);
-            if ndx.len() > 0 {
+            let mut ndx;
+            if let Some(anchor) = &grpx.anchor {
+                ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
+            } else {
+                ndx = self.limit_group_anchor_needs(grpx, &anchors);
+            }
+            if !ndx.is_empty() {
                 ret_nds.append(&mut ndx);
             }
         }
@@ -1141,19 +1148,12 @@ impl SomeAction {
         sta_rate
     }
 
-    /// Return the limiting needs for a group.
-    pub fn limit_group_needs(
-        &self,
-        grpx: &SomeGroup,
-        anchors: &StateStore,
-        changes_mask: &SomeMask,
-    ) -> NeedStore {
-        assert!(!grpx.limited);
-        assert!(grpx.pnc);
-
-        if let Some(anchor) = &grpx.anchor {
-            return self.limit_group_needs2(grpx, anchor, changes_mask);
-        }
+    /// Return the limiting anchor needs for a group.
+    /// If not state in the group is in only one group,
+    /// return an empty NeedStore.
+    /// If an existing anchor has the same, or better, rating than other possible states,
+    /// return an empty NeedStore.
+    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, anchors: &StateStore) -> NeedStore {
 
         let mut ret_nds = NeedStore::new();
 
@@ -1194,6 +1194,26 @@ impl SomeAction {
             return ret_nds;
         }
 
+        // Check current anchor, if any
+        if let Some(anchor) = &grpx.anchor {
+            if cfmv_max.contains(anchor) {
+                let anchor_sqr = self.squares.find(anchor).unwrap();
+                if anchor_sqr.pnc {
+                    // println!("group {} anchor {} pnc", &greg, &anchor_sta);
+                } else {
+                    // Get additional samples of the anchor
+                    ret_nds.push(SomeNeed::LimitGroup {
+                        dom_num: 0, // will be set in domain code
+                        act_num: self.num,
+                        anchor: anchor.clone(),
+                        target_state: anchor.clone(),
+                        for_group: grpx.region.clone(),
+                    });
+                }
+                return ret_nds;
+            }
+        }
+
         // Select an anchor
         let mut cfm_max = &cfmv_max[0];
         if cfmv_max.len() > 1 {
@@ -1203,11 +1223,12 @@ impl SomeAction {
             group_region: grpx.region.clone(),
             anchor: cfm_max.clone(),
         });
+
         ret_nds
-    } // end limit_group_needs
+    } // end limit_group_anchor_needs
 
     /// Return the limiting needs for a group with an anchor chosen.
-    pub fn limit_group_needs2(
+    pub fn limit_group_adj_needs(
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
@@ -1222,19 +1243,6 @@ impl SomeAction {
         let mut ret_nds = NeedStore::new();
 
         let anchor_sqr = self.squares.find(anchor_sta).unwrap();
-        if anchor_sqr.pnc {
-            // println!("group {} anchor {} pnc", &greg, &anchor_sta);
-        } else {
-            // Get additional samples of the anchor
-            ret_nds.push(SomeNeed::LimitGroup {
-                dom_num: 0, // will be set in domain code
-                act_num: self.num,
-                anchor: anchor_sta.clone(),
-                target_state: anchor_sta.clone(),
-                for_group: grpx.region.clone(),
-            });
-            return ret_nds;
-        }
 
         // Check each adjacent external state
         let mut nds_grp = NeedStore::new(); // needs for more samples
@@ -1264,7 +1272,7 @@ impl SomeAction {
                         });
                     }
                 } else {
-                    nds_grp.push(SomeNeed::LimitGroup {
+                    nds_grp.push(SomeNeed::LimitGroupAdj {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
@@ -1273,7 +1281,7 @@ impl SomeAction {
                     });
                 }
             } else {
-                nds_grp.push(SomeNeed::LimitGroup {
+                nds_grp.push(SomeNeed::LimitGroupAdj {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
@@ -1283,13 +1291,13 @@ impl SomeAction {
             }
         } // next inx in cfm_max
 
-        if nds_grp_add.len() > 0 {
+        if !nds_grp_add.is_empty() {
             //println!("*** nds_grp_add {}", &nds_grp_add);
             ret_nds.append(&mut nds_grp_add);
             return ret_nds;
         }
 
-        if nds_grp.len() > 0 {
+        if !nds_grp.is_empty() {
             //println!("*** nds_grp {}", &nds_grp);
             ret_nds.append(&mut nds_grp);
             return ret_nds;
@@ -1363,7 +1371,7 @@ impl SomeAction {
 
                 if grpx.region.intersects(&grpy.region) {
                     let mut ndx = self.group_pair_intersection_needs(grpx, grpy);
-                    if ndx.len() > 0 {
+                    if !ndx.is_empty() {
                         nds.append(&mut ndx);
                     }
                 }
@@ -1627,7 +1635,7 @@ impl SomeAction {
         // Check for any squares in the region
         let stas_in = self.squares.stas_in_reg(regx);
 
-        if stas_in.len() == 0 {
+        if stas_in.is_empty() {
             let ruls1 = if grpx.rules.is_empty() {
                 RuleStore::new()
             } else {

@@ -83,9 +83,9 @@ impl SomeGroup {
         let _ = write!(rc_str, ", pn: {}", self.pn);
 
         if self.pnc {
-            rc_str.push_str(", pnc: t,");
+            rc_str.push_str(", pnc: t, ");
         } else {
-            rc_str.push_str(", pnc: f,");
+            rc_str.push_str(", pnc: f, ");
         }
         //        if self.limited {
         //            rc_str.push_str(&format!(", limited"));
@@ -99,7 +99,7 @@ impl SomeGroup {
                 rc_str.push_str(&self.rules.formatted_string());
             }
             Pn::Unpredictable => {
-                rc_str.push_str(" R[Unpredictable]");
+                rc_str.push_str("R[Unpredictable]");
             }
         }
 

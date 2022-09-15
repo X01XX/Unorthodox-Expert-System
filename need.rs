@@ -4,7 +4,7 @@
 //! More samples of a square(or state, or bit pattern),
 //! A sample in a region that has contradictory predictions.
 //! Samples to limit a group.
-//! Housekeeping needs, like limiting a group.
+//! Housekeeping needs, like adding a group.
 
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
@@ -68,24 +68,29 @@ impl fmt::Display for SomeNeed {
                 for_group,
                 anchor,
             } => {
-                if for_group.is_superset_of_state(target_state) {
-                    if target_state == anchor {
-                        format!(
-                            "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {})",
-                            dom_num, act_num, pri, anchor, for_group,
-                        )
-                    } else {
-                        format!(
-                            "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {})",
-                            dom_num, act_num, pri, target_state, anchor, for_group,
-                        )
-                    }
+                if target_state == anchor {
+                    format!(
+                        "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {})",
+                        dom_num, act_num, pri, anchor, for_group,
+                    )
                 } else {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {})",
+                        "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {})",
                         dom_num, act_num, pri, target_state, anchor, for_group,
                     )
                 }
+            }
+            SomeNeed::LimitGroupAdj {
+                dom_num,
+                act_num,
+                target_state,
+                for_group,
+                anchor,
+            } => {
+                format!(
+                    "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {})",
+                    dom_num, act_num, pri, target_state, anchor, for_group,
+                )
             }
             SomeNeed::ConfirmGroup {
                 dom_num,
@@ -161,6 +166,14 @@ pub enum SomeNeed {
     },
     /// Sample a state to limit a group.
     LimitGroup {
+        dom_num: usize,
+        act_num: usize,
+        target_state: SomeState,
+        for_group: SomeRegion,
+        anchor: SomeState,
+    },
+    /// Sample an adjacent state to limit a group.
+    LimitGroupAdj {
         dom_num: usize,
         act_num: usize,
         target_state: SomeState,
@@ -307,6 +320,27 @@ impl PartialEq for SomeNeed {
                         && anchor == anchor_2;
                 }
             }
+            SomeNeed::LimitGroupAdj {
+                dom_num,
+                act_num,
+                target_state,
+                anchor,
+                ..
+            } => {
+                if let SomeNeed::LimitGroupAdj {
+                    dom_num: dom_num_2,
+                    act_num: act_num_2,
+                    target_state: target_state_2,
+                    anchor: anchor_2,
+                    ..
+                } = other
+                {
+                    return dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_state == target_state_2
+                        && anchor == anchor_2;
+                }
+            }
             SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
@@ -408,6 +442,7 @@ impl SomeNeed {
             SomeNeed::ToRegion { .. } => "ToRegion".to_string(),
             SomeNeed::ToOptimalRegion { .. } => "ToOptimalRegion".to_string(),
             SomeNeed::LimitGroup { .. } => "LimitGroup".to_string(),
+            SomeNeed::LimitGroupAdj { .. } => "LimitGroupAdj".to_string(),
             SomeNeed::ConfirmGroup { .. } => "ConfirmGroup".to_string(),
             SomeNeed::SeekEdge { .. } => "SeekEdge".to_string(),
             SomeNeed::AddGroup { .. } => "AddGroup".to_string(),
@@ -428,9 +463,10 @@ impl SomeNeed {
             SomeNeed::AStateMakeGroup { .. } => 3,
             SomeNeed::StateNotInGroup { .. } => 4,
             SomeNeed::ConfirmGroup { .. } => 5,
-            SomeNeed::LimitGroup { .. } => 6,
-            SomeNeed::ToRegion { .. } => 8,
-            SomeNeed::ToOptimalRegion { .. } => 7,
+            SomeNeed::LimitGroupAdj { .. } => 6,
+            SomeNeed::LimitGroup { .. } => 7,
+            SomeNeed::ToOptimalRegion { .. } => 8,
+            SomeNeed::ToRegion { .. } => 9,
             _ => 9999,
         } // end match ndx
     } // end priority
@@ -473,6 +509,11 @@ impl SomeNeed {
                     return true;
                 }
             }
+            SomeNeed::LimitGroupAdj { target_state, .. } => {
+                if cur_state == target_state {
+                    return true;
+                }
+            }
             _ => panic!(
                 "satisfied_by: should not be called on this need {}",
                 self.type_string()
@@ -491,6 +532,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { act_num, .. } => *act_num,
             SomeNeed::SeekEdge { act_num, .. } => *act_num,
             SomeNeed::LimitGroup { act_num, .. } => *act_num,
+            SomeNeed::LimitGroupAdj { act_num, .. } => *act_num,
             _ => panic!("act_num: not known for need {}", self.type_string()),
         } //end match self
     } // end act_num
@@ -505,6 +547,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
+            SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num,
             _ => panic!("dom_num: not known for need {}", self),
         } //end match self
     } // end dom_num
@@ -562,6 +605,14 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(target_state, target_state),
             )),
+            SomeNeed::LimitGroupAdj {
+                dom_num,
+                target_state,
+                ..
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state, target_state),
+            )),
             SomeNeed::ToOptimalRegion { target_regions, .. } => {
                 let mut targ = TargetStore::new();
                 for (dom_numx, targx) in target_regions.iter().enumerate() {
@@ -586,6 +637,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num = num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num = num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num = num,
+            SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num = num,
             _ => {
                 panic!(
                     "set_dom: should not be called for this need {}",

@@ -36,6 +36,11 @@ impl OptimalRegionsStore {
         self.optimal.len()
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.optimal.len() == 0
+    }
+
     /// Return an iterator
     pub fn iter(&self) -> Iter<RegionStore> {
         self.optimal.iter()

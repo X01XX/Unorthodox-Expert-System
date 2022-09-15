@@ -56,6 +56,11 @@ impl NeedStore {
         self.avec.len()
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
+    }
+
     /// Return true if a need is already in a NeedStore.
     pub fn contains(&self, aneed: &SomeNeed) -> bool {
         self.avec.contains(aneed)

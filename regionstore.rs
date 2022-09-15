@@ -69,6 +69,11 @@ impl RegionStore {
         self.avec.len()
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
+    }
+
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
         self.avec.push(val);
@@ -316,7 +321,7 @@ impl RegionStore {
 
     /// Return the union of regions in the store
     pub fn union(&self) -> Option<SomeRegion> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return None;
         }
 

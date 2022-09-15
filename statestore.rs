@@ -67,6 +67,11 @@ impl StateStore {
         self.avec.push(val);
     }
 
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
+    }
+
     /// Return an immuable iterator.
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()

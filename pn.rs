@@ -59,12 +59,10 @@ impl PartialOrd for Pn {
 
 impl PartialEq for Pn {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Pn::One, Pn::One) => true,
-            (Pn::Two, Pn::Two) => true,
-            (Pn::Unpredictable, Pn::Unpredictable) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Pn::One, Pn::One) | (Pn::Two, Pn::Two) | (Pn::Unpredictable, Pn::Unpredictable)
+        )
     }
 }
 
