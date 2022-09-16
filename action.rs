@@ -1079,15 +1079,16 @@ impl SomeAction {
 
         // Find squares in one group for each group, that may be an anchor
         for grpx in self.groups.iter() {
-            if !grpx.pnc || grpx.limited {
+            if !grpx.pnc {
                 continue;
             }
 
-            let mut ndx;
-            if let Some(anchor) = &grpx.anchor {
-                ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
-            } else {
-                ndx = self.limit_group_anchor_needs(grpx, &anchors);
+            let mut ndx = self.limit_group_anchor_needs(grpx, &anchors);
+
+            if ndx.is_empty() {
+                if let Some(anchor) = &grpx.anchor {
+                    ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
+                }
             }
             if !ndx.is_empty() {
                 ret_nds.append(&mut ndx);
@@ -1157,7 +1158,17 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new();
 
-        let stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
+        let mut stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
+
+        // Check for adjacent anchors
+        for ancx in anchors.iter() {
+            if grpx.region.is_adjacent_state(ancx) {
+                let stay = SomeState::new(ancx.bts.b_xor(&grpx.region.diff_mask_state(ancx).bts));
+                if !stas_in.contains(&stay) {
+                    stas_in.push(stay);
+                }
+            }
+        }
 
         // For each state, sta1, only in the group region, greg:
         //
@@ -1168,7 +1179,8 @@ impl SomeAction {
         let mut max_rate = (0, 0, 0);
 
         // Create a StateStore composed of anchor, far, and adjacent-external states.
-        let mut cfmv_max = Vec::<SomeState>::new();
+        //let mut cfmv_max = Vec::<SomeState>::new();
+        let mut cfmv_max = StateStore::new();
 
         for stax in stas_in.iter() {
             if self.groups.num_groups_state_in(stax) != 1 {
@@ -1177,12 +1189,13 @@ impl SomeAction {
 
             let sta_rate = self.group_anchor_rate(grpx, stax, anchors);
 
-            //println!("group {} anchor {} rating {}", &greg, &cfmx[0], sta_rate);
+            //println!("group {} possible anchor {} rating {} {} {}", &grpx.region, &stax, sta_rate.0, sta_rate.1, sta_rate.2);
 
             // Accumulate highest rated anchors
             if sta_rate > max_rate {
                 max_rate = sta_rate;
-                cfmv_max = Vec::<SomeState>::new();
+                //cfmv_max = Vec::<SomeState>::new();
+                cfmv_max = StateStore::new();
             }
             //println!("rate {} is {}", cfmx[0], sta_rate);
             if sta_rate == max_rate {
@@ -1191,12 +1204,15 @@ impl SomeAction {
         } // next stax
 
         if cfmv_max.is_empty() {
+            //println!("group {} cfmv_max empty", grpx.region);
             return ret_nds;
         }
 
         // Check current anchor, if any
         if let Some(anchor) = &grpx.anchor {
+            //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
             if cfmv_max.contains(anchor) {
+                //println!("group {} anchor {} still good, cfmv_max", grpx.region, anchor);
                 let anchor_sqr = self.squares.find(anchor).unwrap();
                 if anchor_sqr.pnc {
                     // println!("group {} anchor {} pnc", &greg, &anchor_sta);
@@ -1219,11 +1235,20 @@ impl SomeAction {
         if cfmv_max.len() > 1 {
             cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
         }
-        ret_nds.push(SomeNeed::SetGroupAnchor {
-            group_region: grpx.region.clone(),
-            anchor: cfm_max.clone(),
-        });
-
+        if let Some(_sqrx) = self.squares.find(cfm_max) {
+            ret_nds.push(SomeNeed::SetGroupAnchor {
+                group_region: grpx.region.clone(),
+                anchor: cfm_max.clone(),
+            });
+        } else {
+            ret_nds.push(SomeNeed::LimitGroup {
+                dom_num: 0, // will be set in domain code
+                act_num: self.num,
+                anchor: cfm_max.clone(),
+                target_state: cfm_max.clone(),
+                for_group: grpx.region.clone(),
+            });
+        }
         ret_nds
     } // end limit_group_anchor_needs
 

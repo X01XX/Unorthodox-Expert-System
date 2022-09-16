@@ -1483,12 +1483,9 @@ mod tests {
         dm0.get_needs();
         println!("{}", dm0.actions[0]);
 
-        let nds = dm0.actions[0].limit_groups_needs(&dm0.agg_changes);
+        let nds = dm0.get_needs();
         println!("needs {}", nds);
 
-        if !nds.is_empty() {
-            return Err("Needs found?".to_string());
-        }
         if !dm0.actions[0].groups[0].limited {
             return Err("Limited flag is false?".to_string());
         }

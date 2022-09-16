@@ -393,7 +393,7 @@ impl SomeRegion {
     //    }
 
     /// Return a mask of different bit with a given state.
-    fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
+    pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         SomeMask::new(
             self.state1
                 .bts
