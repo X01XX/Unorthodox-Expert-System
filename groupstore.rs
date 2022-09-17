@@ -147,7 +147,7 @@ impl GroupStore {
     pub fn anchor_states(&self) -> StateStore {
 
         StateStore {
-            avec: self.avec.iter().filter_map(|grpx| if let Some(anchor) = &grpx.anchor { Some(anchor.clone()) } else { None }).collect()
+            avec: self.avec.iter().filter_map(|grpx| grpx.anchor.as_ref().cloned()).collect()
         }
     }
 

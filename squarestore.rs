@@ -62,7 +62,7 @@ impl SquareStore {
     /// Return the states for all squares.
     pub fn all_square_states(&self) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().map(|keyx| keyx.clone()).collect()
+            avec: self.ahash.keys().cloned().collect()
         }
     }
 
@@ -75,7 +75,7 @@ impl SquareStore {
 
     /// Return a list of squares in a given region.
     pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
-        self.ahash.values().filter_map(|sqrx| if areg.is_superset_of_state(&sqrx.state) { Some(sqrx) } else { None }).collect()
+        self.ahash.values().filter(|sqrx| areg.is_superset_of_state(&sqrx.state)).collect()
     }
 
     /// Return an Option mutable reference for a square given a state,
