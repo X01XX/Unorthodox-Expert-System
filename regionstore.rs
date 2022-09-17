@@ -21,11 +21,11 @@ impl fmt::Display for RegionStore {
     }
 }
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RegionStore {
     /// A vector of regions.
-    avec: Vec<SomeRegion>,
+    pub avec: Vec<SomeRegion>,
 }
 
 impl PartialEq for RegionStore {
@@ -126,39 +126,24 @@ impl RegionStore {
 
     /// Return a RegionStore of supersets of a state.
     pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
-        let mut ret_store = Self::new();
 
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-                ret_store.push(regx.clone());
-            }
+        Self {
+            avec: self.avec.iter().filter_map(|regx| if regx.is_superset_of_state(sta) { Some(regx.clone()) } else { None }).collect(),
         }
-        ret_store
     }
 
     /// Return the number of supersets of a state.
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
-        let mut ret = 0;
 
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-                ret += 1;
-            }
-        }
-        ret
+        self.avec.iter().map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 }).sum()
     }
 
     /// Return a RegionStore of not supersets of a state.
     pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
-        let mut ret_store = Self::new();
 
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-            } else {
-                ret_store.push(regx.clone());
-            }
+        Self {
+            avec: self.avec.iter().filter_map(|regx| if regx.is_superset_of_state(sta) { None } else { Some(regx.clone()) }).collect(),
         }
-        ret_store
     }
 
     /// Return true if a RegionStore contains a region.
@@ -170,14 +155,8 @@ impl RegionStore {
 
     /// Return true if a given state is only in one region.
     pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
-        let mut cnt = 0;
 
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-                cnt += 1;
-            }
-        }
-        cnt == 1
+        self.avec.iter().map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 }).sum::<usize>() == 1
     }
 
     /// Find and remove a given region.
@@ -367,7 +346,7 @@ impl RegionStore {
         ret_str
     }
 
-    /// Return True if a RegionStore is a superset of all states in a StateStore.
+    /// Return True if a RegionStore is a superset of all corresponding states in a StateStore.
     pub fn is_superset_of_states(&self, stas: &StateStore) -> bool {
         assert!(self.len() == stas.len());
 
@@ -381,7 +360,7 @@ impl RegionStore {
         true
     }
 
-    /// Return true if each region in a RegionStore is equal, in order, of two RegionStores.
+    /// Return true if corresponding regions in two RegionStores are equal.
     pub fn equal_each(&self, other: &RegionStore) -> bool {
         for inx in 0..self.len() {
             if self[inx] == other[inx] {
@@ -392,7 +371,7 @@ impl RegionStore {
         true
     }
 
-    /// Return an intersection of each region, in order, of two RegionStores.
+    /// Return an intersection of corresponding regions, of two RegionStores.
     pub fn intersect_each(&self, other: &RegionStore) -> Option<RegionStore> {
         assert!(self.len() == other.len());
 

@@ -135,13 +135,7 @@ impl SomeMask {
     pub fn split(&self) -> Vec<Self> {
         let bitsx = self.bts.split();
 
-        let mut rc_vec: Vec<Self> = Vec::with_capacity(bitsx.len());
-
-        for bitx in bitsx.iter() {
-            rc_vec.push(SomeMask::new(bitx.clone()));
-        } // next bitx
-
-        rc_vec
+        bitsx.iter().map(|bitx| SomeMask::new(bitx.clone())).collect()
     }
 
     /// Return the number of ints used to express a SomeMask instance.

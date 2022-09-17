@@ -716,12 +716,20 @@ impl SomeAction {
                         anchor: sta1,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(greg) {
-                            println!(
-                                "\nDom {} Act {} Group {} setting anchor to {}",
-                                dom, self.num, greg, sta1
-                            );
+                            if let Some(anchor) = &grpx.anchor {
+                                println!(
+                                    "\nDom {} Act {} Group {} setting anchor from {} to {}",
+                                    dom, self.num, greg, anchor, sta1
+                                );
+                            } else {
+                                println!(
+                                    "\nDom {} Act {} Group {} setting anchor to {}",
+                                    dom, self.num, greg, sta1
+                                );
+                            }
                             grpx.set_anchor(sta1);
                             try_again = true;
+                            break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
                         }
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
@@ -1203,11 +1211,6 @@ impl SomeAction {
             }
         } // next stax
 
-        if cfmv_max.is_empty() {
-            //println!("group {} cfmv_max empty", grpx.region);
-            return ret_nds;
-        }
-
         // Check current anchor, if any
         if let Some(anchor) = &grpx.anchor {
             //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
@@ -1227,7 +1230,14 @@ impl SomeAction {
                     });
                 }
                 return ret_nds;
+            } else {
+                //println!("anchor changing for group {} from {}", grpx.region, anchor);
             }
+        }
+
+        if cfmv_max.is_empty() {
+            //println!("group {} cfmv_max empty", grpx.region);
+            return ret_nds;
         }
 
         // Select an anchor

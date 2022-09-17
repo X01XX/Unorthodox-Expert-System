@@ -48,27 +48,14 @@ impl OptimalRegionsStore {
 
     /// Return the number of supersets of a StateStore
     pub fn number_supersets_of_states(&self, stas: &StateStore) -> usize {
-        let mut ret = 0;
-
-        for regsx in self.optimal.iter() {
-            if regsx.is_superset_of_states(stas) {
-                ret += 1;
-            }
-        }
-        ret
+        self.optimal.iter().map(|regsx| if regsx.is_superset_of_states(stas) { 1 } else { 0 }).sum()
     }
 
     /// Return a Vector of RegionStores not supersets of a given StateStore.
     pub fn not_supersets_of_states(&self, stas: &StateStore) -> Self {
-        let mut ret_store = Self::new();
-
-        for regsx in self.optimal.iter() {
-            if regsx.is_superset_of_states(stas) {
-            } else {
-                ret_store.push(regsx.clone());
-            }
+        Self {
+            optimal: self.optimal.iter().filter_map(|regsx| if regsx.is_superset_of_states(stas) { None } else { Some(regsx.clone()) }).collect(),
         }
-        ret_store
     }
 
     /// Return true if any RegionStore is a superset of a StateStore.
@@ -83,13 +70,9 @@ impl OptimalRegionsStore {
 
     /// Return list of optimal regions that are superset of a StateStore.
     pub fn supersets_of_states(&self, stas: &StateStore) -> Self {
-        let mut ret = Self::new();
-        for regsx in self.optimal.iter() {
-            if regsx.is_superset_of_states(stas) {
-                ret.push(regsx.clone());
-            }
+        Self {
+            optimal: self.optimal.iter().filter_map(|regsx| if regsx.is_superset_of_states(stas) { Some(regsx.clone()) } else { None }).collect(),
         }
-        ret
     }
 
     /// Return a string represeting an OptimalRegionsStore.

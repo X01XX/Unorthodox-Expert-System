@@ -61,36 +61,21 @@ impl SquareStore {
 
     /// Return the states for all squares.
     pub fn all_square_states(&self) -> StateStore {
-        let mut rc_store = StateStore::new();
-
-        for key in self.ahash.keys() {
-            rc_store.push(key.clone());
+        StateStore {
+            avec: self.ahash.keys().map(|keyx| keyx.clone()).collect()
         }
-        rc_store
     }
 
     /// Return a list of squares in a given region.
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
-        let mut rc_store = StateStore::new();
-
-        for key in self.ahash.keys() {
-            if areg.is_superset_of_state(key) {
-                rc_store.push(key.clone());
-            }
+        StateStore {
+            avec: self.ahash.keys().filter_map(|keyx| if areg.is_superset_of_state(keyx) { Some(keyx.clone()) } else { None }).collect()
         }
-        rc_store
     }
 
     /// Return a list of squares in a given region.
     pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
-        let mut ret_vec = Vec::<&SomeSquare>::new();
-
-        for (key, sqrx) in &self.ahash {
-            if areg.is_superset_of_state(key) {
-                ret_vec.push(sqrx);
-            }
-        }
-        ret_vec
+        self.ahash.values().filter_map(|sqrx| if areg.is_superset_of_state(&sqrx.state) { Some(sqrx) } else { None }).collect()
     }
 
     /// Return an Option mutable reference for a square given a state,
@@ -120,53 +105,30 @@ impl SquareStore {
 
     /// Return a list of square states not in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
-        let mut states = StateStore::new();
-
-        for key in self.ahash.keys() {
-            if !regs.any_superset_of_state(key) {
-                states.push(key.clone());
-            }
+        StateStore {
+            avec: self.ahash.keys().filter_map(|keyx| if !regs.any_superset_of_state(keyx) { Some(keyx.clone()) } else { None }).collect()
         }
-
-        states
     }
 
     /// Return a list of squares with pn GT Pn:One, not yet pnc.
     pub fn pn_gt1_no_pnc(&self) -> StateStore {
-        let mut states = StateStore::new();
-
-        for (key, sqry) in &self.ahash {
-            if sqry.pn != Pn::One && !sqry.pnc {
-                states.push(key.clone());
-            }
+        StateStore {
+            avec: self.ahash.values().filter_map(|sqrx| if sqrx.pn != Pn::One && !sqrx.pnc { Some(sqrx.state.clone()) } else { None }).collect()
         }
-
-        states
     }
 
     /// Return a list of square states that are only in one region of a list of regions.
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
-        let mut states = StateStore::new();
-
-        for key in self.ahash.keys() {
-            if regs.state_in_1_region(key) {
-                states.push(key.clone());
-            }
+        StateStore {
+            avec: self.ahash.keys().filter_map(|keyx| if regs.state_in_1_region(keyx) { Some(keyx.clone()) } else { None }).collect()
         }
-
-        states
     }
 
     /// Return a list of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
-        let mut states = StateStore::new();
-
-        for key in self.ahash.keys() {
-            if regx.is_adjacent_state(key) {
-                states.push(key.clone());
-            }
+        StateStore {
+            avec: self.ahash.keys().filter_map(|keyx| if regx.is_adjacent_state(keyx) { Some(keyx.clone()) } else { None }).collect()
         }
 
-        states
     }
 } // end impl SquareStore

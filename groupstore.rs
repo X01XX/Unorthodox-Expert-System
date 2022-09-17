@@ -127,14 +127,10 @@ impl GroupStore {
 
     /// Return the groups regions a state is in.
     pub fn groups_state_in(&self, stax: &SomeState) -> RegionStore {
-        let mut grps = RegionStore::new();
 
-        for grpx in &self.avec {
-            if grpx.region.is_superset_of_state(stax) {
-                grps.push(grpx.region.clone());
-            }
+        RegionStore {
+            avec: self.avec.iter().filter_map(|grpx| if grpx.region.is_superset_of_state(stax) { Some(grpx.region.clone()) } else { None }).collect(),
         }
-        grps
     }
 
     /// Return true if any group is a superset, or equal, to a region.
@@ -149,13 +145,10 @@ impl GroupStore {
 
     /// Return a list of anchor states.
     pub fn anchor_states(&self) -> StateStore {
-        let mut anchors = StateStore::new();
-        for grpx in &self.avec {
-            if let Some(anchor) = &grpx.anchor {
-                anchors.push(anchor.clone());
-            }
+
+        StateStore {
+            avec: self.avec.iter().filter_map(|grpx| if let Some(anchor) = &grpx.anchor { Some(anchor.clone()) } else { None }).collect()
         }
-        anchors
     }
 
     /// Return true if any group is a superset, or equal, to a region.
@@ -170,14 +163,10 @@ impl GroupStore {
 
     /// Return regions of any group is a superset, or equal, to a region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
-        let mut rs = RegionStore::new();
 
-        for grpx in &self.avec {
-            if reg.is_subset_of(&grpx.region) {
-                rs.push(grpx.region.clone());
-            }
+        RegionStore {
+            avec: self.avec.iter().filter_map(|grpx| if reg.is_subset_of(&grpx.region) { Some(grpx.region.clone()) } else { None }).collect(),
         }
-        rs
     }
 
     //    /// Find and remove a given group, identified by region.
@@ -264,12 +253,9 @@ impl GroupStore {
 
     /// Return a RegionStore of regions of each group.
     pub fn regions(&self) -> RegionStore {
-        let mut regs = RegionStore::new();
-
-        for grpx in &self.avec {
-            regs.push(grpx.region.clone());
+        RegionStore {
+            avec: self.avec.iter().map(|grpx| grpx.region.clone()).collect(),
         }
-        regs
     }
 
     /// Return an iterator

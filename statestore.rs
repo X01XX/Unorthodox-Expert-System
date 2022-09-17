@@ -29,11 +29,10 @@ impl PartialEq for StateStore {
 }
 impl Eq for StateStore {}
 
-#[readonly::make]
 #[derive(Debug, Clone)]
 pub struct StateStore {
     /// A vector of states.
-    avec: Vec<SomeState>,
+    pub avec: Vec<SomeState>,
 }
 
 impl Default for StateStore {
