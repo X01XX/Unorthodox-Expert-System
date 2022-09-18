@@ -993,9 +993,9 @@ impl SomeAction {
 
         // Randomly choose which state to use to calculate the target state from
         let seek_state = if rand::random::<bool>() {
-            SomeState::new(regx.state1.bts.b_xor(&dif_msk.bts))
+            regx.state1.bits_xor(&dif_msk)
         } else {
-            SomeState::new(regx.state2.bts.b_xor(&dif_msk.bts))
+            regx.state2.bits_xor(&dif_msk)
         };
 
         // Make need for seek_state
@@ -1133,11 +1133,11 @@ impl SomeAction {
         }
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.x_mask().m_not().split();
+        let edge_msks = grpx.region.same_bits().split();
 
         // Rate adjacent external states
         for edge_bit in edge_msks.iter() {
-            let sta_adj = SomeState::new(stax.bts.b_xor(&edge_bit.bts));
+            let sta_adj = stax.bits_xor(edge_bit);
             //println!(
             //    "checking {} adjacent to {} external to {}",
             //    &sta_adj, &stax, &greg
@@ -1173,7 +1173,8 @@ impl SomeAction {
         // Check for adjacent anchors
         for ancx in anchors.iter() {
             if grpx.region.is_adjacent_state(ancx) {
-                let stay = SomeState::new(ancx.bts.b_xor(&grpx.region.diff_mask_state(ancx).bts));
+                let stay = ancx.bits_xor(&grpx.region.diff_mask_state(ancx));
+
                 if !stas_in.contains(&stay) {
                     stas_in.push(stay);
                 }
@@ -1286,10 +1287,10 @@ impl SomeAction {
         let mut nds_grp_add = NeedStore::new(); // needs for added group
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.x_mask().m_not().m_and(changes_mask).split();
+        let edge_msks = grpx.region.same_bits().bits_and(changes_mask).split();
 
         for mskx in edge_msks.iter() {
-            let adj_sta = SomeState::new(anchor_sta.bts.b_xor(&mskx.bts));
+            let adj_sta = anchor_sta.bits_xor(mskx);
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 

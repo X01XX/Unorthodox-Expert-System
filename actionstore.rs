@@ -119,7 +119,7 @@ impl ActionStore {
             chgs = chgs.c_or(actx.aggregate_changes());
         }
 
-        chgs.b01.m_and(&chgs.b10)
+        chgs.b01.bits_and(&chgs.b10)
     }
 
     /// Check the limited flags on groups due to new bit position that can be changed.

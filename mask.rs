@@ -11,6 +11,8 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts));
 
 use crate::bits::SomeBits;
+use crate::state::SomeState;
+use crate::bits::BitsRef;
 use crate::randompick::random_x_of_n;
 
 use serde::{Deserialize, Serialize};
@@ -68,26 +70,6 @@ impl SomeMask {
         Self {
             bts: SomeBits::new_low(num_ints),
         }
-    }
-
-    /// Return the bitwise OR of two masks.
-    pub fn m_or(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_or(&other.bts))
-    }
-
-    /// Return the bitwize AND of two masks.
-    pub fn m_and(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_and(&other.bts))
-    }
-
-    /// Return the bitwize XOR of two masks.
-    pub fn m_xor(&self, other: &Self) -> Self {
-        Self::new(self.bts.b_xor(&other.bts))
-    }
-
-    /// Return the bitwize NOT of a mask.
-    pub fn m_not(&self) -> Self {
-        Self::new(self.bts.b_not())
     }
 
     /// Return true if the mask is all zeros.
@@ -178,7 +160,47 @@ impl SomeMask {
     pub fn push_0(&self) -> Self {
         Self::new(self.bts.push_0())
     }
+
+    /// Return a state from a mask.
+    pub fn to_state(&self) -> SomeState {
+        SomeState::new(self.bts.clone())
+    }
+
+    // Return the b_xor of a mask and an structure that implements BitsRef.
+    pub fn bits_xor<U: BitsRef>(&self, two: &U) -> SomeMask {
+        Self {
+            bts: self.bts.b_xor(two.bitsref())
+        }
+    }
+
+    // Return the b_or of a mask and an structure that implements BitsRef.
+    pub fn bits_or<U: BitsRef>(&self, two: &U) -> SomeMask {
+        Self {
+            bts: self.bts.b_or(two.bitsref())
+        }
+    }
+
+    // Return the b_and of  a mask and an structure that implements BitsRef.
+    pub fn bits_and<U: BitsRef>(&self, two: &U) -> SomeMask {
+        Self {
+            bts: self.bts.b_and(two.bitsref())
+        }
+    }
+
+    // Return a mask with the bits reversed.
+    pub fn bits_not(&self) -> SomeMask {
+        Self {
+            bts: self.bts.b_not()
+        }
+    }
+
 } // end impl SomeMask
+
+impl BitsRef for SomeMask {
+    fn bitsref(&self) -> &SomeBits {
+        &self.bts
+    }
+}
 
 #[cfg(test)]
 mod tests {

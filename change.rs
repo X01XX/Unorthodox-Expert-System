@@ -3,6 +3,8 @@
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use crate::bits::bits_or;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
@@ -50,16 +52,16 @@ impl SomeChange {
     /// Return the logical bitwise and of two changes
     pub fn c_and(&self, other: &SomeChange) -> SomeChange {
         Self {
-            b01: self.b01.m_and(&other.b01),
-            b10: self.b10.m_and(&other.b10),
+            b01: self.b01.bits_and(&other.b01),
+            b10: self.b10.bits_and(&other.b10),
         }
     }
 
     /// Return the logical bitwize or of two changes
     pub fn c_or(&self, other: &SomeChange) -> SomeChange {
         Self {
-            b01: self.b01.m_or(&other.b01),
-            b10: self.b10.m_or(&other.b10),
+            b01: self.b01.bits_or(&other.b01),
+            b10: self.b10.bits_or(&other.b10),
         }
     }
 
@@ -156,17 +158,17 @@ impl SomeChange {
 
     /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = SomeMask::new(from.state1.bts.b_or(&from.state2.bts));
-        let f_zeros = SomeMask::new(from.state1.bts.b_not().b_or(&from.state2.bts.b_not()));
+        let f_ones = SomeMask::new(bits_or(&from.state1, &from.state2));
+        let f_zeros = SomeMask::new(bits_or(&from.state1.bits_not(), &from.state2.bits_not()));
 
-        let t_ones = SomeMask::new(to.state1.bts.b_or(&to.state2.bts));
-        let t_zeros = SomeMask::new(to.state1.bts.b_not().b_or(&to.state2.bts.b_not()));
+        let t_ones = SomeMask::new(bits_or(&to.state1, &to.state2));
+        let t_zeros = SomeMask::new(bits_or(&to.state1.bits_not(), &to.state2.bits_not()));
 
-        let to_not_x = to.x_mask().m_not();
+        let to_not_x = to.x_mask().bits_not();
 
         SomeChange {
-            b01: f_zeros.m_and(&t_ones).m_and(&to_not_x),
-            b10: f_ones.m_and(&t_zeros).m_and(&to_not_x),
+            b01: f_zeros.bits_and(&t_ones).bits_and(&to_not_x),
+            b10: f_ones.bits_and(&t_zeros).bits_and(&to_not_x),
         }
     }
 

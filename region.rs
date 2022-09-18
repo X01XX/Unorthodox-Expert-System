@@ -286,6 +286,12 @@ impl SomeRegion {
     pub fn ones_mask(&self) -> SomeMask {
         SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
     }
+
+    /// Return a mask of same bits.
+    pub fn same_bits(&self) -> SomeMask {
+        SomeMask::new(self.state1.bts.b_eqv(&self.state2.bts))
+    }
+
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
         SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
@@ -312,11 +318,11 @@ impl SomeRegion {
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
-        let cng_bits = int_x_msk.m_and(&ok_x_msk.m_not());
+        let cng_bits = int_x_msk.bits_and(&ok_x_msk.bits_not());
 
         SomeRegion::new(
-            &SomeState::new(other.state1.bts.b_xor(&cng_bits.bts)),
-            &SomeState::new(other.state2.bts.b_xor(&cng_bits.bts)),
+            &other.state1.bits_xor(&cng_bits),
+            &other.state2.bits_xor(&cng_bits),
         )
     }
 
@@ -405,7 +411,7 @@ impl SomeRegion {
     /// Return a mask of different (non-x) bits between two regions.
     pub fn diff_mask(&self, reg1: &SomeRegion) -> SomeMask {
         self.diff_mask_state(&reg1.state1)
-            .m_and(&self.diff_mask_state(&reg1.state2))
+            .bits_and(&self.diff_mask_state(&reg1.state2))
     }
 
     // Return the number of different (non-x) bits with another region.
@@ -438,10 +444,10 @@ impl SomeRegion {
 
         let reg_int = self.intersection(other);
 
-        let x_over_not_xs: Vec<SomeMask> = self.x_mask().m_and(&reg_int.x_mask().m_not()).split();
+        let x_over_not_xs: Vec<SomeMask> = self.x_mask().bits_and(&reg_int.same_bits()).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.bts.b_and(&reg_int.state1.bts).is_low() {
+            if mskx.bits_and(&reg_int.state1).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {

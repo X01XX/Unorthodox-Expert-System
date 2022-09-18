@@ -295,6 +295,13 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
+    /// Bits that are the same
+    pub fn b_eqv(&self, other: &Self) -> Self {
+        assert!(self.num_ints() == other.num_ints());
+
+        self.b_xor(other).b_not()
+    }
+
     /// Return true if the Bits struct value is low, that is all zeros.
     pub fn is_low(&self) -> bool {
         for inx in self.ints.iter() {
@@ -495,6 +502,31 @@ impl SomeBits {
     }
 } // end impl SomeBits
 
+pub trait BitsRef {
+    fn bitsref(&self) -> &SomeBits;
+}
+
+impl BitsRef for SomeBits {
+    fn bitsref(&self) -> &SomeBits {
+        self
+    }
+}
+
+// Return the b_xor of two structures (SomeMask or SomeState)
+pub fn bits_xor<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
+    one.bitsref().b_xor(two.bitsref())
+}
+
+// Return the b_or of two structures (SomeMask or SomeState)
+pub fn bits_or<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
+    one.bitsref().b_or(two.bitsref())
+}
+
+// Return the b_and of two structures (SomeMask or SomeState)
+pub fn bits_and<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
+    one.bitsref().b_and(two.bitsref())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -561,6 +593,18 @@ mod tests {
             }
         }
 
+        Ok(())
+    }
+
+    // Test b_eqv
+    #[test]
+    fn b_eqv() -> Result<(), String> {
+        let b1 = SomeBits::new_from_string(2, "0x5555").unwrap();
+        let b2 = SomeBits::new_from_string(2, "0xa675").unwrap();
+        let b3 = b1.b_eqv(&b2);
+        println!("b3 = {}", b3);
+        let b4 = SomeBits::new_from_string(2, "0x0cdf").unwrap();
+        assert!(b3 == b4);
         Ok(())
     }
 

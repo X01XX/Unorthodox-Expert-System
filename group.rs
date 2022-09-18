@@ -214,8 +214,8 @@ impl SomeGroup {
     /// Check limited setting in groups due to new bit that can change.
     pub fn check_limited(&mut self, new_chgs: &SomeMask) {
         assert!(self.limited);
-        let nonx = self.region.x_mask().m_not();
-        let positions = nonx.m_and(new_chgs);
+        let nonx = self.region.same_bits();
+        let positions = nonx.bits_and(new_chgs);
         if !positions.is_low() {
             self.limited = false;
             //println!("resetting limit flag!");

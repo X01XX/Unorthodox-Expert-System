@@ -879,7 +879,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
                                         println!("anchor   {} not found?", &grpx.region.state1);
                                     }
 
-                                    let bit_masks = grpx.region.x_mask().m_not().split();
+                                    let bit_masks = grpx.region.x_mask().bits_not().split();
                                     for mskx in bit_masks.iter() {
                                         let adj = SomeState::new(astate.bts.b_xor(&mskx.bts));
                                         if let Some(adjsqr) =

@@ -142,14 +142,14 @@ impl StepStore {
         for stepx in self.avec.iter() {
             // Check for matching b01 changes
             for (inx, b01x) in b01.iter().enumerate() {
-                if stepx.rule.b01.m_and(b01x).is_not_low() {
+                if stepx.rule.b01.bits_and(b01x).is_not_low() {
                     ret_vec[inx].push(stepx);
                 }
             } // next b01x
 
             // Check for matching b10 changes
             for (inx, b10x) in b10.iter().enumerate() {
-                if stepx.rule.b10.m_and(b10x).is_not_low() {
+                if stepx.rule.b10.bits_and(b10x).is_not_low() {
                     ret_vec[inx + b01_len].push(stepx);
                 }
             } // next b01x

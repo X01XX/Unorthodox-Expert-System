@@ -63,7 +63,7 @@ impl SomeRule {
     /// Leading "00" tokens can be omitted.
     /// If no tokens supplied, the rule will be all "00".
     pub fn new_from_string(num_ints: usize, rep: &str) -> Result<Self, String> {
-        let mut b00 = SomeMask::new_low(num_ints).m_not();
+        let mut b00 = SomeMask::new_low(num_ints).bits_not();
         let mut b01 = SomeMask::new_low(num_ints);
         let mut b11 = SomeMask::new_low(num_ints);
         let mut b10 = SomeMask::new_low(num_ints);
@@ -149,7 +149,7 @@ impl SomeRule {
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
-        self.b00.m_and(&self.b01).is_low() && self.b11.m_and(&self.b10).is_low()
+        self.b00.bits_and(&self.b01).is_low() && self.b11.bits_and(&self.b10).is_low()
     }
 
     /// Return true if a rule is valid after an intersection,
@@ -157,9 +157,9 @@ impl SomeRule {
     pub fn is_valid_intersection(&self) -> bool {
         if self
             .b00
-            .m_or(&self.b01)
-            .m_or(&self.b11)
-            .m_or(&self.b10)
+            .bits_or(&self.b01)
+            .bits_or(&self.b11)
+            .bits_or(&self.b10)
             .is_high()
         {
             return true;
@@ -171,20 +171,20 @@ impl SomeRule {
     /// Return a logical OR of two rules. The result may be invalid.
     pub fn union(&self, other: &Self) -> Self {
         Self {
-            b00: self.b00.m_or(&other.b00),
-            b01: self.b01.m_or(&other.b01),
-            b11: self.b11.m_or(&other.b11),
-            b10: self.b10.m_or(&other.b10),
+            b00: self.b00.bits_or(&other.b00),
+            b01: self.b01.bits_or(&other.b01),
+            b11: self.b11.bits_or(&other.b11),
+            b10: self.b10.bits_or(&other.b10),
         }
     }
 
     /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Self {
         Self {
-            b00: self.b00.m_and(&other.b00),
-            b01: self.b01.m_and(&other.b01),
-            b11: self.b11.m_and(&other.b11),
-            b10: self.b10.m_and(&other.b10),
+            b00: self.b00.bits_and(&other.b00),
+            b01: self.b01.bits_and(&other.b01),
+            b11: self.b11.bits_and(&other.b11),
+            b10: self.b10.bits_and(&other.b10),
         }
     }
 
@@ -247,10 +247,10 @@ impl SomeRule {
         let ones = SomeMask::new(reg_int.high_state().bts.clone());
 
         Self {
-            b00: self.b00.m_and(&zeros),
-            b01: self.b01.m_and(&zeros),
-            b11: self.b11.m_and(&ones),
-            b10: self.b10.m_and(&ones),
+            b00: self.b00.bits_and(&zeros),
+            b01: self.b01.bits_and(&zeros),
+            b11: self.b11.bits_and(&ones),
+            b10: self.b10.bits_and(&ones),
         }
     }
 
@@ -284,10 +284,10 @@ impl SomeRule {
         let ones = SomeMask::new(reg_int.high_state().bts.clone());
 
         Self {
-            b00: self.b00.m_and(&zeros),
-            b01: self.b01.m_and(&ones),
-            b11: self.b11.m_and(&ones),
-            b10: self.b10.m_and(&zeros),
+            b00: self.b00.bits_and(&zeros),
+            b01: self.b01.bits_and(&ones),
+            b11: self.b11.bits_and(&ones),
+            b10: self.b10.bits_and(&zeros),
         }
     }
 
@@ -373,14 +373,14 @@ impl SomeRule {
         let i_reg_xes = i_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = i_reg_xes.m_and(&cng_int.b01);
+        let to_ones = i_reg_xes.bits_and(&cng_int.b01);
 
         if to_ones.is_not_low() {
             i_reg = i_reg.set_to_zeros(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = i_reg_xes.m_and(&cng_int.b10);
+        let to_zeros = i_reg_xes.bits_and(&cng_int.b10);
 
         if to_zeros.is_not_low() {
             i_reg = i_reg.set_to_ones(&to_zeros);
@@ -444,10 +444,10 @@ impl SomeRule {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
-            b00: self.b00.m_and(&other.b00).m_or(&self.b01.m_and(&other.b10)),
-            b01: self.b01.m_and(&other.b11).m_or(&self.b00.m_and(&other.b01)),
-            b11: self.b11.m_and(&other.b11).m_or(&self.b10.m_and(&other.b01)),
-            b10: self.b10.m_and(&other.b00).m_or(&self.b11.m_and(&other.b10)),
+            b00: self.b00.bits_and(&other.b00).bits_or(&self.b01.bits_and(&other.b10)),
+            b01: self.b01.bits_and(&other.b11).bits_or(&self.b00.bits_and(&other.b01)),
+            b11: self.b11.bits_and(&other.b11).bits_or(&self.b10.bits_and(&other.b01)),
+            b10: self.b10.bits_and(&other.b00).bits_or(&self.b11.bits_and(&other.b10)),
         }
     }
 
@@ -457,68 +457,68 @@ impl SomeRule {
     /// The minimum changes are sought, so X->x and x->X become X->X.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         let from_x = from.x_mask();
-        let from_1 = from.ones_mask().m_or(&from_x);
-        let from_0 = from.zeros_mask().m_or(&from_x);
+        let from_1 = from.ones_mask().bits_or(&from_x);
+        let from_0 = from.zeros_mask().bits_or(&from_x);
 
         let to_x = to.x_mask();
         let to_1 = to.ones_mask();
         let to_0 = to.zeros_mask();
 
         Self {
-            b00: from_0.m_and(&to_0.m_or(&to_x)),
-            b01: from_0.m_and(&to_1),
-            b11: from_1.m_and(&to_1.m_or(&to_x)),
-            b10: from_1.m_and(&to_0),
+            b00: from_0.bits_and(&to_0.bits_or(&to_x)),
+            b01: from_0.bits_and(&to_1),
+            b11: from_1.bits_and(&to_1.bits_or(&to_x)),
+            b10: from_1.bits_and(&to_0),
         }
     }
 
     /// Return a rule for translating from region to state.
     pub fn region_to_state(from: &SomeRegion, to: &SomeState) -> SomeRule {
         let from_x = from.x_mask();
-        let from_1 = from.ones_mask().m_or(&from_x);
-        let from_0 = from.zeros_mask().m_or(&from_x);
+        let from_1 = from.ones_mask().bits_or(&from_x);
+        let from_0 = from.zeros_mask().bits_or(&from_x);
 
         let to_1 = to.to_mask();
-        let to_0 = to_1.m_not();
+        let to_0 = to_1.bits_not();
 
         Self {
-            b00: from_0.m_and(&to_0),
-            b01: from_0.m_and(&to_1),
-            b11: from_1.m_and(&to_1),
-            b10: from_1.m_and(&to_0),
+            b00: from_0.bits_and(&to_0),
+            b01: from_0.bits_and(&to_1),
+            b11: from_1.bits_and(&to_1),
+            b10: from_1.bits_and(&to_0),
         }
     }
 
     /// Return a rule for translating from state to region.
     pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
         let from_1 = from.to_mask();
-        let from_0 = from_1.m_not();
+        let from_0 = from_1.bits_not();
 
         let to_x = to.x_mask();
         let to_1 = to.ones_mask();
         let to_0 = to.zeros_mask();
 
         Self {
-            b00: from_0.m_and(&to_0.m_or(&to_x)),
-            b01: from_0.m_and(&to_1),
-            b11: from_1.m_and(&to_1.m_or(&to_x)),
-            b10: from_1.m_and(&to_0),
+            b00: from_0.bits_and(&to_0.bits_or(&to_x)),
+            b01: from_0.bits_and(&to_1),
+            b11: from_1.bits_and(&to_1.bits_or(&to_x)),
+            b10: from_1.bits_and(&to_0),
         }
     }
 
     /// Return a rule for translating from state to state.
     pub fn state_to_state(from: &SomeState, to: &SomeState) -> SomeRule {
         let from_1 = from.to_mask();
-        let from_0 = from_1.m_not();
+        let from_0 = from_1.bits_not();
 
         let to_1 = to.to_mask();
-        let to_0 = to_1.m_not();
+        let to_0 = to_1.bits_not();
 
         Self {
-            b00: from_0.m_and(&to_0),
-            b01: from_0.m_and(&to_1),
-            b11: from_1.m_and(&to_1),
-            b10: from_1.m_and(&to_0),
+            b00: from_0.bits_and(&to_0),
+            b01: from_0.bits_and(&to_1),
+            b11: from_1.bits_and(&to_1),
+            b10: from_1.bits_and(&to_0),
         }
     }
 } // end impl SomeRule

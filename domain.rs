@@ -103,7 +103,7 @@ impl SomeDomain {
         let cur_agg_mask = self.aggregate_changes_mask();
 
         if cur_agg_mask != self.agg_changes {
-            let new_chgs = self.agg_changes.m_not().m_and(&cur_agg_mask);
+            let new_chgs = self.agg_changes.bits_not().bits_and(&cur_agg_mask);
 
             if !new_chgs.is_low() {
                 self.actions.check_limited(&new_chgs);
