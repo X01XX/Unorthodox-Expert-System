@@ -1095,7 +1095,9 @@ impl SomeAction {
 
             if ndx.is_empty() {
                 if let Some(anchor) = &grpx.anchor {
-                    ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
+                    if !grpx.limited {
+                        ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
+                    }
                 }
             }
             if !ndx.is_empty() {
