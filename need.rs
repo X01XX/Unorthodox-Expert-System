@@ -46,9 +46,10 @@ impl fmt::Display for SomeNeed {
                 ruls1,
                 group2,
                 ruls2,
+                group_num,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {})",
-                dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2
+                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {} gn {})",
+                dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2, group_num
             ),
             SomeNeed::ToRegion {
                 dom_num,
@@ -67,16 +68,17 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
+                group_num,
             } => {
                 if target_state == anchor {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {})",
-                        dom_num, act_num, pri, anchor, for_group,
+                        "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {} gn {})",
+                        dom_num, act_num, pri, anchor, for_group, group_num,
                     )
                 } else {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {})",
-                        dom_num, act_num, pri, target_state, anchor, for_group,
+                        "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {} gn {})",
+                        dom_num, act_num, pri, target_state, anchor, for_group, group_num,
                     )
                 }
             }
@@ -86,10 +88,11 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
+                group_num,
             } => {
                 format!(
-                    "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {})",
-                    dom_num, act_num, pri, target_state, anchor, for_group,
+                    "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {} gn {})",
+                    dom_num, act_num, pri, target_state, anchor, for_group, group_num,
                 )
             }
             SomeNeed::ConfirmGroup {
@@ -97,10 +100,11 @@ impl fmt::Display for SomeNeed {
                 act_num,
                 target_state,
                 grp_reg,
+                group_num,
             } => {
                 format!(
-                    "N(Dom {} Act {} Pri {} Get additional sample of state {} to confirm group {})",
-                    dom_num, act_num, pri, target_state, grp_reg
+                    "N(Dom {} Act {} Pri {} Get additional sample of state {} to confirm group {} gn {})",
+                    dom_num, act_num, pri, target_state, grp_reg, group_num,
                 )
             }
 
@@ -163,6 +167,7 @@ pub enum SomeNeed {
         ruls1: RuleStore,
         group2: SomeRegion,
         ruls2: RuleStore,
+        group_num: usize, // lowest group number of the two.
     },
     /// Sample a state to limit a group.
     LimitGroup {
@@ -171,6 +176,7 @@ pub enum SomeNeed {
         target_state: SomeState,
         for_group: SomeRegion,
         anchor: SomeState,
+        group_num: usize,
     },
     /// Sample an adjacent state to limit a group.
     LimitGroupAdj {
@@ -179,6 +185,7 @@ pub enum SomeNeed {
         target_state: SomeState,
         for_group: SomeRegion,
         anchor: SomeState,
+        group_num: usize,
     },
     /// Get an additional sample of a state.
     ConfirmGroup {
@@ -186,6 +193,7 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
         grp_reg: SomeRegion,
+        group_num: usize,
     },
     /// Sample a state to find a new edge in the total solution.
     SeekEdge {

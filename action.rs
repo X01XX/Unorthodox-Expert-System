@@ -1017,7 +1017,7 @@ impl SomeAction {
         //println!("confirm_group_needs");
         let mut ret_nds = NeedStore::new();
 
-        for grpx in self.groups.iter_mut() {
+        for (group_num, grpx) in self.groups.iter_mut().enumerate() {
             if grpx.pnc {
                 continue;
             }
@@ -1029,6 +1029,7 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
+                    group_num,
                 });
             }
 
@@ -1039,6 +1040,7 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
+                    group_num,
                 });
             }
 
@@ -1086,17 +1088,17 @@ impl SomeAction {
         }
 
         // Find squares in one group for each group, that may be an anchor
-        for grpx in self.groups.iter() {
+        for (group_num, grpx) in self.groups.iter().enumerate() {
             if !grpx.pnc {
                 continue;
             }
 
-            let mut ndx = self.limit_group_anchor_needs(grpx, &anchors);
+            let mut ndx = self.limit_group_anchor_needs(grpx, &anchors, group_num);
 
             if ndx.is_empty() {
                 if let Some(anchor) = &grpx.anchor {
                     if !grpx.limited {
-                        ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask);
+                        ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask, group_num);
                     }
                 }
             }
@@ -1164,7 +1166,7 @@ impl SomeAction {
     /// return an empty NeedStore.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return an empty NeedStore.
-    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, anchors: &StateStore) -> NeedStore {
+    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, anchors: &StateStore, group_num: usize) -> NeedStore {
 
         let mut ret_nds = NeedStore::new();
 
@@ -1230,6 +1232,7 @@ impl SomeAction {
                         anchor: anchor.clone(),
                         target_state: anchor.clone(),
                         for_group: grpx.region.clone(),
+                        group_num,
                     });
                 }
                 return ret_nds;
@@ -1260,6 +1263,7 @@ impl SomeAction {
                 anchor: cfm_max.clone(),
                 target_state: cfm_max.clone(),
                 for_group: grpx.region.clone(),
+                group_num,
             });
         }
         ret_nds
@@ -1271,6 +1275,7 @@ impl SomeAction {
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
         changes_mask: &SomeMask,
+        group_num: usize,
     ) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
@@ -1316,6 +1321,7 @@ impl SomeAction {
                         anchor: anchor_sta.clone(),
                         target_state: adj_sta.clone(),
                         for_group: grpx.region.clone(),
+                        group_num,
                     });
                 }
             } else {
@@ -1325,6 +1331,7 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: adj_sta.clone(),
                     for_group: grpx.region.clone(),
+                    group_num,
                 });
             }
         } // next inx in cfm_max
@@ -1361,6 +1368,7 @@ impl SomeAction {
                         anchor: anchor_sta.clone(),
                         target_state: sta_far.clone(),
                         for_group: grpx.region.clone(),
+                        group_num,
                     });
                 }
             } else {
@@ -1371,6 +1379,7 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: sta_far.clone(),
                     for_group: grpx.region.clone(),
+                    group_num,
                 });
             }
         } else {
@@ -1408,7 +1417,7 @@ impl SomeAction {
                 }
 
                 if grpx.region.intersects(&grpy.region) {
-                    let mut ndx = self.group_pair_intersection_needs(grpx, grpy);
+                    let mut ndx = self.group_pair_intersection_needs(grpx, grpy, inx);
                     if !ndx.is_empty() {
                         nds.append(&mut ndx);
                     }
@@ -1599,7 +1608,7 @@ impl SomeAction {
     /// Check two intersecting groups for needs.
     /// Possibly combining two groups.
     /// Possibly checking for a contradictatory intersection.
-    pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
+    pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup, group_num: usize) -> NeedStore {
         //                println!(
         //                    "groups_pair_intersection_needs {} {} and {} {}",
         //                    &grpx.region, &grpx.pn, &grpy.region, grpy.pn
@@ -1611,7 +1620,7 @@ impl SomeAction {
 
         if grpx.pn != grpy.pn {
             let mut nds = NeedStore::new();
-            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
+            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy, group_num));
             return nds;
         }
 
@@ -1639,10 +1648,10 @@ impl SomeAction {
 
                 //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
 
-                nds.push(self.cont_int_region_need(&regy, grpx, grpy));
+                nds.push(self.cont_int_region_need(&regy, grpx, grpy, group_num));
             } else {
                 //println!("pn2 whole intersection is bad");
-                nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
+                nds.push(self.cont_int_region_need(&reg_int, grpx, grpy, group_num));
             }
 
             return nds;
@@ -1668,6 +1677,7 @@ impl SomeAction {
         regx: &SomeRegion,
         grpx: &SomeGroup,
         grpy: &SomeGroup,
+        group_num: usize,
     ) -> SomeNeed {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", &regx, &grpx.region, &grpx.rules, &grpy.region, &grpy.rules);
         // Check for any squares in the region
@@ -1694,6 +1704,7 @@ impl SomeAction {
                 ruls1,
                 group2: grpy.region.clone(),
                 ruls2,
+                group_num,
             };
         }
 
@@ -1747,6 +1758,7 @@ impl SomeAction {
             ruls1,
             group2: grpy.region.clone(),
             ruls2,
+            group_num,
         }
     } // end cont_int_region_need
 

@@ -216,7 +216,9 @@ impl GroupStore {
         !rmvec.is_empty()
     }
 
-    /// Add a group.
+    /// Add a group to the end of the list.
+    /// So older, more likely groups are first in the list.
+    /// The push command in LISP puts an item at the beginning of the list.
     pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
