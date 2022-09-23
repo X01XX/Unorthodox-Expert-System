@@ -6,6 +6,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::truth::Truth;
+use crate::bits::{bits_xor, bits_and};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -246,6 +247,22 @@ impl SomeSquare {
             return true;
         }
         false
+    }
+
+    /// Return true if a square is between two given squares, exclusive.
+    pub fn is_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
+        if self.state == sqr1.state {
+            return false;
+        }
+        if self.state == sqr2.state {
+            return false;
+        }
+
+        bits_and(&bits_xor(&self.state, &sqr1.state), &bits_xor(&self.state, &sqr2.state)).is_low()
+    }
+
+    pub fn distance(&self, other: &SomeSquare) -> usize {
+        self.state.distance(&other.state)
     }
 } // end impl SomeSquare
 

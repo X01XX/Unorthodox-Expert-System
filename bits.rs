@@ -21,6 +21,7 @@ pub const NUM_BITS_PER_INT: usize = 8;
 /// The highest bit position in an integer.
 const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
 
+use crate::randompick::random_x_of_n;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -499,6 +500,21 @@ impl SomeBits {
     /// Return a copy, shifted 1 to the left.
     pub fn push_0(&self) -> Self {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
+    }
+    
+    /// Given a mask of more than one bit, return a SomeBits that is a random selection of
+    /// roughly half the bits.
+    pub fn half_bits(&self) -> Self {
+        let one_bits: Vec<SomeBits> = self.split();
+
+        let indicies: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
+
+        let mut or_bts = SomeBits::new_low(self.num_ints());
+
+        for inx in indicies.iter() {
+            or_bts = or_bts.b_or(&one_bits[*inx]);
+        }
+        or_bts
     }
 } // end impl SomeBits
 

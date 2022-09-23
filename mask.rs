@@ -13,7 +13,6 @@
 use crate::bits::SomeBits;
 use crate::state::SomeState;
 use crate::bits::BitsRef;
-use crate::randompick::random_x_of_n;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -139,16 +138,7 @@ impl SomeMask {
     /// Given a mask of more than one bit, return a mask that is a random selection of
     /// roughly half the bits.
     pub fn half_mask(&self) -> Self {
-        let one_bits: Vec<SomeBits> = self.bts.split();
-
-        let indicies: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
-
-        let mut or_bts = SomeBits::new_low(self.num_ints());
-
-        for inx in indicies.iter() {
-            or_bts = or_bts.b_or(&one_bits[*inx]);
-        }
-        SomeMask::new(or_bts)
+        SomeMask::new(self.bts.half_bits())
     }
 
     /// Return the mask after shifting left one position, and adding one.
@@ -215,6 +205,26 @@ mod tests {
                 "SomeMask::test_half_mask num bits {} instead of 4?",
                 test_msk.num_one_bits()
             ));
+        }
+
+        // Test an odd number of bits
+        let test_msk = SomeMask::new_from_string(2, "m0x1011").unwrap().half_mask();
+        println!("test_msk: {}", test_msk);
+
+        if test_msk.num_one_bits() != 1 {
+            return Err(
+                "SomeMask::test_half_mask not one bit?".to_string()
+            );
+        }
+
+        // Test an odd number of bits
+        let test_msk = SomeMask::new_from_string(2, "m0x3031").unwrap().half_mask();
+        println!("test_msk: {}", test_msk);
+
+        if test_msk.num_one_bits() != 2 {
+            return Err(
+                "SomeMask::test_half_mask not two bits?".to_string()
+            );
         }
         Ok(())
     }

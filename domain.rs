@@ -1266,7 +1266,7 @@ mod tests {
                 .groups
                 .find(&dm0.region_from_string("r0XX1").unwrap())
             {
-                let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy, 0);
+                let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
                 println!("needs {}", &nds1);
                 assert!(nds1.contains_similar_need(
                     "AStateMakeGroup",

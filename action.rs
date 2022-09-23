@@ -615,12 +615,6 @@ impl SomeAction {
         loop {
             cnt += 1;
 
-            // Look for needs for states not in groups
-            let mut ndx = self.state_not_in_group_needs(cur_state, memory);
-            if !ndx.is_empty() {
-                nds.append(&mut ndx);
-            }
-
             // Look for needs to find a new edge in an invalidated group
             let mut ndx = self.seek_edge_needs();
             if !ndx.is_empty() {
@@ -794,6 +788,14 @@ impl SomeAction {
                 if self.cleanup_trigger == 0 {
                     self.cleanup(dom, &nds);
                     self.cleanup_trigger = CLEANUP;
+                }
+
+                // Checks that will not return housekeeping needs
+
+                // Look for needs for states not in groups
+                let mut ndx = self.state_not_in_group_needs(cur_state, memory);
+                if !ndx.is_empty() {
+                    nds.append(&mut ndx);
                 }
 
                 return nds;
@@ -1417,7 +1419,7 @@ impl SomeAction {
                 }
 
                 if grpx.region.intersects(&grpy.region) {
-                    let mut ndx = self.group_pair_intersection_needs(grpx, grpy, inx);
+                    let mut ndx = self.group_pair_intersection_needs(grpx, grpy);
                     if !ndx.is_empty() {
                         nds.append(&mut ndx);
                     }
@@ -1608,7 +1610,7 @@ impl SomeAction {
     /// Check two intersecting groups for needs.
     /// Possibly combining two groups.
     /// Possibly checking for a contradictatory intersection.
-    pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup, group_num: usize) -> NeedStore {
+    pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
         //                println!(
         //                    "groups_pair_intersection_needs {} {} and {} {}",
         //                    &grpx.region, &grpx.pn, &grpy.region, grpy.pn
@@ -1620,7 +1622,7 @@ impl SomeAction {
 
         if grpx.pn != grpy.pn {
             let mut nds = NeedStore::new();
-            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy, group_num));
+            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
             return nds;
         }
 
@@ -1648,10 +1650,10 @@ impl SomeAction {
 
                 //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
 
-                nds.push(self.cont_int_region_need(&regy, grpx, grpy, group_num));
+                nds.push(self.cont_int_region_need(&regy, grpx, grpy));
             } else {
                 //println!("pn2 whole intersection is bad");
-                nds.push(self.cont_int_region_need(&reg_int, grpx, grpy, group_num));
+                nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
             }
 
             return nds;
@@ -1677,7 +1679,6 @@ impl SomeAction {
         regx: &SomeRegion,
         grpx: &SomeGroup,
         grpy: &SomeGroup,
-        group_num: usize,
     ) -> SomeNeed {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", &regx, &grpx.region, &grpx.rules, &grpy.region, &grpy.rules);
         // Check for any squares in the region
@@ -1704,7 +1705,6 @@ impl SomeAction {
                 ruls1,
                 group2: grpy.region.clone(),
                 ruls2,
-                group_num,
             };
         }
 
@@ -1758,7 +1758,6 @@ impl SomeAction {
             ruls1,
             group2: grpy.region.clone(),
             ruls2,
-            group_num,
         }
     } // end cont_int_region_need
 

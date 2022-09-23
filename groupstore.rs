@@ -277,22 +277,12 @@ impl GroupStore {
 
     /// Find a group that matches a region, return a mutable reference.
     pub fn find_mut(&mut self, val: &SomeRegion) -> Option<&mut SomeGroup> {
-        for grpx in &mut self.avec {
-            if grpx.region == *val {
-                return Some(grpx);
-            }
-        }
-        None
+        self.avec.iter_mut().find(|grpx| grpx.region == *val)
     }
 
     /// Find a group that matches a region, return a reference.
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
-        for grpx in &self.avec {
-            if grpx.region == *val {
-                return Some(grpx);
-            }
-        }
-        None
+        self.avec.iter().find(|&grpx| grpx.region == *val)
     }
 
     /// Set the anchor for a group.

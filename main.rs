@@ -186,6 +186,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         // Get the needs of all Domains / Actions
         let mut nds = dmxs.get_needs();
+
         //println!("main {} needs {}", nds.len(), &nds);
         let mut need_plans = dmxs.evaluate_needs(&nds);
 

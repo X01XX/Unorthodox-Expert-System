@@ -35,7 +35,7 @@ impl fmt::Display for SomeNeed {
                 act_num,
                 target_state,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample State {}, Not in a group)",
+                "N(Dom {} Act {} Pri {} Sample State {} not in a group)",
                 dom_num, act_num, pri, target_state
             ),
             SomeNeed::ContradictoryIntersection {
@@ -46,10 +46,9 @@ impl fmt::Display for SomeNeed {
                 ruls1,
                 group2,
                 ruls2,
-                group_num,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {} gn {})",
-                dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2, group_num
+                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {})",
+                dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2
             ),
             SomeNeed::ToRegion {
                 dom_num,
@@ -167,7 +166,6 @@ pub enum SomeNeed {
         ruls1: RuleStore,
         group2: SomeRegion,
         ruls2: RuleStore,
-        group_num: usize, // lowest group number of the two.
     },
     /// Sample a state to limit a group.
     LimitGroup {
@@ -469,15 +467,25 @@ impl SomeNeed {
             SomeNeed::ContradictoryIntersection { .. } => 1,
             SomeNeed::SeekEdge { .. } => 2,
             SomeNeed::AStateMakeGroup { .. } => 3,
-            SomeNeed::StateNotInGroup { .. } => 4,
-            SomeNeed::ConfirmGroup { .. } => 5,
-            SomeNeed::LimitGroupAdj { .. } => 6,
-            SomeNeed::LimitGroup { .. } => 7,
-            SomeNeed::ToOptimalRegion { .. } => 8,
-            SomeNeed::ToRegion { .. } => 9,
-            _ => 9999,
+            SomeNeed::ConfirmGroup { .. } => 4,
+            SomeNeed::LimitGroupAdj { .. } => 4,
+            SomeNeed::LimitGroup { .. } => 4,
+            SomeNeed::ToOptimalRegion { .. } => 5,
+            SomeNeed::ToRegion { .. } => 6,
+            SomeNeed::StateNotInGroup { .. } => 7,
+            _ => usize::MAX,
         } // end match ndx
     } // end priority
+
+    /// Return a group number, the order in the group store list.
+    pub fn group_num(&self) -> usize {
+        match self {
+            SomeNeed::LimitGroup { group_num, .. } => *group_num,
+            SomeNeed::LimitGroupAdj { group_num, .. } => *group_num,
+            SomeNeed::ConfirmGroup { group_num, .. } => *group_num,
+            _=> usize::MAX,
+        }
+    }
 
     /// Return true if a state satisfies a need.
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
