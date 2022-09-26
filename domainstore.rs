@@ -384,84 +384,34 @@ impl DomainStore {
 
         assert!(!can_nds_pln.is_empty());
 
-        // Get the first need, in a group of needs with the same priority/type
-        let cnp_inx = can_nds_pln[0].1;
+        // Find the shortest plan length
+        let mut min_plan_len = std::usize::MAX;
+        for cnp_tpl in &can_nds_pln {
+            let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-        let nd0 = &nds[ndsinx_plan_all[cnp_inx].inx];
-        //println!("nd0 {}", nd0);
-
-        // Make further selections of needs that can be met,
-        //
-        // If the needs are AStateMakeGroup,
-        //   Find the largest number-X group that will be created,
-        //   Select all needs that create a group that large.
-        //
-        // Otherwise
-        //   Find the shortest plan length.
-        //   Select needs with the shortest plans.
-        match nd0 {
-            // Get the largest number-X group created
-            SomeNeed::AStateMakeGroup { .. } => {
-                // Get max x group num
-                let mut a_state_make_group_max_x = 0;
-                for cnp_tpl in &can_nds_pln {
-                    //let cd = cnp_tup.2;
-
-                    //let itmx = &ndsinx_plan_all[*cd];
-
-                    let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
-
-                    if let SomeNeed::AStateMakeGroup { num_x: nx, .. } = ndx {
-                        if *nx > a_state_make_group_max_x {
-                            a_state_make_group_max_x = *nx;
-                        }
-                    }
-                } // next cnp_tup
-
-                // Save indicies for the max-X group created needs
-                for (cnp_inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
-                    //let itmx = &ndsinx_plan_all[*cd];
-
-                    let ndx = &nds[ndsinx_plan_all[cnp_tpl.1].inx];
-
-                    if let SomeNeed::AStateMakeGroup { num_x: nx, .. } = ndx {
-                        if *nx == a_state_make_group_max_x {
-                            can_do2.push(cnp_inx);
-                        }
+            match &itmx.plans {
+                Some(plnx) => {
+                    if plnx.len() < min_plan_len {
+                        min_plan_len = plnx.len();
                     }
                 }
-            } // end match AStateMakeGroup
-            _ => {
-                // Find the shortest plan length
-                let mut min_plan_len = std::usize::MAX;
-                for cnp_tpl in &can_nds_pln {
-                    let itmx = &ndsinx_plan_all[cnp_tpl.1];
+                None => (),
+            }
+        }
 
-                    match &itmx.plans {
-                        Some(plnx) => {
-                            if plnx.len() < min_plan_len {
-                                min_plan_len = plnx.len();
-                            }
-                        }
-                        None => (),
+        // Push index to shortest plan needs
+        for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
+            let itmx = &ndsinx_plan_all[cnp_tpl.1];
+
+            match &itmx.plans {
+                Some(plnx) => {
+                    if plnx.len() == min_plan_len {
+                        can_do2.push(inx);
                     }
                 }
-
-                // Push index to shortest plan needs
-                for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
-                    let itmx = &ndsinx_plan_all[cnp_tpl.1];
-
-                    match &itmx.plans {
-                        Some(plnx) => {
-                            if plnx.len() == min_plan_len {
-                                can_do2.push(inx);
-                            }
-                        }
-                        None => (),
-                    }
-                }
-            } // End match all other needs
-        } // End match nd0
+                None => (),
+            }
+        }
 
         assert!(!can_do2.is_empty());
 
