@@ -126,23 +126,43 @@ impl RegionStore {
 
     /// Return a RegionStore of supersets of a state.
     pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
-
         Self {
-            avec: self.avec.iter().filter_map(|regx| if regx.is_superset_of_state(sta) { Some(regx.clone()) } else { None }).collect(),
+            avec: self
+                .avec
+                .iter()
+                .filter_map(|regx| {
+                    if regx.is_superset_of_state(sta) {
+                        Some(regx.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     /// Return the number of supersets of a state.
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
-
-        self.avec.iter().map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 }).sum()
+        self.avec
+            .iter()
+            .map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 })
+            .sum()
     }
 
     /// Return a RegionStore of not supersets of a state.
     pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
-
         Self {
-            avec: self.avec.iter().filter_map(|regx| if regx.is_superset_of_state(sta) { None } else { Some(regx.clone()) }).collect(),
+            avec: self
+                .avec
+                .iter()
+                .filter_map(|regx| {
+                    if regx.is_superset_of_state(sta) {
+                        None
+                    } else {
+                        Some(regx.clone())
+                    }
+                })
+                .collect(),
         }
     }
 
@@ -155,8 +175,11 @@ impl RegionStore {
 
     /// Return true if a given state is only in one region.
     pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
-
-        self.avec.iter().map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 }).sum::<usize>() == 1
+        self.avec
+            .iter()
+            .map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 })
+            .sum::<usize>()
+            == 1
     }
 
     /// Find and remove a given region.

@@ -181,13 +181,13 @@ impl SomeGroup {
 
     /// Set limited to false.
     pub fn set_limited_off(&mut self) {
-//        assert!(self.limited);
+        //        assert!(self.limited);
         self.limited = false;
     }
 
     /// Set limited to true.
     pub fn set_limited(&mut self) {
-//        assert!(!self.limited);
+        //        assert!(!self.limited);
 
         self.limited = true;
 

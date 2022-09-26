@@ -11,9 +11,9 @@
 //!
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
+use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::mask::SomeMask;
-use crate::bits::BitsRef;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -119,31 +119,30 @@ impl SomeState {
     // Return the b_xor of a state and an structure that implements BitsRef.
     pub fn bits_xor<U: BitsRef>(&self, two: &U) -> SomeState {
         Self {
-            bts: self.bts.b_xor(two.bitsref())
+            bts: self.bts.b_xor(two.bitsref()),
         }
     }
 
     // Return the b_or of a state and an structure that implements BitsRef.
     pub fn bits_or<U: BitsRef>(&self, two: &U) -> SomeState {
         Self {
-            bts: self.bts.b_or(two.bitsref())
+            bts: self.bts.b_or(two.bitsref()),
         }
     }
 
     // Return the b_and of a state and an structure that implements BitsRef.
     pub fn bits_and<U: BitsRef>(&self, two: &U) -> SomeState {
         Self {
-            bts: self.bts.b_and(two.bitsref())
+            bts: self.bts.b_and(two.bitsref()),
         }
     }
 
     // Return a state with the bits reversed.
     pub fn bits_not(&self) -> SomeState {
         Self {
-            bts: self.bts.b_not()
+            bts: self.bts.b_not(),
         }
     }
-
 } // end impl SomeState
 
 impl BitsRef for SomeState {

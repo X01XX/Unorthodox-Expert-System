@@ -1,12 +1,12 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
+use crate::bits::{bits_and, bits_xor};
 use crate::pn::Pn;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::truth::Truth;
-use crate::bits::{bits_xor, bits_and};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -258,7 +258,11 @@ impl SomeSquare {
             return false;
         }
 
-        bits_and(&bits_xor(&self.state, &sqr1.state), &bits_xor(&self.state, &sqr2.state)).is_low()
+        bits_and(
+            &bits_xor(&self.state, &sqr1.state),
+            &bits_xor(&self.state, &sqr2.state),
+        )
+        .is_low()
     }
 
     pub fn distance(&self, other: &SomeSquare) -> usize {

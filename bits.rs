@@ -501,7 +501,7 @@ impl SomeBits {
     pub fn push_0(&self) -> Self {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
-    
+
     /// Given a mask of more than one bit, return a SomeBits that is a random selection of
     /// roughly half the bits.
     pub fn half_bits(&self) -> Self {

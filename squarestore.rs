@@ -62,20 +62,33 @@ impl SquareStore {
     /// Return the states for all squares.
     pub fn all_square_states(&self) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().cloned().collect()
+            avec: self.ahash.keys().cloned().collect(),
         }
     }
 
     /// Return a list of squares in a given region.
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().filter_map(|keyx| if areg.is_superset_of_state(keyx) { Some(keyx.clone()) } else { None }).collect()
+            avec: self
+                .ahash
+                .keys()
+                .filter_map(|keyx| {
+                    if areg.is_superset_of_state(keyx) {
+                        Some(keyx.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     /// Return a list of squares in a given region.
     pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
-        self.ahash.values().filter(|sqrx| areg.is_superset_of_state(&sqrx.state)).collect()
+        self.ahash
+            .values()
+            .filter(|sqrx| areg.is_superset_of_state(&sqrx.state))
+            .collect()
     }
 
     /// Return a list of squares between two given squares.
@@ -118,29 +131,68 @@ impl SquareStore {
     /// Return a list of square states not in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().filter_map(|keyx| if !regs.any_superset_of_state(keyx) { Some(keyx.clone()) } else { None }).collect()
+            avec: self
+                .ahash
+                .keys()
+                .filter_map(|keyx| {
+                    if !regs.any_superset_of_state(keyx) {
+                        Some(keyx.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     /// Return a list of squares with pn GT Pn:One, not yet pnc.
     pub fn pn_gt1_no_pnc(&self) -> StateStore {
         StateStore {
-            avec: self.ahash.values().filter_map(|sqrx| if sqrx.pn != Pn::One && !sqrx.pnc { Some(sqrx.state.clone()) } else { None }).collect()
+            avec: self
+                .ahash
+                .values()
+                .filter_map(|sqrx| {
+                    if sqrx.pn != Pn::One && !sqrx.pnc {
+                        Some(sqrx.state.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     /// Return a list of square states that are only in one region of a list of regions.
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().filter_map(|keyx| if regs.state_in_1_region(keyx) { Some(keyx.clone()) } else { None }).collect()
+            avec: self
+                .ahash
+                .keys()
+                .filter_map(|keyx| {
+                    if regs.state_in_1_region(keyx) {
+                        Some(keyx.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     /// Return a list of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
         StateStore {
-            avec: self.ahash.keys().filter_map(|keyx| if regx.is_adjacent_state(keyx) { Some(keyx.clone()) } else { None }).collect()
+            avec: self
+                .ahash
+                .keys()
+                .filter_map(|keyx| {
+                    if regx.is_adjacent_state(keyx) {
+                        Some(keyx.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
-
     }
 } // end impl SquareStore

@@ -1168,8 +1168,12 @@ impl SomeAction {
     /// return an empty NeedStore.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return an empty NeedStore.
-    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, anchors: &StateStore, group_num: usize) -> NeedStore {
-
+    pub fn limit_group_anchor_needs(
+        &self,
+        grpx: &SomeGroup,
+        anchors: &StateStore,
+        group_num: usize,
+    ) -> NeedStore {
         let mut ret_nds = NeedStore::new();
 
         let mut stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);

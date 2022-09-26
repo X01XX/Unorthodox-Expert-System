@@ -1,9 +1,9 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
+use crate::bits::bits_or;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::bits::bits_or;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

@@ -10,9 +10,9 @@
 //!
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts));
 
+use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::state::SomeState;
-use crate::bits::BitsRef;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -116,7 +116,10 @@ impl SomeMask {
     pub fn split(&self) -> Vec<Self> {
         let bitsx = self.bts.split();
 
-        bitsx.iter().map(|bitx| SomeMask::new(bitx.clone())).collect()
+        bitsx
+            .iter()
+            .map(|bitx| SomeMask::new(bitx.clone()))
+            .collect()
     }
 
     /// Return the number of ints used to express a SomeMask instance.
@@ -159,31 +162,30 @@ impl SomeMask {
     // Return the b_xor of a mask and an structure that implements BitsRef.
     pub fn bits_xor<U: BitsRef>(&self, two: &U) -> SomeMask {
         Self {
-            bts: self.bts.b_xor(two.bitsref())
+            bts: self.bts.b_xor(two.bitsref()),
         }
     }
 
     // Return the b_or of a mask and an structure that implements BitsRef.
     pub fn bits_or<U: BitsRef>(&self, two: &U) -> SomeMask {
         Self {
-            bts: self.bts.b_or(two.bitsref())
+            bts: self.bts.b_or(two.bitsref()),
         }
     }
 
     // Return the b_and of  a mask and an structure that implements BitsRef.
     pub fn bits_and<U: BitsRef>(&self, two: &U) -> SomeMask {
         Self {
-            bts: self.bts.b_and(two.bitsref())
+            bts: self.bts.b_and(two.bitsref()),
         }
     }
 
     // Return a mask with the bits reversed.
     pub fn bits_not(&self) -> SomeMask {
         Self {
-            bts: self.bts.b_not()
+            bts: self.bts.b_not(),
         }
     }
-
 } // end impl SomeMask
 
 impl BitsRef for SomeMask {
@@ -212,9 +214,7 @@ mod tests {
         println!("test_msk: {}", test_msk);
 
         if test_msk.num_one_bits() != 1 {
-            return Err(
-                "SomeMask::test_half_mask not one bit?".to_string()
-            );
+            return Err("SomeMask::test_half_mask not one bit?".to_string());
         }
 
         // Test an odd number of bits
@@ -222,9 +222,7 @@ mod tests {
         println!("test_msk: {}", test_msk);
 
         if test_msk.num_one_bits() != 2 {
-            return Err(
-                "SomeMask::test_half_mask not two bits?".to_string()
-            );
+            return Err("SomeMask::test_half_mask not two bits?".to_string());
         }
         Ok(())
     }

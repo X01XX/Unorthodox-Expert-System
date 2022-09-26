@@ -444,10 +444,22 @@ impl SomeRule {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
-            b00: self.b00.bits_and(&other.b00).bits_or(&self.b01.bits_and(&other.b10)),
-            b01: self.b01.bits_and(&other.b11).bits_or(&self.b00.bits_and(&other.b01)),
-            b11: self.b11.bits_and(&other.b11).bits_or(&self.b10.bits_and(&other.b01)),
-            b10: self.b10.bits_and(&other.b00).bits_or(&self.b11.bits_and(&other.b10)),
+            b00: self
+                .b00
+                .bits_and(&other.b00)
+                .bits_or(&self.b01.bits_and(&other.b10)),
+            b01: self
+                .b01
+                .bits_and(&other.b11)
+                .bits_or(&self.b00.bits_and(&other.b01)),
+            b11: self
+                .b11
+                .bits_and(&other.b11)
+                .bits_or(&self.b10.bits_and(&other.b01)),
+            b10: self
+                .b10
+                .bits_and(&other.b00)
+                .bits_or(&self.b11.bits_and(&other.b10)),
         }
     }
 

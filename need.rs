@@ -464,15 +464,15 @@ impl SomeNeed {
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
-            SomeNeed::ContradictoryIntersection { .. } => 1,
-            SomeNeed::SeekEdge { .. } => 2,
-            SomeNeed::AStateMakeGroup { .. } => 3,
-            SomeNeed::ConfirmGroup { .. } => 4,
-            SomeNeed::LimitGroupAdj { .. } => 4,
-            SomeNeed::LimitGroup { .. } => 4,
-            SomeNeed::ToOptimalRegion { .. } => 5,
-            SomeNeed::ToRegion { .. } => 6,
-            SomeNeed::StateNotInGroup { .. } => 7,
+            SomeNeed::ContradictoryIntersection { .. } => 100,
+            SomeNeed::SeekEdge { .. } => 200,
+            SomeNeed::AStateMakeGroup { .. } => 300,
+            SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
+            SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
+            SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
+            SomeNeed::ToOptimalRegion { .. } => 500,
+            SomeNeed::ToRegion { .. } => 600,
+            SomeNeed::StateNotInGroup { .. } => 700,
             _ => usize::MAX,
         } // end match ndx
     } // end priority
@@ -483,7 +483,7 @@ impl SomeNeed {
             SomeNeed::LimitGroup { group_num, .. } => *group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => *group_num,
             SomeNeed::ConfirmGroup { group_num, .. } => *group_num,
-            _=> usize::MAX,
+            _ => usize::MAX,
         }
     }
 

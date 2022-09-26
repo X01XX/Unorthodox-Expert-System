@@ -274,7 +274,7 @@ impl DomainStore {
             //   until at least one has a plan.
             //
             // Split groups into vectors of length 6 at the most.
-            let span = 15;
+            let span = 6;
 
             // Randomly pick up to 6 needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
@@ -292,42 +292,10 @@ impl DomainStore {
                     avec2.push(avec[rp1.pick().unwrap()]);
                 }
 
-                let mut ndsinx_plan = avec2
+                let ndsinx_plan = avec2
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| self.make_plans(*nd_inx, &nds[*nd_inx].target()))
                     .collect::<Vec<InxPlan>>();
-
-                // Find min group num, and if there are other, larger group nums.
-                let mut min_group_num = usize::MAX;
-                let mut max_group_num = 0;
-                for inxplnx in ndsinx_plan.iter() {
-                    if inxplnx.plans.is_some() {
-                        if nds[inxplnx.inx].group_num() < min_group_num {
-                            min_group_num = nds[inxplnx.inx].group_num();
-                        }
-                        if nds[inxplnx.inx].group_num() > max_group_num {
-                            max_group_num = nds[inxplnx.inx].group_num();
-                        }
-                    }
-                }
-
-                if min_group_num < usize::MAX && min_group_num != max_group_num {
-
-                    // For needs with a groups num, greater than the min group num, delete the plan.
-                    for inxplnx in ndsinx_plan.iter_mut() {
-                        if inxplnx.plans.is_some() {
-                            if nds[inxplnx.inx].group_num() > min_group_num &&
-                                nds[inxplnx.inx].group_num() != usize::MAX {
-                                    //println!("Deleting plan for need with gn {}", nds[inxplnx.inx].group_num());
-                                    inxplnx.plans = None;
-                            }
-                        } else {
-                            //println!("No plan for need with gn {}", nds[inxplnx.inx].group_num());
-                        }
-                    }
-
-                }
-
 
                 // If at least one plan found, return vector of InxPlan structs.
                 for inxplnx in ndsinx_plan.iter() {

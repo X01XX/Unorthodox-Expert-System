@@ -127,9 +127,18 @@ impl GroupStore {
 
     /// Return the groups regions a state is in.
     pub fn groups_state_in(&self, stax: &SomeState) -> RegionStore {
-
         RegionStore {
-            avec: self.avec.iter().filter_map(|grpx| if grpx.region.is_superset_of_state(stax) { Some(grpx.region.clone()) } else { None }).collect(),
+            avec: self
+                .avec
+                .iter()
+                .filter_map(|grpx| {
+                    if grpx.region.is_superset_of_state(stax) {
+                        Some(grpx.region.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
@@ -145,9 +154,12 @@ impl GroupStore {
 
     /// Return a list of anchor states.
     pub fn anchor_states(&self) -> StateStore {
-
         StateStore {
-            avec: self.avec.iter().filter_map(|grpx| grpx.anchor.as_ref().cloned()).collect()
+            avec: self
+                .avec
+                .iter()
+                .filter_map(|grpx| grpx.anchor.as_ref().cloned())
+                .collect(),
         }
     }
 
@@ -163,9 +175,18 @@ impl GroupStore {
 
     /// Return regions of any group is a superset, or equal, to a region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
-
         RegionStore {
-            avec: self.avec.iter().filter_map(|grpx| if reg.is_subset_of(&grpx.region) { Some(grpx.region.clone()) } else { None }).collect(),
+            avec: self
+                .avec
+                .iter()
+                .filter_map(|grpx| {
+                    if reg.is_subset_of(&grpx.region) {
+                        Some(grpx.region.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
@@ -234,7 +255,14 @@ impl GroupStore {
         self.remove_subsets_of(&grp.region, dom, act);
 
         // push the new group
-        println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
+        if grp.region.state1 != grp.region.state2 {
+            println!(
+                "\nDom {} Act {} Adding group {} from {} and {}",
+                &dom, &act, grp, grp.region.state1, grp.region.state2
+            );
+        } else {
+            println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);
+        }
         self.avec.push(grp);
 
         self.calc_aggregate_changes_mask();
