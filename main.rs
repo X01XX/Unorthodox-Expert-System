@@ -192,45 +192,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         // Get optimal region needs.
         if let Some(needx) = dmxs.check_optimal() {
-            let inxx = dmxs.make_plans(0, &needx.target());
+            let inxx = dmxs.make_plans(nds.len(), &needx.target());
             if inxx.plans.is_some() {
                 nds.push(needx);
                 need_plans.push(inxx);
             }
         }
-
-        // Check if all needs are for the same domain, change domain number if needed
-        if !nds.is_empty() {
-            match nds[0] {
-                SomeNeed::ToOptimalRegion { .. } => (),
-                _ => {
-                    let mut need_domain = nds[0].dom_num();
-                    let mut same_domain = true;
-
-                    if need_plans.is_empty() {
-                        for ndx in nds.iter() {
-                            if ndx.dom_num() != need_domain {
-                                same_domain = false;
-                                break;
-                            }
-                        }
-                    } else {
-                        need_domain = nds[need_plans[0].inx].dom_num();
-                        for ndx in need_plans.iter() {
-                            if nds[ndx.inx].dom_num() != need_domain {
-                                same_domain = false;
-                                break;
-                            }
-                        }
-                    }
-
-                    if same_domain && dom_num != need_domain {
-                        //println!("changing domain from {} to {}", &dom_num, &need_domain);
-                        dom_num = need_domain;
-                    }
-                }
-            }
-        } // endif !nds.is_empty()
 
         println!("\nAll domain states: {}", dmxs.all_current_states());
 
@@ -349,6 +316,16 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     let nd_inx = need_plans[np_inx].inx;
                     let ndx = &nds[nd_inx];
 
+                    match ndx {
+                        SomeNeed::ToOptimalRegion { .. } => (),
+                        _ => {
+                            if dom_num != ndx.dom_num() {
+                                // Show "before" state before running need.
+                                println!("\nAll domain states: {}", dmxs.all_current_states());
+                                print_domain(&mut dmxs, ndx.dom_num());
+                            }
+                        }
+                    }
                     let pln = need_plans[np_inx].plans.as_ref().unwrap();
 
                     //println!("need {}, plan {}", &ndx, &pln);
@@ -472,6 +449,21 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 let pln = inxpln.plans.as_ref().unwrap();
 
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
+
+                                match ndx {
+                                    SomeNeed::ToOptimalRegion { .. } => (),
+                                    _ => {
+                                        if dom_num != ndx.dom_num() {
+                                            // Show "before" state before running need.
+                                            println!(
+                                                "\nAll domain states: {}",
+                                                dmxs.all_current_states()
+                                            );
+                                            print_domain(&mut dmxs, ndx.dom_num());
+                                            dom_num = ndx.dom_num();
+                                        }
+                                    }
+                                }
 
                                 if !pln.is_empty() {
                                     dmxs.run_plans(pln);
