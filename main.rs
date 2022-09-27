@@ -190,15 +190,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         //println!("main {} needs {}", nds.len(), &nds);
         let mut need_plans = dmxs.evaluate_needs(&nds);
 
-        // Boredom processing if no needs, or no needs can be done.
-        if need_plans.is_empty() {
-            if let Some(needx) = dmxs.check_optimal() {
-                // println!("Optimum need found {}", needx);
-                let inxx = dmxs.make_plans(0, &needx.target());
-                if inxx.plans.is_some() {
-                    nds.push(needx);
-                    need_plans.push(inxx);
-                }
+        // Get optimal region needs.
+        if let Some(needx) = dmxs.check_optimal() {
+            let inxx = dmxs.make_plans(0, &needx.target());
+            if inxx.plans.is_some() {
+                nds.push(needx);
+                need_plans.push(inxx);
             }
         }
 
@@ -234,17 +231,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 }
             }
         } // endif !nds.is_empty()
-
-        // See if any need can be done, for print_domain call.
-        //        let mut can_do_flag = false;
-        //        for ndplnx in need_plans.iter() {
-        //            if let Some(_) = ndplnx.pln {
-        //                if nds[ndplnx.inx].type_string() != "ToRegion" {
-        //                    can_do_flag = true;
-        //                    break;
-        //                }
-        //            }
-        //        }
 
         println!("\nAll domain states: {}", dmxs.all_current_states());
 

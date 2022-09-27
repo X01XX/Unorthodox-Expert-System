@@ -470,9 +470,9 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
-            SomeNeed::ToOptimalRegion { .. } => 500,
-            SomeNeed::ToRegion { .. } => 600,
-            SomeNeed::StateNotInGroup { .. } => 700,
+            SomeNeed::StateNotInGroup { .. } => 500,
+            SomeNeed::ToOptimalRegion { .. } => 600,
+            SomeNeed::ToRegion { .. } => 700,
             _ => usize::MAX,
         } // end match ndx
     } // end priority
