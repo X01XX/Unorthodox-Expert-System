@@ -221,6 +221,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 }
 
                 println!("\nNeeds that can be done: None");
+                dmxs.print_optimal();
             } else {
                 // Get count of needs that can, and cannot, be done.
                 for ndplnx in need_plans.iter() {
@@ -247,6 +248,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 // Print needs that can be done.
                 if can_do == 0 {
                     println!("\nNeeds that can be done: None");
+                    dmxs.print_optimal();
                 } else {
                     println!("\nNeeds that can be done:");
 

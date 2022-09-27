@@ -233,6 +233,15 @@ impl DomainStore {
         //println!("domainstore::evaluate_needs");
         let mut last_priority = 0;
 
+        // Get optimal region info.
+        let in_optimal = self
+            .optimal
+            .any_supersets_of_states(&self.all_current_states());
+        let optimal_priority = SomeNeed::ToOptimalRegion {
+            target_regions: RegionStore::new(),
+        }
+        .priority();
+
         loop {
             // find next lowest priority number (highest priority)needs
             let mut avec = Vec::<usize>::new();
@@ -246,6 +255,11 @@ impl DomainStore {
             }
 
             //println!("least priority = {}", least_priority);
+
+            // If in optimal region, and priority not LE optimal priority, stop evaluating needs.
+            if in_optimal && least_priority > optimal_priority {
+                return Vec::<InxPlan>::new();
+            }
 
             // No plans found for any need, or no needs.
             if least_priority == usize::MAX {
