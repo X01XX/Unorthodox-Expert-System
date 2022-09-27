@@ -464,8 +464,8 @@ impl SomeNeed {
     //  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
-            SomeNeed::ContradictoryIntersection { .. } => 100,
-            SomeNeed::SeekEdge { .. } => 200,
+            SomeNeed::SeekEdge { .. } => 100,
+            SomeNeed::ContradictoryIntersection { .. } => 200,
             SomeNeed::AStateMakeGroup { num_x, .. } => 399 - num_x,
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,

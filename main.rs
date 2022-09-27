@@ -185,19 +185,10 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         step_inc = 1;
 
         // Get the needs of all Domains / Actions
-        let mut nds = dmxs.get_needs();
+        let nds = dmxs.get_needs();
 
         //println!("main {} needs {}", nds.len(), &nds);
-        let mut need_plans = dmxs.evaluate_needs(&nds);
-
-        // Get optimal region needs.
-        if let Some(needx) = dmxs.check_optimal() {
-            let inxx = dmxs.make_plans(nds.len(), &needx.target());
-            if inxx.plans.is_some() {
-                nds.push(needx);
-                need_plans.push(inxx);
-            }
-        }
+        let need_plans = dmxs.evaluate_needs(&nds);
 
         println!("\nAll domain states: {}", dmxs.all_current_states());
 

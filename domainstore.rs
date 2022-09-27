@@ -157,6 +157,11 @@ impl DomainStore {
             nds_agg.append(nst);
         }
 
+        // Get optimal region needs.
+        if let Some(needx) = self.check_optimal() {
+            nds_agg.push(needx);
+        }
+
         nds_agg
     }
 
