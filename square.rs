@@ -91,9 +91,9 @@ impl SomeSquare {
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
         let mut str_info = String::from(&format!(
-            "\n  Square {} adding result {} {} ",
+            "\n  Square {} adding result {} {}",
             self.str_terse(),
-            self.results.len(),
+            self.results.len() + 1,
             &st
         ));
 
