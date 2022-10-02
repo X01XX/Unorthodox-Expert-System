@@ -96,7 +96,9 @@ fn init() -> DomainStore {
     // Create domain 1.
     let mut dom1 = SomeDomain::new(dmxs.len(), init_state);
 
-    // Add actions 0 through 4.
+    // Add actions 0 through 5.
+    dom1.add_action();
+    dom1.add_action();
     dom1.add_action();
     dom1.add_action();
     dom1.add_action();

@@ -1664,12 +1664,11 @@ impl SomeAction {
         }
 
         if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
-            if grpx.pn == Pn::One || (grpx.pnc && grpy.pnc) {
-                if self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn)
-                    && self.all_subset_rules_in_region(&reg_both, &rulsxy)
-                {
-                    return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
-                }
+            if (grpx.pn == Pn::One || (grpx.pnc && grpy.pnc))
+                && self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn)
+                && self.all_subset_rules_in_region(&reg_both, &rulsxy)
+            {
+                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
             }
         }
 
