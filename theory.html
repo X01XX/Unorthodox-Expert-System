@@ -1591,22 +1591,18 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Use recursion to find a path from the restricted rule result-region to the goal-region.
     </p>
     <p class="indent1">
-    Otherwise, randomly pick a rule that has an initial region that intersects the from-region, or a result region
-    that intersects the goal-region.
-    </p>
-    <p class="indent1">
-    Forward Chaining
+    Otherwise, randomly pick a rule.
     </p>
     <p class="indent2">
     If the initial-region of the selected rule is a superset of the from-region, restrict the initial-region of the rule. Use recursion
     to find a path from the restricted rule result-region to the goal-region.
     </p>
-    <p class="indent1">
-    Backward Chaining
-    </p>
     <p class="indent2">
     If the result-region of the selected rule intersects the goal-region, restrict the result-region of the rule. Use recursion
     to find a path from the from-region to the restricted rule initial-region.
+    </p>
+    <p class="indent2">
+    Otherwise, process as an asymmetric step.
     </p>
     <p class="indent1">
     Keep a count of the recursion depth, and fail the process at some point.  
@@ -1757,7 +1753,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 09/23/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 10/03/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

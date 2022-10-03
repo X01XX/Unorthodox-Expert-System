@@ -431,35 +431,16 @@ impl SomeDomain {
             assert!(!selected_steps.is_empty());
             let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
-            // Asymmetrical chaining
-            if let Some(first_steps) =
-                self.random_depth_first_search2(from_reg, &stepx.initial, depth - 1)
-            {
-                let stepy = stepx.restrict_initial_region(first_steps.result_region());
-                if let Some(next_steps) =
-                    self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
-                {
-                    let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
-                    return Some(steps1.link(&next_steps));
-                }
-            }
-            return None;
-        }
-
-        // Assemble steps for forward or backward chaining.
-        for vecx in steps_by_change_vov.iter() {
-            for stepx in vecx.iter() {
-                if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
-                    selected_steps.push(stepx);
-                }
-            }
+            return self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
         // Randomly choose a step.
-        assert!(!selected_steps.is_empty());
-        let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
+        let setx = rand::thread_rng().gen_range(0..steps_by_change_vov.len());
+        let stinx = rand::thread_rng().gen_range(0..steps_by_change_vov[setx].len());
 
-        // Forward chaining
+        let stepx = steps_by_change_vov[setx][stinx];
+
+        // Process a forward chaining step
         if stepx.initial.is_superset_of(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
             if let Some(next_steps) =
@@ -470,7 +451,7 @@ impl SomeDomain {
             return None;
         }
 
-        // Backward chaining
+        // Process a backward chaining step
         if stepx.result.intersects(goal_reg) {
             let stepy = stepx.restrict_result_region(goal_reg);
             if let Some(prev_steps) =
@@ -481,8 +462,31 @@ impl SomeDomain {
             return None;
         }
 
-        None
+        // Must be an asymetric step
+        self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
+
+    // Do asymmetric chaining.
+    fn asymetric_chaining(
+        &self,
+        from_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        stepx: &SomeStep,
+        depth: usize,
+    ) -> Option<SomePlan> {
+        if let Some(first_steps) =
+            self.random_depth_first_search2(from_reg, &stepx.initial, depth)
+        {
+            let stepy = stepx.restrict_initial_region(first_steps.result_region());
+            if let Some(next_steps) =
+                self.random_depth_first_search2(&stepy.result, goal_reg, depth)
+            {
+                let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
+                return Some(steps1.link(&next_steps));
+            }
+        }
+        None
+    }
 
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
