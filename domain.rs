@@ -462,7 +462,7 @@ impl SomeDomain {
             return None;
         }
 
-        // Must be an asymetric step
+        // Must be an asymmetric step
         self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
@@ -474,8 +474,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-        if let Some(first_steps) =
-            self.random_depth_first_search2(from_reg, &stepx.initial, depth)
+        if let Some(first_steps) = self.random_depth_first_search2(from_reg, &stepx.initial, depth)
         {
             let stepy = stepx.restrict_initial_region(first_steps.result_region());
             if let Some(next_steps) =

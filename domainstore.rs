@@ -295,7 +295,7 @@ impl DomainStore {
             // Split groups into vectors of length 6 at the most.
             let span = 6;
 
-            // Randomly pick up to 6 needs at a time, from the current priority.
+            // Randomly pick up to span needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
             let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
