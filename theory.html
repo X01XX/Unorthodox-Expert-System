@@ -1753,7 +1753,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 10/16/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 10/21/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1775,31 +1775,33 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 <h3>Possible regions</h3>
 
 <p>
-The possible regions of a 4-bit  K-Map can  be calculated by the number of bit positions and the number of possible values, 0, 1 and X.
+The possible regions of a K-Map can be calculated using the number of bit positions, and the number of possible values (0, 1 and X).
 </p>
 <p>
-<p>
+For a 4-bit K-map:
+</p>
+<p class="indent1">
 The number of possible regions is 3<sup>4</sup> = 81.
 </p>
-<p>
+<p class="indent1">
 Each kind of region, based on the number of X-bit positions, can be calculated using the number of non-X-bit positions.
 </p>
-<p>
-Zero non-X positions, 1 (4-X region).
+<p class="indent2">
+For zero non-X positions, there is 1, 4-X region.
 </p>
-<p>
-One non-X position, (2<sup>1</sup> values) 2 * 4 (any one of 4) = 8 (3-X regions).
+<p class="indent2">
+One non-X position, (2<sup>1</sup> values) 2 * 4 (any one of 4) = 8, 3-X regions.
 </p>
-<p>
-Two non-X positions, (2<sup>2</sup> values) 4 * 6 (any two of 4) = 24 (2-X regions).
+<p class="indent2">
+Two non-X positions, (2<sup>2</sup> values) 4 * 6 (any two of 4) = 24, 2-X regions.
 </p>
-<p>
-Three non-X positions, (2<sup>3</sup> values) 8 * 4 (any three of 4) = 32 (1-X regions).
+<p class="indent2">
+Three non-X positions, (2<sup>3</sup> values) 8 * 4 (any three of 4) = 32, 1-X regions.
 </p>
-<p>
-Four non-X positions, 2<sup>4</sup> values = 16.
+<p class="indent2">
+Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
 </p>
-<p>
+<p class="indent2">
 1 + 8 + 24 +32 +16 = 81.
 </p>
 <h3>Splitting up bits</h3>
