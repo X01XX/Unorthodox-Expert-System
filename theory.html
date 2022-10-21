@@ -1753,7 +1753,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 10/03/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 10/16/2022</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1772,6 +1772,36 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 
   <p>You can add more bits, but the number of K-Maps goes up exponentially.</p>
 
+<h3>Possible regions</h3>
+
+<p>
+The possible regions of a 4-bit  K-Map can  be calculated by the number of bit positions and the number of possible values, 0, 1 and X.
+</p>
+<p>
+<p>
+The number of possible regions is 3<sup>4</sup> = 81.
+</p>
+<p>
+Each kind of region, based on the number of X-bit positions, can be calculated using the number of non-X-bit positions.
+</p>
+<p>
+Zero non-X positions, 1 (4-X region).
+</p>
+<p>
+One non-X position, (2<sup>1</sup> values) 2 * 4 (any one of 4) = 8 (3-X regions).
+</p>
+<p>
+Two non-X positions, (2<sup>2</sup> values) 4 * 6 (any two of 4) = 24 (2-X regions).
+</p>
+<p>
+Three non-X positions, (2<sup>3</sup> values) 8 * 4 (any three of 4) = 32 (1-X regions).
+</p>
+<p>
+Four non-X positions, 2<sup>4</sup> values = 16.
+</p>
+<p>
+1 + 8 + 24 +32 +16 = 81.
+</p>
 <h3>Splitting up bits</h3>
   <p>
      A <i>Split-Bits</i> algorithm, to isolate each bit in a bit mask, e.g. producing (0100, 0010) from 0110 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>):
