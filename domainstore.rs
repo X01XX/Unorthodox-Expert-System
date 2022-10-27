@@ -72,7 +72,7 @@ pub struct InxPlan {
     /// Index to a need in a NeedStore.
     pub inx: usize,
     /// Plan to satisfy need (may be empty if the current state satisfies the need), or None.
-    pub plans: Option<PlanStore>,
+    pub plans: PlanStore,
 }
 
 #[readonly::make]
@@ -268,12 +268,7 @@ impl DomainStore {
 
             // No plans found for any need, or no needs.
             if least_priority == usize::MAX {
-                // Push InxPlan struct for each need, indicating no plan found.
-                let mut inxvec = Vec::<InxPlan>::with_capacity(nds.len());
-                for inx in 0..nds.len() {
-                    inxvec.push(InxPlan { inx, plans: None });
-                }
-                return inxvec;
+                return Vec::<InxPlan>::new();
             }
 
             // Load avec with indicies to needs of the current priority.
@@ -313,16 +308,14 @@ impl DomainStore {
 
                 let ndsinx_plan = avec2
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-                    .map(|nd_inx| self.make_plans(*nd_inx, &nds[*nd_inx].target()))
+                    .map(|nd_inx| (nd_inx, self.make_plans(&nds[*nd_inx].target())))
+                    .filter(|plnstr| plnstr.1.is_some())
+                    .map(|plnstr| InxPlan { inx: *plnstr.0, plans: plnstr.1.unwrap() })
                     .collect::<Vec<InxPlan>>();
 
                 // If at least one plan found, return vector of InxPlan structs.
-                for inxplnx in ndsinx_plan.iter() {
-                    if inxplnx.plans.is_some() {
-                        //println!("inxplnx_plan need {} plan {}", &nds[inxplnx.inx], &apln);
-                        //println!("domainstore::evaluate_needs returning vec pri {} num items {}", least_priority, ndsinx_plan.len());
-                        return ndsinx_plan;
-                    }
+                if !ndsinx_plan.is_empty() {
+                    return ndsinx_plan;
                 }
             } // end while
 
@@ -333,7 +326,7 @@ impl DomainStore {
     } // end evaluate_needs
 
     // Return an InxPlan struct.
-    pub fn make_plans(&self, inx: usize, targets: &TargetStore) -> InxPlan {
+    pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
         let mut plans = PlanStore::new();
 
         for targx in targets.iter() {
@@ -342,12 +335,9 @@ impl DomainStore {
             }
         }
         if plans.is_empty() || plans.len() < targets.len() {
-            return InxPlan { inx, plans: None };
+            return None;
         }
-        InxPlan {
-            inx,
-            plans: Some(plans),
-        }
+        Some(plans)
     }
 
     /// Choose a need, given a vector of needs,
@@ -408,28 +398,18 @@ impl DomainStore {
         for cnp_tpl in &can_nds_pln {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-            match &itmx.plans {
-                Some(plnx) => {
-                    if plnx.len() < min_plan_len {
-                        min_plan_len = plnx.len();
-                    }
+                if itmx.plans.len() < min_plan_len {
+                    min_plan_len = itmx.plans.len();
                 }
-                None => (),
-            }
         }
 
         // Push index to shortest plan needs
         for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-            match &itmx.plans {
-                Some(plnx) => {
-                    if plnx.len() == min_plan_len {
-                        can_do2.push(inx);
-                    }
+                if itmx.plans.len() == min_plan_len {
+                    can_do2.push(inx);
                 }
-                None => (),
-            }
         }
 
         assert!(!can_do2.is_empty());
@@ -443,14 +423,12 @@ impl DomainStore {
 
         let ndx = &nds[itmx.inx]; // get need using tuple index
 
-        if let Some(pln) = &itmx.plans {
-            println!(
-                "\nNeed chosen: {} {} {}",
-                &can_nds_pln[can_do2[cd2_inx]].0,
-                &ndx,
-                &pln.str_terse()
-            );
-        }
+        println!(
+            "\nNeed chosen: {} {} {}",
+            &can_nds_pln[can_do2[cd2_inx]].0,
+            &ndx,
+            &itmx.plans.str_terse()
+        );
 
         can_nds_pln[can_do2[cd2_inx]].1
     } // end choose_need

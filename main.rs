@@ -194,7 +194,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         println!("\nAll domain states: {}", dmxs.all_current_states());
 
-        print_domain(&mut dmxs, dom_num);
+        print_domain(&dmxs, dom_num);
         //println!("session loop 3");
 
         // Vector for position = display index, val = need_plans index
@@ -216,14 +216,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 println!("\nNeeds that can be done: None");
                 dmxs.print_optimal();
             } else {
-                // Get count of needs that can, and cannot, be done.
-                for ndplnx in need_plans.iter() {
-                    if ndplnx.plans.is_some() {
-                        can_do += 1;
-                    } else {
-                        cant_do += 1;
-                    }
-                }
+                // Calc count of needs that can, and cannot, be done.
+                can_do = need_plans.len();
+                cant_do = nds.len() - need_plans.len();
 
                 // Print needs that cannot be done.
                 if cant_do == 0 {
@@ -231,10 +226,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else {
                     println!("\nNeeds that cannot be done:");
                     for ndplnx in need_plans.iter() {
-                        if ndplnx.plans.is_some() {
-                        } else {
-                            println!("   {}", nds[ndplnx.inx]);
-                        }
+                        println!("   {}", nds[ndplnx.inx]);
                     }
                 }
 
@@ -245,17 +237,13 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else {
                     println!("\nNeeds that can be done:");
 
-                    let mut disp = 0;
-                    for (inx, ndplnx) in need_plans.iter().enumerate() {
-                        if let Some(plnx) = &ndplnx.plans {
-                            if !plnx.is_empty() {
-                                println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx.str_terse());
-                            } else {
-                                println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &plnx);
-                            }
-                            need_can.push(inx);
-                            disp += 1;
+                    for (disp, (inx, ndplnx)) in need_plans.iter().enumerate().enumerate() {
+                        if ndplnx.plans.is_empty() {
+                            println!("{:2} {}", &inx, &nds[ndplnx.inx]);
+                        } else {
+                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &ndplnx.plans.str_terse());
                         }
+                        need_can.push(inx);
                     } // next ndplnx
                 }
             } // end  if need_plans.len() == 0 {} else
@@ -317,11 +305,11 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                             if dom_num != ndx.dom_num() {
                                 // Show "before" state before running need.
                                 println!("\nAll domain states: {}", dmxs.all_current_states());
-                                print_domain(&mut dmxs, ndx.dom_num());
+                                print_domain(&dmxs, ndx.dom_num());
                             }
                         }
                     }
-                    let pln = need_plans[np_inx].plans.as_ref().unwrap();
+                    let pln = &need_plans[np_inx].plans;
 
                     //println!("need {}, plan {}", &ndx, &pln);
 
@@ -403,7 +391,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                 println!("Invalid Need Number: {}", cmd[1]);
                             } else {
                                 let ndx = &nds[need_plans[need_can[n_num]].inx];
-                                let pln = need_plans[need_can[n_num]].plans.as_ref().unwrap();
+                                let pln = &need_plans[need_can[n_num]].plans;
 
                                 println!("\n{} Need: {}", &n_num, &ndx);
                                 match ndx {
@@ -441,7 +429,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                                 let inxpln = &need_plans[need_can[n_num]];
 
-                                let pln = inxpln.plans.as_ref().unwrap();
+                                let pln = &inxpln.plans;
 
                                 println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
 
@@ -454,7 +442,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                                                 "\nAll domain states: {}",
                                                 dmxs.all_current_states()
                                             );
-                                            print_domain(&mut dmxs, ndx.dom_num());
+                                            print_domain(&dmxs, ndx.dom_num());
                                             dom_num = ndx.dom_num();
                                         }
                                     }
@@ -954,7 +942,7 @@ fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
 } // end do_command
 
 /// Print a domain.
-fn print_domain(dmxs: &mut DomainStore, dom_num: usize) {
+fn print_domain(dmxs: &DomainStore, dom_num: usize) {
     print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains(),);
 
     println!("\nActs: {}", &dmxs[dom_num].actions);
