@@ -79,11 +79,11 @@
 use crate::pn::Pn;
 use crate::state::SomeState;
 
-pub const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.
-                                  // If three-result squares are to be supported, a one-result square would need three results before pnc = true, instead of two.
-                                  // So you could tell the difference between (1, 1, 1) and (1, 1, 2, 1, 1, 2).
-                                  // Some assumptions for one-result squares would need to be changed in other code.
-                                  // Better not to go there unless there is a really good reason.
+const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.
+                              // If three-result squares are to be supported, a one-result square would need three results before pnc = true, instead of two.
+                              // So you could tell the difference between (1, 1, 1) and (1, 1, 2, 1, 1, 2).
+                              // Some assumptions for one-result squares would need to be changed in other code.
+                              // Better not to go there unless there is a really good reason.
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

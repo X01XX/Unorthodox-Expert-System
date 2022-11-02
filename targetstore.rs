@@ -1,5 +1,7 @@
 //! The TargetStore struct, a vector of SomeTarget structs.
 
+use crate::state::SomeState;
+use crate::statestore::StateStore;
 use crate::target::SomeTarget;
 
 use std::fmt;
@@ -67,6 +69,25 @@ impl TargetStore {
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeTarget> {
         self.avec.iter()
+    }
+
+    /// Return true is a TargetStore is a superset of a StateStore.
+    pub fn is_superset_of_statestore(&self, states: &StateStore) -> bool {
+        assert!(self.len() == states.len());
+
+        for inx in 0..self.len() {
+            if self.avec[inx].is_superset_of_state(&states[inx]) {
+                continue;
+            }
+            return false;
+        }
+        true
+    }
+
+    /// Return true if a one regions TargetStore is a superset of a given state.
+    pub fn is_superset_of_state(&self, state: &SomeState) -> bool {
+        assert!(self.len() == 1);
+        self.avec[0].is_superset_of_state(state)
     }
 } // end impl TargetStore
 

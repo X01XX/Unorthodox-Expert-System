@@ -1,16 +1,15 @@
 // Main function for an Unorthodox Expert System
 
-#![allow(
-dead_code,
+//#![allow(
+//dead_code,
 //unused_variables,
 //  unused_macros,
 //  unused_imports,
 //  unused_assignments,
 //  unused_mut
-)]
+//)]
 
 use std::env;
-use std::fmt::Write as _; // import without risk of name clashing
 mod action;
 mod actionstore;
 mod bits;
@@ -37,6 +36,7 @@ use statestore::StateStore;
 mod domain;
 pub use domain::SomeDomain;
 mod needstore;
+pub use needstore::NeedStore;
 mod plan;
 mod pn;
 use pn::Pn;
@@ -44,10 +44,11 @@ mod actions;
 mod domainstore;
 mod step;
 mod stepstore;
-pub use domainstore::DomainStore;
+pub use domainstore::{DomainStore, InxPlan};
 mod actioninterface;
 mod optimalregionsstore;
 mod planstore;
+use planstore::PlanStore;
 mod randompick;
 mod removeunordered;
 mod target;
@@ -241,7 +242,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         if ndplnx.plans.is_empty() {
                             println!("{:2} {}", &inx, &nds[ndplnx.inx]);
                         } else {
-                            println!("{:2} {} {}", &disp, &nds[ndplnx.inx], &ndplnx.plans.str_terse());
+                            println!(
+                                "{:2} {} {}",
+                                &disp,
+                                &nds[ndplnx.inx],
+                                &ndplnx.plans.str_terse()
+                            );
                         }
                         need_can.push(inx);
                     } // next ndplnx
@@ -274,672 +280,618 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             }
         }
 
-        // Start command loop
-        loop {
-            //println!("start command loop");
-            let mut cmd = Vec::<String>::with_capacity(10);
+        if !to_end || (cant_do > 0 && can_do == 0) {
+            // Start command loop
+            // In the loop,
+            // The break command will end the loop, display the domain and needs, without incrementing the step number.
+            // The continue will prompt for another command.
+            // step_inc will be changed to zero if a command should not change the step number.
+            loop {
+                step_inc = 1;
+                to_end = false;
 
-            if !to_end || (cant_do > 0 && can_do == 0) {
+                //println!("start command loop");
+                let mut cmd = Vec::<String>::with_capacity(10);
+
                 let guess = pause_for_input("\nPress Enter or type a command: ");
 
                 for word in guess.split_whitespace() {
                     //println!("word: {} is {}", word_count, word);
                     cmd.push(String::from(word));
                 }
-            }
 
-            // Default command, just press Enter
-            if cmd.is_empty() {
-                // Process needs
-                if can_do > 0 {
-                    //println!("\nAction needs: {}", nds);
+                // Default command, just press Enter
+                if cmd.is_empty() {
+                    // Process needs
+                    if can_do > 0 {
+                        //println!("\nAction needs: {}", nds);
 
-                    let np_inx = dmxs.choose_need(&nds, &need_plans, &need_can);
+                        dom_num = do_any_need(&mut dmxs, dom_num, &nds, &need_plans, &need_can);
 
-                    let nd_inx = need_plans[np_inx].inx;
-                    let ndx = &nds[nd_inx];
-
-                    match ndx {
-                        SomeNeed::ToOptimalRegion { .. } => (),
-                        _ => {
-                            if dom_num != ndx.dom_num() {
-                                // Show "before" state before running need.
-                                println!("\nAll domain states: {}", dmxs.all_current_states());
-                                print_domain(&dmxs, ndx.dom_num());
-                            }
-                        }
-                    }
-                    let pln = &need_plans[np_inx].plans;
-
-                    //println!("need {}, plan {}", &ndx, &pln);
-
-                    if !pln.is_empty() {
-                        //println!("doing dmx.run_plan");
-                        dmxs.run_plans(pln);
-                    } else {
-                        //println!("NOT doing dmx.run_plan");
-                    }
-
-                    match ndx {
-                        SomeNeed::ToOptimalRegion { .. } => (),
-                        _ => {
-                            dom_num = ndx.dom_num();
-                            if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                                // println!("doing dmx.take_action_need");
-                                match ndx {
-                                    SomeNeed::ToRegion { .. } => (),
-                                    _ => {
-                                        dmxs.take_action_need(dom_num, ndx);
-                                    } // Add new needs here
-                                }
-                            } else {
-                                // println!("NOT doing dmx.take_action_need");
-                            }
-                        }
-                    }
+                        break;
+                    } // end-if can_do > 0
 
                     break;
-                } // end-if can_do > 0
+                } // end if cmd.len() == 0
 
-                break;
-            } // end if cmd.len() == 0
+                step_inc = 0;
 
-            if cmd.len() == 1 {
-                // Quit with q , exit, quit
-                if cmd[0] == "q" || cmd[0] == "exit" || cmd[0] == "quit" {
-                    println!("Done");
-                    process::exit(1);
-                } else if cmd[0] == "run" {
-                    to_end = true;
-                    step_inc = 0;
-                    continue;
-                } else if cmd[0] == "so" {
-                    if run_count != run_max {
-                        return 0;
-                    } else {
-                        return 1;
-                    }
-                } else if cmd[0] == "dcs" {
-                    step_inc = 0;
-                    break;
-                    //                } else if cmd[0] == "left" {
-                    //                    println!("left-overs: {}", &dmxs[0].actions[0].left_overs());
-                    //                    continue;
-                }
-            }
-
-            if cmd.len() == 2 {
-                if cmd[0] == "cd" {
-                    step_inc = 0;
-
-                    // Get domain number from string
-                    match dmxs.domain_num_from_string(&cmd[1]) {
-                        Ok(d_num) => {
-                            dom_num = d_num;
+                // Do other commands
+                if cmd.len() == 1 {
+                    match &cmd[0][..] {
+                        "q" | "exit" | "quit" => {
+                            println!("Done");
+                            process::exit(1);
+                        }
+                        "so" => {
+                            if run_count != run_max {
+                                return 0;
+                            }
+                            return 1;
+                        }
+                        "run" => {
+                            to_end = true;
                             break;
                         }
-                        Err(error) => {
-                            println!("\n{}", error);
+                        "dcs" => {
+                            break;
                         }
-                    } // end match
-                    continue;
-                } else if cmd[0] == "ppd" {
-                    step_inc = 0;
-                    match cmd[1].parse::<usize>() {
-                        Ok(n_num) => {
-                            if n_num >= need_can.len() {
-                                println!("Invalid Need Number: {}", cmd[1]);
-                            } else {
-                                let ndx = &nds[need_plans[need_can[n_num]].inx];
-                                let pln = &need_plans[need_can[n_num]].plans;
-
-                                println!("\n{} Need: {}", &n_num, &ndx);
-                                match ndx {
-                                    SomeNeed::ToOptimalRegion { .. } => {
-                                        println!("\n{}", &pln.str2());
-                                    }
-                                    _ => {
-                                        // Change the displayed Domain, if needed
-                                        if dom_num != ndx.dom_num() {
-                                            dom_num = ndx.dom_num();
-                                        }
-
-                                        if ndx.satisfied_by(&dmxs[dom_num].get_current_state()) {
-                                            println!("\nPlan: current state satisfies need, just take the action");
-                                        } else {
-                                            println!("\n{}", &pln.str2());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
+                        _ => (),
                     }
-                    continue;
-                } else if cmd[0] == "dn" {
-                    match cmd[1].parse::<usize>() {
-                        Ok(n_num) => {
-                            if n_num >= need_can.len() {
-                                println!("Invalid Need Number: {}", cmd[1]);
-                                step_inc = 0;
-                            } else {
-                                let ndx = &nds[need_plans[need_can[n_num]].inx];
+                }
 
-                                let inxpln = &need_plans[need_can[n_num]];
-
-                                let pln = &inxpln.plans;
-
-                                println!("\nNeed chosen: {} {} {}", &n_num, &ndx, &pln.str_terse());
-
-                                match ndx {
-                                    SomeNeed::ToOptimalRegion { .. } => (),
-                                    _ => {
-                                        if dom_num != ndx.dom_num() {
-                                            // Show "before" state before running need.
-                                            println!(
-                                                "\nAll domain states: {}",
-                                                dmxs.all_current_states()
-                                            );
-                                            print_domain(&dmxs, ndx.dom_num());
-                                            dom_num = ndx.dom_num();
-                                        }
-                                    }
-                                }
-
-                                if !pln.is_empty() {
-                                    dmxs.run_plans(pln);
-                                }
-
-                                match ndx {
-                                    SomeNeed::ToOptimalRegion { .. } => (),
-                                    _ => {
-                                        if ndx.satisfied_by(&dmxs.cur_state(dom_num)) {
-                                            dmxs.take_action_need(ndx.dom_num(), ndx);
-                                        }
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    }
-                    continue;
-                } else if cmd[0] == "fld" {
+                if cmd.len() == 2 && &cmd[1][..] == "fld" {
                     match load_data(&cmd[1]) {
-                        Err(why) => {
-                            println!("couldn't read {}: {}", &cmd[1], why);
-                        }
                         Ok(new_dmxs) => {
                             print!("Data loaded");
                             dmxs = new_dmxs;
                             break;
                         }
-                    } // end match load_data
-                    step_inc = 0;
-                    continue;
-                } else if cmd[0] == "fsd" {
-                    match store_data(&dmxs, &cmd[1]) {
                         Err(why) => {
-                            println!("couldn't write {}: {}", &cmd[1], why);
+                            println!("couldn't read {}: {}", &cmd[1], why);
                         }
-                        Ok(_) => {
-                            print!("Data written");
-                        }
-                    }
-                    step_inc = 0;
+                    } // end match load_data
                     continue;
-                } // end command sd
-            } // end if cmd.len() == 2
+                }
 
-            // Do other commands
-            step_inc = do_command(&mut dmxs[dom_num], &cmd);
-            if step_inc == 1 {
-                break;
-            }
-        } // end command loop
-          //println!("end command loop");
+                // Do other commands
+                match &cmd[0][..] {
+                    "cs" => do_change_state_command(&mut dmxs[dom_num], &cmd),
+                    "to" => do_to_region_command(&mut dmxs[dom_num], &cmd),
+                    "ss" => do_sample_state_command(&mut dmxs[dom_num], &cmd),
+                    "ps" => do_print_squares_command(&mut dmxs[dom_num], &cmd),
+                    "aj" => do_adjacent_anchor_command(&mut dmxs[dom_num], &cmd),
+                    "gps" => do_print_group_defining_squares_command(&mut dmxs[dom_num], &cmd),
+                    "fsd" => store_data(&dmxs, &cmd),
+                    "ppd" => do_print_plan_details(&mut dmxs, &cmd, &nds, &need_plans, &need_can),
+                    "cd" => {
+                        dom_num = change_domain(&dmxs, dom_num, &cmd);
+                        break;
+                    }
+                    "dn" => {
+                        dom_num =
+                            do_chosen_need(&mut dmxs, dom_num, &cmd, &nds, &need_plans, &need_can);
+                        break;
+                    }
+                    _ => {
+                        println!("\nDid not understand command: {:?}", cmd);
+                    }
+                };
+            } // end command loop
+        } else if can_do > 0 {
+            dom_num = do_any_need(&mut dmxs, dom_num, &nds, &need_plans, &need_can);
+        }
     } // end loop
 } // end do_session
 
-/// Do most commands entered by the user.
-/// Return a zero or one, to indicate how the step number should change.
-fn do_command(dmx: &mut SomeDomain, cmd: &Vec<String>) -> usize {
-    let cur_state = dmx.get_current_state();
+/// Change the domain to a number given by user.
+fn change_domain(dmxs: &DomainStore, dom_num: usize, cmd: &[String]) -> usize {
+    // Get domain number from string
+    match dmxs.domain_num_from_string(&cmd[1]) {
+        Ok(d_num) => {
+            return d_num;
+        }
+        Err(error) => {
+            println!("\n{}", error);
+        }
+    } // end match
+    dom_num
+}
 
-    // Handle one-word commands
-    if cmd.len() == 1 && (cmd[0] == "h" || cmd[0] == "help") {
-        usage();
-        return 0;
-    } // end one-word commands
+/// Choose a need from a number of possibilities.
+/// Attempt to satisfy the chosen need.
+fn do_any_need(
+    dmxs: &mut DomainStore,
+    dom_num: usize,
+    nds: &NeedStore,
+    need_plans: &[InxPlan],
+    need_can: &Vec<usize>,
+) -> usize {
+    let np_inx = dmxs.choose_need(nds, need_plans, need_can);
 
-    // Handle two-word commands
-    if cmd.len() == 2 {
-        if cmd[0] == "oa" {
-            println!("todo");
-            //            match dmx.region_from_string(&cmd[1]) {
-            //                Ok(goal_region) => {
-            //                    let val = dmx.add_optimal(goal_region.clone());
-            //                    println!("Add Optimal region {} result {}", goal_region, val);
-            //                }
-            //                Err(error) => {
-            //                    println!("\nDid not understand region, {}", error);
-            //                }
-            //            } // end match
-            return 0;
-        } //end command oa
+    let nd_inx = need_plans[np_inx].inx;
+    let ndx = &nds[nd_inx];
+    let plans = &need_plans[np_inx].plans;
 
-        if cmd[0] == "od" {
-            println!("todo");
-            //            match dmx.region_from_string(&cmd[1]) {
-            //                Ok(goal_region) => {
-            //                    let val = dmx.delete_optimal(&goal_region);
-            //                    println!("Delete Optimal region {} result {}", goal_region, val);
-            //                }
-            //                Err(error) => {
-            //                    println!("\nDid not understand region, {}", error);
-            //                }
-            //            } // end match
-            return 0;
-        } //end command od
+    if do_a_need(dmxs, dom_num, ndx, plans) {
+        println!("Need satisfied");
+    }
 
-        // Arbitrary change state
-        if cmd[0] == "cs" {
-            // Get state from string
-            match dmx.state_from_string(&cmd[1]) {
-                Ok(a_state) => {
-                    println!("Changed state to {}", a_state);
-                    dmx.set_state(&a_state);
-                    return 1;
-                }
-                Err(error) => {
-                    println!("\nDid not understand state, {}", error);
-                    return 0;
-                }
-            } // end match
-        } // end command cs
+    match ndx {
+        SomeNeed::ToOptimalRegion { .. } => dom_num,
+        SomeNeed::ToRegion { .. } => dom_num,
+        _ => ndx.dom_num(),
+    }
+}
 
-        if cmd[0] == "to" {
-            let mut step_inc = 0;
-            // Get region from string
-            match dmx.region_from_string(&cmd[1]) {
-                Ok(goal_region) => {
-                    println!(
-                        "\nChange Current_state {} to region {}",
-                        cur_state, goal_region
-                    );
-                    if goal_region.is_superset_of_state(&cur_state) {
-                        println!(
-                            "\nCurrent_state {} is already in region {}",
-                            dmx.get_current_state(),
-                            goal_region
-                        );
-                    } else if dmx.to_region(&goal_region) {
-                        println!("\nChange to region succeeded");
-                        step_inc = 1;
-                    } else {
-                        println!("\nChange to region failed");
+/// Print details of a given plan
+fn do_print_plan_details(
+    dmxs: &mut DomainStore,
+    cmd: &[String],
+    nds: &NeedStore,
+    need_plans: &[InxPlan],
+    need_can: &Vec<usize>,
+) {
+    match cmd[1].parse::<usize>() {
+        Ok(n_num) => {
+            if n_num >= need_can.len() {
+                println!("Invalid Need Number: {}", cmd[1]);
+            } else {
+                let ndx = &nds[need_plans[need_can[n_num]].inx];
+                let pln = &need_plans[need_can[n_num]].plans;
+
+                println!("\n{} Need: {}", &n_num, &ndx);
+                match ndx {
+                    SomeNeed::ToOptimalRegion { .. } => {
+                        println!("\n{}", &pln.str2());
+                    }
+                    _ => {
+                        if ndx.satisfied_by(&dmxs[ndx.dom_num()].get_current_state()) {
+                            println!("\nPlan: current state satisfies need, just take the action");
+                        } else {
+                            println!("\n{}", &pln.str2());
+                        }
                     }
                 }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match region_r
-            return step_inc;
-        } //end command to
-
-        if cmd[0] == "ss" {
-            let mut step_inc = 0;
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    println!("Act {} sample State {}", act_num, cur_state);
-                    dmx.take_action_arbitrary(act_num);
-                    step_inc = 1;
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return step_inc;
+            }
         }
-
-        if cmd[0] == "ps" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    println!(
-                        "Squares of Action {} are:\n{}\n",
-                        &act_num, &dmx.actions[act_num].squares
-                    );
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return 0;
+        Err(error) => {
+            println!("\n{}", error);
         }
-    } // end two-word commands
+    }
+}
 
-    // Handle three-word commands
+/// Try to satisfy a need.
+/// Return true if success.
+fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &PlanStore) -> bool {
+    match ndx {
+        SomeNeed::ToOptimalRegion { .. } => {
+            println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
+        }
+        SomeNeed::ToRegion { .. } => println!("\nNeed chosen:{} {}", &ndx, &plans.str_terse()),
+        _ => {
+            if dom_num != ndx.dom_num() {
+                // Show "before" state before running need.
+                println!("\nAll domain states: {}", dmxs.all_current_states());
+                print_domain(dmxs, ndx.dom_num());
+                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
+            }
+        }
+    }
+
+    if !plans.is_empty() {
+        dmxs.run_plans(plans);
+    }
+
+    match ndx {
+        SomeNeed::ToOptimalRegion { .. } => {
+            if ndx
+                .target()
+                .is_superset_of_statestore(&dmxs.all_current_states())
+            {
+                return true;
+            }
+        }
+        SomeNeed::ToRegion { .. } => {
+            if ndx
+                .target()
+                .is_superset_of_state(&dmxs.cur_state(ndx.dom_num()))
+            {
+                return true;
+            }
+        }
+        _ => {
+            if ndx.satisfied_by(&dmxs.cur_state(ndx.dom_num())) {
+                dmxs.take_action_need(ndx.dom_num(), ndx);
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Try to satisfy a need chosen by the user.
+fn do_chosen_need(
+    dmxs: &mut DomainStore,
+    dom_num: usize,
+    cmd: &[String],
+    nds: &NeedStore,
+    need_plans: &[InxPlan],
+    need_can: &Vec<usize>,
+) -> usize {
+    match cmd[1].parse::<usize>() {
+        Ok(n_num) => {
+            if n_num >= need_can.len() {
+                println!("Invalid Need Number: {}", cmd[1]);
+                dom_num
+            } else {
+                let ndx = &nds[need_plans[need_can[n_num]].inx];
+
+                let plans = &need_plans[need_can[n_num]].plans;
+
+                if do_a_need(dmxs, dom_num, ndx, plans) {
+                    println!("Need satisfied");
+                }
+
+                match ndx {
+                    SomeNeed::ToOptimalRegion { .. } => dom_num,
+                    SomeNeed::ToRegion { .. } => dom_num,
+                    _ => ndx.dom_num(),
+                }
+            }
+        }
+        Err(error) => {
+            println!("\n{}", error);
+            dom_num
+        }
+    }
+}
+
+/// Do a change-state command.
+/// Return 1 is Ok, 0 if not.
+fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[String]) {
+    // Get state from string
+    match dmx.state_from_string(&cmd[1]) {
+        Ok(a_state) => {
+            println!("Changed state to {}", a_state);
+            dmx.set_state(&a_state);
+        }
+        Err(error) => {
+            println!("\nDid not understand state, {}", error);
+        }
+    } // end match
+}
+
+/// Do to-region command.
+/// Return 1 is Ok, 0 if not.
+fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[String]) {
+    let cur_state = dmx.get_current_state();
+
+    // Get region from string
+    match dmx.region_from_string(&cmd[1]) {
+        Ok(goal_region) => {
+            println!(
+                "\nChange Current_state {} to region {}",
+                cur_state, goal_region
+            );
+            if goal_region.is_superset_of_state(&cur_state) {
+                println!(
+                    "\nCurrent_state {} is already in region {}",
+                    dmx.get_current_state(),
+                    goal_region
+                );
+            } else if dmx.to_region(&goal_region) {
+                println!("\nChange to region succeeded");
+            } else {
+                println!("\nChange to region failed");
+            }
+        }
+        Err(error) => {
+            println!("\n{}", error);
+        }
+    } // end match region_r
+}
+
+/// Do sample-state command.
+/// Return 1 is Ok, 0 if not.
+fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+    let cur_state = dmx.get_current_state();
+
+    if cmd.len() == 1 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+
+    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+        Ok(act_num) => act_num,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if cmd.len() == 2 {
+        println!("Act {} sample State {}", act_num, cur_state);
+        dmx.take_action_arbitrary(act_num);
+        return;
+    }
+
     if cmd.len() == 3 {
-        if cmd[0] == "ss" {
-            let mut step_inc = 0;
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get state from string
-                    match dmx.state_from_string(&cmd[2]) {
-                        Ok(a_state) => {
-                            println!("Act {} sample State {}", act_num, a_state);
-                            dmx.set_state(&a_state);
-                            dmx.take_action_arbitrary(act_num);
-                            step_inc = 1;
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    } // end match
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return step_inc;
-        }
+        // Get state from string
+        let a_state = match dmx.state_from_string(&cmd[2]) {
+            Ok(a_state) => a_state,
+            Err(error) => {
+                println!("\n{}", error);
+                return;
+            }
+        };
 
-        if cmd[0] == "ps" {
-            // Get act_num
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get region
-                    match dmx.region_from_string(&cmd[2]) {
-                        Ok(aregion) => {
-                            let mut psstr = format!(
-                                "Squares of Action {} in region {} are:\n",
-                                &act_num, &aregion
-                            );
+        println!("Act {} sample State {}", act_num, a_state);
+        dmx.set_state(&a_state);
+        dmx.take_action_arbitrary(act_num);
+        return;
+    }
 
-                            let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
-                            if stas.is_empty() {
-                                println!("No squares in region {}", &aregion);
-                                return 0;
-                            }
-
-                            let mut nl_flg = 0;
-                            let mut max_pn = Pn::One;
-                            let mut min_pn = Pn::Unpredictable;
-                            let mut max_pn_reg: Option<SomeRegion> = None;
-
-                            for stax in stas.iter() {
-                                if nl_flg == 1 {
-                                    psstr.push_str(",\n");
-                                }
-
-                                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                let _ = write!(psstr, "    {}", sqrx);
-
-                                if sqrx.pn < min_pn {
-                                    min_pn = sqrx.pn;
-                                }
-
-                                if sqrx.pn > max_pn {
-                                    max_pn = sqrx.pn;
-                                    max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
-                                } else if sqrx.pn == max_pn {
-                                    if let Some(regx) = max_pn_reg {
-                                        max_pn_reg = Some(regx.union_state(&sqrx.state));
-                                    } else {
-                                        max_pn_reg =
-                                            Some(SomeRegion::new(&sqrx.state, &sqrx.state));
-                                    }
-                                }
-
-                                nl_flg = 1;
-                            }
-
-                            // Get rule union, if any
-                            let mut rules: Option<RuleStore> = None;
-                            let mut non_pn_stas = StateStore::new();
-                            for stax in stas.iter() {
-                                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                if sqrx.pn == max_pn {
-                                    if max_pn < Pn::Unpredictable {
-                                        if let Some(ruls) = rules {
-                                            if let Some(ruls2) = ruls.union(&sqrx.rules) {
-                                                rules = Some(ruls2);
-                                            } else {
-                                                rules = None;
-                                                break;
-                                            }
-                                        } else {
-                                            rules = Some(sqrx.rules.clone());
-                                        }
-                                    }
-                                } else if let Some(ref regx) = max_pn_reg {
-                                    if regx.is_superset_of_state(&sqrx.state) {
-                                        non_pn_stas.push(sqrx.state.clone());
-                                    }
-                                }
-                            }
-
-                            // Check if max Pn squares can form a group.
-                            let mut form_group = true;
-                            let mut rules_str = String::from("None");
-                            if max_pn == Pn::Unpredictable {
-                                for stax in non_pn_stas.iter() {
-                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                    if sqrx.pnc {
-                                        form_group = false;
-                                    }
-                                }
-                            } else if let Some(ruls) = rules {
-                                rules_str = ruls.formatted_string();
-                                for stax in non_pn_stas.iter() {
-                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                    if !sqrx.rules.is_subset_of(&ruls) {
-                                        form_group = false;
-                                    }
-                                }
-                            } else {
-                                form_group = false;
-                            }
-
-                            let _ = write!(psstr, "\n    Min Pn: {} Max Pn: {} Max Pn Reg {} Rules: {} Can form group: {}",
-                                min_pn, max_pn, max_pn_reg.unwrap(), rules_str, form_group);
-                            //println!("{}", psstr);
-                        }
-                        Err(error) => {
-                            println!("{}", &error);
-                        }
-                    } // end match region
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match act_num
-
-            return 0;
-        }
-
-        if cmd[0] == "aj" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get region
-                    match dmx.region_from_string(&cmd[2]) {
-                        Ok(aregion) => {
-                            if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-                                println!("\n  {}", &aregion);
-                                let stas_adj =
-                                    dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
-                                for stax in stas_adj.iter() {
-                                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                                    println!("{}", sqrx);
-                                }
-                            } else {
-                                println!("\nGroup with region {} not found", &aregion);
-                            }
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    } // end match region
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match act num
-            return 0;
-        }
-
-        if cmd[0] == "rps" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get region from string
-                    match dmx.region_from_string(&cmd[2]) {
-                        Ok(aregion) => {
-                            let sta_1s = dmx.actions[act_num]
-                                .squares
-                                .states_in_1_region(&dmx.actions[act_num].groups.regions());
-
-                            println!(
-                                "Squares in one region, in {} are {}",
-                                &aregion,
-                                aregion.states_in(&sta_1s)
-                            );
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    } // end match region
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match act num
-            return 0;
-        }
-
-        if cmd[0] == "gps" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get region from string
-                    match dmx.region_from_string(&cmd[2]) {
-                        Ok(aregion) => {
-                            // Find group
-                            if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-                                if let Some(astate) = &grpx.anchor {
-                                    if let Some(sqrx) = dmx.actions[act_num].squares.find(astate) {
-                                        println!("anchor   {}", &sqrx);
-                                    } else {
-                                        println!("anchor   {} not found?", &grpx.region.state1);
-                                    }
-
-                                    let bit_masks = grpx.region.x_mask().bits_not().split();
-                                    for mskx in bit_masks.iter() {
-                                        let adj = SomeState::new(astate.bts.b_xor(&mskx.bts));
-                                        if let Some(adjsqr) =
-                                            dmx.actions[act_num].squares.find(&adj)
-                                        {
-                                            println!("adjacent {}", adjsqr);
-                                        }
-                                    }
-
-                                    if grpx.region.state1 != grpx.region.state2 {
-                                        let sta_far = grpx.region.far_state(astate);
-                                        if let Some(sqrx) =
-                                            dmx.actions[act_num].squares.find(&sta_far)
-                                        {
-                                            println!("far      {}", &sqrx);
-                                        } else {
-                                            println!("far      {} not found?", &grpx.region.state2);
-                                        }
-                                    }
-                                } else {
-                                    if let Some(sqrx) =
-                                        dmx.actions[act_num].squares.find(&grpx.region.state1)
-                                    {
-                                        println!("state1   {}", &sqrx);
-                                    } else {
-                                        println!("state1   {} not found?", &grpx.region.state1);
-                                    }
-
-                                    if grpx.region.state1 != grpx.region.state2 {
-                                        if let Some(sqrx) =
-                                            dmx.actions[act_num].squares.find(&grpx.region.state2)
-                                        {
-                                            println!("state2   {}", &sqrx);
-                                        } else {
-                                            println!("state2   {} not found?", &grpx.region.state2);
-                                        }
-                                    }
-                                }
-                            } else {
-                                println!("Group {} not found!", &aregion);
-                            }
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    } // end match region
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match act num
-            return 0;
-        }
-    } // end 3-word commands
-
-    // Handle four-word commands
     if cmd.len() == 4 {
-        let mut step_inc = 0;
-        // Take Sample (ts) with <action num> <initial-state> <result-state>, don't update current state
-        if cmd[0] == "ss" {
-            // Get act number from string
-            match dmx.act_num_from_string(&cmd[1]) {
-                Ok(act_num) => {
-                    // Get i-state from string
-                    match dmx.state_from_string(&cmd[2]) {
-                        Ok(i_state) => {
-                            // Get r-state from string
-                            match dmx.state_from_string(&cmd[3]) {
-                                Ok(r_state) => {
-                                    println!(
-                                        "Act {} take sample {} -> {}",
-                                        act_num, &i_state, &r_state
-                                    );
+        // Take arbitrary sample with <action num> <initial-state> <result-state>, don't update current state
 
-                                    dmx.eval_sample_arbitrary(act_num, &i_state, &r_state);
-                                    step_inc = 1;
-                                }
-                                Err(error) => {
-                                    println!("\n{}", error);
-                                }
-                            } // end match r_state
-                        }
-                        Err(error) => {
-                            println!("\n{}", error);
-                        }
-                    } // end match i_state
-                }
-                Err(error) => {
-                    println!("\n{}", error);
-                }
-            } // end match
-            return step_inc;
-        } // end command ss
-    } // end 4-word commands
+        // Get i-state from string
+        let i_state = match dmx.state_from_string(&cmd[2]) {
+            Ok(i_state) => i_state,
+            Err(error) => {
+                println!("\n{}", error);
+                return;
+            }
+        };
 
-    println!("\nDid not understand command: {:?}", cmd);
-    0
-} // end do_command
+        // Get r-state from string
+        let r_state = match dmx.state_from_string(&cmd[3]) {
+            Ok(r_state) => r_state,
+            Err(error) => {
+                println!("\n{}", error);
+                return;
+            }
+        };
+
+        println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
+        dmx.eval_sample_arbitrary(act_num, &i_state, &r_state);
+        return;
+    } // end command ss 4
+
+    println!("Did not understand {:?}", cmd);
+}
+
+/// Do print-squares command.
+/// Return 1 is Ok, 0 if not.
+fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+    if cmd.len() == 1 {
+        return;
+    }
+
+    // Get action number
+    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+        Ok(act_num) => act_num,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if cmd.len() == 2 {
+        println!(
+            "Squares of Action {} are:\n{}\n",
+            &act_num, &dmx.actions[act_num].squares
+        );
+        return;
+    }
+
+    if cmd.len() == 3 {
+        // Get region
+        let aregion = match dmx.region_from_string(&cmd[2]) {
+            Ok(aregion) => aregion,
+            Err(error) => {
+                println!("\n{}", error);
+                return;
+            }
+        };
+
+        println!(
+            "Squares of Action {} in region {} are:\n",
+            &act_num, &aregion
+        );
+
+        let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
+        if stas.is_empty() {
+            println!("No squares in region {}", &aregion);
+            return;
+        }
+
+        let mut max_pn = Pn::One;
+        let mut min_pn = Pn::Unpredictable;
+        let mut max_pn_reg: Option<SomeRegion> = None;
+
+        for stax in stas.iter() {
+            let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+            println!("    {}", sqrx);
+
+            if sqrx.pn < min_pn {
+                min_pn = sqrx.pn;
+            }
+
+            if sqrx.pn > max_pn {
+                max_pn = sqrx.pn;
+                max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+            } else if sqrx.pn == max_pn {
+                if let Some(regx) = max_pn_reg {
+                    max_pn_reg = Some(regx.union_state(&sqrx.state));
+                } else {
+                    max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                }
+            }
+        }
+
+        // Get rule union, if any
+        let mut rules: Option<RuleStore> = None;
+        let mut non_pn_stas = StateStore::new();
+        for stax in stas.iter() {
+            let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+            if sqrx.pn == max_pn {
+                if max_pn < Pn::Unpredictable {
+                    if let Some(ruls) = rules {
+                        if let Some(ruls2) = ruls.union(&sqrx.rules) {
+                            rules = Some(ruls2);
+                        } else {
+                            rules = None;
+                            break;
+                        }
+                    } else {
+                        rules = Some(sqrx.rules.clone());
+                    }
+                }
+            } else if let Some(ref regx) = max_pn_reg {
+                if regx.is_superset_of_state(&sqrx.state) {
+                    non_pn_stas.push(sqrx.state.clone());
+                }
+            }
+        }
+
+        // Check if max Pn squares can form a group.
+        let mut form_group = true;
+        let mut rules_str = String::from("None");
+        if max_pn == Pn::Unpredictable {
+            for stax in non_pn_stas.iter() {
+                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                if sqrx.pnc {
+                    form_group = false;
+                }
+            }
+        } else if let Some(ruls) = rules {
+            rules_str = ruls.formatted_string();
+            for stax in non_pn_stas.iter() {
+                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                if !sqrx.rules.is_subset_of(&ruls) {
+                    form_group = false;
+                }
+            }
+        } else {
+            form_group = false;
+        }
+
+        if form_group {
+            println!(
+                "    Min Pn: {} Max Pn: {} Rules: {} Can form group: {}",
+                min_pn, max_pn, rules_str, form_group
+            );
+        } else {
+            println!(
+                "    Min Pn: {} Max Pn: {} Can form group: {}",
+                min_pn, max_pn, form_group
+            );
+        }
+        return;
+    }
+
+    println!("Did not understand {:?}", cmd);
+}
+
+/// Do adjacent-anchor command.
+/// Return 1 is Ok, 0 if not.
+fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+    if cmd.len() == 1 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+
+    // Get action number
+    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+        Ok(act_num) => act_num,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if cmd.len() == 2 || cmd.len() > 3 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+
+    let aregion = match dmx.region_from_string(&cmd[2]) {
+        Ok(aregion) => aregion,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
+        if let Some(anchor) = &grpx.anchor {
+            println!("\n  {}", &aregion);
+            let stas_adj = dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
+            for stax in stas_adj.iter() {
+                if stax.is_adjacent(anchor) {
+                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                    println!("{}", sqrx);
+                }
+            }
+        } else {
+            println!("\nGroup {} does not have an anchor defined", &aregion);
+        }
+    } else {
+        println!("\nGroup with region {} not found", &aregion);
+    }
+}
+
+/// Do print-group-defining-squares command.
+/// Return 1 is Ok, 0 if not.
+fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+    if cmd.len() == 1 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+
+    // Get action number
+    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+        Ok(act_num) => act_num,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if cmd.len() == 2 || cmd.len() > 3 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+
+    let aregion = match dmx.region_from_string(&cmd[2]) {
+        Ok(aregion) => aregion,
+        Err(error) => {
+            println!("\n{}", error);
+            return;
+        }
+    };
+
+    if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
+        if let Some(sqrx) = dmx.actions[act_num].squares.find(&grpx.region.state1) {
+            println!("state1   {}", &sqrx);
+        } else {
+            println!("state1   {} not found?", &grpx.region.state1);
+            return;
+        }
+
+        if grpx.region.state1 == grpx.region.state2 {
+        } else {
+            if let Some(sqrx) = dmx.actions[act_num].squares.find(&grpx.region.state2) {
+                println!("state2   {}", &sqrx);
+                return;
+            }
+            println!("state2   {} not found?", &grpx.region.state1);
+        }
+    } else {
+        println!("\nGroup with region {} not found", &aregion);
+    }
+}
 
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
@@ -971,7 +923,7 @@ fn usage() {
     );
     println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
-    println!("\n\n    aj <act num> <region>    - For an Action in the CDD, print adJacent squares to the groups anchor");
+    println!("\n\n    aj <act num> <group-region>    - For an Action in the CDD, print adJacent squares to the groups anchor");
 
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
@@ -992,9 +944,6 @@ fn usage() {
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!(
         "    ps <act num> <region>    - Print Squares in a given action and region, of the CDD."
-    );
-    println!(
-        "\n    rps <act num> <region>    - Region, Print Squares that are in the given action and region of the CDD."
     );
     println!("\n    run                      - Run until there are no needs that can be done.");
     println!("\n    so                       - Start Over.");
@@ -1069,8 +1018,14 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, path_str: &str) -> Result<bool, String> {
+fn store_data(dmxs: &DomainStore, cmd: &Vec<String>) {
+    if cmd.len() != 2 {
+        println!("Did not understand {:?}", cmd);
+        return;
+    }
+    let path_str = &cmd[1];
     let serialized_r = serde_yaml::to_string(&dmxs);
+
     match serialized_r {
         Ok(serialized) => {
             let path = Path::new(&path_str);
@@ -1078,13 +1033,15 @@ fn store_data(dmxs: &DomainStore, path_str: &str) -> Result<bool, String> {
 
             // Open a file in write-only mode, returns `io::Result<File>`
             match File::create(&path) {
-                Err(why) => Err(format!("couldn't create {}: {}", display, why)),
+                Err(why) => println!("couldn't create {}: {}", display, why),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
-                    Err(why) => Err(format!("couldn't write to {}: {}", display, why)),
-                    Ok(_) => Ok(true),
+                    Err(why) => println!("couldn't write to {}: {}", display, why),
+                    Ok(_) => {
+                        println!("Data written");
+                    }
                 },
             }
         }
-        Err(error) => Err(format!("{}", error)),
+        Err(error) => println!("{}", error),
     } // end match serialized_r
 } // end store_data

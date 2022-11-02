@@ -48,7 +48,7 @@ impl fmt::Display for SomeDomain {
     }
 }
 
-pub const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
+const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]

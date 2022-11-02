@@ -23,6 +23,9 @@
 
 //! The DomainStore struct, a vector of SomeDomain structs.
 
+/// The highest number of needs to seek a plan for, in parallel.
+const SPAN: usize = 6;
+
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -233,7 +236,9 @@ impl DomainStore {
     }
 
     /// Return a vector of InxPlan structs, given a NeedStore.
-    /// Each InxPlan will contain an index to the NeedStore, and an Option<SomePlan>
+    /// Select up to a given number (SPAN) of the lowest value priority needs,
+    /// return a span of needs when one, or more, needs can be planned.
+    /// Each InxPlan will contain an index to the NeedStore, and a PlanStore.
     pub fn evaluate_needs(&self, nds: &NeedStore) -> Vec<InxPlan> {
         //println!("domainstore::evaluate_needs");
         let mut last_priority = 0;
@@ -278,24 +283,20 @@ impl DomainStore {
                 }
             }
 
-            // Scan needs to see what can be achieved with a plan
-            // Parallel make_plans for needs.
-            // It likes to collect a vector of structures, in this case InxPlan,
-            // instead of a tuple or array.
+            // Scan needs to see what can be achieved with a plan.
+            // Run make_plans in parallel for selected needs.
             //
             // To avoid the cycles required to make plans for many needs,
             //   Process needs by groups of the same, decreasing priority (increasing priority number),
             //   until at least one has a plan.
             //
-            // Split groups into vectors of length 6 at the most.
-            let span = 6;
 
-            // Randomly pick up to span needs at a time, from the current priority.
+            // Randomly pick up to SPAM needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
             let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
             while !rp1.is_empty() {
-                let mut end = span;
+                let mut end = SPAN;
 
                 if end > rp1.len() {
                     end = rp1.len();
@@ -310,7 +311,10 @@ impl DomainStore {
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| (nd_inx, self.make_plans(&nds[*nd_inx].target())))
                     .filter(|plnstr| plnstr.1.is_some())
-                    .map(|plnstr| InxPlan { inx: *plnstr.0, plans: plnstr.1.unwrap() })
+                    .map(|plnstr| InxPlan {
+                        inx: *plnstr.0,
+                        plans: plnstr.1.unwrap(),
+                    })
                     .collect::<Vec<InxPlan>>();
 
                 // If at least one plan found, return vector of InxPlan structs.
@@ -325,7 +329,8 @@ impl DomainStore {
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
-    // Return an InxPlan struct.
+    // Return an Option PlanStore, to go from the current state to the region or each target.
+    // Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
         let mut plans = PlanStore::new();
 
@@ -398,18 +403,18 @@ impl DomainStore {
         for cnp_tpl in &can_nds_pln {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-                if itmx.plans.len() < min_plan_len {
-                    min_plan_len = itmx.plans.len();
-                }
+            if itmx.plans.len() < min_plan_len {
+                min_plan_len = itmx.plans.len();
+            }
         }
 
         // Push index to shortest plan needs
         for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-                if itmx.plans.len() == min_plan_len {
-                    can_do2.push(inx);
-                }
+            if itmx.plans.len() == min_plan_len {
+                can_do2.push(inx);
+            }
         }
 
         assert!(!can_do2.is_empty());
@@ -456,29 +461,6 @@ impl DomainStore {
     pub fn is_empty(&self) -> bool {
         self.avec.len() == 0
     }
-
-    // Combine all domain current states, producing a larger state.
-    // Possible future use.
-    //    pub fn combine_states(&self) -> SomeState {
-    //        let mut ret_state = self[0].cur_state.clone();
-    //        for inx in 1..self.len() {
-    //            ret_state = ret_state.combine(&self[inx].cur_state);
-    //        }
-    //        ret_state
-    //    }
-
-    // Split a state into states that match the size of each domain current state.
-    // Possible future use.
-    //    pub fn split_state(&self, astate: &SomeState) -> Vec<SomeState> {
-    //        let mut ret_vec = Vec::<SomeState>::new();
-    //        let mut place = 0;
-    //        for domx in self.avec.iter() {
-    //            let num_ints = domx.num_ints;
-    //            ret_vec.push(astate.clone().slice(place, place + num_ints));
-    //            place += num_ints;
-    //        }
-    //        ret_vec
-    //    }
 
     /// Return a StateStore of all domain current states.
     pub fn all_current_states(&self) -> StateStore {
