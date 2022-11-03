@@ -87,6 +87,16 @@ impl OptimalRegionsStore {
         false
     }
 
+    /// Return true if any RegionStore is a superset of a given RegionStore.
+    pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
+        for regsx in self.optimal.iter() {
+            if regsx.is_superset_of(regs) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return list of optimal regions that are superset of a StateStore.
     pub fn supersets_of_states(&self, stas: &StateStore) -> Self {
         Self {

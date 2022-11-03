@@ -383,6 +383,20 @@ impl RegionStore {
         true
     }
 
+    /// Return True if a RegionStore is a superset of a given RegionStore.
+    pub fn is_superset_of(&self, regs: &RegionStore) -> bool {
+        assert!(self.len() == regs.len());
+
+        for inx in 0..self.len() {
+            if self.avec[inx].is_superset_of(&regs[inx]) {
+            } else {
+                return false;
+            }
+        }
+
+        true
+    }
+
     /// Return true if corresponding regions in two RegionStores are equal.
     pub fn equal_each(&self, other: &RegionStore) -> bool {
         for inx in 0..self.len() {

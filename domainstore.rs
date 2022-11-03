@@ -65,10 +65,12 @@ impl fmt::Display for DomainStore {
     }
 }
 
-// An InxPlan struct, containing an index to a SomeNeed vector, and a SomePlan struct.
-//
-// A Vec<T> is needed as a collector for parallel processing of needs to find plans,
-// but a tuple, or array, does not qualify as a "T".
+/// An InxPlan struct, containing an index to a SomeNeed vector, and a SomePlan struct.
+///
+/// A Vec<T> is needed as a collector for parallel processing of needs to find plans,
+/// but a tuple, or array, does not qualify as a "T".
+///
+/// An integer is used instead of &SomeNeed to avoid borrow checker problems.
 #[readonly::make]
 #[derive(Debug)]
 pub struct InxPlan {
@@ -83,8 +85,6 @@ pub struct InxPlan {
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
     pub avec: Vec<SomeDomain>,
-    /// Current step number of the user interface.
-    pub step: usize, // The current step number in the UI.
     /// A counter to indicate the number of steps the current state is in the same optimal region.
     pub boredom: usize,
     /// A limit for becomming bored, then moving to another optimal state.
@@ -108,7 +108,6 @@ impl DomainStore {
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeDomain>::new(),
-            step: 0,
             boredom: 0,
             boredom_limit: 0,
             optimal_and_ints: OptimalRegionsStore::new(),
@@ -122,17 +121,18 @@ impl DomainStore {
     pub fn add_optimal(&mut self, regstr: RegionStore) {
         assert!(regstr.len() == self.avec.len());
 
+        if self.optimal.any_supersets_of(&regstr) {
+            println!("Superset optimal regions found");
+            return;
+        }
+
         self.optimal.push(regstr);
+
         if self.optimal.len() == 1 {
             self.optimal_and_ints = self.optimal.clone();
         } else {
             self.optimal_and_ints = self.optimal.and_intersections();
         }
-    }
-
-    /// Accessor, set the setp field.
-    pub fn set_step(&mut self, anum: usize) {
-        self.step = anum;
     }
 
     /// Add a Domain struct to the store.
@@ -147,6 +147,7 @@ impl DomainStore {
     /// Run in parallel per Domain.
     /// Each Domain uses parallel processing to get needs for each Action.
     pub fn get_needs(&mut self) -> NeedStore {
+
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
@@ -172,12 +173,10 @@ impl DomainStore {
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
         assert!(!plans.is_empty());
 
-        // Run a plan for one domain.
+        // Run a non-empty plan for one domain.
         if plans.len() == 1 {
-            for planx in plans.iter() {
-                if !planx.is_empty() && !self.run_plan(planx) {
-                    return false;
-                }
+            if !plans[0].is_empty() && !self.run_plan(&plans[0]) {
+                return false;
             }
             return true;
         }
@@ -195,8 +194,7 @@ impl DomainStore {
             {
                 // Does the number of true returns equal the number of plans run?
 
-                self.boredom = 0;
-                self.boredom_limit = self.set_boredom_limit();
+                self.set_boredom_limit();
                 return true;
             }
         }
@@ -228,11 +226,6 @@ impl DomainStore {
     /// Return the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> SomeState {
         self.avec[dmxi].get_current_state()
-    }
-
-    /// Return the number of domains
-    pub fn num_domains(&self) -> usize {
-        self.avec.len()
     }
 
     /// Return a vector of InxPlan structs, given a NeedStore.
@@ -442,7 +435,7 @@ impl DomainStore {
     pub fn domain_num_from_string(&self, num_str: &str) -> Result<usize, String> {
         match num_str.parse() {
             Ok(d_num) => {
-                if d_num >= self.num_domains() {
+                if d_num >= self.len() {
                     Err(format!("\nDomain number too large, {}", d_num))
                 } else {
                     Ok(d_num)
@@ -452,7 +445,7 @@ impl DomainStore {
         } // end match
     }
 
-    /// Return the length of a DomainStore.
+    /// Return the length, the number of domains.
     pub fn len(&self) -> usize {
         self.avec.len()
     }
@@ -473,13 +466,13 @@ impl DomainStore {
         all_states
     }
 
-    /// Set and return the boredom limit.
-    pub fn set_boredom_limit(&mut self) -> usize {
+    /// Set the boredom limit.
+    pub fn set_boredom_limit(&mut self) {
         // Get the optimal regions the current state is in.
         let all_states = self.all_current_states();
         let num_sups = self.optimal.number_supersets_of_states(&all_states);
         self.boredom_limit = 3 * num_sups;
-        self.boredom_limit
+        self.boredom = 0;
     }
 
     /// Do functions related to the wish to be in an optimum region.

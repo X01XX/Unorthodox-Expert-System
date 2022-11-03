@@ -180,22 +180,21 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut to_end = run_to_end;
     let mut dmxs = init();
     let mut dom_num = 0;
-    let mut step_inc = 1; // amount to increment the step in the next loop
+    let mut stepx = 0; // Current step number of the session.
 
     loop {
-        //println!("start session loop");
-        dmxs.set_step(dmxs.step + step_inc);
-        step_inc = 1;
+        stepx += 1;
 
         // Get the needs of all Domains / Actions
         let nds = dmxs.get_needs();
 
-        //println!("main {} needs {}", nds.len(), &nds);
         let need_plans = dmxs.evaluate_needs(&nds);
 
-        println!("\nAll domain states: {}", dmxs.all_current_states());
-
+        println!("\nStep {} All domain states: {}", stepx, dmxs.all_current_states());
+        assert!(stepx < 800); // Remove for continuous use
+        
         print_domain(&dmxs, dom_num);
+
         //println!("session loop 3");
 
         // Vector for position = display index, val = need_plans index
@@ -287,7 +286,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             // The continue will prompt for another command.
             // step_inc will be changed to zero if a command should not change the step number.
             loop {
-                step_inc = 1;
                 to_end = false;
 
                 //println!("start command loop");
@@ -314,8 +312,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     break;
                 } // end if cmd.len() == 0
 
-                step_inc = 0;
-
                 // Do other commands
                 if cmd.len() == 1 {
                     match &cmd[0][..] {
@@ -331,20 +327,23 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         }
                         "run" => {
                             to_end = true;
+                            stepx -= 1;
                             break;
                         }
                         "dcs" => {
+                            stepx -= 1;
                             break;
                         }
                         _ => (),
                     }
                 }
 
-                if cmd.len() == 2 && &cmd[1][..] == "fld" {
+                if cmd.len() == 2 && cmd[0] == "fld" {
                     match load_data(&cmd[1]) {
                         Ok(new_dmxs) => {
-                            print!("Data loaded");
-                            dmxs = new_dmxs;
+                            println!("Data loaded");
+                            (stepx, dmxs) = new_dmxs;
+                            stepx -= 1;
                             break;
                         }
                         Err(why) => {
@@ -362,10 +361,11 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     "ps" => do_print_squares_command(&mut dmxs[dom_num], &cmd),
                     "aj" => do_adjacent_anchor_command(&mut dmxs[dom_num], &cmd),
                     "gps" => do_print_group_defining_squares_command(&mut dmxs[dom_num], &cmd),
-                    "fsd" => store_data(&dmxs, &cmd),
+                    "fsd" => store_data(&dmxs, stepx, &cmd),
                     "ppd" => do_print_plan_details(&mut dmxs, &cmd, &nds, &need_plans, &need_can),
                     "cd" => {
                         dom_num = change_domain(&dmxs, dom_num, &cmd);
+                        stepx -= 1;
                         break;
                     }
                     "dn" => {
@@ -895,18 +895,16 @@ fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<Strin
 
 /// Print a domain.
 fn print_domain(dmxs: &DomainStore, dom_num: usize) {
-    print!("\nCurrent Domain: {} of {}", dom_num, dmxs.num_domains(),);
+    print!("\nCurrent Domain: {} of {}", dom_num, dmxs.len(),);
 
     println!("\nActs: {}", &dmxs[dom_num].actions);
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
     println!(
-        "\nStep: {} Dom: {} Current State: {}",
-        &dmxs.step, dom_num, &cur_state
+        "\nDom: {} Current State: {}",
+        dom_num, &cur_state
     );
-
-    assert!(dmxs.step < 800); // Remove for continuous use
 }
 
 /// Display usage options.
@@ -934,12 +932,6 @@ fn usage() {
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
-    //    println!("\n    oa <region>              - Optimal regions Add the given region, of the CDD.");
-    //    println!("                             - This will fail if the region is a subset of one of the displayed regions.");
-    //    println!(
-    //        "\n    od <region>              - Optimal regions Delete the given region, of the CDD."
-    //    );
-    //    println!("                             - This will fail if the region is not found or is a displayed intersection.");
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!(
@@ -994,21 +986,21 @@ pub fn pause_for_input(prompt: &str) -> String {
 }
 
 /// Load data from a given path string.
-fn load_data(path_str: &str) -> Result<DomainStore, String> {
+fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
     let path = Path::new(path_str);
     let display = path.display();
 
     // Open a file, returns `io::Result<File>`
     match File::open(&path) {
-        Err(why) => Err(format!("couldn't open {}: {}", display, why)),
+        Err(why) => Err(format!("Couldn't open {}: {}", display, why)),
         Ok(mut afile) => {
             let mut serialized = String::new();
             match afile.read_to_string(&mut serialized) {
-                Err(why) => Err(format!("couldn't read {}: {}", display, why)),
+                Err(why) => Err(format!("Couldn't read {}: {}", display, why)),
                 Ok(_) => {
                     let deserialized_r = serde_yaml::from_str(&serialized);
                     match deserialized_r {
-                        Err(why) => Err(format!("couldn't deserialize {}: {}", display, why)),
+                        Err(why) => Err(format!("Couldn't deserialize {}: {}", display, why)),
                         Ok(new_dmxs) => Ok(new_dmxs),
                     } // end match deserialized_r
                 }
@@ -1018,13 +1010,14 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, cmd: &Vec<String>) {
+fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<String>) {
     if cmd.len() != 2 {
         println!("Did not understand {:?}", cmd);
         return;
     }
+
     let path_str = &cmd[1];
-    let serialized_r = serde_yaml::to_string(&dmxs);
+    let serialized_r = serde_yaml::to_string(&(stepx, &dmxs));
 
     match serialized_r {
         Ok(serialized) => {
@@ -1033,15 +1026,15 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<String>) {
 
             // Open a file in write-only mode, returns `io::Result<File>`
             match File::create(&path) {
-                Err(why) => println!("couldn't create {}: {}", display, why),
+                Err(why) => println!("Couldn't create {}: {}", display, why),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
-                    Err(why) => println!("couldn't write to {}: {}", display, why),
+                    Err(why) => println!("Couldn't write to {}: {}", display, why),
                     Ok(_) => {
                         println!("Data written");
                     }
                 },
             }
         }
-        Err(error) => println!("{}", error),
+        Err(error) => println!("Couldn't serialize {}: {}", path_str, error),
     } // end match serialized_r
 } // end store_data
