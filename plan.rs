@@ -344,7 +344,7 @@ impl SomePlan {
     }
 
     pub fn str2(&self) -> String {
-        if self.steps.len() == 0 {
+        if self.steps.is_empty() {
             return String::from("Empty plan");
         }
 

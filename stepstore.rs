@@ -165,7 +165,7 @@ impl StepStore {
 
     // Return num_ints used in stepstore
     fn num_ints(&self) -> Option<usize> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return None;
         }
         Some(self.avec[0].num_ints())

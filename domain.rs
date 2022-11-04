@@ -268,43 +268,21 @@ impl SomeDomain {
     } // end run_plan2
 
     /// Return the steps of a plan to go from a given state/region to a given region.
-    ///
-    /// The required change of bits are calculated from the two given regions.
-    ///
-    /// Steps that make at least one of the needed changes are extracted from domain actions.
-    /// A rule that changes X->x will be pruned to make a step that changes 0->1 or 1->0 depending
-    /// on the change needed. X->0 will be pruned to 1->0.  X->1 will be pruned to 0->1.
-    ///
-    /// If all steps found, in aggregate, cannot change all bits needed, return None.
-    ///
-    /// The steps are split up into a vector of step vectors, each step vector has steps that change a
-    /// particular needed-change bit.  Often, there will only be one step in a step vector.
-    ///
-    /// Steps that make more than one needed bit change will be in multiple step vectors.
-    ///
-    /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
-    /// needs to be backed off to run any step in the other step vector.  If any such pair, return None.
-    ///
-    /// All step vectors are checked for the circumstance that all steps have an initial-region that is not a
-    /// superset of the from-region, and the result-region does not intersect the goal-region.
-    ///
-    /// If no step vetors are found in the above step, all step vectors are considered to be selected.
-    ///
-    /// Find the minimum number of steps for all the selected step vectors.
-    ///
-    /// Aggregate the steps from all the selected step vectors with the minimum number of steps.
-    ///
-    /// Randomly choose a step.
-    ///
-    /// For the selected step, do Forward Chaining, Backward Chaining, or Asymmetric Chaining, as needed.
-    ///
     pub fn random_depth_first_search(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
+        steps_str: &StepStore,
+        steps_by_change_vov: &Vec<Vec<&SomeStep>>,
         depth: usize,
     ) -> Option<SomePlan> {
-        if let Some(steps) = self.random_depth_first_search2(from_reg, goal_reg, depth) {
+        if let Some(steps) = self.random_depth_first_search2(
+            from_reg,
+            goal_reg,
+            steps_str,
+            steps_by_change_vov,
+            depth,
+        ) {
             if let Some(steps2) = steps.shortcuts() {
                 if steps2.is_valid() {
                     return Some(steps2);
@@ -317,40 +295,23 @@ impl SomeDomain {
         None
     }
 
+    /// Return the steps of a plan to go from a given state/region to a given region.
+    ///
+    /// This may be called from random_depth_first_search, or may be recursively called to make a sub-plan.
+    ///
+    /// If any needed bit changes are only possible through Asymmetric Chaining, randomly choose a step and recurse.
+    ///
+    /// Otherwise, randomly choose a step and do Forward Chaining, Backward Chaining, or Asymmetric Chaining, as needed.
+    ///
     fn random_depth_first_search2(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
+        steps_str: &StepStore,
+        steps_by_change_vov: &Vec<Vec<&SomeStep>>,
         depth: usize,
     ) -> Option<SomePlan> {
         //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
-
-        // Check if from_reg is at the goal, no steps are needed.
-        if goal_reg.is_superset_of(from_reg) {
-            //println!("from {} subset goal {} ?", from_reg, goal_reg);
-            return Some(SomePlan::new(self.num));
-        }
-
-        // Check if change is possible
-
-        // Calculate the minimum bit changes needed.
-        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
-        //println!("random_depth_first_search2: required_change {}", &required_change);
-
-        // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str: StepStore = self.actions.get_steps(&required_change);
-        //println!("\nrandom_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
-
-        // Check that the steps roughly encompass all needed changes, else return None.
-        if let Some(can_change) = steps_str.aggregate_changes() {
-            if required_change.is_subset_of(&can_change) {
-            } else {
-                //println!("random_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
-                return None;
-            }
-        } else {
-            return None;
-        }
 
         // Check if one step makes the required change, the end point of any search.
         let mut rand_inx = RandomPick::new(steps_str.len());
@@ -369,27 +330,6 @@ impl SomeDomain {
         if depth == 0 {
             //println!("depth limit exceeded");
             return None;
-        }
-
-        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
-            steps_str.steps_by_change_bit(&required_change);
-
-        // Check if any pair of single-bit changes, all steps, are mutually exclusive.
-        if any_mutually_exclusive_changes(&steps_by_change_vov, &required_change) {
-            //println!("forward_depth_first_search2: mutually exclusive change rules found");
-            return None;
-        }
-
-        // Check for steps that should be done after all the others.
-        // To void some backtracking.
-        if steps_by_change_vov.len() > 1 {
-            let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, &required_change);
-            if !inxs.is_empty() {
-                for inx in inxs.iter().rev() {
-                    remove_unordered(&mut steps_by_change_vov, *inx);
-                }
-            }
         }
 
         // Check for single-bit vectors where no rules have an initial-region that
@@ -443,30 +383,69 @@ impl SomeDomain {
         // Process a forward chaining step
         if stepx.initial.is_superset_of(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
-            if let Some(next_steps) =
-                self.random_depth_first_search2(&stepy.result, goal_reg, depth - 1)
-            {
-                return Some(SomePlan::new_with_step(self.num, stepy).link(&next_steps));
+
+            let required_change = SomeChange::region_to_region(&stepy.result, goal_reg);
+
+            // Get steps, check if steps include all changes needed.
+            if let Some(steps_str) = self.get_steps(&required_change) {
+                // Get vector of steps for each bit change.
+                if let Some(steps_by_change_vov) =
+                    self.get_steps_by_bit_change(&steps_str, &required_change)
+                {
+                    if let Some(next_steps) = self.random_depth_first_search2(
+                        &stepy.result,
+                        goal_reg,
+                        &steps_str,
+                        &steps_by_change_vov,
+                        depth - 1,
+                    ) {
+                        return Some(SomePlan::new_with_step(self.num, stepy).link(&next_steps));
+                    }
+                    return None;
+                }
             }
-            return None;
         }
 
         // Process a backward chaining step
         if stepx.result.intersects(goal_reg) {
             let stepy = stepx.restrict_result_region(goal_reg);
-            if let Some(prev_steps) =
-                self.random_depth_first_search2(from_reg, &stepy.initial, depth - 1)
-            {
-                return Some(prev_steps.link(&SomePlan::new_with_step(self.num, stepy)));
+
+            let required_change = SomeChange::region_to_region(from_reg, &stepy.initial);
+
+            // Get steps, check if steps include all changes needed.
+            if let Some(steps_str) = self.get_steps(&required_change) {
+                // Get vector of steps for each bit change.
+                if let Some(steps_by_change_vov) =
+                    self.get_steps_by_bit_change(&steps_str, &required_change)
+                {
+                    if let Some(prev_steps) = self.random_depth_first_search2(
+                        from_reg,
+                        &stepy.initial,
+                        &steps_str,
+                        &steps_by_change_vov,
+                        depth - 1,
+                    ) {
+                        return Some(prev_steps.link(&SomePlan::new_with_step(self.num, stepy)));
+                    }
+                    return None;
+                }
             }
-            return None;
         }
 
         // Must be an asymmetric step
         self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
-    // Do asymmetric chaining.
+    /// Do asymmetric chaining.
+    ///
+    /// Find a plan to go from the from_region to the initial region of a step.
+    ///
+    /// Retrict the step initial region.
+    ///
+    /// Find a plan to go from the restricted step result region to the goal region.
+    ///
+    /// Link the first plan to the restricted step, then to the second plan.
+    ///
     fn asymetric_chaining(
         &self,
         from_reg: &SomeRegion,
@@ -474,14 +453,45 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-        if let Some(first_steps) = self.random_depth_first_search2(from_reg, &stepx.initial, depth)
-        {
-            let stepy = stepx.restrict_initial_region(first_steps.result_region());
-            if let Some(next_steps) =
-                self.random_depth_first_search2(&stepy.result, goal_reg, depth)
+        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
+
+        // Get steps, check if steps include all changes needed.
+        if let Some(steps_str) = self.get_steps(&required_change) {
+            // Get vector of steps for each bit change.
+            if let Some(steps_by_change_vov) =
+                self.get_steps_by_bit_change(&steps_str, &required_change)
             {
-                let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
-                return Some(steps1.link(&next_steps));
+                if let Some(first_steps) = self.random_depth_first_search2(
+                    from_reg,
+                    &stepx.initial,
+                    &steps_str,
+                    &steps_by_change_vov,
+                    depth,
+                ) {
+                    let stepy = stepx.restrict_initial_region(first_steps.result_region());
+
+                    let required_change = SomeChange::region_to_region(&stepy.result, goal_reg);
+
+                    // Get steps, check if steps include all changes needed.
+                    if let Some(steps_str) = self.get_steps(&required_change) {
+                        // Get vector of steps for each bit change.
+                        if let Some(steps_by_change_vov) =
+                            self.get_steps_by_bit_change(&steps_str, &required_change)
+                        {
+                            if let Some(next_steps) = self.random_depth_first_search2(
+                                &stepy.result,
+                                goal_reg,
+                                &steps_str,
+                                &steps_by_change_vov,
+                                depth,
+                            ) {
+                                let steps1 =
+                                    first_steps.link(&SomePlan::new_with_step(self.num, stepy));
+                                return Some(steps1.link(&next_steps));
+                            }
+                        }
+                    }
+                }
             }
         }
         None
@@ -500,48 +510,119 @@ impl SomeDomain {
 
         let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
 
-        // Tune maximum depth to be a multiple of the number of bit changes required.
+        // Figure the required change.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
 
+        // Get steps, check if steps include all changes needed.
+        if let Some(steps_str) = self.get_steps(&required_change) {
+            // Get vector of steps for each bit change.
+            if let Some(steps_by_change_vov) =
+                self.get_steps_by_bit_change(&steps_str, &required_change)
+            {
+                // Tune maximum depth to be a multiple of the number of bit changes required.
+                let num_depth = 3 * required_change.number_changes();
+
+                // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
+                // recalculated for each run, below, of random_depth_first_search.
+                let mut plans = (0..6)
+                    .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+                    .filter_map(|_| {
+                        self.random_depth_first_search(
+                            &cur_reg,
+                            goal_reg,
+                            &steps_str,
+                            &steps_by_change_vov,
+                            num_depth,
+                        )
+                    })
+                    .collect::<Vec<SomePlan>>();
+
+                // Return one of the plans, avoiding the need to clone.
+                if plans.len() == 1 {
+                    //println!("forward_depth_first_search returned plan");
+                    return Some(plans.remove(0));
+                }
+                if plans.len() > 1 {
+                    //println!("make_plan returned plan");
+                    let inx = self.choose_a_plan(&plans);
+                    return Some(plans.remove(inx));
+                }
+            }
+        }
+        // No plan to return.
+        //println!("make_plan did not return a plan");
+        None
+    } // end make plan
+
+    /// Get steps that may allow a change to be made.
+    ///
+    /// Steps that make at least one of the needed changes are extracted from domain actions.
+    ///
+    /// A rule that changes X->x will be pruned to make a step that changes 0->1 or 1->0 depending
+    /// on the change needed. X->0 will be pruned to 1->0.  X->1 will be pruned to 0->1.
+    ///
+    /// If all steps found, in aggregate, cannot change all bits needed, return None.
+    ///
+    fn get_steps(&self, required_change: &SomeChange) -> Option<StepStore> {
         // Check if changes are possible.
 
         // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str: StepStore = self.actions.get_steps(&required_change);
+        let steps_str: StepStore = self.actions.get_steps(required_change);
         //println!("\nrandom_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
 
         // Check that the steps roughly encompass all needed changes, else return None.
         if let Some(can_change) = steps_str.aggregate_changes() {
             if required_change.is_subset_of(&can_change) {
             } else {
-                //println!("random_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+                //println!("get_steps: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
                 return None;
             }
         } else {
             return None;
         }
 
-        let num_depth = 3 * required_change.number_changes();
+        Some(steps_str)
+    }
 
-        let mut plans = (0..6)
-            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(|_| self.random_depth_first_search(&cur_reg, goal_reg, num_depth))
-            .collect::<Vec<SomePlan>>();
+    /// Given steps are split up into a vector of step vectors, each step vector has steps that change a
+    /// particular needed-change bit.  Often, there will only be one step in a step vector.
+    ///
+    /// Steps that make more than one needed bit change will be in multiple step vectors.
+    ///
+    /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
+    /// needs to be backed off to run any step in the other step vector.  If any such pair is found, return None.
+    ///
+    /// Any pair of vectors that have the same step, due to multiple bit changes, will not be construed to be
+    /// mutually exclusive.
+    ///
+    fn get_steps_by_bit_change<'a>(
+        &'a self,
+        steps_str: &'a StepStore,
+        required_change: &SomeChange,
+    ) -> Option<Vec<Vec<&SomeStep>>> {
+        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
+        let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
+            steps_str.steps_by_change_bit(required_change);
 
-        // Return one of the plans, avoiding the need to clone.
-        if plans.len() == 1 {
-            //println!("forward_depth_first_search returned plan");
-            return Some(plans.remove(0));
+        // Check if any pair of single-bit changes, all steps, are mutually exclusive.
+        if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
+            //println!("forward_depth_first_search2: mutually exclusive change rules found");
+            return None;
         }
-        if plans.len() > 1 {
-            //println!("make_plan returned plan");
-            let inx = self.choose_a_plan(&plans);
-            return Some(plans.remove(inx));
+
+        // Check for steps that should be done after all the others.
+        // To void some backtracking.
+        if steps_by_change_vov.len() > 1 {
+            let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
+            if !inxs.is_empty() {
+                for inx in inxs.iter().rev() {
+                    remove_unordered(&mut steps_by_change_vov, *inx);
+                }
+            }
         }
 
-        // No plan to return.
-        //println!("make_plan did not return a plan");
-        None
-    } // end make plan
+        Some(steps_by_change_vov)
+    }
 
     /// Change the current state to be within a given region.
     /// Return True if the change succeeds.
