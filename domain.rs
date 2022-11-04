@@ -401,9 +401,9 @@ impl SomeDomain {
                     ) {
                         return Some(SomePlan::new_with_step(self.num, stepy).link(&next_steps));
                     }
-                    return None;
                 }
             }
+            return None;
         }
 
         // Process a backward chaining step
@@ -427,9 +427,9 @@ impl SomeDomain {
                     ) {
                         return Some(prev_steps.link(&SomePlan::new_with_step(self.num, stepy)));
                     }
-                    return None;
                 }
             }
+            return None;
         }
 
         // Must be an asymmetric step
