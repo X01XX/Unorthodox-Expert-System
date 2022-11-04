@@ -503,7 +503,22 @@ impl SomeDomain {
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
 
-        // TODO check if changes are possible, like random_depth_first_search2 does
+        // Check if changes are possible.
+
+        // Get a vector of steps (from rules) that make part of the needed changes.
+        let steps_str: StepStore = self.actions.get_steps(&required_change);
+        //println!("\nrandom_depth_first_search2: from {} to {} steps_str steps {}", from_reg, goal_reg, steps_str.formatted_string(" "));
+
+        // Check that the steps roughly encompass all needed changes, else return None.
+        if let Some(can_change) = steps_str.aggregate_changes() {
+            if required_change.is_subset_of(&can_change) {
+            } else {
+                //println!("random_depth_first_search2: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
+                return None;
+            }
+        } else {
+            return None;
+        }
 
         let num_depth = 3 * required_change.number_changes();
 

@@ -489,6 +489,7 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
                 .target()
                 .is_superset_of_statestore(&dmxs.all_current_states())
             {
+                dmxs.set_boredom_limit();
                 return true;
             }
         }

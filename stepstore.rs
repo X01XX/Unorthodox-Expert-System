@@ -44,7 +44,7 @@ impl StepStore {
     }
 
     /// Return a new StepStore, empty, with an expected capacity.
-    pub fn with_capacity(num: usize) -> Self {
+    pub fn new_with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(num),
         }
@@ -53,6 +53,11 @@ impl StepStore {
     /// Return the number of steps in a StepStore.
     pub fn len(&self) -> usize {
         self.avec.len()
+    }
+
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.avec.len() == 0
     }
 
     /// Add a step to a StepStore.

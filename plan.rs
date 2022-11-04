@@ -70,7 +70,7 @@ impl SomePlan {
         assert!(!self.is_empty());
         assert!(regx.intersects(self.result_region()));
 
-        let mut steps = StepStore::with_capacity(self.len());
+        let mut steps = StepStore::new_with_capacity(self.len());
 
         let mut cur_reg = regx.clone();
 
@@ -143,7 +143,7 @@ impl SomePlan {
         assert!(!self.is_empty());
         assert!(regx.intersects(self.initial_region()));
 
-        let mut steps = StepStore::with_capacity(self.len());
+        let mut steps = StepStore::new_with_capacity(self.len());
 
         let mut cur_reg = regx.clone();
 

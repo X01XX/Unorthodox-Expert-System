@@ -74,10 +74,11 @@ impl ActionStore {
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|actx| actx.get_needs(cur, dom, memory, changes_mask))
+            .filter(|ndstrx| !ndstrx.is_empty())
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::new();
+        let mut nds_agg = NeedStore::new_with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
 
         for nst in vecx.iter_mut() {
             nds_agg.append(nst);
@@ -93,10 +94,11 @@ impl ActionStore {
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
             .map(|actx| actx.get_steps(achange))
+            .filter(|strx|!strx.is_empty())
             .collect::<Vec<StepStore>>();
 
         // Aggregate the results into one StepStore
-        let mut stps_agg = StepStore::new();
+        let mut stps_agg = StepStore::new_with_capacity(stps.iter().map(|stpsx| stpsx.len()).sum());
 
         for stp in stps.iter_mut() {
             stps_agg.append(stp);

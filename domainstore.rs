@@ -152,10 +152,11 @@ impl DomainStore {
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
+            .filter(|ndsx| !ndsx.is_empty())
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::new();
+        let mut nds_agg = NeedStore::new_with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
 
         for nst in vecx.iter_mut() {
             nds_agg.append(nst);
@@ -181,20 +182,17 @@ impl DomainStore {
             return true;
         }
 
-        if plans.len() == self.avec.len() {
+        if plans.len() == self.len() {
             // Run plans in parallel for achieving a state in an optimal region, when the number of domains is GT 1.
             if self
                 .avec
                 .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
                 .map(|domx| domx.run_plan(&plans[domx.num]))
-                .filter(|b| *b)
+                .filter(|b| *b) // filter out any false returns.
                 .collect::<Vec<bool>>()
                 .len()
-                == plans.len()
+                == plans.len()  // Does the number of true returns equal the number of plans run?
             {
-                // Does the number of true returns equal the number of plans run?
-
-                self.set_boredom_limit();
                 return true;
             }
         }
