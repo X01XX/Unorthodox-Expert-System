@@ -147,7 +147,6 @@ impl DomainStore {
     /// Run in parallel per Domain.
     /// Each Domain uses parallel processing to get needs for each Action.
     pub fn get_needs(&mut self) -> NeedStore {
-
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
@@ -191,7 +190,8 @@ impl DomainStore {
                 .filter(|b| *b) // filter out any false returns.
                 .collect::<Vec<bool>>()
                 .len()
-                == plans.len()  // Does the number of true returns equal the number of plans run?
+                == plans.len()
+            // Does the number of true returns equal the number of plans run?
             {
                 return true;
             }

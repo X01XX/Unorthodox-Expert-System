@@ -190,9 +190,13 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
         let need_plans = dmxs.evaluate_needs(&nds);
 
-        println!("\nStep {} All domain states: {}", stepx, dmxs.all_current_states());
+        println!(
+            "\nStep {} All domain states: {}",
+            stepx,
+            dmxs.all_current_states()
+        );
         assert!(stepx < 800); // Remove for continuous use
-        
+
         print_domain(&dmxs, dom_num);
 
         //println!("session loop 3");
@@ -902,10 +906,7 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
 
     let cur_state = &dmxs[dom_num].get_current_state();
 
-    println!(
-        "\nDom: {} Current State: {}",
-        dom_num, &cur_state
-    );
+    println!("\nDom: {} Current State: {}", dom_num, &cur_state);
 }
 
 /// Display usage options.
@@ -992,7 +993,7 @@ fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
     let display = path.display();
 
     // Open a file, returns `io::Result<File>`
-    match File::open(&path) {
+    match File::open(path) {
         Err(why) => Err(format!("Couldn't open {}: {}", display, why)),
         Ok(mut afile) => {
             let mut serialized = String::new();
@@ -1026,7 +1027,7 @@ fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<String>) {
             let display = path.display();
 
             // Open a file in write-only mode, returns `io::Result<File>`
-            match File::create(&path) {
+            match File::create(path) {
                 Err(why) => println!("Couldn't create {}: {}", display, why),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
                     Err(why) => println!("Couldn't write to {}: {}", display, why),

@@ -145,7 +145,7 @@ impl RegionStore {
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
         self.avec
             .iter()
-            .map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 })
+            .map(|regx| usize::from(regx.is_superset_of_state(sta)))
             .sum()
     }
 
@@ -177,7 +177,7 @@ impl RegionStore {
     pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
         self.avec
             .iter()
-            .map(|regx| if regx.is_superset_of_state(sta) { 1 } else { 0 })
+            .map(|regx| usize::from(regx.is_superset_of_state(sta)))
             .sum::<usize>()
             == 1
     }

@@ -50,13 +50,7 @@ impl OptimalRegionsStore {
     pub fn number_supersets_of_states(&self, stas: &StateStore) -> usize {
         self.optimal
             .iter()
-            .map(|regsx| {
-                if regsx.is_superset_of_states(stas) {
-                    1
-                } else {
-                    0
-                }
-            })
+            .map(|regsx| usize::from(regsx.is_superset_of_states(stas)))
             .sum()
     }
 

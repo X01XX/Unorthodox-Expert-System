@@ -79,7 +79,7 @@ impl SomeDomain {
         SomeDomain {
             num: dom,
             num_ints,
-            actions: ActionStore::new(num_ints),
+            actions: ActionStore::new(),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
             agg_changes: SomeMask::new_low(num_ints),
@@ -453,17 +453,16 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-
         let required_change = SomeChange::region_to_region(from_reg, &stepx.initial);
 
         let Some(steps_str) = self.get_steps(&required_change) else {
             return None;
         };
-        
+
         let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
             return None;
         };
-        
+
         let Some(first_steps) = self.random_depth_first_search2(
                     from_reg,
                     &stepx.initial,
@@ -498,8 +497,7 @@ impl SomeDomain {
                 return None;
             };
 
-        let steps1 =
-            first_steps.link(&SomePlan::new_with_step(self.num, stepy));
+        let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
 
         let steps2 = steps1.link(&next_steps);
 
@@ -624,10 +622,8 @@ impl SomeDomain {
         // To void some backtracking.
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
-            if !inxs.is_empty() {
-                for inx in inxs.iter().rev() {
-                    remove_unordered(&mut steps_by_change_vov, *inx);
-                }
+            for inx in inxs.iter() {
+                remove_unordered(&mut steps_by_change_vov, *inx);
             }
         }
 
@@ -697,7 +693,6 @@ impl SomeDomain {
         //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
 
         // Rate plans, highest rate is best rate.
-        // TODO better critera
         // Length of plan is rated inversely
         let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
         for rets in ret_plans.iter() {
@@ -755,7 +750,7 @@ impl SomeDomain {
 
     /// Return a mask of bit positions that can be changed.
     fn aggregate_changes_mask(&self) -> SomeMask {
-        self.actions.aggregate_changes_mask()
+        self.actions.aggregate_changes_mask(self.num_ints)
     }
 } // end impl SomeDomain
 
@@ -800,7 +795,7 @@ fn all_mutually_exclusive_changes(
     true
 }
 
-/// Return a vector of sorted indicies, of step vectors that should be done later
+/// Return a vector of reverse sorted indicies, of step vectors that should be done later
 /// than all other steps.
 fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
     let mut inxs = Vec::<usize>::new();
@@ -819,7 +814,7 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
     } //next inx
 
     if inxs.len() > 1 {
-        inxs.sort();
+        inxs.sort_by(|a, b| b.cmp(a));
     }
     inxs
 }

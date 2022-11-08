@@ -179,7 +179,7 @@ impl SomeSquare {
         rc_str
     }
 
-    // Check if two squares can be combined.
+    /// Check if two squares can be combined.
     pub fn can_combine(&self, sqrx: &SomeSquare) -> Truth {
         assert!(*self != *sqrx);
 
@@ -194,7 +194,9 @@ impl SomeSquare {
             return self.rules.can_form_union(&sqrx.rules);
         }
 
-        // Check for bootstrap compatible
+        // Check for bootstrap compatible.
+        // Rules have to be formed to allow going back and resampling.
+        // The rules may have a significant failure rate.
         if self.pn == Pn::One
             && sqrx.pn == Pn::One
             && self.rules.can_form_union(&sqrx.rules) == Truth::T
@@ -230,6 +232,7 @@ impl SomeSquare {
             return Truth::F;
         }
 
+        // Both squares need more samples.
         Truth::M
     }
 

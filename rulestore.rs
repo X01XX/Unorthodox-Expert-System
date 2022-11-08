@@ -212,16 +212,13 @@ impl RuleStore {
             panic!("Unpredictable union not allowed");
         }
 
-        let regx = self.initial_region().union(&other.initial_region());
-
-        let mut ars = Self::new();
-
         if self.len() == 1 {
             let rulx = self.avec[0].union(&other.avec[0]);
 
-            if rulx.is_valid_union() && rulx.initial_region() == regx {
-                ars.push(rulx);
-                return Some(ars);
+            if rulx.is_valid_union() {
+                let mut ret_store = Self::new();
+                ret_store.push(rulx);
+                return Some(ret_store);
             }
             return None;
         }
@@ -232,10 +229,7 @@ impl RuleStore {
             let rul0 = self.avec[0].union(&other.avec[0]);
             let rul1 = self.avec[1].union(&other.avec[1]);
 
-            if rul0.is_valid_union()
-                && rul1.is_valid_union()
-                && rul0.initial_region() == rul1.initial_region()
-            {
+            if rul0.is_valid_union() && rul1.is_valid_union() {
                 ordera = true;
             }
 
@@ -244,10 +238,7 @@ impl RuleStore {
             let rul2 = self.avec[0].union(&other.avec[1]);
             let rul3 = self.avec[1].union(&other.avec[0]);
 
-            if rul2.is_valid_union()
-                && rul3.is_valid_union()
-                && rul2.initial_region() == rul3.initial_region()
-            {
+            if rul2.is_valid_union() && rul3.is_valid_union() {
                 orderb = true;
             }
 
@@ -256,24 +247,23 @@ impl RuleStore {
             //
             // To join two Pn::Two RuleStores in one of two possible sequences, there must be at least one matching initial single-bit position
             // with an alternating result.
-            if ordera && orderb {
+            if ordera == orderb {
+                // Both true or both false.
                 return None;
             }
 
             let mut ret_store = Self::new();
+
             if ordera {
                 ret_store.push(rul0);
                 ret_store.push(rul1);
                 return Some(ret_store);
             }
 
-            if orderb {
-                ret_store.push(rul2);
-                ret_store.push(rul3);
-                return Some(ret_store);
-            }
-
-            return None;
+            // Must be orderb = true.
+            ret_store.push(rul2);
+            ret_store.push(rul3);
+            return Some(ret_store);
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");
@@ -285,7 +275,7 @@ impl RuleStore {
         assert!(!other.is_empty());
 
         // Handle Pn1 vs. Pn2.
-        // The Pn1 type should not have enough samples to be pnc.
+        // The Pn1 type should not have enough samples to be pnc, caller to insure.
         if self.len() < other.len() {
             for rulx in other.iter() {
                 if rulx.union(&self[0]).is_valid_union() {
@@ -324,10 +314,10 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let mut ars = Self::new();
-
             let int1 = self[0].intersection(&other[0]);
+
             if int1.is_valid_intersection() {
+                let mut ars = Self::new();
                 ars.push(int1);
                 return Some(ars);
             }
@@ -336,47 +326,13 @@ impl RuleStore {
 
         if self.len() == 2 {
             // Intersect by order1
-            let mut order1 = true;
-
             let int00 = self[0].intersection(&other[0]);
             let int11 = self[1].intersection(&other[1]);
 
-            if !int00.is_valid_intersection()
-                || !int11.is_valid_intersection()
-                || int00.initial_region() != int11.initial_region()
+            if int00.is_valid_intersection()
+                && int11.is_valid_intersection()
+                && int00.initial_region() == int11.initial_region()
             {
-                order1 = false;
-            }
-
-            // Intersect by order2
-            let mut order2 = true;
-
-            let int01 = self[0].intersection(&other[1]);
-            let int10 = self[1].intersection(&other[0]);
-
-            if !int01.is_valid_intersection()
-                || !int10.is_valid_intersection()
-                || int01.initial_region() != int10.initial_region()
-            {
-                order2 = false;
-            }
-
-            // Act on results of intersections
-            if order1 && order2 {
-                let mut ord1 = Self::new();
-                ord1.push(int00);
-                ord1.push(int11);
-
-                let mut ord2 = Self::new();
-                ord2.push(int01);
-                ord2.push(int10);
-
-                let ord12 = ord1.union(&ord2).unwrap();
-                //println!("pn3 intersection of {} and {} is12 {}", self, other, ord2);
-                return Some(ord12);
-            }
-
-            if order1 {
                 let mut ord1 = Self::new();
                 ord1.push(int00);
                 ord1.push(int11);
@@ -384,13 +340,21 @@ impl RuleStore {
                 return Some(ord1);
             }
 
-            if order2 {
+            // Intersect by order2
+            let int01 = self[0].intersection(&other[1]);
+            let int10 = self[1].intersection(&other[0]);
+
+            if int01.is_valid_intersection()
+                && int10.is_valid_intersection()
+                && int01.initial_region() == int10.initial_region()
+            {
                 let mut ord2 = Self::new();
                 ord2.push(int01);
                 ord2.push(int10);
                 //println!("pn3 intersection of {} and {} is2 {}", self, other, ord2);
                 return Some(ord2);
             }
+
             //println!("pn3 intersection of {} and {} failed", self, other);
             return None;
         }
@@ -538,7 +502,7 @@ mod tests {
                 return Err(String::from("Test 3 failed, 01/11/11/10/00 not in result"));
             }
         } else {
-            return Err(String::from("Test 4 failed"));
+            return Err(String::from("Test 3 failed"));
         }
 
         // Intersect two two-rule RuleStores, it should not work, due to the left-most bit.
@@ -684,7 +648,8 @@ mod tests {
         rul_str2.push(SomeRule::new_from_string(1, "11/00/10").unwrap());
         rul_str2.push(SomeRule::new_from_string(1, "11/00/11").unwrap());
 
-        if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
+        if let Some(rul_str3) = rul_str1.union(&rul_str2) {
+            println!("rule? {}", rul_str3);
             return Err(String::from("Test 4 failed"));
         }
 

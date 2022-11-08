@@ -53,7 +53,7 @@ impl fmt::Display for SomeAction {
 
             let cnt: usize = stas_in
                 .iter()
-                .map(|x| if regs.state_in_1_region(x) { 1 } else { 0 })
+                .map(|x| usize::from(regs.state_in_1_region(x)))
                 .sum();
 
             let _ = write!(
@@ -93,6 +93,8 @@ pub struct SomeAction {
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,
+    /// Number ints used in a bits struct.
+    num_ints: usize,
 }
 
 impl SomeAction {
@@ -107,6 +109,7 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(dom_num, act_num),
             cleanup_trigger: CLEANUP,
+            num_ints,
         }
     }
 
@@ -408,31 +411,31 @@ impl SomeAction {
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
-            if regx.x_mask().num_one_bits() > 1 && *key != regx.state1 && *key != regx.state2 {
-                if let Some(sqr1) = self.squares.find(&regx.state1) {
-                    if let Some(sqr2) = self.squares.find(&regx.state2) {
-                        if sqr1.pnc && sqr2.pnc {
-                            if !sqrx.state.is_adjacent(&sqr1.state)
-                                && sqrx.can_combine(sqr1) == Truth::F
-                            {
-                                println!(
-                                    "\nDom {} Act {} Seek edge between {} and {}",
-                                    &dom, &self.num, &sqrx.state, &sqr1.state
-                                );
-                                self.seek_edge
-                                    .push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
-                            }
-                            if !sqrx.state.is_adjacent(&sqr2.state)
-                                && sqrx.can_combine(sqr2) == Truth::F
-                            {
-                                println!(
-                                    "\nDom {} Act {} Seek edge between {} and {}",
-                                    &dom, &self.num, &sqrx.state, &sqr2.state
-                                );
-                                self.seek_edge
-                                    .push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
-                            }
-                        }
+            if *key != regx.state1 && *key != regx.state2 {
+                let Some(sqr1) = self.squares.find(&regx.state1) else {
+                    panic!("Can't find group defining square?");
+                };
+                let Some(sqr2) = self.squares.find(&regx.state2) else {
+                    panic!("Can't find group defining square?");
+                };
+
+                if sqr1.pnc && sqr2.pnc {
+                    if !sqrx.state.is_adjacent(&sqr1.state) && sqrx.can_combine(sqr1) == Truth::F {
+                        println!(
+                            "\nDom {} Act {} Seek edge between {} and {}",
+                            &dom, &self.num, &sqrx.state, &sqr1.state
+                        );
+                        self.seek_edge
+                            .push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
+                    }
+
+                    if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Truth::F {
+                        println!(
+                            "\nDom {} Act {} Seek edge between {} and {}",
+                            &dom, &self.num, &sqrx.state, &sqr2.state
+                        );
+                        self.seek_edge
+                            .push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
                     }
                 }
             }
@@ -444,7 +447,7 @@ impl SomeAction {
                 if let Some(anchor_state) = &grpx.anchor {
                     if anchor_state.is_adjacent(&sqrx.state) {
                         if let Some(anchor_sqr) = self.squares.find(anchor_state) {
-                            if anchor_sqr.can_combine(sqrx) != Truth::F {
+                            if anchor_sqr.can_combine(sqrx) == Truth::T {
                                 grpx.set_limited_off();
                             }
                         }
@@ -457,9 +460,10 @@ impl SomeAction {
         let grps_in = self.groups.groups_state_in(key);
         if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
             self.create_groups_from_square(key, dom);
-            if regs_invalid.is_empty() {
-                return;
-            }
+        }
+
+        if regs_invalid.is_empty() {
+            return;
         }
 
         // Check squares that may not be in a group
@@ -938,7 +942,7 @@ impl SomeAction {
                     let cnb1 = sqrx.can_combine(sqr1);
                     let cnb2 = sqrx.can_combine(sqr2);
 
-                    if cnb1 != Truth::F && cnb2 != Truth::F {
+                    if cnb1 == Truth::T && cnb2 == Truth::T {
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     } else {
                         if cnb1 == Truth::F {
@@ -952,14 +956,16 @@ impl SomeAction {
                 }
             }
 
-            // Generate need for squares with pnc == false
+            // Generate need for squares with pnc != true
             for sqrx in sqrs_in2.iter() {
-                ret_nds.push(SomeNeed::SeekEdge {
-                    dom_num: 0, // set this in domain get_needs
-                    act_num: self.num,
-                    target_state: sqrx.state.clone(),
-                    in_group: regx.clone(),
-                });
+                if !sqrx.pnc {
+                    ret_nds.push(SomeNeed::SeekEdge {
+                        dom_num: 0, // set this in domain get_needs
+                        act_num: self.num,
+                        target_state: sqrx.state.clone(),
+                        in_group: regx.clone(),
+                    });
+                }
             }
 
             println!(" ");
