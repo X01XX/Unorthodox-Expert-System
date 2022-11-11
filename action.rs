@@ -1841,6 +1841,11 @@ impl SomeAction {
 
         let mut rsx = RegionStore::new();
 
+        if sqrx.pn == Pn::One || sqrx.pnc {
+        } else {
+            return rsx;
+        }
+
         // Collect possible region, deleting subset regions
         for sqry in self.squares.ahash.values() {
             if sqry.state == sqrx.state {
@@ -1848,6 +1853,11 @@ impl SomeAction {
             }
 
             if sqrx.pn != sqry.pn {
+                continue;
+            }
+
+            if sqrx.pn == Pn::One || sqry.pnc {
+            } else {
                 continue;
             }
 
