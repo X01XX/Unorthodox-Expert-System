@@ -284,7 +284,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         }
 
         if !to_end || (cant_do > 0 && can_do == 0) {
-            // fn evaluate_needs(&self, nds: &NeedStore)Start command loop
+            // Start command loop
             // In the loop,
             // The break command will end the loop, display the domain and needs, without incrementing the step number.
             // The continue will prompt for another command.

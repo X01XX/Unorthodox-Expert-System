@@ -180,9 +180,11 @@ impl SomeSquare {
     }
 
     /// Check if two squares can be combined.
+    /// This does not check squares that may be between them.
     pub fn can_combine(&self, sqrx: &SomeSquare) -> Truth {
         assert!(*self != *sqrx);
 
+        // Predictability established for both squares.
         if self.pnc && sqrx.pnc {
             if self.pn != sqrx.pn {
                 return Truth::F;
@@ -197,11 +199,14 @@ impl SomeSquare {
         // Check for bootstrap compatible.
         // Rules have to be formed to allow going back and resampling.
         // The rules may have a significant failure rate.
-        if self.pn == Pn::One
-            && sqrx.pn == Pn::One
-            && self.rules.can_form_union(&sqrx.rules) == Truth::T
-        {
-            return Truth::T;
+        if self.pn == Pn::One && sqrx.pn == Pn::One {
+            if self.rules.can_form_union(&sqrx.rules) == Truth::T {
+                return Truth::T;
+            }
+            if self.pnc || sqrx.pnc {
+                return Truth::F;
+            }
+            return Truth::M;
         }
 
         if self.pnc {
@@ -209,30 +214,19 @@ impl SomeSquare {
             if sqrx.pn > self.pn {
                 return Truth::F;
             }
-            if self.pn == Pn::Unpredictable {
-                return Truth::M;
+            if self.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Truth::F {
+                return Truth::F;
             }
-            if self.rules.can_form_union(&sqrx.rules) != Truth::F {
-                return Truth::M;
-            }
-            return Truth::F;
-        }
-
-        if sqrx.pnc {
+        } else if sqrx.pnc {
             // so self.pnc == false
             if self.pn > sqrx.pn {
                 return Truth::F;
             }
-            if sqrx.pn == Pn::Unpredictable {
-                return Truth::M;
+            if sqrx.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Truth::F {
+                return Truth::F;
             }
-            if self.rules.can_form_union(&sqrx.rules) != Truth::F {
-                return Truth::M;
-            }
-            return Truth::F;
         }
-
-        // Both squares need more samples.
+        // Need more samples
         Truth::M
     }
 

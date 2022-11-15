@@ -125,22 +125,33 @@ impl SomeAction {
             return cmbx;
         }
 
+        // Check if Pn::One squares cannot combine as-is, for bootstrapping.
         if sqrx.pn == Pn::One && sqry.pn == Pn::One && cmbx == Truth::M {
             return Truth::F;
         }
 
-        // Check for Pn values not equal, but more samples may allow the combination.
-        if cmbx == Truth::M {
-            if !self
-                .no_incompatible_square_pair_in_region(&SomeRegion::new(&sqrx.state, &sqry.state))
+        if sqrx.pn == sqry.pn {
+            if !self.no_incompatible_pn_square_in_region(
+                &SomeRegion::new(&sqrx.state, &sqry.state),
+                sqrx.pn,
+            ) {
+                return Truth::F;
+            }
+            if sqrx.pn == Pn::Unpredictable {
+                return Truth::T;
+            }
+
+            let Some(rules) = sqrx.rules.union(&sqry.rules) else { return Truth::F; };
+
+            if !self.all_subset_rules_in_region(&SomeRegion::new(&sqrx.state, &sqry.state), &rules)
             {
                 return Truth::F;
             }
-        } else {
-            // cmbx must be Truth::T
-            if !self.check_subsets_between(sqrx, sqry) {
-                return Truth::F;
-            }
+        } else if !self.no_incompatible_square_combination_in_region(&SomeRegion::new(
+            &sqrx.state,
+            &sqry.state,
+        )) {
+            return Truth::F;
         }
 
         cmbx
@@ -151,10 +162,11 @@ impl SomeAction {
         if self.store_sample(initial, result, dom) {
             self.check_square_new_sample(initial, dom);
 
-            // Check for anchor change
-            // Some groups may be invalidated and/or created in the previous step.
             let sqrx = self.squares.find(initial).unwrap();
-            if sqrx.len_results() == 1 && self.groups.num_groups_state_in(initial) == 1 {
+
+            // Check for anchor change due to new square.
+            // Some groups may be invalidated and/or created in the previous step.
+            if sqrx.results.len() == 1 && self.groups.num_groups_state_in(initial) == 1 {
                 let grps_in: RegionStore = self.groups.groups_state_in(initial);
                 let grpx = self.groups.find(&grps_in[0]).unwrap();
 
@@ -375,6 +387,7 @@ impl SomeAction {
 
     /// Store a sample.
     /// Update an existing square or create a new square.
+    /// Return true if something changed, like pn or pnc.
     fn store_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) -> bool {
         // Get an existing square and update, or create a new square.
         //println!("store_sample");
@@ -1440,23 +1453,78 @@ impl SomeAction {
         nds
     } // end group_pair_needs
 
-    /// Return true if there is no invalid pair of squares in a region.
-    fn no_incompatible_square_pair_in_region(&self, regx: &SomeRegion) -> bool {
+    /// Return true if there is no invalid combination of squares in a region.
+    fn no_incompatible_square_combination_in_region(&self, regx: &SomeRegion) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
-        // Check if any square pairs are incompatible
-        for inx in 0..(sqrs_in_reg.len() - 1) {
-            for iny in (inx + 1)..sqrs_in_reg.len() {
-                if sqrs_in_reg[inx].can_combine(sqrs_in_reg[iny]) == Truth::F {
-                    return false;
+        if sqrs_in_reg.len() < 2 {
+            return true;
+        }
+
+        // Get pn min and max values.
+        let mut max_pn = Pn::One;
+
+        let mut any_pnc = false;
+        let mut max_pnc = Pn::One;
+        let mut min_pnc = Pn::Unpredictable;
+
+        for sqrx in sqrs_in_reg.iter() {
+            if sqrx.pn > max_pn {
+                max_pn = sqrx.pn;
+            }
+            if sqrx.pnc {
+                any_pnc = true;
+                if sqrx.pn > max_pnc {
+                    max_pnc = sqrx.pn;
+                }
+                if sqrx.pn < min_pnc {
+                    min_pnc = sqrx.pn;
                 }
             }
         }
-        true
+
+        // Check pn min and max values.
+        if any_pnc {
+            if max_pnc != min_pnc {
+                return false;
+            }
+
+            if max_pn > max_pnc {
+                return false;
+            }
+
+            if max_pnc == Pn::Unpredictable {
+                return true;
+            }
+        }
+
+        // Check by accumulation.
+        let mut rulx = sqrs_in_reg[0].rules[0].clone();
+        for sqrx in sqrs_in_reg.iter() {
+            for ruly in sqrx.rules.iter() {
+                rulx = rulx.union(ruly);
+            }
+        }
+
+        if max_pn == Pn::One {
+            if rulx.b00.bits_and(&rulx.b01).is_low() && rulx.b11.bits_and(&rulx.b10).is_low() {
+                return true;
+            }
+        } else if rulx
+            .b00
+            .bits_and(&rulx.b01)
+            .bits_and(&rulx.b11)
+            .bits_and(&rulx.b10)
+            .is_low()
+        {
+            return true;
+        }
+
+        false
     }
 
-    /// Return true if all pairs of squares in a region have a combination value of Truth::T.
+    /// Return true if all square rules in a region are a subset of given rules.
     fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
@@ -1480,41 +1548,6 @@ impl SomeAction {
                 return false;
             }
         }
-        true
-    }
-
-    /// Return true if there is no incompatible squares between two compatible squares.
-    fn check_subsets_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
-        // println!("action:can_combine_check_between sqr {} and sqr {}", sqr1.state, sqr2.state);
-        assert!(sqr1.state != sqr2.state);
-        assert!(sqr1.can_combine(sqr2) == Truth::T);
-
-        // Calc region formed by the two squares
-        let regx = SomeRegion::new(&sqr1.state, &sqr2.state);
-
-        if sqr1.pn == Pn::Unpredictable {
-            return self.no_incompatible_pn_square_in_region(&regx, Pn::Unpredictable);
-        }
-
-        // Get squares in the region.
-        let sqrs_in_reg = self.squares.squares_in_reg(&regx);
-
-        let rules = sqr1.rules.union(&sqr2.rules).unwrap();
-
-        for sqrx in sqrs_in_reg {
-            if sqrx == sqr1 || sqrx == sqr2 {
-                continue;
-            }
-
-            if sqrx.pnc && sqrx.pn != sqr1.pn {
-                return false;
-            }
-
-            if !rules.is_superset_of(&sqrx.rules) {
-                return false;
-            }
-        }
-
         true
     }
 
