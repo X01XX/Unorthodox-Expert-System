@@ -36,26 +36,13 @@ impl PartialEq for RuleStore {
             return false;
         }
 
-        if self.is_empty() {
-            return true;
-        }
-
-        if self.len() == 1 {
-            return self.avec[0] == other.avec[0];
-        }
-
-        // For two rules, order does not matter
-        if self.len() == 2 {
-            if let Some(rulesx) = self.intersection(other) {
-                if rulesx.initial_region() == self.initial_region() {
-                    return true;
-                }
+        for rulx in self.iter() {
+            if !other.contains(rulx) { 
+                return false;
             }
-
-            return false;
         }
 
-        panic!("Unsupported RuleStore length {}", self.len());
+        true
     }
 }
 
@@ -94,6 +81,11 @@ impl RuleStore {
             && self.avec[1].is_valid()
             && self.avec[0] != self.avec[1]
             && self.avec[0].initial_region() == self.avec[1].initial_region()
+    }
+
+    /// Return true if a RuleStore contains a rule.
+    pub fn contains(&self, rul: &SomeRule) -> bool {
+        self.avec.contains(rul)
     }
 
     /// Return the length of a RuleStore.

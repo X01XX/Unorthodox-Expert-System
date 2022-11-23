@@ -160,6 +160,7 @@ impl SomeAction {
     /// Evaluate a sample.
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
         if self.store_sample(initial, result, dom) {
+
             self.check_square_new_sample(initial, dom);
 
             let sqrx = self.squares.find(initial).unwrap();
@@ -510,7 +511,7 @@ impl SomeAction {
         }
 
         // Get num groups the state is in
-        let num_grps_in = self.groups.num_groups_state_in(&sqrx.state);
+        let num_grps_in = self.groups.num_groups_state_in(key);
         println!(
             "\nDom {} Act {} Square {} in {} groups",
             dom,
@@ -1499,38 +1500,91 @@ impl SomeAction {
             }
         }
 
-        // Check by accumulation.
-        let mut rulx = sqrs_in_reg[0].rules[0].clone();
-        for sqrx in sqrs_in_reg.iter() {
-            for ruly in sqrx.rules.iter() {
-                rulx = rulx.union(ruly);
-            }
-        }
-
         if max_pn == Pn::One {
-            if rulx.b00.bits_and(&rulx.b01).is_low() && rulx.b11.bits_and(&rulx.b10).is_low() {
-                return true;
+            // Check by accumulation.
+            let mut rulx = sqrs_in_reg[0].rules[0].clone();
+            for sqrx in sqrs_in_reg.iter() {
+                for ruly in sqrx.rules.iter() {
+                    rulx = rulx.union(ruly);
+                }
             }
-        } else if rulx
-            .b00
-            .bits_and(&rulx.b01)
-            .bits_and(&rulx.b11)
-            .bits_and(&rulx.b10)
-            .is_low()
-        {
-            return true;
+
+            return rulx.b00.bits_and(&rulx.b01).is_low() && rulx.b11.bits_and(&rulx.b10).is_low();
         }
 
-        false
+        // Get the indicies for the first, and possibly second, square with Pn::Two.
+        let mut first = usize::MAX;
+        let mut second = 0;
+        for (inx, sqrx) in sqrs_in_reg.iter().enumerate() {
+            if sqrx.pn == Pn::Two {
+                if first == usize::MAX {
+                    first = inx;
+                } else {
+                    second = inx;
+                    break;
+                }
+            }
+        }
+
+        assert!(first != usize::MAX);
+
+        // Handle the situation of one square with Pn::Two.
+        if second == 0 {
+            let rulesx = &sqrs_in_reg[first].rules;
+            for sqrx in sqrs_in_reg.iter() {
+                if sqrx.pn == Pn::One {
+                    if !sqrx.rules[0].union(&rulesx[0]).is_valid_union() &&
+                       !sqrx.rules[0].union(&rulesx[1]).is_valid_union() {
+                           return false;
+                       }
+                }
+            }
+        }
+
+        // There is more than one square with Pn::Two
+        let mut rulesx = sqrs_in_reg[first].rules.clone();
+        for (inx, sqrx) in sqrs_in_reg.iter().enumerate() {
+            if sqrx.pn == Pn::Two && inx != first {
+                if let Some(rulesy) = rulesx.union(&sqrx.rules) {
+                    rulesx = rulesy;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        let regy = rulesx.initial_region();
+
+        for sqrx in sqrs_in_reg.iter() {
+            if sqrx.pn == Pn::One {
+                if regy.is_superset_of_state(&sqrx.state) {
+                    if !sqrx.rules.is_subset_of(&rulesx) {
+                        return false;
+                    }
+                } else {
+                    if !sqrx.rules[0].union(&rulesx[0]).is_valid_union() &&
+                       !sqrx.rules[0].union(&rulesx[1]).is_valid_union() {
+                           return false;
+                       }
+                }
+            }
+        }
+
+        true
     }
 
     /// Return true if all square rules in a region are a subset of given rules.
     fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
+        assert!(!rules.is_empty());
+        
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
         // Check if any square pairs are incompatible
         for sqrx in sqrs_in_reg {
+            if sqrx.pn == Pn::Unpredictable {
+                return false;
+            }
             if !sqrx.rules.is_subset_of(rules) {
                 return false;
             }
@@ -1671,7 +1725,7 @@ impl SomeAction {
 
         let reg_both = grpx.region.union(&grpy.region);
 
-        if grpx.pn == Pn::Unpredictable || grpy.pn == Pn::Unpredictable {
+        if grpx.pn == Pn::Unpredictable {
             if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
                 return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
             }
@@ -1704,7 +1758,6 @@ impl SomeAction {
 
         if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
             if (grpx.pn == Pn::One || (grpx.pnc && grpy.pnc))
-                && self.no_incompatible_pn_square_in_region(&reg_both, grpx.pn)
                 && self.all_subset_rules_in_region(&reg_both, &rulsxy)
             {
                 return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
@@ -1988,6 +2041,52 @@ impl SomeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn no_incompatible_square_combination_in_region() -> Result<(), String> {
+
+        let mut act0 = SomeAction::new(0, 0, 1);
+
+        // Set up 2-result square sf.
+        let sf = SomeState::new_from_string(1, "s1111").unwrap();
+        let se = SomeState::new_from_string(1, "s1110").unwrap();
+        act0.eval_sample(&sf, &sf, 0);
+        act0.eval_sample(&sf, &se, 0);
+        act0.eval_sample(&sf, &sf, 0);
+        act0.eval_sample(&sf, &se, 0);
+
+        // Set up s1
+        let s1 = SomeState::new_from_string(1, "s1").unwrap();
+        let s0 = SomeState::new_from_string(1, "s1").unwrap();
+        act0.eval_sample(&s1, &s0, 0);
+
+        // Set up region
+        let regx = SomeRegion::new(&s1, &sf);
+
+        if !act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 1 is false?".to_owned());
+        }
+
+        // Set up s3
+        let s3 = SomeState::new_from_string(1, "s11").unwrap();
+        act0.eval_sample(&s3, &s3, 0);
+
+        if !act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 2 is false?".to_owned());
+        }
+
+        // Try new s3
+        act0.squares.remove(&s3);
+        let s3 = SomeState::new_from_string(1, "s11").unwrap();
+        act0.eval_sample(&s3, &s0, 0);
+
+        if act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 3 is true?".to_owned());
+        }
+
+        //Err(String::from("Done"))
+        Ok(())
+    }
 
     // Test making a group from two Pn::Two squares.
     #[test]
