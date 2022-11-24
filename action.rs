@@ -1539,6 +1539,7 @@ impl SomeAction {
                        }
                 }
             }
+            return true;
         }
 
         // There is more than one square with Pn::Two
@@ -1553,8 +1554,22 @@ impl SomeAction {
             }
         }
 
+        // Get region formed by Pn::Two squares.
         let regy = rulesx.initial_region();
 
+        // Simple case, all Pn::One rules should be a subset of Pn::Two rules.
+        if regy == *regx {
+            for sqrx in sqrs_in_reg.iter() {
+                if sqrx.pn == Pn::One {
+                    if !sqrx.rules.is_subset_of(&rulesx) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Not simple case, some squares checked for subset, some for union.
         for sqrx in sqrs_in_reg.iter() {
             if sqrx.pn == Pn::One {
                 if regy.is_superset_of_state(&sqrx.state) {
@@ -2047,44 +2062,110 @@ mod tests {
 
         let mut act0 = SomeAction::new(0, 0, 1);
 
-        // Set up 2-result square sf.
-        let sf = SomeState::new_from_string(1, "s1111").unwrap();
-        let se = SomeState::new_from_string(1, "s1110").unwrap();
-        act0.eval_sample(&sf, &sf, 0);
-        act0.eval_sample(&sf, &se, 0);
-        act0.eval_sample(&sf, &sf, 0);
-        act0.eval_sample(&sf, &se, 0);
+        // Init states.
+        let sta_f = SomeState::new_from_string(1, "s1111").unwrap();
+        let sta_e = SomeState::new_from_string(1, "s1110").unwrap();
+        let sta_d = SomeState::new_from_string(1, "s1101").unwrap();
+        let sta_c = SomeState::new_from_string(1, "s1100").unwrap();
+        let sta_b = SomeState::new_from_string(1, "s1011").unwrap();
+        let sta_a = SomeState::new_from_string(1, "s1010").unwrap();
+        let sta_7 = SomeState::new_from_string(1, "s0111").unwrap();
+        let sta_5 = SomeState::new_from_string(1, "s0101").unwrap();
+        let sta_4 = SomeState::new_from_string(1, "s0100").unwrap();
+        let sta_3 = SomeState::new_from_string(1, "s0011").unwrap();
+        let sta_1 = SomeState::new_from_string(1, "s0001").unwrap();
+        let sta_0 = SomeState::new_from_string(1, "s0000").unwrap();
 
-        // Set up s1
-        let s1 = SomeState::new_from_string(1, "s1").unwrap();
-        let s0 = SomeState::new_from_string(1, "s1").unwrap();
-        act0.eval_sample(&s1, &s0, 0);
+        // Set up region XXX1
+        let regx = SomeRegion::new(&sta_1, &sta_f);
 
-        // Set up region
-        let regx = SomeRegion::new(&s1, &sf);
+        // Make square F, Pn::Two. LSB 1->1 and 1->0.
+        act0.eval_sample(&sta_f, &sta_f, 0);
+        act0.eval_sample(&sta_f, &sta_e, 0);
+        act0.eval_sample(&sta_f, &sta_f, 0);
+        act0.eval_sample(&sta_f, &sta_e, 0);
 
+        // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
             return Err("Result 1 is false?".to_owned());
+        } else {
+            println!("Result 1 as expected");
         }
 
-        // Set up s3
-        let s3 = SomeState::new_from_string(1, "s11").unwrap();
-        act0.eval_sample(&s3, &s3, 0);
+        // Set up square 1. Pn::One. LSB 1->0. Inside XXX1, outside X1X1.
+        act0.eval_sample(&sta_1, &sta_0, 0);
 
+        // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
             return Err("Result 2 is false?".to_owned());
+        } else {
+            println!("Result 2 as expected");
         }
 
-        // Try new s3
-        act0.squares.remove(&s3);
-        let s3 = SomeState::new_from_string(1, "s11").unwrap();
-        act0.eval_sample(&s3, &s0, 0);
+        // Make square 5, Pn::Two. LSB 1->0 and 1->1.
+        act0.eval_sample(&sta_5, &sta_4, 0);
+        act0.eval_sample(&sta_5, &sta_5, 0);
+        act0.eval_sample(&sta_5, &sta_4, 0);
+        act0.eval_sample(&sta_5, &sta_5, 0);
 
+        // Squares F and 5 make a region, X1X1, a subset of XXX1.
+
+        // Should be OK so far.
+        if !act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 3 is false?".to_owned());
+        } else {
+            println!("Result 3 as expected");
+        }
+
+        // Set up square 7. Pn::One. LSB 1->1. Inside X1X1.
+        act0.eval_sample(&sta_7, &sta_7, 0);
+
+        // Set up square D. Pn::One. LSB 1->0. Inside X1X1.
+        act0.eval_sample(&sta_d, &sta_c, 0);
+
+        // Set up square B. Pn::One. LSB 1->0. Outside X1X1.
+        act0.eval_sample(&sta_b, &sta_a, 0);
+
+        // Should be OK so far.
+        if !act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 4 is false?".to_owned());
+        } else {
+            println!("Result 4 as expected");
+        }
+
+        // Try a bad square 3.  2 LSB 11->01.
+        act0.eval_sample(&sta_3, &sta_1, 0);
+
+        // Should fail.
         if act0.no_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 3 is true?".to_owned());
+            return Err("Result 5 is true?".to_owned());
+        } else {
+            println!("Result 5 as expected");
         }
 
-        //Err(String::from("Done"))
+        // Remove square 3.
+        act0.squares.remove(&sta_3);
+
+        // Add new square 3.  LSB 1->1.
+        act0.eval_sample(&sta_3, &sta_3, 0);
+
+        // Should be OK so far.
+        if !act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 6 is false?".to_owned());
+        } else {
+            println!("Result 6 as expected");
+        }
+
+        // Square 3 to pnc, Pn::One.
+        act0.eval_sample(&sta_3, &sta_3, 0);
+
+        // Should fail.
+        if act0.no_incompatible_square_combination_in_region(&regx) {
+            return Err("Result 7 is true?".to_owned());
+        } else {
+            println!("Result 7 as expected");
+        }
+
         Ok(())
     }
 
