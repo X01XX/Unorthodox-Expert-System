@@ -1,8 +1,14 @@
-//! The SomeAction struct.  It stores, and analyzes, the results of an action.
+//! The SomeAction struct.
 //!
-//! This stores initial->result samples, generates needs for more samples, and
-//! represents the current best-guess rules of the expected responses
+//! Take an action, and store the (domain current state) initial->result sample.
+//! Generate the current best-guess rules of the expected responses
 //! of executing an action for a given state.
+//!
+//! Return needs for more samples, to improve the understanding of the action.
+//!
+//! Return a list of steps that will make any one, of any number (> 0), of needed bit changes.
+//! For making a plan (series of actions) to change the domain current state to a different, desired, value.
+//!
 
 use crate::actioninterface::ActionInterface;
 use crate::change::SomeChange;
@@ -79,6 +85,8 @@ impl fmt::Display for SomeAction {
 pub struct SomeAction {
     /// Action number, index/key into parent ActionStore vector.
     pub num: usize,
+    /// Parent Domain number.
+    pub dom_num: usize,
     /// Store for groups of compatible-change squares.
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
@@ -104,6 +112,7 @@ impl SomeAction {
     pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
         SomeAction {
             num: act_num,
+            dom_num,
             groups: GroupStore::new(num_ints),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
@@ -157,47 +166,57 @@ impl SomeAction {
         cmbx
     }
 
-    /// Evaluate a sample.
-    pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState, dom: usize) {
-        if self.store_sample(initial, result, dom) {
+    /// Store and evaluate a sample if it forms a new square,
+    /// or causes a change to an existing square (change in pn or pnc).
+    pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState) {
+        if self.store_sample(initial, result) {
+            self.check_square_new_sample(initial);
 
-            self.check_square_new_sample(initial, dom);
-
-            let sqrx = self.squares.find(initial).unwrap();
-
-            // Check for anchor change due to new square.
-            // Some groups may be invalidated and/or created in the previous step.
-            if sqrx.results.len() == 1 && self.groups.num_groups_state_in(initial) == 1 {
-                let grps_in: RegionStore = self.groups.groups_state_in(initial);
-                let grpx = self.groups.find(&grps_in[0]).unwrap();
-
-                if let Some(anchor) = &grpx.anchor {
-                    if anchor == initial {
-                        return;
-                    }
-
-                    let anchor_states = self.groups.anchor_states();
-
-                    // The current anchor rate may have changed, so recalculate it.
-                    let anchor_rate = if self.groups.num_groups_state_in(anchor) == 1 {
-                        self.group_anchor_rate(grpx, anchor, &anchor_states)
-                    } else {
-                        (0, 0, 0)
-                    };
-
-                    let sqr_rate = self.group_anchor_rate(grpx, initial, &anchor_states);
-
-                    if sqr_rate > anchor_rate {
-                        println!(
-                            "Changing group {} anchor from {} {:?} to {} {:?}",
-                            grpx.region, anchor, anchor_rate, initial, sqr_rate
-                        );
-                        self.groups.set_anchor(&grps_in[0], initial);
-                    }
-                }
-            }
+            self.eval_sample_check_anchor(initial);
         }
     }
+
+    /// Check for anchor change due to a square change.
+    /// A new square (in group X) may have a higher anchor rating
+    /// than the current (group X) anchor.
+    /// An square must exist to set an anchor.
+    fn eval_sample_check_anchor(&mut self, initial: &SomeState) {
+        if self.groups.num_groups_state_in(initial) != 1 {
+            return;
+        }
+
+        let Some(sqrx) = self.squares.find(initial) else { println!("eval_sample_check_anchor: 1: This should not happen"); return; };
+
+        if sqrx.results.len() != 1 {
+            return;
+        }
+
+        let grps_in: RegionStore = self.groups.groups_state_in(initial);
+
+        let Some(grpx) = self.groups.find(&grps_in[0]) else { println!("eval_sample_check_anchor: 2: This should not happen"); return; };
+
+        if let Some(anchor) = &grpx.anchor {
+            if anchor == initial {
+                return;
+            }
+
+            let anchor_states = self.groups.anchor_states();
+
+            // The current anchor rate may have changed, so recalculate it.
+            let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
+
+            let sqr_rate = self.group_anchor_rate(grpx, initial, &anchor_states);
+
+            if sqr_rate > anchor_rate {
+                println!(
+                    "Changing group {} anchor from {} {:?} to {} {:?}",
+                    grpx.region, anchor, anchor_rate, initial, sqr_rate
+                );
+
+                self.groups.set_anchor(&grps_in[0], initial);
+            }
+        }
+    } // end eval_sample_check_anchors
 
     /// Evaluate a sample taken to satisfy a need.
     pub fn eval_need_sample(
@@ -208,7 +227,7 @@ impl SomeAction {
         dom: usize,
     ) {
         // Processing for all samples.
-        self.eval_sample(initial, result, dom);
+        self.eval_sample(initial, result);
 
         // Additional processing for selected kinds of need
         match ndx {
@@ -304,7 +323,7 @@ impl SomeAction {
                     // Create a group for square if needed
                     if !make_groups_from.is_empty() {
                         for stax in make_groups_from {
-                            self.create_groups_from_square(&stax, dom);
+                            self.create_groups_from_square(&stax);
                         }
                     }
                 }
@@ -370,26 +389,26 @@ impl SomeAction {
     }
 
     /// Evaluate the sample taken for a step in a plan.
-    fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) {
+    fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState) {
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
             // println!("about to add result to sqr {}", cur.str());
             if sqrx.add_result(new_state.clone()) {
-                self.check_square_new_sample(cur, dom);
+                self.check_square_new_sample(cur);
             }
             return;
         }
 
         // Check if any groups are invalidated
         if self.groups.any_groups_invalidated(cur, new_state) {
-            self.eval_sample(cur, new_state, dom);
+            self.eval_sample(cur, new_state);
         }
     } // end eval_step_sample
 
     /// Store a sample.
     /// Update an existing square or create a new square.
     /// Return true if something changed, like pn or pnc.
-    fn store_sample(&mut self, cur: &SomeState, new_state: &SomeState, dom: usize) -> bool {
+    fn store_sample(&mut self, cur: &SomeState, new_state: &SomeState) -> bool {
         // Get an existing square and update, or create a new square.
         //println!("store_sample");
         if let Some(sqrx) = self.squares.find_mut(cur) {
@@ -403,7 +422,7 @@ impl SomeAction {
         }
         self.squares.insert(
             SomeSquare::new(cur.clone(), new_state.clone()),
-            dom,
+            self.dom_num,
             self.num,
         );
         true
@@ -414,14 +433,14 @@ impl SomeAction {
     /// Add a group for the square if the square is in no valid group.
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
-    fn check_square_new_sample(&mut self, key: &SomeState, dom: usize) {
+    fn check_square_new_sample(&mut self, key: &SomeState) {
         //println!("check_square_new_sample for {}", key);
 
         let sqrx = self.squares.find(key).unwrap();
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
-        let regs_invalid: RegionStore = self.groups.check_square(sqrx, dom, self.num);
+        let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_num, self.num);
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
@@ -437,7 +456,7 @@ impl SomeAction {
                     if !sqrx.state.is_adjacent(&sqr1.state) && sqrx.can_combine(sqr1) == Truth::F {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
-                            &dom, &self.num, &sqrx.state, &sqr1.state
+                            &self.dom_num, &self.num, &sqrx.state, &sqr1.state
                         );
                         self.seek_edge
                             .push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
@@ -446,7 +465,7 @@ impl SomeAction {
                     if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Truth::F {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
-                            &dom, &self.num, &sqrx.state, &sqr2.state
+                            &self.dom_num, &self.num, &sqrx.state, &sqr2.state
                         );
                         self.seek_edge
                             .push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
@@ -473,7 +492,7 @@ impl SomeAction {
         // Create a group for square if needed
         let grps_in = self.groups.groups_state_in(key);
         if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
-            self.create_groups_from_square(key, dom);
+            self.create_groups_from_square(key);
         }
 
         if regs_invalid.is_empty() {
@@ -489,14 +508,14 @@ impl SomeAction {
         for keyx in keys.iter() {
             // A later square may be in a group created by an earlier square
             if self.groups.num_groups_state_in(keyx) == 0 {
-                self.create_groups_from_square(keyx, dom);
+                self.create_groups_from_square(keyx);
             }
         }
     } // end check_square_new_sample
 
     /// Check groups due to a new, or updated, square.
     /// Create a group with the square, if needed.
-    fn create_groups_from_square(&mut self, key: &SomeState, dom: usize) {
+    fn create_groups_from_square(&mut self, key: &SomeState) {
         //println!("create_groups_from_square {}", &key);
 
         // Square should exist
@@ -514,7 +533,7 @@ impl SomeAction {
         let num_grps_in = self.groups.num_groups_state_in(key);
         println!(
             "\nDom {} Act {} Square {} in {} groups",
-            dom,
+            self.dom_num,
             self.num,
             sqrx.str_terse(),
             num_grps_in,
@@ -539,7 +558,7 @@ impl SomeAction {
 
                             self.groups.push(
                                 SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
-                                dom,
+                                self.dom_num,
                                 self.num,
                             );
                             group_added = true;
@@ -557,7 +576,7 @@ impl SomeAction {
         let regz = SomeRegion::new(&sqrx.state, &sqrx.state);
         self.groups.push(
             SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc),
-            dom,
+            self.dom_num,
             self.num,
         );
     } // end create_groups_from_square
@@ -804,7 +823,7 @@ impl SomeAction {
 
                 // Do cleanup
                 if self.cleanup_trigger == 0 {
-                    self.cleanup(dom, &nds);
+                    self.cleanup(&nds);
                     self.cleanup_trigger = CLEANUP;
                 }
 
@@ -824,7 +843,7 @@ impl SomeAction {
     } // end get_needs
 
     /// Cleanup, that is delete unneeded squares
-    fn cleanup(&mut self, dom: usize, needs: &NeedStore) {
+    fn cleanup(&mut self, needs: &NeedStore) {
         let stas = self.squares.all_square_states();
 
         let mut sqr_del = StateStore::new();
@@ -886,7 +905,7 @@ impl SomeAction {
         if !sqr_del.is_empty() {
             println!(
                 "\nDom {} Act {} deleted unneeded squares {}",
-                dom, self.num, sqr_del
+                self.dom_num, self.num, sqr_del
             );
         }
     } // end cleanup
@@ -1512,45 +1531,39 @@ impl SomeAction {
             return rulx.b00.bits_and(&rulx.b01).is_low() && rulx.b11.bits_and(&rulx.b10).is_low();
         }
 
-        // Get the indicies for the first, and possibly second, square with Pn::Two.
-        let mut first = usize::MAX;
-        let mut second = 0;
+        // Get the indicies for squares with Pn::Two.
+        let mut pn_two = Vec::<usize>::new();
         for (inx, sqrx) in sqrs_in_reg.iter().enumerate() {
             if sqrx.pn == Pn::Two {
-                if first == usize::MAX {
-                    first = inx;
-                } else {
-                    second = inx;
-                    break;
-                }
+                pn_two.push(inx);
             }
         }
 
-        assert!(first != usize::MAX);
+        assert!(!pn_two.is_empty());
 
         // Handle the situation of one square with Pn::Two.
-        if second == 0 {
-            let rulesx = &sqrs_in_reg[first].rules;
+        if pn_two.len() == 1 {
+            let rulesx = &sqrs_in_reg[pn_two[0]].rules;
             for sqrx in sqrs_in_reg.iter() {
-                if sqrx.pn == Pn::One {
-                    if !sqrx.rules[0].union(&rulesx[0]).is_valid_union() &&
-                       !sqrx.rules[0].union(&rulesx[1]).is_valid_union() {
-                           return false;
-                       }
+                if sqrx.pn == Pn::One
+                    && !sqrx.rules[0].union(&rulesx[0]).is_valid_union()
+                    && !sqrx.rules[0].union(&rulesx[1]).is_valid_union()
+                {
+                    return false;
                 }
             }
             return true;
         }
 
-        // There is more than one square with Pn::Two
-        let mut rulesx = sqrs_in_reg[first].rules.clone();
-        for (inx, sqrx) in sqrs_in_reg.iter().enumerate() {
-            if sqrx.pn == Pn::Two && inx != first {
-                if let Some(rulesy) = rulesx.union(&sqrx.rules) {
-                    rulesx = rulesy;
-                } else {
-                    return false;
-                }
+        // There is more than one square with Pn::Two,
+        // get/check the union of all Pn::Two squares.
+        let Some(mut rulesx) = sqrs_in_reg[pn_two[0]].rules.union(&sqrs_in_reg[pn_two[1]].rules) else { return false; };
+
+        for inx in 2..pn_two.len() {
+            if let Some(rulesy) = rulesx.union(&sqrs_in_reg[pn_two[inx]].rules) {
+                rulesx = rulesy;
+            } else {
+                return false;
             }
         }
 
@@ -1560,10 +1573,8 @@ impl SomeAction {
         // Simple case, all Pn::One rules should be a subset of Pn::Two rules.
         if regy == *regx {
             for sqrx in sqrs_in_reg.iter() {
-                if sqrx.pn == Pn::One {
-                    if !sqrx.rules.is_subset_of(&rulesx) {
-                        return false;
-                    }
+                if sqrx.pn == Pn::One && !sqrx.rules.is_subset_of(&rulesx) {
+                    return false;
                 }
             }
             return true;
@@ -1576,11 +1587,10 @@ impl SomeAction {
                     if !sqrx.rules.is_subset_of(&rulesx) {
                         return false;
                     }
-                } else {
-                    if !sqrx.rules[0].union(&rulesx[0]).is_valid_union() &&
-                       !sqrx.rules[0].union(&rulesx[1]).is_valid_union() {
-                           return false;
-                       }
+                } else if !sqrx.rules[0].union(&rulesx[0]).is_valid_union()
+                    && !sqrx.rules[0].union(&rulesx[1]).is_valid_union()
+                {
+                    return false;
                 }
             }
         }
@@ -1591,7 +1601,7 @@ impl SomeAction {
     /// Return true if all square rules in a region are a subset of given rules.
     fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
         assert!(!rules.is_empty());
-        
+
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
@@ -1621,7 +1631,7 @@ impl SomeAction {
     }
 
     /// Return needs to define a region, from the combination of two smaller regions.
-    /// This assumes there are no incompatible square pairs in the region.
+    /// This assumes there are no incompatible squares in the region.
     fn region_defining_needs(
         &self,
         regx: &SomeRegion,
@@ -2018,26 +2028,26 @@ impl SomeAction {
     }
 
     /// Take an action with the current state.
-    pub fn take_action_step(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
+    pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeState {
         let astate = self.do_something.take_action(cur_state);
-        self.eval_step_sample(cur_state, &astate, dom);
+        self.eval_step_sample(cur_state, &astate);
         astate
     }
 
     /// Take an action with the current state.
-    pub fn take_action_arbitrary(&mut self, dom: usize, cur_state: &SomeState) -> SomeState {
+    pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeState {
         //println!("action {} take_action_arbitrary", self.num);
         let astate = self.do_something.take_action(cur_state);
 
         if self.groups.any_superset_of_state(cur_state) {
-            self.eval_step_sample(cur_state, &astate, dom);
+            self.eval_step_sample(cur_state, &astate);
         } else {
             let ndx = SomeNeed::StateNotInGroup {
-                dom_num: dom,
+                dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: cur_state.clone(),
             };
-            self.eval_need_sample(cur_state, &ndx, &astate, dom);
+            self.eval_need_sample(cur_state, &ndx, &astate, self.dom_num);
         }
         astate
     }
@@ -2059,7 +2069,6 @@ mod tests {
 
     #[test]
     fn no_incompatible_square_combination_in_region() -> Result<(), String> {
-
         let mut act0 = SomeAction::new(0, 0, 1);
 
         // Init states.
@@ -2080,10 +2089,10 @@ mod tests {
         let regx = SomeRegion::new(&sta_1, &sta_f);
 
         // Make square F, Pn::Two. LSB 1->1 and 1->0.
-        act0.eval_sample(&sta_f, &sta_f, 0);
-        act0.eval_sample(&sta_f, &sta_e, 0);
-        act0.eval_sample(&sta_f, &sta_f, 0);
-        act0.eval_sample(&sta_f, &sta_e, 0);
+        act0.eval_sample(&sta_f, &sta_f);
+        act0.eval_sample(&sta_f, &sta_e);
+        act0.eval_sample(&sta_f, &sta_f);
+        act0.eval_sample(&sta_f, &sta_e);
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2093,7 +2102,7 @@ mod tests {
         }
 
         // Set up square 1. Pn::One. LSB 1->0. Inside XXX1, outside X1X1.
-        act0.eval_sample(&sta_1, &sta_0, 0);
+        act0.eval_sample(&sta_1, &sta_0);
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2103,10 +2112,10 @@ mod tests {
         }
 
         // Make square 5, Pn::Two. LSB 1->0 and 1->1.
-        act0.eval_sample(&sta_5, &sta_4, 0);
-        act0.eval_sample(&sta_5, &sta_5, 0);
-        act0.eval_sample(&sta_5, &sta_4, 0);
-        act0.eval_sample(&sta_5, &sta_5, 0);
+        act0.eval_sample(&sta_5, &sta_4);
+        act0.eval_sample(&sta_5, &sta_5);
+        act0.eval_sample(&sta_5, &sta_4);
+        act0.eval_sample(&sta_5, &sta_5);
 
         // Squares F and 5 make a region, X1X1, a subset of XXX1.
 
@@ -2118,13 +2127,13 @@ mod tests {
         }
 
         // Set up square 7. Pn::One. LSB 1->1. Inside X1X1.
-        act0.eval_sample(&sta_7, &sta_7, 0);
+        act0.eval_sample(&sta_7, &sta_7);
 
         // Set up square D. Pn::One. LSB 1->0. Inside X1X1.
-        act0.eval_sample(&sta_d, &sta_c, 0);
+        act0.eval_sample(&sta_d, &sta_c);
 
         // Set up square B. Pn::One. LSB 1->0. Outside X1X1.
-        act0.eval_sample(&sta_b, &sta_a, 0);
+        act0.eval_sample(&sta_b, &sta_a);
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2134,7 +2143,7 @@ mod tests {
         }
 
         // Try a bad square 3.  2 LSB 11->01.
-        act0.eval_sample(&sta_3, &sta_1, 0);
+        act0.eval_sample(&sta_3, &sta_1);
 
         // Should fail.
         if act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2147,7 +2156,7 @@ mod tests {
         act0.squares.remove(&sta_3);
 
         // Add new square 3.  LSB 1->1.
-        act0.eval_sample(&sta_3, &sta_3, 0);
+        act0.eval_sample(&sta_3, &sta_3);
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2157,7 +2166,7 @@ mod tests {
         }
 
         // Square 3 to pnc, Pn::One.
-        act0.eval_sample(&sta_3, &sta_3, 0);
+        act0.eval_sample(&sta_3, &sta_3);
 
         // Should fail.
         if act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2178,18 +2187,18 @@ mod tests {
         let sf = SomeState::new_from_string(1, "s1111").unwrap();
         let se = SomeState::new_from_string(1, "s1110").unwrap();
 
-        act0.eval_sample(&sf, &sf, 0);
-        act0.eval_sample(&sf, &se, 0);
-        act0.eval_sample(&sf, &sf, 0);
-        act0.eval_sample(&sf, &se, 0);
+        act0.eval_sample(&sf, &sf);
+        act0.eval_sample(&sf, &se);
+        act0.eval_sample(&sf, &sf);
+        act0.eval_sample(&sf, &se);
 
         // Set up 2-result square s1.
         let s1 = SomeState::new_from_string(1, "s0001").unwrap();
         let s0 = SomeState::new_from_string(1, "s0000").unwrap();
-        act0.eval_sample(&s1, &s1, 0);
-        act0.eval_sample(&s1, &s0, 0);
-        act0.eval_sample(&s1, &s1, 0);
-        act0.eval_sample(&s1, &s0, 0);
+        act0.eval_sample(&s1, &s1);
+        act0.eval_sample(&s1, &s0);
+        act0.eval_sample(&s1, &s1);
+        act0.eval_sample(&s1, &s0);
 
         let memory = VecDeque::<SomeState>::new();
         let nds = act0.get_needs(

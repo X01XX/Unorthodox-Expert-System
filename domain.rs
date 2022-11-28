@@ -138,7 +138,7 @@ impl SomeDomain {
         i_state: &SomeState,
         r_state: &SomeState,
     ) {
-        self.actions[act_num].eval_sample(i_state, r_state, self.num);
+        self.actions[act_num].eval_sample(i_state, r_state);
         self.set_state(r_state);
     }
 
@@ -151,17 +151,9 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state.
-    /// A sample made for a rule-path should not be saved as a new square if the result is as expected.
-    pub fn take_action_step(&mut self, act_num: usize) {
-        let astate = self.actions[act_num].take_action_step(self.num, &self.cur_state);
-
-        self.set_state(&astate);
-    }
-
-    /// Take an action with the current state.
     /// Save sample if it is not in a group, or invalidates a group.
     pub fn take_action_arbitrary(&mut self, act_num: usize) {
-        let astate = self.actions[act_num].take_action_arbitrary(self.num, &self.cur_state);
+        let astate = self.actions[act_num].take_action_arbitrary(&self.cur_state);
 
         self.set_state(&astate);
     }
@@ -211,7 +203,7 @@ impl SomeDomain {
         }
 
         for stpx in pln.iter() {
-            let astate = self.actions[stpx.act_num].take_action_step(self.num, &self.cur_state);
+            let astate = self.actions[stpx.act_num].take_action_step(&self.cur_state);
 
             let prev_state = self.cur_state.clone();
 
@@ -227,7 +219,7 @@ impl SomeDomain {
             if prev_state == self.cur_state && stpx.alt_rule {
                 println!("Try action a second time");
 
-                let astate = self.actions[stpx.act_num].take_action_step(self.num, &self.cur_state);
+                let astate = self.actions[stpx.act_num].take_action_step(&self.cur_state);
 
                 self.set_state(&astate);
 
@@ -414,7 +406,7 @@ impl SomeDomain {
 
             // Get steps, check if steps include all changes needed.
             if let Some(steps_str) = self.get_steps(&required_change) {
-                // Get vector of steps for each bit change.
+                // Get vector ofactions steps for each bit change.
                 if let Some(steps_by_change_vov) =
                     self.get_steps_by_bit_change(&steps_str, &required_change)
                 {

@@ -211,11 +211,6 @@ impl DomainStore {
         self.avec[dmxi].take_action_need(ndx);
     }
 
-    /// Take an action for a step
-    pub fn take_action_step(&mut self, dmxi: usize, actx: usize) {
-        self.avec[dmxi].take_action_step(actx);
-    }
-
     /// Take an arbitrary action
     pub fn take_action_arbitrary(&mut self, dmxi: usize, actx: usize) {
         self.avec[dmxi].take_action_arbitrary(actx);
