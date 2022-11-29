@@ -1573,37 +1573,86 @@ mod tests {
         Ok(())
     }
 
+    // Create a group with no way to change a non-X bit position, so its initially
+    // set to limited.
+    //
     // Introduce a new bit position that can change.
-    // Group should go from limited = true to limited = false,
+    // Group should go from limited = true to limited = false.
+    //
     // So the next step would be to seek a sample of an adjacent square, if needed.
+    // Assumes groups are added to the end of the group list.
     #[test]
     fn limited_flag_change() -> Result<(), String> {
         let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1011").unwrap());
         dm0.add_action();
         dm0.add_action();
 
+        // Create group XXX1 -> XXX1, no way to change any bit.
         let s0b = dm0.state_from_string("s1011").unwrap();
-        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
-        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
+        let s05 = dm0.state_from_string("s0101").unwrap();
 
-        dm0.get_needs();
+        // Start group.
+        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
+        dm0.eval_sample_arbitrary(0, &s05, &s05);
+
+        // Confirm group.
+        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
+        dm0.eval_sample_arbitrary(0, &s05, &s05);
+
+        // Print domain and needs, if needed for error resolution.
+        // Also get_needs checks the limited flag for each group.
         println!("{}", dm0.actions[0]);
-
         let nds = dm0.get_needs();
         println!("needs {}", nds);
 
+        // Limited flag should be true.
         if !dm0.actions[0].groups[0].limited {
             return Err("Limited flag is false?".to_string());
         }
 
-        // Add a way to change bit position 0 to action 1.
+        // Add a way to change bit position 1, 0->1.
+        let s09 = dm0.state_from_string("s1001").unwrap();
+        dm0.eval_sample_arbitrary(1, &s09, &s0b);
+
+        // Print domain and needs, if needed for error resolution.
+        // Also get_needs checks the limited flag for each group.
+        println!("{}", dm0.actions[0]);
+        let nds = dm0.get_needs();
+        println!("needs {}", nds);
+
+        // Changing bit position 1 should not affect the limited flag,
+        // where the group bit position one is X.
+        if !dm0.actions[0].groups[0].limited {
+            return Err("Limited flag is false?".to_string());
+        }
+
+        // Add a way to change bit position 0, 0->1.
+        let s08 = dm0.state_from_string("s1000").unwrap();
+        dm0.eval_sample_arbitrary(1, &s08, &s09);
+
+        // Print domain and needs, if needed for error resolution.
+        // Also get_needs checks the limited flag for each group.
+        println!("{}", dm0.actions[0]);
+        let nds = dm0.get_needs();
+        println!("needs {}", nds);
+
+        // Changing bit position 1 should not affect the limited flag,
+        // where the group bit position one is X.
+        if !dm0.actions[0].groups[0].limited {
+            return Err("Limited flag is false?".to_string());
+        }
+
+        // Add a way to change bit position 0, 1->0.
         let s0a = dm0.state_from_string("s1010").unwrap();
-        dm0.eval_sample_arbitrary(1, &s0a, &s0b);
         dm0.eval_sample_arbitrary(1, &s0b, &s0a);
 
-        dm0.get_needs();
+        // Print domain and needs, if needed for error resolution.
+        // Also get_needs checks the limited flag for each group.
         println!("{}", dm0.actions[0]);
+        let nds = dm0.get_needs();
+        println!("needs {}", nds);
 
+        // Allowing the bit position 0 to change 1->0 should affect the limited flag.
         if dm0.actions[0].groups[0].limited {
             return Err("Limited flag is true?".to_string());
         }
