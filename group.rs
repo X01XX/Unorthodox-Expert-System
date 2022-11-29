@@ -3,6 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
@@ -10,6 +11,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+use crate::bits::{bits_and, bits_not};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -212,10 +214,17 @@ impl SomeGroup {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         assert!(self.limited);
-        let nonx = self.region.same_bits();
-        let positions = nonx.bits_and(new_chgs);
+
+        //let nonx = self.region.same_bits();
+        //let positions = nonx.bits_and(new_chgs);
+        
+        let same_bits = self.region.same_bits();
+        let one_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&self.region.state1, &new_chgs.b10)));
+        let zero_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&bits_not(&self.region.state1), &new_chgs.b01)));
+        let positions = one_bits.bits_or(&zero_bits);
+        
         if !positions.is_low() {
             self.limited = false;
             //println!("resetting limit flag!");

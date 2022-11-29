@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
 
-#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
@@ -39,6 +38,15 @@ impl SomeChange {
             b01: SomeMask::new(initial.bts.b_not().b_and(&result.bts)),
             b10: SomeMask::new(initial.bts.b_and(&result.bts.b_not())),
         }
+    }
+
+    /// Apply a change to a state.
+    pub fn apply_to_state(&self, astate: &SomeState) -> SomeState {
+        let b01 = astate.bits_not().bits_and(&self.b01);
+        let b10 = astate.bits_and(&self.b10);
+        let to_change = b01.bits_or(&b10);
+
+        astate.bits_xor(&to_change)
     }
 
     /// Return a new SomeChange struct instance, set to zeros.
@@ -92,12 +100,12 @@ impl SomeChange {
     //    }
 
     // Return the logical bitwize not of a change
-    //    pub fn c_not(&self) -> SomeChange {
-    //        Self {
-    //            b01: self.b01.m_not(),
-    //            b10: self.b10.m_not(),
-    //        }
-    //    }
+    pub fn c_not(&self) -> SomeChange {
+        Self {
+            b01: self.b01.bits_not(),
+            b10: self.b10.bits_not(),
+        }
+    }
 
     /// Return true if no bits are set
     pub fn is_low(&self) -> bool {
@@ -185,3 +193,36 @@ impl SomeChange {
     //        self.b10.m_and(&other.b10).is_not_low()
     //    }
 } // end impl SomeChange
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn apply_to_state() -> Result<(), String> {
+
+        // Test changing two bits.
+        let reg0 = SomeRegion::new_from_string(1, "r0101").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r1001").unwrap();
+
+        let cng = SomeChange::region_to_region(&reg0, &reg1);
+        let sta = SomeState::new_from_string(1, "s0101").unwrap();
+        
+        let sta2 = cng.apply_to_state(&sta);
+
+        let sta3 = SomeState::new_from_string(1, "s1001").unwrap();
+        if sta2 != sta3 {
+            return Err(format!("sta2 {} not {} ?", sta2, sta3));
+        }
+
+        // Test changing no bits.
+        let cng = SomeChange::region_to_region(&reg0, &reg0);
+
+        let sta2 = cng.apply_to_state(&sta);
+
+        if sta2 != sta {
+            return Err(format!("sta2 {} not {} ?", sta2, sta3));
+        }
+        Ok(())
+    }
+}

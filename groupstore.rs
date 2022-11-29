@@ -2,7 +2,6 @@
 
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
-use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
@@ -332,7 +331,7 @@ impl GroupStore {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         for grpx in &mut self.avec {
             if grpx.limited {
                 grpx.check_limited(new_chgs);

@@ -28,6 +28,7 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
+use crate::bits::{bits_and, bits_not};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -169,9 +170,9 @@ impl SomeAction {
     /// Store and evaluate a sample if it forms a new square,
     /// or causes a change to an existing square (change in pn or pnc).
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState) {
+        
         if self.store_sample(initial, result) {
             self.check_square_new_sample(initial);
-
             self.eval_sample_check_anchor(initial);
         }
     }
@@ -642,7 +643,7 @@ impl SomeAction {
         cur_state: &SomeState,
         dom: usize,
         memory: &VecDeque<SomeState>,
-        changes_mask: &SomeMask,
+        agg_changes: &SomeChange,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
@@ -674,7 +675,7 @@ impl SomeAction {
             }
 
             // Check for squares in-one-group needs
-            let mut ndx = self.limit_groups_needs(changes_mask);
+            let mut ndx = self.limit_groups_needs(agg_changes);
             if !ndx.is_empty() {
                 nds.append(&mut ndx);
             }
@@ -1105,7 +1106,7 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn limit_groups_needs(&self, changes_mask: &SomeMask) -> NeedStore {
+    pub fn limit_groups_needs(&self, agg_changes: &SomeChange) -> NeedStore {
         //println!("limit_groups_needs chg {}", changes_mask);
 
         let mut ret_nds = NeedStore::new();
@@ -1139,7 +1140,7 @@ impl SomeAction {
             if ndx.is_empty() {
                 if let Some(anchor) = &grpx.anchor {
                     if !grpx.limited {
-                        ndx = self.limit_group_adj_needs(grpx, anchor, changes_mask, group_num);
+                        ndx = self.limit_group_adj_needs(grpx, anchor, agg_changes, group_num);
                     }
                 }
             }
@@ -1319,7 +1320,7 @@ impl SomeAction {
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
-        changes_mask: &SomeMask,
+        agg_changes: &SomeChange,
         group_num: usize,
     ) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
@@ -1337,8 +1338,11 @@ impl SomeAction {
         let mut nds_grp_add = NeedStore::new(); // needs for added group
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.same_bits().bits_and(changes_mask).split();
-
+        let same_bits = grpx.region.same_bits();
+        let one_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&grpx.region.state1, &agg_changes.b10)));
+        let zero_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01)));
+        let edge_msks = one_bits.bits_or(&zero_bits).split();
+        
         for mskx in edge_msks.iter() {
             let adj_sta = anchor_sta.bits_xor(mskx);
 
@@ -2058,7 +2062,7 @@ impl SomeAction {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         self.groups.check_limited(new_chgs);
     }
 } // end impl SomeAction
@@ -2205,7 +2209,8 @@ mod tests {
             &s1,
             0,
             &memory,
-            &SomeMask::new_from_string(1, "m1111").unwrap(),
+            &SomeChange { b01: SomeMask::new_from_string(1, "m1111").unwrap(),
+                            b10: SomeMask::new_from_string(1, "m1111").unwrap() },
         );
         println!("Act: {}", &act0);
         println!("needs: {}", nds);

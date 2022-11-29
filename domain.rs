@@ -64,8 +64,8 @@ pub struct SomeDomain {
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub memory: VecDeque<SomeState>,
-    /// Most recent aggregate changes mask
-    agg_changes: SomeMask,
+    /// Most recent aggregate changes
+    agg_changes: SomeChange,
 }
 
 impl SomeDomain {
@@ -74,6 +74,7 @@ impl SomeDomain {
     pub fn new(dom: usize, start_state: SomeState) -> Self {
         // Check that optimal regions, if any, are the same number of ints.
         let num_ints = start_state.num_ints();
+        let low_mask = SomeMask::new_low(num_ints);
 
         // Set up a domain instance with the correct value for num_ints
         SomeDomain {
@@ -82,7 +83,7 @@ impl SomeDomain {
             actions: ActionStore::new(),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeMask::new_low(num_ints),
+            agg_changes: SomeChange::new(&low_mask, &low_mask),
         }
     }
 
@@ -100,22 +101,25 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
         // Get aggregate changes mask
-        let cur_agg_mask = self.aggregate_changes_mask();
+        let cur_agg_cngs = self.aggregate_changes();
 
-        if cur_agg_mask != self.agg_changes {
-            let new_chgs = self.agg_changes.bits_not().bits_and(&cur_agg_mask);
+        if cur_agg_cngs != self.agg_changes {
+            let new_chgs = self.agg_changes.c_not().c_and(&cur_agg_cngs);
 
-            if !new_chgs.is_low() {
+            if new_chgs.is_low() {
+                // fewer changes
+            } else {
+                // additional changes
                 self.actions.check_limited(&new_chgs);
             }
 
-            self.agg_changes = cur_agg_mask.clone();
+            self.agg_changes = cur_agg_cngs;
         }
 
         // Get all needs.
         let mut nst =
             self.actions
-                .get_needs(&self.cur_state, self.num, &self.memory, &cur_agg_mask);
+                .get_needs(&self.cur_state, self.num, &self.memory, &self.agg_changes);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -740,9 +744,9 @@ impl SomeDomain {
         inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())]
     } // end choose_a_plan
 
-    /// Return a mask of bit positions that can be changed.
-    fn aggregate_changes_mask(&self) -> SomeMask {
-        self.actions.aggregate_changes_mask(self.num_ints)
+    /// Return all changes that can be made,
+    fn aggregate_changes(&self) -> SomeChange {
+        self.actions.aggregate_changes(self.num_ints)
     }
 } // end impl SomeDomain
 
@@ -1130,8 +1134,10 @@ mod tests {
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds1 =
-            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds1 = dm0.actions[0].limit_groups_needs(&SomeChange {
+            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+        });
         println!("needs1 are {}", nds1);
 
         let mut found = false;
@@ -1150,8 +1156,10 @@ mod tests {
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds2 =
-            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds2 = dm0.actions[0].limit_groups_needs(&SomeChange {
+            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+        });
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s00000110").unwrap();
@@ -1162,8 +1170,10 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &s06, &s02);
 
         println!("dm0 {}", &dm0.actions[0]);
-        let nds3 =
-            dm0.actions[0].limit_groups_needs(&SomeMask::new_from_string(1, "m1111").unwrap());
+        let nds3 = dm0.actions[0].limit_groups_needs(&SomeChange {
+            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+        });
         println!("needs3 are {}", nds3);
 
         let mut found = false;
@@ -1472,7 +1482,8 @@ mod tests {
                     }
                     _ => (),
                 }
-            }
+            } // Set up a limited group.
+
             assert!(found);
 
             // At the next run of get_needs, rx111 will replace the superset region rx1x1, then
@@ -1525,7 +1536,7 @@ mod tests {
         };
         dm0.actions[0].eval_need_sample(&s25, &ndx, &s27, 0);
 
-        // Sample 4
+        // Sample 4    // Set up a limited group.
         let s2c = dm0.state_from_string("s0010_1100").unwrap();
         let s2e = dm0.state_from_string("s0010_1110").unwrap();
         let ndx = SomeNeed::StateNotInGroup {
@@ -1562,7 +1573,6 @@ mod tests {
         Ok(())
     }
 
-    // Set up a limited group.
     // Introduce a new bit position that can change.
     // Group should go from limited = true to limited = false,
     // So the next step would be to seek a sample of an adjacent square, if needed.
@@ -1597,7 +1607,6 @@ mod tests {
         if dm0.actions[0].groups[0].limited {
             return Err("Limited flag is true?".to_string());
         }
-        //Err(String::from("Done!"))
         Ok(())
     }
 } // end tests

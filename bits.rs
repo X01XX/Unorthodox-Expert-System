@@ -543,6 +543,11 @@ pub fn bits_and<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
     one.bitsref().b_and(two.bitsref())
 }
 
+// Return the b_not of a structure (SomeMask or SomeState)
+pub fn bits_not<T: BitsRef>(one: &T) -> SomeBits {
+    one.bitsref().b_not()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

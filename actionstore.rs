@@ -69,7 +69,7 @@ impl ActionStore {
         cur: &SomeState,
         dom: usize,
         memory: &VecDeque<SomeState>,
-        changes_mask: &SomeMask,
+        agg_changes: &SomeChange,
     ) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
@@ -77,7 +77,7 @@ impl ActionStore {
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, memory, changes_mask))
+            .map(|actx| actx.get_needs(cur, dom, memory, agg_changes))
             .filter(|ndstrx| !ndstrx.is_empty())
             .collect::<Vec<NeedStore>>();
 
@@ -128,12 +128,24 @@ impl ActionStore {
         chgs.b01.bits_and(&chgs.b10)
     }
 
+    /// Return all possible chnages.
+    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
+        let mut chgs = SomeChange::new_low(num_ints);
+
+        for actx in self.avec.iter() {
+            chgs = chgs.c_or(actx.aggregate_changes());
+        }
+
+        chgs
+    }
+
     /// Check the limited flags on groups due to new bit position that can be changed.
-    pub fn check_limited(&mut self, new_chgs: &SomeMask) {
+    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         for actx in self.avec.iter_mut() {
             actx.check_limited(new_chgs);
         }
     }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
