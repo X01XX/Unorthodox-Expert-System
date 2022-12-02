@@ -34,3 +34,7 @@ After some testing of actions, the device can develop rules which can then be us
 If something happens to change the state of the device to a non-optimal state, the device can again run rules to put it into an optimal state.
 
 At a higher level, maybe something gets "bored", or "satiated", so the optimum state changes.  At some level are we following something like: food -> shelter -> rest -> food ?
+
+A "domain" is a state and a set of actions.  There can be more than one domain.  A goal state can include all domains, or less if a goal for a domain is all X.  Plans for multiple domains are run in parallel.
+
+
