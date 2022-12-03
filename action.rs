@@ -11,6 +11,7 @@
 //!
 
 use crate::actioninterface::ActionInterface;
+use crate::bits::{bits_and, bits_not};
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -28,7 +29,6 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::truth::Truth;
-use crate::bits::{bits_and, bits_not};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -89,6 +89,7 @@ pub struct SomeAction {
     /// Parent Domain number.
     pub dom_num: usize,
     /// Store for groups of compatible-change squares.
+    /// Any need for num_ints could be satisfied with self.groups.aggregate_changes.b01.num_ints()
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
     pub squares: SquareStore,
@@ -102,8 +103,6 @@ pub struct SomeAction {
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,
-    /// Number ints used in a bits struct.
-    num_ints: usize,
 }
 
 impl SomeAction {
@@ -119,8 +118,12 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(dom_num, act_num),
             cleanup_trigger: CLEANUP,
-            num_ints,
         }
+    }
+
+    // Return num_ints in SomeBits struct.
+    fn _num_ints(&self) -> usize {
+        self.groups.num_ints()
     }
 
     /// Return Truth enum for the combination of any two different squares,
@@ -170,7 +173,6 @@ impl SomeAction {
     /// Store and evaluate a sample if it forms a new square,
     /// or causes a change to an existing square (change in pn or pnc).
     pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState) {
-        
         if self.store_sample(initial, result) {
             self.check_square_new_sample(initial);
             self.eval_sample_check_anchor(initial);
@@ -227,7 +229,7 @@ impl SomeAction {
         result: &SomeState,
         dom: usize,
     ) {
-        // Processing for all samples.
+        // Processing for all samples that will be stored.
         self.eval_sample(initial, result);
 
         // Additional processing for selected kinds of need
@@ -390,6 +392,9 @@ impl SomeAction {
     }
 
     /// Evaluate the sample taken for a step in a plan.
+    /// If a square is currently stored for the sample, update the square.
+    /// If the square invalidates any group, store a new square.
+    /// In most cases, if the sample is as expected, no new square will be stored.
     fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState) {
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(cur) {
@@ -1339,10 +1344,16 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         let same_bits = grpx.region.same_bits();
-        let one_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&grpx.region.state1, &agg_changes.b10)));
-        let zero_bits = SomeMask::new(bits_and(&same_bits, &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01)));
+        let one_bits = SomeMask::new(bits_and(
+            &same_bits,
+            &bits_and(&grpx.region.state1, &agg_changes.b10),
+        ));
+        let zero_bits = SomeMask::new(bits_and(
+            &same_bits,
+            &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01),
+        ));
         let edge_msks = one_bits.bits_or(&zero_bits).split();
-        
+
         for mskx in edge_msks.iter() {
             let adj_sta = anchor_sta.bits_xor(mskx);
 
@@ -1438,9 +1449,9 @@ impl SomeAction {
         }
         //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
-    } // end limit_group_needs2
+    } // end limit_group_adj_needs
 
-    /// Check needs for intersecting groups.
+    /// Check group pairs for an intersection.
     pub fn group_pair_needs(&self) -> NeedStore {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new();
@@ -2067,6 +2078,7 @@ impl SomeAction {
     }
 } // end impl SomeAction
 
+// Some action tests are made from the domain level.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2209,8 +2221,10 @@ mod tests {
             &s1,
             0,
             &memory,
-            &SomeChange { b01: SomeMask::new_from_string(1, "m1111").unwrap(),
-                            b10: SomeMask::new_from_string(1, "m1111").unwrap() },
+            &SomeChange {
+                b01: SomeMask::new_from_string(1, "m1111").unwrap(),
+                b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+            },
         );
         println!("Act: {}", &act0);
         println!("needs: {}", nds);

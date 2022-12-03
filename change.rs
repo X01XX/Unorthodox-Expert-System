@@ -200,14 +200,13 @@ mod tests {
 
     #[test]
     fn apply_to_state() -> Result<(), String> {
-
         // Test changing two bits.
         let reg0 = SomeRegion::new_from_string(1, "r0101").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "r1001").unwrap();
 
         let cng = SomeChange::region_to_region(&reg0, &reg1);
         let sta = SomeState::new_from_string(1, "s0101").unwrap();
-        
+
         let sta2 = cng.apply_to_state(&sta);
 
         let sta3 = SomeState::new_from_string(1, "s1001").unwrap();

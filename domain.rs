@@ -518,44 +518,43 @@ impl SomeDomain {
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
 
         // Get steps, check if steps include all changes needed.
-        if let Some(steps_str) = self.get_steps(&required_change) {
-            // Get vector of steps for each bit change.
-            if let Some(steps_by_change_vov) =
-                self.get_steps_by_bit_change(&steps_str, &required_change)
-            {
-                // Tune maximum depth to be a multiple of the number of bit changes required.
-                let num_depth = 3 * required_change.number_changes();
+        let Some(steps_str) = self.get_steps(&required_change) else { return None; };
 
-                // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
-                // recalculated for each run, below, of random_depth_first_search.
-                let mut plans = (0..6)
-                    .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                    .filter_map(|_| {
-                        self.random_depth_first_search(
-                            &cur_reg,
-                            goal_reg,
-                            &steps_str,
-                            &steps_by_change_vov,
-                            num_depth,
-                        )
-                    })
-                    .collect::<Vec<SomePlan>>();
+        // Get vector of steps for each bit change.
+        let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else { return None; };
 
-                // Return one of the plans, avoiding the need to clone.
-                if plans.len() == 1 {
-                    //println!("forward_depth_first_search returned plan");
-                    return Some(plans.remove(0));
-                }
-                if plans.len() > 1 {
-                    //println!("make_plan returned plan");
-                    let inx = self.choose_a_plan(&plans);
-                    return Some(plans.remove(inx));
-                }
-            }
+        // Tune maximum depth to be a multiple of the number of bit changes required.
+        let num_depth = 3 * required_change.number_changes();
+
+        // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
+        // recalculated for each run, below, of random_depth_first_search.
+        let mut plans = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| {
+                self.random_depth_first_search(
+                    &cur_reg,
+                    goal_reg,
+                    &steps_str,
+                    &steps_by_change_vov,
+                    num_depth,
+                )
+            })
+            .collect::<Vec<SomePlan>>();
+
+        // Check for failure.
+        if plans.is_empty() {
+            return None;
         }
-        // No plan to return.
-        //println!("make_plan did not return a plan");
-        None
+
+        // Return one of the plans, avoiding the need to clone.
+        if plans.len() == 1 {
+            //println!("make_plan returned plan");
+            return Some(plans.remove(0));
+        }
+
+        //println!("make_plan returned plan");
+        let inx = self.choose_a_plan(&plans);
+        Some(plans.remove(inx))
     } // end make plan
 
     /// Get steps that may allow a change to be made.
@@ -688,61 +687,65 @@ impl SomeDomain {
 
         //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
 
-        // Rate plans, highest rate is best rate.
-        // Length of plan is rated inversely
-        let mut rates_vec = Vec::<usize>::with_capacity(ret_plans.len());
-        for rets in ret_plans.iter() {
-            // Rate the length of the plan
-            let mut rate = max_len - rets.len() + 10;
-
-            // Check for steps that may have two results
-            for stpx in rets.iter() {
-                if stpx.alt_rule {
-                    if let Some(sqrx) = self.actions[stpx.act_num]
-                        .squares
-                        .find(&stpx.initial.state1)
-                    {
-                        // For an alternating square, you want the most recent result to be NEQ the desired next result.
-                        if *sqrx.most_recent_result() == stpx.result.state1 {
-                            if rate > 1 {
-                                rate -= 2;
-                            } else {
-                                rate = 0;
-                            }
-                        }
-                    } else if rate > 1 {
-                        rate -= 2;
-                    } else {
-                        rate = 0;
-                    }
-                }
-            }
-            rates_vec.push(rate);
-        }
+        // Rate plans, highest rate is best.
+        let rates_vec: Vec<(usize, usize)> = ret_plans
+            .par_iter()
+            .enumerate() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .map(|(inx, planx)| (inx, self.rate_a_plan(planx)))
+            .collect::<Vec<(usize, usize)>>();
 
         // Find max rate
         let mut max_rate = 0;
         for rtx in rates_vec.iter() {
-            if *rtx > max_rate {
-                max_rate = *rtx;
+            if rtx.1 > max_rate {
+                max_rate = rtx.1;
             }
         }
 
         // Gather highest rated plan indexes
         let mut inx_ary = Vec::<usize>::new();
 
-        for (inx, rets) in rates_vec.iter().enumerate() {
-            if *rets == max_rate {
-                inx_ary.push(inx);
+        for rtx in rates_vec.iter() {
+            if rtx.1 == max_rate {
+                inx_ary.push(rtx.0);
             }
         }
 
         // Choose a step
-        if inx_ary.len() == 1 {
-            return inx_ary[0];
-        }
         inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())]
     } // end choose_a_plan
+
+    // Rate a given plan.
+    // Length of plan is rated inversely.
+    // Return an integer, higher is better.
+    fn rate_a_plan(&self, planx: &SomePlan) -> usize {
+        // Rate the length of the plan
+        let mut rate = 1000 - planx.len();
+
+        // Check for steps that may have two results
+        for stpx in planx.iter() {
+            if stpx.alt_rule {
+                if let Some(sqrx) = self.actions[stpx.act_num]
+                    .squares
+                    .find(&stpx.initial.state1)
+                {
+                    // For an alternating square, you want the most recent result to be NEQ the desired next result.
+                    if *sqrx.most_recent_result() == stpx.result.state1 {
+                        if rate > 4 {
+                            rate -= 5;
+                        } else {
+                            rate = 0;
+                        }
+                    }
+                } else if rate > 1 {
+                    rate -= 2;
+                } else {
+                    rate = 0;
+                }
+            }
+        }
+        rate
+    }
 
     /// Return all changes that can be made,
     fn aggregate_changes(&self) -> SomeChange {
@@ -1656,6 +1659,21 @@ mod tests {
         if dm0.actions[0].groups[0].limited {
             return Err("Limited flag is true?".to_string());
         }
-        Ok(())
+
+        // Check for limit need.
+        for ndx in nds.iter() {
+            if ndx.type_string() == "LimitGroupAdj" {
+                match ndx {
+                    SomeNeed::LimitGroupAdj { anchor, .. } => {
+                        if anchor == &s0b || anchor == &s05 {
+                            return Ok(());
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        Err("LimitGroupAdj need not found?".to_string())
     }
 } // end tests

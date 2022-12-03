@@ -37,7 +37,7 @@ impl PartialEq for RuleStore {
         }
 
         for rulx in self.iter() {
-            if !other.contains(rulx) { 
+            if !other.contains(rulx) {
                 return false;
             }
         }

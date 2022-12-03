@@ -37,7 +37,6 @@ pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
     pub aggregate_changes: SomeChange,
-    pub num_ints: usize,
 }
 
 impl GroupStore {
@@ -46,13 +45,18 @@ impl GroupStore {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),
             aggregate_changes: SomeChange::new_low(num_ints),
-            num_ints,
         }
     }
 
-    /// Calculate and set the aggregate changes mask
-    fn calc_aggregate_changes_mask(&mut self) {
-        let mut ret_chn = SomeChange::new_low(self.num_ints);
+    /// Return num_ints for SomeBits struct.
+    pub fn num_ints(&self) -> usize {
+        self.aggregate_changes.b01.num_ints()
+    }
+
+    /// Calculate and set the aggregate changes
+    fn calc_aggregate_changes(&mut self) {
+        let mut ret_chn = SomeChange::new_low(self.num_ints());
+
         for grpx in self.avec.iter() {
             for rulx in grpx.rules.iter() {
                 ret_chn = ret_chn.c_or(&rulx.change());
@@ -107,7 +111,7 @@ impl GroupStore {
         }
 
         if !rmvec.is_empty() {
-            self.calc_aggregate_changes_mask();
+            self.calc_aggregate_changes();
         }
 
         //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
@@ -266,7 +270,7 @@ impl GroupStore {
         }
         self.avec.push(grp);
 
-        self.calc_aggregate_changes_mask();
+        self.calc_aggregate_changes();
 
         true
     }

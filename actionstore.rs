@@ -145,7 +145,6 @@ impl ActionStore {
             actx.check_limited(new_chgs);
         }
     }
-
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
