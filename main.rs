@@ -725,12 +725,12 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
             if sqrx.pn > max_pn {
                 max_pn = sqrx.pn;
-                max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                max_pn_reg = Some(SomeRegion::new(sqrx.state.clone(), sqrx.state.clone()));
             } else if sqrx.pn == max_pn {
                 if let Some(regx) = max_pn_reg {
                     max_pn_reg = Some(regx.union_state(&sqrx.state));
                 } else {
-                    max_pn_reg = Some(SomeRegion::new(&sqrx.state, &sqrx.state));
+                    max_pn_reg = Some(SomeRegion::new(sqrx.state.clone(), sqrx.state.clone()));
                 }
             }
         }

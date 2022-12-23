@@ -577,7 +577,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::StateNotInGroup {
                 dom_num,
@@ -585,7 +585,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
@@ -603,7 +603,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::SeekEdge {
                 dom_num,
@@ -611,7 +611,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::LimitGroup {
                 dom_num,
@@ -619,7 +619,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::LimitGroupAdj {
                 dom_num,
@@ -627,7 +627,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new_with_target(SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state, target_state),
+                SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::ToOptimalRegion { target_regions, .. } => {
                 let mut targ = TargetStore::new();

@@ -57,16 +57,7 @@ impl PartialOrd for Pn {
     }
 }
 
-impl PartialEq for Pn {
-    fn eq(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (Pn::One, Pn::One) | (Pn::Two, Pn::Two) | (Pn::Unpredictable, Pn::Unpredictable)
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Eq, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Pn {
     /// Only one result for a state.
     One,

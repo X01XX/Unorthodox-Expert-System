@@ -4,7 +4,6 @@
 //!
 //! Kind of like Boolean True/False, plus Maybe.
 
-use std::cmp::Ordering;
 use std::fmt;
 
 impl fmt::Display for Truth {
@@ -12,26 +11,6 @@ impl fmt::Display for Truth {
         let rc_str = self.formatted_string();
 
         write!(f, "{}", rc_str)
-    }
-}
-
-impl PartialOrd for Truth {
-    fn partial_cmp(&self, other: &Truth) -> Option<Ordering> {
-        match self {
-            Truth::T {} => match other {
-                Truth::T => Some(Ordering::Equal),
-                _ => Some(Ordering::Greater),
-            },
-            Truth::M {} => match other {
-                Truth::T => Some(Ordering::Less),
-                Truth::M => Some(Ordering::Equal),
-                Truth::F => Some(Ordering::Greater),
-            },
-            Truth::F {} => match other {
-                Truth::F => Some(Ordering::Equal),
-                _ => Some(Ordering::Less),
-            },
-        }
     }
 }
 

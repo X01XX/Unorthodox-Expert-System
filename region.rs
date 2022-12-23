@@ -4,7 +4,7 @@
 //!
 //! The two states used to make the region, can be keys to two squares.
 
-use crate::bits::{SomeBits, NUM_BITS_PER_INT};
+use crate::bits::{bits_and, bits_or, bits_xor, SomeBits, NUM_BITS_PER_INT};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
@@ -45,10 +45,10 @@ impl SomeRegion {
     /// Keep the order of the states given. This is used in
     /// SomeAction::create_groups_from_square for prosessing the regions
     /// returned from SomeAction::possible_group_regions.
-    pub fn new(sta1: &SomeState, sta2: &SomeState) -> Self {
+    pub fn new(sta1: SomeState, sta2: SomeState) -> Self {
         Self {
-            state1: sta1.clone(),
-            state2: sta2.clone(),
+            state1: sta1,
+            state2: sta2,
         }
     }
 
@@ -78,7 +78,7 @@ impl SomeRegion {
                     let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
-                            return Ok(SomeRegion::new(&a_state, &a_state));
+                            return Ok(SomeRegion::new(a_state.clone(), a_state));
                         }
                         Err(error) => {
                             return Err(error);
@@ -122,8 +122,8 @@ impl SomeRegion {
         }
 
         Ok(SomeRegion::new(
-            &SomeState::new(bts_high),
-            &SomeState::new(bts_low),
+            SomeState::new(bts_high),
+            SomeState::new(bts_low),
         ))
     } // end new_from_string
 
@@ -153,7 +153,7 @@ impl SomeRegion {
                     let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
-                            return Ok(SomeRegion::new(&a_state, &a_state));
+                            return Ok(SomeRegion::new(a_state.clone(), a_state));
                         }
                         Err(error) => {
                             return Err(error);
@@ -198,8 +198,8 @@ impl SomeRegion {
         }
 
         Ok(SomeRegion::new(
-            &SomeState::new(bts_high),
-            &SomeState::new(bts_low),
+            SomeState::new(bts_high),
+            SomeState::new(bts_low),
         ))
     } // end new_from_string_pad_x
 
@@ -260,31 +260,29 @@ impl SomeRegion {
     /// to X.
     pub fn intersection(&self, other: &Self) -> Self {
         Self::new(
-            &SomeState::new(self.high_state().bts.b_and(&other.high_state().bts)),
-            &SomeState::new(self.low_state().bts.b_or(&other.low_state().bts)),
+            SomeState::new(bits_and(&self.high_state(), &other.high_state())),
+            SomeState::new(bits_or(&self.low_state(), &other.low_state())),
         )
     }
 
     /// Return true if a region is a superset of a state.
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
-        let t1 = SomeMask::new(
-            self.state1
-                .bts
-                .b_xor(&a_state.bts)
-                .b_and(&self.state2.bts.b_xor(&a_state.bts)),
-        );
+        let t1 = SomeMask::new(bits_and(
+            &bits_xor(&self.state1, a_state),
+            &bits_xor(&self.state2, a_state),
+        ));
 
         t1.is_low()
     }
 
     /// Return a Mask of zero positions.
     pub fn zeros_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_not().b_and(&self.state2.bts.b_not()))
+        SomeMask::new(bits_and(&self.state1.bts.b_not(), &self.state2.bts.b_not()))
     }
 
     /// Return a Mask of one positions.
     pub fn ones_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_and(&self.state2.bts))
+        SomeMask::new(bits_and(&self.state1, &self.state2))
     }
 
     /// Return a mask of same bits.
@@ -294,7 +292,7 @@ impl SomeRegion {
 
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
-        SomeMask::new(self.state1.bts.b_xor(&self.state2.bts))
+        SomeMask::new(bits_xor(&self.state1, &self.state2))
     }
 
     /// Return the number of X bits in a region.
@@ -304,7 +302,7 @@ impl SomeRegion {
 
     /// Given a state in a region, return the far state in the region.
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
-        SomeState::new(self.state1.bts.b_xor(&self.state2.bts).b_xor(&sta.bts))
+        SomeState::new(bits_xor(&bits_xor(&self.state1, &self.state2), sta))
     }
 
     /// Given a region, and a proper subset region, return the
@@ -318,11 +316,11 @@ impl SomeRegion {
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
-        let cng_bits = int_x_msk.bits_and(&ok_x_msk.bits_not());
+        let cng_bits = bits_and(&int_x_msk, &ok_x_msk.bts.b_not());
 
         SomeRegion::new(
-            &other.state1.bits_xor(&cng_bits),
-            &other.state2.bits_xor(&cng_bits),
+            SomeState::new(bits_xor(&other.state1, &cng_bits)),
+            SomeState::new(bits_xor(&other.state2, &cng_bits)),
         )
     }
 
@@ -348,45 +346,45 @@ impl SomeRegion {
 
     /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
-        let st_low = SomeState::new(self.low_state().bts.b_and(&other.low_state().bts));
+        let st_low = SomeState::new(bits_and(&self.low_state(), &other.low_state()));
 
-        let st_high = SomeState::new(self.high_state().bts.b_or(&other.high_state().bts));
+        let st_high = SomeState::new(bits_or(&self.high_state(), &other.high_state()));
 
-        Self::new(&st_high, &st_low)
+        Self::new(st_high, st_low)
     }
 
     /// Return the union of a region and a state.
     pub fn union_state(&self, other: &SomeState) -> Self {
-        let st_low = SomeState::new(self.low_state().bts.b_and(&other.bts));
+        let st_low = SomeState::new(bits_and(&self.low_state(), other));
 
-        let st_high = SomeState::new(self.high_state().bts.b_or(&other.bts));
+        let st_high = SomeState::new(bits_or(&self.high_state(), other));
 
-        Self::new(&st_high, &st_low)
+        Self::new(st_high, st_low)
     }
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        SomeState::new(self.state1.bts.b_or(&self.state2.bts))
+        SomeState::new(bits_or(&self.state1, &self.state2.bts))
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        SomeState::new(self.state1.bts.b_and(&self.state2.bts))
+        SomeState::new(bits_and(&self.state1, &self.state2))
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
         Self::new(
-            &SomeState::new(self.state1.bts.b_and(&msk.bts.b_not())),
-            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+            SomeState::new(bits_and(&self.state1, &msk.bts.b_not())),
+            SomeState::new(bits_and(&self.state2, &msk.bts.b_not())),
         )
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
         Self::new(
-            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-            &SomeState::new(self.state2.bts.b_or(&msk.bts)),
+            SomeState::new(bits_or(&self.state1, msk)),
+            SomeState::new(bits_or(&self.state2, msk)),
         )
     }
 
@@ -400,18 +398,24 @@ impl SomeRegion {
 
     /// Return a mask of different bit with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        SomeMask::new(
-            self.state1
-                .bts
-                .b_xor(&sta1.bts)
-                .b_and(&self.state2.bts.b_xor(&sta1.bts)),
-        )
+        SomeMask::new(bits_and(
+            &bits_xor(&self.state1, sta1),
+            &bits_xor(&self.state2, sta1),
+        ))
     }
 
     /// Return a mask of different (non-x) bits between two regions.
     pub fn diff_mask(&self, reg1: &SomeRegion) -> SomeMask {
-        self.diff_mask_state(&reg1.state1)
-            .bits_and(&self.diff_mask_state(&reg1.state2))
+        SomeMask::new(bits_and(
+            &bits_xor(&self.state1, &reg1.state1),
+            &bits_and(
+                &bits_xor(&self.state1, &reg1.state2),
+                &bits_and(
+                    &bits_xor(&self.state2, &reg1.state2),
+                    &bits_xor(&self.state2, &reg1.state2),
+                ),
+            ),
+        ))
     }
 
     // Return the number of different (non-x) bits with another region.
@@ -444,10 +448,11 @@ impl SomeRegion {
 
         let reg_int = self.intersection(other);
 
-        let x_over_not_xs: Vec<SomeMask> = self.x_mask().bits_and(&reg_int.same_bits()).split();
+        let x_over_not_xs: Vec<SomeMask> =
+            SomeMask::new(bits_and(&self.x_mask(), &reg_int.same_bits())).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.bits_and(&reg_int.state1).is_low() {
+            if bits_and(mskx, &reg_int.state1).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {
@@ -499,12 +504,12 @@ mod tests {
     #[test]
     fn eq() -> Result<(), String> {
         let reg1 = SomeRegion::new(
-            &SomeState::new_from_string(1, "s1010").unwrap(),
-            &SomeState::new_from_string(1, "s0101").unwrap(),
+            SomeState::new_from_string(1, "s1010").unwrap(),
+            SomeState::new_from_string(1, "s0101").unwrap(),
         );
         let reg2 = SomeRegion::new(
-            &SomeState::new_from_string(1, "s0001").unwrap(),
-            &SomeState::new_from_string(1, "s1110").unwrap(),
+            SomeState::new_from_string(1, "s0001").unwrap(),
+            SomeState::new_from_string(1, "s1110").unwrap(),
         );
         assert!(reg1.eq(&reg2));
 

@@ -158,34 +158,6 @@ impl SomeMask {
     pub fn to_state(&self) -> SomeState {
         SomeState::new(self.bts.clone())
     }
-
-    // Return the b_xor of a mask and an structure that implements BitsRef.
-    pub fn bits_xor<U: BitsRef>(&self, two: &U) -> SomeMask {
-        Self {
-            bts: self.bts.b_xor(two.bitsref()),
-        }
-    }
-
-    // Return the b_or of a mask and an structure that implements BitsRef.
-    pub fn bits_or<U: BitsRef>(&self, two: &U) -> SomeMask {
-        Self {
-            bts: self.bts.b_or(two.bitsref()),
-        }
-    }
-
-    // Return the b_and of  a mask and an structure that implements BitsRef.
-    pub fn bits_and<U: BitsRef>(&self, two: &U) -> SomeMask {
-        Self {
-            bts: self.bts.b_and(two.bitsref()),
-        }
-    }
-
-    // Return a mask with the bits reversed.
-    pub fn bits_not(&self) -> SomeMask {
-        Self {
-            bts: self.bts.b_not(),
-        }
-    }
 } // end impl SomeMask
 
 impl BitsRef for SomeMask {

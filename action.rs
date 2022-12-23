@@ -11,7 +11,7 @@
 //!
 
 use crate::actioninterface::ActionInterface;
-use crate::bits::{bits_and, bits_not};
+use crate::bits::{bits_and, bits_not, bits_or, bits_xor};
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -145,7 +145,7 @@ impl SomeAction {
 
         if sqrx.pn == sqry.pn {
             if !self.no_incompatible_pn_square_in_region(
-                &SomeRegion::new(&sqrx.state, &sqry.state),
+                &SomeRegion::new(sqrx.state.clone(), sqry.state.clone()),
                 sqrx.pn,
             ) {
                 return Truth::F;
@@ -156,13 +156,15 @@ impl SomeAction {
 
             let Some(rules) = sqrx.rules.union(&sqry.rules) else { return Truth::F; };
 
-            if !self.all_subset_rules_in_region(&SomeRegion::new(&sqrx.state, &sqry.state), &rules)
-            {
+            if !self.all_subset_rules_in_region(
+                &SomeRegion::new(sqrx.state.clone(), sqry.state.clone()),
+                &rules,
+            ) {
                 return Truth::F;
             }
         } else if !self.no_incompatible_square_combination_in_region(&SomeRegion::new(
-            &sqrx.state,
-            &sqry.state,
+            sqrx.state.clone(),
+            sqry.state.clone(),
         )) {
             return Truth::F;
         }
@@ -255,7 +257,7 @@ impl SomeAction {
                             && (sqrx.state == sqry.state
                                 || self.can_combine(sqrx, sqry) == Truth::T)
                         {
-                            let regz = SomeRegion::new(&sqrx.state, &sqry.state);
+                            let regz = SomeRegion::new(sqrx.state.clone(), sqry.state.clone());
 
                             let rulsxy = if sqrx.pn == Pn::Unpredictable {
                                 RuleStore::new()
@@ -300,7 +302,8 @@ impl SomeAction {
                             make_groups_from.push(sqr1.state.clone());
                             make_groups_from.push(sqr3.state.clone());
                         } else {
-                            let even_closer_reg = SomeRegion::new(&sqr1.state, &sqr3.state);
+                            let even_closer_reg =
+                                SomeRegion::new(sqr1.state.clone(), sqr3.state.clone());
                             println!(
                                 "\nDom {} Act {} replace seek edge {} with {}",
                                 dom, self.num, &greg, &even_closer_reg
@@ -318,7 +321,8 @@ impl SomeAction {
                                 make_groups_from.push(sqr3.state.clone());
                             }
                         } else {
-                            let even_closer_reg = SomeRegion::new(&sqr2.state, &sqr3.state);
+                            let even_closer_reg =
+                                SomeRegion::new(sqr2.state.clone(), sqr3.state.clone());
                             self.seek_edge.push_nosups(even_closer_reg);
                         }
                     }
@@ -465,7 +469,7 @@ impl SomeAction {
                             &self.dom_num, &self.num, &sqrx.state, &sqr1.state
                         );
                         self.seek_edge
-                            .push_nosubs(SomeRegion::new(&sqrx.state, &sqr1.state));
+                            .push_nosubs(SomeRegion::new(sqrx.state.clone(), sqr1.state.clone()));
                     }
 
                     if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Truth::F {
@@ -474,7 +478,7 @@ impl SomeAction {
                             &self.dom_num, &self.num, &sqrx.state, &sqr2.state
                         );
                         self.seek_edge
-                            .push_nosubs(SomeRegion::new(&sqrx.state, &sqr2.state));
+                            .push_nosubs(SomeRegion::new(sqrx.state.clone(), sqr2.state.clone()));
                     }
                 }
             }
@@ -579,7 +583,7 @@ impl SomeAction {
         }
 
         // Make a single-square group
-        let regz = SomeRegion::new(&sqrx.state, &sqrx.state);
+        let regz = SomeRegion::new(sqrx.state.clone(), sqrx.state.clone());
         self.groups.push(
             SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc),
             self.dom_num,
@@ -985,10 +989,16 @@ impl SomeAction {
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     } else {
                         if cnb1 == Truth::F {
-                            new_regs.push_nosups(SomeRegion::new(&sqrx.state, &sqr1.state));
+                            new_regs.push_nosups(SomeRegion::new(
+                                sqrx.state.clone(),
+                                sqr1.state.clone(),
+                            ));
                         }
                         if cnb2 == Truth::F {
-                            new_regs.push_nosups(SomeRegion::new(&sqrx.state, &sqr2.state));
+                            new_regs.push_nosups(SomeRegion::new(
+                                sqrx.state.clone(),
+                                sqr2.state.clone(),
+                            ));
                         }
                     }
                     continue 'next_regx;
@@ -1040,9 +1050,9 @@ impl SomeAction {
 
         // Randomly choose which state to use to calculate the target state from
         let seek_state = if rand::random::<bool>() {
-            regx.state1.bits_xor(&dif_msk)
+            SomeState::new(bits_xor(&regx.state1, &dif_msk))
         } else {
-            regx.state2.bits_xor(&dif_msk)
+            SomeState::new(bits_xor(&regx.state2, &dif_msk))
         };
 
         // Make need for seek_state
@@ -1186,7 +1196,7 @@ impl SomeAction {
 
         // Rate adjacent external states
         for edge_bit in edge_msks.iter() {
-            let sta_adj = stax.bits_xor(edge_bit);
+            let sta_adj = SomeState::new(bits_xor(stax, edge_bit));
             //println!(
             //    "checking {} adjacent to {} external to {}",
             //    &sta_adj, &stax, &greg
@@ -1226,7 +1236,7 @@ impl SomeAction {
         // Check for adjacent anchors
         for ancx in anchors.iter() {
             if grpx.region.is_adjacent_state(ancx) {
-                let stay = ancx.bits_xor(&grpx.region.diff_mask_state(ancx));
+                let stay = SomeState::new(bits_xor(ancx, &grpx.region.diff_mask_state(ancx)));
 
                 if !stas_in.contains(&stay) {
                     stas_in.push(stay);
@@ -1344,25 +1354,24 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         let same_bits = grpx.region.same_bits();
-        let one_bits = SomeMask::new(bits_and(
-            &same_bits,
-            &bits_and(&grpx.region.state1, &agg_changes.b10),
-        ));
-        let zero_bits = SomeMask::new(bits_and(
+
+        let one_bits = bits_and(&same_bits, &bits_and(&grpx.region.state1, &agg_changes.b10));
+        let zero_bits = bits_and(
             &same_bits,
             &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01),
-        ));
-        let edge_msks = one_bits.bits_or(&zero_bits).split();
+        );
+
+        let edge_msks = SomeMask::new(bits_or(&one_bits, &zero_bits)).split();
 
         for mskx in edge_msks.iter() {
-            let adj_sta = anchor_sta.bits_xor(mskx);
+            let adj_sta = SomeState::new(bits_xor(anchor_sta, mskx));
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
                     if anchor_sqr.can_combine(adj_sqr) == Truth::T {
-                        let regz = SomeRegion::new(anchor_sta, &adj_sta);
+                        let regz = SomeRegion::new(anchor_sta.clone(), adj_sta);
 
                         let ruls = if anchor_sqr.pn == Pn::Unpredictable {
                             RuleStore::new()
@@ -1379,7 +1388,7 @@ impl SomeAction {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
-                        target_state: adj_sta.clone(),
+                        target_state: adj_sta,
                         for_group: grpx.region.clone(),
                         group_num,
                     });
@@ -1389,7 +1398,7 @@ impl SomeAction {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    target_state: adj_sta.clone(),
+                    target_state: adj_sta,
                     for_group: grpx.region.clone(),
                     group_num,
                 });
@@ -1543,7 +1552,8 @@ impl SomeAction {
                 }
             }
 
-            return rulx.b00.bits_and(&rulx.b01).is_low() && rulx.b11.bits_and(&rulx.b10).is_low();
+            return bits_and(&rulx.b00, &rulx.b01).is_low()
+                && bits_and(&rulx.b11, &rulx.b10).is_low();
         }
 
         // Get the indicies for squares with Pn::Two.
@@ -1689,7 +1699,7 @@ impl SomeAction {
                         sqrx.rules.union(&sqr2.rules).unwrap()
                     };
                     nds.push(SomeNeed::AddGroup {
-                        group_region: SomeRegion::new(&sqr2.state, &sqrx.state),
+                        group_region: SomeRegion::new(sqr2.state.clone(), sqrx.state.clone()),
                         rules,
                     });
                     return nds;
@@ -1890,7 +1900,7 @@ impl SomeAction {
         SomeNeed::ContradictoryIntersection {
             dom_num: 0, // set this in domain get_needs
             act_num: self.num,
-            target_region: SomeRegion::new(&stas_check[inx], &stas_check[inx]),
+            target_region: SomeRegion::new(stas_check[inx].clone(), stas_check[inx].clone()),
             group1: grpx.region.clone(),
             ruls1,
             group2: grpy.region.clone(),
@@ -1935,7 +1945,10 @@ impl SomeAction {
                                 if sqrx.most_recent_result() != &expected_result {
                                     let stpx = SomeStep::new(
                                         self.num,
-                                        rulx.restrict_initial_region(&SomeRegion::new(stax, stax)),
+                                        rulx.restrict_initial_region(&SomeRegion::new(
+                                            stax.clone(),
+                                            stax.clone(),
+                                        )),
                                         false,
                                         grpx.region.clone(),
                                     );
@@ -1988,7 +2001,7 @@ impl SomeAction {
             }
 
             // Create region, sqrx.state becomes regx.state1
-            let regx = SomeRegion::new(&sqrx.state, &sqry.state);
+            let regx = SomeRegion::new(sqrx.state.clone(), sqry.state.clone());
 
             if self.groups.any_superset_of(&regx) {
                 continue;
@@ -2102,7 +2115,7 @@ mod tests {
         let sta_0 = SomeState::new_from_string(1, "s0000").unwrap();
 
         // Set up region XXX1
-        let regx = SomeRegion::new(&sta_1, &sta_f);
+        let regx = SomeRegion::new(sta_1.clone(), sta_f.clone());
 
         // Make square F, Pn::Two. LSB 1->1 and 1->0.
         act0.eval_sample(&sta_f, &sta_f);

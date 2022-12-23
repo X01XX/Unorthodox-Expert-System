@@ -3,6 +3,7 @@
 //! This stores a vector of SomeAction structs, for a Domain struct.
 //!
 use crate::action::SomeAction;
+use crate::bits::bits_and;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
@@ -125,7 +126,7 @@ impl ActionStore {
             chgs = chgs.c_or(actx.aggregate_changes());
         }
 
-        chgs.b01.bits_and(&chgs.b10)
+        SomeMask::new(bits_and(&chgs.b01, &chgs.b10))
     }
 
     /// Return all possible chnages.

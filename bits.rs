@@ -35,7 +35,7 @@ impl fmt::Display for SomeBits {
     }
 }
 
-#[readonly::make]
+#[readonly::make] // DeRef trait has a problem with this.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 
 /// SomeBits struct, just an unsigned integer vector.
@@ -97,13 +97,13 @@ impl SomeBits {
         SomeBits::new(avec)
     }
 
-    /// Return a slice of bits.
-    /// Possible future use.
-    pub fn slice(&self, start: usize, end: usize) -> Self {
-        Self {
-            ints: self.ints[start..end].to_vec(),
-        }
-    }
+    // Return a slice of bits.
+    // Possible future use.
+    //    pub fn slice(&self, start: usize, end: usize) -> Self {
+    //        Self {
+    //            ints: self.ints[start..end].to_vec(),
+    //        }
+    //    }
 
     /// Return a bits instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
@@ -261,7 +261,7 @@ impl SomeBits {
     }
 
     /// Bitwise AND of two Bits structs.
-    pub fn b_and(&self, other: &Self) -> Self {
+    fn b_and(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -273,7 +273,7 @@ impl SomeBits {
     }
 
     /// Bitwise OR of two Bits structs.
-    pub fn b_or(&self, other: &Self) -> Self {
+    fn b_or(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -285,7 +285,7 @@ impl SomeBits {
     }
 
     /// Bitwise XOR of two Bits structs.
-    pub fn b_xor(&self, other: &Self) -> Self {
+    fn b_xor(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());

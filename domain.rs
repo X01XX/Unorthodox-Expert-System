@@ -10,8 +10,8 @@
 //!
 //! Executes a plan to satisfy a need.
 //!
-//! When the current state is in an optimal region, the bordom value is extended if the position
-//! is in an intersection of multiple optimal regions.
+//! When the current state is in at least one optimal region, sets and counts down a boredom value.
+//! The boredom value is greater if the the current state is in multiple optimal regions (intersection).
 
 use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
@@ -512,7 +512,7 @@ impl SomeDomain {
             return Some(SomePlan::new(self.num));
         }
 
-        let cur_reg = SomeRegion::new(&self.cur_state, &self.cur_state);
+        let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
 
         // Figure the required change.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
@@ -1166,7 +1166,9 @@ mod tests {
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s00000110").unwrap();
-        assert!(nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(&s06, &s06)));
+        assert!(
+            nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
+        );
 
         let s02 = dm0.state_from_string("s00000010").unwrap();
         dm0.eval_sample_arbitrary(0, &s06, &s02);

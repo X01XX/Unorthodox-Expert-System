@@ -3,7 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::bits::{bits_and, bits_not};
+use crate::bits::{bits_and, bits_not, bits_or};
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
@@ -196,11 +196,11 @@ impl SomeGroup {
         if let Some(astate) = &self.anchor {
             if self.region.state1 == self.region.state2 {
                 if self.region.state1 != *astate {
-                    self.region = SomeRegion::new(astate, astate);
+                    self.region = SomeRegion::new(astate.clone(), astate.clone());
                 }
             } else if self.region.state1 != *astate && self.region.state2 != *astate {
                 let state2 = self.region.far_state(astate);
-                self.region = SomeRegion::new(astate, &state2);
+                self.region = SomeRegion::new(astate.clone(), state2);
             }
         }
     }
@@ -217,9 +217,6 @@ impl SomeGroup {
     pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         assert!(self.limited);
 
-        //let nonx = self.region.same_bits();
-        //let positions = nonx.bits_and(new_chgs);
-
         let same_bits = self.region.same_bits();
         let one_bits = SomeMask::new(bits_and(
             &same_bits,
@@ -229,7 +226,8 @@ impl SomeGroup {
             &same_bits,
             &bits_and(&bits_not(&self.region.state1), &new_chgs.b01),
         ));
-        let positions = one_bits.bits_or(&zero_bits);
+
+        let positions = SomeMask::new(bits_or(&one_bits, &zero_bits));
 
         if !positions.is_low() {
             self.limited = false;
