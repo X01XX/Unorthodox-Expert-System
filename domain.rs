@@ -83,7 +83,7 @@ impl SomeDomain {
             actions: ActionStore::new(),
             cur_state: start_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeChange::new(&low_mask, &low_mask),
+            agg_changes: SomeChange::new(low_mask.clone(), low_mask),
         }
     }
 
@@ -367,7 +367,7 @@ impl SomeDomain {
             assert!(!selected_steps.is_empty());
             let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
-            return self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1);
+            return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
         // Randomly choose a step.
@@ -429,37 +429,39 @@ impl SomeDomain {
         }
 
         // Must be an asymmetric step
-        self.asymetric_chaining(from_reg, goal_reg, stepx, depth - 1)
+        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
     /// Do asymmetric chaining.
     ///
-    /// Find a plan to go from the from_region to the initial region of a step.
+    /// Two plans need to be made:
+    ///   From the from_region to the initial region of a step.
+    ///   From the result region of a step to the goal.
     ///
-    /// Retrict the step initial region.
+    /// One plan may involve more restrictions, less flexibility, than the other.
     ///
-    /// Find a plan to go from the restricted step result region to the goal region.
+    /// So randomly choose which plan to make first.
     ///
-    /// Link the first plan to the restricted step, then to the second plan.
-    ///
-    fn asymetric_chaining(
+    fn asymmetric_chaining(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-        let required_change = SomeChange::region_to_region(from_reg, &stepx.initial);
+        if rand::random::<bool>() {
+    
+            let required_change = SomeChange::region_to_region(from_reg, &stepx.initial);
 
-        let Some(steps_str) = self.get_steps(&required_change) else {
-            return None;
-        };
+            let Some(steps_str) = self.get_steps(&required_change) else {
+                return None;
+            };
 
-        let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
-            return None;
-        };
+            let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
+                return None;
+            };
 
-        let Some(first_steps) = self.random_depth_first_search2(
+            let Some(to_step_plan) = self.random_depth_first_search2(
                     from_reg,
                     &stepx.initial,
                     &steps_str,
@@ -469,10 +471,66 @@ impl SomeDomain {
                     return None;
                 };
 
-        // Get steps, check if steps include all changes needed.
-        let stepy = stepx.restrict_initial_region(first_steps.result_region());
+            // Get steps, check if steps include all changes needed.
+            let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
-        let required_change = SomeChange::region_to_region(&stepy.result, goal_reg);
+            let required_change = SomeChange::region_to_region(&stepy.result, goal_reg);
+
+            // Get steps, check if steps include all changes needed.
+            let Some(steps_str) = self.get_steps(&required_change) else {
+                return None;
+            };
+
+            let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
+                return None;
+            };
+
+            let Some(from_step_plan) = self.random_depth_first_search2(
+                &stepy.result,
+                goal_reg,
+                &steps_str,
+                &steps_by_change_vov,
+                depth,
+            ) else {
+                return None;
+            };
+
+            let plan_found = to_step_plan
+                .link(&SomePlan::new_with_step(self.num, stepy))
+                .link(&from_step_plan);
+            //println!(
+            //    "Asym 1 OK from {} to {} to {} is {}",
+            //    from_reg, stepx, goal_reg, plan_found
+            //);
+
+            return Some(plan_found);
+        }
+
+        // Try step result to goal first.
+        let required_change = SomeChange::region_to_region(&stepx.result, goal_reg);
+
+        let Some(steps_str) = self.get_steps(&required_change) else {
+            return None;
+        };
+
+        let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
+            return None;
+        };
+
+        let Some(from_step_plan) = self.random_depth_first_search2(
+                &stepx.result,
+                goal_reg,
+                &steps_str,
+                &steps_by_change_vov,
+                depth,
+            ) else {
+                return None;
+            };
+
+        // Get steps, check if steps include all changes needed.
+        let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
+
+        let required_change = SomeChange::region_to_region(from_reg, &stepy.initial);
 
         // Get steps, check if steps include all changes needed.
         let Some(steps_str) = self.get_steps(&required_change) else {
@@ -483,22 +541,24 @@ impl SomeDomain {
             return None;
         };
 
-        let Some(next_steps) = self.random_depth_first_search2(
-                &stepy.result,
-                goal_reg,
-                &steps_str,
-                &steps_by_change_vov,
-                depth,
-            ) else {
-                return None;
-            };
+        let Some(to_step_plan) = self.random_depth_first_search2(
+            from_reg,
+            &stepy.initial,
+            &steps_str,
+            &steps_by_change_vov,
+            depth,
+        ) else {
+            return None;
+        };
 
-        let steps1 = first_steps.link(&SomePlan::new_with_step(self.num, stepy));
-
-        let steps2 = steps1.link(&next_steps);
-
-        //println!("Asym OK from {} to {} to {} is {}", from_reg, stepx, goal_reg, steps2);
-        Some(steps2)
+        let plan_found = to_step_plan
+            .link(&SomePlan::new_with_step(self.num, stepy))
+            .link(&from_step_plan);
+        //println!(
+        //    "Asym 2 OK from {} to {} to {} is {}",
+        //    from_reg, stepx, goal_reg, plan_found
+        //);
+        Some(plan_found)
     }
 
     /// Make a plan to change the current state to another region.

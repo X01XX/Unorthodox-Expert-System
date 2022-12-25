@@ -25,10 +25,10 @@ impl fmt::Display for SomeChange {
 
 impl SomeChange {
     /// Return a new change with the given masks
-    pub fn new(b01: &SomeMask, b10: &SomeMask) -> Self {
+    pub fn new(b01: SomeMask, b10: SomeMask) -> Self {
         Self {
-            b01: b01.clone(),
-            b10: b10.clone(),
+            b01,
+            b10,
         }
     }
 
