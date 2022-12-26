@@ -205,33 +205,32 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let rulx = self.avec[0].union(&other.avec[0]);
-
-            if rulx.is_valid_union() {
+            if let Some(rulx) = self.avec[0].union(&other.avec[0]) {
                 let mut ret_store = Self::new();
                 ret_store.push(rulx);
                 return Some(ret_store);
             }
+
             return None;
         }
 
         if self.len() == 2 {
-            let mut ordera = false;
+            let mut ordera = true;
 
             let rul0 = self.avec[0].union(&other.avec[0]);
             let rul1 = self.avec[1].union(&other.avec[1]);
 
-            if rul0.is_valid_union() && rul1.is_valid_union() {
-                ordera = true;
+            if rul0.is_none() || rul1.is_none() {
+                ordera = false;
             }
 
-            let mut orderb = false;
+            let mut orderb = true;
 
             let rul2 = self.avec[0].union(&other.avec[1]);
             let rul3 = self.avec[1].union(&other.avec[0]);
 
-            if rul2.is_valid_union() && rul3.is_valid_union() {
-                orderb = true;
+            if rul2.is_none() || rul3.is_none() {
+                orderb = false;
             }
 
             // For any Pn::Two RuleStore, there must be at least one single-bit position of 0->1 and 0->0 alternating result,
@@ -247,14 +246,14 @@ impl RuleStore {
             let mut ret_store = Self::new();
 
             if ordera {
-                ret_store.push(rul0);
-                ret_store.push(rul1);
+                ret_store.push(rul0.unwrap());
+                ret_store.push(rul1.unwrap());
                 return Some(ret_store);
             }
 
             // Must be orderb = true.
-            ret_store.push(rul2);
-            ret_store.push(rul3);
+            ret_store.push(rul2.unwrap());
+            ret_store.push(rul3.unwrap());
             return Some(ret_store);
         } // end if self.len() == 2
 
@@ -270,7 +269,7 @@ impl RuleStore {
         // The Pn1 type should not have enough samples to be pnc, caller to insure.
         if self.len() < other.len() {
             for rulx in other.iter() {
-                if rulx.union(&self[0]).is_valid_union() {
+                if rulx.union(&self[0]).is_some() {
                     return Truth::M;
                 }
             }
@@ -279,7 +278,7 @@ impl RuleStore {
 
         if other.len() < self.len() {
             for rulx in self.iter() {
-                if rulx.union(&other[0]).is_valid_union() {
+                if rulx.union(&other[0]).is_some() {
                     return Truth::M;
                 }
             }
@@ -306,45 +305,38 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let int1 = self[0].intersection(&other[0]);
+            let Some(int1) = self[0].intersection(&other[0]) else { return None; };
 
-            if int1.is_valid_intersection() {
-                let mut ars = Self::new();
-                ars.push(int1);
-                return Some(ars);
-            }
-            return None;
+            let mut ars = Self::new();
+            ars.push(int1);
+            return Some(ars);
         }
 
         if self.len() == 2 {
             // Intersect by order1
-            let int00 = self[0].intersection(&other[0]);
-            let int11 = self[1].intersection(&other[1]);
-
-            if int00.is_valid_intersection()
-                && int11.is_valid_intersection()
-                && int00.initial_region() == int11.initial_region()
-            {
-                let mut ord1 = Self::new();
-                ord1.push(int00);
-                ord1.push(int11);
-                //println!("pn3 intersection of {} and {} is1 {}", self, other, ord1);
-                return Some(ord1);
+            if let Some(int00) = self[0].intersection(&other[0]) {
+                if let Some(int11) = self[1].intersection(&other[1]) {
+                    if int00.initial_region() == int11.initial_region() {
+                        let mut ord1 = Self::new();
+                        ord1.push(int00);
+                        ord1.push(int11);
+                        //println!("pn3 intersection of {} and {} is1 {}", self, other, ord1);
+                        return Some(ord1);
+                    }
+                }
             }
 
             // Intersect by order2
-            let int01 = self[0].intersection(&other[1]);
-            let int10 = self[1].intersection(&other[0]);
-
-            if int01.is_valid_intersection()
-                && int10.is_valid_intersection()
-                && int01.initial_region() == int10.initial_region()
-            {
-                let mut ord2 = Self::new();
-                ord2.push(int01);
-                ord2.push(int10);
-                //println!("pn3 intersection of {} and {} is2 {}", self, other, ord2);
-                return Some(ord2);
+            if let Some(int01) = self[0].intersection(&other[1]) {
+                if let Some(int10) = self[1].intersection(&other[0]) {
+                    if int01.initial_region() == int10.initial_region() {
+                        let mut ord2 = Self::new();
+                        ord2.push(int01);
+                        ord2.push(int10);
+                        //println!("pn3 intersection of {} and {} is2 {}", self, other, ord2);
+                        return Some(ord2);
+                    }
+                }
             }
 
             //println!("pn3 intersection of {} and {} failed", self, other);

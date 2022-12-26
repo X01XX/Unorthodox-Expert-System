@@ -1548,12 +1548,15 @@ impl SomeAction {
             let mut rulx = sqrs_in_reg[0].rules[0].clone();
             for sqrx in sqrs_in_reg.iter() {
                 for ruly in sqrx.rules.iter() {
-                    rulx = rulx.union(ruly);
+                    if let Some(rulz) = rulx.union(ruly) {
+                        rulx = rulz;
+                    } else {
+                        return false;
+                    }
                 }
             }
 
-            return bits_and(&rulx.b00, &rulx.b01).is_low()
-                && bits_and(&rulx.b11, &rulx.b10).is_low();
+            return true;
         }
 
         // Get the indicies for squares with Pn::Two.
@@ -1571,8 +1574,8 @@ impl SomeAction {
             let rulesx = &sqrs_in_reg[pn_two[0]].rules;
             for sqrx in sqrs_in_reg.iter() {
                 if sqrx.pn == Pn::One
-                    && !sqrx.rules[0].union(&rulesx[0]).is_valid_union()
-                    && !sqrx.rules[0].union(&rulesx[1]).is_valid_union()
+                    && sqrx.rules[0].union(&rulesx[0]).is_none()
+                    && sqrx.rules[0].union(&rulesx[1]).is_none()
                 {
                     return false;
                 }
@@ -1612,8 +1615,8 @@ impl SomeAction {
                     if !sqrx.rules.is_subset_of(&rulesx) {
                         return false;
                     }
-                } else if !sqrx.rules[0].union(&rulesx[0]).is_valid_union()
-                    && !sqrx.rules[0].union(&rulesx[1]).is_valid_union()
+                } else if sqrx.rules[0].union(&rulesx[0]).is_none()
+                    && sqrx.rules[0].union(&rulesx[1]).is_none()
                 {
                     return false;
                 }

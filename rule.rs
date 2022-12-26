@@ -133,14 +133,14 @@ impl SomeRule {
 
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        let tmprul = self.intersection(other);
+        let Some(tmprul) = self.intersection(other) else { return false; };
 
         *self == tmprul
     }
 
     // Return true if a rule is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        let tmprul = self.intersection(other);
+        let Some(tmprul) = self.intersection(other) else { return false; };
         *other == tmprul
     }
 
@@ -170,23 +170,31 @@ impl SomeRule {
     }
 
     /// Return a logical OR of two rules. The result may be invalid.
-    pub fn union(&self, other: &Self) -> Self {
-        Self {
+    pub fn union(&self, other: &Self) -> Option<Self> {
+        let ret_rule = Self {
             b00: SomeMask::new(bits_or(&self.b00, &other.b00)),
             b01: SomeMask::new(bits_or(&self.b01, &other.b01)),
             b11: SomeMask::new(bits_or(&self.b11, &other.b11)),
             b10: SomeMask::new(bits_or(&self.b10, &other.b10)),
+        };
+        if ret_rule.is_valid_union() {
+            return Some(ret_rule);
         }
+        None
     }
 
     /// Return a logical AND of two rules.  The result may be invalid.
-    pub fn intersection(&self, other: &Self) -> Self {
-        Self {
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
+        let ret_rule = Self {
             b00: SomeMask::new(bits_and(&self.b00, &other.b00)),
             b01: SomeMask::new(bits_and(&self.b01, &other.b01)),
             b11: SomeMask::new(bits_and(&self.b11, &other.b11)),
             b10: SomeMask::new(bits_and(&self.b10, &other.b10)),
+        };
+        if ret_rule.is_valid_intersection() {
+            return Some(ret_rule);
         }
+        None
     }
 
     /// Return the initial region of a rule.
@@ -574,7 +582,7 @@ mod tests {
             return Err(String::from("Region not r1010?"));
         }
 
-        let regz = regx.union(&regy);
+        let regz = regx.union(&regy).unwrap();
         if regz.initial_region() != SomeRegion::new_from_string(1, "rXX10").unwrap() {
             return Err(String::from("Region not rXX10?"));
         }
@@ -588,12 +596,8 @@ mod tests {
         let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx").unwrap();
         let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11").unwrap();
 
-        if rul1.intersection(&rul2) != rul3 {
-            return Err(format!(
-                "test_intersection rule {} ne {}?",
-                rul1.intersection(&rul2),
-                &rul3
-            ));
+        if rul1.intersection(&rul2) != Some(rul3) {
+            return Err(format!("intersection rul1 and rul2 ne rul3?"));
         }
 
         Ok(())
@@ -617,13 +621,11 @@ mod tests {
         let rul2 = SomeRule::new_from_string(1, "X1").unwrap();
         let rul3 = SomeRule::new_from_string(1, "00").unwrap();
 
-        let int12 = rul1.intersection(&rul2);
-        if !int12.is_valid_intersection() {
+        let Some(_int12) = rul1.intersection(&rul2) else {
             return Err(String::from("Result 1 False?"));
-        }
+        };
 
-        let int23 = rul2.intersection(&rul3);
-        if int23.is_valid_intersection() {
+        if let Some(_int23) = rul2.intersection(&rul3) {
             return Err(String::from("Result 2  True?"));
         }
 
@@ -634,29 +636,25 @@ mod tests {
     fn is_valid_union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "00").unwrap();
         let rul2 = SomeRule::new_from_string(1, "01").unwrap();
-        let rul3 = rul1.union(&rul2);
-        if rul3.is_valid_union() {
+        if rul1.union(&rul2).is_some() {
             return Err(String::from("Result 1 True?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "11").unwrap();
         let rul2 = SomeRule::new_from_string(1, "10").unwrap();
-        let rul3 = rul1.union(&rul2);
-        if rul3.is_valid_union() {
+        if rul1.union(&rul2).is_some() {
             return Err(String::from("Result 2 True?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "11").unwrap();
         let rul2 = SomeRule::new_from_string(1, "01").unwrap();
-        let rul3 = rul1.union(&rul2);
-        if !rul3.is_valid_union() {
+        if rul1.union(&rul2).is_none() {
             return Err(String::from("Result 3 False?"));
         }
 
         let rul1 = SomeRule::new_from_string(1, "x1").unwrap();
         let rul2 = SomeRule::new_from_string(1, "00").unwrap();
-        let rul3 = rul1.union(&rul2);
-        if rul3.is_valid_union() {
+        if rul1.union(&rul2).is_some() {
             return Err(String::from("Result 4 True?"));
         }
 
@@ -814,7 +812,7 @@ mod tests {
     fn union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "00/01/00/01/xx").unwrap();
         let rul2 = SomeRule::new_from_string(1, "00/01/10/10/11").unwrap();
-        let rul3 = rul1.union(&rul2);
+        let rul3 = rul1.union(&rul2).unwrap();
 
         println!("rul3 = {}", &rul3);
         if rul3 != SomeRule::new_from_string(1, "00/01/x0/Xx/xx").unwrap() {
