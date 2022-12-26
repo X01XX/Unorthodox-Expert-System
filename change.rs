@@ -26,10 +26,7 @@ impl fmt::Display for SomeChange {
 impl SomeChange {
     /// Return a new change with the given masks
     pub fn new(b01: SomeMask, b10: SomeMask) -> Self {
-        Self {
-            b01,
-            b10,
-        }
+        Self { b01, b10 }
     }
 
     /// Return a change from an initial to a result state.

@@ -416,7 +416,9 @@ impl RegionStore {
 
         for inx in 0..self.len() {
             if self[inx].intersects(&other[inx]) {
-                ret.push(self[inx].intersection(&other[inx]));
+                if let Some(reg_int) = self[inx].intersection(&other[inx]) {
+                    ret.push(reg_int);
+                }
             } else {
                 return None;
             }

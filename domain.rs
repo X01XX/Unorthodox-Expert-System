@@ -395,7 +395,9 @@ impl SomeDomain {
                         &steps_by_change_vov,
                         depth - 1,
                     ) {
-                        if let Some(final_plan) = SomePlan::new_with_step(self.num, stepy).link(&next_steps) {
+                        if let Some(final_plan) =
+                            SomePlan::new_with_step(self.num, stepy).link(&next_steps)
+                        {
                             return Some(final_plan);
                         }
                         return None;
@@ -424,7 +426,9 @@ impl SomeDomain {
                         &steps_by_change_vov,
                         depth - 1,
                     ) {
-                        if let Some(final_plan) = prev_steps.link(&SomePlan::new_with_step(self.num, stepy)) {
+                        if let Some(final_plan) =
+                            prev_steps.link(&SomePlan::new_with_step(self.num, stepy))
+                        {
                             return Some(final_plan);
                         }
                         return None;
@@ -456,7 +460,6 @@ impl SomeDomain {
         depth: usize,
     ) -> Option<SomePlan> {
         if rand::random::<bool>() {
-    
             let required_change = SomeChange::region_to_region(from_reg, &stepx.initial);
 
             let Some(steps_str) = self.get_steps(&required_change) else {

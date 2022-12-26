@@ -237,14 +237,12 @@ impl SomeRule {
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let init_reg = self.initial_region();
 
-        if !init_reg.intersects(regx) {
+        let Some(reg_int) = regx.intersection(&init_reg) else {
             panic!(
                 "{} does not intersect rule initial region {}",
                 regx, init_reg
             );
-        }
-
-        let reg_int = regx.intersection(&init_reg);
+        };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
         let ones = SomeMask::new(reg_int.high_state().bts.clone());
@@ -265,23 +263,12 @@ impl SomeRule {
 
         let rslt_reg = self.result_region();
 
-        if !rslt_reg.intersects(regx) {
+        let Some(reg_int) = regx.intersection(&rslt_reg) else {
             panic!(
                 "{} does not intersect rule result region {}",
                 regx, rslt_reg
             );
-        }
-
-        if regx.is_superset_of(&rslt_reg) {
-            return self.clone();
-            //            panic!(
-            //                "{} is a superset of rule result region {}",
-            //                regx,
-            //                rslt_reg
-            //            );
-        }
-
-        let reg_int = regx.intersection(&rslt_reg);
+        };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
         let ones = SomeMask::new(reg_int.high_state().bts.clone());

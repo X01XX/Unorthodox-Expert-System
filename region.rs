@@ -258,11 +258,14 @@ impl SomeRegion {
     /// Strangely, the intersection of two adjacent regions produces
     /// most of an overlapping part, except for a 0/1 pair that needs to be changed
     /// to X.
-    pub fn intersection(&self, other: &Self) -> Self {
-        Self::new(
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
+        if !self.intersects(other) {
+            return None;
+        }
+        Some(Self::new(
             SomeState::new(bits_and(&self.high_state(), &other.high_state())),
             SomeState::new(bits_or(&self.low_state(), &other.low_state())),
-        )
+        ))
     }
 
     /// Return true if a region is a superset of a state.
@@ -441,12 +444,10 @@ impl SomeRegion {
     pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
-        if !self.intersects(other) {
+        let Some(reg_int) = self.intersection(other) else {
             ret_vec.push(self.clone());
             return ret_vec;
-        }
-
-        let reg_int = self.intersection(other);
+        };
 
         let x_over_not_xs: Vec<SomeMask> =
             SomeMask::new(bits_and(&self.x_mask(), &reg_int.same_bits())).split();
@@ -569,7 +570,8 @@ mod tests {
 
         let reg1 = SomeRegion::new_from_string(1, "r0XX110X").unwrap();
 
-        if reg0.intersection(&reg1) != SomeRegion::new_from_string(1, "r010110X").unwrap() {
+        if reg0.intersection(&reg1).unwrap() != SomeRegion::new_from_string(1, "r010110X").unwrap()
+        {
             return Err(String::from("Result not r010110X?"));
         }
         Ok(())

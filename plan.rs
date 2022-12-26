@@ -145,7 +145,6 @@ impl SomePlan {
     /// Return a plan where the initial region of a known, valid, plan is restricted by a region
     /// known to intersect the plans initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
-
         if self.is_empty() || !regx.intersects(self.initial_region()) {
             return None;
         }
@@ -191,15 +190,12 @@ impl SomePlan {
         if self.is_empty() || other.is_empty() {
             return None;
         }
-        
-        if !self.result_region().intersects(other.initial_region()) {
-            return None;
-        }
 
         // Restrict the StepStores, forward and backward.
-        let regx = self.result_region().intersection(other.initial_region());
+        let Some(regx) = self.result_region().intersection(other.initial_region()) else { return None; };
 
         let Some(mut steps1) = self.restrict_result_region(&regx) else { return None; };
+
         let Some(mut steps2) = other.restrict_initial_region(&regx) else { return None; };
         steps1.append(&mut steps2);
 

@@ -1765,7 +1765,7 @@ impl SomeAction {
 
         let mut nds = NeedStore::new();
 
-        let reg_int = grpx.region.intersection(&grpy.region);
+        let Some(reg_int) = grpx.region.intersection(&grpy.region) else { return nds; };
 
         if grpx.pn != grpy.pn {
             let mut nds = NeedStore::new();
