@@ -395,7 +395,10 @@ impl SomeDomain {
                         &steps_by_change_vov,
                         depth - 1,
                     ) {
-                        return Some(SomePlan::new_with_step(self.num, stepy).link(&next_steps));
+                        if let Some(final_plan) = SomePlan::new_with_step(self.num, stepy).link(&next_steps) {
+                            return Some(final_plan);
+                        }
+                        return None;
                     }
                 }
             }
@@ -421,7 +424,10 @@ impl SomeDomain {
                         &steps_by_change_vov,
                         depth - 1,
                     ) {
-                        return Some(prev_steps.link(&SomePlan::new_with_step(self.num, stepy)));
+                        if let Some(final_plan) = prev_steps.link(&SomePlan::new_with_step(self.num, stepy)) {
+                            return Some(final_plan);
+                        }
+                        return None;
                     }
                 }
             }
@@ -495,15 +501,16 @@ impl SomeDomain {
                 return None;
             };
 
-            let plan_found = to_step_plan
-                .link(&SomePlan::new_with_step(self.num, stepy))
-                .link(&from_step_plan);
+            let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
+
+            let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
+
             //println!(
             //    "Asym 1 OK from {} to {} to {} is {}",
             //    from_reg, stepx, goal_reg, plan_found
             //);
 
-            return Some(plan_found);
+            return Some(final_plan);
         }
 
         // Try step result to goal first.
@@ -551,14 +558,15 @@ impl SomeDomain {
             return None;
         };
 
-        let plan_found = to_step_plan
-            .link(&SomePlan::new_with_step(self.num, stepy))
-            .link(&from_step_plan);
+        let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
+
+        let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
+
         //println!(
         //    "Asym 2 OK from {} to {} to {} is {}",
         //    from_reg, stepx, goal_reg, plan_found
         //);
-        Some(plan_found)
+        Some(final_plan)
     }
 
     /// Make a plan to change the current state to another region.

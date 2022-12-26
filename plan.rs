@@ -66,9 +66,10 @@ impl SomePlan {
 
     /// Return a plan where the result region of a known, valid, plan is restricted by a region
     /// known to intersect the plans result region.
-    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
-        assert!(!self.is_empty());
-        assert!(regx.intersects(self.result_region()));
+    pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
+        if self.is_empty() || !regx.intersects(self.result_region()) {
+            return None;
+        }
 
         let mut steps = StepStore::new_with_capacity(self.len());
 
@@ -76,6 +77,10 @@ impl SomePlan {
 
         for inx in (0..self.len()).rev() {
             let stpx = &self.steps[inx];
+
+            if !cur_reg.intersects(&stpx.result) {
+                return None;
+            }
 
             let stpy = stpx.restrict_result_region(&cur_reg);
 
@@ -88,10 +93,10 @@ impl SomePlan {
             steps.reverse();
         }
 
-        Self {
+        Some(Self {
             dom_num: self.dom_num,
             steps,
-        }
+        })
     }
 
     /// Check if a plan is a valid sequence of steps.
@@ -139,15 +144,21 @@ impl SomePlan {
 
     /// Return a plan where the initial region of a known, valid, plan is restricted by a region
     /// known to intersect the plans initial region.
-    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        assert!(!self.is_empty());
-        assert!(regx.intersects(self.initial_region()));
+    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
+
+        if self.is_empty() || !regx.intersects(self.initial_region()) {
+            return None;
+        }
 
         let mut steps = StepStore::new_with_capacity(self.len());
 
         let mut cur_reg = regx.clone();
 
         for stepx in self.iter() {
+            if !cur_reg.intersects(&stepx.initial) {
+                return None;
+            }
+
             let stepy = stepx.restrict_initial_region(&cur_reg);
 
             cur_reg = stepy.result.clone();
@@ -155,10 +166,10 @@ impl SomePlan {
             steps.push(stepy);
         } //next stepx
 
-        Self {
+        Some(Self {
             dom_num: self.dom_num,
             steps,
-        }
+        })
     }
 
     /// Append a StepStore to a StepStore.
@@ -175,21 +186,25 @@ impl SomePlan {
     }
 
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
-    pub fn link(&self, other: &Self) -> Self {
+    pub fn link(&self, other: &Self) -> Option<Self> {
         // Sanity checks
-        assert!(!self.is_empty());
-        assert!(!other.is_empty());
-        assert!(self.result_region().intersects(other.initial_region()));
+        if self.is_empty() || other.is_empty() {
+            return None;
+        }
+        
+        if !self.result_region().intersects(other.initial_region()) {
+            return None;
+        }
 
         // Restrict the StepStores, forward and backward.
         let regx = self.result_region().intersection(other.initial_region());
 
-        let mut steps1 = self.restrict_result_region(&regx);
-        let mut steps2 = other.restrict_initial_region(&regx);
+        let Some(mut steps1) = self.restrict_result_region(&regx) else { return None; };
+        let Some(mut steps2) = other.restrict_initial_region(&regx) else { return None; };
         steps1.append(&mut steps2);
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-        steps1
+        Some(steps1)
     } // end link
 
     /// Return a plan after checking for shortcuts.
@@ -441,7 +456,7 @@ mod tests {
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
 
-        let stp_str3 = stp_str1.link(&stp_str2);
+        let Some(stp_str3) = stp_str1.link(&stp_str2) else { return Err("stp_str3 error".to_string()); };
         println!("stp3 {}", &stp_str3);
         if stp_str3.len() != 4 {
             return Err(format!("Len NE 4? {}", stp_str3).to_string());
@@ -463,7 +478,7 @@ mod tests {
         }
 
         // Result 101X appears twice when linked in this order, so its invalid.
-        let stp_str4 = stp_str2.link(&stp_str1);
+        let Some(stp_str4) = stp_str2.link(&stp_str1) else { return Err("stp_str4 error".to_string()); };
         if stp_str4.is_valid() {
             return Err(format!("stp4 {} valid?", &stp_str4).to_string());
         } else {
