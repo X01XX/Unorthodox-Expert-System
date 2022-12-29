@@ -60,27 +60,16 @@ impl SquareStore {
     }
 
     /// Return the states for all squares.
-    pub fn all_square_states(&self) -> StateStore {
-        StateStore {
-            avec: self.ahash.keys().cloned().collect(),
-        }
+    pub fn all_square_keys(&self) -> Vec<SomeState> {
+        self.ahash.keys().cloned().collect()
     }
 
     /// Return a list of squares in a given region.
-    pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
-        StateStore {
-            avec: self
-                .ahash
-                .keys()
-                .filter_map(|keyx| {
-                    if areg.is_superset_of_state(keyx) {
-                        Some(keyx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
+    pub fn stas_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeState> {
+        self.ahash
+            .keys()
+            .filter(|keyx| areg.is_superset_of_state(keyx))
+            .collect()
     }
 
     /// Return a list of squares in a given region.

@@ -205,7 +205,7 @@ impl SomeAction {
                 return;
             }
 
-            let anchor_states = self.groups.anchor_states();
+            let anchor_states: Vec<&SomeState> = self.groups.anchor_states();
 
             // The current anchor rate may have changed, so recalculate it.
             let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
@@ -854,16 +854,19 @@ impl SomeAction {
 
     /// Cleanup, that is delete unneeded squares
     fn cleanup(&mut self, needs: &NeedStore) {
-        let stas = self.squares.all_square_states();
+        let mut first_del = true;
 
-        let mut sqr_del = StateStore::new();
+        //let mut sqr_del = Vec::<&SomeState>::new();
+
+        //let square_keys = self.squares.ahash.keys();
 
         // Don't delete squares currently in needs.
-        'next_stax: for stax in stas.iter() {
+        'next_stax: for stax in self.squares.all_square_keys() {
+            //'next_stax: for stax in stas.iter() {
             // Check needs
             for ndx in needs.iter() {
                 for targx in ndx.target().iter() {
-                    if targx.is_superset_of_state(stax) {
+                    if targx.is_superset_of_state(&stax) {
                         continue 'next_stax;
                     }
                 }
@@ -872,15 +875,15 @@ impl SomeAction {
             // Don't delete squares in groups.
             // let mut in_groups = false;
             for grpx in self.groups.iter() {
-                if grpx.region.is_superset_of_state(stax) {
-                    if grpx.region.state1 == *stax || grpx.region.state2 == *stax {
+                if grpx.region.is_superset_of_state(&stax) {
+                    if grpx.region.state1 == stax || grpx.region.state2 == stax {
                         continue 'next_stax;
                     }
                     if let Some(stay) = &grpx.anchor {
-                        if stay == stax {
+                        if *stay == stax {
                             continue 'next_stax;
                         }
-                        if *stax == grpx.region.far_state(stay) {
+                        if stax == grpx.region.far_state(stay) {
                             continue 'next_stax;
                         }
                     }
@@ -893,31 +896,46 @@ impl SomeAction {
 
             // Don't delete squares in seek edge regions.
             for regx in self.seek_edge.iter() {
-                if regx.is_superset_of_state(stax) {
+                if regx.is_superset_of_state(&stax) {
                     continue 'next_stax;
                 }
             }
 
             // Don't delete squares that are not in a group.
             // That is, squares with Pn: > One that need more samples.
-            if self.groups.num_groups_state_in(stax) == 0 {
+            if self.groups.num_groups_state_in(&stax) == 0 {
                 continue;
             }
 
-            // Save for later display
-            sqr_del.push(stax.clone());
+            // Display and remove.
+            if first_del {
+                first_del = false;
+                print!(
+                    "\nDom {} Act {} deleted unneeded squares: ",
+                    self.dom_num, self.num
+                );
+            }
 
+            print!(" {}", stax);
+            self.squares.remove(&stax);
             // Delete the square
-            self.squares.remove(stax);
+            //self.squares.remove(stax);
         } // next stax
 
-        // Display squares deleted.
-        if !sqr_del.is_empty() {
-            println!(
-                "\nDom {} Act {} deleted unneeded squares {}",
-                self.dom_num, self.num, sqr_del
-            );
+        if !first_del {
+            println!(" ");
         }
+        //self.squares.remove_squares(sqr_del);
+
+        // Delete unneeded squares.
+        //        println!(
+        //                "\nDom {} Act {} deleted unneeded squares ",
+        //                self.dom_num, self.num
+        //            );
+        //        for stax in sqr_del.iter() {
+        //            //print!(" {}", stax);
+        //            self.squares.remove(stax);
+        //        }
     } // end cleanup
 
     /// When a group is invalidated by a new sample, something was wrong within that group.
@@ -1126,12 +1144,12 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new();
 
-        let mut anchors = StateStore::new();
+        let mut anchors = Vec::<&SomeState>::new();
 
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
             if let Some(stax) = &grpx.anchor {
-                anchors.push(stax.clone());
+                anchors.push(stax);
 
                 if self.groups.num_groups_state_in(stax) != 1 {
                     ret_nds.push(SomeNeed::RemoveGroupAnchor {
@@ -1175,7 +1193,7 @@ impl SomeAction {
         &self,
         grpx: &SomeGroup,
         stax: &SomeState,
-        anchors: &StateStore,
+        anchors: &[&SomeState],
     ) -> (usize, usize, usize) {
         assert!(self.groups.num_groups_state_in(stax) == 1);
 
@@ -1202,7 +1220,7 @@ impl SomeAction {
             //    &sta_adj, &stax, &greg
             //);
 
-            if anchors.contains(&sta_adj) {
+            if anchors.contains(&&sta_adj) {
                 sta_rate.0 += 1;
                 sta_rate.1 += 1;
             } else if self.groups.num_groups_state_in(&sta_adj) == 1 {
@@ -1219,29 +1237,44 @@ impl SomeAction {
     }
 
     /// Return the limiting anchor needs for a group.
-    /// If not state in the group is in only one group,
-    /// return an empty NeedStore.
+    /// If no state in the group is in only one group, return an empty NeedStore.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return an empty NeedStore.
     pub fn limit_group_anchor_needs(
         &self,
         grpx: &SomeGroup,
-        anchors: &StateStore,
+        anchors: &[&SomeState],
         group_num: usize,
     ) -> NeedStore {
         let mut ret_nds = NeedStore::new();
 
-        let mut stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
-
-        // Check for adjacent anchors
+        // Find (other group) anchors that are adjacent to the group.
+        let mut adj_anchors = Vec::<&SomeState>::new();
         for ancx in anchors.iter() {
             if grpx.region.is_adjacent_state(ancx) {
-                let stay = SomeState::new(bits_xor(ancx, &grpx.region.diff_mask_state(ancx)));
+                adj_anchors.push(ancx);
+            }
+        }
 
-                if !stas_in.contains(&stay) {
-                    stas_in.push(stay);
+        // For adjacent (other group) anchors,
+        // store corresponding state in group region,
+        // which may not have been sampled yet.
+        let mut stas_in: Vec<&SomeState> = self.squares.stas_in_reg(&grpx.region);
+        let mut additional_stas = StateStore::new();
+        for ancx in adj_anchors.iter() {
+            // Calc state in group that corresponds to an adjacent anchor.
+            let stay = SomeState::new(bits_xor(*ancx, &grpx.region.diff_mask_state(ancx)));
+
+            if !stas_in.contains(&&stay) {
+                // The state may have been sampled already.
+                if !additional_stas.contains(&stay) {
+                    // The state may be adjacent to more than one anchor.
+                    additional_stas.push(stay);
                 }
             }
+        }
+        for stax in additional_stas.iter() {
+            stas_in.push(stax);
         }
 
         // For each state, sta1, only in the group region, greg:
@@ -1253,15 +1286,15 @@ impl SomeAction {
         let mut max_rate = (0, 0, 0);
 
         // Create a StateStore composed of anchor, far, and adjacent-external states.
-        //let mut cfmv_max = Vec::<SomeState>::new();
-        let mut cfmv_max = StateStore::new();
+        let mut cfmv_max = Vec::<&SomeState>::new();
 
         for stax in stas_in.iter() {
+            // Potential new anchor must be in only one group.
             if self.groups.num_groups_state_in(stax) != 1 {
                 continue;
             }
 
-            let sta_rate = self.group_anchor_rate(grpx, stax, anchors);
+            let sta_rate = self.group_anchor_rate(grpx, stax, &adj_anchors);
 
             //println!("group {} possible anchor {} rating {} {} {}", &grpx.region, &stax, sta_rate.0, sta_rate.1, sta_rate.2);
 
@@ -1269,18 +1302,18 @@ impl SomeAction {
             if sta_rate > max_rate {
                 max_rate = sta_rate;
                 //cfmv_max = Vec::<SomeState>::new();
-                cfmv_max = StateStore::new();
+                cfmv_max = Vec::<&SomeState>::new();
             }
             //println!("rate {} is {}", cfmx[0], sta_rate);
             if sta_rate == max_rate {
-                cfmv_max.push(stax.clone());
+                cfmv_max.push(stax);
             }
         } // next stax
 
         // Check current anchor, if any
         if let Some(anchor) = &grpx.anchor {
             //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
-            if cfmv_max.contains(anchor) {
+            if cfmv_max.contains(&anchor) {
                 //println!("group {} anchor {} still good, cfmv_max", grpx.region, anchor);
                 let anchor_sqr = self.squares.find(anchor).unwrap();
                 if anchor_sqr.pnc {
@@ -1308,9 +1341,9 @@ impl SomeAction {
         }
 
         // Select an anchor
-        let mut cfm_max = &cfmv_max[0];
+        let mut cfm_max = cfmv_max[0];
         if cfmv_max.len() > 1 {
-            cfm_max = &cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
+            cfm_max = cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
         }
         if let Some(_sqrx) = self.squares.find(cfm_max) {
             ret_nds.push(SomeNeed::SetGroupAnchor {
@@ -1318,6 +1351,7 @@ impl SomeAction {
                 anchor: cfm_max.clone(),
             });
         } else {
+            // Potential anchor not sampled yet.
             ret_nds.push(SomeNeed::LimitGroup {
                 dom_num: 0, // will be set in domain code
                 act_num: self.num,
@@ -1353,6 +1387,7 @@ impl SomeAction {
         let mut nds_grp_add = NeedStore::new(); // needs for added group
 
         // Get masks of edge bits to use to limit group.
+        // Ignore bits that cannot be changed by any action.
         let same_bits = grpx.region.same_bits();
 
         let one_bits = bits_and(&same_bits, &bits_and(&grpx.region.state1, &agg_changes.b10));
@@ -1361,7 +1396,7 @@ impl SomeAction {
             &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01),
         );
 
-        let edge_msks = SomeMask::new(bits_or(&one_bits, &zero_bits)).split();
+        let edge_msks: Vec<SomeMask> = SomeMask::new(bits_or(&one_bits, &zero_bits)).split();
 
         for mskx in edge_msks.iter() {
             let adj_sta = SomeState::new(bits_xor(anchor_sta, mskx));
@@ -1370,6 +1405,9 @@ impl SomeAction {
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
+                    // Create new group, if an adjacent square can combine with the anchor.
+                    // Current anchor will then be in two regions,
+                    // the next run of limit_group_anchor_needs will deal with it.
                     if anchor_sqr.can_combine(adj_sqr) == Truth::T {
                         let regz = SomeRegion::new(anchor_sta.clone(), adj_sta);
 
@@ -1384,6 +1422,7 @@ impl SomeAction {
                         });
                     }
                 } else {
+                    // Get another sample of adjacent square.
                     nds_grp.push(SomeNeed::LimitGroupAdj {
                         dom_num: 0, // will be set in domain code
                         act_num: self.num,
@@ -1407,41 +1446,35 @@ impl SomeAction {
 
         if !nds_grp_add.is_empty() {
             //println!("*** nds_grp_add {}", &nds_grp_add);
-            ret_nds.append(&mut nds_grp_add);
-            return ret_nds;
+            return nds_grp_add;
         }
 
         if !nds_grp.is_empty() {
             //println!("*** nds_grp {}", &nds_grp);
-            ret_nds.append(&mut nds_grp);
-            return ret_nds;
+            return nds_grp;
         }
-
-        //   println!("grp {} check far", &greg);
 
         // Process far state, after the anchor and adjacent, external, checks have been made.
         // Instead of checking every adjacent square internal to the group.
-        if grpx.region.state1 != grpx.region.state2 {
-            let sta_far = grpx.region.far_state(anchor_sta);
-            if let Some(sqrf) = self.squares.find(&sta_far) {
-                if sqrf.pnc {
-                    // Set the group limited
-                    ret_nds.push(SomeNeed::SetGroupLimited {
-                        group_region: grpx.region.clone(),
-                    });
-                } else {
-                    // Get additional samples of the far state
-                    ret_nds.push(SomeNeed::LimitGroup {
-                        dom_num: 0, // will be set in domain code
-                        act_num: self.num,
-                        anchor: anchor_sta.clone(),
-                        target_state: sta_far.clone(),
-                        for_group: grpx.region.clone(),
-                        group_num,
-                    });
-                }
+
+        // Group is non-X, so no far state
+        if grpx.region.state1 == grpx.region.state2 {
+            ret_nds.push(SomeNeed::SetGroupLimited {
+                group_region: grpx.region.clone(),
+            });
+            return ret_nds;
+        }
+
+        let sta_far = grpx.region.far_state(anchor_sta);
+
+        if let Some(sqrf) = self.squares.find(&sta_far) {
+            if sqrf.pnc {
+                // Set the group limited
+                ret_nds.push(SomeNeed::SetGroupLimited {
+                    group_region: grpx.region.clone(),
+                });
             } else {
-                // Get the first sample of the far state
+                // Get additional samples of the far state.
                 ret_nds.push(SomeNeed::LimitGroup {
                     dom_num: 0, // will be set in domain code
                     act_num: self.num,
@@ -1452,10 +1485,17 @@ impl SomeAction {
                 });
             }
         } else {
-            ret_nds.push(SomeNeed::SetGroupLimited {
-                group_region: grpx.region.clone(),
+            // Get the first sample of the far state.
+            ret_nds.push(SomeNeed::LimitGroup {
+                dom_num: 0, // will be set in domain code
+                act_num: self.num,
+                anchor: anchor_sta.clone(),
+                target_state: sta_far.clone(),
+                for_group: grpx.region.clone(),
+                group_num,
             });
         }
+
         //println!("limit_group_needs: returning {}", &ret_nds);
         ret_nds
     } // end limit_group_adj_needs
@@ -1471,6 +1511,8 @@ impl SomeAction {
 
         // Check every pair of groups
         for inx in 0..(self.groups.len() - 1) {
+            // Skip the last group, as there is no subsequent group.
+
             let grpx = &self.groups[inx];
 
             if grpx.pn != Pn::One && !grpx.pnc {
@@ -1863,7 +1905,8 @@ impl SomeAction {
         // Find a square with the highest number of samples
         // If any are pnc, panic.
         let mut max_rslts = 0;
-        let mut stas_check = StateStore::new();
+        // change start
+        let mut stas_check = Vec::<&SomeState>::new();
         for stax in stas_in.iter() {
             let sqrz = self.squares.find(stax).unwrap();
             if sqrz.pnc {
@@ -1875,11 +1918,11 @@ impl SomeAction {
 
             if sqrz.len_results() > max_rslts {
                 max_rslts = sqrz.len_results();
-                stas_check = StateStore::new();
+                stas_check = Vec::<&SomeState>::new();
             }
 
             if sqrz.len_results() == max_rslts {
-                stas_check.push(sqrz.state.clone());
+                stas_check.push(&sqrz.state);
             }
         }
 
@@ -1949,8 +1992,8 @@ impl SomeAction {
                                     let stpx = SomeStep::new(
                                         self.num,
                                         rulx.restrict_initial_region(&SomeRegion::new(
-                                            stax.clone(),
-                                            stax.clone(),
+                                            sqrx.state.clone(),
+                                            sqrx.state.clone(),
                                         )),
                                         false,
                                         grpx.region.clone(),

@@ -7,7 +7,7 @@ use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
+//use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -158,14 +158,11 @@ impl GroupStore {
     }
 
     /// Return a list of anchor states.
-    pub fn anchor_states(&self) -> StateStore {
-        StateStore {
-            avec: self
-                .avec
-                .iter()
-                .filter_map(|grpx| grpx.anchor.as_ref().cloned())
-                .collect(),
-        }
+    pub fn anchor_states(&self) -> Vec<&SomeState> {
+        self.avec
+            .iter()
+            .filter_map(|grpx| grpx.anchor.as_ref())
+            .collect()
     }
 
     /// Return true if any group is a superset, or equal, to a region.
