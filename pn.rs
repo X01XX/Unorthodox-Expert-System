@@ -28,9 +28,9 @@ use std::fmt;
 impl fmt::Display for Pn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let rc_str = match self {
-            Pn::One => String::from("1"),
-            Pn::Two => String::from("2"),
-            Pn::Unpredictable => String::from("U"),
+            Pn::One => "1",
+            Pn::Two => "2",
+            Pn::Unpredictable => "U",
         };
 
         write!(f, "{}", rc_str)

@@ -19,7 +19,7 @@ impl fmt::Display for NeedStore {
 
         for needx in &self.avec {
             if flg == 1 {
-                rc_str.push_str(&String::from(",\n "));
+                rc_str.push_str(",\n ");
             }
             let _ = write!(rc_str, "{}", &needx);
             flg = 1;

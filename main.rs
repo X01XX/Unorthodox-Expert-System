@@ -293,13 +293,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 to_end = false;
 
                 //println!("start command loop");
-                let mut cmd = Vec::<String>::with_capacity(10);
+                let mut cmd = Vec::<&str>::with_capacity(10);
 
                 let guess = pause_for_input("\nPress Enter or type a command: ");
 
                 for word in guess.split_whitespace() {
-                    //println!("word: {} is {}", word_count, word);
-                    cmd.push(String::from(word));
+                    cmd.push(word);
                 }
 
                 // Default command, just press Enter
@@ -318,7 +317,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 // Do other commands
                 if cmd.len() == 1 {
-                    match &cmd[0][..] {
+                    match cmd[0] {
                         "q" | "exit" | "quit" => {
                             println!("Done");
                             process::exit(1);
@@ -343,7 +342,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 }
 
                 if cmd.len() == 2 && cmd[0] == "fld" {
-                    match load_data(&cmd[1]) {
+                    match load_data(cmd[1]) {
                         Ok(new_dmxs) => {
                             println!("Data loaded");
                             (stepx, dmxs) = new_dmxs;
@@ -358,7 +357,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 }
 
                 // Do other commands
-                match &cmd[0][..] {
+                match cmd[0] {
                     "cs" => do_change_state_command(&mut dmxs[dom_num], &cmd),
                     "to" => do_to_region_command(&mut dmxs[dom_num], &cmd),
                     "ss" => do_sample_state_command(&mut dmxs[dom_num], &cmd),
@@ -368,7 +367,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     "fsd" => store_data(&dmxs, stepx, &cmd),
                     "ppd" => do_print_plan_details(&mut dmxs, &cmd, &nds, &need_plans, &need_can),
                     "cd" => {
-                        dom_num = change_domain(&dmxs, dom_num, &cmd);
+                        dom_num = do_change_domain(&dmxs, dom_num, &cmd);
                         stepx -= 1;
                         break;
                     }
@@ -389,9 +388,9 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 } // end do_session
 
 /// Change the domain to a number given by user.
-fn change_domain(dmxs: &DomainStore, dom_num: usize, cmd: &[String]) -> usize {
+fn do_change_domain(dmxs: &DomainStore, dom_num: usize, cmd: &[&str]) -> usize {
     // Get domain number from string
-    match dmxs.domain_num_from_string(&cmd[1]) {
+    match dmxs.domain_num_from_string(cmd[1]) {
         Ok(d_num) => {
             return d_num;
         }
@@ -431,7 +430,7 @@ fn do_any_need(
 /// Print details of a given plan
 fn do_print_plan_details(
     dmxs: &mut DomainStore,
-    cmd: &[String],
+    cmd: &[&str],
     nds: &NeedStore,
     need_plans: &[InxPlan],
     need_can: &Vec<usize>,
@@ -519,7 +518,7 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
 fn do_chosen_need(
     dmxs: &mut DomainStore,
     dom_num: usize,
-    cmd: &[String],
+    cmd: &[&str],
     nds: &NeedStore,
     need_plans: &[InxPlan],
     need_can: &Vec<usize>,
@@ -554,9 +553,9 @@ fn do_chosen_need(
 
 /// Do a change-state command.
 /// Return 1 is Ok, 0 if not.
-fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[String]) {
+fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[&str]) {
     // Get state from string
-    match dmx.state_from_string(&cmd[1]) {
+    match dmx.state_from_string(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {}", a_state);
             dmx.set_state(&a_state);
@@ -569,11 +568,11 @@ fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[String]) {
 
 /// Do to-region command.
 /// Return 1 is Ok, 0 if not.
-fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[String]) {
+fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
     let cur_state = dmx.get_current_state();
 
     // Get region from string
-    match dmx.region_from_string(&cmd[1]) {
+    match dmx.region_from_string(cmd[1]) {
         Ok(goal_region) => {
             println!(
                 "\nChange Current_state {} to region {}",
@@ -599,7 +598,7 @@ fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[String]) {
 
 /// Do sample-state command.
 /// Return 1 is Ok, 0 if not.
-fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     let cur_state = dmx.get_current_state();
 
     if cmd.len() == 1 {
@@ -607,7 +606,7 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
         return;
     }
 
-    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+    let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
             println!("\n{}", error);
@@ -623,7 +622,7 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
     if cmd.len() == 3 {
         // Get state from string
-        let a_state = match dmx.state_from_string(&cmd[2]) {
+        let a_state = match dmx.state_from_string(cmd[2]) {
             Ok(a_state) => a_state,
             Err(error) => {
                 println!("\n{}", error);
@@ -641,7 +640,7 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
         // Take arbitrary sample with <action num> <initial-state> <result-state>, don't update current state
 
         // Get i-state from string
-        let i_state = match dmx.state_from_string(&cmd[2]) {
+        let i_state = match dmx.state_from_string(cmd[2]) {
             Ok(i_state) => i_state,
             Err(error) => {
                 println!("\n{}", error);
@@ -650,7 +649,7 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
         };
 
         // Get r-state from string
-        let r_state = match dmx.state_from_string(&cmd[3]) {
+        let r_state = match dmx.state_from_string(cmd[3]) {
             Ok(r_state) => r_state,
             Err(error) => {
                 println!("\n{}", error);
@@ -668,13 +667,13 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
 /// Do print-squares command.
 /// Return 1 is Ok, 0 if not.
-fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     if cmd.len() == 1 {
         return;
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+    let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
             println!("\n{}", error);
@@ -692,7 +691,7 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
     if cmd.len() == 3 {
         // Get region
-        let aregion = match dmx.region_from_string(&cmd[2]) {
+        let aregion = match dmx.region_from_string(cmd[2]) {
             Ok(aregion) => aregion,
             Err(error) => {
                 println!("\n{}", error);
@@ -801,14 +800,14 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
 /// Do adjacent-anchor command.
 /// Return 1 is Ok, 0 if not.
-fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     if cmd.len() == 1 {
         println!("Did not understand {:?}", cmd);
         return;
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+    let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
             println!("\n{}", error);
@@ -821,7 +820,7 @@ fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
         return;
     }
 
-    let aregion = match dmx.region_from_string(&cmd[2]) {
+    let aregion = match dmx.region_from_string(cmd[2]) {
         Ok(aregion) => aregion,
         Err(error) => {
             println!("\n{}", error);
@@ -849,14 +848,14 @@ fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
 
 /// Do print-group-defining-squares command.
 /// Return 1 is Ok, 0 if not.
-fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<String>) {
+fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     if cmd.len() == 1 {
         println!("Did not understand {:?}", cmd);
         return;
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(&cmd[1]) {
+    let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
             println!("\n{}", error);
@@ -869,7 +868,7 @@ fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<Strin
         return;
     }
 
-    let aregion = match dmx.region_from_string(&cmd[2]) {
+    let aregion = match dmx.region_from_string(cmd[2]) {
         Ok(aregion) => aregion,
         Err(error) => {
             println!("\n{}", error);
@@ -1012,7 +1011,7 @@ fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<String>) {
+fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<&str>) {
     if cmd.len() != 2 {
         println!("Did not understand {:?}", cmd);
         return;

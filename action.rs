@@ -45,7 +45,7 @@ impl fmt::Display for SomeAction {
 
         rc_str += &self.num.to_string();
 
-        rc_str += &String::from(", number squares: ");
+        rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
         if !self.seek_edge.is_empty() {
@@ -54,7 +54,7 @@ impl fmt::Display for SomeAction {
 
         let regs = self.groups.regions();
 
-        let mut fil = String::from(",\n       Grps: ");
+        let mut fil = ",\n       Grps: ";
         for grpx in self.groups.iter() {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
@@ -72,7 +72,7 @@ impl fmt::Display for SomeAction {
                 &cnt,
             );
 
-            fil = String::from(",\n             ");
+            fil = ",\n             ";
         }
 
         rc_str.push(')');

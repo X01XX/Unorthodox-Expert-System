@@ -17,7 +17,7 @@ impl fmt::Display for PlanStore {
 
         for planx in &self.avec {
             if flg == 1 {
-                rc_str.push_str(&String::from(",\n "));
+                rc_str.push_str(",\n ");
             }
             let _ = write!(rc_str, "{}", &planx);
             flg = 1;

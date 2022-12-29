@@ -26,11 +26,11 @@ pub enum Truth {
 
 impl Truth {
     /// Return a string for a Truth value.
-    pub fn formatted_string(&self) -> String {
+    pub fn formatted_string(&self) -> &str {
         match self {
-            Truth::T => String::from("T"),
-            Truth::F => String::from("F"),
-            Truth::M => String::from("M"),
+            Truth::T => "T",
+            Truth::F => "F",
+            Truth::M => "M",
         }
     }
 }
