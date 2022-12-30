@@ -557,23 +557,19 @@ impl SomeAction {
         let mut group_added = false;
         for regx in rsx.iter() {
             if let Some(sqrx) = self.squares.find(&regx.state1) {
-                if sqrx.pn == Pn::One || sqrx.pnc {
-                    if let Some(sqry) = self.squares.find(&regx.state2) {
-                        if sqry.pn == Pn::One || sqry.pnc {
-                            let ruls = if sqrx.pn == Pn::Unpredictable {
-                                RuleStore::new()
-                            } else {
-                                sqrx.rules.union(&sqry.rules).unwrap()
-                            };
+                if let Some(sqry) = self.squares.find(&regx.state2) {
+                    let ruls = if sqrx.pn == Pn::Unpredictable {
+                        RuleStore::new()
+                    } else {
+                        sqrx.rules.union(&sqry.rules).unwrap()
+                    };
 
-                            self.groups.push(
-                                SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
-                                self.dom_num,
-                                self.num,
-                            );
-                            group_added = true;
-                        }
-                    }
+                    self.groups.push(
+                        SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
+                        self.dom_num,
+                        self.num,
+                    );
+                    group_added = true;
                 }
             }
         } // next regx
@@ -856,10 +852,6 @@ impl SomeAction {
     fn cleanup(&mut self, needs: &NeedStore) {
         let mut first_del = true;
 
-        //let mut sqr_del = Vec::<&SomeState>::new();
-
-        //let square_keys = self.squares.ahash.keys();
-
         // Don't delete squares currently in needs.
         'next_stax: for stax in self.squares.all_square_keys() {
             //'next_stax: for stax in stas.iter() {
@@ -918,24 +910,11 @@ impl SomeAction {
 
             print!(" {}", stax);
             self.squares.remove(&stax);
-            // Delete the square
-            //self.squares.remove(stax);
         } // next stax
 
         if !first_del {
             println!(" ");
         }
-        //self.squares.remove_squares(sqr_del);
-
-        // Delete unneeded squares.
-        //        println!(
-        //                "\nDom {} Act {} deleted unneeded squares ",
-        //                self.dom_num, self.num
-        //            );
-        //        for stax in sqr_del.iter() {
-        //            //print!(" {}", stax);
-        //            self.squares.remove(stax);
-        //        }
     } // end cleanup
 
     /// When a group is invalidated by a new sample, something was wrong within that group.
@@ -1023,9 +1002,17 @@ impl SomeAction {
                 }
             }
 
-            // Generate need for squares with pnc != true
+            // Get max samples for any square.
+            let mut max_len = 0;
             for sqrx in sqrs_in2.iter() {
-                if !sqrx.pnc {
+                if sqrx.len_results() > max_len {
+                    max_len = sqrx.len_results();
+                }
+            }
+
+            // Generate need for squares with pnc != true, max samples.
+            for sqrx in sqrs_in2.iter() {
+                if sqrx.len_results() == max_len {
                     ret_nds.push(SomeNeed::SeekEdge {
                         dom_num: 0, // set this in domain get_needs
                         act_num: self.num,
@@ -1087,7 +1074,8 @@ impl SomeAction {
     } // end seek_edge_needs2
 
     /// Get additional sample needs for the states that form a group.
-    /// Should only affect groups with Pn::One
+    /// Should only affect groups with Pn::One.
+    /// Groups closer to the beginning of the group will have priority due to lower group number.
     pub fn confirm_group_needs(&mut self) -> NeedStore {
         //println!("confirm_group_needs");
         let mut ret_nds = NeedStore::new();
@@ -1301,7 +1289,6 @@ impl SomeAction {
             // Accumulate highest rated anchors
             if sta_rate > max_rate {
                 max_rate = sta_rate;
-                //cfmv_max = Vec::<SomeState>::new();
                 cfmv_max = Vec::<&SomeState>::new();
             }
             //println!("rate {} is {}", cfmx[0], sta_rate);
@@ -1532,6 +1519,12 @@ impl SomeAction {
                     if !ndx.is_empty() {
                         nds.append(&mut ndx);
                     }
+                } else if grpx.region.is_adjacent(&grpy.region) && grpx.pn == grpy.pn {
+                    let mut ndx = self.group_pair_combine_needs(grpx, grpy);
+                    if !ndx.is_empty() {
+                        //println!("group combine adjacent needs: {}", ndx);
+                        nds.append(&mut ndx);
+                    }
                 }
             } // next iny
         } // next inx
@@ -1712,7 +1705,7 @@ impl SomeAction {
 
         let mut nds = NeedStore::new();
 
-        // Gather the states from the regions, they may share one state.
+        // Gather the states from the regions, they may share one defining state.
         let mut anchor_stas = StateStore::new();
         anchor_stas.push(reg1.state1.clone());
         anchor_stas.push(reg1.state2.clone());
@@ -1736,6 +1729,7 @@ impl SomeAction {
         let mut pairs = Vec::<(SomeState, &SomeSquare)>::new();
         for sqrx in anchor_sqrs.iter() {
             let sta2 = regx.far_state(&sqrx.state);
+
             if let Some(sqr2) = self.squares.find(&sta2) {
                 if sqr2.pnc && sqrx.pnc || sqrx.pn == Pn::One && sqr2.pn == Pn::One {
                     let rules = if sqrx.pn == Pn::Unpredictable {
@@ -1796,6 +1790,29 @@ impl SomeAction {
             }
         }
 
+        nds
+    }
+
+    /// Check two groups for combining needs.
+    pub fn group_pair_combine_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
+        let nds = NeedStore::new();
+
+        let reg_both = grpx.region.union(&grpy.region);
+
+        if grpx.pn == Pn::Unpredictable {
+            if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
+                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            }
+            return nds;
+        }
+
+        if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
+            if (grpx.pn == Pn::One || (grpx.pnc && grpy.pnc))
+                && self.all_subset_rules_in_region(&reg_both, &rulsxy)
+            {
+                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            }
+        }
         nds
     }
 
