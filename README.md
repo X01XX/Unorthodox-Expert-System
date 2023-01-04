@@ -35,6 +35,6 @@ If something happens to change the state of the device to a non-optimal state, t
 
 At a higher level, maybe something gets "bored", or "satiated", so the optimum state changes.  At some level are we following something like: food -> shelter -> rest -> food ?
 
-A "domain" is a state and a set of actions.  There can be more than one domain.  A goal can include all domains, or less if a goal for a domain is all X.  Plans for multiple domains are run in parallel.
+A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.  Plans for multiple domains are run in parallel.
 
 
