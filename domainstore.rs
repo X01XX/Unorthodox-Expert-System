@@ -21,6 +21,10 @@
  *
  */
 
+/*
+ * For use outside of the license, contact the Wisconsin Alumni Research Foundation (WARF).
+ */
+
 //! The DomainStore struct, a vector of SomeDomain structs.
 
 /// The highest number of needs to seek a plan for, in parallel.
