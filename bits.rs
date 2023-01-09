@@ -49,13 +49,13 @@ pub struct SomeBits {
 
 impl SomeBits {
     /// Create a SomeBits instance with a given vector.
-    pub fn new(avec: Vec<Bitint>) -> SomeBits {
+    pub fn new(avec: Vec<Bitint>) -> Self {
         assert!(!avec.is_empty());
         SomeBits { ints: avec }
     }
 
     /// Create a SomeBits instance with integer(s) set to zero
-    pub fn new_low(num_ints: usize) -> SomeBits {
+    pub fn new_low(num_ints: usize) -> Self {
         assert!(num_ints > 0);
         SomeBits {
             ints: vec![0 as Bitint; num_ints],
@@ -63,7 +63,7 @@ impl SomeBits {
     }
 
     /// Create a SomeBits instance with integer(s) set to all ones
-    pub fn new_high(num_ints: usize) -> SomeBits {
+    pub fn new_high(num_ints: usize) -> Self {
         assert!(num_ints > 0);
         SomeBits {
             ints: vec![Bitint::MAX as Bitint; num_ints],

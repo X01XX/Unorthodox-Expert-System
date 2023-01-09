@@ -13,7 +13,6 @@
 
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
-use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -110,12 +109,23 @@ impl SomeState {
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
     }
-
-    /// Return a mask from a state.
-    pub fn to_mask(&self) -> SomeMask {
-        SomeMask::new(self.bts.clone())
-    }
 } // end impl SomeState
+
+pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
+    let mut ret_str = String::from("[");
+
+    let mut first = true;
+    for stax in avec.iter() {
+        if first {
+            first = false;
+        } else {
+            ret_str.push_str(", ");
+        }
+        ret_str.push_str(&format!("{}", stax));
+    }
+    ret_str.push(']');
+    ret_str
+}
 
 impl BitsRef for SomeState {
     fn bitsref(&self) -> &SomeBits {

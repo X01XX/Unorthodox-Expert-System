@@ -87,9 +87,9 @@ impl SomeDomain {
         }
     }
 
-    /// Return a copy of the current , internal, state.
-    pub fn get_current_state(&self) -> SomeState {
-        self.cur_state.clone()
+    /// Return a reference to the current, internal, state.
+    pub fn get_current_state(&self) -> &SomeState {
+        &self.cur_state
     }
 
     /// Add a SomeAction instance to the store.
@@ -126,11 +126,6 @@ impl SomeDomain {
         }
 
         nst
-    }
-
-    /// Return the total number of actions.
-    pub fn num_actions(&self) -> usize {
-        self.actions.len()
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -730,7 +725,7 @@ impl SomeDomain {
     pub fn act_num_from_string(&self, str_num: &str) -> Result<usize, String> {
         match str_num.parse::<usize>() {
             Ok(act_num) => {
-                if act_num >= self.num_actions() {
+                if act_num >= self.actions.len() {
                     return Err(format!("Action number too large {}", act_num));
                 }
                 Ok(act_num)

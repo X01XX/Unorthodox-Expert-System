@@ -6,7 +6,6 @@
 use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -370,11 +369,11 @@ impl RegionStore {
     }
 
     /// Return True if a RegionStore is a superset of all corresponding states in a StateStore.
-    pub fn is_superset_of_states(&self, stas: &StateStore) -> bool {
+    pub fn is_superset_of_states(&self, stas: &Vec<&SomeState>) -> bool {
         assert!(self.len() == stas.len());
 
-        for inx in 0..self.len() {
-            if self.avec[inx].is_superset_of_state(&stas[inx]) {
+        for (inx, stasx) in self.avec.iter().enumerate() {
+            if stasx.is_superset_of_state(stas[inx]) {
             } else {
                 return false;
             }

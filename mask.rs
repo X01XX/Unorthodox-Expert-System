@@ -12,7 +12,6 @@
 
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
-use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -46,7 +45,7 @@ impl SomeMask {
     ///    panic!("Invalid Mask");
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn new_from_string(num_ints: usize, str: &str) -> Result<SomeMask, String> {
+    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         if &str[0..1] != "m" {
             return Err("Initial character should be m".to_string());
         }
@@ -152,11 +151,6 @@ impl SomeMask {
     /// Return mask after shifting left one position.
     pub fn push_0(&self) -> Self {
         Self::new(self.bts.push_0())
-    }
-
-    /// Return a state from a mask.
-    pub fn to_state(&self) -> SomeState {
-        SomeState::new(self.bts.clone())
     }
 } // end impl SomeMask
 

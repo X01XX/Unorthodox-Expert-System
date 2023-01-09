@@ -37,8 +37,7 @@ use crate::optimalregionsstore::OptimalRegionsStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::regionstore::RegionStore;
-use crate::state::SomeState;
-use crate::statestore::StateStore;
+use crate::state::{somestate_ref_vec_string, SomeState};
 use crate::targetstore::TargetStore;
 
 use rand::Rng;
@@ -220,8 +219,8 @@ impl DomainStore {
         self.avec[dmxi].take_action_arbitrary(actx);
     }
 
-    /// Return the current state of a given Domain index
-    pub fn cur_state(&self, dmxi: usize) -> SomeState {
+    /// Return a reference to the current state of a given Domain index
+    pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         self.avec[dmxi].get_current_state()
     }
 
@@ -452,12 +451,12 @@ impl DomainStore {
         self.avec.len() == 0
     }
 
-    /// Return a StateStore of all domain current states.
-    pub fn all_current_states(&self) -> StateStore {
-        let mut all_states = StateStore::with_capacity(self.len());
+    /// Return a vector of domain current state references, in domain number order.
+    pub fn all_current_states(&self) -> Vec<&SomeState> {
+        let mut all_states = Vec::<&SomeState>::with_capacity(self.len());
 
         for domx in self.avec.iter() {
-            all_states.push(domx.cur_state.clone());
+            all_states.push(domx.get_current_state());
         }
 
         all_states
@@ -481,8 +480,12 @@ impl DomainStore {
             return None;
         }
 
-        // Get all domain states
-        let all_states = self.all_current_states();
+        // Get all domain states vector.
+        // Calling self.all_current_states runs into problems with the combiler.
+        let mut all_states = Vec::<&SomeState>::with_capacity(self.len());
+        for domx in self.avec.iter() {
+            all_states.push(domx.get_current_state());
+        }
 
         // Check current status within an optimal region, or not.
         if self.optimal.any_supersets_of_states(&all_states) {
@@ -520,14 +523,17 @@ impl DomainStore {
         if optimal_supersets.is_empty() {
             print!(
                 "\nAll Current states: {} in optimal regions: None, not in ",
-                all_states
+                somestate_ref_vec_string(&all_states)
             );
             for optx in self.optimal.iter() {
                 print!(" {}", optx);
             }
         } else {
             ret = true;
-            print!("\nAll Current states: {} in optimal regions: ", all_states);
+            print!(
+                "\nAll Current states: {} in optimal regions: ",
+                somestate_ref_vec_string(&all_states)
+            );
             for optx in optimal_supersets.iter() {
                 print!(" {}", optx);
             }
@@ -583,17 +589,17 @@ mod tests {
         dmxs.push(dom1);
 
         let all_states = dmxs.all_current_states();
-        println!("all states {}", all_states);
+        println!("all states {}", somestate_ref_vec_string(&all_states));
 
         if all_states.len() != 2 {
             return Err(format!("Invalid length {}", all_states.len()));
         }
 
-        if all_states[0] != init_state1 {
+        if *all_states[0] != init_state1 {
             return Err(format!("Invalid first state {}", all_states[0]));
         }
 
-        if all_states[1] != init_state2 {
+        if *all_states[1] != init_state2 {
             return Err(format!("Invalid second state {}", all_states[1]));
         }
 
@@ -662,7 +668,7 @@ mod tests {
         }
 
         let all_states = dmxs.all_current_states();
-        println!("\nCurr st: {}", all_states);
+        println!("\nCurr st: {}", somestate_ref_vec_string(&all_states));
 
         println!(
             "\nNumber supersets: {}",

@@ -1,13 +1,16 @@
-use crate::regionstore::RegionStore;
-/// Implement a struct for Optimal RegionsStores.
-use crate::statestore::StateStore;
+//! Implement a struct of optimal RegionStores.
 
+use crate::regionstore::RegionStore;
+
+use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
+/// A struct of optimal RegionStores, where each RegionStore contains a list
+/// of domain optimal regions, in domain number order.
 pub struct OptimalRegionsStore {
     pub optimal: Vec<RegionStore>,
 }
@@ -47,7 +50,7 @@ impl OptimalRegionsStore {
     }
 
     /// Return the number of supersets of a StateStore
-    pub fn number_supersets_of_states(&self, stas: &StateStore) -> usize {
+    pub fn number_supersets_of_states(&self, stas: &Vec<&SomeState>) -> usize {
         self.optimal
             .iter()
             .map(|regsx| usize::from(regsx.is_superset_of_states(stas)))
@@ -55,7 +58,7 @@ impl OptimalRegionsStore {
     }
 
     /// Return a Vector of RegionStores not supersets of a given StateStore.
-    pub fn not_supersets_of_states(&self, stas: &StateStore) -> Self {
+    pub fn not_supersets_of_states(&self, stas: &Vec<&SomeState>) -> Self {
         Self {
             optimal: self
                 .optimal
@@ -72,7 +75,7 @@ impl OptimalRegionsStore {
     }
 
     /// Return true if any RegionStore is a superset of a StateStore.
-    pub fn any_supersets_of_states(&self, stas: &StateStore) -> bool {
+    pub fn any_supersets_of_states(&self, stas: &Vec<&SomeState>) -> bool {
         for regsx in self.optimal.iter() {
             if regsx.is_superset_of_states(stas) {
                 return true;
@@ -92,7 +95,7 @@ impl OptimalRegionsStore {
     }
 
     /// Return list of optimal regions that are superset of a StateStore.
-    pub fn supersets_of_states(&self, stas: &StateStore) -> Self {
+    pub fn supersets_of_states(&self, stas: &Vec<&SomeState>) -> Self {
         Self {
             optimal: self
                 .optimal

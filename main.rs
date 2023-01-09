@@ -30,7 +30,7 @@ use rulestore::RuleStore;
 mod square;
 mod squarestore;
 mod state;
-use state::SomeState;
+use state::{somestate_ref_vec_string, SomeState};
 mod statestore;
 use statestore::StateStore;
 mod domain;
@@ -61,6 +61,7 @@ extern crate rand;
 use std::fs::File;
 use std::path::Path;
 use std::process;
+use std::time::{Duration, Instant};
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
@@ -160,22 +161,70 @@ fn main() {
 
     usage();
 
-    let mut run_count = 1;
+    let run_count = 1;
     let run_max = run_left;
 
-    while run_left > 0 {
-        //println!("run_left = {}", run_left);
-        if 1 == do_session(run_to_end, run_count, run_max) {
-            run_count = 1;
-            run_left = run_max;
-        } else {
+    if run_left > 1 {
+        let mut runs = 0;
+        let mut duration_vec = Vec::<Duration>::with_capacity(run_left);
+        let mut steps_vec = Vec::<usize>::with_capacity(run_left);
+
+        while run_left > 0 {
             run_left -= 1;
-            run_count += 1;
+            runs += 1;
+
+            let start = Instant::now();
+            let steps = do_session(run_to_end, run_count, run_max);
+            if steps == 0 {
+                return;
+            }
+            let duration = start.elapsed();
+            println!(
+                "Steps {}, Time elapsed in do_session() is: {:?}",
+                steps, duration
+            );
+            duration_vec.push(duration);
+            steps_vec.push(steps);
         }
+        let mut duration_total = Duration::new(0, 0);
+        let mut duration_high = duration_vec[0];
+        let mut duration_low = duration_vec[0];
+        for durx in duration_vec.iter() {
+            duration_total += *durx;
+            if *durx > duration_high {
+                duration_high = *durx;
+            }
+            if *durx < duration_low {
+                duration_low = *durx;
+            }
+        }
+
+        let mut steps_total = 0;
+        let mut steps_high = 0;
+        let mut steps_low = usize::MAX;
+        for stepsx in steps_vec.iter() {
+            steps_total += stepsx;
+            if *stepsx > steps_high {
+                steps_high = *stepsx;
+            }
+            if *stepsx < steps_low {
+                steps_low = *stepsx;
+            }
+        }
+        println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:?}, high: {:?}, low: {:?}",
+         runs, steps_total / runs, steps_high, steps_low, duration_total / runs as u32, duration_high, duration_low);
+        return;
+    }
+
+    // Run do_session until quit.
+    // In do_session, the command "so" (start over) reruns do_session.
+    loop {
+        do_session(run_to_end, run_count, run_max);
     } // end while
 } // end main
 
 /// Do one session of finding and using rules.
+/// Return 0 to start over, or number of steps.
 pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut to_end = run_to_end;
     let mut dmxs = init();
@@ -193,7 +242,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         println!(
             "\nStep {} All domain states: {}",
             stepx,
-            dmxs.all_current_states()
+            somestate_ref_vec_string(&dmxs.all_current_states())
         );
         assert!(stepx < 800); // Remove for continuous use
 
@@ -262,7 +311,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 if run_count != run_max || run_max > 1 {
                     println!("\nrun_count {} of {}", run_count, run_max);
                 }
-                //return 0;
                 to_end = false;
             }
         } else {
@@ -277,7 +325,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             dmxs.print_optimal();
             if to_end {
                 if run_count < run_max {
-                    return 0;
+                    return stepx;
                 }
                 to_end = false;
             }
@@ -323,10 +371,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                             process::exit(1);
                         }
                         "so" => {
-                            if run_count != run_max {
-                                return 0;
-                            }
-                            return 1;
+                            return 0;
                         }
                         "run" => {
                             to_end = true;
@@ -449,7 +494,7 @@ fn do_print_plan_details(
                         println!("\n{}", &pln.str2());
                     }
                     _ => {
-                        if ndx.satisfied_by(&dmxs[ndx.dom_num()].get_current_state()) {
+                        if ndx.satisfied_by(dmxs[ndx.dom_num()].get_current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
                             println!("\n{}", &pln.str2());
@@ -475,7 +520,10 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
         _ => {
             if dom_num != ndx.dom_num() {
                 // Show "before" state before running need.
-                println!("\nAll domain states: {}", dmxs.all_current_states());
+                println!(
+                    "\nAll domain states: {}",
+                    somestate_ref_vec_string(&dmxs.all_current_states())
+                );
                 print_domain(dmxs, ndx.dom_num());
                 println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
             }
@@ -490,7 +538,7 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
         SomeNeed::ToOptimalRegion { .. } => {
             if ndx
                 .target()
-                .is_superset_of_statestore(&dmxs.all_current_states())
+                .is_superset_of_states(&dmxs.all_current_states())
             {
                 dmxs.set_boredom_limit();
                 return true;
@@ -499,13 +547,13 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
         SomeNeed::ToRegion { .. } => {
             if ndx
                 .target()
-                .is_superset_of_state(&dmxs.cur_state(ndx.dom_num()))
+                .is_superset_of_state(dmxs.cur_state(ndx.dom_num()))
             {
                 return true;
             }
         }
         _ => {
-            if ndx.satisfied_by(&dmxs.cur_state(ndx.dom_num())) {
+            if ndx.satisfied_by(dmxs.cur_state(ndx.dom_num())) {
                 dmxs.take_action_need(ndx.dom_num(), ndx);
                 return true;
             }
@@ -578,7 +626,7 @@ fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
                 "\nChange Current_state {} to region {}",
                 cur_state, goal_region
             );
-            if goal_region.is_superset_of_state(&cur_state) {
+            if goal_region.is_superset_of_state(cur_state) {
                 println!(
                     "\nCurrent_state {} is already in region {}",
                     dmx.get_current_state(),
@@ -911,9 +959,13 @@ fn print_domain(dmxs: &DomainStore, dom_num: usize) {
 /// Display usage options.
 fn usage() {
     println!("\nStartup Commands: <invoke> may be the command \"ues\" or \"cargo run\"");
-    println!("\n    <invoke>                 - Run interactively, press enter for each step.");
-    println!("    <invoke> <number times>  - Run a number of times, stop at last run, or when no needs can be done and one, or more, cannot.");
-    println!("    <invoke> [h | help]      - Show this list.\n");
+    println!("\n    <invoke>                 - Run interactively, press Enter for each step.");
+    println!(
+        "\n    <invoke> 1               - Run non-interactively, stop when no needs can be done."
+    );
+    println!("\n    <invoke> <number times>  - Run a number, greater than 1, times. Exit with step and duration statistics.");
+    println!("\n                               Or drop into interactive mode if there are needs, but none can be done.");
+    println!("\n    <invoke> [h | help]      - Show this list.\n");
 
     println!("\nSession Commands:");
     println!("\n    h | help                 - Help list display (this list).");

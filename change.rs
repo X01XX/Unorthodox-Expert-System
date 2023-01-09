@@ -29,14 +29,6 @@ impl SomeChange {
         Self { b01, b10 }
     }
 
-    /// Return a change from an initial to a result state.
-    pub fn new_from_to(initial: &SomeState, result: &SomeState) -> Self {
-        Self {
-            b01: SomeMask::new(bits_and(&initial.bts.b_not(), result)),
-            b10: SomeMask::new(bits_and(initial, &result.bts.b_not())),
-        }
-    }
-
     /// Apply a change to a state.
     pub fn apply_to_state(&self, astate: &SomeState) -> SomeState {
         let b01 = bits_and(&bits_not(astate), &self.b01);
