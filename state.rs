@@ -18,6 +18,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 pub struct SomeState {
@@ -53,23 +56,25 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        if &str[0..1] != "s" {
-            return Err(format!(
-                "Did not understand the string {}, first character?",
-                str
-            ));
+        let mut rest = String::from("");
+
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "s" || chr == "S" {
+                    continue;
+                }
+                return Err(format!(
+                    "Did not understand the string {}, first character?",
+                    str
+                ));
+            }
+
+            rest.push_str(chr);
         }
 
-        if str.len() > 2 && (&str[1..3] == "0b" || &str[1..3] == "0x") {
-            match SomeBits::new_from_string(num_ints, &str[1..]) {
-                Ok(bts) => Ok(SomeState::new(bts)),
-                Err(error) => Err(error),
-            }
-        } else {
-            match SomeBits::new_from_string(num_ints, &("0b".to_owned() + &str[1..])) {
-                Ok(bts) => Ok(SomeState::new(bts)),
-                Err(error) => Err(error),
-            }
+        match SomeBits::new_from_string(num_ints, &rest) {
+            Ok(bts) => Ok(SomeState::new(bts)),
+            Err(error) => Err(error),
         }
     } // end new_from_string
 

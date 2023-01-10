@@ -914,14 +914,14 @@ mod tests {
     // from s0111 to s1000.
     #[test]
     fn make_plan_direct() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0").unwrap();
-        let sf = dm0.state_from_string("s1111").unwrap();
+        let s0 = dm0.state_from_string("s0b0").unwrap();
+        let sf = dm0.state_from_string("s0b1111").unwrap();
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
@@ -940,7 +940,7 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits("0x08")); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        dm0.set_state(&dm0.state_from_string("s111").unwrap());
+        dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
         let mut toreg = dm0.region_from_string("r1000").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 4);
@@ -950,7 +950,7 @@ mod tests {
         }
 
         // Get plan for 8 to 7
-        dm0.set_state(&dm0.state_from_string("s1000").unwrap());
+        dm0.set_state(&dm0.state_from_string("s0b1000").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 4);
@@ -967,15 +967,15 @@ mod tests {
     // then step back into the glide path to get to the goal.
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0").unwrap();
-        let sf = dm0.state_from_string("s1111").unwrap();
-        let sb = dm0.state_from_string("s1011").unwrap();
+        let s0 = dm0.state_from_string("s0b0").unwrap();
+        let sf = dm0.state_from_string("s0b1111").unwrap();
+        let sb = dm0.state_from_string("s0b1011").unwrap();
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
@@ -996,7 +996,7 @@ mod tests {
         println!("\nActs: {}", &dm0.actions);
 
         // Get plan for 7 to C
-        dm0.set_state(&dm0.state_from_string("s111").unwrap());
+        dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
         let mut toreg = dm0.region_from_string("r1100").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 5);
@@ -1006,7 +1006,7 @@ mod tests {
         }
 
         // Get plan for C to 7
-        dm0.set_state(&dm0.state_from_string("s1100").unwrap());
+        dm0.set_state(&dm0.state_from_string("s0b1100").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert!(aplan.len() == 5);
@@ -1021,7 +1021,7 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -1034,7 +1034,7 @@ mod tests {
         );
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s1").unwrap();
+        let s1 = dm0.state_from_string("s0b1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1);
 
         if let Some(_grpx) = dm0.actions[0]
@@ -1049,7 +1049,7 @@ mod tests {
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
-        let s1 = dm0.state_from_string("s1").unwrap();
+        let s1 = dm0.state_from_string("s0b1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits("0x01"));
 
         println!("\nActs: {}", &dm0.actions[0]);
@@ -1079,7 +1079,7 @@ mod tests {
     // Test confirm_group_needs.
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -1092,7 +1092,7 @@ mod tests {
         );
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s1").unwrap();
+        let s1 = dm0.state_from_string("s0b1").unwrap();
         dm0.eval_sample_arbitrary(0, &s1, &s1);
 
         if let Some(_grpx) = dm0.actions[0]
@@ -1104,7 +1104,7 @@ mod tests {
         }
 
         // Expand group
-        let s2 = dm0.state_from_string("s10").unwrap();
+        let s2 = dm0.state_from_string("s0b10").unwrap();
         dm0.eval_sample_arbitrary(0, &s2, &s2);
 
         if let Some(_grpx) = dm0.actions[0]
@@ -1151,13 +1151,13 @@ mod tests {
     // different results expected from the least significant bit.
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
-        let s00 = dm0.state_from_string("s0").unwrap();
-        let s01 = dm0.state_from_string("s01").unwrap();
-        let s06 = dm0.state_from_string("s110").unwrap();
-        let s0d = dm0.state_from_string("s1101").unwrap();
+        let s00 = dm0.state_from_string("s0b0").unwrap();
+        let s01 = dm0.state_from_string("s0b01").unwrap();
+        let s06 = dm0.state_from_string("s0b110").unwrap();
+        let s0d = dm0.state_from_string("s0b1101").unwrap();
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(0, &s00, &s01);
@@ -1184,15 +1184,15 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        let s04 = dm0.state_from_string("s00000100").unwrap();
+        let s04 = dm0.state_from_string("s0b00000100").unwrap();
         dm0.eval_sample_arbitrary(0, &s04, &s04);
         dm0.eval_sample_arbitrary(0, &s04, &s04);
 
-        let sf9 = dm0.state_from_string("s11111001").unwrap();
+        let sf9 = dm0.state_from_string("s0b11111001").unwrap();
         dm0.eval_sample_arbitrary(0, &sf9, &sf9);
         dm0.eval_sample_arbitrary(0, &sf9, &sf9);
 
@@ -1204,8 +1204,8 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         let nds1 = dm0.actions[0].limit_groups_needs(&SomeChange {
-            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
-            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b01: SomeMask::new_from_string(1, "m0b1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m0b1111").unwrap(),
         });
         println!("needs1 are {}", nds1);
 
@@ -1226,24 +1226,24 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         let nds2 = dm0.actions[0].limit_groups_needs(&SomeChange {
-            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
-            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b01: SomeMask::new_from_string(1, "m0b1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m0b1111").unwrap(),
         });
         println!("needs2 are {}", nds2);
 
-        let s06 = dm0.state_from_string("s00000110").unwrap();
+        let s06 = dm0.state_from_string("s0b00000110").unwrap();
         assert!(
             nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
         );
 
-        let s02 = dm0.state_from_string("s00000010").unwrap();
+        let s02 = dm0.state_from_string("s0b00000010").unwrap();
         dm0.eval_sample_arbitrary(0, &s06, &s02);
         dm0.eval_sample_arbitrary(0, &s06, &s02);
 
         println!("dm0 {}", &dm0.actions[0]);
         let nds3 = dm0.actions[0].limit_groups_needs(&SomeChange {
-            b01: SomeMask::new_from_string(1, "m1111").unwrap(),
-            b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+            b01: SomeMask::new_from_string(1, "m0b1111").unwrap(),
+            b10: SomeMask::new_from_string(1, "m0b1111").unwrap(),
         });
         println!("needs3 are {}", nds3);
 
@@ -1274,18 +1274,18 @@ mod tests {
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
-        let s5 = dm0.state_from_string("s101").unwrap();
+        let s5 = dm0.state_from_string("s0b101").unwrap();
 
-        let s4 = dm0.state_from_string("s100").unwrap();
+        let s4 = dm0.state_from_string("s0b100").unwrap();
 
-        let sf = dm0.state_from_string("s1111").unwrap();
+        let sf = dm0.state_from_string("s0b1111").unwrap();
 
-        let se = dm0.state_from_string("s1110").unwrap();
+        let se = dm0.state_from_string("s0b1110").unwrap();
 
-        let s7 = dm0.state_from_string("s111").unwrap();
+        let s7 = dm0.state_from_string("s0b111").unwrap();
 
         let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
 
@@ -1340,18 +1340,18 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
-        let s5 = dm0.state_from_string("s101").unwrap();
+        let s5 = dm0.state_from_string("s0b101").unwrap();
 
-        let s4 = dm0.state_from_string("s100").unwrap();
+        let s4 = dm0.state_from_string("s0b100").unwrap();
 
-        let sf = dm0.state_from_string("s1111").unwrap();
+        let sf = dm0.state_from_string("s0b1111").unwrap();
 
-        let se = dm0.state_from_string("s1110").unwrap();
+        let se = dm0.state_from_string("s0b1110").unwrap();
 
-        let s7 = dm0.state_from_string("s111").unwrap();
+        let s7 = dm0.state_from_string("s0b111").unwrap();
 
         let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
 
@@ -1398,11 +1398,11 @@ mod tests {
     // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(2, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(2, "s0b1").unwrap());
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0001010010101000").unwrap();
-        let s1 = dm0.state_from_string("s1111010110101011").unwrap();
+        let s0 = dm0.state_from_string("s0b0001010010101000").unwrap();
+        let s1 = dm0.state_from_string("s0b1111010110101011").unwrap();
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
@@ -1422,12 +1422,12 @@ mod tests {
 
     #[test]
     fn compatible_group_intersection_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s000").unwrap();
-        let s3 = dm0.state_from_string("s011").unwrap();
-        let s5 = dm0.state_from_string("s101").unwrap();
+        let s0 = dm0.state_from_string("s0b000").unwrap();
+        let s3 = dm0.state_from_string("s0b011").unwrap();
+        let s5 = dm0.state_from_string("s0b101").unwrap();
 
         dm0.eval_sample_arbitrary(0, &s0, &s0);
         dm0.eval_sample_arbitrary(0, &s3, &s3);
@@ -1461,12 +1461,12 @@ mod tests {
 
     #[test]
     fn seek_edge_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
         // Establish group XXXX
-        let s0 = dm0.state_from_string("s0000").unwrap();
-        let sf = dm0.state_from_string("s1111").unwrap();
+        let s0 = dm0.state_from_string("s0b0000").unwrap();
+        let sf = dm0.state_from_string("s0b1111").unwrap();
 
         dm0.eval_sample_arbitrary(0, &s0, &s0);
         dm0.eval_sample_arbitrary(0, &sf, &sf);
@@ -1477,7 +1477,7 @@ mod tests {
         println!("\nActs: {}", &dm0.actions);
 
         // Break group XXXX
-        let s5 = dm0.state_from_string("s0101").unwrap();
+        let s5 = dm0.state_from_string("s0b0101").unwrap();
 
         dm0.eval_sample_arbitrary(0, &s5, &s0);
 
@@ -1499,7 +1499,7 @@ mod tests {
         assert!(needs.len() == 1);
         if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()) {
             // Seek even closer sample s1101
-            let sd = dm0.state_from_string("s1101").unwrap();
+            let sd = dm0.state_from_string("s0b1101").unwrap();
             dm0.eval_sample_arbitrary(0, &sd, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
@@ -1530,7 +1530,7 @@ mod tests {
         } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
         {
             // Seek even closer sample s0111
-            let s7 = dm0.state_from_string("s0111").unwrap();
+            let s7 = dm0.state_from_string("s0b0111").unwrap();
             dm0.eval_sample_arbitrary(0, &s7, &s0);
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
@@ -1574,12 +1574,12 @@ mod tests {
 
     #[test]
     fn astate_make_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
         dm0.add_action();
 
         // Sample 1
-        let sdb = dm0.state_from_string("s1101_1011").unwrap();
-        let sd9 = dm0.state_from_string("s1101_1001").unwrap();
+        let sdb = dm0.state_from_string("s0b1101_1011").unwrap();
+        let sd9 = dm0.state_from_string("s0b1101_1001").unwrap();
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1588,8 +1588,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&sdb, &ndx, &sd9, 0);
 
         // Sample 2
-        let se5 = dm0.state_from_string("s1110_0101").unwrap();
-        let se7 = dm0.state_from_string("s1110_0111").unwrap();
+        let se5 = dm0.state_from_string("s0b1110_0101").unwrap();
+        let se7 = dm0.state_from_string("s0b1110_0111").unwrap();
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1598,8 +1598,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&se5, &ndx, &se7, 0);
 
         // Sample 3
-        let s25 = dm0.state_from_string("s0010_0101").unwrap();
-        let s27 = dm0.state_from_string("s0010_0111").unwrap();
+        let s25 = dm0.state_from_string("s0b0010_0101").unwrap();
+        let s27 = dm0.state_from_string("s0b0010_0111").unwrap();
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1608,8 +1608,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&s25, &ndx, &s27, 0);
 
         // Sample 4    // Set up a limited group.
-        let s2c = dm0.state_from_string("s0010_1100").unwrap();
-        let s2e = dm0.state_from_string("s0010_1110").unwrap();
+        let s2c = dm0.state_from_string("s0b0010_1100").unwrap();
+        let s2e = dm0.state_from_string("s0b0010_1110").unwrap();
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1618,14 +1618,14 @@ mod tests {
         dm0.actions[0].eval_need_sample(&s2c, &ndx, &s2e, 0);
 
         // Sample 5
-        let sd3 = dm0.state_from_string("s1101_0011").unwrap();
-        let sd1 = dm0.state_from_string("s1101_0001").unwrap();
+        let sd3 = dm0.state_from_string("s0b1101_0011").unwrap();
+        let sd1 = dm0.state_from_string("s0b1101_0001").unwrap();
         let ndx = SomeNeed::AStateMakeGroup {
             dom_num: 0,
             act_num: 0,
             target_state: sd3.clone(),
             for_reg: dm0.region_from_string("rxxxx_xxxx").unwrap(),
-            far: dm0.state_from_string("s0010_1100").unwrap(),
+            far: dm0.state_from_string("s0b0010_1100").unwrap(),
             num_x: 8,
         };
         dm0.actions[0].eval_need_sample(&sd3, &ndx, &sd1, 0);
@@ -1654,13 +1654,13 @@ mod tests {
     // Assumes groups are added to the end of the group list.
     #[test]
     fn limited_flag_change() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s1011").unwrap());
+        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1011").unwrap());
         dm0.add_action();
         dm0.add_action();
 
         // Create group XXX1 -> XXX1, no way to change any bit.
-        let s0b = dm0.state_from_string("s1011").unwrap();
-        let s05 = dm0.state_from_string("s0101").unwrap();
+        let s0b = dm0.state_from_string("s0b1011").unwrap();
+        let s05 = dm0.state_from_string("s0b0101").unwrap();
 
         // Start group.
         dm0.eval_sample_arbitrary(0, &s0b, &s0b);
@@ -1682,7 +1682,7 @@ mod tests {
         }
 
         // Add a way to change bit position 1, 0->1.
-        let s09 = dm0.state_from_string("s1001").unwrap();
+        let s09 = dm0.state_from_string("s0b1001").unwrap();
         dm0.eval_sample_arbitrary(1, &s09, &s0b);
 
         // Print domain and needs, if needed for error resolution.
@@ -1698,7 +1698,7 @@ mod tests {
         }
 
         // Add a way to change bit position 0, 0->1.
-        let s08 = dm0.state_from_string("s1000").unwrap();
+        let s08 = dm0.state_from_string("s0b1000").unwrap();
         dm0.eval_sample_arbitrary(1, &s08, &s09);
 
         // Print domain and needs, if needed for error resolution.
@@ -1714,7 +1714,7 @@ mod tests {
         }
 
         // Add a way to change bit position 0, 1->0.
-        let s0a = dm0.state_from_string("s1010").unwrap();
+        let s0a = dm0.state_from_string("s0b1010").unwrap();
         dm0.eval_sample_arbitrary(1, &s0b, &s0a);
 
         // Print domain and needs, if needed for error resolution.

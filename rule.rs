@@ -21,6 +21,8 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -72,11 +74,11 @@ impl SomeRule {
 
         let mut token = String::with_capacity(2);
 
-        for bt in rep.chars() {
-            if bt == '/' {
+        for bt in rep.graphemes(true) {
+            if bt == "/" {
                 continue;
             }
-            token.push(bt);
+            token.push_str(bt);
             if token.len() == 2 {
                 if token == "00" {
                     b00 = b00.push_1();
@@ -541,8 +543,8 @@ mod tests {
     #[test]
     fn new_all() -> Result<(), String> {
         let rule_from_states = SomeRule::new(
-            &SomeState::new_from_string(1, "s0101").unwrap(),
-            &SomeState::new_from_string(1, "s0011").unwrap(),
+            &SomeState::new_from_string(1, "s0b0101").unwrap(),
+            &SomeState::new_from_string(1, "s0b0011").unwrap(),
         );
 
         let rule_from_masks = SomeRule::new_from_masks(
@@ -573,10 +575,10 @@ mod tests {
 
     #[test]
     fn initial_region_result_region() -> Result<(), String> {
-        let sta = SomeState::new_from_string(1, "s1010").unwrap();
-        let st6 = SomeState::new_from_string(1, "s0110").unwrap();
-        let regx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s1001").unwrap());
-        let regy = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0101").unwrap());
+        let sta = SomeState::new_from_string(1, "s0b1010").unwrap();
+        let st6 = SomeState::new_from_string(1, "s0b0110").unwrap();
+        let regx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s0b1001").unwrap());
+        let regy = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0b0101").unwrap());
 
         if regx.initial_region() != SomeRegion::new(sta.clone(), sta.clone()) {
             return Err(String::from("Region not r1010?"));
@@ -795,13 +797,13 @@ mod tests {
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "Xx/XX/x1/x0/xx/xx").unwrap();
-        let sta1 = SomeState::new_from_string(1, "s000110").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b000110").unwrap();
 
         let sta2 = rul1.result_from_initial_state(&sta1);
         println!("rul1 {}", &rul1);
         println!("sta2 {}", &sta2);
 
-        if sta2 != SomeState::new_from_string(1, "s101010").unwrap() {
+        if sta2 != SomeState::new_from_string(1, "s0b101010").unwrap() {
             return Err(String::from("sta2 not 001010?"));
         }
 
@@ -856,7 +858,7 @@ mod tests {
     #[test]
     fn region_to_state() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
-        let sta1 = SomeState::new_from_string(1, "s011010").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b011010").unwrap();
 
         let rul1 = SomeRule::region_to_state(&reg1, &sta1);
         let rul2 = SomeRule::new_from_string(1, "00/11/01/10/x1/x0").unwrap();
@@ -871,7 +873,7 @@ mod tests {
 
     #[test]
     fn state_to_region() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(1, "s011010").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b011010").unwrap();
         let reg1 = SomeRegion::new_from_string(1, "r0101xx").unwrap();
 
         let rul1 = SomeRule::state_to_region(&sta1, &reg1);
@@ -887,8 +889,8 @@ mod tests {
 
     #[test]
     fn state_to_state() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(1, "s0110").unwrap();
-        let sta2 = SomeState::new_from_string(1, "s0101").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b0110").unwrap();
+        let sta2 = SomeState::new_from_string(1, "s0b0101").unwrap();
 
         let rul1 = SomeRule::state_to_state(&sta1, &sta2);
         let rul2 = SomeRule::new_from_string(1, "00/11/10/01").unwrap();

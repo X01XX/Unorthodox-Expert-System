@@ -142,11 +142,11 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "r1001").unwrap();
 
         let cng = SomeChange::region_to_region(&reg0, &reg1);
-        let sta = SomeState::new_from_string(1, "s0101").unwrap();
+        let sta = SomeState::new_from_string(1, "s0b0101").unwrap();
 
         let sta2 = cng.apply_to_state(&sta);
 
-        let sta3 = SomeState::new_from_string(1, "s1001").unwrap();
+        let sta3 = SomeState::new_from_string(1, "s0b1001").unwrap();
         if sta2 != sta3 {
             return Err(format!("sta2 {} not {} ?", sta2, sta3));
         }

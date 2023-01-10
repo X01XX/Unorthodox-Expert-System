@@ -28,6 +28,9 @@ use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
 use std::hash::Hash;
 
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
+
 /// Display trait for SomeBits
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -122,21 +125,29 @@ impl SomeBits {
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         let mut bts = SomeBits::new_low(num_ints);
 
-        let base;
+        let mut base = 2;
 
-        if &str[0..2] == "0b" {
-            base = 2;
-        } else if &str[0..2] == "0x" {
-            base = 16;
-        } else {
-            return Err(format!("should start with 0b or 0x instead of {}", str));
-        }
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "0" {
+                    continue;
+                }
+                return Err(format!("should start with 0 instead of {}", str));
+            }
 
-        let lsb = num_ints - 1;
-        let shift_num = NUM_BITS_PER_INT - 4;
+            if inx == 1 {
+                if chr == "b" || chr == "B" {
+                    continue;
+                } else if chr == "x" || chr == "X" {
+                    base = 16;
+                    continue;
+                }
+                return Err(format!("should start with 0b or 0x instead of {}", str));
+            }
 
-        for chr in str[2..].chars() {
-            if chr == '_' {
+            let lsb = num_ints - 1;
+
+            if chr == "_" {
                 continue;
             }
 
@@ -149,9 +160,9 @@ impl SomeBits {
                     return Err(format!("Did not understand the string {}, too long?", str));
                 }
 
-                if chr == '0' {
+                if chr == "0" {
                     bts = bts.shift_left();
-                } else if chr == '1' {
+                } else if chr == "1" {
                     bts = bts.push_1();
                 } else {
                     return Err(format!(
@@ -160,34 +171,21 @@ impl SomeBits {
                     ));
                 }
             } else {
-                let numx;
-
                 if bts.high_bit_set() {
                     return Err(String::from("too long"));
                 }
 
-                if ('0'..='9').contains(&chr) {
-                    numx = chr as i32 - 48;
-                } else if ('a'..='f').contains(&chr) {
-                    numx = chr as i32 - 87;
-                } else if ('A'..='F').contains(&chr) {
-                    numx = chr as i32 - 55;
-                } else {
+                let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
                         "Did not understand the string {}, invalid character?",
                         str
-                    ));
-                }
+                    ))  };
 
-                if bts.ints[0] >> shift_num > 0 {
-                    return Err(format!("Did not understand the string {}, too long?", str));
-                }
                 bts = bts.shift_left4();
 
-                bts.ints[lsb] += numx as Bitint;
+                bts.ints[lsb] += numx;
             }
-        } // next inx
-
+        } // next (inx, chr)
         Ok(bts)
     } // end new_from_string
 

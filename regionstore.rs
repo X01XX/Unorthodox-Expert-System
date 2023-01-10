@@ -586,8 +586,8 @@ mod tests {
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0100").unwrap()));
-        assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0111").unwrap()));
+        assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0100").unwrap()));
+        assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0111").unwrap()));
         Ok(())
     }
 
@@ -603,7 +603,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         let regstr2 =
-            regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0111").unwrap());
+            regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap());
         println!("not supersets {}", &regstr2);
 
         assert!(regstr2.len() == 2);
@@ -623,7 +623,7 @@ mod tests {
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        let regstr2 = regstr.supersets_of_state(&SomeState::new_from_string(1, "s0111").unwrap());
+        let regstr2 = regstr.supersets_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap());
         println!("supersets {}", &regstr2);
 
         assert!(regstr2.len() == 2);
@@ -643,8 +643,8 @@ mod tests {
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0111").unwrap()));
-        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string(1, "s1011").unwrap()));
+        assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap()));
+        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b1011").unwrap()));
         Ok(())
     }
 

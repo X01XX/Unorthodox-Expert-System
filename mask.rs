@@ -15,6 +15,8 @@ use crate::bits::SomeBits;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -46,20 +48,22 @@ impl SomeMask {
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        if &str[0..1] != "m" {
-            return Err("Initial character should be m".to_string());
+        let mut rest = String::from("");
+
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "m" || chr == "M" {
+                    continue;
+                }
+                return Err("Initial character should be m".to_string());
+            }
+
+            rest.push_str(chr);
         }
 
-        if str.len() > 2 && (&str[1..3] == "0b" || &str[1..3] == "0x") {
-            match SomeBits::new_from_string(num_ints, &str[1..]) {
-                Ok(bts) => Ok(SomeMask::new(bts)),
-                Err(error) => Err(error),
-            }
-        } else {
-            match SomeBits::new_from_string(num_ints, &("0b".to_owned() + &str[1..])) {
-                Ok(bts) => Ok(SomeMask::new(bts)),
-                Err(error) => Err(error),
-            }
+        match SomeBits::new_from_string(num_ints, &rest) {
+            Ok(bts) => Ok(SomeMask::new(bts)),
+            Err(error) => Err(error),
         }
     } // end new_from_string
 

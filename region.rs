@@ -9,6 +9,9 @@ use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -70,11 +73,11 @@ impl SomeRegion {
 
         let mut digit_count = 0;
 
-        for (inx, ch) in str.chars().enumerate() {
+        for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
-                if ch == 'r' {
+                if chr == "r" {
                     continue;
-                } else if ch == 's' {
+                } else if chr == "s" {
                     let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
@@ -92,22 +95,22 @@ impl SomeRegion {
                 }
             }
 
-            if ch == '0' {
+            if chr == "0" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.shift_left();
                 digit_count += 1;
-            } else if ch == '1' {
+            } else if chr == "1" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.push_1();
                 digit_count += 1;
-            } else if ch == 'X' {
+            } else if chr == "X" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.shift_left();
-            } else if ch == 'x' {
+            } else if chr == "x" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.push_1();
                 digit_count += 1;
-            } else if ch == '_' {
+            } else if chr == "_" {
                 continue;
             } else {
                 return Err(format!(
@@ -145,11 +148,11 @@ impl SomeRegion {
 
         let mut digit_count = 0;
 
-        for (inx, ch) in str.chars().enumerate() {
+        for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
-                if ch == 'r' {
+                if chr == "r" {
                     continue;
-                } else if ch == 's' {
+                } else if chr == "s" {
                     let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
@@ -167,23 +170,23 @@ impl SomeRegion {
                 }
             }
 
-            if ch == '0' {
+            if chr == "0" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.shift_left();
                 digit_count += 1;
-            } else if ch == '1' {
+            } else if chr == "1" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.push_1();
                 digit_count += 1;
-            } else if ch == 'X' {
+            } else if chr == "X" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.shift_left();
                 digit_count += 1;
-            } else if ch == 'x' {
+            } else if chr == "x" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.push_1();
                 digit_count += 1;
-            } else if ch == '_' {
+            } else if chr == "_" {
                 continue;
             } else {
                 return Err(format!(
@@ -191,7 +194,7 @@ impl SomeRegion {
                     str
                 ));
             }
-        } // end for ch
+        } // next (inx, chr)
 
         if digit_count > (NUM_BITS_PER_INT * num_ints) {
             return Err(format!("Did not understand the string {}, too long?", str));
@@ -505,12 +508,12 @@ mod tests {
     #[test]
     fn eq() -> Result<(), String> {
         let reg1 = SomeRegion::new(
-            SomeState::new_from_string(1, "s1010").unwrap(),
-            SomeState::new_from_string(1, "s0101").unwrap(),
+            SomeState::new_from_string(1, "s0b1010").unwrap(),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
         );
         let reg2 = SomeRegion::new(
-            SomeState::new_from_string(1, "s0001").unwrap(),
-            SomeState::new_from_string(1, "s1110").unwrap(),
+            SomeState::new_from_string(1, "s0b0001").unwrap(),
+            SomeState::new_from_string(1, "s0b1110").unwrap(),
         );
         assert!(reg1.eq(&reg2));
 
@@ -533,7 +536,7 @@ mod tests {
     #[test]
     fn is_adjacent_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX10X10X").unwrap();
-        let sta1 = SomeState::new_from_string(1, "s1001100").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b1001100").unwrap();
         println!("{}", &reg0);
         println!("{}", &sta1);
         println!("{}", &reg0.diff_mask_state(&sta1));
@@ -541,7 +544,7 @@ mod tests {
             return Err(String::from("Result 1 False?"));
         }
 
-        let sta2 = SomeState::new_from_string(1, "s1001110").unwrap();
+        let sta2 = SomeState::new_from_string(1, "s0b1001110").unwrap();
         if reg0.is_adjacent_state(&sta2) {
             return Err(String::from("Result 2 True?"));
         }
@@ -581,17 +584,17 @@ mod tests {
     fn is_superset_of_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX10X").unwrap();
 
-        let sta1 = SomeState::new_from_string(1, "s1100").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b1100").unwrap();
         if !reg0.is_superset_of_state(&sta1) {
             return Err(String::from("Result 1 False?"));
         }
 
-        let sta2 = SomeState::new_from_string(1, "s0000").unwrap();
+        let sta2 = SomeState::new_from_string(1, "s0b0000").unwrap();
         if reg0.is_superset_of_state(&sta2) {
             return Err(String::from("Result 2 True?"));
         }
 
-        let sta3 = SomeState::new_from_string(1, "s0010").unwrap();
+        let sta3 = SomeState::new_from_string(1, "s0b0010").unwrap();
         if reg0.is_superset_of_state(&sta3) {
             return Err(String::from("Result 2 True?"));
         }
@@ -601,7 +604,7 @@ mod tests {
     #[test]
     fn zeros_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
-        let zmask = SomeMask::new_from_string(1, "m1010").unwrap();
+        let zmask = SomeMask::new_from_string(1, "m0b1010").unwrap();
 
         if !zmask.is_subset_of(&reg0.zeros_mask()) {
             return Err(String::from("1010 not a subset?"));
@@ -631,10 +634,10 @@ mod tests {
     #[test]
     fn far_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXXX1").unwrap();
-        let state0 = SomeState::new_from_string(1, "s1011").unwrap();
+        let state0 = SomeState::new_from_string(1, "s0b1011").unwrap();
 
-        if reg0.far_state(&state0) != SomeState::new_from_string(1, "s101").unwrap() {
-            return Err(String::from("Result not s101?"));
+        if reg0.far_state(&state0) != SomeState::new_from_string(1, "s0b101").unwrap() {
+            return Err(String::from("Result not s0b101?"));
         }
         Ok(())
     }
@@ -708,7 +711,7 @@ mod tests {
     #[test]
     fn union_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0101").unwrap();
-        let state0 = SomeState::new_from_string(1, "s101001").unwrap();
+        let state0 = SomeState::new_from_string(1, "s0b101001").unwrap();
 
         if reg0.union_state(&state0) != SomeRegion::new_from_string(1, "rXXXX01").unwrap() {
             return Err(String::from("Result not rXXXX01?"));
@@ -720,8 +723,8 @@ mod tests {
     fn high_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX0X1").unwrap();
 
-        if reg0.high_state() != SomeState::new_from_string(1, "s1011").unwrap() {
-            return Err(String::from("Result s1011?"));
+        if reg0.high_state() != SomeState::new_from_string(1, "s0b1011").unwrap() {
+            return Err(String::from("Result s0b1011?"));
         }
         Ok(())
     }
@@ -730,7 +733,7 @@ mod tests {
     fn low_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX0X1").unwrap();
 
-        if reg0.low_state() != SomeState::new_from_string(1, "s1").unwrap() {
+        if reg0.low_state() != SomeState::new_from_string(1, "s0b1").unwrap() {
             println!("low state {}", &reg0.low_state());
             return Err(String::from("Result not s1?"));
         }
@@ -762,7 +765,7 @@ mod tests {
     #[test]
     fn diff_mask_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rXX0011").unwrap();
-        let state0 = SomeState::new_from_string(1, "s010101").unwrap();
+        let state0 = SomeState::new_from_string(1, "s0b010101").unwrap();
 
         if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m0b110").unwrap() {
             return Err(String::from("Result not m0b110?"));
@@ -785,12 +788,12 @@ mod tests {
     #[test]
     fn states_in() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "rX1XX").unwrap();
-        let st1 = SomeState::new_from_string(1, "s1").unwrap();
-        let st6 = SomeState::new_from_string(1, "s110").unwrap();
-        let st7 = SomeState::new_from_string(1, "s0111").unwrap();
-        let st8 = SomeState::new_from_string(1, "s1000").unwrap();
-        let std = SomeState::new_from_string(1, "s1101").unwrap();
-        let ste = SomeState::new_from_string(1, "s1110").unwrap();
+        let st1 = SomeState::new_from_string(1, "s0b1").unwrap();
+        let st6 = SomeState::new_from_string(1, "s0b110").unwrap();
+        let st7 = SomeState::new_from_string(1, "s0b0111").unwrap();
+        let st8 = SomeState::new_from_string(1, "s0b1000").unwrap();
+        let std = SomeState::new_from_string(1, "s0b1101").unwrap();
+        let ste = SomeState::new_from_string(1, "s0b1110").unwrap();
         let mut sta_str = StateStore::new();
 
         sta_str.push(st1);

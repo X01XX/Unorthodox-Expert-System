@@ -2164,18 +2164,18 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, 1);
 
         // Init states.
-        let sta_f = SomeState::new_from_string(1, "s1111").unwrap();
-        let sta_e = SomeState::new_from_string(1, "s1110").unwrap();
-        let sta_d = SomeState::new_from_string(1, "s1101").unwrap();
-        let sta_c = SomeState::new_from_string(1, "s1100").unwrap();
-        let sta_b = SomeState::new_from_string(1, "s1011").unwrap();
-        let sta_a = SomeState::new_from_string(1, "s1010").unwrap();
-        let sta_7 = SomeState::new_from_string(1, "s0111").unwrap();
-        let sta_5 = SomeState::new_from_string(1, "s0101").unwrap();
-        let sta_4 = SomeState::new_from_string(1, "s0100").unwrap();
-        let sta_3 = SomeState::new_from_string(1, "s0011").unwrap();
-        let sta_1 = SomeState::new_from_string(1, "s0001").unwrap();
-        let sta_0 = SomeState::new_from_string(1, "s0000").unwrap();
+        let sta_f = SomeState::new_from_string(1, "s0b1111").unwrap();
+        let sta_e = SomeState::new_from_string(1, "s0b1110").unwrap();
+        let sta_d = SomeState::new_from_string(1, "s0b1101").unwrap();
+        let sta_c = SomeState::new_from_string(1, "s0b1100").unwrap();
+        let sta_b = SomeState::new_from_string(1, "s0b1011").unwrap();
+        let sta_a = SomeState::new_from_string(1, "s0b1010").unwrap();
+        let sta_7 = SomeState::new_from_string(1, "s0b0111").unwrap();
+        let sta_5 = SomeState::new_from_string(1, "s0b0101").unwrap();
+        let sta_4 = SomeState::new_from_string(1, "s0b0100").unwrap();
+        let sta_3 = SomeState::new_from_string(1, "s0b0011").unwrap();
+        let sta_1 = SomeState::new_from_string(1, "s0b0001").unwrap();
+        let sta_0 = SomeState::new_from_string(1, "s0b0000").unwrap();
 
         // Set up region XXX1
         let regx = SomeRegion::new(sta_1.clone(), sta_f.clone());
@@ -2276,8 +2276,8 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, 1);
 
         // Set up 2-result square sf.
-        let sf = SomeState::new_from_string(1, "s1111").unwrap();
-        let se = SomeState::new_from_string(1, "s1110").unwrap();
+        let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
+        let se = SomeState::new_from_string(1, "s0b1110").unwrap();
 
         act0.eval_sample(&sf, &sf);
         act0.eval_sample(&sf, &se);
@@ -2285,8 +2285,8 @@ mod tests {
         act0.eval_sample(&sf, &se);
 
         // Set up 2-result square s1.
-        let s1 = SomeState::new_from_string(1, "s0001").unwrap();
-        let s0 = SomeState::new_from_string(1, "s0000").unwrap();
+        let s1 = SomeState::new_from_string(1, "s0b0001").unwrap();
+        let s0 = SomeState::new_from_string(1, "s0b0000").unwrap();
         act0.eval_sample(&s1, &s1);
         act0.eval_sample(&s1, &s0);
         act0.eval_sample(&s1, &s1);
@@ -2298,8 +2298,8 @@ mod tests {
             0,
             &memory,
             &SomeChange {
-                b01: SomeMask::new_from_string(1, "m1111").unwrap(),
-                b10: SomeMask::new_from_string(1, "m1111").unwrap(),
+                b01: SomeMask::new_from_string(1, "m0b1111").unwrap(),
+                b10: SomeMask::new_from_string(1, "m0b1111").unwrap(),
             },
         );
         println!("Act: {}", &act0);
