@@ -95,6 +95,11 @@ impl SomeState {
         self.bts.num_ints()
     }
 
+    /// Return the number of bits used to represent a state.
+    pub fn num_bits(&self) -> usize {
+        self.bts.num_bits()
+    }
+
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &SomeState) -> bool {
         self.bts.is_adjacent(&other.bts)

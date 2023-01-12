@@ -130,6 +130,11 @@ impl SomeMask {
         self.bts.num_ints()
     }
 
+    /// Return the number of bits used to express a SomeMask instance.
+    pub fn num_bits(&self) -> usize {
+        self.bts.num_bits()
+    }
+
     /// Return a formatted string.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('m')

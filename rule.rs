@@ -11,18 +11,17 @@
 //! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
 //! "backward chaining" (intitial_from_result).
 
-use crate::bits::SomeBits;
-use crate::bits::NUM_BITS_PER_INT;
 use crate::bits::{bits_and, bits_not, bits_or, bits_xor};
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
 
-use serde::{Deserialize, Serialize};
-use std::fmt;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
+
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -55,19 +54,12 @@ impl SomeRule {
         }
     }
 
-    pub fn new_from_masks(b00: SomeMask, b01: SomeMask, b11: SomeMask, b10: SomeMask) -> Self {
-        assert!(b00.num_ints() == b01.num_ints());
-        assert!(b00.num_ints() == b11.num_ints());
-        assert!(b00.num_ints() == b10.num_ints());
-        Self { b00, b01, b11, b10 }
-    }
-
     /// Generate a rule from a number of integers and a string,
     /// like (2, "00/01/11/10/XX/xx/Xx/xX/X0/X1").
     /// Leading "00" tokens can be omitted.
     /// If no tokens supplied, the rule will be all "00".
     pub fn new_from_string(num_ints: usize, rep: &str) -> Result<Self, String> {
-        let mut b00 = SomeMask::new(SomeBits::new_high(num_ints));
+        let mut b00not = SomeMask::new_low(num_ints); // If starting with all bits set, left-shift will be a problem.
         let mut b01 = SomeMask::new_low(num_ints);
         let mut b11 = SomeMask::new_low(num_ints);
         let mut b10 = SomeMask::new_low(num_ints);
@@ -75,62 +67,67 @@ impl SomeRule {
         let mut token = String::with_capacity(2);
 
         for bt in rep.graphemes(true) {
-            if bt == "/" {
+            if bt == "/" || bt == "_" {
                 continue;
             }
             token.push_str(bt);
             if token.len() == 2 {
                 if token == "00" {
-                    b00 = b00.push_1();
+                    b00not = b00not.push_0();
                     b01 = b01.push_0();
                     b11 = b11.push_0();
                     b10 = b10.push_0();
                 } else if token == "01" {
-                    b00 = b00.push_0();
+                    b00not = b00not.push_1();
                     b01 = b01.push_1();
                     b11 = b11.push_0();
                     b10 = b10.push_0();
                 } else if token == "11" {
-                    b00 = b00.push_0();
+                    b00not = b00not.push_1();
                     b01 = b01.push_0();
                     b11 = b11.push_1();
                     b10 = b10.push_0();
                 } else if token == "10" {
-                    b00 = b00.push_0();
+                    b00not = b00not.push_1();
                     b01 = b01.push_0();
                     b11 = b11.push_0();
                     b10 = b10.push_1();
                 } else if token == "XX" || token == "xx" {
-                    b00 = b00.push_1();
+                    b00not = b00not.push_0();
                     b01 = b01.push_0();
                     b11 = b11.push_1();
                     b10 = b10.push_0();
                 } else if token == "Xx" || token == "xX" {
-                    b00 = b00.push_0();
+                    b00not = b00not.push_1();
                     b01 = b01.push_1();
                     b11 = b11.push_0();
                     b10 = b10.push_1();
                 } else if token == "X0" || token == "x0" {
-                    b00 = b00.push_1();
+                    b00not = b00not.push_0();
                     b01 = b01.push_0();
                     b11 = b11.push_0();
                     b10 = b10.push_1();
                 } else if token == "X1" || token == "x1" {
-                    b00 = b00.push_0();
+                    b00not = b00not.push_1();
                     b01 = b01.push_1();
                     b11 = b11.push_1();
                     b10 = b10.push_0();
                 } else {
                     return Err(format!("unrecognized token {}", &token));
                 }
-                token = String::with_capacity(2);
+                token.clear();
             }
         }
         if !token.is_empty() {
             return Err(format!("Did not understand token {}", &token));
         }
 
-        Ok(SomeRule { b00, b01, b11, b10 })
+        Ok(SomeRule {
+            b00: SomeMask::new(bits_not(&b00not)),
+            b01,
+            b11,
+            b10,
+        })
     }
 
     /// Return true if a rule is a subset of another.
@@ -293,15 +290,14 @@ impl SomeRule {
 
     /// Return the expected length of a string representation of SomeRule.
     pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.b00.num_ints() * 3) - 1
+        (self.b00.num_bits() * 3) - 1
     }
 
     /// Return a string representation of SomeRule.
     pub fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.formatted_string_length());
 
-        let num_ints = self.b00.num_ints();
-        let num_bits = num_ints * NUM_BITS_PER_INT;
+        let num_bits = self.b00.num_bits();
 
         for i in (0..num_bits).rev() {
             let b00: bool = self.b00.is_bit_set(i);
@@ -310,7 +306,7 @@ impl SomeRule {
             let b10: bool = self.b10.is_bit_set(i);
 
             if i != (num_bits - 1) {
-                if (i + 1) % NUM_BITS_PER_INT == 0 {
+                if (i + 1) % 4 == 0 {
                     strrc.push('_');
                 } else {
                     strrc.push('/');
@@ -547,12 +543,12 @@ mod tests {
             &SomeState::new_from_string(1, "s0b0011").unwrap(),
         );
 
-        let rule_from_masks = SomeRule::new_from_masks(
-            SomeMask::new(SomeBits::new(vec![Bitint::MAX ^ 7])),
-            SomeMask::new(SomeBits::new(vec![2 as Bitint])),
-            SomeMask::new(SomeBits::new(vec![1 as Bitint])),
-            SomeMask::new(SomeBits::new(vec![4 as Bitint])),
-        );
+        let rule_from_masks = SomeRule {
+            b00: SomeMask::new(SomeBits::new(vec![Bitint::MAX ^ 7])),
+            b01: SomeMask::new(SomeBits::new(vec![2 as Bitint])),
+            b11: SomeMask::new(SomeBits::new(vec![1 as Bitint])),
+            b10: SomeMask::new(SomeBits::new(vec![4 as Bitint])),
+        };
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();
 

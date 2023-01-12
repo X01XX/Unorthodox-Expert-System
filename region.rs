@@ -4,7 +4,7 @@
 //!
 //! The two states used to make the region, can be keys to two squares.
 
-use crate::bits::{bits_and, bits_or, bits_xor, SomeBits, NUM_BITS_PER_INT};
+use crate::bits::{bits_and, bits_not, bits_or, bits_xor, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
@@ -71,8 +71,6 @@ impl SomeRegion {
 
         let mut bts_low = SomeBits::new_low(num_ints);
 
-        let mut digit_count = 0;
-
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "r" {
@@ -98,18 +96,15 @@ impl SomeRegion {
             if chr == "0" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.shift_left();
-                digit_count += 1;
             } else if chr == "1" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.push_1();
-                digit_count += 1;
             } else if chr == "X" {
                 bts_high = bts_high.push_1();
                 bts_low = bts_low.shift_left();
             } else if chr == "x" {
                 bts_high = bts_high.shift_left();
                 bts_low = bts_low.push_1();
-                digit_count += 1;
             } else if chr == "_" {
                 continue;
             } else {
@@ -119,10 +114,6 @@ impl SomeRegion {
                 ));
             }
         } // end for ch
-
-        if digit_count > (NUM_BITS_PER_INT * num_ints) {
-            return Err(format!("Did not understand the string {}, too long?", str));
-        }
 
         Ok(SomeRegion::new(
             SomeState::new(bts_high),
@@ -142,11 +133,9 @@ impl SomeRegion {
     /// A state string can be used, like "s101010" or s0x34", making
     /// a region with no X bit positions.
     pub fn new_from_string_pad_x(num_ints: usize, str: &str) -> Result<Self, String> {
-        let mut bts_high = SomeBits::new_high(num_ints);
+        let mut bts_high_not = SomeBits::new_low(num_ints);
 
         let mut bts_low = SomeBits::new_low(num_ints);
-
-        let mut digit_count = 0;
 
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
@@ -171,21 +160,17 @@ impl SomeRegion {
             }
 
             if chr == "0" {
-                bts_high = bts_high.shift_left();
+                bts_high_not = bts_high_not.push_1();
                 bts_low = bts_low.shift_left();
-                digit_count += 1;
             } else if chr == "1" {
-                bts_high = bts_high.push_1();
+                bts_high_not = bts_high_not.shift_left();
                 bts_low = bts_low.push_1();
-                digit_count += 1;
             } else if chr == "X" {
-                bts_high = bts_high.push_1();
+                bts_high_not = bts_high_not.shift_left();
                 bts_low = bts_low.shift_left();
-                digit_count += 1;
             } else if chr == "x" {
-                bts_high = bts_high.shift_left();
+                bts_high_not = bts_high_not.push_1();
                 bts_low = bts_low.push_1();
-                digit_count += 1;
             } else if chr == "_" {
                 continue;
             } else {
@@ -196,30 +181,26 @@ impl SomeRegion {
             }
         } // next (inx, chr)
 
-        if digit_count > (NUM_BITS_PER_INT * num_ints) {
-            return Err(format!("Did not understand the string {}, too long?", str));
-        }
-
         Ok(SomeRegion::new(
-            SomeState::new(bts_high),
+            SomeState::new(bits_not(&bts_high_not)),
             SomeState::new(bts_low),
         ))
     } // end new_from_string_pad_x
 
     /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.state1.num_ints()) + self.state1.num_ints()
+        self.state1.num_bits() + 1 + (self.state1.num_bits() / 4)
     }
 
     /// Return a String representation of a Region without any prefix.
     pub fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
-        let num_ints = self.state1.num_ints();
-        let num_bits = num_ints * NUM_BITS_PER_INT;
+
+        let num_bits = self.state1.num_bits();
 
         for (inx, valb) in (0..num_bits).rev().enumerate() {
-            if inx > 0 && inx % NUM_BITS_PER_INT == 0 {
+            if inx > 0 && inx % 4 == 0 {
                 s1.push('_');
             }
             let b0 = self.state1.is_bit_set(valb);

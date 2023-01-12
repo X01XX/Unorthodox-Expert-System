@@ -230,19 +230,22 @@ impl SomeBits {
         self.b_xor(&bitsx)
     }
 
-    /// Return true if a bit is one at a given position.
+    /// Return true if a bit is one at a given position number.
+    /// Match the intuition of a hexidecimal representation.
+    /// Like 0xfa1ce. The least significant bit, in this case its equal 0, is bit number zero.
+    /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
-        let num_ints = self.num_ints();
+        let num_ints = self.ints.len();
+
         let num_bits = num_ints * NUM_BITS_PER_INT;
-        let lsi = num_ints - 1;
 
         if bit_num >= num_bits {
             panic!("bit num too large");
         }
 
-        let bit_pos = bit_num % NUM_BITS_PER_INT; // calc bit index
+        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
 
-        let int_num = lsi - (bit_num / NUM_BITS_PER_INT); // calc integer index
+        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
 
         self.ints[int_num] & (1 << bit_pos) > 0
     }
@@ -393,19 +396,20 @@ impl SomeBits {
         let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
         let mut carry: Bitint = 0;
-        let mut next_carry;
+        let mut next_carry: Bitint;
 
         for int_inx in (0..self.ints.len()).rev() {
             next_carry = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
 
             ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
+
             carry = next_carry;
         }
 
         // Overflow check
-        //		if carry > 0 {
-        //			panic!("Bits shift_left overflow");
-        //		}
+        if carry > 0 {
+            panic!("Bits shift_left overflow, carry {}", carry);
+        }
 
         Self { ints: ints2 }
     }
@@ -426,9 +430,9 @@ impl SomeBits {
         }
 
         // Overflow check
-        //		if carry > 0 {
-        //			panic!("Bits shift_left overflow");
-        //		}
+        if carry > 0 {
+            panic!("Bits shift_left4 overflow");
+        }
 
         Self { ints: ints2 }
     }
@@ -436,6 +440,11 @@ impl SomeBits {
     /// Return the number of integers used in the given SomeBits struct.
     pub fn num_ints(&self) -> usize {
         self.ints.len()
+    }
+
+    /// Return the number of bits in the given SomeBits struct.
+    pub fn num_bits(&self) -> usize {
+        self.ints.len() * NUM_BITS_PER_INT
     }
 
     /// Return true if the highest bit is set to 1.
