@@ -13,10 +13,10 @@
 //! test.rs, and change the constants, below, as needed.
 //!
 
-pub type Bitint = u8;
+type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
-pub const NUM_BITS_PER_INT: usize = u8::BITS as usize;
+const NUM_BITS_PER_INT: usize = u8::BITS as usize;
 
 /// The highest bit position in an integer.
 const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
@@ -51,10 +51,16 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
-    /// Create a SomeBits instance with a given vector.
-    pub fn new(avec: Vec<Bitint>) -> Self {
-        assert!(!avec.is_empty());
-        SomeBits { ints: avec }
+    /// Return a new SomeBits instance.
+    pub fn new(ints: Vec<Bitint>) -> Self {
+        Self { ints }
+    }
+
+    /// Create a new SomeBits instance, all zeros.
+    pub fn new_like(&self) -> Self {
+        SomeBits {
+            ints: vec![0 as Bitint; self.ints.len()],
+        }
     }
 
     /// Create a SomeBits instance with integer(s) set to zero
@@ -80,24 +86,6 @@ impl SomeBits {
             *intx = rand::thread_rng().gen_range(0..Bitint::MAX)
         }
         SomeBits { ints }
-    }
-
-    /// Return a SomeBits instance that is the combintation of two.
-    pub fn combine(bitvec: &[&SomeBits]) -> Self {
-        let mut num_ints = 0;
-        for bitsx in bitvec.iter() {
-            num_ints += bitsx.num_ints();
-        }
-
-        let mut avec = Vec::<Bitint>::with_capacity(num_ints);
-
-        for bitsx in bitvec.iter() {
-            for num in bitsx.ints.iter() {
-                avec.push(*num);
-            }
-        }
-
-        SomeBits::new(avec)
     }
 
     // Return a slice of bits.
@@ -437,7 +425,7 @@ impl SomeBits {
         Self { ints: ints2 }
     }
 
-    /// Return the number of integers used in the given SomeBits struct.
+    /// Return the number of integers used in the given SomeBits struct. 
     pub fn num_ints(&self) -> usize {
         self.ints.len()
     }
@@ -563,7 +551,9 @@ mod tests {
     // Test new
     #[test]
     fn new() -> Result<(), String> {
-        let bitx = SomeBits::new(vec![5 as Bitint, 4 as Bitint]);
+        let bitx = SomeBits {
+            ints: vec![5 as Bitint, 4 as Bitint],
+        };
         if bitx.ints[0] != 5 {
             return Err(String::from("Test 1 failed"));
         }
@@ -772,7 +762,8 @@ mod tests {
     // Test SomeBits::distance
     #[test]
     fn distance() -> Result<(), String> {
-        if 0 != SomeBits::new(vec![0 as Bitint; 2])
+        if 0 != SomeBits::new_from_string(2, "0x0")
+            .unwrap()
             .distance(&SomeBits::new_from_string(2, "0x0").unwrap())
         {
             return Err(String::from("Result  1 not 0?"));

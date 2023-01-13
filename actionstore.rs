@@ -119,8 +119,11 @@ impl ActionStore {
     }
 
     /// Return a mask of bit positions that can be changed.
-    pub fn aggregate_changes_mask(&self, num_ints: usize) -> SomeMask {
-        let mut chgs = SomeChange::new_low(num_ints);
+    pub fn aggregate_changes_mask(&self, cur_state: &SomeState) -> SomeMask {
+        let mut chgs = SomeChange::new(
+            SomeMask::new(cur_state.bts.new_like()),
+            SomeMask::new(cur_state.bts.new_like()),
+        );
 
         for actx in self.avec.iter() {
             chgs = chgs.c_or(actx.aggregate_changes());
@@ -130,8 +133,11 @@ impl ActionStore {
     }
 
     /// Return all possible chnages.
-    pub fn aggregate_changes(&self, num_ints: usize) -> SomeChange {
-        let mut chgs = SomeChange::new_low(num_ints);
+    pub fn aggregate_changes(&self, cur_state: &SomeState) -> SomeChange {
+        let mut chgs = SomeChange::new(
+            SomeMask::new(cur_state.bts.new_like()),
+            SomeMask::new(cur_state.bts.new_like()),
+        );
 
         for actx in self.avec.iter() {
             chgs = chgs.c_or(actx.aggregate_changes());

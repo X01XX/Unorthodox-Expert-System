@@ -252,7 +252,7 @@ impl SomeRule {
         };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
-        let ones = SomeMask::new(reg_int.high_state().bts.clone());
+        let ones = SomeMask::new(reg_int.high_state().bts);
 
         Self {
             b00: SomeMask::new(bits_and(&self.b00, &zeros.bts)),
@@ -278,7 +278,7 @@ impl SomeRule {
         };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
-        let ones = SomeMask::new(reg_int.high_state().bts.clone());
+        let ones = SomeMask::new(reg_int.high_state().bts);
 
         Self {
             b00: SomeMask::new(bits_and(&self.b00, &zeros.bts)),
@@ -534,7 +534,7 @@ impl SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::{Bitint, SomeBits};
+    use crate::bits::SomeBits;
 
     #[test]
     fn new_all() -> Result<(), String> {
@@ -544,10 +544,10 @@ mod tests {
         );
 
         let rule_from_masks = SomeRule {
-            b00: SomeMask::new(SomeBits::new(vec![Bitint::MAX ^ 7])),
-            b01: SomeMask::new(SomeBits::new(vec![2 as Bitint])),
-            b11: SomeMask::new(SomeBits::new(vec![1 as Bitint])),
-            b10: SomeMask::new(SomeBits::new(vec![4 as Bitint])),
+            b00: SomeMask::new(SomeBits::new_from_string(1, "0xf8").unwrap()),
+            b01: SomeMask::new(SomeBits::new_from_string(1, "0b0010").unwrap()),
+            b11: SomeMask::new(SomeBits::new_from_string(1, "0b0001").unwrap()),
+            b10: SomeMask::new(SomeBits::new_from_string(1, "0b0100").unwrap()),
         };
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();
@@ -734,8 +734,8 @@ mod tests {
     fn parse_for_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx").unwrap();
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string(1, "m0b1010").unwrap(), // b01
-            SomeMask::new_from_string(1, "m0b0101").unwrap(), // b10
+            SomeMask::new_from_string(1, "m0b1010").unwrap(),
+            SomeMask::new_from_string(1, "m0b0101").unwrap(),
         );
         let rul2 = rul1.parse_for_changes(&chg1).unwrap();
 

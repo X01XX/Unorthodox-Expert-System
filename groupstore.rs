@@ -2,6 +2,7 @@
 
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
+use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
@@ -41,21 +42,22 @@ pub struct GroupStore {
 
 impl GroupStore {
     /// Return a new GroupStore.
-    pub fn new(num_ints: usize) -> Self {
+    pub fn new(cur_state: &SomeState) -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),
-            aggregate_changes: SomeChange::new_low(num_ints),
+            aggregate_changes: SomeChange::new(
+                SomeMask::new(cur_state.bts.new_like()),
+                SomeMask::new(cur_state.bts.new_like()),
+            ),
         }
-    }
-
-    /// Return num_ints for SomeBits struct.
-    pub fn num_ints(&self) -> usize {
-        self.aggregate_changes.b01.num_ints()
     }
 
     /// Calculate and set the aggregate changes
     fn calc_aggregate_changes(&mut self) {
-        let mut ret_chn = SomeChange::new_low(self.num_ints());
+        let mut ret_chn = SomeChange::new(
+            self.aggregate_changes.b01.new_like(),
+            self.aggregate_changes.b10.new_like(),
+        );
 
         for grpx in self.avec.iter() {
             for rulx in grpx.rules.iter() {

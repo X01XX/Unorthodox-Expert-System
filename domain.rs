@@ -15,6 +15,7 @@
 
 use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
+use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
@@ -55,8 +56,6 @@ const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in 
 pub struct SomeDomain {
     /// Domain number.  Index into a higher-level DomainStore.
     pub num: usize,
-    /// Number integers making up a bits struct.
-    pub num_ints: usize,
     /// Actions the Domain can take.
     pub actions: ActionStore,
     /// The Current, internal, State.
@@ -71,19 +70,19 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(dom: usize, start_state: SomeState) -> Self {
-        // Check that optimal regions, if any, are the same number of ints.
-        let num_ints = start_state.num_ints();
-        let low_mask = SomeMask::new_low(num_ints);
+    pub fn new(dom: usize, num_ints: usize) -> Self {
+        let start_state = initialize_state(num_ints);
 
         // Set up a domain instance with the correct value for num_ints
         SomeDomain {
             num: dom,
-            num_ints,
             actions: ActionStore::new(),
-            cur_state: start_state,
+            cur_state: start_state.clone(),
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeChange::new(low_mask.clone(), low_mask),
+            agg_changes: SomeChange::new(
+                SomeMask::new(start_state.bts.new_like()),
+                SomeMask::new(start_state.bts.new_like()),
+            ),
         }
     }
 
@@ -94,7 +93,7 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        let actx = SomeAction::new(self.num, self.actions.len(), self.num_ints);
+        let actx = SomeAction::new(self.num, self.actions.len(), &self.cur_state);
         self.actions.push(actx);
     }
 
@@ -710,13 +709,13 @@ impl SomeDomain {
     /// Return a Region from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
-        SomeRegion::new_from_string(self.num_ints, str)
+        SomeRegion::new_from_string(self.cur_state.num_ints(), str)
     } // end region_from_string
 
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-        SomeState::new_from_string(self.num_ints, str)
+        SomeState::new_from_string(self.cur_state.num_ints(), str)
     } // end state_from_string
 
     /// Return a Action number from a string with a format that the parse method can understand.
@@ -815,7 +814,7 @@ impl SomeDomain {
 
     /// Return all changes that can be made,
     fn aggregate_changes(&self) -> SomeChange {
-        self.actions.aggregate_changes(self.num_ints)
+        self.actions.aggregate_changes(&self.cur_state)
     }
 } // end impl SomeDomain
 
@@ -906,6 +905,11 @@ fn step_vecs_order_bad(
     true
 }
 
+// Return the first state value.
+pub fn initialize_state(num_ints: usize) -> SomeState {
+    SomeState::new(SomeBits::new_random(num_ints))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -914,7 +918,8 @@ mod tests {
     // from s0111 to s1000.
     #[test]
     fn make_plan_direct() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -967,7 +972,8 @@ mod tests {
     // then step back into the glide path to get to the goal.
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
@@ -1021,7 +1027,8 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -1079,7 +1086,8 @@ mod tests {
     // Test confirm_group_needs.
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -1151,7 +1159,8 @@ mod tests {
     // different results expected from the least significant bit.
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         let s00 = dm0.state_from_string("s0b0").unwrap();
@@ -1184,7 +1193,8 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Init domain with one action.
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         // Set up group XXXX_XX0X->XXXX_XX0X
@@ -1274,7 +1284,8 @@ mod tests {
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s0b101").unwrap();
@@ -1340,7 +1351,8 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s0b101").unwrap();
@@ -1398,7 +1410,8 @@ mod tests {
     // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(2, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 2);
+        dm0.cur_state = SomeState::new_from_string(2, "s0b1").unwrap();
         dm0.add_action();
 
         let s0 = dm0.state_from_string("s0b0001010010101000").unwrap();
@@ -1422,7 +1435,8 @@ mod tests {
 
     #[test]
     fn compatible_group_intersection_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         let s0 = dm0.state_from_string("s0b000").unwrap();
@@ -1461,7 +1475,8 @@ mod tests {
 
     #[test]
     fn seek_edge_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         // Establish group XXXX
@@ -1574,7 +1589,8 @@ mod tests {
 
     #[test]
     fn astate_make_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1").unwrap();
         dm0.add_action();
 
         // Sample 1
@@ -1654,7 +1670,8 @@ mod tests {
     // Assumes groups are added to the end of the group list.
     #[test]
     fn limited_flag_change() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, SomeState::new_from_string(1, "s0b1011").unwrap());
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = SomeState::new_from_string(1, "s0b1011").unwrap();
         dm0.add_action();
         dm0.add_action();
 

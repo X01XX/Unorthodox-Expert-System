@@ -39,10 +39,10 @@ impl SomeChange {
     }
 
     /// Return a new SomeChange struct instance, set to zeros.
-    pub fn new_low(num_ints: usize) -> Self {
+    pub fn new_like(&self) -> Self {
         Self {
-            b01: SomeMask::new_low(num_ints),
-            b10: SomeMask::new_low(num_ints),
+            b01: self.b01.new_like(),
+            b10: self.b10.new_like(),
         }
     }
 
@@ -123,11 +123,6 @@ impl SomeChange {
             b01: SomeMask::new(bits_and(&f_zeros, &bits_and(&t_ones, &to_not_x))),
             b10: SomeMask::new(bits_and(&f_ones, &bits_and(&t_zeros, &to_not_x))),
         }
-    }
-
-    /// Return the number of integers used.
-    pub fn num_ints(&self) -> usize {
-        self.b01.num_ints()
     }
 } // end impl SomeChange
 

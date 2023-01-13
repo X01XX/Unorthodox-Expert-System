@@ -18,7 +18,7 @@ use std::fmt;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 /// SomeMask struct, just some bits.
 pub struct SomeMask {
@@ -33,9 +33,23 @@ impl fmt::Display for SomeMask {
 }
 
 impl SomeMask {
-    /// Return a new SomeMask instance.
-    pub fn new(val: SomeBits) -> Self {
-        Self { bts: val }
+    /// Return a new mask given a SomeBits instance.
+    pub fn new(bts: SomeBits) -> Self {
+        Self { bts }
+    }
+
+    /// Return a new mask set to all zeros.
+    pub fn new_like(&self) -> Self {
+        Self {
+            bts: self.bts.new_like(),
+        }
+    }
+
+    /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
+    pub fn new_low(num_ints: usize) -> SomeMask {
+        Self {
+            bts: SomeBits::new_low(num_ints),
+        }
     }
 
     /// Return a Mask from a string.
@@ -62,17 +76,10 @@ impl SomeMask {
         }
 
         match SomeBits::new_from_string(num_ints, &rest) {
-            Ok(bts) => Ok(SomeMask::new(bts)),
+            Ok(bts) => Ok(SomeMask { bts }),
             Err(error) => Err(error),
         }
     } // end new_from_string
-
-    /// Return a new mask set to all zeros.
-    pub fn new_low(num_ints: usize) -> Self {
-        Self {
-            bts: SomeBits::new_low(num_ints),
-        }
-    }
 
     /// Return true if the mask is all zeros.
     pub fn is_low(&self) -> bool {
@@ -121,13 +128,8 @@ impl SomeMask {
 
         bitsx
             .iter()
-            .map(|bitx| SomeMask::new(bitx.clone()))
+            .map(|bitx| SomeMask { bts: bitx.clone() })
             .collect()
-    }
-
-    /// Return the number of ints used to express a SomeMask instance.
-    pub fn num_ints(&self) -> usize {
-        self.bts.num_ints()
     }
 
     /// Return the number of bits used to express a SomeMask instance.
@@ -149,17 +151,23 @@ impl SomeMask {
     /// Given a mask of more than one bit, return a mask that is a random selection of
     /// roughly half the bits.
     pub fn half_mask(&self) -> Self {
-        SomeMask::new(self.bts.half_bits())
+        SomeMask {
+            bts: self.bts.half_bits(),
+        }
     }
 
     /// Return the mask after shifting left one position, and adding one.
     pub fn push_1(&self) -> Self {
-        Self::new(self.bts.push_1())
+        Self {
+            bts: self.bts.push_1(),
+        }
     }
 
     /// Return mask after shifting left one position.
     pub fn push_0(&self) -> Self {
-        Self::new(self.bts.push_0())
+        Self {
+            bts: self.bts.push_0(),
+        }
     }
 } // end impl SomeMask
 

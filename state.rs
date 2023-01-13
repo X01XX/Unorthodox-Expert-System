@@ -21,7 +21,7 @@ use std::hash::Hash;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 pub struct SomeState {
     pub bts: SomeBits,
@@ -34,16 +34,9 @@ impl fmt::Display for SomeState {
 }
 
 impl SomeState {
-    /// Return a new SomeState instance, given a SomeBits instance.
+    // Return a new SomeState instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
-    }
-
-    // Return a new state, with random bits set to one.
-    pub fn new_random(num_ints: usize) -> Self {
-        Self {
-            bts: SomeBits::new_random(num_ints),
-        }
     }
 
     /// Return a State from a string.
@@ -73,7 +66,7 @@ impl SomeState {
         }
 
         match SomeBits::new_from_string(num_ints, &rest) {
-            Ok(bts) => Ok(SomeState::new(bts)),
+            Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }
     } // end new_from_string

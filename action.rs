@@ -89,7 +89,6 @@ pub struct SomeAction {
     /// Parent Domain number.
     pub dom_num: usize,
     /// Store for groups of compatible-change squares.
-    /// Any need for num_ints could be satisfied with self.groups.aggregate_changes.b01.num_ints()
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
     pub squares: SquareStore,
@@ -109,21 +108,16 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
+    pub fn new(dom_num: usize, act_num: usize, cur_state: &SomeState) -> Self {
         SomeAction {
             num: act_num,
             dom_num,
-            groups: GroupStore::new(num_ints),
+            groups: GroupStore::new(cur_state),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(dom_num, act_num),
             cleanup_trigger: CLEANUP,
         }
-    }
-
-    // Return num_ints in SomeBits struct.
-    fn _num_ints(&self) -> usize {
-        self.groups.num_ints()
     }
 
     /// Return Truth enum for the combination of any two different squares,
@@ -2161,8 +2155,6 @@ mod tests {
 
     #[test]
     fn no_incompatible_square_combination_in_region() -> Result<(), String> {
-        let mut act0 = SomeAction::new(0, 0, 1);
-
         // Init states.
         let sta_f = SomeState::new_from_string(1, "s0b1111").unwrap();
         let sta_e = SomeState::new_from_string(1, "s0b1110").unwrap();
@@ -2176,6 +2168,9 @@ mod tests {
         let sta_3 = SomeState::new_from_string(1, "s0b0011").unwrap();
         let sta_1 = SomeState::new_from_string(1, "s0b0001").unwrap();
         let sta_0 = SomeState::new_from_string(1, "s0b0000").unwrap();
+
+        // Init action
+        let mut act0 = SomeAction::new(0, 0, &sta_f);
 
         // Set up region XXX1
         let regx = SomeRegion::new(sta_1.clone(), sta_f.clone());
@@ -2273,11 +2268,11 @@ mod tests {
     // Test making a group from two Pn::Two squares.
     #[test]
     fn possible_region() -> Result<(), String> {
-        let mut act0 = SomeAction::new(0, 0, 1);
-
         // Set up 2-result square sf.
         let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
         let se = SomeState::new_from_string(1, "s0b1110").unwrap();
+
+        let mut act0 = SomeAction::new(0, 0, &sf);
 
         act0.eval_sample(&sf, &sf);
         act0.eval_sample(&sf, &se);
@@ -2297,10 +2292,10 @@ mod tests {
             &s1,
             0,
             &memory,
-            &SomeChange {
-                b01: SomeMask::new_from_string(1, "m0b1111").unwrap(),
-                b10: SomeMask::new_from_string(1, "m0b1111").unwrap(),
-            },
+            &SomeChange::new(
+                SomeMask::new_from_string(1, "m0b1111").unwrap(),
+                SomeMask::new_from_string(1, "m0b1111").unwrap(),
+            ),
         );
         println!("Act: {}", &act0);
         println!("needs: {}", nds);

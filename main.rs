@@ -30,7 +30,7 @@ use rulestore::RuleStore;
 mod square;
 mod squarestore;
 mod state;
-use state::{somestate_ref_vec_string, SomeState};
+use state::somestate_ref_vec_string;
 mod statestore;
 use statestore::StateStore;
 mod domain;
@@ -68,13 +68,10 @@ fn init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
-    // Initialize a domain, with number of integers = 1, initial state, optimal region.
-
-    let num_ints = 1;
-    let init_state = SomeState::new_random(num_ints);
-
     // Create domain 0.
-    let mut dom0 = SomeDomain::new(dmxs.len(), init_state);
+    let dom0_num_ints: usize = 1;
+    let dom0_id: usize = dmxs.len();
+    let mut dom0 = SomeDomain::new(dom0_id, dom0_num_ints);
 
     // Add actions 0 through 8;
     dom0.add_action();
@@ -90,13 +87,10 @@ fn init() -> DomainStore {
     // Add the domain to the DomainStore.
     dmxs.push(dom0);
 
-    // Initialize a domain, with number of integers = 2, initial state, optimal region.
-
-    let num_ints = 2;
-    let init_state = SomeState::new_random(num_ints);
-
     // Create domain 1.
-    let mut dom1 = SomeDomain::new(dmxs.len(), init_state);
+    let dom1_num_ints: usize = 2;
+    let dom1_id: usize = dmxs.len();
+    let mut dom1 = SomeDomain::new(dom1_id, dom1_num_ints);
 
     // Add actions 0 through 5.
     dom1.add_action();
@@ -143,8 +137,9 @@ fn main() {
 
     let mut run_to_end = false;
     let mut run_left = 1;
+
     if args.len() > 1 {
-        if args[1] == "h" || args[1] == "help" {
+        if args[0] == "h" || args[0] == "help" {
             usage();
             return;
         }
@@ -403,6 +398,8 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 // Do other commands
                 match cmd[0] {
+                    "h"  => usage(),
+                    "help" => usage(),
                     "cs" => do_change_state_command(&mut dmxs[dom_num], &cmd),
                     "to" => do_to_region_command(&mut dmxs[dom_num], &cmd),
                     "ss" => do_sample_state_command(&mut dmxs[dom_num], &cmd),
@@ -1001,8 +998,7 @@ fn usage() {
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
-    println!("\n    A state starts with an 's' character, followed by zero, or more, zero and one characters.");
-    println!("\n    A state can be specified in hexadecimal, like s0xa5.");
+    println!("\n    A state starts with an 's0b' or 's0x', followed by zero, or more, digits.");
     println!("\n    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");

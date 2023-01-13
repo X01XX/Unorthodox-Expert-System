@@ -447,11 +447,6 @@ impl SomeRegion {
         }
         ret_vec
     }
-
-    /// Return the number of integers used in the states that make up the region
-    pub fn num_ints(&self) -> usize {
-        self.state1.num_ints()
-    }
 } // end impl SomeRegion
 
 #[cfg(test)]

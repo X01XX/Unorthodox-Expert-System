@@ -580,12 +580,14 @@ mod tests {
         let init_state1 = SomeState::new_from_string(1, "s0x12").unwrap();
 
         // Create domain 0.
-        let dom0 = SomeDomain::new(dmxs.len(), init_state1.clone());
+        let mut dom0 = SomeDomain::new(dmxs.len(), 1);
+        dom0.set_state(&init_state1);
         dmxs.push(dom0);
 
         // Create domain 1.
         let init_state2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
-        let dom1 = SomeDomain::new(dmxs.len(), init_state2.clone());
+        let mut dom1 = SomeDomain::new(dmxs.len(), 2);
+        dom1.set_state(&init_state2);
         dmxs.push(dom1);
 
         let all_states = dmxs.all_current_states();
@@ -613,13 +615,8 @@ mod tests {
         // Start a DomainStore
         let mut dmxs = DomainStore::new();
 
-        // Initialize a domain, with number of integers = 1, initial state, optimal region.
-
-        let num_ints = 1;
-        let init_state = SomeState::new_random(num_ints);
-
         // Create domain 0.
-        let mut dom0 = SomeDomain::new(dmxs.len(), init_state);
+        let mut dom0 = SomeDomain::new(dmxs.len(), 1);
 
         // Add actions 0 through 8;
         dom0.add_action();
@@ -627,13 +624,8 @@ mod tests {
         // Add the domain to the DomainStore.
         dmxs.push(dom0);
 
-        // Initialize a domain, with number of integers = 2, initial state, optimal region.
-
-        let num_ints = 2;
-        let init_state = SomeState::new_random(num_ints);
-
         // Create domain 1.
-        let mut dom1 = SomeDomain::new(dmxs.len(), init_state);
+        let mut dom1 = SomeDomain::new(dmxs.len(), 2);
 
         // Add actions 0 through 4.
         dom1.add_action();

@@ -164,24 +164,18 @@ impl StepStore {
         ret_vec
     } // end steps_by_change_bit
 
-    // Return num_ints used in stepstore
-    fn num_ints(&self) -> Option<usize> {
+    // Return aggregate changes
+    pub fn aggregate_changes(&self) -> Option<SomeChange> {
         if self.is_empty() {
             return None;
         }
-        Some(self.avec[0].num_ints())
-    }
 
-    // Return aggregate changes
-    pub fn aggregate_changes(&self) -> Option<SomeChange> {
-        if let Some(num_ints) = self.num_ints() {
-            let mut schg = SomeChange::new_low(num_ints);
-            for stpx in &self.avec {
-                schg = schg.c_or(&stpx.rule.change());
-            }
-            return Some(schg);
+        let mut schg = self.avec[0].rule.change().new_like();
+        for stpx in &self.avec {
+            schg = schg.c_or(&stpx.rule.change());
         }
-        None
+
+        Some(schg)
     }
 } // end impl StepStore
 
