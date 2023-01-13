@@ -71,18 +71,13 @@ impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(dom: usize, num_ints: usize) -> Self {
-        let start_state = initialize_state(num_ints);
-
         // Set up a domain instance with the correct value for num_ints
         SomeDomain {
             num: dom,
             actions: ActionStore::new(),
-            cur_state: start_state.clone(),
+            cur_state: initialize_state(num_ints),
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeChange::new(
-                SomeMask::new(start_state.bts.new_like()),
-                SomeMask::new(start_state.bts.new_like()),
-            ),
+            agg_changes: SomeChange::new(SomeMask::new_low(num_ints), SomeMask::new_low(num_ints)),
         }
     }
 
@@ -712,6 +707,12 @@ impl SomeDomain {
         SomeRegion::new_from_string(self.cur_state.num_ints(), str)
     } // end region_from_string
 
+    /// Return a Region from a string.
+    /// Left-most, consecutive, ommitted zeros are assumed tobe X.
+    pub fn region_from_string_pad_x(&self, str: &str) -> Result<SomeRegion, String> {
+        SomeRegion::new_from_string_pad_x(self.cur_state.num_ints(), str)
+    } // end region_from_string
+
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
@@ -913,6 +914,7 @@ pub fn initialize_state(num_ints: usize) -> SomeState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::bits_xor;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -928,21 +930,26 @@ mod tests {
         let s0 = dm0.state_from_string("s0b0").unwrap();
         let sf = dm0.state_from_string("s0b1111").unwrap();
 
+        let s1 = SomeBits::new_from_string(1, "0x01").unwrap();
+        let s2 = SomeBits::new_from_string(1, "0x02").unwrap();
+        let s4 = SomeBits::new_from_string(1, "0x04").unwrap();
+        let s8 = SomeBits::new_from_string(1, "0x08").unwrap();
+
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &s0, &SomeState::new(bits_xor(&s0, &s1)));
+        dm0.eval_sample_arbitrary(0, &sf, &SomeState::new(bits_xor(&sf, &s1)));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits("0x02"));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits("0x02"));
+        dm0.eval_sample_arbitrary(1, &s0, &SomeState::new(bits_xor(&s0, &s2)));
+        dm0.eval_sample_arbitrary(1, &sf, &SomeState::new(bits_xor(&sf, &s2)));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits("0x04"));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits("0x04"));
+        dm0.eval_sample_arbitrary(2, &s0, &SomeState::new(bits_xor(&s0, &s4)));
+        dm0.eval_sample_arbitrary(2, &sf, &SomeState::new(bits_xor(&sf, &s4)));
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits("0x08"));
-        dm0.eval_sample_arbitrary(3, &sf, &sf.toggle_bits("0x08")); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(3, &s0, &SomeState::new(bits_xor(&s0, &s8)));
+        dm0.eval_sample_arbitrary(3, &sf, &SomeState::new(bits_xor(&sf, &s8))); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
@@ -983,21 +990,26 @@ mod tests {
         let sf = dm0.state_from_string("s0b1111").unwrap();
         let sb = dm0.state_from_string("s0b1011").unwrap();
 
+        let s1 = SomeBits::new_from_string(1, "0x01").unwrap();
+        let s2 = SomeBits::new_from_string(1, "0x02").unwrap();
+        let s4 = SomeBits::new_from_string(1, "0x04").unwrap();
+        let s8 = SomeBits::new_from_string(1, "0x08").unwrap();
+
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x01"));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &s0, &SomeState::new(bits_xor(&s0, &s1)));
+        dm0.eval_sample_arbitrary(0, &sf, &SomeState::new(bits_xor(&sf, &s1)));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.toggle_bits("0x02"));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.toggle_bits("0x02"));
+        dm0.eval_sample_arbitrary(1, &s0, &SomeState::new(bits_xor(&s0, &s2)));
+        dm0.eval_sample_arbitrary(1, &sf, &SomeState::new(bits_xor(&sf, &s2)));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.toggle_bits("0x04"));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.toggle_bits("0x04"));
+        dm0.eval_sample_arbitrary(2, &s0, &SomeState::new(bits_xor(&s0, &s4)));
+        dm0.eval_sample_arbitrary(2, &sf, &SomeState::new(bits_xor(&sf, &s4)));
 
         // Create group for region X0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.toggle_bits("0x08"));
-        dm0.eval_sample_arbitrary(3, &sb, &sb.toggle_bits("0x08"));
+        dm0.eval_sample_arbitrary(3, &s0, &SomeState::new(bits_xor(&s0, &s8)));
+        dm0.eval_sample_arbitrary(3, &sb, &SomeState::new(bits_xor(&sb, &s8)));
 
         println!("\nActs: {}", &dm0.actions);
 
@@ -1057,7 +1069,7 @@ mod tests {
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
         let s1 = dm0.state_from_string("s0b1").unwrap();
-        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits("0x01"));
+        dm0.eval_sample_arbitrary(0, &s1, &SomeState::new(SomeBits::new_low(1)));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
@@ -1414,13 +1426,15 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string(2, "s0b1").unwrap();
         dm0.add_action();
 
+        let bts16 = SomeBits::new_from_string(2, "0x10").unwrap();
+
         let s0 = dm0.state_from_string("s0b0001010010101000").unwrap();
         let s1 = dm0.state_from_string("s0b1111010110101011").unwrap();
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.toggle_bits("0x10"));
-        dm0.eval_sample_arbitrary(0, &s1, &s1.toggle_bits("0x10"));
+        dm0.eval_sample_arbitrary(0, &s0, &SomeState::new(bits_xor(&s0, &bts16)));
+        dm0.eval_sample_arbitrary(0, &s1, &SomeState::new(bits_xor(&s1, &bts16)));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups

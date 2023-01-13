@@ -76,13 +76,6 @@ impl SomeState {
         self.bts.is_bit_set(b)
     }
 
-    /// Toggle the bits of a state, given a vector of numbers.
-    pub fn toggle_bits(&self, nums: &str) -> Self {
-        SomeState {
-            bts: self.bts.toggle_bits(nums),
-        }
-    }
-
     /// Return the number of integers used to represent a state.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()

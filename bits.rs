@@ -212,12 +212,6 @@ impl SomeBits {
         rc_vec
     }
 
-    /// Return a Bits struct with specified bit(s) changed.
-    pub fn toggle_bits(&self, bit_nums: &str) -> Self {
-        let bitsx = SomeBits::new_from_string(self.num_ints(), bit_nums).unwrap();
-        self.b_xor(&bitsx)
-    }
-
     /// Return true if a bit is one at a given position number.
     /// Match the intuition of a hexidecimal representation.
     /// Like 0xfa1ce. The least significant bit, in this case its equal 0, is bit number zero.
@@ -275,6 +269,9 @@ impl SomeBits {
 
     /// Bitwise XOR of two Bits structs.
     fn b_xor(&self, other: &Self) -> Self {
+        if self.num_ints() != other.num_ints() {
+            println!("{} != {}", self.num_ints(), other.num_ints());
+        }
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -425,7 +422,7 @@ impl SomeBits {
         Self { ints: ints2 }
     }
 
-    /// Return the number of integers used in the given SomeBits struct. 
+    /// Return the number of integers used in the given SomeBits struct.
     pub fn num_ints(&self) -> usize {
         self.ints.len()
     }
@@ -1128,26 +1125,6 @@ mod tests {
         }
         if !avec.contains(&SomeBits::new_from_string(2, "0x0010").unwrap()) {
             return Err(String::from("Test 5 failed?"));
-        }
-        Ok(())
-    }
-
-    // Test SomeBits::toggle_bits
-    #[test]
-    fn toggle_bits() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x505")
-            .unwrap()
-            .toggle_bits("0x0902")
-            != SomeBits::new_from_string(2, "0xc07").unwrap()
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x5050")
-            .unwrap()
-            .toggle_bits("0x1001")
-            != SomeBits::new_from_string(2, "0x4051").unwrap()
-        {
-            return Err(String::from("Test 2 failed?"));
         }
         Ok(())
     }

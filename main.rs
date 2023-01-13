@@ -69,9 +69,9 @@ fn init() -> DomainStore {
     let mut dmxs = DomainStore::new();
 
     // Create domain 0.
-    let dom0_num_ints: usize = 1;
-    let dom0_id: usize = dmxs.len();
-    let mut dom0 = SomeDomain::new(dom0_id, dom0_num_ints);
+    let dom_num_ints: usize = 1;
+    let dom_id: usize = 0;
+    let mut dom0 = SomeDomain::new(dom_id, dom_num_ints);
 
     // Add actions 0 through 8;
     dom0.add_action();
@@ -84,13 +84,10 @@ fn init() -> DomainStore {
     dom0.add_action();
     dom0.add_action();
 
-    // Add the domain to the DomainStore.
-    dmxs.push(dom0);
-
     // Create domain 1.
-    let dom1_num_ints: usize = 2;
-    let dom1_id: usize = dmxs.len();
-    let mut dom1 = SomeDomain::new(dom1_id, dom1_num_ints);
+    let dom_num_ints: usize = 2;
+    let dom_id: usize = 1;
+    let mut dom1 = SomeDomain::new(dom_id, dom_num_ints);
 
     // Add actions 0 through 5.
     dom1.add_action();
@@ -101,29 +98,44 @@ fn init() -> DomainStore {
     dom1.add_action();
     dom1.add_action();
 
-    // Add the domain to the DomainStore.
+    // Load optimal regions
+    let mut regstr1 = RegionStore::with_capacity(2);
+    regstr1.push(dom0.region_from_string_pad_x("r0x0x").unwrap());
+    regstr1.push(
+        dom1.region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
+            .unwrap(),
+    );
+
+    let mut regstr2 = RegionStore::with_capacity(2);
+    regstr2.push(dom0.region_from_string_pad_x("r0xx1").unwrap());
+    regstr2.push(
+        dom1.region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
+            .unwrap(),
+    );
+
+    let mut regstr3 = RegionStore::with_capacity(2);
+    regstr3.push(dom0.region_from_string_pad_x("rx1x1").unwrap());
+    regstr3.push(
+        dom1.region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
+            .unwrap(),
+    );
+
+    let mut regstr4 = RegionStore::with_capacity(2);
+    regstr4.push(dom0.region_from_string_pad_x("r1110").unwrap());
+    regstr4.push(
+        dom1.region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
+            .unwrap(),
+    );
+
+    // Add the domains to the DomainStore.
+    dmxs.push(dom0);
     dmxs.push(dom1);
 
-    // Load optimal regions
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string_pad_x(1, "r0x0x").unwrap());
-    regstr.push(SomeRegion::new_from_string_pad_x(2, "rXXXXXX1X_1XXX_XXXX").unwrap());
-    dmxs.add_optimal(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string_pad_x(1, "r0xx1").unwrap());
-    regstr.push(SomeRegion::new_from_string_pad_x(2, "rXXXXXXX1_1XXX_XXXX").unwrap());
-    dmxs.add_optimal(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string_pad_x(1, "rx1x1").unwrap());
-    regstr.push(SomeRegion::new_from_string_pad_x(2, "rXXXXXX00_0XXX_XXXX").unwrap());
-    dmxs.add_optimal(regstr);
-
-    let mut regstr = RegionStore::with_capacity(2);
-    regstr.push(SomeRegion::new_from_string_pad_x(1, "r1110").unwrap());
-    regstr.push(SomeRegion::new_from_string_pad_x(2, "rXXXXXXX0_0XXX_XXXX").unwrap());
-    dmxs.add_optimal(regstr);
+    // Add optimal regionstores.
+    dmxs.add_optimal(regstr1);
+    dmxs.add_optimal(regstr2);
+    dmxs.add_optimal(regstr3);
+    dmxs.add_optimal(regstr4);
 
     //println!("optimal and ints: {}", dmxs.optimal_and_ints.formatted_string());
     dmxs
@@ -398,7 +410,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 // Do other commands
                 match cmd[0] {
-                    "h"  => usage(),
+                    "h" => usage(),
                     "help" => usage(),
                     "cs" => do_change_state_command(&mut dmxs[dom_num], &cmd),
                     "to" => do_to_region_command(&mut dmxs[dom_num], &cmd),
