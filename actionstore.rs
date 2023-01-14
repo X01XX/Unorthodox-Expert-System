@@ -61,6 +61,11 @@ impl ActionStore {
 
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, actx: SomeAction) {
+        for acty in self.avec.iter() {
+            if acty.num == actx.num {
+                panic!("Action number duplicate {} !", actx.num);
+            }
+        }
         self.avec.push(actx);
     }
 

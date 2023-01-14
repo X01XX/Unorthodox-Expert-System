@@ -71,6 +71,11 @@ impl SomeState {
         }
     } // end new_from_string
 
+    /// Return a random state value.
+    pub fn new_random(num_ints: usize) -> SomeState {
+        SomeState::new(SomeBits::new_random(num_ints))
+    }
+
     /// Return true is a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)

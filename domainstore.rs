@@ -149,6 +149,11 @@ impl DomainStore {
     pub fn push(&mut self, domx: SomeDomain) {
         assert!(self.optimal.is_empty());
 
+        for domy in self.avec.iter() {
+            if domy.num == domx.num {
+                panic!("Domain number duplicate {} !", domx.num);
+            }
+        }
         self.avec.push(domx);
     }
 
@@ -575,7 +580,6 @@ impl IndexMut<usize> for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::region::SomeRegion;
     use crate::regionstore::RegionStore;
 
     #[test]
@@ -583,16 +587,15 @@ mod tests {
         // Init a DomainStore.
         let mut dmxs = DomainStore::new();
 
-        let init_state1 = SomeState::new_from_string(1, "s0x12").unwrap();
-
         // Create domain 0.
         let mut dom0 = SomeDomain::new(dmxs.len(), 1);
+        let init_state1 = dom0.state_from_string("s0x12").unwrap();
         dom0.set_state(&init_state1);
         dmxs.push(dom0);
 
         // Create domain 1.
-        let init_state2 = SomeState::new_from_string(2, "s0xabcd").unwrap();
         let mut dom1 = SomeDomain::new(dmxs.len(), 2);
+        let init_state2 = dom1.state_from_string("s0xabcd").unwrap();
         dom1.set_state(&init_state2);
         dmxs.push(dom1);
 
@@ -622,43 +625,43 @@ mod tests {
         let mut dmxs = DomainStore::new();
 
         // Create domain 0.
-        let mut dom0 = SomeDomain::new(dmxs.len(), 1);
+        let mut dom0 = SomeDomain::new(0, 1);
 
         // Add actions 0 through 8;
         dom0.add_action();
 
-        // Add the domain to the DomainStore.
-        dmxs.push(dom0);
-
         // Create domain 1.
-        let mut dom1 = SomeDomain::new(dmxs.len(), 2);
+        let mut dom1 = SomeDomain::new(1, 2);
 
         // Add actions 0 through 4.
         dom1.add_action();
 
-        // Add the domain to the DomainStore.
+        // Load optimal regions
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(dom0.region_from_string("r0x0x").unwrap());
+        regstr1.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(dom0.region_from_string("r0xx1").unwrap());
+        regstr2.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(dom0.region_from_string("rx1x1").unwrap());
+        regstr3.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+
+        let mut regstr4 = RegionStore::with_capacity(2);
+        regstr4.push(dom0.region_from_string("r1110").unwrap());
+        regstr4.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+
+        // Add domains to the DomainStore
+        dmxs.push(dom0);
         dmxs.push(dom1);
 
-        // Load optimal regions
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        dmxs.add_optimal(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        dmxs.add_optimal(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        dmxs.add_optimal(regstr);
-
-        let mut regstr = RegionStore::with_capacity(2);
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "rXXXXXX10_1XXX_XXXX").unwrap());
-        dmxs.add_optimal(regstr);
+        // Add optimal region stores.
+        dmxs.add_optimal(regstr1);
+        dmxs.add_optimal(regstr2);
+        dmxs.add_optimal(regstr3);
+        dmxs.add_optimal(regstr4);
 
         println!("Optimal and ints:");
         for regstrx in dmxs.optimal_and_ints.iter() {
