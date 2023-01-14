@@ -431,15 +431,17 @@ impl SomeDomain {
         self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
-    /// Do asymmetric chaining.
+    /// Do asymmetric chaining for a given step.
     ///
-    /// Two plans need to be made:
+    /// The step intial, and result, regions MAY be completely outside of the region
+    /// formed by the union of the from-region and goal-region, hence the term asymmetric.
+    ///
+    /// This splits the problem into two smaller parts, two plans need to be made:
     ///   From the from_region to the initial region of a step.
     ///   From the result region of a step to the goal.
     ///
-    /// One plan may involve more restrictions, less flexibility, than the other.
-    ///
-    /// So randomly choose which plan to make first.
+    /// One plan may involve more restrictions, less flexibility, than the other,
+    /// so randomly choose which plan to make first.
     ///
     fn asymmetric_chaining(
         &self,

@@ -269,9 +269,6 @@ impl SomeBits {
 
     /// Bitwise XOR of two Bits structs.
     fn b_xor(&self, other: &Self) -> Self {
-        if self.num_ints() != other.num_ints() {
-            println!("{} != {}", self.num_ints(), other.num_ints());
-        }
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
