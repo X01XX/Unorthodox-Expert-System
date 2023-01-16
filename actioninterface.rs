@@ -4,7 +4,6 @@
 //! Storing a function pointer in SomeAction runs into problems with the parallel crate
 //! and the serialization crate.
 use crate::actions::take_action;
-use crate::bits::bits_xor;
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 
@@ -40,7 +39,7 @@ impl ActionInterface {
         if self.dom_num == 0 && self.act_num == 0 {
             let amsk = self.ahash.get(cur_state);
             ret_state = crate::actions::take_action(self.dom_num, self.act_num, cur_state, amsk);
-            let dif = SomeMask::new(bits_xor(cur_state, &ret_state));
+            let dif = cur_state.bitwise_xor(&ret_state).to_mask();
             self.ahash.insert(cur_state.clone(), dif);
         } else {
             ret_state = take_action(self.dom_num, self.act_num, cur_state, None);

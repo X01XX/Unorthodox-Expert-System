@@ -1,6 +1,5 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
-use crate::bits::{bits_and, bits_not, bits_or, bits_xor};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -31,11 +30,11 @@ impl SomeChange {
 
     /// Apply a change to a state.
     pub fn apply_to_state(&self, astate: &SomeState) -> SomeState {
-        let b01 = bits_and(&bits_not(astate), &self.b01);
-        let b10 = bits_and(astate, &self.b10);
-        let to_change = bits_or(&b01, &b10);
+        let b01 = self.b01.bitwise_and(&astate.bitwise_not());
+        let b10 = self.b10.bitwise_and(astate);
+        let to_change = b01.bitwise_or(&b10);
 
-        SomeState::new(bits_xor(astate, &to_change))
+        astate.bitwise_xor(&to_change)
     }
 
     /// Return a new SomeChange struct instance, set to zeros.
@@ -47,26 +46,26 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise and of two changes
-    pub fn c_and(&self, other: &SomeChange) -> SomeChange {
+    pub fn bitwise_and(&self, other: &SomeChange) -> SomeChange {
         Self {
-            b01: SomeMask::new(bits_and(&self.b01, &other.b01)),
-            b10: SomeMask::new(bits_and(&self.b10, &other.b10)),
+            b01: self.b01.bitwise_and(&other.b01),
+            b10: self.b10.bitwise_and(&other.b10),
         }
     }
 
     /// Return the logical bitwize or of two changes
-    pub fn c_or(&self, other: &SomeChange) -> SomeChange {
+    pub fn bitwise_or(&self, other: &SomeChange) -> SomeChange {
         Self {
-            b01: SomeMask::new(bits_or(&self.b01, &other.b01)),
-            b10: SomeMask::new(bits_or(&self.b10, &other.b10)),
+            b01: self.b01.bitwise_or(&other.b01),
+            b10: self.b10.bitwise_or(&other.b10),
         }
     }
 
     // Return the logical bitwize not of a change
-    pub fn c_not(&self) -> SomeChange {
+    pub fn bitwise_not(&self) -> SomeChange {
         Self {
-            b01: SomeMask::new(self.b01.bts.b_not()),
-            b10: SomeMask::new(self.b10.bts.b_not()),
+            b01: self.b01.bitwise_not(),
+            b10: self.b10.bitwise_not(),
         }
     }
 
@@ -111,17 +110,25 @@ impl SomeChange {
 
     /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = bits_or(&from.state1, &from.state2);
-        let f_zeros = bits_or(&bits_not(&from.state1), &bits_not(&from.state2));
+        let f_ones = from.state1.bitwise_or(&from.state2).to_mask();
+        let f_zeros = from
+            .state1
+            .bitwise_not()
+            .bitwise_or(&from.state2.bitwise_not())
+            .to_mask();
 
-        let t_ones = bits_or(&to.state1, &to.state2);
-        let t_zeros = bits_or(&bits_not(&to.state1), &bits_not(&to.state2));
+        let t_ones = to.state1.bitwise_or(&to.state2);
+        let t_zeros = &to
+            .state1
+            .bitwise_not()
+            .bitwise_or(&to.state2.bitwise_not())
+            .to_mask();
 
-        let to_not_x = to.x_mask().bts.b_not();
+        let to_not_x = to.x_mask().bitwise_not();
 
         SomeChange {
-            b01: SomeMask::new(bits_and(&f_zeros, &bits_and(&t_ones, &to_not_x))),
-            b10: SomeMask::new(bits_and(&f_ones, &bits_and(&t_zeros, &to_not_x))),
+            b01: f_zeros.bitwise_and(&t_ones.bitwise_and(&to_not_x)),
+            b10: f_ones.bitwise_and(&t_zeros.bitwise_and(&to_not_x)),
         }
     }
 } // end impl SomeChange

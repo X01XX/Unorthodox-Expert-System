@@ -12,7 +12,8 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
 use crate::bits::BitsRef;
-use crate::bits::SomeBits;
+use crate::bits::{bits_and, bits_not, bits_or, bits_xor, SomeBits};
+use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -109,6 +110,39 @@ impl SomeState {
     /// Return a string used to represent a state.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
+    }
+
+    /// Return a SomeState instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
+    pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
+        SomeState {
+            bts: bits_and(self, other.bitsref()),
+        }
+    }
+
+    /// Return a SomeState instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
+    pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
+        SomeState {
+            bts: bits_or(self, other.bitsref()),
+        }
+    }
+
+    /// Return a SomeState instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
+    pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
+        SomeState {
+            bts: bits_xor(self, other.bitsref()),
+        }
+    }
+
+    // Return the bitwise Not of a SomeState instane.
+    pub fn bitwise_not(&self) -> Self {
+        SomeState {
+            bts: bits_not(&self.bts),
+        }
+    }
+
+    // Return a SomeState instance from a SomeMask instance.
+    pub fn to_mask(&self) -> SomeMask {
+        SomeMask::new(self.bts.clone())
     }
 } // end impl SomeState
 

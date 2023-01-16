@@ -11,7 +11,6 @@
 //! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
 //! "backward chaining" (intitial_from_result).
 
-use crate::bits::{bits_and, bits_not, bits_or, bits_xor};
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -47,10 +46,13 @@ impl SomeRule {
     pub fn new(initial: &SomeState, result: &SomeState) -> Self {
         assert!(initial.num_ints() == result.num_ints());
         Self {
-            b00: SomeMask::new(bits_and(&initial.bts.b_not(), &result.bts.b_not())),
-            b01: SomeMask::new(bits_and(&initial.bts.b_not(), &result.bts)),
-            b11: SomeMask::new(bits_and(initial, &result.bts)),
-            b10: SomeMask::new(bits_and(initial, &result.bts.b_not())),
+            b00: initial
+                .bitwise_not()
+                .bitwise_and(&result.bitwise_not())
+                .to_mask(),
+            b01: initial.bitwise_not().bitwise_and(result).to_mask(),
+            b11: initial.bitwise_and(result).to_mask(),
+            b10: initial.bitwise_and(&result.bitwise_not()).to_mask(),
         }
     }
 
@@ -123,7 +125,7 @@ impl SomeRule {
         }
 
         Ok(SomeRule {
-            b00: SomeMask::new(bits_not(&b00not)),
+            b00: b00not.bitwise_not(),
             b01,
             b11,
             b10,
@@ -150,31 +152,24 @@ impl SomeRule {
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
-        bits_and(&self.b00, &self.b01).is_low() && bits_and(&self.b11, &self.b10).is_low()
+        self.b00.bitwise_and(&self.b01).is_low() && self.b11.bitwise_and(&self.b10).is_low()
     }
 
     /// Return true if a rule is valid after an intersection,
     /// that is no bit positions are zero in all 4 masks.
     pub fn is_valid_intersection(&self) -> bool {
-        if bits_or(
-            &self.b00,
-            &bits_or(&self.b01, &bits_or(&self.b11, &self.b10)),
-        )
-        .is_high()
-        {
-            return true;
-        }
-
-        false
+        self.b00
+            .bitwise_or(&self.b01.bitwise_or(&self.b11.bitwise_or(&self.b10)))
+            .is_high()
     }
 
     /// Return a logical OR of two rules. The result may be invalid.
     pub fn union(&self, other: &Self) -> Option<Self> {
         let ret_rule = Self {
-            b00: SomeMask::new(bits_or(&self.b00, &other.b00)),
-            b01: SomeMask::new(bits_or(&self.b01, &other.b01)),
-            b11: SomeMask::new(bits_or(&self.b11, &other.b11)),
-            b10: SomeMask::new(bits_or(&self.b10, &other.b10)),
+            b00: self.b00.bitwise_or(&other.b00),
+            b01: self.b01.bitwise_or(&other.b01),
+            b11: self.b11.bitwise_or(&other.b11),
+            b10: self.b10.bitwise_or(&other.b10),
         };
         if ret_rule.is_valid_union() {
             return Some(ret_rule);
@@ -185,10 +180,10 @@ impl SomeRule {
     /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         let ret_rule = Self {
-            b00: SomeMask::new(bits_and(&self.b00, &other.b00)),
-            b01: SomeMask::new(bits_and(&self.b01, &other.b01)),
-            b11: SomeMask::new(bits_and(&self.b11, &other.b11)),
-            b10: SomeMask::new(bits_and(&self.b10, &other.b10)),
+            b00: self.b00.bitwise_and(&other.b00),
+            b01: self.b01.bitwise_and(&other.b01),
+            b11: self.b11.bitwise_and(&other.b11),
+            b10: self.b10.bitwise_and(&other.b10),
         };
         if ret_rule.is_valid_intersection() {
             return Some(ret_rule);
@@ -198,16 +193,16 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = SomeState::new(bits_or(&self.b11, &self.b10));
-        let st_low = SomeState::new(bits_not(&bits_or(&self.b00, &self.b01)));
+        let st_high = self.b11.bitwise_or(&self.b10).to_state();
+        let st_low = self.b00.bitwise_or(&self.b01).bitwise_not().to_state();
 
         SomeRegion::new(st_high, st_low)
     }
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = SomeState::new(bits_or(&self.b11, &self.b01));
-        let st_low = SomeState::new(bits_not(&bits_or(&self.b00, &self.b10)));
+        let st_high = self.b11.bitwise_or(&self.b01).to_state();
+        let st_low = self.b00.bitwise_or(&self.b10).bitwise_not().to_state();
 
         SomeRegion::new(st_high, st_low)
     }
@@ -229,13 +224,12 @@ impl SomeRule {
             panic!(
                 "result_from_initial_state: given state is not a subset of the ruls initial region"
             );
-        }
-
-        let toggle = bits_or(
-            &bits_and(&self.b01, &bits_not(sta)),
-            &bits_and(&self.b10, sta),
-        );
-        SomeState::new(bits_xor(sta, &toggle))
+        };
+        let toggle: SomeMask = self
+            .b01
+            .bitwise_and(&sta.bitwise_not())
+            .bitwise_or(&self.b10.bitwise_and(sta));
+        sta.bitwise_xor(&toggle)
     }
 
     /// Restrict the initial region to an intersection of the
@@ -255,10 +249,10 @@ impl SomeRule {
         let ones = SomeMask::new(reg_int.high_state().bts);
 
         Self {
-            b00: SomeMask::new(bits_and(&self.b00, &zeros.bts)),
-            b01: SomeMask::new(bits_and(&self.b01, &zeros.bts)),
-            b11: SomeMask::new(bits_and(&self.b11, &ones.bts)),
-            b10: SomeMask::new(bits_and(&self.b10, &ones.bts)),
+            b00: self.b00.bitwise_and(&zeros),
+            b01: self.b01.bitwise_and(&zeros),
+            b11: self.b11.bitwise_and(&ones),
+            b10: self.b10.bitwise_and(&ones),
         }
     }
 
@@ -281,10 +275,10 @@ impl SomeRule {
         let ones = SomeMask::new(reg_int.high_state().bts);
 
         Self {
-            b00: SomeMask::new(bits_and(&self.b00, &zeros.bts)),
-            b01: SomeMask::new(bits_and(&self.b01, &ones.bts)),
-            b11: SomeMask::new(bits_and(&self.b11, &ones.bts)),
-            b10: SomeMask::new(bits_and(&self.b10, &zeros.bts)),
+            b00: self.b00.bitwise_and(&zeros),
+            b01: self.b01.bitwise_and(&ones),
+            b11: self.b11.bitwise_and(&ones),
+            b10: self.b10.bitwise_and(&zeros),
         }
     }
 
@@ -357,7 +351,7 @@ impl SomeRule {
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
     pub fn parse_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
-        let cng_int = self.change().c_and(change_needed);
+        let cng_int = self.change().bitwise_and(change_needed);
 
         if cng_int.is_low() {
             // No change, or no change is needed
@@ -369,17 +363,17 @@ impl SomeRule {
         let i_reg_xes = i_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = bits_and(&i_reg_xes, &cng_int.b01);
+        let to_ones = i_reg_xes.bitwise_and(&cng_int.b01);
 
         if to_ones.is_not_low() {
-            i_reg = i_reg.set_to_zeros(&SomeMask::new(to_ones));
+            i_reg = i_reg.set_to_zeros(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = bits_and(&i_reg_xes, &cng_int.b10);
+        let to_zeros = i_reg_xes.bitwise_and(&cng_int.b10);
 
         if to_zeros.is_not_low() {
-            i_reg = i_reg.set_to_ones(&SomeMask::new(to_zeros));
+            i_reg = i_reg.set_to_ones(&to_zeros);
         }
 
         // Return a restricted rule
@@ -412,13 +406,13 @@ impl SomeRule {
         let rulx = self.then_to(other);
 
         // Get a mask of the wanted changes in this rule.
-        let s_wanted = self.change().c_and(wanted);
+        let s_wanted = self.change().bitwise_and(wanted);
 
         // Get a mask of the wanted changes after running both rules.
-        let a_wanted = rulx.change().c_and(wanted);
+        let a_wanted = rulx.change().bitwise_and(wanted);
 
         // Get a mask of wanted changes in this rule that remain after running the second rule.
-        let rslt = s_wanted.c_and(&a_wanted);
+        let rslt = s_wanted.bitwise_and(&a_wanted);
 
         // Return true, the oreder is bad, if no wanted changes remain.
         rslt.is_low()
@@ -440,22 +434,22 @@ impl SomeRule {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
-            b00: SomeMask::new(bits_or(
-                &bits_and(&self.b00, &other.b00),
-                &bits_and(&self.b01, &other.b10),
-            )),
-            b01: SomeMask::new(bits_or(
-                &bits_and(&self.b01, &other.b11),
-                &bits_and(&self.b00, &other.b01),
-            )),
-            b11: SomeMask::new(bits_or(
-                &bits_and(&self.b11, &other.b11),
-                &bits_and(&self.b10, &other.b01),
-            )),
-            b10: SomeMask::new(bits_or(
-                &bits_and(&self.b10, &other.b00),
-                &bits_and(&self.b11, &other.b10),
-            )),
+            b00: self
+                .b00
+                .bitwise_and(&other.b00)
+                .bitwise_or(&self.b01.bitwise_and(&other.b10)),
+            b01: self
+                .b01
+                .bitwise_and(&other.b11)
+                .bitwise_or(&self.b00.bitwise_and(&other.b01)),
+            b11: self
+                .b11
+                .bitwise_and(&other.b11)
+                .bitwise_or(&self.b10.bitwise_and(&other.b01)),
+            b10: self
+                .b10
+                .bitwise_and(&other.b00)
+                .bitwise_or(&self.b11.bitwise_and(&other.b10)),
         }
     }
 
@@ -465,68 +459,64 @@ impl SomeRule {
     /// The minimum changes are sought, so X->x and x->X become X->X.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         let from_x = from.x_mask();
-        let from_1 = SomeMask::new(bits_or(&from.ones_mask(), &from_x));
-        let from_0 = SomeMask::new(bits_or(&from.zeros_mask(), &from_x));
+        let from_1 = from.ones_mask().bitwise_or(&from_x);
+        let from_0 = from.zeros_mask().bitwise_or(&from_x);
 
         let to_x = to.x_mask();
         let to_1 = to.ones_mask();
         let to_0 = to.zeros_mask();
 
         Self {
-            b00: SomeMask::new(bits_and(&from_0, &bits_or(&to_0, &to_x))),
-            b01: SomeMask::new(bits_and(&from_0, &to_1)),
-            b11: SomeMask::new(bits_and(&from_1, &bits_or(&to_1, &to_x))),
-            b10: SomeMask::new(bits_and(&from_1, &to_0)),
+            b00: from_0.bitwise_and(&to_0.bitwise_or(&to_x)),
+            b01: from_0.bitwise_and(&to_1),
+            b11: from_1.bitwise_and(&to_1.bitwise_or(&to_x)),
+            b10: from_1.bitwise_and(&to_0),
         }
     }
 
     /// Return a rule for translating from region to state.
     pub fn region_to_state(from: &SomeRegion, to: &SomeState) -> SomeRule {
         let from_x = from.x_mask();
-        let from_1 = SomeMask::new(bits_or(&from.ones_mask(), &from_x));
-        let from_0 = SomeMask::new(bits_or(&from.zeros_mask(), &from_x));
+        let from_1 = from.ones_mask().bitwise_or(&from_x);
+        let from_0 = from.zeros_mask().bitwise_or(&from_x);
 
-        let to_1 = &to.bts;
-        let to_0 = to_1.b_not();
+        let to_0 = to.bitwise_not();
 
         Self {
-            b00: SomeMask::new(bits_and(&from_0, &to_0)),
-            b01: SomeMask::new(bits_and(&from_0, to_1)),
-            b11: SomeMask::new(bits_and(&from_1, to_1)),
-            b10: SomeMask::new(bits_and(&from_1, &to_0)),
+            b00: from_0.bitwise_and(&to_0),
+            b01: from_0.bitwise_and(to),
+            b11: from_1.bitwise_and(to),
+            b10: from_1.bitwise_and(&to_0),
         }
     }
 
     /// Return a rule for translating from state to region.
     pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
-        let from_1 = &from.bts;
-        let from_0 = from_1.b_not();
+        let from_0 = from.bitwise_not();
 
         let to_x = to.x_mask();
         let to_1 = to.ones_mask();
         let to_0 = to.zeros_mask();
 
         Self {
-            b00: SomeMask::new(bits_and(&from_0, &bits_or(&to_0, &to_x))),
-            b01: SomeMask::new(bits_and(&from_0, &to_1)),
-            b11: SomeMask::new(bits_and(from_1, &bits_or(&to_1, &to_x))),
-            b10: SomeMask::new(bits_and(from_1, &to_0)),
+            b00: to_0.bitwise_or(&to_x).bitwise_and(&from_0),
+            b01: to_1.bitwise_and(&from_0),
+            b11: to_1.bitwise_or(&to_x).bitwise_and(from),
+            b10: to_0.bitwise_and(from),
         }
     }
 
     /// Return a rule for translating from state to state.
     pub fn state_to_state(from: &SomeState, to: &SomeState) -> SomeRule {
-        let from_1 = &from.bts;
-        let from_0 = from_1.b_not();
+        let from_0 = from.to_mask().bitwise_not();
 
-        let to_1 = &to.bts;
-        let to_0 = to_1.b_not();
+        let to_0 = to.to_mask().bitwise_not();
 
         Self {
-            b00: SomeMask::new(bits_and(&from_0, &to_0)),
-            b01: SomeMask::new(bits_and(&from_0, to_1)),
-            b11: SomeMask::new(bits_and(from_1, to_1)),
-            b10: SomeMask::new(bits_and(from_1, &to_0)),
+            b00: from_0.bitwise_and(&to_0),
+            b01: from_0.bitwise_and(to),
+            b11: from.bitwise_and(to).to_mask(),
+            b10: to_0.bitwise_and(from),
         }
     }
 } // end impl SomeRule
@@ -534,7 +524,6 @@ impl SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     #[test]
     fn new_all() -> Result<(), String> {
@@ -544,10 +533,10 @@ mod tests {
         );
 
         let rule_from_masks = SomeRule {
-            b00: SomeMask::new(SomeBits::new_from_string(1, "0xf8").unwrap()),
-            b01: SomeMask::new(SomeBits::new_from_string(1, "0b0010").unwrap()),
-            b11: SomeMask::new(SomeBits::new_from_string(1, "0b0001").unwrap()),
-            b10: SomeMask::new(SomeBits::new_from_string(1, "0b0100").unwrap()),
+            b00: SomeMask::new_from_string(1, "m0xf8").unwrap(),
+            b01: SomeMask::new_from_string(1, "m0b0010").unwrap(),
+            b11: SomeMask::new_from_string(1, "m0b0001").unwrap(),
+            b10: SomeMask::new_from_string(1, "m0b0100").unwrap(),
         };
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11").unwrap();

@@ -3,9 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::bits::{bits_and, bits_not, bits_or};
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -218,16 +216,13 @@ impl SomeGroup {
         assert!(self.limited);
 
         let same_bits = self.region.same_bits();
-        let one_bits = SomeMask::new(bits_and(
-            &same_bits,
-            &bits_and(&self.region.state1, &new_chgs.b10),
-        ));
-        let zero_bits = SomeMask::new(bits_and(
-            &same_bits,
-            &bits_and(&bits_not(&self.region.state1), &new_chgs.b01),
-        ));
 
-        let positions = SomeMask::new(bits_or(&one_bits, &zero_bits));
+        let one_bits = same_bits.bitwise_and(&new_chgs.b10.bitwise_and(&self.region.state1));
+
+        let zero_bits =
+            same_bits.bitwise_and(&new_chgs.b01.bitwise_and(&self.region.state1.bitwise_not()));
+
+        let positions = &one_bits.bitwise_or(&zero_bits);
 
         if !positions.is_low() {
             self.limited = false;

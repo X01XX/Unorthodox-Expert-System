@@ -11,7 +11,6 @@
 //!
 
 use crate::actioninterface::ActionInterface;
-use crate::bits::{bits_and, bits_not, bits_or, bits_xor};
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -1049,9 +1048,9 @@ impl SomeAction {
 
         // Randomly choose which state to use to calculate the target state from
         let seek_state = if rand::random::<bool>() {
-            SomeState::new(bits_xor(&regx.state1, &dif_msk))
+            regx.state1.bitwise_xor(&dif_msk)
         } else {
-            SomeState::new(bits_xor(&regx.state2, &dif_msk))
+            regx.state2.bitwise_xor(&dif_msk)
         };
 
         // Make need for seek_state
@@ -1196,7 +1195,7 @@ impl SomeAction {
 
         // Rate adjacent external states
         for edge_bit in edge_msks.iter() {
-            let sta_adj = SomeState::new(bits_xor(stax, edge_bit));
+            let sta_adj = stax.bitwise_xor(edge_bit);
             //println!(
             //    "checking {} adjacent to {} external to {}",
             //    &sta_adj, &stax, &greg
@@ -1245,7 +1244,7 @@ impl SomeAction {
         let mut additional_stas = StateStore::new();
         for ancx in adj_anchors.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
-            let stay = SomeState::new(bits_xor(*ancx, &grpx.region.diff_mask_state(ancx)));
+            let stay = ancx.bitwise_xor(&grpx.region.diff_mask_state(ancx));
 
             if !stas_in.contains(&&stay) {
                 // The state may have been sampled already.
@@ -1371,16 +1370,16 @@ impl SomeAction {
         // Ignore bits that cannot be changed by any action.
         let same_bits = grpx.region.same_bits();
 
-        let one_bits = bits_and(&same_bits, &bits_and(&grpx.region.state1, &agg_changes.b10));
-        let zero_bits = bits_and(
-            &same_bits,
-            &bits_and(&bits_not(&grpx.region.state1), &agg_changes.b01),
-        );
+        let one_bits = same_bits.bitwise_and(&agg_changes.b10.bitwise_and(&grpx.region.state1));
 
-        let edge_msks: Vec<SomeMask> = SomeMask::new(bits_or(&one_bits, &zero_bits)).split();
+        let zero_bits = same_bits
+            .bitwise_and(&agg_changes.b01)
+            .bitwise_and(&grpx.region.state1.bitwise_not());
+
+        let edge_msks: Vec<SomeMask> = one_bits.bitwise_or(&zero_bits).split();
 
         for mskx in edge_msks.iter() {
-            let adj_sta = SomeState::new(bits_xor(anchor_sta, mskx));
+            let adj_sta = anchor_sta.bitwise_xor(mskx);
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
 

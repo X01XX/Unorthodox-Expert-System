@@ -1,6 +1,5 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
-use crate::bits::bits_and;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::step::SomeStep;
@@ -148,14 +147,14 @@ impl StepStore {
         for stepx in self.avec.iter() {
             // Check for matching b01 changes
             for (inx, b01x) in b01.iter().enumerate() {
-                if bits_and(&stepx.rule.b01, b01x).is_not_low() {
+                if stepx.rule.b01.bitwise_and(b01x).is_not_low() {
                     ret_vec[inx].push(stepx);
                 }
             } // next b01x
 
             // Check for matching b10 changes
             for (inx, b10x) in b10.iter().enumerate() {
-                if bits_and(&stepx.rule.b10, b10x).is_not_low() {
+                if stepx.rule.b10.bitwise_and(b10x).is_not_low() {
                     ret_vec[inx + b01_len].push(stepx);
                 }
             } // next b01x
@@ -172,7 +171,7 @@ impl StepStore {
 
         let mut schg = self.avec[0].rule.change().new_like();
         for stpx in &self.avec {
-            schg = schg.c_or(&stpx.rule.change());
+            schg = schg.bitwise_or(&stpx.rule.change());
         }
 
         Some(schg)

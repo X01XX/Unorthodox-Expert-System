@@ -1,6 +1,5 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
-use crate::bits::{bits_and, bits_xor};
 use crate::pn::Pn;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
@@ -255,11 +254,11 @@ impl SomeSquare {
             return false;
         }
 
-        bits_and(
-            &bits_xor(&self.state, &sqr1.state),
-            &bits_xor(&self.state, &sqr2.state),
-        )
-        .is_low()
+        self.state
+            .bitwise_or(&sqr1.state)
+            .bitwise_and(&self.state.bitwise_or(&sqr2.state))
+            .to_mask()
+            .is_low()
     }
 
     pub fn distance(&self, other: &SomeSquare) -> usize {
@@ -270,86 +269,67 @@ impl SomeSquare {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     // Test multiple additions to a square, cycle through all pn and pnc values.
     #[test]
     fn cycle_through_pn_pnc_values() -> Result<(), String> {
         let mut sqrx = SomeSquare::new(
-            SomeState::new(SomeBits::new_from_string(1, "0b0101").unwrap()),
-            SomeState::new(SomeBits::new_from_string(1, "0b0101").unwrap()),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
         );
         assert!(sqrx.pn == Pn::One);
         assert!(!sqrx.pnc);
 
         // Second result, same as the first.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 
         // Third result, same as the first two.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(!changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
 
         // Fourth result, different from the first three, square becomes Unpredictable.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0100").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
         assert!(changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Fifth result, same as the first, square remains Unpredictable.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(!changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Sixth result, same as the second most recent, square becomes Pn::Two.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0100").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
         assert!(changed);
         assert!(sqrx.pn == Pn::Two);
         assert!(sqrx.pnc);
 
         // Seventh result, same as the second most recent, square stays Pn::Two.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(!changed);
         assert!(sqrx.pn == Pn::Two);
         assert!(sqrx.pnc);
 
         // Eighth result, same as the most recent, square becomes Pn::Unpredictable.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Nineth result, same as the most recent, square remains Pn::Unpredictable.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(!changed);
         assert!(sqrx.pn == Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Tenth result, same as the most recent, square becomes Pn::One.
-        let changed = sqrx.add_result(SomeState::new(
-            SomeBits::new_from_string(1, "0b0101").unwrap(),
-        ));
+        let changed = sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
         assert!(changed);
         assert!(sqrx.pn == Pn::One);
         assert!(sqrx.pnc);
