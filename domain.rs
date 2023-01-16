@@ -23,7 +23,6 @@ use crate::plan::SomePlan;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::removeunordered::remove_unordered;
-use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -76,9 +75,9 @@ impl SomeDomain {
         SomeDomain {
             num: dom,
             actions: ActionStore::new(),
-            cur_state: cur_state.clone(),
+            cur_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeRule::new(&cur_state, &cur_state).change(), // That is, a change with all zeros.
+            agg_changes: SomeChange::new_low(num_ints),
         }
     }
 
@@ -1233,12 +1232,11 @@ mod tests {
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let cst1 = dm0.state_from_string("s0b1111").unwrap();
-        let cst0 = dm0.state_from_string("s0b0000").unwrap();
-        let cng10 = SomeRule::new(&cst1, &cst0).change();
-        let cng01 = SomeRule::new(&cst0, &cst1).change();
-
-        let cngx = cng10.bitwise_or(&cng01);
+        let msk_f = dm0.mask_from_string("m0b1111").unwrap();
+        let cngx = SomeChange {
+            b01: msk_f.clone(),
+            b10: msk_f,
+        };
 
         let nds1 = dm0.actions[0].limit_groups_needs(&cngx);
         println!("needs1 are {}", nds1);

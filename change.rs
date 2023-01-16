@@ -2,6 +2,7 @@
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,13 @@ impl SomeChange {
     /// Return a new change with the given masks
     pub fn new(b01: SomeMask, b10: SomeMask) -> Self {
         Self { b01, b10 }
+    }
+
+    pub fn new_low(num_ints: usize) -> Self {
+        Self {
+            b01: SomeMask::new_low(num_ints),
+            b10: SomeMask::new_low(num_ints),
+        }
     }
 
     /// Apply a change to a state.
@@ -53,8 +61,24 @@ impl SomeChange {
         }
     }
 
+    /// Return the logical bitwise and of a change and a rule.
+    pub fn bitwise_and_rule(&self, other: &SomeRule) -> SomeChange {
+        Self {
+            b01: self.b01.bitwise_and(&other.b01),
+            b10: self.b10.bitwise_and(&other.b10),
+        }
+    }
+
     /// Return the logical bitwize or of two changes
     pub fn bitwise_or(&self, other: &SomeChange) -> SomeChange {
+        Self {
+            b01: self.b01.bitwise_or(&other.b01),
+            b10: self.b10.bitwise_or(&other.b10),
+        }
+    }
+
+    /// Return the logical bitwize or of a change and a rule.
+    pub fn bitwise_or_rule(&self, other: &SomeRule) -> SomeChange {
         Self {
             b01: self.b01.bitwise_or(&other.b01),
             b10: self.b10.bitwise_or(&other.b10),

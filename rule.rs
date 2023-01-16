@@ -351,7 +351,7 @@ impl SomeRule {
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
     pub fn parse_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
-        let cng_int = self.change().bitwise_and(change_needed);
+        let cng_int = change_needed.bitwise_and_rule(self);
 
         if cng_int.is_low() {
             // No change, or no change is needed
@@ -380,11 +380,6 @@ impl SomeRule {
         Some(self.restrict_initial_region(&i_reg))
     }
 
-    /// Return a SomeChange struct instance
-    pub fn change(&self) -> SomeChange {
-        SomeChange::new(self.b01.clone(), self.b10.clone())
-    }
-
     /// Return true if two rules are mutually exclusive.
     /// Both rules lose wanted changes, running them in any order.
     pub fn mutually_exclusive(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
@@ -406,10 +401,10 @@ impl SomeRule {
         let rulx = self.then_to(other);
 
         // Get a mask of the wanted changes in this rule.
-        let s_wanted = self.change().bitwise_and(wanted);
+        let s_wanted = wanted.bitwise_and_rule(self);
 
         // Get a mask of the wanted changes after running both rules.
-        let a_wanted = rulx.change().bitwise_and(wanted);
+        let a_wanted = wanted.bitwise_and_rule(&rulx);
 
         // Get a mask of wanted changes in this rule that remain after running the second rule.
         let rslt = s_wanted.bitwise_and(&a_wanted);

@@ -61,7 +61,7 @@ impl GroupStore {
 
         for grpx in self.avec.iter() {
             for rulx in grpx.rules.iter() {
-                ret_chn = ret_chn.bitwise_or(&rulx.change());
+                ret_chn = ret_chn.bitwise_or_rule(rulx);
             }
         }
         self.aggregate_changes = ret_chn;

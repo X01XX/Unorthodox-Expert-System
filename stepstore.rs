@@ -169,9 +169,9 @@ impl StepStore {
             return None;
         }
 
-        let mut schg = self.avec[0].rule.change().new_like();
+        let mut schg = SomeChange::new_low(self.avec[0].initial.state1.num_ints());
         for stpx in &self.avec {
-            schg = schg.bitwise_or(&stpx.rule.change());
+            schg = schg.bitwise_or_rule(&stpx.rule);
         }
 
         Some(schg)
