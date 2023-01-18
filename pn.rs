@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
 
+/// Implement the fmt::Display trait for a Pn.
 impl fmt::Display for Pn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let rc_str = match self {
@@ -37,6 +38,10 @@ impl fmt::Display for Pn {
     }
 }
 
+/// Implement the PartialOrd trait for two Pn instances.
+/// When getting more samples for a state, the Pn value may cycle,
+/// at first from One, to Two, to Unpredictable.  So that order is
+/// implemented here.
 impl PartialOrd for Pn {
     fn partial_cmp(&self, other: &Pn) -> Option<Ordering> {
         match self {

@@ -19,7 +19,7 @@ impl PartialEq for StateStore {
         if self.len() != other.len() {
             return false;
         }
-        for stax in self.iter() {
+        for stax in &self.avec {
             if !other.contains(stax) {
                 return false;
             }

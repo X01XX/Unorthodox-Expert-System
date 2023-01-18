@@ -12,7 +12,7 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
 use crate::bits::BitsRef;
-use crate::bits::{bits_and, bits_not, bits_or, bits_xor, SomeBits};
+use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
@@ -22,12 +22,13 @@ use std::hash::Hash;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
-//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
+/// A State, a set of bits.  It could be thought of as a square on a Karnaugh Map.
 pub struct SomeState {
     pub bts: SomeBits,
 }
 
+/// Implement the fmt::Display Trait for a SomeState instance.
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -35,7 +36,7 @@ impl fmt::Display for SomeState {
 }
 
 impl SomeState {
-    // Return a new SomeState instance.
+    /// Return a new SomeState instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
     }
@@ -43,7 +44,7 @@ impl SomeState {
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(sta) = SomeState::new_from_string(1, "s0101")) {
+    /// if let Ok(sta) = SomeState::new_from_string(1, "s0b0101")) {
     ///    println!("State {}", &sta);
     /// } else {
     ///    panic!("Invalid State");
@@ -79,7 +80,7 @@ impl SomeState {
         }
     }
 
-    /// Return true is a given bit in a state is set to one.
+    /// Return true if a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
     }
@@ -117,37 +118,45 @@ impl SomeState {
     /// Return a SomeState instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
-            bts: bits_and(self, other.bitsref()),
+            bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
-            bts: bits_or(self, other.bitsref()),
+            bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
-            bts: bits_xor(self, other.bitsref()),
+            bts: self.bts.b_xor(other.bitsref()),
         }
     }
 
-    // Return the bitwise Not of a SomeState instane.
+    /// Return a mask of the bits values that are the same.
+    pub fn bitwise_eqv<U: BitsRef>(&self, other: &U) -> SomeMask {
+        SomeMask {
+            bts: self.bts.b_eqv(other.bitsref()),
+        }
+    }
+
+    /// Return the bitwise Not of a SomeState instance.
     pub fn bitwise_not(&self) -> Self {
         SomeState {
-            bts: bits_not(&self.bts),
+            bts: self.bts.b_not(),
         }
     }
 
-    // Return a SomeState instance from a SomeMask instance.
+    /// Return a SomeState instance from a SomeMask instance.
     pub fn to_mask(&self) -> SomeMask {
         SomeMask::new(self.bts.clone())
     }
 } // end impl SomeState
 
+/// Return a string to display a vector of SomeState references.
 pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
     let mut ret_str = String::from("[");
 
@@ -164,6 +173,7 @@ pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
     ret_str
 }
 
+/// Trait to allow SomeState to return a reference to its bits.
 impl BitsRef for SomeState {
     fn bitsref(&self) -> &SomeBits {
         &self.bts

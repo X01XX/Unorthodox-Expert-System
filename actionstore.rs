@@ -60,7 +60,7 @@ impl ActionStore {
 
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, actx: SomeAction) {
-        for acty in self.avec.iter() {
+        for acty in &self.avec {
             if acty.num == actx.num {
                 panic!("Action number duplicate {} !", actx.num);
             }
@@ -129,7 +129,7 @@ impl ActionStore {
             SomeMask::new(cur_state.bts.new_like()),
         );
 
-        for actx in self.avec.iter() {
+        for actx in &self.avec {
             chgs = chgs.bitwise_or(actx.aggregate_changes());
         }
 
@@ -143,7 +143,7 @@ impl ActionStore {
             SomeMask::new(cur_state.bts.new_like()),
         );
 
-        for actx in self.avec.iter() {
+        for actx in &self.avec {
             chgs = chgs.bitwise_or(actx.aggregate_changes());
         }
 
@@ -152,7 +152,7 @@ impl ActionStore {
 
     /// Check the limited flags on groups due to new bit position that can be changed.
     pub fn check_limited(&mut self, new_chgs: &SomeChange) {
-        for actx in self.avec.iter_mut() {
+        for actx in &mut self.avec {
             actx.check_limited(new_chgs);
         }
     }

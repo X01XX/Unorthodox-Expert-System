@@ -32,7 +32,7 @@ impl PartialEq for RegionStore {
         if self.len() != other.len() {
             return false;
         }
-        for regx in self.iter() {
+        for regx in &self.avec {
             if !other.contains(regx) {
                 return false;
             }
@@ -187,7 +187,7 @@ impl RegionStore {
         let mut fnd = false;
         let mut inx = 0;
 
-        for regx in self.avec.iter() {
+        for regx in &self.avec {
             if regx == reg {
                 fnd = true;
                 break;
@@ -303,7 +303,7 @@ impl RegionStore {
         rc_str
     }
 
-    // Return the result of intersectong two region stores
+    // Return the result of intersection of two region stores
     //    pub fn intersection(&self, other: &RegionStore) -> Self {
     //
     //        let mut ret_store = Self::new();
@@ -331,7 +331,7 @@ impl RegionStore {
         }
 
         let mut ret_reg = self[0].clone();
-        for regx in self.iter() {
+        for regx in &self.avec {
             ret_reg = ret_reg.union(regx);
         }
 
@@ -342,10 +342,10 @@ impl RegionStore {
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
         let mut ret_str = RegionStore::new();
 
-        for regy in self.iter() {
+        for regy in &self.avec {
             if regx.intersects(regy) {
                 let avec = regy.subtract(regx);
-                for regz in avec.iter() {
+                for regz in &avec {
                     ret_str.push_nosubs(regz.clone());
                 }
             } else {

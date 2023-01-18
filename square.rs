@@ -229,7 +229,7 @@ impl SomeSquare {
         Truth::M
     }
 
-    // Return the pnc value.
+    /// Return the pnc value.
     fn calc_pnc(&self) -> bool {
         if self.pn == Pn::Unpredictable {
             return true;

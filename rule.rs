@@ -139,7 +139,7 @@ impl SomeRule {
         *self == tmprul
     }
 
-    // Return true if a rule is a superset of another.
+    /// Return true if a rule is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         let Some(tmprul) = self.intersection(other) else { return false; };
         *other == tmprul

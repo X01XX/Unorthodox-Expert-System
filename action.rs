@@ -82,6 +82,8 @@ impl fmt::Display for SomeAction {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
+/// The SomeAction struct, aggregate the best current guess at what an action
+/// will do for any state.
 pub struct SomeAction {
     /// Action number, index/key into parent ActionStore vector.
     pub num: usize,
@@ -847,7 +849,6 @@ impl SomeAction {
 
         // Don't delete squares currently in needs.
         'next_stax: for stax in self.squares.all_square_keys() {
-            //'next_stax: for stax in stas.iter() {
             // Check needs
             for ndx in needs.iter() {
                 for targx in ndx.target().iter() {
@@ -963,14 +964,14 @@ impl SomeAction {
             }
 
             let mut sqrs_in2 = Vec::<&SomeSquare>::with_capacity(sqrs_in.len() - 2);
-            for sqrx in sqrs_in.iter() {
+            for sqrx in &sqrs_in {
                 if sqrx.state != sqr1.state && sqrx.state != sqr2.state {
                     sqrs_in2.push(sqrx);
                 }
             }
 
             // Look for a square with pnc == true.
-            for sqrx in sqrs_in2.iter() {
+            for sqrx in &sqrs_in2 {
                 if sqrx.pnc {
                     let cnb1 = sqrx.can_combine(sqr1);
                     let cnb2 = sqrx.can_combine(sqr2);
@@ -997,14 +998,14 @@ impl SomeAction {
 
             // Get max samples for any square.
             let mut max_len = 0;
-            for sqrx in sqrs_in2.iter() {
+            for sqrx in &sqrs_in2 {
                 if sqrx.len_results() > max_len {
                     max_len = sqrx.len_results();
                 }
             }
 
             // Generate need for squares with pnc != true, max samples.
-            for sqrx in sqrs_in2.iter() {
+            for sqrx in &sqrs_in2 {
                 if sqrx.len_results() == max_len {
                     ret_nds.push(SomeNeed::SeekEdge {
                         dom_num: 0, // set this in domain get_needs
@@ -1194,7 +1195,7 @@ impl SomeAction {
         let edge_msks = grpx.region.same_bits().split();
 
         // Rate adjacent external states
-        for edge_bit in edge_msks.iter() {
+        for edge_bit in &edge_msks {
             let sta_adj = stax.bitwise_xor(edge_bit);
             //println!(
             //    "checking {} adjacent to {} external to {}",
@@ -1242,7 +1243,7 @@ impl SomeAction {
         // which may not have been sampled yet.
         let mut stas_in: Vec<&SomeState> = self.squares.stas_in_reg(&grpx.region);
         let mut additional_stas = StateStore::new();
-        for ancx in adj_anchors.iter() {
+        for ancx in &adj_anchors {
             // Calc state in group that corresponds to an adjacent anchor.
             let stay = ancx.bitwise_xor(&grpx.region.diff_mask_state(ancx));
 
@@ -1269,7 +1270,7 @@ impl SomeAction {
         // Create a StateStore composed of anchor, far, and adjacent-external states.
         let mut cfmv_max = Vec::<&SomeState>::new();
 
-        for stax in stas_in.iter() {
+        for stax in &stas_in {
             // Potential new anchor must be in only one group.
             if self.groups.num_groups_state_in(stax) != 1 {
                 continue;
@@ -1378,7 +1379,7 @@ impl SomeAction {
 
         let edge_msks: Vec<SomeMask> = one_bits.bitwise_or(&zero_bits).split();
 
-        for mskx in edge_msks.iter() {
+        for mskx in &edge_msks {
             let adj_sta = anchor_sta.bitwise_xor(mskx);
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
@@ -1541,7 +1542,7 @@ impl SomeAction {
         let mut max_pnc = Pn::One;
         let mut min_pnc = Pn::Unpredictable;
 
-        for sqrx in sqrs_in_reg.iter() {
+        for sqrx in &sqrs_in_reg {
             if sqrx.pn > max_pn {
                 max_pn = sqrx.pn;
             }
@@ -1574,7 +1575,7 @@ impl SomeAction {
         if max_pn == Pn::One {
             // Check by accumulation.
             let mut rulx = sqrs_in_reg[0].rules[0].clone();
-            for sqrx in sqrs_in_reg.iter() {
+            for sqrx in &sqrs_in_reg {
                 for ruly in sqrx.rules.iter() {
                     if let Some(rulz) = rulx.union(ruly) {
                         rulx = rulz;
@@ -1600,7 +1601,7 @@ impl SomeAction {
         // Handle the situation of one square with Pn::Two.
         if pn_two.len() == 1 {
             let rulesx = &sqrs_in_reg[pn_two[0]].rules;
-            for sqrx in sqrs_in_reg.iter() {
+            for sqrx in &sqrs_in_reg {
                 if sqrx.pn == Pn::One
                     && sqrx.rules[0].union(&rulesx[0]).is_none()
                     && sqrx.rules[0].union(&rulesx[1]).is_none()
@@ -1628,7 +1629,7 @@ impl SomeAction {
 
         // Simple case, all Pn::One rules should be a subset of Pn::Two rules.
         if regy == *regx {
-            for sqrx in sqrs_in_reg.iter() {
+            for sqrx in &sqrs_in_reg {
                 if sqrx.pn == Pn::One && !sqrx.rules.is_subset_of(&rulesx) {
                     return false;
                 }
@@ -1637,7 +1638,7 @@ impl SomeAction {
         }
 
         // Not simple case, some squares checked for subset, some for union.
-        for sqrx in sqrs_in_reg.iter() {
+        for sqrx in &sqrs_in_reg {
             if sqrx.pn == Pn::One {
                 if regy.is_superset_of_state(&sqrx.state) {
                     if !sqrx.rules.is_subset_of(&rulesx) {
@@ -1678,7 +1679,7 @@ impl SomeAction {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
-        for sqrx in sqrs_in_reg.iter() {
+        for sqrx in &sqrs_in_reg {
             if sqrx.pn != pnx && (sqrx.pnc || sqrx.pn > pnx) {
                 return false;
             }
@@ -1720,7 +1721,7 @@ impl SomeAction {
         // Check the far states from the anchors, form pairs.
         let mut num_samples = 0;
         let mut pairs = Vec::<(SomeState, &SomeSquare)>::new();
-        for sqrx in anchor_sqrs.iter() {
+        for sqrx in &anchor_sqrs {
             let sta2 = regx.far_state(&sqrx.state);
 
             if let Some(sqr2) = self.squares.find(&sta2) {
@@ -1749,7 +1750,7 @@ impl SomeAction {
         }
 
         // Get more samples
-        for pairx in pairs.iter() {
+        for pairx in &pairs {
             if !pairx.1.pnc {
                 nds.push(SomeNeed::AStateMakeGroup {
                     dom_num: 0, // Will be set later.
@@ -1917,7 +1918,7 @@ impl SomeAction {
         let mut max_rslts = 0;
         // change start
         let mut stas_check = Vec::<&SomeState>::new();
-        for stax in stas_in.iter() {
+        for stax in &stas_in {
             let sqrz = self.squares.find(stax).unwrap();
             if sqrz.pnc {
                 panic!(
@@ -1990,7 +1991,7 @@ impl SomeAction {
                             let stas = self.squares.stas_in_reg(&i_reg);
 
                             let mut found = false;
-                            for stax in stas.iter() {
+                            for stax in &stas {
                                 let sqrx = self.squares.find(stax).unwrap();
 
                                 // Will include at least one bit change desired, but maybe others.

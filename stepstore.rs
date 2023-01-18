@@ -144,7 +144,7 @@ impl StepStore {
         }
 
         // Add step index numbers to the return vector.
-        for stepx in self.avec.iter() {
+        for stepx in &self.avec {
             // Check for matching b01 changes
             for (inx, b01x) in b01.iter().enumerate() {
                 if stepx.rule.b01.bitwise_and(b01x).is_not_low() {
@@ -163,7 +163,7 @@ impl StepStore {
         ret_vec
     } // end steps_by_change_bit
 
-    // Return aggregate changes
+    /// Return aggregate changes
     pub fn aggregate_changes(&self) -> Option<SomeChange> {
         if self.is_empty() {
             return None;

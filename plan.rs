@@ -354,6 +354,7 @@ impl SomePlan {
         &self[self.len() - 1].result
     }
 
+    /// Return a second display version of a plan.
     pub fn str2(&self) -> String {
         if self.steps.is_empty() {
             return String::from("Empty plan");

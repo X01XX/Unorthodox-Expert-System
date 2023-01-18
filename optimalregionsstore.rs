@@ -31,7 +31,9 @@ impl OptimalRegionsStore {
 
     /// Add a RegionsStore.
     pub fn push(&mut self, rsx: RegionStore) {
-        self.optimal.push(rsx);
+        if !self.contains(&rsx) {
+            self.optimal.push(rsx);
+        }
     }
 
     /// Return the length of an instance.
@@ -76,7 +78,7 @@ impl OptimalRegionsStore {
 
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &Vec<&SomeState>) -> bool {
-        for regsx in self.optimal.iter() {
+        for regsx in &self.optimal {
             if regsx.is_superset_of_states(stas) {
                 return true;
             }
@@ -86,7 +88,7 @@ impl OptimalRegionsStore {
 
     /// Return true if any RegionStore is a superset of a given RegionStore.
     pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
-        for regsx in self.optimal.iter() {
+        for regsx in &self.optimal {
             if regsx.is_superset_of(regs) {
                 return true;
             }
@@ -115,7 +117,7 @@ impl OptimalRegionsStore {
     pub fn formatted_string(&self) -> String {
         let mut ret_str = String::from("[");
         let mut not_first = false;
-        for regstrx in self.optimal.iter() {
+        for regstrx in &self.optimal {
             if not_first {
                 ret_str.push_str(", ");
             }
@@ -132,7 +134,7 @@ impl OptimalRegionsStore {
 
         let mut optimal_and_ints = OptimalRegionsStore::new();
 
-        for regstrx in self.optimal.iter() {
+        for regstrx in &self.optimal {
             optimal_and_ints.push(regstrx.clone());
         }
 
@@ -157,8 +159,9 @@ impl OptimalRegionsStore {
         optimal_and_ints
     }
 
+    /// Return true if an equal RegionStore is already in the OptimalRegionsStore.
     fn contains(&self, regstr: &RegionStore) -> bool {
-        for regstrx in self.optimal.iter() {
+        for regstrx in &self.optimal {
             if regstrx.equal_each(regstr) {
                 return true;
             }

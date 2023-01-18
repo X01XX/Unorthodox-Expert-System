@@ -11,7 +11,7 @@
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts));
 
 use crate::bits::BitsRef;
-use crate::bits::{bits_and, bits_not, bits_or, bits_xor, SomeBits};
+use crate::bits::SomeBits;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -174,32 +174,39 @@ impl SomeMask {
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
         SomeMask {
-            bts: bits_and(self, other.bitsref()),
+            bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
         SomeMask {
-            bts: bits_or(self, other.bitsref()),
+            bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
         SomeMask {
-            bts: bits_xor(self, other.bitsref()),
+            bts: self.bts.b_xor(other.bitsref()),
         }
     }
 
-    // Return the bitwise Not of a SomeMask instane.
+    /// Return a mask of the bits values that are the same.
+    pub fn bitwise_eqv<U: BitsRef>(&self, other: &U) -> Self {
+        Self {
+            bts: self.bts.b_eqv(other.bitsref()),
+        }
+    }
+
+    /// Return the bitwise Not of a SomeMask instane.
     pub fn bitwise_not(&self) -> Self {
         SomeMask {
-            bts: bits_not(&self.bts),
+            bts: self.bts.b_not(),
         }
     }
 
-    // Return a SomeMask instance from a SomeState instance.
+    /// Return a SomeMask instance from a SomeState instance.
     pub fn to_state(&self) -> SomeState {
         SomeState::new(self.bts.clone())
     }
@@ -211,6 +218,7 @@ impl SomeMask {
     }
 } // end impl SomeMask
 
+/// Implement the BitsRef trait for SomeMask.
 impl BitsRef for SomeMask {
     fn bitsref(&self) -> &SomeBits {
         &self.bts

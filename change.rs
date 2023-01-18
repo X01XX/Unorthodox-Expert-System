@@ -85,7 +85,7 @@ impl SomeChange {
         }
     }
 
-    // Return the logical bitwize not of a change
+    /// Return the logical bitwize not of a change
     pub fn bitwise_not(&self) -> SomeChange {
         Self {
             b01: self.b01.bitwise_not(),

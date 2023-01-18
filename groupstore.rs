@@ -8,7 +8,6 @@ use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-//use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -59,7 +58,7 @@ impl GroupStore {
             self.aggregate_changes.b10.new_like(),
         );
 
-        for grpx in self.avec.iter() {
+        for grpx in &self.avec {
             for rulx in grpx.rules.iter() {
                 ret_chn = ret_chn.bitwise_or_rule(rulx);
             }

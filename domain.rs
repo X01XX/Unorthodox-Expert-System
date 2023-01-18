@@ -52,6 +52,7 @@ const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in 
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
+/// The SomeDomain struct, a state and actions that can be run.
 pub struct SomeDomain {
     /// Domain number.  Index into a higher-level DomainStore.
     pub num: usize,
@@ -789,9 +790,9 @@ impl SomeDomain {
         inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())]
     } // end choose_a_plan
 
-    // Rate a given plan.
-    // Length of plan is rated inversely.
-    // Return an integer, higher is better.
+    /// Rate a given plan.
+    /// Length of plan is rated inversely.
+    /// Return an integer, higher is better.
     fn rate_a_plan(&self, planx: &SomePlan) -> usize {
         // Rate the length of the plan
         let mut rate = 1000 - planx.len();
@@ -914,7 +915,7 @@ fn step_vecs_order_bad(
     true
 }
 
-// Return the first state value.
+/// Return the first state value.
 pub fn initialize_state(num_ints: usize) -> SomeState {
     SomeState::new_random(num_ints)
 }

@@ -439,7 +439,7 @@ impl PartialEq for SomeNeed {
 impl Eq for SomeNeed {}
 
 impl SomeNeed {
-    // Return a type string
+    /// Return a type string
     pub fn type_string(&self) -> String {
         match self {
             SomeNeed::AStateMakeGroup { .. } => "AStateMakeGroup".to_string(),
@@ -461,7 +461,7 @@ impl SomeNeed {
     } // end type_string
 
     /// Return a priority number for a need.  Lower is more important.
-    //  Don't use number zero!
+    ///  Don't use number zero!
     pub fn priority(&self) -> usize {
         match self {
             SomeNeed::SeekEdge { .. } => 100,

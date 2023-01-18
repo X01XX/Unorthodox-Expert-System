@@ -7,12 +7,12 @@
 //!   Counting bits starts at the right-most bit of the right-most int,
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
-//! The integer type/size can be increased, change "u8", below, the format string literal "08b" in the formatted_string function,
-//! and the value of the constant NUM_BITS_PER_INT.
+//! The integer type/size can be increased, change "u8", below, the format string literal "08b" in the formatted_string function.
 //!
 //! test.rs, and change the constants, below, as needed.
 //!
 
+/// The iunsigned integer type used in a vector of bits.
 type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
@@ -44,8 +44,9 @@ impl fmt::Display for SomeBits {
 /// SomeBits struct, just an unsigned integer vector.
 /// This structure sets the type of integer.
 /// Each Domain sets the number of integers.
-/// The vector has an index of 0, 1, .., as expected.
-/// The bits are 15, 14, 13 ..., with the first bit in the use std::fmt::Write as _; // import without risk of name clashingvector being the highest.
+/// The lowest significant bit is the right-most bit or the right-most integer.
+/// If there was only one domain, therefore state, this struct may be able to use an array
+/// instead of a vector.
 pub struct SomeBits {
     pub ints: Vec<Bitint>,
 }
@@ -63,7 +64,7 @@ impl SomeBits {
         }
     }
 
-    /// Create a SomeBits instance with integer(s) set to zero
+    /// Create a SomeBits instance with integer(s) set to zero.
     pub fn new_low(num_ints: usize) -> Self {
         assert!(num_ints > 0);
         SomeBits {
@@ -71,7 +72,7 @@ impl SomeBits {
         }
     }
 
-    /// Create a SomeBits instance with integer(s) set to all ones
+    /// Create a SomeBits instance with integer(s) set to all ones.
     pub fn new_high(num_ints: usize) -> Self {
         assert!(num_ints > 0);
         SomeBits {
@@ -88,18 +89,9 @@ impl SomeBits {
         SomeBits { ints }
     }
 
-    // Return a slice of bits.
-    // Possible future use.
-    //    pub fn slice(&self, start: usize, end: usize) -> Self {
-    //        Self {
-    //            ints: self.ints[start..end].to_vec(),
-    //        }
-    //    }
-
     /// Return a bits instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     /// Underscore character is ignored.
-    /// 0X can be used as a prefix to indicate hexadecimal input.
     ///
     /// if let Ok(bts) = SomeBits::new_from_string(1, "0b0101")) {
     ///    println!("bts {}", &bts);
@@ -108,8 +100,8 @@ impl SomeBits {
     /// }
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
-    /// The number of digits can greater than any integer can hold, since the bits
-    /// struct is a vector of integers.
+    /// The num_ints argument is a little awkward, but may not be needed if there
+    /// is only one domain/state.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         let mut bts = SomeBits::new_low(num_ints);
 
@@ -232,19 +224,19 @@ impl SomeBits {
         self.ints[int_num] & (1 << bit_pos) > 0
     }
 
-    /// Bitwise NOT of a Bits stuct.
+    /// Return the bitwise NOT of a SomeBits stuct.
     pub fn b_not(&self) -> Self {
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             ary2.push(!intx);
         }
 
         Self { ints: ary2 }
     }
 
-    /// Bitwise AND of two Bits structs.
-    fn b_and(&self, other: &Self) -> Self {
+    /// Return the bitwise AND of two SomeBits structs.
+    pub fn b_and(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -255,8 +247,8 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    /// Bitwise OR of two Bits structs.
-    fn b_or(&self, other: &Self) -> Self {
+    /// Return the bitwise OR of two SomeBits structs.
+    pub fn b_or(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -267,8 +259,8 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    /// Bitwise XOR of two Bits structs.
-    fn b_xor(&self, other: &Self) -> Self {
+    /// Return the bitwise XOR of two SomeBits structs.
+    pub fn b_xor(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
@@ -279,7 +271,7 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    /// Bits that are the same
+    /// Return Bits that are the same
     pub fn b_eqv(&self, other: &Self) -> Self {
         assert!(self.num_ints() == other.num_ints());
 
@@ -288,7 +280,7 @@ impl SomeBits {
 
     /// Return true if the Bits struct value is low, that is all zeros.
     pub fn is_low(&self) -> bool {
-        for inx in self.ints.iter() {
+        for inx in &self.ints {
             if *inx > 0 {
                 return false;
             }
@@ -303,7 +295,7 @@ impl SomeBits {
 
     /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             if *intx != Bitint::MAX {
                 return false;
             }
@@ -330,7 +322,7 @@ impl SomeBits {
     pub fn num_one_bits(&self) -> usize {
         let mut cnt = 0;
 
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             cnt += intx.count_ones();
         }
 
@@ -352,7 +344,7 @@ impl SomeBits {
     pub fn just_one_bit(&self) -> bool {
         let mut cnt = 0;
 
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             cnt += intx.count_ones();
 
             if cnt > 1 {
@@ -362,7 +354,7 @@ impl SomeBits {
         cnt == 1
     }
 
-    // Return a copy, shifted 1 to the left, and 1 added.
+    /// Return a copy, shifted 1 to the left, and 1 added.
     pub fn push_1(&self) -> Self {
         let num_ints = self.num_ints();
 
@@ -450,7 +442,7 @@ impl SomeBits {
         astr.push(prefix);
 
         let mut fil = 0;
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             if fil == 1 {
                 astr.push('_');
             }
@@ -468,7 +460,7 @@ impl SomeBits {
         astr.push(prefix);
 
         let mut fil = 0;
-        for intx in self.ints.iter() {
+        for intx in &self.ints {
             if fil == 1 {
                 astr.push(' ');
             }
@@ -500,41 +492,23 @@ impl SomeBits {
 
         let mut or_bts = SomeBits::new_low(self.num_ints());
 
-        for inx in indicies.iter() {
+        for inx in &indicies {
             or_bts = or_bts.b_or(&one_bits[*inx]);
         }
         or_bts
     }
 } // end impl SomeBits
 
+/// Define the BitsRef trait, so SomeBits, SomeMask, SomeState structs can interact at the SomeBits level.
 pub trait BitsRef {
     fn bitsref(&self) -> &SomeBits;
 }
 
+/// Implement the trait BitsRef for SomeBits.
 impl BitsRef for SomeBits {
     fn bitsref(&self) -> &SomeBits {
         self
     }
-}
-
-// Return the b_xor of two structures (SomeMask or SomeState)
-pub fn bits_xor<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
-    one.bitsref().b_xor(two.bitsref())
-}
-
-// Return the b_or of two structures (SomeMask or SomeState)
-pub fn bits_or<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
-    one.bitsref().b_or(two.bitsref())
-}
-
-// Return the b_and of two structures (SomeMask or SomeState)
-pub fn bits_and<T: BitsRef, U: BitsRef>(one: &T, two: &U) -> SomeBits {
-    one.bitsref().b_and(two.bitsref())
-}
-
-// Return the b_not of a structure (SomeMask or SomeState)
-pub fn bits_not<T: BitsRef>(one: &T) -> SomeBits {
-    one.bitsref().b_not()
 }
 
 #[cfg(test)]

@@ -25,12 +25,15 @@ pub struct SomeRegion {
     pub state2: SomeState,
 }
 
+/// Implment the fmt::Display trait.
 impl fmt::Display for SomeRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
     }
 }
 
+/// Implement the PartialEq trait, since two SomeRegion structs may be the same while defined
+/// by different states.
 impl PartialEq for SomeRegion {
     fn eq(&self, other: &Self) -> bool {
         if self.intersects(other) {
@@ -126,7 +129,7 @@ impl SomeRegion {
     ///    panic!("Invalid Region");
     /// }
     ///
-    /// A state string can be used, like "s101010" or s0x34", making
+    /// A state string can be used, like "s0b101010" or s0x34", making
     /// a region with no X bit positions.
     pub fn new_from_string_pad_x(num_ints: usize, str: &str) -> Result<Self, String> {
         let mut msk_high_not = SomeMask::new_low(num_ints);
@@ -218,7 +221,7 @@ impl SomeRegion {
         s1
     }
 
-    // Return true if two regions are adjacent.
+    /// Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         self.diff_mask(other).just_one_bit()
     }
@@ -272,10 +275,7 @@ impl SomeRegion {
 
     /// Return a mask of same bits.
     pub fn same_bits(&self) -> SomeMask {
-        self.state1
-            .bitwise_xor(&self.state2)
-            .to_mask()
-            .bitwise_not()
+        self.state1.bitwise_eqv(&self.state2)
     }
 
     /// Return mask of x positions.

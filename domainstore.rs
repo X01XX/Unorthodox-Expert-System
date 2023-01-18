@@ -329,8 +329,8 @@ impl DomainStore {
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
-    // Return an Option PlanStore, to go from the current state to the region or each target.
-    // Return None if any one of the targets cannot be satisfied.
+    /// Return an Option PlanStore, to go from the current state to the region or each target.
+    /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
         let mut plans = PlanStore::new();
 
@@ -524,7 +524,7 @@ impl DomainStore {
         None
     }
 
-    // Print current states and optimal information.
+    /// Print current states and optimal information.
     /// Return true if the current states are in an optimal region.
     pub fn print_optimal(&self) -> bool {
         let mut ret = false;
@@ -689,7 +689,7 @@ mod tests {
 
         println!(" ");
 
-        //assert!(1 == 2);
+        //return Err("done".to_string());
         Ok(())
     }
 }
