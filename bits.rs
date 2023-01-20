@@ -57,13 +57,6 @@ impl SomeBits {
         Self { ints }
     }
 
-    /// Create a new SomeBits instance, all zeros.
-    pub fn new_like(&self) -> Self {
-        SomeBits {
-            ints: vec![0 as Bitint; self.ints.len()],
-        }
-    }
-
     /// Create a SomeBits instance with integer(s) set to zero.
     pub fn new_low(num_ints: usize) -> Self {
         assert!(num_ints > 0);

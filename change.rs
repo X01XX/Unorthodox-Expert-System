@@ -36,6 +36,12 @@ impl SomeChange {
         }
     }
 
+    /// Return the number of integers used to represent a SomeBits instance, for creating a
+    /// new instance.
+    pub fn num_ints(&self) -> usize {
+        self.b01.num_ints()
+    }
+
     /// Apply a change to a state.
     pub fn apply_to_state(&self, astate: &SomeState) -> SomeState {
         let b01 = self.b01.bitwise_and(&astate.bitwise_not());
@@ -43,14 +49,6 @@ impl SomeChange {
         let to_change = b01.bitwise_or(&b10);
 
         astate.bitwise_xor(&to_change)
-    }
-
-    /// Return a new SomeChange struct instance, set to zeros.
-    pub fn new_like(&self) -> Self {
-        Self {
-            b01: self.b01.new_like(),
-            b10: self.b10.new_like(),
-        }
     }
 
     /// Return the logical bitwise and of two changes

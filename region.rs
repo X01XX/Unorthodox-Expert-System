@@ -453,6 +453,21 @@ mod tests {
     use crate::randompick::RandomPick;
     use crate::regionstore::RegionStore;
 
+    #[test]
+    fn same_bits() -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(1, "r101XX0").unwrap();
+        let msk0 = SomeMask::new_from_string(1, "m0b1111_1001").unwrap();
+        let same = reg0.same_bits();
+        if msk0 != same {
+            return Err(format!(
+                "same bits {} not EQ to expected mask {}",
+                same, msk0
+            ));
+        }
+
+        Ok(())
+    }
+
     // Test new_from_string, using randomly chosen digits.
     #[test]
     fn new_from_string() -> Result<(), String> {

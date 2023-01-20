@@ -4,7 +4,6 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
@@ -37,25 +36,26 @@ impl fmt::Display for ActionStore {
 pub struct ActionStore {
     /// A vector of SomeAction structs
     pub avec: Vec<SomeAction>,
-}
-
-impl Default for ActionStore {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub aggregate_changes: SomeChange,
 }
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new() -> Self {
+    pub fn new(num_ints: usize) -> Self {
         ActionStore {
             avec: Vec::<SomeAction>::with_capacity(5),
+            aggregate_changes: SomeChange::new_low(num_ints),
         }
     }
 
     /// Return the length of an ActionStore.
     pub fn len(&self) -> usize {
         self.avec.len()
+    }
+
+    /// Return the number of integers needed for a SomeBits instance.
+    pub fn num_ints(&self) -> usize {
+        self.aggregate_changes.num_ints()
     }
 
     /// Add a SomeAction struct to the store.
@@ -74,15 +74,16 @@ impl ActionStore {
         cur: &SomeState,
         dom: usize,
         memory: &VecDeque<SomeState>,
-        agg_changes: &SomeChange,
     ) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
+        self.calc_aggregate_changes();
+
         let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, memory, agg_changes))
+            .map(|actx| actx.get_needs(cur, dom, memory, &self.aggregate_changes))
             .filter(|ndstrx| !ndstrx.is_empty())
             .collect::<Vec<NeedStore>>();
 
@@ -122,38 +123,34 @@ impl ActionStore {
         self.avec.iter()
     }
 
-    /// Return a mask of bit positions that can be changed.
-    pub fn aggregate_changes_mask(&self, cur_state: &SomeState) -> SomeMask {
-        let mut chgs = SomeChange::new(
-            SomeMask::new(cur_state.bts.new_like()),
-            SomeMask::new(cur_state.bts.new_like()),
-        );
-
+    /// Return all possible changes.
+    pub fn calc_aggregate_changes(&mut self) {
+        // Check for any action agg_chgs_updated set to true.
+        let mut no_recalc = true;
         for actx in &self.avec {
-            chgs = chgs.bitwise_or(actx.aggregate_changes());
+            if actx.agg_chgs_updated() {
+                no_recalc = false;
+                break;
+            }
         }
 
-        chgs.b01.bitwise_and(&chgs.b10)
-    }
-
-    /// Return all possible chnages.
-    pub fn aggregate_changes(&self, cur_state: &SomeState) -> SomeChange {
-        let mut chgs = SomeChange::new(
-            SomeMask::new(cur_state.bts.new_like()),
-            SomeMask::new(cur_state.bts.new_like()),
-        );
-
-        for actx in &self.avec {
-            chgs = chgs.bitwise_or(actx.aggregate_changes());
+        // If no agg_chgs_updated are set to true, return.
+        if no_recalc {
+            return;
         }
 
-        chgs
-    }
+        // Recalc ActionStore aggregate_changes.
+        self.aggregate_changes = SomeChange::new_low(self.num_ints());
 
-    /// Check the limited flags on groups due to new bit position that can be changed.
-    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
+        for actx in &self.avec {
+            self.aggregate_changes = self.aggregate_changes.bitwise_or(actx.aggregate_changes());
+        }
+
+        // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.avec {
-            actx.check_limited(new_chgs);
+            if actx.agg_chgs_updated() {
+                actx.reset_agg_chgs_updated();
+            }
         }
     }
 } // end impl ActionStore

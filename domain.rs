@@ -63,8 +63,6 @@ pub struct SomeDomain {
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub memory: VecDeque<SomeState>,
-    /// Most recent aggregate changes
-    agg_changes: SomeChange,
 }
 
 impl SomeDomain {
@@ -75,11 +73,15 @@ impl SomeDomain {
         let cur_state = initialize_state(num_ints);
         SomeDomain {
             num: dom,
-            actions: ActionStore::new(),
+            actions: ActionStore::new(num_ints),
             cur_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
-            agg_changes: SomeChange::new_low(num_ints),
         }
+    }
+
+    /// Return the number of integers used in a SomeBits instance.
+    pub fn num_ints(&self) -> usize {
+        self.cur_state.num_ints()
     }
 
     /// Return a reference to the current, internal, state.
@@ -89,32 +91,16 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        let actx = SomeAction::new(self.num, self.actions.len(), &self.cur_state);
+        let actx = SomeAction::new(self.num, self.actions.len(), self.num_ints());
         self.actions.push(actx);
     }
 
     /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
-        // Get aggregate changes mask
-        let cur_agg_cngs = self.aggregate_changes();
-
-        if cur_agg_cngs != self.agg_changes {
-            let new_chgs = self.agg_changes.bitwise_not().bitwise_and(&cur_agg_cngs);
-
-            if new_chgs.is_low() {
-                // fewer changes
-            } else {
-                // additional changes
-                self.actions.check_limited(&new_chgs);
-            }
-
-            self.agg_changes = cur_agg_cngs;
-        }
-
         // Get all needs.
-        let mut nst =
-            self.actions
-                .get_needs(&self.cur_state, self.num, &self.memory, &self.agg_changes);
+        let mut nst = self
+            .actions
+            .get_needs(&self.cur_state, self.num, &self.memory);
 
         for ndx in nst.iter_mut() {
             ndx.set_dom(self.num);
@@ -820,11 +806,6 @@ impl SomeDomain {
             }
         }
         rate
-    }
-
-    /// Return all changes that can be made,
-    fn aggregate_changes(&self) -> SomeChange {
-        self.actions.aggregate_changes(&self.cur_state)
     }
 } // end impl SomeDomain
 
@@ -1689,9 +1670,10 @@ mod tests {
     // Assumes groups are added to the end of the group list.
     #[test]
     fn limited_flag_change() -> Result<(), String> {
+        let act0: usize = 0;
+
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1011").unwrap();
-        dm0.add_action();
         dm0.add_action();
 
         // Create group XXX1 -> XXX1, no way to change any bit.
@@ -1699,69 +1681,59 @@ mod tests {
         let s05 = dm0.state_from_string("s0b0101").unwrap();
 
         // Start group.
-        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
-        dm0.eval_sample_arbitrary(0, &s05, &s05);
+        dm0.eval_sample_arbitrary(act0, &s0b, &s0b);
+        dm0.eval_sample_arbitrary(act0, &s05, &s05);
 
         // Confirm group.
-        dm0.eval_sample_arbitrary(0, &s0b, &s0b);
-        dm0.eval_sample_arbitrary(0, &s05, &s05);
+        dm0.eval_sample_arbitrary(act0, &s0b, &s0b);
+        dm0.eval_sample_arbitrary(act0, &s05, &s05);
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.
-        println!("{}", dm0.actions[0]);
+        println!("\n{}", dm0.actions[act0]);
         let nds = dm0.get_needs();
         println!("needs {}", nds);
+        println!("\n{}", dm0.actions[act0]);
 
         // Limited flag should be true.
-        if !dm0.actions[0].groups[0].limited {
-            return Err("Limited flag is false?".to_string());
+        if !dm0.actions[act0].groups[0].limited {
+            return Err("1 Limited flag is false?".to_string());
         }
 
         // Add a way to change bit position 1, 0->1.
-        let s09 = dm0.state_from_string("s0b1001").unwrap();
-        dm0.eval_sample_arbitrary(1, &s09, &s0b);
+        let s10 = dm0.state_from_string("s0x10").unwrap();
+        let s12 = dm0.state_from_string("s0x12").unwrap();
+        dm0.eval_sample_arbitrary(act0, &s10, &s12);
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.
-        println!("{}", dm0.actions[0]);
+        println!("\n{}", dm0.actions[act0]);
         let nds = dm0.get_needs();
         println!("needs {}", nds);
+        println!("\n{}", dm0.actions[act0]);
 
         // Changing bit position 1 should not affect the limited flag,
         // where the group bit position one is X.
-        if !dm0.actions[0].groups[0].limited {
-            return Err("Limited flag is false?".to_string());
+        if !dm0.actions[act0].groups[0].limited {
+            return Err("2 Limited flag is false?".to_string());
         }
 
         // Add a way to change bit position 0, 0->1.
-        let s08 = dm0.state_from_string("s0b1000").unwrap();
-        dm0.eval_sample_arbitrary(1, &s08, &s09);
+        let s21 = dm0.state_from_string("s0x21").unwrap();
+        let s20 = dm0.state_from_string("s0x20").unwrap();
+        dm0.eval_sample_arbitrary(act0, &s21, &s20);
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.
-        println!("{}", dm0.actions[0]);
+        println!("\n{}", dm0.actions[act0]);
         let nds = dm0.get_needs();
         println!("needs {}", nds);
+        println!("\n{}", dm0.actions[act0]);
 
         // Changing bit position 1 should not affect the limited flag,
         // where the group bit position one is X.
-        if !dm0.actions[0].groups[0].limited {
-            return Err("Limited flag is false?".to_string());
-        }
-
-        // Add a way to change bit position 0, 1->0.
-        let s0a = dm0.state_from_string("s0b1010").unwrap();
-        dm0.eval_sample_arbitrary(1, &s0b, &s0a);
-
-        // Print domain and needs, if needed for error resolution.
-        // Also get_needs checks the limited flag for each group.
-        println!("{}", dm0.actions[0]);
-        let nds = dm0.get_needs();
-        println!("needs {}", nds);
-
-        // Allowing the bit position 0 to change 1->0 should affect the limited flag.
-        if dm0.actions[0].groups[0].limited {
-            return Err("Limited flag is true?".to_string());
+        if dm0.actions[act0].groups[0].limited {
+            return Err("3 Limited flag is true?".to_string());
         }
 
         // Check for limit need.
@@ -1778,6 +1750,6 @@ mod tests {
             }
         }
 
-        Err("LimitGroupAdj need not found?".to_string())
+        Err("5 LimitGroupAdj need not found?".to_string())
     }
 } // end tests

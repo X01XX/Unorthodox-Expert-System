@@ -2,7 +2,6 @@
 
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
-use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
@@ -36,27 +35,31 @@ impl fmt::Display for GroupStore {
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
+    /// Changes possible for all groups.
     pub aggregate_changes: SomeChange,
+    /// Changes possible were recently updated.
+    pub agg_chgs_updated: bool,
 }
 
 impl GroupStore {
     /// Return a new GroupStore.
-    pub fn new(cur_state: &SomeState) -> Self {
+    pub fn new(num_ints: usize) -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),
-            aggregate_changes: SomeChange::new(
-                SomeMask::new(cur_state.bts.new_like()),
-                SomeMask::new(cur_state.bts.new_like()),
-            ),
+            aggregate_changes: SomeChange::new_low(num_ints),
+            agg_chgs_updated: false,
         }
     }
 
-    /// Calculate and set the aggregate changes
+    /// Set the agg_chgs_updated flag to false, after incorporating
+    /// it into the parent ActionStore struct.
+    pub fn reset_agg_chgs_updated(&mut self) {
+        self.agg_chgs_updated = false;
+    }
+
+    /// Calculate and set the aggregate changes and updated flag.
     fn calc_aggregate_changes(&mut self) {
-        let mut ret_chn = SomeChange::new(
-            self.aggregate_changes.b01.new_like(),
-            self.aggregate_changes.b10.new_like(),
-        );
+        let mut ret_chn = SomeChange::new_low(self.aggregate_changes.b01.num_ints());
 
         for grpx in &self.avec {
             for rulx in grpx.rules.iter() {
@@ -64,6 +67,8 @@ impl GroupStore {
             }
         }
         self.aggregate_changes = ret_chn;
+        self.agg_chgs_updated = true;
+        self.check_limited();
     }
 
     /// Check groups with a recently changed sqaure.
@@ -333,10 +338,10 @@ impl GroupStore {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
+    pub fn check_limited(&mut self) {
         for grpx in &mut self.avec {
             if grpx.limited {
-                grpx.check_limited(new_chgs);
+                grpx.check_limited(&self.aggregate_changes);
             }
         }
     }

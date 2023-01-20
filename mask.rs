@@ -39,18 +39,16 @@ impl SomeMask {
         Self { bts }
     }
 
-    /// Return a new mask set to all zeros.
-    pub fn new_like(&self) -> Self {
-        Self {
-            bts: self.bts.new_like(),
-        }
-    }
-
     /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
     pub fn new_low(num_ints: usize) -> SomeMask {
         Self {
             bts: SomeBits::new_low(num_ints),
         }
+    }
+
+    /// Return the number of integers used to represent a SomeBits intance.
+    pub fn num_ints(&self) -> usize {
+        self.bts.num_ints()
     }
 
     /// Return a Mask from a string.

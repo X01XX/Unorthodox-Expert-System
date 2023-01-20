@@ -109,11 +109,11 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(dom_num: usize, act_num: usize, cur_state: &SomeState) -> Self {
+    pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
         SomeAction {
             num: act_num,
             dom_num,
-            groups: GroupStore::new(cur_state),
+            groups: GroupStore::new(num_ints),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(dom_num, act_num),
@@ -2142,9 +2142,15 @@ impl SomeAction {
         &self.groups.aggregate_changes
     }
 
-    /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
-        self.groups.check_limited(new_chgs);
+    /// Return the GroupStore flag indicating the update status of its aggregate changes value.
+    pub fn agg_chgs_updated(&self) -> bool {
+        self.groups.agg_chgs_updated
+    }
+
+    /// Reset to GroupStore agg_chgs_updated flag, after the incorporation
+    /// of its aggregate changes into the parent ActionStore struct.
+    pub fn reset_agg_chgs_updated(&mut self) {
+        self.groups.reset_agg_chgs_updated();
     }
 } // end impl SomeAction
 
@@ -2170,7 +2176,7 @@ mod tests {
         let sta_0 = SomeState::new_from_string(1, "s0b0000").unwrap();
 
         // Init action
-        let mut act0 = SomeAction::new(0, 0, &sta_f);
+        let mut act0 = SomeAction::new(0, 0, 1);
 
         // Set up region XXX1
         let regx = SomeRegion::new(sta_1.clone(), sta_f.clone());
@@ -2272,7 +2278,7 @@ mod tests {
         let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
         let se = SomeState::new_from_string(1, "s0b1110").unwrap();
 
-        let mut act0 = SomeAction::new(0, 0, &sf);
+        let mut act0 = SomeAction::new(0, 0, 1);
 
         act0.eval_sample(&sf, &sf);
         act0.eval_sample(&sf, &se);
