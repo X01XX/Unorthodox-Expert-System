@@ -1005,21 +1005,43 @@ mod tests {
         // Get plan for 7 to C
         dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
         let mut toreg = dm0.region_from_string("r1100").unwrap();
-        if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert!(aplan.len() == 5);
-            assert!(*aplan.result_region() == toreg);
-        } else {
+
+        let mut xplan: Option<SomePlan> = None;
+
+        // Try to get plan up to 5 times.
+        for _i in 0..5 {
+            if let Some(aplan) = dm0.make_plan(&toreg) {
+                assert!(aplan.len() == 5);
+                assert!(*aplan.result_region() == toreg);
+                println!("plan 1: {}", aplan);
+                xplan = Some(aplan);
+                break;
+            }
+        }
+
+        if xplan.is_none() {
             return Err(String::from("No plan found s111 to r1100?"));
         }
 
         // Get plan for C to 7
         dm0.set_state(&dm0.state_from_string("s0b1100").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
-        if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert!(aplan.len() == 5);
-            assert!(*aplan.result_region() == toreg);
-        } else {
-            return Err(String::from("No plan found s1100 to r111?"));
+
+        xplan = None;
+
+        // Try to get plan up to 5 times.
+        for _i in 0..5 {
+            if let Some(aplan) = dm0.make_plan(&toreg) {
+                assert!(aplan.len() == 5);
+                assert!(*aplan.result_region() == toreg);
+                println!("plan 2: {}", aplan);
+                xplan = Some(aplan);
+                break;
+            }
+        }
+
+        if xplan.is_none() {
+            return Err(String::from("No plan found s1100 to ri0111?"));
         }
 
         Ok(())

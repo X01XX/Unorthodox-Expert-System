@@ -70,9 +70,6 @@ impl fmt::Display for DomainStore {
 
 /// An InxPlan struct, containing an index to a SomeNeed vector, and a SomePlan struct.
 ///
-/// A Vec<T> is needed as a collector for parallel processing of needs to find plans,
-/// but a tuple, or array, does not qualify as a "T".
-///
 /// An integer is used instead of &SomeNeed to avoid borrow checker problems.
 #[readonly::make]
 #[derive(Debug)]

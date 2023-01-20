@@ -26,8 +26,8 @@ impl fmt::Display for SomeGroup {
 pub struct SomeGroup {
     /// Region the group covers.  Formed by two Pn-equal squares.
     /// All squares sampled in between should be compatable.
-    /// <SomeRegion>.state1 and .state2 are keys to the squares that formed the region.
-    /// <SomeRegion>.state1 and .state2 may be equal, that is only one square makes the region.
+    /// [SomeRegion].state1 and .state2 are keys to the squares that formed the region.
+    /// [SomeRegion].state1 and .state2 may be equal, that is only one square makes the region.
     /// If the squares are Pn::One, they may need more samples.
     pub region: SomeRegion,
     /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
