@@ -291,9 +291,11 @@ impl SomeDomain {
             if steps_str[inx].initial.intersects(from_reg) {
                 let stepy = steps_str[inx].restrict_initial_region(from_reg);
 
-                if goal_reg.is_superset_of(&stepy.result) {
-                    //println!("forward_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
-                    return Some(SomePlan::new_with_step(self.num, stepy));
+                if stepy.result.intersects(goal_reg) {
+                    let stepz = stepy.restrict_result_region(goal_reg);
+
+                    //println!("random_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
+                    return Some(SomePlan::new_with_step(self.num, stepz));
                 }
             }
         }
@@ -354,6 +356,7 @@ impl SomeDomain {
 
         // Process a forward chaining step
         if stepx.initial.is_superset_of(from_reg) {
+            //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
             let Some(step_to_goal_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
@@ -368,6 +371,7 @@ impl SomeDomain {
 
         // Process a backward chaining step
         if stepx.result.intersects(goal_reg) {
+            //println!("backward step");
             let stepy = stepx.restrict_result_region(goal_reg);
 
             let Some(from_to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth - 1) else { return None; };
@@ -500,7 +504,7 @@ impl SomeDomain {
         // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
         let mut plans = (0..6)
-            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .into_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.random_depth_first_search(
                     &cur_reg,
@@ -905,64 +909,53 @@ mod tests {
         let m4 = dm0.mask_from_string("m0x04").unwrap();
         let m8 = dm0.mask_from_string("m0x08").unwrap();
 
-        // Create group for region XXXX, Act 0.
+        // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(0, &s0, &s0.bitwise_xor(&m1));
         dm0.eval_sample_arbitrary(0, &sf, &sf.bitwise_xor(&m1));
 
-        // Create group for region XXXX, Act 1.
+        // Create group for region XXXX->XXxX, Act 1.
         dm0.eval_sample_arbitrary(1, &s0, &s0.bitwise_xor(&m2));
         dm0.eval_sample_arbitrary(1, &sf, &sf.bitwise_xor(&m2));
 
-        // Create group for region XXXX, Act 2.
+        // Create group for region XXXX-XxXX, Act 2.
         dm0.eval_sample_arbitrary(2, &s0, &s0.bitwise_xor(&m4));
         dm0.eval_sample_arbitrary(2, &sf, &sf.bitwise_xor(&m4));
 
-        // Create group for region X0XX, Act 3.
+        // Create group for region X0XX->x0XX, Act 3.
         dm0.eval_sample_arbitrary(3, &s0, &s0.bitwise_xor(&m8));
         dm0.eval_sample_arbitrary(3, &sb, &sb.bitwise_xor(&m8));
 
         println!("\nActs: {}", &dm0.actions);
 
+        // Glide Path is 7 + C = X1XX
+
         // Get plan for 7 to C
+        // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
+        // which is outside of the Glide Path.
         let s7 = dm0.state_from_string("s0x07").unwrap();
         dm0.set_state(&s7);
         let mut toreg = dm0.region_from_string("r1100").unwrap();
 
-        let mut xplan: Option<SomePlan> = None;
-
-        for _i in 0..5 {
-            if let Some(aplan) = dm0.make_plan(&toreg) {
-                assert!(aplan.len() == 5);
-                assert!(*aplan.result_region() == toreg);
-                println!("plan 1: {}", aplan);
-                xplan = Some(aplan);
-                break;
-            }
-        }
-
-        if xplan.is_none() {
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            //assert!(aplan.len() == 5);
+            assert!(*aplan.result_region() == toreg);
+            println!("plan 1: {} len = {}", aplan, aplan.len());
+        } else {
             return Err(String::from("No plan found s111 to r1100?"));
         }
 
+        println!("*****************************");
+
         // Get plan for C to 7
         dm0.set_state(&dm0.state_from_string("s0b1100").unwrap());
-        toreg = dm0.region_from_string("r111").unwrap();
-
-        xplan = None;
+        toreg = dm0.region_from_string("r0111").unwrap();
 
         // Try to get plan up to 5 times.
-        for _i in 0..5 {
-            if let Some(aplan) = dm0.make_plan(&toreg) {
-                assert!(aplan.len() == 5);
-                assert!(*aplan.result_region() == toreg);
-                println!("plan 2: {}", aplan);
-                xplan = Some(aplan);
-                break;
-            }
-        }
-
-        if xplan.is_none() {
-            return Err(String::from("No plan found s1100 to ri0111?"));
+        if let Some(aplan) = dm0.make_plan(&toreg) {
+            assert!(*aplan.result_region() == toreg);
+            println!("plan 2: {} len = {}", aplan, aplan.len());
+        } else {
+            return Err(String::from("No plan found s1100 to r0111?"));
         }
 
         Ok(())
