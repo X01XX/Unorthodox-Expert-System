@@ -29,6 +29,7 @@ impl SomeChange {
         Self { b01, b10 }
     }
 
+    /// Return a new change, with no bits set yet.
     pub fn new_low(num_ints: usize) -> Self {
         Self {
             b01: SomeMask::new_low(num_ints),
@@ -158,6 +159,7 @@ impl SomeChange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SomeDomain;
 
     #[test]
     fn apply_to_state() -> Result<(), String> {
@@ -182,6 +184,29 @@ mod tests {
 
         if sta2 != sta {
             return Err(format!("sta2 {} not {} ?", sta2, sta3));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn region_to_region() -> Result<(), String> {
+        let dm0 = SomeDomain::new(0, 1);
+
+        let reg_0x1x = dm0.region_from_string("r0X1X").unwrap();
+
+        let reg_1100 = dm0.region_from_string("r1100").unwrap();
+
+        let cng1 = SomeChange::region_to_region(&reg_0x1x, &reg_1100);
+
+        println!("change from {} to {} is {}", reg_0x1x, reg_1100, cng1);
+
+        let reg_result = SomeRegion::new(
+            cng1.apply_to_state(&reg_0x1x.state1),
+            cng1.apply_to_state(&reg_0x1x.state2),
+        );
+
+        if reg_result != reg_1100 {
+            return Err(format!("result {} ne {}!", reg_result, reg_1100));
         }
         Ok(())
     }

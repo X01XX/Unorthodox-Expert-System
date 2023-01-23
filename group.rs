@@ -23,6 +23,8 @@ impl fmt::Display for SomeGroup {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
+/// A group formed by two squares.
+/// Squares in between are compatible or not sampled.
 pub struct SomeGroup {
     /// Region the group covers.  Formed by two Pn-equal squares.
     /// All squares sampled in between should be compatable.
@@ -203,7 +205,7 @@ impl SomeGroup {
         }
     }
 
-    /// Set the anchor strel231.txtate, representing a square that is only in this group,
+    /// Set the anchor state, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: &SomeState) {

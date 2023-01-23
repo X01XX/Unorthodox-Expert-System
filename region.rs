@@ -25,7 +25,7 @@ pub struct SomeRegion {
     pub state2: SomeState,
 }
 
-/// Implment the fmt::Display trait.
+/// Implement the fmt::Display trait.
 impl fmt::Display for SomeRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())

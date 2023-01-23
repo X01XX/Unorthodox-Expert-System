@@ -55,7 +55,7 @@ impl Default for RuleStore {
 }
 
 impl RuleStore {
-    /// Return a new RuleStore.
+    /// Return a new, empty, RuleStore.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeRule>::with_capacity(2),
@@ -298,7 +298,7 @@ impl RuleStore {
         self.avec.iter()
     }
 
-    /// Return intersection of two RuleStores.
+    /// Return the intersection of two RuleStores.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
             panic!("rulestore lengths not eq!");
@@ -345,7 +345,7 @@ impl RuleStore {
         panic!("not ready for pn {}!", self.len());
     }
 
-    /// Return the result of restricting the initial region of rules.
+    /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         assert!(!self.is_empty());
         assert!(regx.intersects(&self.initial_region()));

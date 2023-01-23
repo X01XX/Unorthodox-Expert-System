@@ -14,21 +14,6 @@ impl fmt::Display for StateStore {
     }
 }
 
-impl PartialEq for StateStore {
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for stax in &self.avec {
-            if !other.contains(stax) {
-                return false;
-            }
-        }
-        true
-    }
-}
-impl Eq for StateStore {}
-
 #[derive(Debug, Clone)]
 pub struct StateStore {
     /// A vector of states.
@@ -42,14 +27,14 @@ impl Default for StateStore {
 }
 
 impl StateStore {
-    /// Return a new StateStore instance, empty.
+    /// Return a new, empty, StateStore instance.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeState>::new(),
         }
     }
 
-    /// Return a new StateStore instance, empty, with a specified capacity.
+    /// Return a new, empty, StateStore instance, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeState>::with_capacity(num),

@@ -345,7 +345,7 @@ impl SomeRule {
     ///
     /// For changes that are sought, for bit positions that are X->1, X->0, or X->x,
     /// the X value can be changed to focus on the desired change.
-    //
+    ///
     /// X->1 is 1->1 and 0->1, the X can be changed to 0.
     /// X->0 is 0->0 and 1->0, the X can be changed to 1.
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
@@ -423,6 +423,7 @@ impl SomeRule {
             SomeRule::region_to_region(&self.result_region(), &other.initial_region());
         self.then_to2(&rul_between).then_to2(other)
     }
+
     /// Combine two rules in sequence.
     /// The result region of the first rule must intersect the initial region of the second rule.
     fn then_to2(&self, other: &SomeRule) -> Self {

@@ -29,21 +29,21 @@ impl Default for StepStore {
 }
 
 impl StepStore {
-    /// Return a new StepStore, empty.
+    /// Return a new, empty, StepStore.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(5),
         }
     }
 
-    /// Return a new StepStore with a step
+    /// Return a new StepStore with a given step.
     pub fn new_with_step(astep: SomeStep) -> Self {
         let mut vecx = Vec::<SomeStep>::with_capacity(2);
         vecx.push(astep);
         Self { avec: vecx }
     }
 
-    /// Return a new StepStore, empty, with an expected capacity.
+    /// Return a new, empty, StepStore, with an expected capacity.
     pub fn new_with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(num),

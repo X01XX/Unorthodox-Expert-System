@@ -42,7 +42,7 @@ pub struct GroupStore {
 }
 
 impl GroupStore {
-    /// Return a new GroupStore.
+    /// Return a new, empty, GroupStore.
     pub fn new(num_ints: usize) -> Self {
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),

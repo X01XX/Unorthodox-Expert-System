@@ -36,7 +36,7 @@ impl fmt::Display for SomeState {
 }
 
 impl SomeState {
-    /// Return a new SomeState instance.
+    /// Return a new SomeState instance, given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
     }
@@ -115,21 +115,21 @@ impl SomeState {
         self.bts.formatted_string('s')
     }
 
-    /// Return a SomeState instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
+    /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
             bts: self.bts.b_and(other.bitsref()),
         }
     }
 
-    /// Return a SomeState instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
+    /// Return a SomeState instance, representing a bitwise Or of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
             bts: self.bts.b_or(other.bitsref()),
         }
     }
 
-    /// Return a SomeState instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
+    /// Return a SomeState instance, representing a bitwise XOr of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
         SomeState {
             bts: self.bts.b_xor(other.bitsref()),
@@ -150,7 +150,7 @@ impl SomeState {
         }
     }
 
-    /// Return a SomeState instance from a SomeMask instance.
+    /// Return a SomeMask instance from a SomeState instance.
     pub fn to_mask(&self) -> SomeMask {
         SomeMask::new(self.bts.clone())
     }

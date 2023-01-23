@@ -248,21 +248,17 @@ impl SomeDomain {
         steps_by_change_vov: &Vec<Vec<&SomeStep>>,
         depth: usize,
     ) -> Option<SomePlan> {
-        if let Some(steps) = self.random_depth_first_search2(
+        if let Some(plan1) = self.random_depth_first_search2(
             from_reg,
             goal_reg,
             steps_str,
             steps_by_change_vov,
             depth,
         ) {
-            if let Some(steps2) = steps.shortcuts() {
-                if steps2.is_valid() {
-                    return Some(steps2);
-                }
+            if let Some(plan2) = plan1.shortcuts() {
+                return Some(plan2);
             }
-            if steps.is_valid() {
-                return Some(steps);
-            }
+            return Some(plan1);
         }
         None
     }
@@ -286,9 +282,12 @@ impl SomeDomain {
         //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
 
         // Check if one step makes the required change, the end point of any search.
+        // In case there is more than one such step, choose it randomly.
         let mut rand_inx = RandomPick::new(steps_str.len());
         while let Some(inx) = rand_inx.pick() {
-            if steps_str[inx].initial.intersects(from_reg) {
+            if steps_str[inx].initial.intersects(from_reg)
+                && steps_str[inx].result.intersects(goal_reg)
+            {
                 let stepy = steps_str[inx].restrict_initial_region(from_reg);
 
                 if stepy.result.intersects(goal_reg) {
@@ -438,40 +437,35 @@ impl SomeDomain {
         depth: usize,
     ) -> Option<SomePlan> {
         if rand::random::<bool>() {
-            let Some(to_plan) = self.plan_steps_between(from_reg, &stepx.initial, depth) else { return None; };
+            let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepx.initial, depth) else { return None; };
 
-            // Get steps, check if steps include all changes needed.
-            let stepy = stepx.restrict_initial_region(to_plan.result_region());
+            // Restrict the step initial region, in case it is different from the to_step_plan result region,
+            // possibly changing the step result region.
+            let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
-            let Some(from_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth) else { return None; };
+            let Some(from_step_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth) else { return None; };
 
-            let Some(plan_part1) = to_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
+            // Try linking two plans together with the step.
+            let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
 
-            let Some(final_plan) = plan_part1.link(&from_plan) else { return None; };
-
-            //println!(
-            //    "Asym 1 OK from {} to {} to {} is {}",
-            //    from_reg, stepx, goal_reg, plan_found
-            //);
+            let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
 
             return Some(final_plan);
         }
 
-        let Some(from_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
+        let Some(from_step_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
 
-        // Get steps, check if steps include all changes needed.
-        let stepy = stepx.restrict_result_region(from_plan.initial_region());
+        // Restrict the step result region, in case it is different from the from_step_plan initial region,
+        // possibly changing the step initial region.
+        let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
-        let Some(to_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
+        let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
 
-        let Some(plan_part1) = to_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
+        // Try linking two plans together with the step.
+        let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
 
-        let Some(final_plan) = plan_part1.link(&from_plan) else { return None; };
+        let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
 
-        //println!(
-        //    "Asym 2 OK from {} to {} to {} is {}",
-        //    from_reg, stepx, goal_reg, plan_found
-        //);
         Some(final_plan)
     }
 
@@ -504,7 +498,7 @@ impl SomeDomain {
         // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
         let mut plans = (0..6)
-            .into_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.random_depth_first_search(
                     &cur_reg,

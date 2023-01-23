@@ -36,6 +36,7 @@ impl PartialEq for SomeSquare {
         self.state == other.state
     }
 }
+impl Eq for SomeSquare {}
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,11 +71,7 @@ impl SomeSquare {
     /// presumably LT 4.
     pub fn rate(&self) -> usize {
         if self.pnc {
-            match self.pn {
-                Pn::One => return 4,
-                Pn::Two => return 4,
-                Pn::Unpredictable => return 4,
-            }
+            return 4;
         }
 
         self.len_results()
@@ -167,6 +164,7 @@ impl SomeSquare {
         self.results.most_recent_result()
     }
 
+    /// Return a String representing a SomeSquare instance.
     pub fn formatted_string2(&self) -> String {
         let mut rc_str = String::from("S[");
         let _ = write!(rc_str, "{}", &self.state);
@@ -229,7 +227,7 @@ impl SomeSquare {
         Truth::M
     }
 
-    /// Return the pnc value.
+    /// Return the Pattern Number Confirmed (pnc) value.
     fn calc_pnc(&self) -> bool {
         if self.pn == Pn::Unpredictable {
             return true;
@@ -261,6 +259,7 @@ impl SomeSquare {
             .is_low()
     }
 
+    /// Return the distance (number of bits different) between two squares.
     pub fn distance(&self, other: &SomeSquare) -> usize {
         self.state.distance(&other.state)
     }

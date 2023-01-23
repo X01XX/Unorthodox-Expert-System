@@ -141,6 +141,7 @@ impl fmt::Display for SomeNeed {
 }
 
 #[derive(Debug)]
+/// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Sample a state as part of making a new group.
     AStateMakeGroup {

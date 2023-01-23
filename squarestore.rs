@@ -117,7 +117,7 @@ impl SquareStore {
         self.ahash.insert(sqrx.state.clone(), sqrx);
     }
 
-    /// Return a list of square states not in a list of regions.
+    /// Return a StateStore of square states not in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
         StateStore {
             avec: self
@@ -134,7 +134,7 @@ impl SquareStore {
         }
     }
 
-    /// Return a list of squares with pn GT Pn:One, not yet pnc.
+    /// Return a StateStore of squares with pn GT Pn:One, not yet pnc.
     pub fn pn_gt1_no_pnc(&self) -> StateStore {
         StateStore {
             avec: self
@@ -151,7 +151,7 @@ impl SquareStore {
         }
     }
 
-    /// Return a list of square states that are only in one region of a list of regions.
+    /// Return a StateStore of square states that are only in one region of a RegionStore.
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
         StateStore {
             avec: self
@@ -168,7 +168,7 @@ impl SquareStore {
         }
     }
 
-    /// Return a list of square states that are adjacent to a given region.
+    /// Return a StateStore of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
         StateStore {
             avec: self

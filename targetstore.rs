@@ -43,14 +43,14 @@ impl Default for TargetStore {
 }
 
 impl TargetStore {
-    /// Return a new TargetStore instance.
+    /// Return a new, empty, TargetStore instance.
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeTarget>::new(),
         }
     }
 
-    /// Return a new TargetStore instance.
+    /// Return a new TargetStore, with a given terget.
     pub fn new_with_target(target: SomeTarget) -> Self {
         Self { avec: vec![target] }
     }
@@ -83,7 +83,7 @@ impl TargetStore {
         true
     }
 
-    /// Return true if a one regions TargetStore is a superset of a given state.
+    /// Return true if the one region in a TargetStore is a superset of a given state.
     pub fn is_superset_of_state(&self, state: &SomeState) -> bool {
         assert!(self.len() == 1);
         self.avec[0].is_superset_of_state(state)
