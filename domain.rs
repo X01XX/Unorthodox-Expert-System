@@ -353,38 +353,30 @@ impl SomeDomain {
 
         let stepx = steps_by_change_vov[setx][stinx];
 
-        // Process a forward chaining step
+        // Process a forward chaining step.
         if stepx.initial.is_superset_of(from_reg) {
             //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
-            let Some(step_to_goal_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
-
-            if let Some(final_plan) =
-                SomePlan::new_with_step(self.num, stepy).link(&step_to_goal_plan)
+            if let Some(step_to_goal_plan) =
+                self.plan_steps_between(&stepy.result, goal_reg, depth - 1)
             {
-                return Some(final_plan);
+                return SomePlan::new_with_step(self.num, stepy).link(&step_to_goal_plan);
             }
             return None;
         }
 
-        // Process a backward chaining step
+        // Process a backward chaining step.
         if stepx.result.intersects(goal_reg) {
             //println!("backward step");
             let stepy = stepx.restrict_result_region(goal_reg);
 
-            let Some(from_to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth - 1) else { return None; };
-
-            if let Some(final_plan) =
-                from_to_step_plan.link(&SomePlan::new_with_step(self.num, stepy))
-            {
-                return Some(final_plan);
-            }
-
-            return None;
+            return self
+                .plan_steps_between(from_reg, &stepy.initial, depth - 1)?
+                .link(&SomePlan::new_with_step(self.num, stepy));
         }
 
-        // Must be an asymmetric step
+        // Must be an asymmetric step.
         self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
@@ -405,16 +397,7 @@ impl SomeDomain {
             return None;
         };
 
-        let Some(step_plan) = self.random_depth_first_search2(
-                from_reg,
-                to_reg,
-                &steps_str,
-                &steps_by_change_vov,
-                depth,
-            ) else {
-                return None;
-            };
-        Some(step_plan)
+        self.random_depth_first_search2(from_reg, to_reg, &steps_str, &steps_by_change_vov, depth)
     }
 
     /// Do asymmetric chaining for a given step.
@@ -446,11 +429,9 @@ impl SomeDomain {
             let Some(from_step_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth) else { return None; };
 
             // Try linking two plans together with the step.
-            let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
-
-            let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
-
-            return Some(final_plan);
+            return to_step_plan
+                .link(&SomePlan::new_with_step(self.num, stepy))?
+                .link(&from_step_plan);
         }
 
         let Some(from_step_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
@@ -462,11 +443,9 @@ impl SomeDomain {
         let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
 
         // Try linking two plans together with the step.
-        let Some(plan_part1) = to_step_plan.link(&SomePlan::new_with_step(self.num, stepy)) else { return None; };
-
-        let Some(final_plan) = plan_part1.link(&from_step_plan) else { return None; };
-
-        Some(final_plan)
+        to_step_plan
+            .link(&SomePlan::new_with_step(self.num, stepy))?
+            .link(&from_step_plan)
     }
 
     /// Make a plan to change the current state to another region.

@@ -169,7 +169,7 @@ impl StepStore {
             return None;
         }
 
-        let mut schg = SomeChange::new_low(self.avec[0].initial.state1.num_ints());
+        let mut schg = SomeChange::new_low(self.avec[0].num_ints());
         for stpx in &self.avec {
             schg = schg.bitwise_or_rule(&stpx.rule);
         }

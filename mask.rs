@@ -46,7 +46,7 @@ impl SomeMask {
         }
     }
 
-    /// Return the number of integers used to represent a SomeBits intance.
+    /// Return the number of integers used to represent a SomeMask intance.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }
@@ -61,7 +61,7 @@ impl SomeMask {
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        let mut rest = String::from("");
+        let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {

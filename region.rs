@@ -120,6 +120,11 @@ impl SomeRegion {
         Ok(SomeRegion::new(msk_high.to_state(), msk_low.to_state()))
     } // end new_from_string
 
+    /// Return the number of integers used to implement a region.
+    pub fn num_ints(&self) -> usize {
+        self.state1.num_ints()
+    }
+
     /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, positions that are omitted will be padded with Xs.
     ///

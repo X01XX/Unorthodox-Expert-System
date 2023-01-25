@@ -59,7 +59,7 @@ impl GroupStore {
 
     /// Calculate and set the aggregate changes and updated flag.
     fn calc_aggregate_changes(&mut self) {
-        let mut ret_chn = SomeChange::new_low(self.aggregate_changes.b01.num_ints());
+        let mut ret_chn = SomeChange::new_low(self.aggregate_changes.num_ints());
 
         for grpx in &self.avec {
             for rulx in grpx.rules.iter() {

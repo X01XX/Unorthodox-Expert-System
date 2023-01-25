@@ -51,7 +51,7 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        let mut rest = String::from("");
+        let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
