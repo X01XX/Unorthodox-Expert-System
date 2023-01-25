@@ -146,11 +146,8 @@ impl DomainStore {
     pub fn push(&mut self, domx: SomeDomain) {
         assert!(self.optimal.is_empty());
 
-        for domy in self.avec.iter() {
-            if domy.num == domx.num {
-                panic!("Domain number duplicate {} !", domx.num);
-            }
-        }
+        assert!(domx.num == self.avec.len());
+
         self.avec.push(domx);
     }
 

@@ -60,11 +60,8 @@ impl ActionStore {
 
     /// Add a SomeAction struct to the store.
     pub fn push(&mut self, actx: SomeAction) {
-        for acty in &self.avec {
-            if acty.num == actx.num {
-                panic!("Action number duplicate {} !", actx.num);
-            }
-        }
+        assert!(actx.num == self.avec.len());
+
         self.avec.push(actx);
     }
 

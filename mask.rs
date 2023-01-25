@@ -46,7 +46,7 @@ impl SomeMask {
         }
     }
 
-    /// Return the number of integers used to represent a SomeMask intance.
+    /// Return the number of integers used to represent a SomeMask instance.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()
     }
