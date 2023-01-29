@@ -105,7 +105,7 @@ impl SomeBits {
                 if chr == "0" {
                     continue;
                 }
-                return Err(format!("should start with 0 instead of {}", str));
+                return Err(format!("should start with 0 instead of {str}"));
             }
 
             if inx == 1 {
@@ -115,7 +115,7 @@ impl SomeBits {
                     base = 16;
                     continue;
                 }
-                return Err(format!("should start with 0b or 0x instead of {}", str));
+                return Err(format!("should start with 0b or 0x instead of {str}"));
             }
 
             let lsb = num_ints - 1;
@@ -125,12 +125,12 @@ impl SomeBits {
             }
 
             if bts.high_bit_set() {
-                return Err(format!("Did not understand the string {}, too long?", str));
+                return Err(format!("Did not understand the string {str}, too long?"));
             }
 
             if base == 2 {
                 if bts.high_bit_set() {
-                    return Err(format!("Did not understand the string {}, too long?", str));
+                    return Err(format!("Did not understand the string {str}, too long?"));
                 }
 
                 if chr == "0" {
@@ -139,8 +139,7 @@ impl SomeBits {
                     bts = bts.push_1();
                 } else {
                     return Err(format!(
-                        "Did not understand the string {}, invalid character?",
-                        str
+                        "Did not understand the string {str}, invalid character?"
                     ));
                 }
             } else {
@@ -150,9 +149,7 @@ impl SomeBits {
 
                 let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
-                        "Did not understand the string {}, invalid character?",
-                        str
-                    ))  };
+                        "Did not understand the string {str}, invalid character?"))  };
 
                 bts = bts.shift_left4();
 
@@ -375,7 +372,7 @@ impl SomeBits {
 
         // Overflow check
         if carry > 0 {
-            panic!("Bits shift_left overflow, carry {}", carry);
+            panic!("Bits shift_left overflow, carry {carry}");
         }
 
         Self { ints: ints2 }
@@ -439,7 +436,7 @@ impl SomeBits {
             if fil == 1 {
                 astr.push('_');
             }
-            let _ = write!(astr, "{:08b}", intx); // increase 08 if the integer size increases
+            let _ = write!(astr, "{intx:08b}"); // increase 08 if the integer size increases
 
             fil = 1;
         }

@@ -26,7 +26,7 @@ impl fmt::Display for NeedStore {
         }
         rc_str.push(']');
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

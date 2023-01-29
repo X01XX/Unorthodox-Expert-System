@@ -89,8 +89,7 @@ impl SomeRegion {
                     } // end match state_r
                 } else {
                     return Err(format!(
-                        "Did not understand the string {}, first character?",
-                        str
+                        "Did not understand the string {str}, first character?"
                     ));
                 }
             }
@@ -111,8 +110,7 @@ impl SomeRegion {
                 continue;
             } else {
                 return Err(format!(
-                    "Did not understand the string {}, invalid character?",
-                    str
+                    "Did not understand the string {str}, invalid character?"
                 ));
             }
         } // end for ch
@@ -157,8 +155,7 @@ impl SomeRegion {
                     } // end match state_r
                 } else {
                     return Err(format!(
-                        "Did not understand the string {}, first character?",
-                        str
+                        "Did not understand the string {str}, first character?"
                     ));
                 }
             }
@@ -179,8 +176,7 @@ impl SomeRegion {
                 continue;
             } else {
                 return Err(format!(
-                    "Did not understand the string {}, invalid character?",
-                    str
+                    "Did not understand the string {str}, invalid character?"
                 ));
             }
         } // next (inx, chr)

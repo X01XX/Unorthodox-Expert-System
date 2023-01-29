@@ -24,7 +24,7 @@ impl fmt::Display for PlanStore {
         }
         rc_str.push(']');
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

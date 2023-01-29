@@ -190,7 +190,8 @@ mod tests {
 
     #[test]
     fn region_to_region() -> Result<(), String> {
-        let dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let dm0 = SomeDomain::new(1);
 
         let reg_0x1x = dm0.region_from_string("r0X1X").unwrap();
 

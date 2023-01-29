@@ -59,8 +59,7 @@ impl SomeState {
                     continue;
                 }
                 return Err(format!(
-                    "Did not understand the string {}, first character?",
-                    str
+                    "Did not understand the string {str}, first character?"
                 ));
             }
 
@@ -167,7 +166,7 @@ pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
         } else {
             ret_str.push_str(", ");
         }
-        ret_str.push_str(&format!("{}", stax));
+        ret_str.push_str(&format!("{stax}"));
     }
     ret_str.push(']');
     ret_str

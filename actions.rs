@@ -38,7 +38,7 @@ pub fn take_action(
         } else if act_num == 8 {
             dom0_act8(cur_state)
         } else {
-            panic!("Dom 0, Uknown Action number {}", act_num);
+            panic!("Dom 0, Uknown Action number {act_num}");
         }
     } else if dom_num == 1 {
         if act_num == 0 {
@@ -56,10 +56,10 @@ pub fn take_action(
         } else if act_num == 6 {
             dom1_act6(cur_state)
         } else {
-            panic!("Dom 1, Uknown Action number {}", act_num);
+            panic!("Dom 1, Uknown Action number {act_num}");
         }
     } else {
-        panic!("Unknown Domain number {}", dom_num);
+        panic!("Unknown Domain number {dom_num}");
     }
 }
 

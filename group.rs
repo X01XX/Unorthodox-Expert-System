@@ -108,9 +108,9 @@ impl SomeGroup {
         match &self.anchor {
             Some(sta1) => {
                 if self.limited {
-                    let _ = write!(rc_str, ", limited using {}", sta1);
+                    let _ = write!(rc_str, ", limited using {sta1}");
                 } else {
-                    let _ = write!(rc_str, ", limiting using {}", sta1);
+                    let _ = write!(rc_str, ", limiting using {sta1}");
                 }
             }
             None => (),

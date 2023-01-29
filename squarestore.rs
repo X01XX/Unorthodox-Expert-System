@@ -21,11 +21,11 @@ impl fmt::Display for SquareStore {
             if flg == 1 {
                 rc_str.push_str(",\n");
             }
-            let _ = write!(rc_str, "{}", sqrx);
+            let _ = write!(rc_str, "{sqrx}");
             flg = 1;
         }
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

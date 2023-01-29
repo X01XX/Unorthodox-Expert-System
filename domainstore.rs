@@ -64,7 +64,7 @@ impl fmt::Display for DomainStore {
         }
         rc_str.push(']');
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 
@@ -143,12 +143,16 @@ impl DomainStore {
 
     /// Add a Domain struct to the store.
     /// Add optimal regions after the last domain has been added.
-    pub fn push(&mut self, domx: SomeDomain) {
+    pub fn push(&mut self, mut domx: SomeDomain) -> usize {
         assert!(self.optimal.is_empty());
 
-        assert!(domx.num == self.avec.len());
+        let dom_num = self.avec.len();
+
+        domx.num = dom_num;
 
         self.avec.push(domx);
+
+        dom_num
     }
 
     /// Get needs for each Domain.
@@ -437,12 +441,12 @@ impl DomainStore {
         match num_str.parse() {
             Ok(d_num) => {
                 if d_num >= self.len() {
-                    Err(format!("\nDomain number too large, {}", d_num))
+                    Err(format!("\nDomain number too large, {d_num}"))
                 } else {
                     Ok(d_num)
                 }
             }
-            Err(error) => Err(format!("Did not understand domain number, {}", error)),
+            Err(error) => Err(format!("Did not understand domain number, {error}")),
         } // end match
     }
 
@@ -531,7 +535,7 @@ impl DomainStore {
                 somestate_ref_vec_string(&all_states)
             );
             for optx in self.optimal.iter() {
-                print!(" {}", optx);
+                print!(" {optx}");
             }
         } else {
             ret = true;
@@ -540,12 +544,12 @@ impl DomainStore {
                 somestate_ref_vec_string(&all_states)
             );
             for optx in optimal_supersets.iter() {
-                print!(" {}", optx);
+                print!(" {optx}");
             }
             print!(", not in: ");
             let optimal_not_supersets = self.optimal.not_supersets_of_states(&all_states);
             for optx in optimal_not_supersets.iter() {
-                print!(" {}", optx);
+                print!(" {optx}");
             }
         }
 
@@ -581,17 +585,15 @@ mod tests {
         // Init a DomainStore.
         let mut dmxs = DomainStore::new();
 
-        // Create domain 0.
-        let mut dom0 = SomeDomain::new(dmxs.len(), 1);
-        let init_state1 = dom0.state_from_string("s0x12").unwrap();
-        dom0.set_state(&init_state1);
-        dmxs.push(dom0);
+        // Create domain 0, using 1 integer for bits.
+        let inx0 = dmxs.push(SomeDomain::new(1));
+        let init_state1 = dmxs[inx0].state_from_string("s0x12").unwrap();
+        dmxs[inx0].set_state(&init_state1);
 
-        // Create domain 1.
-        let mut dom1 = SomeDomain::new(dmxs.len(), 2);
-        let init_state2 = dom1.state_from_string("s0xabcd").unwrap();
-        dom1.set_state(&init_state2);
-        dmxs.push(dom1);
+        // Create domain 1, using 2 integers for bits.
+        let inx1 = dmxs.push(SomeDomain::new(2));
+        let init_state2 = dmxs[inx1].state_from_string("s0xabcd").unwrap();
+        dmxs[inx1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
         println!("all states {}", somestate_ref_vec_string(&all_states));
@@ -618,38 +620,50 @@ mod tests {
         // Start a DomainStore
         let mut dmxs = DomainStore::new();
 
-        // Create domain 0.
-        let mut dom0 = SomeDomain::new(0, 1);
+        // Add  a domain to the DomainStore, using one integer for bits.
+        let inx0 = dmxs.push(SomeDomain::new(1));
 
         // Add actions 0 through 8;
-        dom0.add_action();
+        dmxs[inx0].add_action();
 
-        // Create domain 1.
-        let mut dom1 = SomeDomain::new(1, 2);
+        // Add  a domain to the DomainStore, using one integer for bits.
+        let inx1 = dmxs.push(SomeDomain::new(2));
 
         // Add actions 0 through 4.
-        dom1.add_action();
+        dmxs[inx1].add_action();
 
         // Load optimal regions
         let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(dom0.region_from_string("r0x0x").unwrap());
-        regstr1.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr1.push(dmxs[inx0].region_from_string("r0x0x").unwrap());
+        regstr1.push(
+            dmxs[inx1]
+                .region_from_string("rXXXXXX10_1XXX_XXXX")
+                .unwrap(),
+        );
 
         let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(dom0.region_from_string("r0xx1").unwrap());
-        regstr2.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr2.push(dmxs[inx0].region_from_string("r0xx1").unwrap());
+        regstr2.push(
+            dmxs[inx1]
+                .region_from_string("rXXXXXX10_1XXX_XXXX")
+                .unwrap(),
+        );
 
         let mut regstr3 = RegionStore::with_capacity(2);
-        regstr3.push(dom0.region_from_string("rx1x1").unwrap());
-        regstr3.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr3.push(dmxs[inx0].region_from_string("rx1x1").unwrap());
+        regstr3.push(
+            dmxs[inx1]
+                .region_from_string("rXXXXXX10_1XXX_XXXX")
+                .unwrap(),
+        );
 
         let mut regstr4 = RegionStore::with_capacity(2);
-        regstr4.push(dom0.region_from_string("r1110").unwrap());
-        regstr4.push(dom1.region_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
-
-        // Add domains to the DomainStore
-        dmxs.push(dom0);
-        dmxs.push(dom1);
+        regstr4.push(dmxs[inx0].region_from_string("r1110").unwrap());
+        regstr4.push(
+            dmxs[inx1]
+                .region_from_string("rXXXXXX10_1XXX_XXXX")
+                .unwrap(),
+        );
 
         // Add optimal region stores.
         dmxs.add_optimal(regstr1);

@@ -76,11 +76,11 @@ impl fmt::Display for SomeAction {
 
         rc_str.push(')');
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeAction struct, aggregate the best current guess at what an action
 /// will do for any state.
@@ -373,7 +373,7 @@ impl SomeAction {
                 );
             }
         } else {
-            println!("ConfirmGroup {} group not found?", grp_reg);
+            println!("ConfirmGroup {grp_reg} group not found?");
         }
     }
 
@@ -386,7 +386,7 @@ impl SomeAction {
                 println!("set_group_anchor {} not pnc?", grpx.region);
             }
         } else {
-            println!("set_group_anchor {} group not found?", grp_reg);
+            println!("set_group_anchor {grp_reg} group not found?");
         }
     }
 
@@ -902,7 +902,7 @@ impl SomeAction {
                 );
             }
 
-            print!(" {}", stax);
+            print!(" {stax}");
             self.squares.remove(&stax);
         } // next stax
 

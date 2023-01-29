@@ -13,7 +13,6 @@
 //! When the current state is in at least one optimal region, sets and counts down a boredom value.
 //! The boredom value is greater if the the current state is in multiple optimal regions (intersection).
 
-use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -44,13 +43,13 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push(')');
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 
 const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeDomain struct, a state and actions that can be run.
 pub struct SomeDomain {
@@ -68,11 +67,11 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(dom: usize, num_ints: usize) -> Self {
+    pub fn new(num_ints: usize) -> Self {
         // Set up a domain instance with the correct value for num_ints
         let cur_state = initialize_state(num_ints);
         SomeDomain {
-            num: dom,
+            num: 0, // May be changed later
             actions: ActionStore::new(num_ints),
             cur_state,
             memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
@@ -91,8 +90,7 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        let actx = SomeAction::new(self.num, self.actions.len(), self.num_ints());
-        self.actions.push(actx);
+        self.actions.add_action(self.num, self.num_ints());
     }
 
     /// Return needs gathered from all actions.
@@ -619,11 +617,11 @@ impl SomeDomain {
         match str_num.parse::<usize>() {
             Ok(act_num) => {
                 if act_num >= self.actions.len() {
-                    return Err(format!("Action number too large {}", act_num));
+                    return Err(format!("Action number too large {act_num}"));
                 }
                 Ok(act_num)
             }
-            Err(error) => Err(format!("\nDid not understand action number, {}", error)),
+            Err(error) => Err(format!("\nDid not understand action number, {error}")),
         }
     } // end act_num_from_string
 
@@ -807,7 +805,8 @@ mod tests {
     // from s0111 to s1000.
     #[test]
     fn make_plan_direct() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
         dm0.add_action();
@@ -866,7 +865,8 @@ mod tests {
     // then step back into the glide path to get to the goal.
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
         dm0.add_action();
@@ -937,7 +937,8 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -996,7 +997,8 @@ mod tests {
     // Test confirm_group_needs.
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1069,7 +1071,8 @@ mod tests {
     // different results expected from the least significant bit.
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1102,8 +1105,8 @@ mod tests {
 
     #[test]
     fn limit_group_needs() -> Result<(), String> {
-        // Init domain with one action.
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1191,7 +1194,8 @@ mod tests {
     /// **********************************************************************************
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1258,7 +1262,8 @@ mod tests {
     // **********************************************************************************
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1317,7 +1322,8 @@ mod tests {
     // It is important to show that any arbitrary number of edges can form a group / rule.
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 2);
+        // Create a domain that uses two integer for bits.
+        let mut dm0 = SomeDomain::new(2);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1344,7 +1350,8 @@ mod tests {
 
     #[test]
     fn compatible_group_intersection_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1384,7 +1391,8 @@ mod tests {
 
     #[test]
     fn seek_edge_needs() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Crate a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1498,7 +1506,8 @@ mod tests {
 
     #[test]
     fn astate_make_group() -> Result<(), String> {
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
         dm0.add_action();
 
@@ -1581,7 +1590,8 @@ mod tests {
     fn limited_flag_change() -> Result<(), String> {
         let act0: usize = 0;
 
-        let mut dm0 = SomeDomain::new(0, 1);
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(1);
         dm0.cur_state = dm0.state_from_string("s0b1011").unwrap();
         dm0.add_action();
 

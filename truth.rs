@@ -10,7 +10,7 @@ impl fmt::Display for Truth {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let rc_str = self.formatted_string();
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

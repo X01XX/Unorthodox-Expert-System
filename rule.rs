@@ -240,9 +240,7 @@ impl SomeRule {
 
         let Some(reg_int) = regx.intersection(&init_reg) else {
             panic!(
-                "{} does not intersect rule initial region {}",
-                regx, init_reg
-            );
+                "{regx} does not intersect rule initial region {init_reg}");
         };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
@@ -266,9 +264,7 @@ impl SomeRule {
 
         let Some(reg_int) = regx.intersection(&rslt_reg) else {
             panic!(
-                "{} does not intersect rule result region {}",
-                regx, rslt_reg
-            );
+                "{regx} does not intersect rule result region {rslt_reg}");
         };
 
         let zeros = SomeMask::new(reg_int.low_state().bts.b_not());

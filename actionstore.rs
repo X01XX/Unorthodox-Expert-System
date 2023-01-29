@@ -27,7 +27,7 @@ impl fmt::Display for ActionStore {
             let _ = write!(rc_str, "\n  {}", &actx);
         }
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 
@@ -58,11 +58,10 @@ impl ActionStore {
         self.aggregate_changes.num_ints()
     }
 
-    /// Add a SomeAction struct to the store.
-    pub fn push(&mut self, actx: SomeAction) {
-        assert!(actx.num == self.avec.len());
-
-        self.avec.push(actx);
+    /// Add a new action to the ActionStore.
+    pub fn add_action(&mut self, dom_num: usize, num_ints: usize) {
+        self.avec
+            .push(SomeAction::new(dom_num, self.avec.len(), num_ints));
     }
 
     /// Get needs for all actions in the store.

@@ -34,7 +34,7 @@ impl fmt::Display for Pn {
             Pn::Unpredictable => "U",
         };
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

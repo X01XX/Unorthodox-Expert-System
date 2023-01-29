@@ -70,66 +70,68 @@ fn init() -> DomainStore {
 
     // Create domain 0.
     let dom_num_ints: usize = 1;
-    let dom_id: usize = 0;
-    let mut dom0 = SomeDomain::new(dom_id, dom_num_ints);
+
+    // Add domain to the DomainStore.
+    let inx0 = dmxs.push(SomeDomain::new(dom_num_ints));
 
     // Add actions 0 through 8;
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
-    dom0.add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
+    dmxs[inx0].add_action();
 
     // Create domain 1.
     let dom_num_ints: usize = 2;
-    let dom_id: usize = 1;
-    let mut dom1 = SomeDomain::new(dom_id, dom_num_ints);
+
+    // Add a domain to the DomainStore.
+    let inx1 = dmxs.push(SomeDomain::new(dom_num_ints));
 
     // Add actions 0 through 5.
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
-    dom1.add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
+    dmxs[inx1].add_action();
 
     // Load optimal regions
     let mut regstr1 = RegionStore::with_capacity(2);
-    regstr1.push(dom0.region_from_string_pad_x("r0x0x").unwrap());
+    regstr1.push(dmxs[inx0].region_from_string_pad_x("r0x0x").unwrap());
     regstr1.push(
-        dom1.region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
+        dmxs[inx1]
+            .region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
             .unwrap(),
     );
 
     let mut regstr2 = RegionStore::with_capacity(2);
-    regstr2.push(dom0.region_from_string_pad_x("r0xx1").unwrap());
+    regstr2.push(dmxs[inx0].region_from_string_pad_x("r0xx1").unwrap());
     regstr2.push(
-        dom1.region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
+        dmxs[inx1]
+            .region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
             .unwrap(),
     );
 
     let mut regstr3 = RegionStore::with_capacity(2);
-    regstr3.push(dom0.region_from_string_pad_x("rx1x1").unwrap());
+    regstr3.push(dmxs[inx0].region_from_string_pad_x("rx1x1").unwrap());
     regstr3.push(
-        dom1.region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
+        dmxs[inx1]
+            .region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
             .unwrap(),
     );
 
     let mut regstr4 = RegionStore::with_capacity(2);
-    regstr4.push(dom0.region_from_string_pad_x("r1110").unwrap());
+    regstr4.push(dmxs[inx0].region_from_string_pad_x("r1110").unwrap());
     regstr4.push(
-        dom1.region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
+        dmxs[inx1]
+            .region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
             .unwrap(),
     );
-
-    // Add the domains to the DomainStore.
-    dmxs.push(dom0);
-    dmxs.push(dom1);
 
     // Add optimal regionstores.
     dmxs.add_optimal(regstr1);
@@ -156,7 +158,7 @@ fn main() {
             return;
         }
         run_left = args[1].parse::<usize>().unwrap_or_else(|err| {
-            println!("String to Number conversion error: {}", err);
+            println!("String to Number conversion error: {err}");
             0
         });
         if run_left == 0 {
@@ -186,10 +188,7 @@ fn main() {
                 return;
             }
             let duration = start.elapsed();
-            println!(
-                "Steps {}, Time elapsed in do_session() is: {:?}",
-                steps, duration
-            );
+            println!("Steps {steps}, Time elapsed in do_session() is: {duration:?}");
             duration_vec.push(duration);
             steps_vec.push(steps);
         }
@@ -270,7 +269,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 println!("\nNeeds that cannot be done:");
                 for ndx in nds.iter() {
-                    println!("   {}", ndx);
+                    println!("   {ndx}");
                 }
 
                 println!("\nNeeds that can be done: None");
@@ -316,7 +315,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             // Stop running for this condition
             if cant_do > 0 && can_do == 0 {
                 if run_count != run_max || run_max > 1 {
-                    println!("\nrun_count {} of {}", run_count, run_max);
+                    println!("\nrun_count {run_count} of {run_max}");
                 }
                 to_end = false;
             }
@@ -324,10 +323,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
             if run_max == 1 {
                 println!("\nAction needs: None");
             } else {
-                println!(
-                    "\nAction needs: None, run_count {} of {}",
-                    run_count, run_max
-                );
+                println!("\nAction needs: None, run_count {run_count} of {run_max}");
             }
             dmxs.print_optimal();
             if to_end {
@@ -431,7 +427,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                         break;
                     }
                     _ => {
-                        println!("\nDid not understand command: {:?}", cmd);
+                        println!("\nDid not understand command: {cmd:?}");
                     }
                 };
             } // end command loop
@@ -449,7 +445,7 @@ fn do_change_domain(dmxs: &DomainStore, dom_num: usize, cmd: &[&str]) -> usize {
             return d_num;
         }
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
         }
     } // end match
     dom_num
@@ -513,7 +509,7 @@ fn do_print_plan_details(
             }
         }
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
         }
     }
 }
@@ -602,7 +598,7 @@ fn do_chosen_need(
             }
         }
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             dom_num
         }
     }
@@ -614,11 +610,11 @@ fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[&str]) {
     // Get state from string
     match dmx.state_from_string(cmd[1]) {
         Ok(a_state) => {
-            println!("Changed state to {}", a_state);
+            println!("Changed state to {a_state}");
             dmx.set_state(&a_state);
         }
         Err(error) => {
-            println!("\nDid not understand state, {}", error);
+            println!("\nDid not understand state, {error}");
         }
     } // end match
 }
@@ -631,10 +627,7 @@ fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
     // Get region from string
     match dmx.region_from_string(cmd[1]) {
         Ok(goal_region) => {
-            println!(
-                "\nChange Current_state {} to region {}",
-                cur_state, goal_region
-            );
+            println!("\nChange Current_state {cur_state} to region {goal_region}");
             if goal_region.is_superset_of_state(cur_state) {
                 println!(
                     "\nCurrent_state {} is already in region {}",
@@ -648,7 +641,7 @@ fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
             }
         }
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
         }
     } // end match region_r
 }
@@ -659,20 +652,20 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     let cur_state = dmx.get_current_state();
 
     if cmd.len() == 1 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
     let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
 
     if cmd.len() == 2 {
-        println!("Act {} sample State {}", act_num, cur_state);
+        println!("Act {act_num} sample State {cur_state}");
         dmx.take_action_arbitrary(act_num);
         return;
     }
@@ -682,12 +675,12 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
         let a_state = match dmx.state_from_string(cmd[2]) {
             Ok(a_state) => a_state,
             Err(error) => {
-                println!("\n{}", error);
+                println!("\n{error}");
                 return;
             }
         };
 
-        println!("Act {} sample State {}", act_num, a_state);
+        println!("Act {act_num} sample State {a_state}");
         dmx.set_state(&a_state);
         dmx.take_action_arbitrary(act_num);
         return;
@@ -700,7 +693,7 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
         let i_state = match dmx.state_from_string(cmd[2]) {
             Ok(i_state) => i_state,
             Err(error) => {
-                println!("\n{}", error);
+                println!("\n{error}");
                 return;
             }
         };
@@ -709,17 +702,17 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
         let r_state = match dmx.state_from_string(cmd[3]) {
             Ok(r_state) => r_state,
             Err(error) => {
-                println!("\n{}", error);
+                println!("\n{error}");
                 return;
             }
         };
 
-        println!("Act {} take sample {} -> {}", act_num, &i_state, &r_state);
+        println!("Act {act_num} take sample {i_state} -> {r_state}");
         dmx.eval_sample_arbitrary(act_num, &i_state, &r_state);
         return;
     } // end command ss 4
 
-    println!("Did not understand {:?}", cmd);
+    println!("Did not understand {cmd:?}");
 }
 
 /// Do print-squares command.
@@ -733,7 +726,7 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
@@ -751,19 +744,16 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
         let aregion = match dmx.region_from_string(cmd[2]) {
             Ok(aregion) => aregion,
             Err(error) => {
-                println!("\n{}", error);
+                println!("\n{error}");
                 return;
             }
         };
 
-        println!(
-            "Squares of Action {} in region {} are:\n",
-            &act_num, &aregion
-        );
+        println!("Squares of Action {act_num} in region {aregion} are:\n");
 
         let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
         if stas.is_empty() {
-            println!("No squares in region {}", &aregion);
+            println!("No squares in region {aregion}");
             return;
         }
 
@@ -773,7 +763,7 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 
         for stax in stas.iter() {
             let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-            println!("    {}", sqrx);
+            println!("    {sqrx}");
 
             if sqrx.pn < min_pn {
                 min_pn = sqrx.pn;
@@ -840,26 +830,21 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 
         if form_group {
             println!(
-                "    Min Pn: {} Max Pn: {} Rules: {} Can form group: {}",
-                min_pn, max_pn, rules_str, form_group
-            );
+                "    Min Pn: {min_pn} Max Pn: {max_pn} Rules: {rules_str} Can form group: {form_group}");
         } else {
-            println!(
-                "    Min Pn: {} Max Pn: {} Can form group: {}",
-                min_pn, max_pn, form_group
-            );
+            println!("    Min Pn: {min_pn} Max Pn: {max_pn} Can form group: {form_group}");
         }
         return;
     }
 
-    println!("Did not understand {:?}", cmd);
+    println!("Did not understand {cmd:?}");
 }
 
 /// Do adjacent-anchor command.
 /// Return 1 is Ok, 0 if not.
 fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     if cmd.len() == 1 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
@@ -867,39 +852,39 @@ fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
 
     if cmd.len() == 2 || cmd.len() > 3 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
     let aregion = match dmx.region_from_string(cmd[2]) {
         Ok(aregion) => aregion,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
 
     if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
         if let Some(anchor) = &grpx.anchor {
-            println!("\n  {}", &aregion);
+            println!("\n  {aregion}");
             let stas_adj = dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {
                 if stax.is_adjacent(anchor) {
                     let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
-                    println!("{}", sqrx);
+                    println!("{sqrx}");
                 }
             }
         } else {
-            println!("\nGroup {} does not have an anchor defined", &aregion);
+            println!("\nGroup {aregion} does not have an anchor defined");
         }
     } else {
-        println!("\nGroup with region {} not found", &aregion);
+        println!("\nGroup with region {aregion} not found");
     }
 }
 
@@ -907,7 +892,7 @@ fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 /// Return 1 is Ok, 0 if not.
 fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
     if cmd.len() == 1 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
@@ -915,20 +900,20 @@ fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>
     let act_num = match dmx.act_num_from_string(cmd[1]) {
         Ok(act_num) => act_num,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
 
     if cmd.len() == 2 || cmd.len() > 3 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
     let aregion = match dmx.region_from_string(cmd[2]) {
         Ok(aregion) => aregion,
         Err(error) => {
-            println!("\n{}", error);
+            println!("\n{error}");
             return;
         }
     };
@@ -1034,7 +1019,7 @@ fn usage() {
 ///Pause for input from user.
 pub fn pause_for_input(prompt: &str) -> String {
     // Print prompt without going to a new line
-    print!("{}", prompt);
+    print!("{prompt}");
     io::stdout().flush().unwrap();
 
     // Init and read in string
@@ -1053,15 +1038,15 @@ fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
 
     // Open a file, returns `io::Result<File>`
     match File::open(path) {
-        Err(why) => Err(format!("Couldn't open {}: {}", display, why)),
+        Err(why) => Err(format!("Couldn't open {display}: {why}")),
         Ok(mut afile) => {
             let mut serialized = String::new();
             match afile.read_to_string(&mut serialized) {
-                Err(why) => Err(format!("Couldn't read {}: {}", display, why)),
+                Err(why) => Err(format!("Couldn't read {display}: {why}")),
                 Ok(_) => {
                     let deserialized_r = serde_yaml::from_str(&serialized);
                     match deserialized_r {
-                        Err(why) => Err(format!("Couldn't deserialize {}: {}", display, why)),
+                        Err(why) => Err(format!("Couldn't deserialize {display}: {why}")),
                         Ok(new_dmxs) => Ok(new_dmxs),
                     } // end match deserialized_r
                 }
@@ -1073,7 +1058,7 @@ fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
 /// Store current data to a given path string.
 fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<&str>) {
     if cmd.len() != 2 {
-        println!("Did not understand {:?}", cmd);
+        println!("Did not understand {cmd:?}");
         return;
     }
 
@@ -1087,15 +1072,15 @@ fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<&str>) {
 
             // Open a file in write-only mode, returns `io::Result<File>`
             match File::create(path) {
-                Err(why) => println!("Couldn't create {}: {}", display, why),
+                Err(why) => println!("Couldn't create {display}: {why}"),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
-                    Err(why) => println!("Couldn't write to {}: {}", display, why),
+                    Err(why) => println!("Couldn't write to {display}: {why}"),
                     Ok(_) => {
                         println!("Data written");
                     }
                 },
             }
         }
-        Err(error) => println!("Couldn't serialize {}: {}", path_str, error),
+        Err(error) => println!("Couldn't serialize {path_str}: {error}"),
     } // end match serialized_r
 } // end store_data

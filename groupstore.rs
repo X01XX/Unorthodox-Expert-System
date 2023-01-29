@@ -26,7 +26,7 @@ impl fmt::Display for GroupStore {
             flg = 1;
         }
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 

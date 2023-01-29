@@ -27,17 +27,13 @@ impl fmt::Display for SomeNeed {
                 far,
                 num_x,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample State {}, far from {}, to make group {} nx: {})",
-                dom_num, act_num, pri, target_state, far, for_reg, num_x
-            ),
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})"),
             SomeNeed::StateNotInGroup {
                 dom_num,
                 act_num,
                 target_state,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample State {} not in a group)",
-                dom_num, act_num, pri, target_state
-            ),
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)"),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 act_num,
@@ -47,19 +43,15 @@ impl fmt::Display for SomeNeed {
                 group2,
                 ruls2,
             } => format!(
-                "N(Dom {} Act {} Pri {} Sample Region {} intersection of {} {} and {} {})",
-                dom_num, act_num, pri, target_region, group1, ruls1, group2, ruls2
-            ),
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})"),
             SomeNeed::ToRegion {
                 dom_num,
                 target_region,
                 ..
             } => format!(
-                "N(Dom {} Pri {} To Optimal Region {})",
-                dom_num, pri, target_region,
-            ),
+                "N(Dom {dom_num} Pri {pri} To Optimal Region {target_region})"),
             SomeNeed::ToOptimalRegion { target_regions } => {
-                format!("N(Pri {} To Optimal Regions {})", pri, target_regions,)
+                format!("N(Pri {pri} To Optimal Regions {target_regions})")
             }
             SomeNeed::LimitGroup {
                 dom_num,
@@ -67,18 +59,14 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
-                group_num,
+                ..
             } => {
                 if target_state == anchor {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample anchor State {}, to limit group {} gn {})",
-                        dom_num, act_num, pri, anchor, for_group, group_num,
-                    )
+                        "N(Dom {dom_num} Act {act_num} Pri {pri} Sample anchor State {anchor}, to limit group {for_group})")
                 } else {
                     format!(
-                        "N(Dom {} Act {} Pri {} Sample State {}, far from {} to limit group {} gn {})",
-                        dom_num, act_num, pri, target_state, anchor, for_group, group_num,
-                    )
+                        "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {anchor} to limit group {for_group})")
                 }
             }
             SomeNeed::LimitGroupAdj {
@@ -87,23 +75,20 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
-                group_num,
+                ..
             } => {
                 format!(
-                    "N(Dom {} Act {} Pri {} Sample State {}, adj to {} to limit group {} gn {})",
-                    dom_num, act_num, pri, target_state, anchor, for_group, group_num,
-                )
+                    "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
             }
             SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
                 target_state,
                 grp_reg,
-                group_num,
+                ..
             } => {
                 format!(
-                    "N(Dom {} Act {} Pri {} Get additional sample of state {} to confirm group {} gn {})",
-                    dom_num, act_num, pri, target_state, grp_reg, group_num,
+                    "N(Dom {dom_num} Act {act_num} Pri {pri} Get additional sample of state {target_state} to confirm group {grp_reg})",
                 )
             }
 
@@ -119,24 +104,24 @@ impl fmt::Display for SomeNeed {
             SomeNeed::AddGroup {
                 group_region,
                 rules,
-            } => format!("N(Create group from {} {})", group_region, rules),
+            } => format!("N(Create group from {group_region} {rules})"),
             SomeNeed::RemoveGroupAnchor { group_region } => {
-                format!("N(Remove anchor for group {})", group_region)
+                format!("N(Remove anchor for group {group_region})")
             }
             SomeNeed::SetGroupLimited { group_region } => {
-                format!("N(set group {} limited)", group_region)
+                format!("N(set group {group_region} limited)")
             }
             SomeNeed::SetGroupAnchor {
                 group_region,
                 anchor,
-            } => format!("N(set group {} anchor {})", group_region, anchor),
+            } => format!("N(set group {group_region} anchor {anchor})"),
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
             }
             SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {})", &regx),
         }; // end match
 
-        write!(f, "{}", rc_str)
+        write!(f, "{rc_str}")
     }
 }
 
@@ -565,7 +550,7 @@ impl SomeNeed {
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num,
-            _ => panic!("dom_num: not known for need {}", self),
+            _ => panic!("dom_num: not known for need {self}"),
         } //end match self
     } // end dom_num
 
