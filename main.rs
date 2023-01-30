@@ -284,8 +284,18 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     println!("\nNeeds that cannot be done: None");
                 } else {
                     println!("\nNeeds that cannot be done:");
+                    let mut count = 0;
                     for ndplnx in need_plans.iter() {
-                        println!("   {}", nds[ndplnx.inx]);
+                        if ndplnx.plans.is_some() {
+                            continue;
+                        }
+                        count += 1;
+                        if count <= 5 {
+                            println!("   {}", nds[ndplnx.inx]);
+                        }
+                    }
+                    if count > 5 {
+                        println!("   {} others total {}", count - 5, count);
                     }
                 }
 
@@ -297,17 +307,19 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     println!("\nNeeds that can be done:");
 
                     for (disp, (inx, ndplnx)) in need_plans.iter().enumerate().enumerate() {
-                        if ndplnx.plans.is_empty() {
-                            println!("{:2} {}", &inx, &nds[ndplnx.inx]);
-                        } else {
-                            println!(
-                                "{:2} {} {}",
-                                &disp,
-                                &nds[ndplnx.inx],
-                                &ndplnx.plans.str_terse()
-                            );
+                        if let Some(plans) = &ndplnx.plans {
+                            if plans.is_empty() {
+                                println!("{:2} {}", &inx, &nds[ndplnx.inx]);
+                            } else {
+                                println!(
+                                    "{:2} {} {}",
+                                    &disp,
+                                    &nds[ndplnx.inx],
+                                    &ndplnx.plans.as_ref().unwrap().str_terse()
+                                );
+                            }
+                            need_can.push(inx);
                         }
-                        need_can.push(inx);
                     } // next ndplnx
                 }
             } // end  if need_plans.len() == 0 {} else
@@ -464,7 +476,7 @@ fn do_any_need(
 
     let nd_inx = need_plans[np_inx].inx;
     let ndx = &nds[nd_inx];
-    let plans = &need_plans[np_inx].plans;
+    let plans = &need_plans[np_inx].plans.as_ref().unwrap();
 
     if do_a_need(dmxs, dom_num, ndx, plans) {
         println!("Need satisfied");
@@ -491,7 +503,7 @@ fn do_print_plan_details(
                 println!("Invalid Need Number: {}", cmd[1]);
             } else {
                 let ndx = &nds[need_plans[need_can[n_num]].inx];
-                let pln = &need_plans[need_can[n_num]].plans;
+                let pln = &need_plans[need_can[n_num]].plans.as_ref().unwrap();
 
                 println!("\n{} Need: {}", &n_num, &ndx);
                 match ndx {
@@ -584,7 +596,7 @@ fn do_chosen_need(
             } else {
                 let ndx = &nds[need_plans[need_can[n_num]].inx];
 
-                let plans = &need_plans[need_can[n_num]].plans;
+                let plans = &need_plans[need_can[n_num]].plans.as_ref().unwrap();
 
                 if do_a_need(dmxs, dom_num, ndx, plans) {
                     println!("Need satisfied");

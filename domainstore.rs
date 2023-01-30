@@ -76,8 +76,8 @@ impl fmt::Display for DomainStore {
 pub struct InxPlan {
     /// Index to a need in a NeedStore.
     pub inx: usize,
-    /// Plan to satisfy need (may be empty if the current state satisfies the need), or None.
-    pub plans: PlanStore,
+    /// Plan to satisfy need, may be empty if the current state satisfies the need, or None.
+    pub plans: Option<PlanStore>,
 }
 
 #[readonly::make]
@@ -308,16 +308,17 @@ impl DomainStore {
                 let ndsinx_plan = avec2
                     .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
                     .map(|nd_inx| (nd_inx, self.make_plans(&nds[*nd_inx].target())))
-                    .filter(|plnstr| plnstr.1.is_some())
                     .map(|plnstr| InxPlan {
                         inx: *plnstr.0,
-                        plans: plnstr.1.unwrap(),
+                        plans: plnstr.1,
                     })
                     .collect::<Vec<InxPlan>>();
 
                 // If at least one plan found, return vector of InxPlan structs.
-                if !ndsinx_plan.is_empty() {
-                    return ndsinx_plan;
+                for ndsinx in &ndsinx_plan {
+                    if ndsinx.plans.is_some() {
+                        return ndsinx_plan;
+                    }
                 }
             } // end while
 
@@ -401,8 +402,10 @@ impl DomainStore {
         for cnp_tpl in &can_nds_pln {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-            if itmx.plans.len() < min_plan_len {
-                min_plan_len = itmx.plans.len();
+            if let Some(plans) = &itmx.plans {
+                if plans.len() < min_plan_len {
+                    min_plan_len = plans.len();
+                }
             }
         }
 
@@ -410,8 +413,10 @@ impl DomainStore {
         for (inx, cnp_tpl) in can_nds_pln.iter().enumerate() {
             let itmx = &ndsinx_plan_all[cnp_tpl.1];
 
-            if itmx.plans.len() == min_plan_len {
-                can_do2.push(inx);
+            if let Some(plans) = &itmx.plans {
+                if plans.len() == min_plan_len {
+                    can_do2.push(inx);
+                }
             }
         }
 
@@ -430,7 +435,7 @@ impl DomainStore {
             "\nNeed chosen: {} {} {}",
             &can_nds_pln[can_do2[cd2_inx]].0,
             &ndx,
-            &itmx.plans.str_terse()
+            &itmx.plans.as_ref().unwrap().str_terse()
         );
 
         can_nds_pln[can_do2[cd2_inx]].1
