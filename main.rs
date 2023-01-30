@@ -271,62 +271,43 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         }
 
         if !nds.is_empty() {
-            // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
-            if can_do == 0 {
-                cant_do = nds.len();
-
+            // Print needs that cannot be done.
+            if cant_do == 0 {
+                println!("\nNeeds that cannot be done: None");
+            } else {
                 println!("\nNeeds that cannot be done:");
-                for ndx in nds.iter() {
-                    println!("   {ndx}");
-                }
 
+                for ndplnx in need_plans.iter() {
+                    if ndplnx.plans.is_some() {
+                        continue;
+                    }
+                    println!("   {}", nds[ndplnx.inx]);
+                }
+            }
+
+            // Print needs that can be done.
+            if can_do == 0 {
                 println!("\nNeeds that can be done: None");
                 dmxs.print_optimal();
             } else {
-                // Print needs that cannot be done.
-                if cant_do == 0 {
-                    println!("\nNeeds that cannot be done: None");
-                } else {
-                    println!("\nNeeds that cannot be done:");
-                    let mut count = 0;
-                    for ndplnx in need_plans.iter() {
-                        if ndplnx.plans.is_some() {
-                            continue;
-                        }
-                        count += 1;
-                        if count <= 5 {
-                            println!("   {}", nds[ndplnx.inx]);
-                        }
-                    }
-                    if count > 5 {
-                        println!("   {} others total {}", count - 5, count);
-                    }
-                }
+                println!("\nNeeds that can be done:");
 
-                // Print needs that can be done.
-                if can_do == 0 {
-                    println!("\nNeeds that can be done: None");
-                    dmxs.print_optimal();
-                } else {
-                    println!("\nNeeds that can be done:");
-
-                    for (inx, ndplnx) in need_plans.iter().enumerate() {
-                        if let Some(plans) = &ndplnx.plans {
-                            if plans.is_empty() {
-                                println!("{:2} {}", &inx, &nds[ndplnx.inx]);
-                            } else {
-                                println!(
-                                    "{:2} {} {}",
-                                    need_can.len(),
-                                    &nds[ndplnx.inx],
-                                    &ndplnx.plans.as_ref().unwrap().str_terse()
-                                );
-                            }
-                            need_can.push(inx);
+                for (inx, ndplnx) in need_plans.iter().enumerate() {
+                    if let Some(plans) = &ndplnx.plans {
+                        if plans.is_empty() {
+                            println!("{:2} {}", &inx, &nds[ndplnx.inx]);
+                        } else {
+                            println!(
+                                "{:2} {} {}",
+                                need_can.len(),
+                                &nds[ndplnx.inx],
+                                &ndplnx.plans.as_ref().unwrap().str_terse()
+                            );
                         }
-                    } // next ndplnx
-                }
-            } // end  if need_plans.len() == 0 {} else
+                        need_can.push(inx);
+                    }
+                } // next ndplnx
+            }
 
             // Stop running for this condition
             if cant_do > 0 && can_do == 0 {

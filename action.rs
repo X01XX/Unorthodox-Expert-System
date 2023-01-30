@@ -2160,6 +2160,69 @@ mod tests {
     use super::*;
 
     #[test]
+    fn groups_formed_1() -> Result<(), String> {
+        // Init action
+        let mut act0 = SomeAction::new(0, 0, 1);
+        //let mem = VecDeque::<SomeState>::new();
+        //let chg = SomeChange::new_low(1);
+
+        // Eval sample that other samples will be incompatible with.
+        let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();
+        act0.eval_sample(&s7, &s7);
+        //act0.get_needs(&s7, 0, &mem, &chg);
+
+        // Process three similar samples.
+        act0.eval_sample(
+            &SomeState::new_from_string(1, "s0b1011").unwrap(),
+            &SomeState::new_from_string(1, "s0b1010").unwrap(),
+        );
+
+        act0.eval_sample(
+            &SomeState::new_from_string(1, "s0b1101").unwrap(),
+            &SomeState::new_from_string(1, "s0b1100").unwrap(),
+        );
+
+        act0.eval_sample(
+            &SomeState::new_from_string(1, "s0b0001").unwrap(),
+            &SomeState::new_from_string(1, "s0b0000").unwrap(),
+        );
+
+        if act0.groups.len() != 4 {
+            println!("Groups {}", act0.groups);
+            return Err(format!("Four groups not formed?"));
+        }
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0111").unwrap())
+        {
+        } else {
+            return Err("Region 0111 not found!".to_string());
+        }
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r1xx1").unwrap())
+        {
+        } else {
+            return Err("Region 1XX1 not found!".to_string());
+        }
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "rxx01").unwrap())
+        {
+        } else {
+            return Err("Region XX01 not found!".to_string());
+        }
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "rx0x1").unwrap())
+        {
+        } else {
+            return Err("Region X0X1 not found!".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn no_incompatible_square_combination_in_region() -> Result<(), String> {
         // Init states.
         let sta_f = SomeState::new_from_string(1, "s0b1111").unwrap();

@@ -241,12 +241,11 @@ impl SomePlan {
 
         // Process one shortcut
         if reg_inx.len() < self.len() {
-            let mut steps2: SomePlan;
             //println!("shortcut initial found for {}", self);
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = SomePlan::new(self.dom_num);
+                    let mut steps2 = SomePlan::new(self.dom_num);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
@@ -282,12 +281,11 @@ impl SomePlan {
 
         // Process one shortcut
         if reg_inx.len() < self.len() {
-            let mut steps2: SomePlan;
             //println!("shortcut result found for {}", self);
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    steps2 = SomePlan::new(self.dom_num);
+                    let mut steps2 = SomePlan::new(self.dom_num);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {

@@ -18,8 +18,11 @@ type Bitint = u8;
 /// The number of bits in an integer used by SomeBits.
 const NUM_BITS_PER_INT: usize = u8::BITS as usize;
 
-/// The highest bit position in an integer.
+/// Mask for the highest bit in an integer.
 const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
+
+/// Mask for the highest nibble in an integer.
+const INT_HIGH_NIBBLE: Bitint = 15 << (NUM_BITS_PER_INT - 4);
 
 use crate::randompick::random_x_of_n;
 use rand::Rng;
@@ -105,7 +108,7 @@ impl SomeBits {
                 if chr == "0" {
                     continue;
                 }
-                return Err(format!("should start with 0 instead of {str}"));
+                return Err(format!("String {str}, should start with 0?"));
             }
 
             if inx == 1 {
@@ -115,7 +118,7 @@ impl SomeBits {
                     base = 16;
                     continue;
                 }
-                return Err(format!("should start with 0b or 0x instead of {str}"));
+                return Err(format!("String {str}, should start with 0b or 0x?"));
             }
 
             let lsb = num_ints - 1;
@@ -124,13 +127,9 @@ impl SomeBits {
                 continue;
             }
 
-            if bts.high_bit_set() {
-                return Err(format!("Did not understand the string {str}, too long?"));
-            }
-
             if base == 2 {
-                if bts.high_bit_set() {
-                    return Err(format!("Did not understand the string {str}, too long?"));
+                if bts.high_bit_nonzero() {
+                    return Err(format!("String {str}, too long?"));
                 }
 
                 if chr == "0" {
@@ -138,18 +137,16 @@ impl SomeBits {
                 } else if chr == "1" {
                     bts = bts.push_1();
                 } else {
-                    return Err(format!(
-                        "Did not understand the string {str}, invalid character?"
-                    ));
+                    return Err(format!("String {str}, invalid character?"));
                 }
             } else {
-                if bts.high_bit_set() {
-                    return Err(String::from("too long"));
+                if bts.high_nibble_nonzero() {
+                    return Err(String::from("String {str}, too long?"));
                 }
 
                 let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
-                        "Did not understand the string {str}, invalid character?"))  };
+                        "String {str}, invalid character?"))  };
 
                 bts = bts.shift_left4();
 
@@ -360,10 +357,9 @@ impl SomeBits {
         let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
         let mut carry: Bitint = 0;
-        let mut next_carry: Bitint;
 
         for int_inx in (0..self.ints.len()).rev() {
-            next_carry = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
+            let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
 
             ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
 
@@ -384,10 +380,9 @@ impl SomeBits {
         let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
         let mut carry: Bitint = 0;
-        let mut next_carry;
 
         for int_inx in (0..self.ints.len()).rev() {
-            next_carry = self.ints[int_inx] >> (NUM_BITS_PER_INT - 4);
+            let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 4);
 
             ints2[int_inx] = (self.ints[int_inx] << 4) + carry;
             carry = next_carry;
@@ -411,14 +406,18 @@ impl SomeBits {
         self.ints.len() * NUM_BITS_PER_INT
     }
 
-    /// Return true if the highest bit is set to 1.
+    /// Return true if the highest bit is nonzero.
     /// This is used in the from_string functions to detect overflow
     /// from the next shift-left operation.
-    pub fn high_bit_set(&self) -> bool {
-        if self.ints[0] & INT_HIGH_BIT == 0 {
-            return false;
-        }
-        true
+    pub fn high_bit_nonzero(&self) -> bool {
+        self.ints[0] & INT_HIGH_BIT > 0
+    }
+
+    /// Return true if the highest nibble is nonzero.
+    /// This is used in the from_string functions to detect overflow
+    /// from the next shift-left operation.
+    pub fn high_nibble_nonzero(&self) -> bool {
+        self.ints[0] & INT_HIGH_NIBBLE > 0
     }
 
     /// Calculate the expected length of a string that represents a SomeBits struct.
@@ -744,12 +743,12 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::high_bit_set
+    // Test SomeBits::high_bit_nonzero
     #[test]
-    fn high_bit_set() -> Result<(), String> {
+    fn high_bit_nonzero() -> Result<(), String> {
         let mut btest = SomeBits::new_from_string(1, "0x1").unwrap();
 
-        if btest.high_bit_set() {
+        if btest.high_bit_nonzero() {
             return Err(String::from("Result 1 true?"));
         }
 
@@ -757,7 +756,7 @@ mod tests {
             btest = btest.shift_left();
         }
 
-        if !btest.high_bit_set() {
+        if !btest.high_bit_nonzero() {
             return Err(String::from("Result 2 false?"));
         }
 
