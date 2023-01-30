@@ -262,9 +262,17 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         let mut can_do = 0;
         let mut cant_do = 0;
 
+        for ndx in need_plans.iter() {
+            if ndx.plans.is_some() {
+                can_do += 1;
+            } else {
+                cant_do += 1;
+            }
+        }
+
         if !nds.is_empty() {
             // Check if any needs (maybe a subset of the orginal needs have been checked) have a plan
-            if need_plans.is_empty() {
+            if can_do == 0 {
                 cant_do = nds.len();
 
                 println!("\nNeeds that cannot be done:");
@@ -275,10 +283,6 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 println!("\nNeeds that can be done: None");
                 dmxs.print_optimal();
             } else {
-                // Calc count of needs that can, and cannot, be done.
-                can_do = need_plans.len();
-                cant_do = nds.len() - need_plans.len();
-
                 // Print needs that cannot be done.
                 if cant_do == 0 {
                     println!("\nNeeds that cannot be done: None");
@@ -306,14 +310,14 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 } else {
                     println!("\nNeeds that can be done:");
 
-                    for (disp, (inx, ndplnx)) in need_plans.iter().enumerate().enumerate() {
+                    for (inx, ndplnx) in need_plans.iter().enumerate() {
                         if let Some(plans) = &ndplnx.plans {
                             if plans.is_empty() {
                                 println!("{:2} {}", &inx, &nds[ndplnx.inx]);
                             } else {
                                 println!(
                                     "{:2} {} {}",
-                                    &disp,
+                                    need_can.len(),
                                     &nds[ndplnx.inx],
                                     &ndplnx.plans.as_ref().unwrap().str_terse()
                                 );
