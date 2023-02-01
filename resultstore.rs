@@ -128,13 +128,8 @@ impl ResultStore {
             self.astore[self.num_results % MAX_RESULTS] = st;
         }
 
-        // Avoid overflow.  Overflow to zero will not work.
-        if self.num_results == usize::MAX {
-            self.num_results = MAX_RESULTS + (self.num_results % MAX_RESULTS);
-        }
-
+        assert!(self.num_results < 100); // increase, if needed, up to usize::MAX.
         self.num_results += 1;
-        assert!(self.num_results < 100); // remove, if needed.
 
         self.calc_pn()
     }

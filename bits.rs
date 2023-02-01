@@ -444,17 +444,21 @@ impl SomeBits {
 
     /// Create a formatted string to display under an instance,
     /// to indicate specific bits positions.
-    pub fn str2(&self, prefix: char) -> String {
+    pub fn str2(&self) -> String {
         let mut astr = String::with_capacity(self.formatted_string_length());
-        astr.push(prefix);
 
-        let mut fil = 0;
         for intx in &self.ints {
-            if fil == 1 {
-                astr.push(' ');
-            }
+            astr.push(' ');
+
+            let mut cnt = 0;
             let mut cur_bit = INT_HIGH_BIT;
+
             while cur_bit > 0 {
+                if cnt > 0 && cnt % 4 == 0 {
+                    astr.push(' ');
+                }
+                cnt += 1;
+
                 if (intx & cur_bit) == 0 {
                     astr.push(' ');
                 } else {
@@ -462,7 +466,6 @@ impl SomeBits {
                 }
                 cur_bit >>= 1;
             }
-            fil = 1;
         }
         astr
     }

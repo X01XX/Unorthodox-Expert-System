@@ -144,7 +144,7 @@ impl SomeMask {
     /// Create a formatted string to display under an instance,
     /// to indicate specific bits positions.
     pub fn str2(&self) -> String {
-        self.bts.str2(' ')
+        self.bts.str2()
     }
 
     /// Given a mask of more than one bit, return a mask that is a random selection of
