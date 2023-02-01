@@ -28,17 +28,11 @@ impl fmt::Display for PlanStore {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[readonly::make]
 pub struct PlanStore {
     /// A vector of SomePlan instances.
     pub avec: Vec<SomePlan>,
-}
-
-impl Default for PlanStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl PlanStore {

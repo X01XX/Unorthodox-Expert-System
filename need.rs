@@ -425,29 +425,19 @@ impl PartialEq for SomeNeed {
 impl Eq for SomeNeed {}
 
 impl SomeNeed {
-    /// Return a type string
-    pub fn type_string(&self) -> String {
-        match self {
-            SomeNeed::AStateMakeGroup { .. } => "AStateMakeGroup".to_string(),
-            SomeNeed::StateNotInGroup { .. } => "StateNotInGroup".to_string(),
-            SomeNeed::ContradictoryIntersection { .. } => "ContradictoryIntersection".to_string(),
-            SomeNeed::ToRegion { .. } => "ToRegion".to_string(),
-            SomeNeed::ToOptimalRegion { .. } => "ToOptimalRegion".to_string(),
-            SomeNeed::LimitGroup { .. } => "LimitGroup".to_string(),
-            SomeNeed::LimitGroupAdj { .. } => "LimitGroupAdj".to_string(),
-            SomeNeed::ConfirmGroup { .. } => "ConfirmGroup".to_string(),
-            SomeNeed::SeekEdge { .. } => "SeekEdge".to_string(),
-            SomeNeed::AddGroup { .. } => "AddGroup".to_string(),
-            SomeNeed::RemoveGroupAnchor { .. } => "RemoveGroupAnchor".to_string(),
-            SomeNeed::SetGroupLimited { .. } => "SetGroupLimited".to_string(),
-            SomeNeed::SetGroupAnchor { .. } => "SetGroupAnchor".to_string(),
-            SomeNeed::InactivateSeekEdge { reg: _ } => "InactivateSeekEdge".to_string(),
-            SomeNeed::AddSeekEdge { reg: _ } => "AddSeekEdge".to_string(),
-        } // end match
-    } // end type_string
+    /// Return a need name string.
+    /// Mostly used in testing.
+    /// Ugly, slow, but it works.
+    pub fn name(&self) -> String {
+        let str = format!("{self:?}");
+        let first_space = str.find(char::is_whitespace).unwrap();
+        str[0..first_space].to_string()
+    }
 
     /// Return a priority number for a need.  Lower is more important.
     ///  Don't use number zero!
+    /// "- num_x" gives priority to larger regions.
+    /// "+ group_num" gives priority to groups near the beginning of a group list.
     pub fn priority(&self) -> usize {
         match self {
             SomeNeed::SeekEdge { .. } => 100,
@@ -517,8 +507,8 @@ impl SomeNeed {
                 }
             }
             _ => panic!(
-                "satisfied_by: should not be called on this need {}",
-                self.type_string()
+                "SomeNeed::satisfied_by should not be called for the {} need.",
+                self.name()
             ),
         } //end match self
         false
@@ -535,7 +525,10 @@ impl SomeNeed {
             SomeNeed::SeekEdge { act_num, .. } => *act_num,
             SomeNeed::LimitGroup { act_num, .. } => *act_num,
             SomeNeed::LimitGroupAdj { act_num, .. } => *act_num,
-            _ => panic!("act_num: not known for need {}", self.type_string()),
+            _ => panic!(
+                "SomeNeed::act_num should not be called for the {} need.",
+                self.name()
+            ),
         } //end match self
     } // end act_num
 
@@ -550,7 +543,10 @@ impl SomeNeed {
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num,
-            _ => panic!("dom_num: not known for need {self}"),
+            _ => panic!(
+                "SomeNeed::dom_num should not be called for the {} need.",
+                self.name()
+            ),
         } //end match self
     } // end dom_num
 
@@ -623,8 +619,8 @@ impl SomeNeed {
                 targ
             }
             _ => panic!(
-                "target: should not be called for this need {}",
-                self.type_string()
+                "SomeNeed::target should not be called for the {} need.",
+                self.name()
             ),
         }
     } // end target
@@ -642,8 +638,8 @@ impl SomeNeed {
             SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num = num,
             _ => {
                 panic!(
-                    "set_dom: should not be called for this need {}",
-                    self.type_string()
+                    "SomeNeed::set_dom should not be called for the {} need.",
+                    self.name()
                 );
             }
         };

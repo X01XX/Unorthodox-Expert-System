@@ -8,17 +8,11 @@ use std::ops::Index;
 use std::slice::Iter;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A struct of optimal RegionStores, where each RegionStore contains a list
 /// of domain optimal regions, in domain number order.
 pub struct OptimalRegionsStore {
     pub optimal: Vec<RegionStore>,
-}
-
-impl Default for OptimalRegionsStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl OptimalRegionsStore {

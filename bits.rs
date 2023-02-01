@@ -455,6 +455,7 @@ impl SomeBits {
 
             while cur_bit > 0 {
                 if cnt > 0 && cnt % 4 == 0 {
+                    // Adjust for underline character in bits display.
                     astr.push(' ');
                 }
                 cnt += 1;

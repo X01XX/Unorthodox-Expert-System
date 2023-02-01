@@ -16,16 +16,10 @@ impl fmt::Display for StepStore {
 }
 
 #[readonly::make]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct StepStore {
     /// A vector for steps.
     pub avec: Vec<SomeStep>,
-}
-
-impl Default for StepStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl StepStore {

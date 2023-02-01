@@ -1657,7 +1657,7 @@ mod tests {
 
         // Check for limit need.
         for ndx in nds.iter() {
-            if ndx.type_string() == "LimitGroupAdj" {
+            if ndx.name() == "LimitGroupAdj" {
                 match ndx {
                     SomeNeed::LimitGroupAdj { anchor, .. } => {
                         if anchor == &s0b || anchor == &s05 {

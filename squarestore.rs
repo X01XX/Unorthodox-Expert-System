@@ -30,15 +30,9 @@ impl fmt::Display for SquareStore {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct SquareStore {
     pub ahash: HashMap<SomeState, SomeSquare>,
-}
-
-impl Default for SquareStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl SquareStore {

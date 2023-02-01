@@ -30,17 +30,11 @@ impl fmt::Display for NeedStore {
     }
 }
 
-#[derive(Debug)]
 #[readonly::make]
+#[derive(Debug, Default)]
 pub struct NeedStore {
     /// A vector of SomeNeed instances.
     avec: Vec<SomeNeed>,
-}
-
-impl Default for NeedStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl NeedStore {
@@ -75,9 +69,9 @@ impl NeedStore {
 
     /// Return true if a need with a given type and target is in a NeedStore.
     /// Used in tests.rs, so far.
-    pub fn contains_similar_need(&self, type_string: &str, target: &SomeRegion) -> bool {
+    pub fn contains_similar_need(&self, name: &str, target: &SomeRegion) -> bool {
         for nedx in &self.avec {
-            if nedx.type_string() == type_string {
+            if nedx.name() == name {
                 for targx in nedx.target().iter() {
                     if targx.region == *target {
                         return true;

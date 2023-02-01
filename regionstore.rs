@@ -20,8 +20,7 @@ impl fmt::Display for RegionStore {
     }
 }
 
-//#[readonly::make]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RegionStore {
     /// A vector of regions.
     pub avec: Vec<SomeRegion>,
@@ -41,12 +40,6 @@ impl PartialEq for RegionStore {
     }
 }
 impl Eq for RegionStore {}
-
-impl Default for RegionStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl RegionStore {
     /// Return a new, empty, RegionStore.

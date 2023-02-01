@@ -29,17 +29,11 @@ impl fmt::Display for TargetStore {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[readonly::make]
 pub struct TargetStore {
     /// A vector of SomeTarget instances.
     avec: Vec<SomeTarget>,
-}
-
-impl Default for TargetStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TargetStore {

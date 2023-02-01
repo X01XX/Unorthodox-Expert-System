@@ -19,7 +19,7 @@ use std::ops::Index;
 use std::slice::Iter;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
 }
@@ -47,12 +47,6 @@ impl PartialEq for RuleStore {
 }
 
 impl Eq for RuleStore {}
-
-impl Default for RuleStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl RuleStore {
     /// Return a new, empty, RuleStore.

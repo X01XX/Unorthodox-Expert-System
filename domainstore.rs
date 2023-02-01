@@ -81,7 +81,7 @@ pub struct InxPlan {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
     pub avec: Vec<SomeDomain>,
@@ -95,12 +95,6 @@ pub struct DomainStore {
     pub optimal: OptimalRegionsStore,
     /// RegionStore to add all possible intersections of the optimal states to discern.
     pub optimal_and_ints: OptimalRegionsStore,
-}
-
-impl Default for DomainStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl DomainStore {

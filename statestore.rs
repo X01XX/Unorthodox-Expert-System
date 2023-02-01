@@ -14,16 +14,10 @@ impl fmt::Display for StateStore {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct StateStore {
     /// A vector of states.
     pub avec: Vec<SomeState>,
-}
-
-impl Default for StateStore {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl StateStore {

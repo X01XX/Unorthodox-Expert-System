@@ -326,7 +326,6 @@ impl GroupStore {
         &mut self,
         grp_reg: &SomeRegion,
         anchor: &SomeState,
-        //rate: (usize, usize, usize),
     ) {
         for grpx in &mut self.avec {
             if grpx.region == *grp_reg {
