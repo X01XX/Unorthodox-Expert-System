@@ -747,11 +747,12 @@ fn all_mutually_exclusive_changes(
     true
 }
 
-/// Return a vector of reverse sorted indicies, of step vectors that should be done later
+/// Return a vector of reverse sorted indices, of step vectors that should be done later
 /// than all other steps.
 fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
     let mut inxs = Vec::<usize>::new();
 
+    // Generate a vector of indices of changes that should be done later.
     'next_inx: for inx in 0..by_change.len() {
         for iny in 0..by_change.len() {
             if iny == inx {
@@ -765,6 +766,7 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
         inxs.push(inx);
     } //next inx
 
+    // Return a vector of indices in descending order.
     if inxs.len() > 1 {
         inxs.sort_by(|a, b| b.cmp(a));
     }

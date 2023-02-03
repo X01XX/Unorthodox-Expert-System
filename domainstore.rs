@@ -268,7 +268,7 @@ impl DomainStore {
                 return Vec::<InxPlan>::new();
             }
 
-            // Load avec with indicies to needs of the current priority.
+            // Load avec with indices to needs of the current priority.
             for (inx, ndsx) in nds.iter().enumerate() {
                 if ndsx.priority() == least_priority {
                     avec.push(inx);
@@ -351,7 +351,7 @@ impl DomainStore {
         &self,
         nds: &NeedStore,
         ndsinx_plan_all: &[InxPlan],
-        need_can: &Vec<usize>, // indicies to ndsinx_plan_all
+        need_can: &Vec<usize>, // indices to ndsinx_plan_all
     ) -> usize {
         assert!(!need_can.is_empty());
 

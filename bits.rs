@@ -480,11 +480,11 @@ impl SomeBits {
     pub fn half_bits(&self) -> Self {
         let one_bits: Vec<SomeBits> = self.split();
 
-        let indicies: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
+        let indices: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
 
         let mut or_bts = SomeBits::new_low(self.num_ints());
 
-        for inx in &indicies {
+        for inx in &indices {
             or_bts = or_bts.b_or(&one_bits[*inx]);
         }
         or_bts

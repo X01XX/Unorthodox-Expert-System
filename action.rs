@@ -80,7 +80,7 @@ impl fmt::Display for SomeAction {
     }
 }
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeAction struct, aggregate the best current guess at what an action
 /// will do for any state.
@@ -1091,6 +1091,14 @@ impl SomeAction {
                 });
             }
 
+            // If this is a one-state group ..
+            if grpx.region.state1 == grpx.region.state2 {
+                if sqrx.pnc {
+                    grpx.set_pnc();
+                }
+                continue;
+            }
+
             let sqry = self.squares.find(&grpx.region.state2).unwrap();
             if !sqry.pnc {
                 ret_nds.push(SomeNeed::ConfirmGroup {
@@ -1589,7 +1597,7 @@ impl SomeAction {
             return true;
         }
 
-        // Get the indicies for squares with Pn::Two.
+        // Get the indices for squares with Pn::Two.
         let mut pn_two = Vec::<usize>::new();
         for (inx, sqrx) in sqrs_in_reg.iter().enumerate() {
             if sqrx.pn == Pn::Two {

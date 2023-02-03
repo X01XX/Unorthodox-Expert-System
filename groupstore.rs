@@ -79,7 +79,7 @@ impl GroupStore {
 
         let mut rmvec = Vec::<usize>::new();
 
-        for (inx, grpx) in self.avec.iter_mut().enumerate() {
+        for (inx, grpx) in self.avec.iter().enumerate() {
             if grpx.region.is_superset_of_state(&sqrx.state) && !grpx.check_square(sqrx) {
                 if sqrx.pn > grpx.pn {
                     println!(
@@ -225,7 +225,7 @@ impl GroupStore {
 
     /// Find and remove any subset groups.
     fn remove_subsets_of(&mut self, reg: &SomeRegion, dom: usize, act: usize) -> bool {
-        // Accumulate indicies of groups that are subsets
+        // Accumulate indices of groups that are subsets
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in &mut self.avec.iter().enumerate() {

@@ -356,27 +356,17 @@ impl SomePlan {
         }
 
         let mut rc_str = String::new();
-        let inx_end = self.steps.len() - 1;
+        //let inx_end = self.steps.len() - 1;
         for stpx in self.steps.iter() {
             let df = stpx.initial.diff_mask(&stpx.result);
 
-            let dif_bits = stpx.initial.diff_mask(&self.steps[inx_end].result);
-            let dif_num = dif_bits.num_one_bits();
-
-            let dif_bits2 = stpx.result.diff_mask(&self.steps[inx_end].result);
-            let dif_num2 = dif_bits2.num_one_bits();
-
             let _ = write!(
                 rc_str,
-                "{} Action {:02} Group {} Rule {} #dif: {} {} to #dif: {} {}\n{}\n",
+                "{} Action {:02} Group {} Rule {}\n{}\n",
                 &stpx.initial,
                 &stpx.act_num,
                 &stpx.group_reg,
                 &stpx.rule,
-                &dif_num,
-                &dif_bits,
-                &dif_num2,
-                &dif_bits2,
                 &df.str2()
             );
         }

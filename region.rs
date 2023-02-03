@@ -355,7 +355,7 @@ impl SomeRegion {
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        self.state1.bitwise_or(&self.state2.bts)
+        self.state1.bitwise_or(&self.state2)
     }
 
     /// Return lowest state in the region
@@ -379,8 +379,8 @@ impl SomeRegion {
     // Return a region with masked bit positions set to X.
     //    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
     //        Self::new(
-    //            &SomeState::new(self.state1.bts.b_or(&msk.bts)),
-    //            &SomeState::new(self.state2.bts.b_and(&msk.bts.b_not())),
+    //            &self.state1.bitwise_or(&msk),
+    //            &self.state2.bitwise_and(&msk.bitwise_not())),
     //        )
     //    }
 

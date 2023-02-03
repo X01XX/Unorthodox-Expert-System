@@ -121,7 +121,7 @@ impl SomeGroup {
     }
 
     /// Return true if a subset square is compatible with a group.
-    pub fn check_square(&mut self, sqrx: &SomeSquare) -> bool {
+    pub fn check_square(&self, sqrx: &SomeSquare) -> bool {
         //        println!(
         //            "group:check_square grp {} sqr {}",
         //            &self.region, &sqrx.state
@@ -131,14 +131,9 @@ impl SomeGroup {
         if sqrx.state == self.region.state1 || sqrx.state == self.region.state2 {
             if self.region.state1 == self.region.state2 {
                 // Allow change of Pn::One to Pn::Unpredictable.
-                if self.pn != sqrx.pn {
-                    if sqrx.pn > Pn::One && !sqrx.pnc {
-                        return false;
-                    }
-                    self.pn = sqrx.pn;
-                    self.rules = sqrx.rules.clone();
+                if self.pn != sqrx.pn && sqrx.pn > Pn::One && !sqrx.pnc {
+                    return false;
                 }
-                self.pnc = sqrx.pnc;
                 return true;
             } else {
                 return sqrx.pn == self.pn;

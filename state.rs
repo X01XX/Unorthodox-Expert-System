@@ -22,6 +22,7 @@ use std::hash::Hash;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 /// A State, a set of bits.  It could be thought of as a square on a Karnaugh Map.
 pub struct SomeState {
@@ -140,9 +141,7 @@ impl SomeState {
 
     /// Return a mask of the bits values that are the same.
     pub fn bitwise_eqv(&self, other: &impl BitsRef) -> SomeMask {
-        SomeMask {
-            bts: self.bts.b_eqv(other.bitsref()),
-        }
+        SomeMask::new(self.bts.b_eqv(other.bitsref()))
     }
 
     /// Return the bitwise Not of a SomeState instance.

@@ -128,8 +128,12 @@ impl ResultStore {
             self.astore[self.num_results % MAX_RESULTS] = st;
         }
 
-        assert!(self.num_results < 100); // increase, if needed, up to usize::MAX.
         self.num_results += 1;
+
+        if self.num_results >= 100 {
+            // increase, if needed, up to usize::MAX.
+            panic!("To many samples of {self}");
+        }
 
         self.calc_pn()
     }

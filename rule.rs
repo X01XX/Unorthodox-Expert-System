@@ -244,8 +244,8 @@ impl SomeRule {
                 "{regx} does not intersect rule initial region {init_reg}");
         };
 
-        let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
-        let ones = SomeMask::new(reg_int.high_state().bts);
+        let zeros = reg_int.low_state().bitwise_not().to_mask();
+        let ones = reg_int.high_state().to_mask();
 
         Self {
             b00: self.b00.bitwise_and(&zeros),
@@ -268,8 +268,8 @@ impl SomeRule {
                 "{regx} does not intersect rule result region {rslt_reg}");
         };
 
-        let zeros = SomeMask::new(reg_int.low_state().bts.b_not());
-        let ones = SomeMask::new(reg_int.high_state().bts);
+        let zeros = reg_int.low_state().bitwise_not().to_mask();
+        let ones = reg_int.high_state().to_mask();
 
         Self {
             b00: self.b00.bitwise_and(&zeros),
