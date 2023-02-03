@@ -17,7 +17,6 @@ use std::fmt;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pri = self.priority();
         let rc_str = match self {
             SomeNeed::AStateMakeGroup {
                 dom_num,
@@ -26,14 +25,20 @@ impl fmt::Display for SomeNeed {
                 for_reg,
                 far,
                 num_x,
-            } => format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})"),
+            } => {
+                let pri = self.priority();
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})")
+            }
             SomeNeed::StateNotInGroup {
                 dom_num,
                 act_num,
                 target_state,
-            } => format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)"),
+            } => {
+                let pri = self.priority();
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)")
+            }
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 act_num,
@@ -42,15 +47,21 @@ impl fmt::Display for SomeNeed {
                 ruls1,
                 group2,
                 ruls2,
-            } => format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})"),
+            } => {
+                let pri = self.priority();
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})")
+            }
             SomeNeed::ToRegion {
                 dom_num,
                 target_region,
                 ..
-            } => format!(
-                "N(Dom {dom_num} Pri {pri} To Optimal Region {target_region})"),
+            } => {
+                let pri = self.priority();
+                format!("N(Dom {dom_num} Pri {pri} To Optimal Region {target_region})")
+            }
             SomeNeed::ToOptimalRegion { target_regions } => {
+                let pri = self.priority();
                 format!("N(Pri {pri} To Optimal Regions {target_regions})")
             }
             SomeNeed::LimitGroup {
@@ -61,6 +72,7 @@ impl fmt::Display for SomeNeed {
                 anchor,
                 ..
             } => {
+                let pri = self.priority();
                 if target_state == anchor {
                     format!(
                         "N(Dom {dom_num} Act {act_num} Pri {pri} Sample anchor State {anchor}, to limit group {for_group})")
@@ -77,6 +89,7 @@ impl fmt::Display for SomeNeed {
                 anchor,
                 ..
             } => {
+                let pri = self.priority();
                 format!(
                     "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
             }
@@ -87,20 +100,22 @@ impl fmt::Display for SomeNeed {
                 grp_reg,
                 ..
             } => {
+                let pri = self.priority();
                 format!(
-                    "N(Dom {dom_num} Act {act_num} Pri {pri} Get additional sample of state {target_state} to confirm group {grp_reg})",
-                )
+                    "N(Dom {dom_num} Act {act_num} Pri {pri} Get additional sample of state {target_state} to confirm group {grp_reg})")
             }
-
             SomeNeed::SeekEdge {
                 dom_num,
                 act_num,
                 target_state,
                 in_group,
-            } => format!(
-                "N(Dom {} Act {} Pri {} Sample State {}, between {} and {} to seek edge)",
-                dom_num, act_num, pri, target_state, in_group.state1, in_group.state2
-            ),
+            } => {
+                let pri = self.priority();
+                format!(
+                    "N(Dom {} Act {} Pri {} Sample State {}, between {} and {} to seek edge)",
+                    dom_num, act_num, pri, target_state, in_group.state1, in_group.state2
+                )
+            }
             SomeNeed::AddGroup {
                 group_region,
                 rules,
@@ -449,7 +464,11 @@ impl SomeNeed {
             SomeNeed::StateNotInGroup { .. } => 500,
             SomeNeed::ToOptimalRegion { .. } => 600,
             SomeNeed::ToRegion { .. } => 700,
-            _ => usize::MAX,
+            _ => panic!(
+                "SomeNeed::priority should not be called for the {} need.",
+                self.name()
+            ),
+            //_ => usize::MAX,
         } // end match ndx
     } // end priority
 
@@ -459,7 +478,10 @@ impl SomeNeed {
             SomeNeed::LimitGroup { group_num, .. } => *group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => *group_num,
             SomeNeed::ConfirmGroup { group_num, .. } => *group_num,
-            _ => usize::MAX,
+            _ => panic!(
+                "SomeNeed::group_num should not be called for the {} need.",
+                self.name()
+            ),
         }
     }
 

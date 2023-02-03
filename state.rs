@@ -38,6 +38,7 @@ impl fmt::Display for SomeState {
 impl SomeState {
     /// Return a new SomeState instance, given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
+        assert!(bts.num_ints() > 0);
         Self { bts }
     }
 
@@ -51,6 +52,7 @@ impl SomeState {
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
         let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
@@ -74,6 +76,7 @@ impl SomeState {
 
     /// Return a random state value.
     pub fn new_random(num_ints: usize) -> SomeState {
+        assert!(num_ints > 0);
         SomeState {
             bts: SomeBits::new_random(num_ints),
         }
@@ -115,28 +118,28 @@ impl SomeState {
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
         SomeState {
             bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise Or of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
         SomeState {
             bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise XOr of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
         SomeState {
             bts: self.bts.b_xor(other.bitsref()),
         }
     }
 
     /// Return a mask of the bits values that are the same.
-    pub fn bitwise_eqv<U: BitsRef>(&self, other: &U) -> SomeMask {
+    pub fn bitwise_eqv(&self, other: &impl BitsRef) -> SomeMask {
         SomeMask {
             bts: self.bts.b_eqv(other.bitsref()),
         }
@@ -176,5 +179,26 @@ pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
 impl BitsRef for SomeState {
     fn bitsref(&self) -> &SomeBits {
         &self.bts
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eq() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(1, "s0b1010").unwrap();
+        let sta2 = SomeState::new_from_string(1, "s0b1010").unwrap();
+        if sta1 != sta2 {
+            return Err(format!("sta1 {} ne sta2 {}?", sta1, sta2));
+        }
+
+        let sta3 = SomeState::new_from_string(1, "s0b1001").unwrap();
+        if sta1 == sta3 {
+            return Err(format!("sta1 {} eq sta3 {}?", sta1, sta3));
+        }
+
+        Ok(())
     }
 }

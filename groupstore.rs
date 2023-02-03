@@ -44,6 +44,7 @@ pub struct GroupStore {
 impl GroupStore {
     /// Return a new, empty, GroupStore.
     pub fn new(num_ints: usize) -> Self {
+        assert!(num_ints > 0);
         Self {
             avec: Vec::<SomeGroup>::with_capacity(10),
             aggregate_changes: SomeChange::new_low(num_ints),
@@ -322,11 +323,7 @@ impl GroupStore {
     }
 
     /// Set the anchor for a group.
-    pub fn set_anchor(
-        &mut self,
-        grp_reg: &SomeRegion,
-        anchor: &SomeState,
-    ) {
+    pub fn set_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
         for grpx in &mut self.avec {
             if grpx.region == *grp_reg {
                 grpx.set_anchor(anchor); //, rate);

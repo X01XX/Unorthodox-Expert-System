@@ -36,11 +36,13 @@ impl fmt::Display for SomeMask {
 impl SomeMask {
     /// Return a new mask given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
+        assert!(bts.num_ints() > 0);
         Self { bts }
     }
 
     /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
     pub fn new_low(num_ints: usize) -> SomeMask {
+        assert!(num_ints > 0);
         Self {
             bts: SomeBits::new_low(num_ints),
         }
@@ -61,6 +63,8 @@ impl SomeMask {
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
+
         let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
@@ -170,28 +174,28 @@ impl SomeMask {
     }
 
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
-    pub fn bitwise_and<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
         SomeMask {
             bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
-    pub fn bitwise_or<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
         SomeMask {
             bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
-    pub fn bitwise_xor<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
         SomeMask {
             bts: self.bts.b_xor(other.bitsref()),
         }
     }
 
     /// Return a mask of the bits values that are the same.
-    pub fn bitwise_eqv<U: BitsRef>(&self, other: &U) -> Self {
+    pub fn bitwise_eqv(&self, other: &impl BitsRef) -> Self {
         Self {
             bts: self.bts.b_eqv(other.bitsref()),
         }
@@ -226,6 +230,22 @@ impl BitsRef for SomeMask {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn eq() -> Result<(), String> {
+        let msk1 = SomeMask::new_from_string(1, "m0b1010").unwrap();
+        let msk2 = SomeMask::new_from_string(1, "m0b1010").unwrap();
+        if msk1 != msk2 {
+            return Err(format!("msk1 {} ne msk2 {}?", msk1, msk2));
+        }
+
+        let msk3 = SomeMask::new_from_string(1, "m0b1001").unwrap();
+        if msk1 == msk3 {
+            return Err(format!("msk1 {} eq msk3 {}?", msk1, msk3));
+        }
+
+        Ok(())
+    }
 
     #[test]
     fn half_mask() -> Result<(), String> {

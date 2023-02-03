@@ -31,6 +31,7 @@ impl SomeChange {
 
     /// Return a new change, with no bits set yet.
     pub fn new_low(num_ints: usize) -> Self {
+        assert!(num_ints > 0);
         Self {
             b01: SomeMask::new_low(num_ints),
             b10: SomeMask::new_low(num_ints),

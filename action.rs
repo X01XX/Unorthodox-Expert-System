@@ -110,6 +110,7 @@ impl SomeAction {
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
     pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
+        assert!(num_ints > 0);
         SomeAction {
             num: act_num,
             dom_num,

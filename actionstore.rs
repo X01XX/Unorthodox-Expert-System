@@ -42,6 +42,7 @@ pub struct ActionStore {
 impl ActionStore {
     /// Return a new, empty ActionStore.
     pub fn new(num_ints: usize) -> Self {
+        assert!(num_ints > 0);
         ActionStore {
             avec: Vec::<SomeAction>::with_capacity(5),
             aggregate_changes: SomeChange::new_low(num_ints),
@@ -60,6 +61,7 @@ impl ActionStore {
 
     /// Add a new action to the ActionStore.
     pub fn add_action(&mut self, dom_num: usize, num_ints: usize) {
+        assert!(num_ints > 0);
         self.avec
             .push(SomeAction::new(dom_num, self.avec.len(), num_ints));
     }

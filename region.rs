@@ -69,6 +69,7 @@ impl SomeRegion {
     /// A state string can be used, like "s101010" or s0x34", making
     /// a region with no X bit positions.
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
         let mut msk_high = SomeMask::new_low(num_ints);
 
         let mut msk_low = SomeMask::new_low(num_ints);
@@ -135,6 +136,7 @@ impl SomeRegion {
     /// A state string can be used, like "s0b101010" or s0x34", making
     /// a region with no X bit positions.
     pub fn new_from_string_pad_x(num_ints: usize, str: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
         let mut msk_high_not = SomeMask::new_low(num_ints);
 
         let mut msk_low = SomeMask::new_low(num_ints);

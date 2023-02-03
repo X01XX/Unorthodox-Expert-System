@@ -57,6 +57,7 @@ pub struct SomeBits {
 impl SomeBits {
     /// Return a new SomeBits instance.
     pub fn new(ints: Vec<Bitint>) -> Self {
+        assert!(!ints.is_empty());
         Self { ints }
     }
 
@@ -260,8 +261,6 @@ impl SomeBits {
 
     /// Return Bits that are the same
     pub fn b_eqv(&self, other: &Self) -> Self {
-        assert!(self.num_ints() == other.num_ints());
-
         self.b_xor(other).b_not()
     }
 

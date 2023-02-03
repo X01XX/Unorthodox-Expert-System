@@ -61,6 +61,7 @@ impl SomeRule {
     /// Leading "00" tokens can be omitted.
     /// If no tokens supplied, the rule will be all "00".
     pub fn new_from_string(num_ints: usize, rep: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
         let mut b00not = SomeMask::new_low(num_ints); // If starting with all bits set, left-shift will be a problem.
         let mut b01 = SomeMask::new_low(num_ints);
         let mut b11 = SomeMask::new_low(num_ints);

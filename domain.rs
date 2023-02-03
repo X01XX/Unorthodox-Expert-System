@@ -68,6 +68,7 @@ impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(num_ints: usize) -> Self {
+        assert!(num_ints > 0);
         // Set up a domain instance with the correct value for num_ints
         let cur_state = initialize_state(num_ints);
         SomeDomain {
@@ -794,6 +795,7 @@ fn step_vecs_order_bad(
 
 /// Return the first state value.
 pub fn initialize_state(num_ints: usize) -> SomeState {
+    assert!(num_ints > 0);
     SomeState::new_random(num_ints)
 }
 
