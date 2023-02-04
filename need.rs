@@ -52,14 +52,6 @@ impl fmt::Display for SomeNeed {
                 format!(
                 "N(Dom {dom_num} Act {act_num} Pri {pri} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})")
             }
-            SomeNeed::ToRegion {
-                dom_num,
-                target_region,
-                ..
-            } => {
-                let pri = self.priority();
-                format!("N(Dom {dom_num} Pri {pri} To Optimal Region {target_region})")
-            }
             SomeNeed::ToOptimalRegion { target_regions } => {
                 let pri = self.priority();
                 format!("N(Pri {pri} To Optimal Regions {target_regions})")
@@ -201,12 +193,6 @@ pub enum SomeNeed {
         target_state: SomeState,
         in_group: SomeRegion,
     },
-    /// Move current state to a given region.
-    ToRegion {
-        dom_num: usize,
-        act_num: usize,
-        target_region: SomeRegion,
-    },
     /// Move current state to given regions.
     ToOptimalRegion { target_regions: RegionStore },
     /// Housekeeping, add a group.
@@ -282,20 +268,6 @@ impl PartialEq for SomeNeed {
                     return dom_num == dom_num_2
                         && act_num == act_num_2
                         && target_region == target_region_2;
-                }
-            }
-            SomeNeed::ToRegion {
-                dom_num,
-                target_region,
-                ..
-            } => {
-                if let SomeNeed::ToRegion {
-                    dom_num: dom_num_2,
-                    target_region: target_region_2,
-                    ..
-                } = other
-                {
-                    return dom_num == dom_num_2 && target_region == target_region_2;
                 }
             }
             SomeNeed::ToOptimalRegion { target_regions } => {
@@ -463,7 +435,6 @@ impl SomeNeed {
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
             SomeNeed::StateNotInGroup { .. } => 500,
             SomeNeed::ToOptimalRegion { .. } => 600,
-            SomeNeed::ToRegion { .. } => 700,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -503,11 +474,6 @@ impl SomeNeed {
                     return true;
                 }
             }
-            SomeNeed::ToRegion { target_region, .. } => {
-                if target_region.is_superset_of_state(cur_state) {
-                    return true;
-                }
-            }
             SomeNeed::ConfirmGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
@@ -542,7 +508,6 @@ impl SomeNeed {
             SomeNeed::AStateMakeGroup { act_num, .. } => *act_num,
             SomeNeed::StateNotInGroup { act_num, .. } => *act_num,
             SomeNeed::ContradictoryIntersection { act_num, .. } => *act_num,
-            SomeNeed::ToRegion { act_num, .. } => *act_num,
             SomeNeed::ConfirmGroup { act_num, .. } => *act_num,
             SomeNeed::SeekEdge { act_num, .. } => *act_num,
             SomeNeed::LimitGroup { act_num, .. } => *act_num,
@@ -560,7 +525,6 @@ impl SomeNeed {
             SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num,
             SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num,
             SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num,
-            SomeNeed::ToRegion { dom_num, .. } => *dom_num,
             SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
@@ -592,11 +556,6 @@ impl SomeNeed {
                 SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::ContradictoryIntersection {
-                dom_num,
-                target_region,
-                ..
-            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
-            SomeNeed::ToRegion {
                 dom_num,
                 target_region,
                 ..
@@ -653,7 +612,6 @@ impl SomeNeed {
             SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num = num,
             SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num = num,
             SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num = num,
-            SomeNeed::ToRegion { dom_num, .. } => *dom_num = num,
             SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num = num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num = num,
             SomeNeed::LimitGroup { dom_num, .. } => *dom_num = num,

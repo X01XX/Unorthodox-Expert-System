@@ -465,7 +465,6 @@ fn do_any_need(
 
     match ndx {
         SomeNeed::ToOptimalRegion { .. } => dom_num,
-        SomeNeed::ToRegion { .. } => dom_num,
         _ => ndx.dom_num(),
     }
 }
@@ -512,9 +511,8 @@ fn do_print_plan_details(
 fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &PlanStore) -> bool {
     match ndx {
         SomeNeed::ToOptimalRegion { .. } => {
-            println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
+            //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
-        SomeNeed::ToRegion { .. } => println!("\nNeed chosen:{} {}", &ndx, &plans.str_terse()),
         _ => {
             if dom_num != ndx.dom_num() {
                 // Show "before" state before running need.
@@ -539,14 +537,6 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
                 .is_superset_of_states(&dmxs.all_current_states())
             {
                 dmxs.set_boredom_limit();
-                return true;
-            }
-        }
-        SomeNeed::ToRegion { .. } => {
-            if ndx
-                .target()
-                .is_superset_of_state(dmxs.cur_state(ndx.dom_num()))
-            {
                 return true;
             }
         }
@@ -585,7 +575,6 @@ fn do_chosen_need(
 
                 match ndx {
                     SomeNeed::ToOptimalRegion { .. } => dom_num,
-                    SomeNeed::ToRegion { .. } => dom_num,
                     _ => ndx.dom_num(),
                 }
             }
