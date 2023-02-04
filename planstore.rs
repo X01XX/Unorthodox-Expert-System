@@ -81,15 +81,19 @@ impl PlanStore {
     pub fn str_terse(&self) -> String {
         let mut rc_str = String::new();
 
+        if self.avec.len() > 1 {
+            rc_str.push_str("( ");
+        }
         let mut not_first = false;
         for planx in &self.avec {
-            if !planx.is_empty() {
-                if not_first {
-                    rc_str.push_str(", ");
-                }
-                rc_str.push_str(&planx.str_terse());
-                not_first = true;
+            if not_first {
+                rc_str.push_str(", ");
             }
+            rc_str.push_str(&planx.str_terse());
+            not_first = true;
+        }
+        if self.avec.len() > 1 {
+            rc_str.push_str(" )");
         }
         rc_str
     }

@@ -294,16 +294,12 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
 
                 for (inx, ndplnx) in need_plans.iter().enumerate() {
                     if let Some(plans) = &ndplnx.plans {
-                        if plans.is_empty() {
-                            println!("{:2} {}", &inx, &nds[ndplnx.inx]);
-                        } else {
-                            println!(
-                                "{:2} {} {}",
-                                need_can.len(),
-                                &nds[ndplnx.inx],
-                                &ndplnx.plans.as_ref().unwrap().str_terse()
-                            );
-                        }
+                        println!(
+                            "{:2} {} {}",
+                            need_can.len(),
+                            &nds[ndplnx.inx],
+                            plans.str_terse()
+                        );
                         need_can.push(inx);
                     }
                 } // next ndplnx
@@ -1002,9 +998,11 @@ fn usage() {
     println!("    to be in an optimal region.");
     println!("\n    If there is another optimal region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
     println!("    and seek to move the current state to a different optimal region, or to an intersection of optimal regions.");
-    println!("\n    \"P[]\" means Plan: No extra actions need to be run, using the current state, run the need action to satisfy the need.");
-    println!("    \"P[1,2]\" means Plan: Run action 1, then action 2, to change the current state, then run the need action to satisfy the need.");
-    println!("    You start to see these after step 50-60, using previously generated rules, to limit or extend rules, or test contradictory intersections.");
+    println!(
+        "\n    \"P:0[]\" means Plan: Domain 0. The current state can be used to satisfy the need."
+    );
+    println!("    \"P:1[2,3]\" means Plan: Domain 1. Run action 2, then action 3, to change the current state to satisfy the need.");
+    println!("    Once the current state is correct, most (but not all) needs require an additional action to get a sample.");
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
     println!("    will get things moving again.");
