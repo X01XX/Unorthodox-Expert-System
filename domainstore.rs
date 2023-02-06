@@ -85,6 +85,8 @@ pub struct InxPlan {
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
     pub avec: Vec<SomeDomain>,
+    /// Domain displayed to user.
+    pub current_domain: usize,
     /// A counter to indicate the number of steps the current state is in the same optimal region.
     pub boredom: usize,
     /// A limit for becomming bored, then moving to another optimal state.
@@ -102,6 +104,7 @@ impl DomainStore {
     pub fn new() -> Self {
         Self {
             avec: Vec::<SomeDomain>::new(),
+            current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
             optimal_and_ints: OptimalRegionsStore::new(),
@@ -426,7 +429,7 @@ impl DomainStore {
         let ndx = &nds[itmx.inx]; // get need using tuple index
 
         println!(
-            "\nNeed chosen: {} {} {}",
+            "\nNeed chosen: {:2} {} {}",
             &can_nds_pln[can_do2[cd2_inx]].0,
             &ndx,
             &itmx.plans.as_ref().unwrap().str_terse()
@@ -559,6 +562,41 @@ impl DomainStore {
         println!(" ");
         ret
     }
+
+    /// Print a domain.
+    pub fn print_domain(&self) {
+
+        let dom_num = self.current_domain;
+
+        print!("\nCurrent Domain: {} of {}", dom_num, self.len(),);
+
+        println!("\nActs: {}", &self.avec[dom_num].actions);
+
+        let cur_state = &self.avec[dom_num].get_current_state();
+
+        println!("\nDom: {dom_num} Current State: {cur_state}");
+    }
+
+    /// Change the current display domain.
+    pub fn change_domain(&mut self, dom_num: usize) {
+        assert!(dom_num < self.avec.len());
+
+        self.current_domain = dom_num;
+    }
+
+    /// Return a SomeState instance from a string, for the current domain.
+    /// Left-most, consecutive, zeros can be omitted.
+    pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
+        let dmx = self.current_domain;
+        self[dmx].state_from_string(str)
+    }
+
+    /// Set the current state field, of the current domain.
+    pub fn set_state(&mut self, new_state: &SomeState) {
+        let dmx = self.current_domain;
+        self[dmx].set_state(new_state)
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

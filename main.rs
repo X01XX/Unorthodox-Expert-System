@@ -234,7 +234,8 @@ fn main() {
 pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
     let mut to_end = run_to_end;
     let mut dmxs = init();
-    let mut dom_num = 0;
+    dmxs.change_domain(0);
+
     let mut stepx = 0; // Current step number of the session.
 
     loop {
@@ -252,7 +253,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
         );
         assert!(stepx < 800); // Remove for continuous use
 
-        print_domain(&dmxs, dom_num);
+        dmxs.print_domain();
 
         //println!("session loop 3");
 
@@ -351,7 +352,7 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                     if can_do > 0 {
                         //println!("\nAction needs: {}", nds);
 
-                        dom_num = do_any_need(&mut dmxs, dom_num, &nds, &need_plans, &need_can);
+                        do_any_need(&mut dmxs, &nds, &need_plans, &need_can);
 
                         break;
                     } // end-if can_do > 0
@@ -401,22 +402,21 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 match cmd[0] {
                     "h" => usage(),
                     "help" => usage(),
-                    "cs" => do_change_state_command(&mut dmxs[dom_num], &cmd),
-                    "to" => do_to_region_command(&mut dmxs[dom_num], &cmd),
-                    "ss" => do_sample_state_command(&mut dmxs[dom_num], &cmd),
-                    "ps" => do_print_squares_command(&mut dmxs[dom_num], &cmd),
-                    "aj" => do_adjacent_anchor_command(&mut dmxs[dom_num], &cmd),
-                    "gps" => do_print_group_defining_squares_command(&mut dmxs[dom_num], &cmd),
+                    "cs" => do_change_state_command(&mut dmxs, &cmd),
+                    "to" => do_to_region_command(&mut dmxs, &cmd),
+                    "ss" => do_sample_state_command(&mut dmxs, &cmd),
+                    "ps" => do_print_squares_command(&mut dmxs, &cmd),
+                    "aj" => do_adjacent_anchor_command(&mut dmxs, &cmd),
+                    "gps" => do_print_group_defining_squares_command(&mut dmxs, &cmd),
                     "fsd" => store_data(&dmxs, stepx, &cmd),
                     "ppd" => do_print_plan_details(&mut dmxs, &cmd, &nds, &need_plans, &need_can),
                     "cd" => {
-                        dom_num = do_change_domain(&dmxs, dom_num, &cmd);
+                        do_change_domain(&mut dmxs, &cmd);
                         stepx -= 1;
                         break;
                     }
                     "dn" => {
-                        dom_num =
-                            do_chosen_need(&mut dmxs, dom_num, &cmd, &nds, &need_plans, &need_can);
+                        do_chosen_need(&mut dmxs, &cmd, &nds, &need_plans, &need_can);
                         break;
                     }
                     _ => {
@@ -425,47 +425,40 @@ pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
                 };
             } // end command loop
         } else if can_do > 0 {
-            dom_num = do_any_need(&mut dmxs, dom_num, &nds, &need_plans, &need_can);
+            do_any_need(&mut dmxs, &nds, &need_plans, &need_can);
         }
     } // end loop
 } // end do_session
 
 /// Change the domain to a number given by user.
-fn do_change_domain(dmxs: &DomainStore, dom_num: usize, cmd: &[&str]) -> usize {
+fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) {
     // Get domain number from string
     match dmxs.domain_num_from_string(cmd[1]) {
         Ok(d_num) => {
-            return d_num;
+            dmxs.change_domain(d_num);
         }
         Err(error) => {
             println!("\n{error}");
         }
     } // end match
-    dom_num
 }
 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
 fn do_any_need(
     dmxs: &mut DomainStore,
-    dom_num: usize,
     nds: &NeedStore,
     need_plans: &[InxPlan],
     need_can: &Vec<usize>,
-) -> usize {
+) {
     let np_inx = dmxs.choose_need(nds, need_plans, need_can);
 
     let nd_inx = need_plans[np_inx].inx;
     let ndx = &nds[nd_inx];
     let plans = &need_plans[np_inx].plans.as_ref().unwrap();
 
-    if do_a_need(dmxs, dom_num, ndx, plans) {
+    if do_a_need(dmxs, ndx, plans) {
         println!("Need satisfied");
-    }
-
-    match ndx {
-        SomeNeed::ToOptimalRegion { .. } => dom_num,
-        _ => ndx.dom_num(),
     }
 }
 
@@ -508,7 +501,9 @@ fn do_print_plan_details(
 
 /// Try to satisfy a need.
 /// Return true if success.
-fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &PlanStore) -> bool {
+fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool {
+    let dom_num = dmxs.current_domain;
+
     match ndx {
         SomeNeed::ToOptimalRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
@@ -520,8 +515,9 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
                     "\nAll domain states: {}",
                     somestate_ref_vec_string(&dmxs.all_current_states())
                 );
-                print_domain(dmxs, ndx.dom_num());
-                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
+                dmxs.change_domain(ndx.dom_num());
+                dmxs.print_domain();
+//                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
             }
         }
     }
@@ -553,23 +549,37 @@ fn do_a_need(dmxs: &mut DomainStore, dom_num: usize, ndx: &SomeNeed, plans: &Pla
 /// Try to satisfy a need chosen by the user.
 fn do_chosen_need(
     dmxs: &mut DomainStore,
-    dom_num: usize,
     cmd: &[&str],
     nds: &NeedStore,
     need_plans: &[InxPlan],
     need_can: &Vec<usize>,
 ) -> usize {
+    let dom_num = dmxs.current_domain;
+
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
             if n_num >= need_can.len() {
                 println!("Invalid Need Number: {}", cmd[1]);
                 dom_num
             } else {
+
                 let ndx = &nds[need_plans[need_can[n_num]].inx];
 
                 let plans = &need_plans[need_can[n_num]].plans.as_ref().unwrap();
 
-                if do_a_need(dmxs, dom_num, ndx, plans) {
+                println!(
+                    "\nNeed chosen: {:2} {} {}",
+                    dom_num,
+                    &ndx,
+                    &plans.str_terse()
+                );
+
+                if dom_num != ndx.dom_num() {
+                    dmxs.change_domain(ndx.dom_num());
+                    dmxs.print_domain();
+                }
+
+                if do_a_need(dmxs, ndx, plans) {
                     println!("Need satisfied");
                 }
 
@@ -588,12 +598,13 @@ fn do_chosen_need(
 
 /// Do a change-state command.
 /// Return 1 is Ok, 0 if not.
-fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[&str]) {
+fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) {
     // Get state from string
-    match dmx.state_from_string(cmd[1]) {
+
+    match dmxs.state_from_string(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
-            dmx.set_state(&a_state);
+            dmxs.set_state(&a_state);
         }
         Err(error) => {
             println!("\nDid not understand state, {error}");
@@ -603,7 +614,10 @@ fn do_change_state_command(dmx: &mut SomeDomain, cmd: &[&str]) {
 
 /// Do to-region command.
 /// Return 1 is Ok, 0 if not.
-fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
+fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
+
     let cur_state = dmx.get_current_state();
 
     // Get region from string
@@ -630,7 +644,10 @@ fn do_to_region_command(dmx: &mut SomeDomain, cmd: &[&str]) {
 
 /// Do sample-state command.
 /// Return 1 is Ok, 0 if not.
-fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
+fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
+
     let cur_state = dmx.get_current_state();
 
     if cmd.len() == 1 {
@@ -699,7 +716,10 @@ fn do_sample_state_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 
 /// Do print-squares command.
 /// Return 1 is Ok, 0 if not.
-fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
+fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
+
     if cmd.len() == 1 {
         return;
     }
@@ -824,7 +844,10 @@ fn do_print_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 
 /// Do adjacent-anchor command.
 /// Return 1 is Ok, 0 if not.
-fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
+fn do_adjacent_anchor_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
+
     if cmd.len() == 1 {
         println!("Did not understand {cmd:?}");
         return;
@@ -872,7 +895,9 @@ fn do_adjacent_anchor_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
 
 /// Do print-group-defining-squares command.
 /// Return 1 is Ok, 0 if not.
-fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>) {
+fn do_print_group_defining_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
     if cmd.len() == 1 {
         println!("Did not understand {cmd:?}");
         return;
@@ -919,17 +944,6 @@ fn do_print_group_defining_squares_command(dmx: &mut SomeDomain, cmd: &Vec<&str>
     } else {
         println!("\nGroup with region {} not found", &aregion);
     }
-}
-
-/// Print a domain.
-fn print_domain(dmxs: &DomainStore, dom_num: usize) {
-    print!("\nCurrent Domain: {} of {}", dom_num, dmxs.len(),);
-
-    println!("\nActs: {}", &dmxs[dom_num].actions);
-
-    let cur_state = &dmxs[dom_num].get_current_state();
-
-    println!("\nDom: {} Current State: {}", dom_num, &cur_state);
 }
 
 /// Display usage options.
