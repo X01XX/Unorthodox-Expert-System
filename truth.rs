@@ -4,15 +4,15 @@
 //!
 //! Kind of like Boolean True/False, plus Maybe.
 
-use std::fmt;
+//use std::fmt;
 
-impl fmt::Display for Truth {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = self.formatted_string();
+//impl fmt::Display for Truth {
+//    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//        let rc_str = self.formatted_string();
 
-        write!(f, "{rc_str}")
-    }
-}
+//        write!(f, "{rc_str}")
+//    }
+//}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Truth {

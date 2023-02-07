@@ -565,7 +565,6 @@ impl DomainStore {
 
     /// Print a domain.
     pub fn print_domain(&self) {
-
         let dom_num = self.current_domain;
 
         print!("\nCurrent Domain: {} of {}", dom_num, self.len(),);
@@ -596,7 +595,6 @@ impl DomainStore {
         let dmx = self.current_domain;
         self[dmx].set_state(new_state)
     }
-
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

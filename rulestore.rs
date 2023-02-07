@@ -10,7 +10,6 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -255,7 +254,7 @@ impl RuleStore {
     }
 
     /// Return Truth value of a possible union.
-    pub fn can_form_union(&self, other: &Self) -> Truth {
+    pub fn can_form_union(&self, other: &Self) -> Option<bool> {
         assert!(!self.is_empty());
         assert!(!other.is_empty());
 
@@ -264,27 +263,27 @@ impl RuleStore {
         if self.len() < other.len() {
             for rulx in other.iter() {
                 if rulx.union(&self[0]).is_some() {
-                    return Truth::M;
+                    return None;
                 }
             }
-            return Truth::F;
+            return Some(false);
         }
 
         if other.len() < self.len() {
             for rulx in self.iter() {
                 if rulx.union(&other[0]).is_some() {
-                    return Truth::M;
+                    return None;
                 }
             }
-            return Truth::F;
+            return Some(false);
         }
 
         if let Some(_ruls) = self.union(other) {
             //println!("can_form_union: 1 returning T {}", &ruls);
-            return Truth::T;
+            return Some(true);
         }
         //println!("can_form_union: 2 returning F");
-        Truth::F
+        Some(false)
     }
 
     /// Return a vector iterator.

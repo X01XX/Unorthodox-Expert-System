@@ -53,7 +53,7 @@ mod randompick;
 mod removeunordered;
 mod target;
 mod targetstore;
-mod truth;
+//mod truth;
 
 use std::io;
 use std::io::{Read, Write};
@@ -517,7 +517,7 @@ fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool 
                 );
                 dmxs.change_domain(ndx.dom_num());
                 dmxs.print_domain();
-//                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
+                //                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
             }
         }
     }
@@ -562,7 +562,6 @@ fn do_chosen_need(
                 println!("Invalid Need Number: {}", cmd[1]);
                 dom_num
             } else {
-
                 let ndx = &nds[need_plans[need_can[n_num]].inx];
 
                 let plans = &need_plans[need_can[n_num]].plans.as_ref().unwrap();

@@ -27,7 +27,6 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::truth::Truth;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -122,21 +121,21 @@ impl SomeAction {
         }
     }
 
-    /// Return Truth enum for the combination of any two different squares,
+    /// Return the truth value for the combination of any two different squares,
     /// and the squares between them.
-    fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Truth {
+    fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Option<bool> {
         assert!(sqrx.state != sqry.state);
         //println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
         let cmbx = sqrx.can_combine(sqry);
 
-        if cmbx == Truth::F {
+        if Some(false) == cmbx {
             return cmbx;
         }
 
         // Check if Pn::One squares cannot combine as-is, for bootstrapping.
-        if sqrx.pn == Pn::One && sqry.pn == Pn::One && cmbx == Truth::M {
-            return Truth::F;
+        if sqrx.pn == Pn::One && sqry.pn == Pn::One && cmbx.is_none() {
+            return Some(false);
         }
 
         if sqrx.pn == sqry.pn {
@@ -144,25 +143,25 @@ impl SomeAction {
                 &SomeRegion::new(sqrx.state.clone(), sqry.state.clone()),
                 sqrx.pn,
             ) {
-                return Truth::F;
+                return Some(false);
             }
             if sqrx.pn == Pn::Unpredictable {
-                return Truth::T;
+                return Some(true);
             }
 
-            let Some(rules) = sqrx.rules.union(&sqry.rules) else { return Truth::F; };
+            let Some(rules) = sqrx.rules.union(&sqry.rules) else { return Some(false); };
 
             if !self.all_subset_rules_in_region(
                 &SomeRegion::new(sqrx.state.clone(), sqry.state.clone()),
                 &rules,
             ) {
-                return Truth::F;
+                return Some(false);
             }
         } else if !self.no_incompatible_square_combination_in_region(&SomeRegion::new(
             sqrx.state.clone(),
             sqry.state.clone(),
         )) {
-            return Truth::F;
+            return Some(false);
         }
 
         cmbx
@@ -251,7 +250,7 @@ impl SomeAction {
                     if let Some(sqry) = self.squares.find(far) {
                         if (sqry.pn == Pn::One || sqry.pnc)
                             && (sqrx.state == sqry.state
-                                || self.can_combine(sqrx, sqry) == Truth::T)
+                                || self.can_combine(sqrx, sqry) == Some(true))
                         {
                             let regz = SomeRegion::new(sqrx.state.clone(), sqry.state.clone());
 
@@ -291,7 +290,7 @@ impl SomeAction {
                     // It may be different from both state1 and state2.
                     // If it needs more samples, skip, next need will increment the number samples.
 
-                    if sqr3.can_combine(sqr1) == Truth::F && sqr1.pnc && sqr3.pnc {
+                    if sqr3.can_combine(sqr1) == Some(false) && sqr1.pnc && sqr3.pnc {
                         if sqr1.is_adjacent(sqr3) {
                             println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr1.state, &sqr3.state, &greg);
                             self.seek_edge.remove_region(greg);
@@ -308,7 +307,7 @@ impl SomeAction {
                         }
                     }
 
-                    if sqr3.can_combine(sqr2) == Truth::F && sqr2.pnc && sqr3.pnc {
+                    if sqr3.can_combine(sqr2) == Some(false) && sqr2.pnc && sqr3.pnc {
                         if sqr2.is_adjacent(sqr3) {
                             println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr2.state, &sqr3.state, &greg);
                             self.seek_edge.remove_region(greg);
@@ -459,7 +458,8 @@ impl SomeAction {
                 };
 
                 if sqr1.pnc && sqr2.pnc {
-                    if !sqrx.state.is_adjacent(&sqr1.state) && sqrx.can_combine(sqr1) == Truth::F {
+                    if !sqrx.state.is_adjacent(&sqr1.state) && sqrx.can_combine(sqr1) == Some(false)
+                    {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
                             &self.dom_num, &self.num, &sqrx.state, &sqr1.state
@@ -468,7 +468,8 @@ impl SomeAction {
                             .push_nosubs(SomeRegion::new(sqrx.state.clone(), sqr1.state.clone()));
                     }
 
-                    if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Truth::F {
+                    if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Some(false)
+                    {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
                             &self.dom_num, &self.num, &sqrx.state, &sqr2.state
@@ -486,7 +487,7 @@ impl SomeAction {
                 if let Some(anchor_state) = &grpx.anchor {
                     if anchor_state.is_adjacent(&sqrx.state) {
                         if let Some(anchor_sqr) = self.squares.find(anchor_state) {
-                            if anchor_sqr.can_combine(sqrx) == Truth::T {
+                            if anchor_sqr.can_combine(sqrx) == Some(true) {
                                 grpx.set_limited_off();
                             }
                         }
@@ -977,16 +978,16 @@ impl SomeAction {
                     let cnb1 = sqrx.can_combine(sqr1);
                     let cnb2 = sqrx.can_combine(sqr2);
 
-                    if cnb1 == Truth::T && cnb2 == Truth::T {
+                    if cnb1 == Some(true) && cnb2 == Some(true) {
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     } else {
-                        if cnb1 == Truth::F {
+                        if cnb1 == Some(false) {
                             new_regs.push_nosups(SomeRegion::new(
                                 sqrx.state.clone(),
                                 sqr1.state.clone(),
                             ));
                         }
-                        if cnb2 == Truth::F {
+                        if cnb2 == Some(false) {
                             new_regs.push_nosups(SomeRegion::new(
                                 sqrx.state.clone(),
                                 sqr2.state.clone(),
@@ -1398,7 +1399,7 @@ impl SomeAction {
                     // Create new group, if an adjacent square can combine with the anchor.
                     // Current anchor will then be in two regions,
                     // the next run of limit_group_anchor_needs will deal with it.
-                    if anchor_sqr.can_combine(adj_sqr) == Truth::T {
+                    if anchor_sqr.can_combine(adj_sqr) == Some(true) {
                         let regz = SomeRegion::new(anchor_sta.clone(), adj_sta);
 
                         let ruls = if anchor_sqr.pn == Pn::Unpredictable {
@@ -2077,7 +2078,7 @@ impl SomeAction {
                 continue;
             }
 
-            if self.can_combine(sqrx, sqry) != Truth::T {
+            if self.can_combine(sqrx, sqry) != Some(true) {
                 continue;
             }
 

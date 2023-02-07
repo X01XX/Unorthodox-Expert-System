@@ -21,7 +21,6 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
-use crate::removeunordered::remove_unordered;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -392,7 +391,7 @@ impl SomeDomain {
             return None;
         };
 
-        let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else {
+        let Some(steps_by_change_vov) = steps_str.get_steps_by_bit_change(&required_change) else {
             return None;
         };
 
@@ -471,7 +470,7 @@ impl SomeDomain {
         let Some(steps_str) = self.get_steps(&required_change) else { return None; };
 
         // Get vector of steps for each bit change.
-        let Some(steps_by_change_vov) = self.get_steps_by_bit_change(&steps_str, &required_change) else { return None; };
+        let Some(steps_by_change_vov) = steps_str.get_steps_by_bit_change(&required_change) else { return None; };
 
         // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
@@ -531,44 +530,6 @@ impl SomeDomain {
         }
 
         Some(steps_str)
-    }
-
-    /// Given steps are split up into a vector of step vectors, each step vector has steps that change a
-    /// particular needed-change bit.  Often, there will only be one step in a step vector.
-    ///
-    /// Steps that make more than one needed bit change will be in multiple step vectors.
-    ///
-    /// All possible step vector pairs are checked for being mutually exclusive, that is the needed change
-    /// needs to be backed off to run any step in the other step vector.  If any such pair is found, return None.
-    ///
-    /// Any pair of vectors that have the same step, due to multiple bit changes, will not be construed to be
-    /// mutually exclusive.
-    ///
-    fn get_steps_by_bit_change<'a>(
-        &'a self,
-        steps_str: &'a StepStore,
-        required_change: &SomeChange,
-    ) -> Option<Vec<Vec<&SomeStep>>> {
-        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
-        let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
-            steps_str.steps_by_change_bit(required_change);
-
-        // Check if any pair of single-bit changes, all steps, are mutually exclusive.
-        if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
-            //println!("forward_depth_first_search2: mutually exclusive change rules found");
-            return None;
-        }
-
-        // Check for steps that should be done after all the others.
-        // To void some backtracking.
-        if steps_by_change_vov.len() > 1 {
-            let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
-            for inx in inxs.iter() {
-                remove_unordered(&mut steps_by_change_vov, *inx);
-            }
-        }
-
-        Some(steps_by_change_vov)
     }
 
     /// Change the current state to be within a given region.
@@ -705,95 +666,6 @@ impl SomeDomain {
         rate
     }
 } // end impl SomeDomain
-
-/// Return true if two references are identical, thanks to
-/// github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
-fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
-    a == b
-}
-
-/// Return true if any single-bit change vector pairs are all mutually exclusive
-fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
-    for inx in 0..(by_change.len() - 1) {
-        for iny in (inx + 1)..by_change.len() {
-            //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
-            if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
-                return true;
-            }
-        } // next iny
-    } // next inx
-
-    false
-}
-
-/// Return true if all combinations of steps are mutually exclusive
-fn all_mutually_exclusive_changes(
-    vec_x: &[&SomeStep],
-    vec_y: &[&SomeStep],
-    wanted: &SomeChange,
-) -> bool {
-    for refx in vec_x.iter() {
-        for refy in vec_y.iter() {
-            if ptr_eq(*refx, *refy) {
-                return false;
-            }
-            if refx.mutually_exclusive(refy, wanted) {
-                //println!("step {} mutually exclusive to step {}", refx, refy);
-            } else {
-                return false;
-            }
-        } //next refy
-    } // next refx
-    true
-}
-
-/// Return a vector of reverse sorted indices, of step vectors that should be done later
-/// than all other steps.
-fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
-    let mut inxs = Vec::<usize>::new();
-
-    // Generate a vector of indices of changes that should be done later.
-    'next_inx: for inx in 0..by_change.len() {
-        for iny in 0..by_change.len() {
-            if iny == inx {
-                continue;
-            }
-            if !step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) {
-                continue 'next_inx;
-            }
-        } // next iny
-
-        inxs.push(inx);
-    } //next inx
-
-    // Return a vector of indices in descending order.
-    if inxs.len() > 1 {
-        inxs.sort_by(|a, b| b.cmp(a));
-    }
-    inxs
-}
-
-/// Return true if the order of step vectors, arg one to arg two, is bad.
-fn step_vecs_order_bad(
-    vec_x: &Vec<&SomeStep>,
-    vec_y: &Vec<&SomeStep>,
-    wanted: &SomeChange,
-) -> bool {
-    assert!(!vec_x.is_empty());
-    assert!(!vec_y.is_empty());
-    for refx in vec_x.iter() {
-        for refy in vec_y.iter() {
-            if ptr_eq(*refx, *refy) {
-                return false;
-            }
-            if !refx.rule.order_bad(&refy.rule, wanted) {
-                return false;
-            }
-        } //next refy
-    } // next refx
-
-    true
-}
 
 /// Return the first state value.
 pub fn initialize_state(num_ints: usize) -> SomeState {

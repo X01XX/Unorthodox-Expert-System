@@ -5,7 +5,6 @@ use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-use crate::truth::Truth;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -178,16 +177,16 @@ impl SomeSquare {
 
     /// Check if two squares can be combined.
     /// This does not check squares that may be between them.
-    pub fn can_combine(&self, sqrx: &SomeSquare) -> Truth {
+    pub fn can_combine(&self, sqrx: &SomeSquare) -> Option<bool> {
         assert!(*self != *sqrx);
 
         // Predictability established for both squares.
         if self.pnc && sqrx.pnc {
             if self.pn != sqrx.pn {
-                return Truth::F;
+                return Some(false);
             }
             if self.pn == Pn::Unpredictable {
-                return Truth::T;
+                return Some(true);
             }
 
             return self.rules.can_form_union(&sqrx.rules);
@@ -197,34 +196,36 @@ impl SomeSquare {
         // Rules have to be formed to allow going back and resampling.
         // The rules may have a significant failure rate.
         if self.pn == Pn::One && sqrx.pn == Pn::One {
-            if self.rules.can_form_union(&sqrx.rules) == Truth::T {
-                return Truth::T;
+            if Some(true) == self.rules.can_form_union(&sqrx.rules) {
+                return Some(true);
             }
             if self.pnc || sqrx.pnc {
-                return Truth::F;
+                return Some(false);
             }
-            return Truth::M;
+            return None;
         }
 
         if self.pnc {
             // so sqrx.pnc == false
             if sqrx.pn > self.pn {
-                return Truth::F;
+                return Some(false);
             }
-            if self.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Truth::F {
-                return Truth::F;
+            if self.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Some(false)
+            {
+                return Some(false);
             }
         } else if sqrx.pnc {
             // so self.pnc == false
             if self.pn > sqrx.pn {
-                return Truth::F;
+                return Some(false);
             }
-            if sqrx.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Truth::F {
-                return Truth::F;
+            if sqrx.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Some(false)
+            {
+                return Some(false);
             }
         }
         // Need more samples
-        Truth::M
+        None
     }
 
     /// Return the Pattern Number Confirmed (pnc) value.
@@ -370,7 +371,7 @@ mod tests {
             SomeState::new_from_string(1, "s0b1101").unwrap(),
         );
 
-        if sqr1.can_combine(&sqr2) != Truth::T {
+        if sqr1.can_combine(&sqr2) != Some(true) {
             return Err(String::from("Test 1 failed?"));
         }
 
@@ -380,18 +381,18 @@ mod tests {
             SomeState::new_from_string(1, "s0b1100").unwrap(),
         );
 
-        if sqr1.can_combine(&sqr3) != Truth::M {
+        if sqr1.can_combine(&sqr3).is_some() {
             return Err(String::from("Test 2 failed?"));
         }
 
         // Add to sqr3 to make it pnc.
         sqr3.add_result(SomeState::new_from_string(1, "s0b1100").unwrap());
 
-        if sqr1.can_combine(&sqr3) != Truth::F {
+        if sqr1.can_combine(&sqr3) != Some(false) {
             return Err(String::from("Test 3 failed?"));
         }
 
-        if sqr3.can_combine(&sqr1) != Truth::F {
+        if sqr3.can_combine(&sqr1) != Some(false) {
             return Err(String::from("Test 4 failed?"));
         }
 
@@ -422,12 +423,12 @@ mod tests {
         );
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 1 failed?"));
         }
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr3.can_combine(&sqr2) != Truth::M {
+        if sqr3.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 2 failed?"));
         }
 
@@ -440,12 +441,12 @@ mod tests {
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr4.can_combine(&sqr2) != Truth::F {
+        if sqr4.can_combine(&sqr2) != Some(false) {
             return Err(String::from("Test 3 failed?"));
         }
 
         // Exersize other branch of code.
-        if sqr2.can_combine(&sqr4) != Truth::F {
+        if sqr2.can_combine(&sqr4) != Some(false) {
             return Err(String::from("Test 4 failed?"));
         }
 
@@ -455,25 +456,25 @@ mod tests {
 
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
-        println!("can: {}", sqr1.can_combine(&sqr2));
+        println!("can: {:?}", sqr1.can_combine(&sqr2));
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 5 failed?"));
         }
 
         // Exersize other branch of code.
-        if sqr2.can_combine(&sqr1) != Truth::M {
+        if sqr2.can_combine(&sqr1).is_some() {
             return Err(String::from("Test 6 failed?"));
         }
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
-        if sqr2.can_combine(&sqr3) != Truth::F {
+        if sqr2.can_combine(&sqr3) != Some(false) {
             return Err(String::from("Test 7 failed?"));
         }
 
         // Exersize other branch of code.
-        if sqr3.can_combine(&sqr2) != Truth::F {
+        if sqr3.can_combine(&sqr2) != Some(false) {
             return Err(String::from("Test 8 failed?"));
         }
 
@@ -500,7 +501,7 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 1 failed?"));
         }
 
@@ -513,7 +514,7 @@ mod tests {
         sqr3.add_result(SomeState::new_from_string(1, "s0b1101").unwrap());
 
         // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
-        if sqr1.can_combine(&sqr3) != Truth::M {
+        if sqr1.can_combine(&sqr3).is_some() {
             return Err(String::from("Test 2 failed?"));
         }
 
@@ -522,12 +523,12 @@ mod tests {
         sqr1.add_result(SomeState::new_from_string(1, "s0b1100").unwrap());
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 3 failed?"));
         }
 
         // Exersize other branch of code.
-        if sqr2.can_combine(&sqr1) != Truth::M {
+        if sqr2.can_combine(&sqr1).is_some() {
             return Err(String::from("Test 4 failed?"));
         }
 
@@ -536,12 +537,12 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
 
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2) != Truth::T {
+        if sqr1.can_combine(&sqr2) != Some(true) {
             return Err(String::from("Test 5 failed?"));
         }
 
         // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
-        if sqr1.can_combine(&sqr3) != Truth::F {
+        if sqr1.can_combine(&sqr3) != Some(false) {
             return Err(String::from("Test 6 failed?"));
         }
 
@@ -556,7 +557,7 @@ mod tests {
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
-        if sqr1.can_combine(&sqr4) != Truth::F {
+        if sqr1.can_combine(&sqr4) != Some(false) {
             return Err(String::from("Test 7 failed?"));
         }
 
@@ -571,7 +572,7 @@ mod tests {
         sqr5.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
-        if sqr1.can_combine(&sqr5) != Truth::T {
+        if sqr1.can_combine(&sqr5) != Some(true) {
             return Err(String::from("Test 8 failed?"));
         }
 
@@ -597,12 +598,12 @@ mod tests {
         );
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 1 failed?"));
         }
 
         // Exorsize other code branch.
-        if sqr2.can_combine(&sqr1) != Truth::M {
+        if sqr2.can_combine(&sqr1).is_some() {
             return Err(String::from("Test 2 failed?"));
         }
 
@@ -610,7 +611,7 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101").unwrap());
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
-        if sqr1.can_combine(&sqr2) != Truth::F {
+        if sqr1.can_combine(&sqr2) != Some(false) {
             return Err(String::from("Test 3 failed?"));
         }
 
@@ -637,12 +638,12 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2) != Truth::M {
+        if sqr1.can_combine(&sqr2).is_some() {
             return Err(String::from("Test 1 failed?"));
         }
 
         // Exersize other code branch.
-        if sqr2.can_combine(&sqr1) != Truth::M {
+        if sqr2.can_combine(&sqr1).is_some() {
             return Err(String::from("Test 2 failed?"));
         }
 
@@ -651,7 +652,7 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2) != Truth::F {
+        if sqr1.can_combine(&sqr2) != Some(false) {
             return Err(String::from("Test 3 failed?"));
         }
 
@@ -680,7 +681,7 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100").unwrap());
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
-        if sqr1.can_combine(&sqr2) != Truth::T {
+        if sqr1.can_combine(&sqr2) != Some(true) {
             return Err(String::from("Test 1 failed?"));
         }
 
