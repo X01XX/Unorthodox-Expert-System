@@ -55,6 +55,8 @@ impl SomeGroup {
         //            "adding group {}",
         //            SomeRegion::new(&sta1, &sta2)
         //        );
+        assert!(ruls.len() < 3);
+
         let mut pnx = Pn::One;
         if ruls.is_empty() {
             pnx = Pn::Unpredictable;
@@ -121,24 +123,12 @@ impl SomeGroup {
     }
 
     /// Return true if a subset square is compatible with a group.
-    pub fn check_square(&self, sqrx: &SomeSquare) -> bool {
+    pub fn check_subset_square(&self, sqrx: &SomeSquare) -> bool {
+        assert!(self.region.is_superset_of_state(&sqrx.state));
         //        println!(
         //            "group:check_square grp {} sqr {}",
         //            &self.region, &sqrx.state
         //        );
-
-        // Check group definition.
-        if sqrx.state == self.region.state1 || sqrx.state == self.region.state2 {
-            if self.region.state1 == self.region.state2 {
-                // Allow change of Pn::One to Pn::Unpredictable.
-                if self.pn != sqrx.pn && sqrx.pn > Pn::One && !sqrx.pnc {
-                    return false;
-                }
-                return true;
-            } else {
-                return sqrx.pn == self.pn;
-            }
-        }
 
         // Check if square is compatible with group.
         if sqrx.pn > self.pn {
@@ -153,11 +143,28 @@ impl SomeGroup {
             return true;
         }
 
-        sqrx.rules.is_subset_of(&self.rules)
+        self.rules.is_superset_of(&sqrx.rules)
+    }
+
+    /// Return true if a non-subset square is compatible with a group.
+    pub fn check_union_square(&self, sqrx: &SomeSquare) -> Option<bool> {
+        assert!(!self.region.is_superset_of_state(&sqrx.state));
+
+        if sqrx.pn > self.pn {
+            return Some(false);
+        }
+
+        if sqrx.pn < self.pn && sqrx.pnc {
+            return Some(false);
+        }
+
+        self.rules.can_form_union(&sqrx.rules)
     }
 
     /// Return true if a sample is compatible with a group.
-    pub fn check_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
+    pub fn check_subset_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
+        assert!(self.region.is_superset_of_state(init));
+
         let tmp_rul = SomeRule::new(init, rslt);
 
         match self.pn {
@@ -209,6 +216,8 @@ impl SomeGroup {
     }
 
     /// Check limited setting in groups due to new bit that can change.
+    /// If the group region has a non-X bit position matching a new bit position that can change,
+    /// set the limited indicator to false.
     pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         assert!(self.limited);
 
@@ -232,7 +241,196 @@ impl SomeGroup {
     }
 } // end impl SomeGroup
 
-//#[cfg(test)]
-//mod tests {
-//    use crate::group::SomeGroup;
-//}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_subset_sample() -> Result<(), String> {
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true);
+
+        let initial = SomeState::new_from_string(1, "s0b1100").unwrap();
+        let result = SomeState::new_from_string(1, "s0b0100").unwrap();
+
+        if !grpx.check_subset_sample(&initial, &result) {
+            return Err(format!("check_subset_sample: test 1 failed!"));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_subset_square() -> Result<(), String> {
+        // Test if sqrx.pn > self.pn
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+
+        let mut sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+        sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap()); // Pn::Two, pnc == false.
+
+        if grpx.check_subset_square(&sqrx) {
+            return Err(format!("check_subset_square: test 1 failed!"));
+        }
+
+        // Test if sqrx.pn != self.pn && sqrx.pnc
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01").unwrap());
+
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+
+        let mut sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+        sqrx.add_result(SomeState::new_from_string(1, "s0b0100").unwrap()); // pn = Pn::One, pnc = true.
+
+        if grpx.check_subset_square(&sqrx) {
+            return Err(format!("check_subset_square: test 2 failed!"));
+        }
+
+        // Test if self.pn == Pn::Unpredictable
+        let rules = RuleStore::new();
+
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true);
+
+        let sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+
+        if !grpx.check_subset_square(&sqrx) {
+            return Err(format!("check_subset_square: test 3 failed!"));
+        }
+
+        // Test self.rules.is_superset_of(&sqrx.rules)
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true);
+
+        let sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+
+        if !grpx.check_subset_square(&sqrx) {
+            return Err(format!("check_subset_square: test 4a failed!"));
+        }
+
+        let sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
+        );
+
+        if grpx.check_subset_square(&sqrx) {
+            return Err(format!("check_subset_square: test 4b failed!"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_union_square() -> Result<(), String> {
+        // Test if sqrx.pn > self.pn {
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+
+        let mut sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+        sqrx.add_result(SomeState::new_from_string(1, "s0b0101").unwrap()); // Pn::Two, pnc == false.
+
+        if grpx.check_union_square(&sqrx) != Some(false) {
+            return Err(format!("check_union_square: test 1 failed!"));
+        }
+
+        // Test if sqrx.pn < self.pn && sqrx.pnc
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+
+        let mut sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+        sqrx.add_result(SomeState::new_from_string(1, "s0b0100").unwrap()); // Pn::One, pnc == true.
+
+        if grpx.check_union_square(&sqrx) != Some(false) {
+            return Err(format!("check_union_square: test 2 failed!"));
+        }
+
+        // Test self.rules.can_form_union(&sqrx.rules)
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+
+        let sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+        );
+
+        if grpx.check_union_square(&sqrx) != Some(true) {
+            return Err(format!("check_union_square: test 3a failed!"));
+        }
+
+        let sqry = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
+        );
+
+        if grpx.check_union_square(&sqry) != Some(false) {
+            return Err(format!("check_union_square: test 3b failed!"));
+        }
+
+        let mut rules = RuleStore::new();
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00").unwrap());
+        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01").unwrap());
+        let regx = SomeRegion::new_from_string(1, "r1xx0").unwrap();
+        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+
+        let sqrx = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0101").unwrap(),
+        );
+
+        if grpx.check_union_square(&sqrx) != None {
+            return Err(format!("check_union_square: test 3c failed!"));
+        }
+
+        let sqry = SomeSquare::new(
+            SomeState::new_from_string(1, "s0b0100").unwrap(),
+            SomeState::new_from_string(1, "s0b0111").unwrap(),
+        );
+
+        if grpx.check_union_square(&sqry) != Some(false) {
+            return Err(format!("check_union_square: test 3d failed!"));
+        }
+
+        Ok(())
+    }
+} // end tests
