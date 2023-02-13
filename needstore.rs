@@ -29,9 +29,9 @@ impl fmt::Display for NeedStore {
         write!(f, "{rc_str}")
     }
 }
-
+use serde::{Deserialize, Serialize};
 #[readonly::make]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NeedStore {
     /// A vector of SomeNeed instances.
     avec: Vec<SomeNeed>,

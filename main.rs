@@ -53,7 +53,6 @@ mod randompick;
 mod removeunordered;
 mod target;
 mod targetstore;
-//mod truth;
 
 use std::io;
 use std::io::{Read, Write};
@@ -62,6 +61,322 @@ use std::fs::File;
 use std::path::Path;
 use std::process;
 use std::time::{Duration, Instant};
+
+/// Get and react to arguments given.
+fn main() {
+    // Get arguments, if any.
+    let args: Vec<String> = env::args().collect();
+    //println!("{:?}", args);
+
+    let mut run_times = 0;
+    let mut file_path = String::new();
+
+    if args.len() > 1 {
+        if args[1] == "h" || args[1] == "help" {
+            usage();
+            return;
+        }
+        let argx = args[1].parse::<usize>();
+        if let Ok(runs) = argx {
+            run_times = runs;
+        } else {
+            file_path = args[1].clone();
+        }
+    }
+
+    //println!("run times {}, file {}", run_times, file_name);
+
+    usage();
+
+    match run_times {
+        0 => run_step_by_step(&file_path),
+        1 => run_to_end(),
+        _ => run_number_times(run_times),
+    }
+} // end main
+
+/// Run with user input step by step
+fn run_step_by_step(file_path: &str) {
+    // Init DomainStore or read in from file.
+    let mut dmxs = if file_path.is_empty() {
+        init()
+    } else {
+        match load_data(file_path) {
+            Ok(new_dmxs) => {
+                println!("Data loaded");
+                new_dmxs
+            }
+            Err(why) => {
+                println!("{why}");
+                return;
+            }
+        } // end match load_data
+    };
+    do_session(false, &mut dmxs);
+}
+
+/// Run until no more needs can be done, then take user input.
+fn run_to_end() {
+    let mut dmxs = init();
+    do_session(true, &mut dmxs);
+}
+
+/// Run a number of times without user input, generate aggregae data.
+fn run_number_times(num_runs: usize) {
+    let mut runs_left = num_runs;
+    let mut runs = 0;
+    let mut failures = 0;
+    let mut duration_vec = Vec::<Duration>::with_capacity(runs_left);
+    let mut steps_vec = Vec::<usize>::with_capacity(runs_left);
+
+    while runs_left > 0 {
+        runs_left -= 1;
+        runs += 1;
+
+        let start = Instant::now();
+        match do_one_session() {
+            Ok(steps) => {
+                let duration = start.elapsed();
+                println!("Steps {steps}, Time elapsed in do_session() is: {duration:?}");
+                duration_vec.push(duration);
+                steps_vec.push(steps);
+            }
+            Err(_) => {
+                failures += 1;
+            }
+        }
+    }
+
+    if duration_vec.is_empty() {
+        println!("Number with unsatisfied needs: {failures}");
+        return;
+    }
+
+    let mut duration_total = Duration::new(0, 0);
+    let mut duration_high = duration_vec[0];
+    let mut duration_low = duration_vec[0];
+    for durx in duration_vec.iter() {
+        duration_total += *durx;
+        if *durx > duration_high {
+            duration_high = *durx;
+        }
+        if *durx < duration_low {
+            duration_low = *durx;
+        }
+    }
+
+    let mut steps_total = 0;
+    let mut steps_high = 0;
+    let mut steps_low = usize::MAX;
+    for stepsx in steps_vec.iter() {
+        steps_total += stepsx;
+        if *stepsx > steps_high {
+            steps_high = *stepsx;
+        }
+        if *stepsx < steps_low {
+            steps_low = *stepsx;
+        }
+    }
+    let average = duration_total / runs as u32;
+    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.3?}, high: {:.3?}, low: {:.3?} Number with unsatisfied needs {}",
+         runs, steps_total / runs, steps_high, steps_low, average, duration_high, duration_low, failures);
+}
+
+/// Do one session to end.
+/// Return the number steps taken get to the point where
+/// there are no more needs.
+/// Return error if no needs that can be done are available and
+/// there are needs than cannot be done.
+fn do_one_session() -> Result<usize, String> {
+    let mut dmxs = init();
+
+    loop {
+        // Get plans for selected needs.
+        let (can_do, cant_do) = dmxs.get_needs();
+
+        println!(
+            "\nStep {} All domain states: {}",
+            dmxs.step_num,
+            somestate_ref_vec_string(&dmxs.all_current_states())
+        );
+
+        dmxs.print_domain();
+
+        assert!(dmxs.step_num < 1000); // Failsafe
+
+        // Print needs, of those selected, that cannot be done.
+        if cant_do.is_empty() {
+            println!("\nNeeds that cannot be done: None");
+        } else {
+            println!("\nNeeds that cannot be done:");
+
+            for ndplnx in cant_do.iter() {
+                println!("   {}", dmxs.needs[ndplnx.inx]);
+            }
+        }
+
+        // Check for end.
+        if can_do.is_empty() {
+            println!("\nNeeds that can be done: None");
+            if cant_do.is_empty() {
+                return Ok(dmxs.step_num);
+            }
+            return Err("There are needs that cannot be done".to_string());
+        }
+
+        // Print needs, of those selected, that can be done.
+        println!("\nNeeds that can be done:");
+
+        for (inx, ndplnx) in can_do.iter().enumerate() {
+            println!(
+                "{:2} {} {}",
+                inx,
+                &dmxs.needs[ndplnx.inx],
+                ndplnx.plans.as_ref().unwrap().str_terse()
+            );
+        } // next ndplnx
+
+        do_any_need(&mut dmxs, &can_do);
+    } // end loop
+} // do_one_session
+
+/// Do one session of finding and using rules.
+/// Return 0 to start over, or number of steps.
+pub fn do_session(run_to_end: bool, dmxs: &mut DomainStore) -> usize {
+    let mut to_end = run_to_end;
+    dmxs.change_domain(0);
+
+    loop {
+        // Get the needs of all Domains / Actions
+        let (can_do, cant_do) = dmxs.get_needs();
+
+        println!(
+            "\nStep {} All domain states: {}",
+            dmxs.step_num,
+            somestate_ref_vec_string(&dmxs.all_current_states())
+        );
+        assert!(dmxs.step_num < 1000); // Remove for continuous use
+
+        dmxs.print_domain();
+
+        if !dmxs.needs.is_empty() {
+            // Print needs that cannot be done.
+            if cant_do.is_empty() {
+                println!("\nNeeds that cannot be done: None");
+            } else {
+                println!("\nNeeds that cannot be done:");
+
+                for ndplnx in cant_do.iter() {
+                    println!("   {}", dmxs.needs[ndplnx.inx]);
+                }
+            }
+
+            // Print needs that can be done.
+            if can_do.is_empty() {
+                println!("\nNeeds that can be done: None");
+                dmxs.print_optimal();
+            } else {
+                println!("\nNeeds that can be done:");
+
+                for (inx, ndplnx) in can_do.iter().enumerate() {
+                    println!(
+                        "{:2} {} {}",
+                        inx,
+                        &dmxs.needs[ndplnx.inx],
+                        ndplnx.plans.as_ref().unwrap().str_terse()
+                    );
+                } // next ndplnx
+            }
+
+            // Stop running for this condition
+            if !cant_do.is_empty() && can_do.is_empty() {
+                to_end = false;
+            }
+        } else {
+            println!("\nAction needs: None");
+
+            dmxs.print_optimal();
+            if to_end {
+                to_end = false;
+            }
+        }
+
+        if !to_end || can_do.is_empty() {
+            // Start command loop
+            loop {
+                to_end = false;
+
+                //println!("start command loop");
+                let mut cmd = Vec::<&str>::with_capacity(10);
+
+                let guess = pause_for_input("\nPress Enter or type a command: ");
+
+                for word in guess.split_whitespace() {
+                    cmd.push(word);
+                }
+
+                // Default command, just press Enter
+                if cmd.is_empty() {
+                    // Process needs
+                    if !can_do.is_empty() {
+                        //println!("\nAction needs: {}", nds);
+
+                        do_any_need(dmxs, &can_do);
+
+                        break;
+                    } // end-if can_do > 0
+
+                    break;
+                } // end if cmd.len() == 0
+
+                // Do other commands
+                if cmd.len() == 1 {
+                    match cmd[0] {
+                        "q" | "exit" | "quit" => {
+                            println!("Done");
+                            process::exit(1);
+                        }
+                        "run" => {
+                            to_end = true;
+                            break;
+                        }
+                        "dcs" => {
+                            break;
+                        }
+                        _ => (),
+                    }
+                }
+
+                // Do other commands
+                match cmd[0] {
+                    "h" => usage(),
+                    "help" => usage(),
+                    "cs" => do_change_state_command(dmxs, &cmd),
+                    "to" => do_to_region_command(dmxs, &cmd),
+                    "ss" => do_sample_state_command(dmxs, &cmd),
+                    "ps" => do_print_squares_command(dmxs, &cmd),
+                    "aj" => do_adjacent_anchor_command(dmxs, &cmd),
+                    "gps" => do_print_group_defining_squares_command(dmxs, &cmd),
+                    "fsd" => store_data(dmxs, &cmd),
+                    "ppd" => do_print_plan_details(dmxs, &cmd, &can_do),
+                    "cd" => {
+                        do_change_domain(dmxs, &cmd);
+                        break;
+                    }
+                    "dn" => {
+                        do_chosen_need(dmxs, &cmd, &can_do);
+                        break;
+                    }
+                    _ => {
+                        println!("\nDid not understand command: {cmd:?}");
+                    }
+                };
+            } // end command loop
+        } else if !can_do.is_empty() {
+            do_any_need(dmxs, &can_do);
+        }
+    } // end loop
+} // end do_session
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn init() -> DomainStore {
@@ -143,293 +458,6 @@ fn init() -> DomainStore {
     dmxs
 }
 
-/// The User Interface.
-fn main() {
-    // Start a DomainStore, add a Domain
-    let args: Vec<String> = env::args().collect();
-    //println!("{:?}", args);
-
-    let mut run_to_end = false;
-    let mut run_left = 1;
-
-    if args.len() > 1 {
-        if args[0] == "h" || args[0] == "help" {
-            usage();
-            return;
-        }
-        run_left = args[1].parse::<usize>().unwrap_or_else(|err| {
-            println!("String to Number conversion error: {err}");
-            0
-        });
-        if run_left == 0 {
-            usage();
-            return;
-        }
-        run_to_end = true;
-    }
-
-    usage();
-
-    let run_count = 1;
-    let run_max = run_left;
-
-    if run_left > 1 {
-        let mut runs = 0;
-        let mut duration_vec = Vec::<Duration>::with_capacity(run_left);
-        let mut steps_vec = Vec::<usize>::with_capacity(run_left);
-
-        while run_left > 0 {
-            run_left -= 1;
-            runs += 1;
-
-            let start = Instant::now();
-            let steps = do_session(run_to_end, run_count, run_max);
-            if steps == 0 {
-                return;
-            }
-            let duration = start.elapsed();
-            println!("Steps {steps}, Time elapsed in do_session() is: {duration:?}");
-            duration_vec.push(duration);
-            steps_vec.push(steps);
-        }
-        let mut duration_total = Duration::new(0, 0);
-        let mut duration_high = duration_vec[0];
-        let mut duration_low = duration_vec[0];
-        for durx in duration_vec.iter() {
-            duration_total += *durx;
-            if *durx > duration_high {
-                duration_high = *durx;
-            }
-            if *durx < duration_low {
-                duration_low = *durx;
-            }
-        }
-
-        let mut steps_total = 0;
-        let mut steps_high = 0;
-        let mut steps_low = usize::MAX;
-        for stepsx in steps_vec.iter() {
-            steps_total += stepsx;
-            if *stepsx > steps_high {
-                steps_high = *stepsx;
-            }
-            if *stepsx < steps_low {
-                steps_low = *stepsx;
-            }
-        }
-        println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:?}, high: {:?}, low: {:?}",
-         runs, steps_total / runs, steps_high, steps_low, duration_total / runs as u32, duration_high, duration_low);
-        return;
-    }
-
-    // Run do_session until quit.
-    // In do_session, the command "so" (start over) reruns do_session.
-    loop {
-        do_session(run_to_end, run_count, run_max);
-    } // end while
-} // end main
-
-/// Do one session of finding and using rules.
-/// Return 0 to start over, or number of steps.
-pub fn do_session(run_to_end: bool, run_count: usize, run_max: usize) -> usize {
-    let mut to_end = run_to_end;
-    let mut dmxs = init();
-    dmxs.change_domain(0);
-
-    let mut stepx = 0; // Current step number of the session.
-
-    loop {
-        stepx += 1;
-
-        // Get the needs of all Domains / Actions
-        let nds = dmxs.get_needs();
-
-        let need_plans = dmxs.evaluate_needs(&nds);
-
-        println!(
-            "\nStep {} All domain states: {}",
-            stepx,
-            somestate_ref_vec_string(&dmxs.all_current_states())
-        );
-        assert!(stepx < 800); // Remove for continuous use
-
-        dmxs.print_domain();
-
-        //println!("session loop 3");
-
-        // Vector for position = display index, val = need_plans index
-        let mut need_can = Vec::<usize>::with_capacity(nds.len());
-
-        let mut can_do = 0;
-        let mut cant_do = 0;
-
-        for ndx in need_plans.iter() {
-            if ndx.plans.is_some() {
-                can_do += 1;
-            } else {
-                cant_do += 1;
-            }
-        }
-
-        if !nds.is_empty() {
-            // Print needs that cannot be done.
-            if cant_do == 0 {
-                println!("\nNeeds that cannot be done: None");
-            } else {
-                println!("\nNeeds that cannot be done:");
-
-                for ndplnx in need_plans.iter() {
-                    if ndplnx.plans.is_some() {
-                        continue;
-                    }
-                    println!("   {}", nds[ndplnx.inx]);
-                }
-            }
-
-            // Print needs that can be done.
-            if can_do == 0 {
-                println!("\nNeeds that can be done: None");
-                dmxs.print_optimal();
-            } else {
-                println!("\nNeeds that can be done:");
-
-                for (inx, ndplnx) in need_plans.iter().enumerate() {
-                    if let Some(plans) = &ndplnx.plans {
-                        println!(
-                            "{:2} {} {}",
-                            need_can.len(),
-                            &nds[ndplnx.inx],
-                            plans.str_terse()
-                        );
-                        need_can.push(inx);
-                    }
-                } // next ndplnx
-            }
-
-            // Stop running for this condition
-            if cant_do > 0 && can_do == 0 {
-                if run_count != run_max || run_max > 1 {
-                    println!("\nrun_count {run_count} of {run_max}");
-                }
-                to_end = false;
-            }
-        } else {
-            if run_max == 1 {
-                println!("\nAction needs: None");
-            } else {
-                println!("\nAction needs: None, run_count {run_count} of {run_max}");
-            }
-            dmxs.print_optimal();
-            if to_end {
-                if run_count < run_max {
-                    return stepx;
-                }
-                to_end = false;
-            }
-        }
-
-        if !to_end || (cant_do > 0 && can_do == 0) {
-            // Start command loop
-            // In the loop,
-            // The break command will end the loop, display the domain and needs, without incrementing the step number.
-            // The continue will prompt for another command.
-            // step_inc will be changed to zero if a command should not change the step number.
-            loop {
-                to_end = false;
-
-                //println!("start command loop");
-                let mut cmd = Vec::<&str>::with_capacity(10);
-
-                let guess = pause_for_input("\nPress Enter or type a command: ");
-
-                for word in guess.split_whitespace() {
-                    cmd.push(word);
-                }
-
-                // Default command, just press Enter
-                if cmd.is_empty() {
-                    // Process needs
-                    if can_do > 0 {
-                        //println!("\nAction needs: {}", nds);
-
-                        do_any_need(&mut dmxs, &nds, &need_plans, &need_can);
-
-                        break;
-                    } // end-if can_do > 0
-
-                    break;
-                } // end if cmd.len() == 0
-
-                // Do other commands
-                if cmd.len() == 1 {
-                    match cmd[0] {
-                        "q" | "exit" | "quit" => {
-                            println!("Done");
-                            process::exit(1);
-                        }
-                        "so" => {
-                            return 0;
-                        }
-                        "run" => {
-                            to_end = true;
-                            stepx -= 1;
-                            break;
-                        }
-                        "dcs" => {
-                            stepx -= 1;
-                            break;
-                        }
-                        _ => (),
-                    }
-                }
-
-                if cmd.len() == 2 && cmd[0] == "fld" {
-                    match load_data(cmd[1]) {
-                        Ok(new_dmxs) => {
-                            println!("Data loaded");
-                            (stepx, dmxs) = new_dmxs;
-                            stepx -= 1;
-                            break;
-                        }
-                        Err(why) => {
-                            println!("couldn't read {}: {}", &cmd[1], why);
-                        }
-                    } // end match load_data
-                    continue;
-                }
-
-                // Do other commands
-                match cmd[0] {
-                    "h" => usage(),
-                    "help" => usage(),
-                    "cs" => do_change_state_command(&mut dmxs, &cmd),
-                    "to" => do_to_region_command(&mut dmxs, &cmd),
-                    "ss" => do_sample_state_command(&mut dmxs, &cmd),
-                    "ps" => do_print_squares_command(&mut dmxs, &cmd),
-                    "aj" => do_adjacent_anchor_command(&mut dmxs, &cmd),
-                    "gps" => do_print_group_defining_squares_command(&mut dmxs, &cmd),
-                    "fsd" => store_data(&dmxs, stepx, &cmd),
-                    "ppd" => do_print_plan_details(&mut dmxs, &cmd, &nds, &need_plans, &need_can),
-                    "cd" => {
-                        do_change_domain(&mut dmxs, &cmd);
-                        stepx -= 1;
-                        break;
-                    }
-                    "dn" => {
-                        do_chosen_need(&mut dmxs, &cmd, &nds, &need_plans, &need_can);
-                        break;
-                    }
-                    _ => {
-                        println!("\nDid not understand command: {cmd:?}");
-                    }
-                };
-            } // end command loop
-        } else if can_do > 0 {
-            do_any_need(&mut dmxs, &nds, &need_plans, &need_can);
-        }
-    } // end loop
-} // end do_session
-
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) {
     // Get domain number from string
@@ -445,38 +473,27 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) {
 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
-fn do_any_need(
-    dmxs: &mut DomainStore,
-    nds: &NeedStore,
-    need_plans: &[InxPlan],
-    need_can: &Vec<usize>,
-) {
-    let np_inx = dmxs.choose_need(nds, need_plans, need_can);
+fn do_any_need(dmxs: &mut DomainStore, can_do: &[InxPlan]) {
+    let np_inx = dmxs.choose_need(can_do);
 
-    let nd_inx = need_plans[np_inx].inx;
-    let ndx = &nds[nd_inx];
-    let plans = &need_plans[np_inx].plans.as_ref().unwrap();
+    let nd_inx = can_do[np_inx].inx;
 
-    if do_a_need(dmxs, ndx, plans) {
+    let plans = &can_do[np_inx].plans.as_ref().unwrap();
+
+    if do_a_need(dmxs, nd_inx, plans) {
         println!("Need satisfied");
     }
 }
 
 /// Print details of a given plan
-fn do_print_plan_details(
-    dmxs: &mut DomainStore,
-    cmd: &[&str],
-    nds: &NeedStore,
-    need_plans: &[InxPlan],
-    need_can: &Vec<usize>,
-) {
+fn do_print_plan_details(dmxs: &mut DomainStore, cmd: &[&str], can_do: &[InxPlan]) {
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= need_can.len() {
+            if n_num >= can_do.len() {
                 println!("Invalid Need Number: {}", cmd[1]);
             } else {
-                let ndx = &nds[need_plans[need_can[n_num]].inx];
-                let pln = &need_plans[need_can[n_num]].plans.as_ref().unwrap();
+                let ndx = &dmxs.needs[can_do[n_num].inx];
+                let pln = &can_do[n_num].plans.as_ref().unwrap();
 
                 println!("\n{} Need: {}", &n_num, &ndx);
                 match ndx {
@@ -501,21 +518,22 @@ fn do_print_plan_details(
 
 /// Try to satisfy a need.
 /// Return true if success.
-fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool {
+fn do_a_need(dmxs: &mut DomainStore, nd_inx: usize, plans: &PlanStore) -> bool {
     let dom_num = dmxs.current_domain;
 
-    match ndx {
+    match dmxs.needs[nd_inx] {
         SomeNeed::ToOptimalRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
         _ => {
-            if dom_num != ndx.dom_num() {
+            let nd_dom = dmxs.needs[nd_inx].dom_num();
+            if dom_num != nd_dom {
                 // Show "before" state before running need.
                 println!(
                     "\nAll domain states: {}",
                     somestate_ref_vec_string(&dmxs.all_current_states())
                 );
-                dmxs.change_domain(ndx.dom_num());
+                dmxs.change_domain(nd_dom);
                 dmxs.print_domain();
                 //                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
             }
@@ -526,9 +544,9 @@ fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool 
         dmxs.run_plans(plans);
     }
 
-    match ndx {
+    match dmxs.needs[nd_inx] {
         SomeNeed::ToOptimalRegion { .. } => {
-            if ndx
+            if dmxs.needs[nd_inx]
                 .target()
                 .is_superset_of_states(&dmxs.all_current_states())
             {
@@ -537,8 +555,8 @@ fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool 
             }
         }
         _ => {
-            if ndx.satisfied_by(dmxs.cur_state(ndx.dom_num())) {
-                dmxs.take_action_need(ndx.dom_num(), ndx);
+            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_num())) {
+                dmxs.take_action_need(nd_inx);
                 return true;
             }
         }
@@ -547,44 +565,38 @@ fn do_a_need(dmxs: &mut DomainStore, ndx: &SomeNeed, plans: &PlanStore) -> bool 
 }
 
 /// Try to satisfy a need chosen by the user.
-fn do_chosen_need(
-    dmxs: &mut DomainStore,
-    cmd: &[&str],
-    nds: &NeedStore,
-    need_plans: &[InxPlan],
-    need_can: &Vec<usize>,
-) -> usize {
+fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str], can_do: &[InxPlan]) -> usize {
     let dom_num = dmxs.current_domain;
 
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= need_can.len() {
+            if n_num >= can_do.len() {
                 println!("Invalid Need Number: {}", cmd[1]);
                 dom_num
             } else {
-                let ndx = &nds[need_plans[need_can[n_num]].inx];
+                let nd_inx = can_do[n_num].inx;
 
-                let plans = &need_plans[need_can[n_num]].plans.as_ref().unwrap();
+                let plans = &can_do[n_num].plans.as_ref().unwrap();
 
                 println!(
                     "\nNeed chosen: {:2} {} {}",
                     dom_num,
-                    &ndx,
+                    &dmxs.needs[nd_inx],
                     &plans.str_terse()
                 );
 
-                if dom_num != ndx.dom_num() {
-                    dmxs.change_domain(ndx.dom_num());
+                if dom_num != dmxs.needs[nd_inx].dom_num() {
+                    dmxs.change_domain(dmxs.needs[nd_inx].dom_num());
                     dmxs.print_domain();
                 }
 
-                if do_a_need(dmxs, ndx, plans) {
+                if do_a_need(dmxs, nd_inx, plans) {
                     println!("Need satisfied");
                 }
 
-                match ndx {
+                match dmxs.needs[nd_inx] {
                     SomeNeed::ToOptimalRegion { .. } => dom_num,
-                    _ => ndx.dom_num(),
+                    _ => dmxs.needs[nd_inx].dom_num(),
                 }
             }
         }
@@ -953,9 +965,10 @@ fn usage() {
         "\n    <invoke> 1               - Run non-interactively, stop when no needs can be done."
     );
     println!("\n    <invoke> <number times>  - Run a number, greater than 1, times. Exit with step and duration statistics.");
-    println!("\n                               Or drop into interactive mode if there are needs, but none can be done.");
+    println!(
+        "\n    <invoke> <file path>     - Open a file previously stored with the fsd command."
+    );
     println!("\n    <invoke> [h | help]      - Show this list.\n");
-
     println!("\nSession Commands:");
     println!("\n    h | help                 - Help list display (this list).");
     println!(
@@ -969,7 +982,6 @@ fn usage() {
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
     println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");
     println!("                               the current state scrolls off screen, this might be useful.");
-    println!("\n    fld <path>               - File Load Data.");
     println!("    fsd <path>               - File Store Data.");
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
@@ -980,7 +992,6 @@ fn usage() {
         "    ps <act num> <region>    - Print Squares in a given action and region, of the CDD."
     );
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    so                       - Start Over.");
     println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
     println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
     println!(
@@ -1029,7 +1040,7 @@ pub fn pause_for_input(prompt: &str) -> String {
 }
 
 /// Load data from a given path string.
-fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
+fn load_data(path_str: &str) -> Result<DomainStore, String> {
     let path = Path::new(path_str);
     let display = path.display();
 
@@ -1053,14 +1064,14 @@ fn load_data(path_str: &str) -> Result<(usize, DomainStore), String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, stepx: usize, cmd: &Vec<&str>) {
+fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) {
     if cmd.len() != 2 {
         println!("Did not understand {cmd:?}");
         return;
     }
 
     let path_str = &cmd[1];
-    let serialized_r = serde_yaml::to_string(&(stepx, &dmxs));
+    let serialized_r = serde_yaml::to_string(&dmxs);
 
     match serialized_r {
         Ok(serialized) => {

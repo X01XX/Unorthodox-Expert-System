@@ -178,7 +178,7 @@ impl SomeSquare {
     /// Check if two squares can be combined.
     /// This does not check squares that may be between them.
     pub fn can_combine(&self, sqrx: &SomeSquare) -> Option<bool> {
-        assert!(*self != *sqrx);
+        assert!(self.state != sqrx.state); // Combining a square with itself is probably an error in logic.
 
         // Predictability established for both squares.
         if self.pnc && sqrx.pnc {
