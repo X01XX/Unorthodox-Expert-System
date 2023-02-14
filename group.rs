@@ -229,10 +229,10 @@ impl SomeGroup {
             same_bits.bitwise_and(&new_chgs.b01.bitwise_and(&self.region.state1.bitwise_not()));
 
         let positions = &one_bits.bitwise_or(&zero_bits);
-        println!(
-            "Check limited setting for {} with {} positions {}",
-            self.region, new_chgs, positions
-        );
+        //        println!(
+        //            "Check limited setting for {} with {} positions {}",
+        //            self.region, new_chgs, positions
+        //        );
 
         if !positions.is_low() {
             self.limited = false;

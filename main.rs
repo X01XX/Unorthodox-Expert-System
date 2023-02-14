@@ -85,7 +85,10 @@ fn main() {
 
     match run_times {
         0 => run_step_by_step(&file_path),
-        1 => run_to_end(),
+        1 => {
+            let mut dmxs = init();
+            run_to_end(&mut dmxs);
+        }
         _ => run_number_times(run_times),
     }
 } // end main
@@ -107,26 +110,25 @@ fn run_step_by_step(file_path: &str) {
             }
         } // end match load_data
     };
+    usage();
     do_session(&mut dmxs);
 }
 
 /// Run until no more needs can be done, then take user input.
-fn run_to_end() {
-    let mut dmxs = init();
-
+fn run_to_end(dmxs: &mut DomainStore) {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        do_a_step(&mut dmxs);
+        do_a_step(dmxs);
 
         // Check for end.
         if dmxs.can_do.is_empty() {
             break;
         }
 
-        do_any_need(&mut dmxs);
+        do_any_need(dmxs);
     } // end loop
 
-    do_session(&mut dmxs);
+    do_session(dmxs);
 }
 
 /// Run a number of times without user input, generate aggregae data.
@@ -296,10 +298,7 @@ fn do_one_session() -> Result<usize, String> {
 
 /// Do a session, step by step, taking user commands.
 pub fn do_session(dmxs: &mut DomainStore) {
-    usage();
-
     let mut to_end = false;
-    dmxs.change_domain(0);
 
     loop {
         // Generate needs, get can_do and cant_do need vectors.
@@ -314,21 +313,12 @@ pub fn do_session(dmxs: &mut DomainStore) {
             continue;
         }
 
-        let cmd = command_loop(dmxs);
-        if cmd == "run" {
-            to_end = true;
-        }
-
-        if !dmxs.can_do.is_empty() {
-            do_any_need(dmxs);
-        }
+        command_loop(dmxs);
     } // end loop
 } // end do_session
 
 /// Do command loop.
-/// Return an empty string to indicate that the user entered an empty command.
-/// Return "run" for the run command.
-fn command_loop(dmxs: &mut DomainStore) -> String {
+fn command_loop(dmxs: &mut DomainStore) {
     //println!("start command loop");
     loop {
         let mut cmd = Vec::<&str>::with_capacity(10);
@@ -345,7 +335,7 @@ fn command_loop(dmxs: &mut DomainStore) -> String {
             if !dmxs.can_do.is_empty() {
                 do_any_need(dmxs);
             }
-            return String::new();
+            return;
         }
 
         // Do commands
@@ -366,7 +356,7 @@ fn command_loop(dmxs: &mut DomainStore) -> String {
                 }
             },
             "cs" => match do_change_state_command(dmxs, &cmd) {
-                Ok(()) => return String::new(),
+                Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
@@ -376,7 +366,7 @@ fn command_loop(dmxs: &mut DomainStore) -> String {
                 dmxs.print_can_do();
             }
             "dn" => match do_chosen_need(dmxs, &cmd) {
-                Ok(()) => return String::new(),
+                Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
@@ -406,22 +396,22 @@ fn command_loop(dmxs: &mut DomainStore) -> String {
                 }
             },
             "ps" => match do_print_squares_command(dmxs, &cmd) {
-                Ok(()) => return String::new(),
+                Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
             },
             "run" => {
-                return "run".to_string();
+                run_to_end(dmxs);
             }
             "ss" => match do_sample_state_command(dmxs, &cmd) {
-                Ok(()) => return String::new(),
+                Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
             },
             "to" => match do_to_region_command(dmxs, &cmd) {
-                Ok(()) => return String::new(),
+                Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
