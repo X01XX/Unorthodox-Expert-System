@@ -5,6 +5,7 @@ use crate::mask::SomeMask;
 use crate::removeunordered::remove_unordered;
 use crate::step::SomeStep;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index;
@@ -17,7 +18,7 @@ impl fmt::Display for StepStore {
 }
 
 #[readonly::make]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct StepStore {
     /// A vector for steps.
     pub avec: Vec<SomeStep>,

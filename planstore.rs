@@ -2,6 +2,7 @@
 
 use crate::plan::SomePlan;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
@@ -28,7 +29,7 @@ impl fmt::Display for PlanStore {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[readonly::make]
 pub struct PlanStore {
     /// A vector of SomePlan instances.

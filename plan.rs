@@ -20,6 +20,7 @@ use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
+use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -37,7 +38,7 @@ impl fmt::Display for SomePlan {
 }
 
 #[readonly::make]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomePlan {
     /// Domain indicator
     pub dom_num: usize,

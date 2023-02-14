@@ -4,6 +4,7 @@ use crate::change::SomeChange;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
 
@@ -14,7 +15,7 @@ impl fmt::Display for SomeStep {
 }
 
 #[readonly::make]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomeStep {
     pub act_num: usize,
     pub initial: SomeRegion,

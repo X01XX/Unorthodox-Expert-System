@@ -73,7 +73,7 @@ impl fmt::Display for DomainStore {
 ///
 /// An integer is used instead of &SomeNeed to avoid borrow checker problems.
 #[readonly::make]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct InxPlan {
     /// Index to a need in a NeedStore.
     pub inx: usize,
@@ -98,7 +98,13 @@ pub struct DomainStore {
     pub optimal: OptimalRegionsStore,
     /// RegionStore to add all possible intersections of the optimal states to discern.
     pub optimal_and_ints: OptimalRegionsStore,
+    /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
+    /// Vector of InxPlans for selected needs, where a plan was calculated.
+    pub can_do: Vec<InxPlan>,
+    /// Vector of InxPlans for selected needs, where a plan could not be calculated.
+    pub cant_do: Vec<InxPlan>,
+    /// The current step number.
     pub step_num: usize,
 }
 
@@ -113,6 +119,8 @@ impl DomainStore {
             optimal_and_ints: OptimalRegionsStore::new(),
             optimal: OptimalRegionsStore::new(),
             needs: NeedStore::new(),
+            can_do: Vec::<InxPlan>::new(),
+            cant_do: Vec::<InxPlan>::new(),
             step_num: 0,
         }
     }
@@ -161,7 +169,7 @@ impl DomainStore {
     /// Run in parallel per Domain.
     /// Each Domain uses parallel processing to get needs for each Action.
     /// Return selected plans.
-    pub fn get_needs(&mut self) -> (Vec<InxPlan>, Vec<InxPlan>) {
+    pub fn get_needs(&mut self) {
         // Inc step number.
         self.step_num += 1;
 
@@ -188,7 +196,7 @@ impl DomainStore {
         //println!("number needs = {}", nds_agg.len());
         self.needs = nds_agg;
 
-        self.evaluate_needs()
+        self.evaluate_needs();
     }
 
     /// Run a vector of plans.
@@ -243,11 +251,11 @@ impl DomainStore {
         self.avec[dmxi].get_current_state()
     }
 
-    /// Return a vector of InxPlan structs, given a NeedStore.
+    /// Set needs, can_do and cant_do for the DomainStore.
     /// Select up to a given number (SPAN) of the lowest value priority needs,
     /// return a span of needs when one, or more, needs can be planned.
     /// Each InxPlan will contain an index to the NeedStore, and a PlanStore.
-    pub fn evaluate_needs(&self) -> (Vec<InxPlan>, Vec<InxPlan>) {
+    pub fn evaluate_needs(&mut self) {
         //println!("evaluate_needs: {} needs", self.needs.len());
         let mut last_priority = 0;
 
@@ -279,12 +287,16 @@ impl DomainStore {
 
             // If in optimal region, and priority not LE optimal priority, stop evaluating needs.
             if in_optimal && least_priority > optimal_priority {
-                return (Vec::<InxPlan>::new(), Vec::<InxPlan>::new());
+                self.can_do = Vec::<InxPlan>::new();
+                self.cant_do = Vec::<InxPlan>::new();
+                return;
             }
 
             // No plans found for any need, or no needs.
             if least_priority == usize::MAX {
-                return (Vec::<InxPlan>::new(), Vec::<InxPlan>::new());
+                self.can_do = Vec::<InxPlan>::new();
+                self.cant_do = Vec::<InxPlan>::new();
+                return;
             }
 
             // Load avec with indices to needs of the current priority.
@@ -303,7 +315,7 @@ impl DomainStore {
             //   until at least one has a plan.
             //
 
-            // Randomly pick up to SPAM needs at a time, from the current priority.
+            // Randomly pick up to SPAN needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
             let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
@@ -343,7 +355,9 @@ impl DomainStore {
                 //println!("evaluate_needs: can_do {} cant_do {}", can_do.len(), cant_do.len());
                 if !can_do.is_empty() {
                     //println!("evaluate_needs: RETURNING can_do {} cant_do {}", can_do.len(), cant_do.len());
-                    return (can_do, cant_do);
+                    self.can_do = can_do;
+                    self.cant_do = cant_do;
+                    return;
                 }
             } // end while
 
@@ -377,9 +391,9 @@ impl DomainStore {
     ///
     /// Scan needs, by priority, to see what need can be satisfied by a plan.
     ///
-    /// Return an index to the ndsinx_plan_all vector.
-    pub fn choose_need(&self, can_do: &[InxPlan]) -> usize {
-        assert!(!can_do.is_empty());
+    /// Return an index to the can_do vector.
+    pub fn choose_need(&self) -> usize {
+        assert!(!self.can_do.is_empty());
 
         //println!("choose_need: number InxPlans {}", can_do.len());
 
@@ -388,7 +402,7 @@ impl DomainStore {
 
         // Find the shortest plan length
         let mut min_plan_len = std::usize::MAX;
-        for inx_planx in can_do {
+        for inx_planx in self.can_do.iter() {
             if let Some(plans) = &inx_planx.plans {
                 if plans.len() < min_plan_len {
                     min_plan_len = plans.len();
@@ -397,7 +411,7 @@ impl DomainStore {
         }
 
         // Push index to shortest plan needs
-        for (inx, inx_planx) in can_do.iter().enumerate() {
+        for (inx, inx_planx) in self.can_do.iter().enumerate() {
             if let Some(plans) = &inx_planx.plans {
                 if plans.len() == min_plan_len {
                     min_len_inxplans.push(inx);
@@ -413,7 +427,7 @@ impl DomainStore {
         let cd2_inx = rand::thread_rng().gen_range(0..min_len_inxplans.len());
         //println!("inx2 = {}  can_do2 = {}", &inx2, &can_do2[inx2]);
 
-        let itmx = &can_do[min_len_inxplans[cd2_inx]];
+        let itmx = &self.can_do[min_len_inxplans[cd2_inx]];
         //println!("itmx.inx = {}", &itmx.inx);
 
         let ndx = &self.needs[itmx.inx]; // get need using tuple index
@@ -564,6 +578,25 @@ impl DomainStore {
         let cur_state = &self.avec[dom_num].get_current_state();
 
         println!("\nDom: {dom_num} Current State: {cur_state}");
+    }
+
+    /// Print needs that can be done.
+    pub fn print_can_do(&self) {
+        if self.can_do.is_empty() {
+            println!("\nNeeds that can be done: None");
+            self.print_optimal();
+        } else {
+            println!("\nNeeds that can be done:");
+
+            for (inx, ndplnx) in self.can_do.iter().enumerate() {
+                println!(
+                    "{:2} {} {}",
+                    inx,
+                    &self.needs[ndplnx.inx],
+                    ndplnx.plans.as_ref().unwrap().str_terse()
+                );
+            } // next ndplnx
+        }
     }
 
     /// Change the current display domain.
