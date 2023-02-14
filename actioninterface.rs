@@ -34,17 +34,15 @@ impl ActionInterface {
     /// take an action, filter and massage as needed, return a new domain
     /// current state.
     pub fn take_action(&mut self, cur_state: &SomeState) -> SomeState {
-        let ret_state;
-
         if self.dom_num == 0 && self.act_num == 0 {
             let amsk = self.ahash.get(cur_state);
-            ret_state = crate::actions::take_action(self.dom_num, self.act_num, cur_state, amsk);
+            let ret_state =
+                crate::actions::take_action(self.dom_num, self.act_num, cur_state, amsk);
             let dif = cur_state.bitwise_xor(&ret_state).to_mask();
             self.ahash.insert(cur_state.clone(), dif);
+            ret_state
         } else {
-            ret_state = take_action(self.dom_num, self.act_num, cur_state, None);
+            take_action(self.dom_num, self.act_num, cur_state, None)
         }
-
-        ret_state
     }
 }

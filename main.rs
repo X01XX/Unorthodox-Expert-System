@@ -259,53 +259,38 @@ pub fn do_session(run_to_end: bool, dmxs: &mut DomainStore) -> usize {
 
         dmxs.print_domain();
 
-        if !dmxs.needs.is_empty() {
-            // Print needs that cannot be done.
-            if cant_do.is_empty() {
-                println!("\nNeeds that cannot be done: None");
-            } else {
-                println!("\nNeeds that cannot be done:");
-
-                for ndplnx in cant_do.iter() {
-                    println!("   {}", dmxs.needs[ndplnx.inx]);
-                }
-            }
-
-            // Print needs that can be done.
-            if can_do.is_empty() {
-                println!("\nNeeds that can be done: None");
-                dmxs.print_optimal();
-            } else {
-                println!("\nNeeds that can be done:");
-
-                for (inx, ndplnx) in can_do.iter().enumerate() {
-                    println!(
-                        "{:2} {} {}",
-                        inx,
-                        &dmxs.needs[ndplnx.inx],
-                        ndplnx.plans.as_ref().unwrap().str_terse()
-                    );
-                } // next ndplnx
-            }
-
-            // Stop running for this condition
-            if !cant_do.is_empty() && can_do.is_empty() {
-                to_end = false;
-            }
+        // Print needs that cannot be done.
+        if cant_do.is_empty() {
+            println!("\nNeeds that cannot be done: None");
         } else {
-            println!("\nAction needs: None");
+            println!("\nNeeds that cannot be done:");
 
-            dmxs.print_optimal();
-            if to_end {
-                to_end = false;
+            for ndplnx in cant_do.iter() {
+                println!("   {}", dmxs.needs[ndplnx.inx]);
             }
+        }
+
+        // Print needs that can be done.
+        if can_do.is_empty() {
+            println!("\nNeeds that can be done: None");
+            dmxs.print_optimal();
+            to_end = false;
+        } else {
+            println!("\nNeeds that can be done:");
+
+            for (inx, ndplnx) in can_do.iter().enumerate() {
+                println!(
+                    "{:2} {} {}",
+                    inx,
+                    &dmxs.needs[ndplnx.inx],
+                    ndplnx.plans.as_ref().unwrap().str_terse()
+                );
+            } // next ndplnx
         }
 
         if !to_end || can_do.is_empty() {
             // Start command loop
             loop {
-                to_end = false;
-
                 //println!("start command loop");
                 let mut cmd = Vec::<&str>::with_capacity(10);
 
@@ -329,26 +314,19 @@ pub fn do_session(run_to_end: bool, dmxs: &mut DomainStore) -> usize {
                     break;
                 } // end if cmd.len() == 0
 
-                // Do other commands
-                if cmd.len() == 1 {
-                    match cmd[0] {
-                        "q" | "exit" | "quit" => {
-                            println!("Done");
-                            process::exit(1);
-                        }
-                        "run" => {
-                            to_end = true;
-                            break;
-                        }
-                        "dcs" => {
-                            break;
-                        }
-                        _ => (),
-                    }
-                }
-
-                // Do other commands
+                // Do commands
                 match cmd[0] {
+                    "q" | "exit" | "quit" => {
+                        println!("Done");
+                        process::exit(1);
+                    }
+                    "run" => {
+                        to_end = true;
+                        break;
+                    }
+                    "dcs" => {
+                        break;
+                    }
                     "h" => usage(),
                     "help" => usage(),
                     "cs" => do_change_state_command(dmxs, &cmd),
