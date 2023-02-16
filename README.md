@@ -37,4 +37,4 @@ At a higher level, maybe something gets "bored", or "satiated", so the optimum s
 
 A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.  Plans for multiple domains are run in parallel.
 
-There is a command for storing, or loading, the states, and rules, to/from a text file.  However, it prevents having a parent reference in a struct, which I would like to have.
+There is a command for storing the states, and rules, to a text file.  Running the program with the file path as an argument loads the file.
