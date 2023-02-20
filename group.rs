@@ -6,8 +6,8 @@
 use crate::change::SomeChange;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
-use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
+use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 
@@ -162,10 +162,10 @@ impl SomeGroup {
     }
 
     /// Return true if a sample is compatible with a group.
-    pub fn check_subset_sample(&self, init: &SomeState, rslt: &SomeState) -> bool {
-        assert!(self.region.is_superset_of_state(init));
+    pub fn check_subset_sample(&self, smpl: &SomeSample) -> bool {
+        assert!(self.region.is_superset_of_state(&smpl.initial));
 
-        let tmp_rul = SomeRule::new(init, rslt);
+        let tmp_rul = smpl.rule();
 
         match self.pn {
             Pn::One => self.rules.is_superset_of_rule(&tmp_rul),
@@ -244,6 +244,7 @@ impl SomeGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rule::SomeRule;
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
@@ -256,7 +257,7 @@ mod tests {
         let initial = SomeState::new_from_string(1, "s0b1100").unwrap();
         let result = SomeState::new_from_string(1, "s0b0100").unwrap();
 
-        if !grpx.check_subset_sample(&initial, &result) {
+        if !grpx.check_subset_sample(&SomeSample::new(initial, 0, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
         }
 

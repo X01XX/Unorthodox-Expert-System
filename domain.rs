@@ -110,14 +110,9 @@ impl SomeDomain {
     /// Evaluate an arbitrary sample given by the user.
     /// This tends to break things for an action, unless all samples are arbitrary.
     /// Useful for testing a wholly different series of samples/results.
-    pub fn eval_sample_arbitrary(
-        &mut self,
-        act_num: usize,
-        i_state: &SomeState,
-        r_state: &SomeState,
-    ) {
-        self.actions[act_num].eval_sample(i_state, r_state);
-        self.set_state_memory(SomeSample::new(i_state.clone(), act_num, r_state.clone()));
+    pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
+        self.actions[smpl.act_num].eval_sample(smpl);
+        self.set_state_memory(smpl.clone());
     }
 
     /// Take an action for a need, evaluate the resulting sample.
@@ -152,7 +147,6 @@ impl SomeDomain {
 
     /// Set current state field, without affecting memory.
     pub fn set_state(&mut self, new_state: &SomeState) {
-        // Set current state.
         self.cur_state = new_state.clone();
     }
 
@@ -700,20 +694,20 @@ mod tests {
         let m8 = dm0.mask_from_string("m0x08").unwrap();
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.bitwise_xor(&m1));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.bitwise_xor(&m1));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.bitwise_xor(&m1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.bitwise_xor(&m1)));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.bitwise_xor(&m2));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.bitwise_xor(&m2));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.bitwise_xor(&m2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.bitwise_xor(&m2)));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.bitwise_xor(&m4));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.bitwise_xor(&m4));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.bitwise_xor(&m4)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.bitwise_xor(&m4)));
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.bitwise_xor(&m8));
-        dm0.eval_sample_arbitrary(3, &sf, &sf.bitwise_xor(&m8)); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.bitwise_xor(&m8)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sf.bitwise_xor(&m8))); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
@@ -761,20 +755,20 @@ mod tests {
         let m8 = dm0.mask_from_string("m0x08").unwrap();
 
         // Create group for region XXXX->XXXx, Act 0.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.bitwise_xor(&m1));
-        dm0.eval_sample_arbitrary(0, &sf, &sf.bitwise_xor(&m1));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.bitwise_xor(&m1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.bitwise_xor(&m1)));
 
         // Create group for region XXXX->XXxX, Act 1.
-        dm0.eval_sample_arbitrary(1, &s0, &s0.bitwise_xor(&m2));
-        dm0.eval_sample_arbitrary(1, &sf, &sf.bitwise_xor(&m2));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.bitwise_xor(&m2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.bitwise_xor(&m2)));
 
         // Create group for region XXXX-XxXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &s0, &s0.bitwise_xor(&m4));
-        dm0.eval_sample_arbitrary(2, &sf, &sf.bitwise_xor(&m4));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.bitwise_xor(&m4)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.bitwise_xor(&m4)));
 
         // Create group for region X0XX->x0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &s0, &s0.bitwise_xor(&m8));
-        dm0.eval_sample_arbitrary(3, &sb, &sb.bitwise_xor(&m8));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.bitwise_xor(&m8)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), 3, sb.bitwise_xor(&m8)));
 
         println!("\nActs: {}", &dm0.actions);
 
@@ -831,7 +825,7 @@ mod tests {
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s0b1").unwrap();
-        dm0.eval_sample_arbitrary(0, &s1, &s1);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
@@ -846,7 +840,11 @@ mod tests {
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
         let s1 = dm0.state_from_string("s0b1").unwrap();
-        dm0.eval_sample_arbitrary(0, &s1, &dm0.state_from_string("s0").unwrap());
+        dm0.eval_sample_arbitrary(&SomeSample::new(
+            s1.clone(),
+            0,
+            dm0.state_from_string("s0").unwrap(),
+        ));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
@@ -892,7 +890,7 @@ mod tests {
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s0b1").unwrap();
-        dm0.eval_sample_arbitrary(0, &s1, &s1);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
@@ -904,7 +902,7 @@ mod tests {
 
         // Expand group
         let s2 = dm0.state_from_string("s0b10").unwrap();
-        dm0.eval_sample_arbitrary(0, &s2, &s2);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
@@ -922,7 +920,7 @@ mod tests {
         assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
 
         // Satisfy one need.
-        dm0.eval_sample_arbitrary(0, &s2, &s2);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
 
         let nds3 = dm0.actions[0].confirm_group_needs();
         //println!("needs {}", nds3);
@@ -931,7 +929,7 @@ mod tests {
         assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
 
         // Satisfy second need.
-        dm0.eval_sample_arbitrary(0, &s1, &s1);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
         let nds4 = dm0.actions[0].confirm_group_needs();
         //println!("needs {}", nds4);
@@ -961,15 +959,15 @@ mod tests {
         let s0d = dm0.state_from_string("s0b1101").unwrap();
 
         // Create group for region XX0X.
-        dm0.eval_sample_arbitrary(0, &s00, &s01);
-        dm0.eval_sample_arbitrary(0, &s00, &s01);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s00.clone(), 0, s01.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s00.clone(), 0, s01.clone()));
 
-        dm0.eval_sample_arbitrary(0, &s0d, &s0d);
-        dm0.eval_sample_arbitrary(0, &s0d, &s0d);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0d.clone(), 0, s0d.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0d.clone(), 0, s0d.clone()));
 
         // Create group X1XX
-        dm0.eval_sample_arbitrary(0, &s06, &s06);
-        dm0.eval_sample_arbitrary(0, &s06, &s06);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s06.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s06.clone()));
 
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
@@ -991,12 +989,12 @@ mod tests {
 
         // Set up group XXXX_XX0X->XXXX_XX0X
         let s04 = dm0.state_from_string("s0b00000100").unwrap();
-        dm0.eval_sample_arbitrary(0, &s04, &s04);
-        dm0.eval_sample_arbitrary(0, &s04, &s04);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s04.clone(), 0, s04.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s04.clone(), 0, s04.clone()));
 
         let sf9 = dm0.state_from_string("s0b11111001").unwrap();
-        dm0.eval_sample_arbitrary(0, &sf9, &sf9);
-        dm0.eval_sample_arbitrary(0, &sf9, &sf9);
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf9.clone(), 0, sf9.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf9.clone(), 0, sf9.clone()));
 
         println!("dm0 {}", &dm0.actions[0]);
 
@@ -1039,8 +1037,8 @@ mod tests {
         );
 
         let s02 = dm0.state_from_string("s0b00000010").unwrap();
-        dm0.eval_sample_arbitrary(0, &s06, &s02);
-        dm0.eval_sample_arbitrary(0, &s06, &s02);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
 
         println!("dm0 {}", &dm0.actions[0]);
         let nds3 = dm0.actions[0].limit_groups_needs(&cngx);
@@ -1090,23 +1088,23 @@ mod tests {
 
         let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
 
-        dm0.eval_sample_arbitrary(0, &s5, &s5);
-        dm0.eval_sample_arbitrary(0, &s5, &s4);
-        dm0.eval_sample_arbitrary(0, &s5, &s5);
-        dm0.eval_sample_arbitrary(0, &s5, &s4);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s4.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s4.clone()));
 
-        dm0.eval_sample_arbitrary(0, &sf, &se);
-        dm0.eval_sample_arbitrary(0, &sf, &sf);
-        dm0.eval_sample_arbitrary(0, &sf, &se);
-        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-            dm0.eval_sample_arbitrary(0, &s7, &s7);
+            dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
             if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                dm0.eval_sample_arbitrary(0, &s7, &s7); // cause not-pn=2 condition
+                dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause not-pn=2 condition
 
                 if let Some(_) = dm0.actions[0].groups.find(&rx1x1) {
                     //println!("\nActs: {}", &dm0.actions[0]);
@@ -1162,20 +1160,20 @@ mod tests {
         //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
         //    s5, s4, sf, se, rx1x1
         //);
-        dm0.eval_sample_arbitrary(0, &s5, &s5);
-        dm0.eval_sample_arbitrary(0, &s5, &s4);
-        dm0.eval_sample_arbitrary(0, &s5, &se);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s4.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, se.clone()));
 
-        dm0.eval_sample_arbitrary(0, &sf, &se);
-        dm0.eval_sample_arbitrary(0, &sf, &sf);
-        dm0.eval_sample_arbitrary(0, &sf, &s4);
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s4.clone()));
 
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
             println!("\nActs: {}", &dm0.actions[0]);
-            dm0.eval_sample_arbitrary(0, &s7, &s7);
+            dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
             if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                dm0.eval_sample_arbitrary(0, &s7, &s7); // cause pn-not-Two invalidation
+                dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause pn-not-Two invalidation
                 if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
                     //println!("\nActs: {}", &dm0.actions[0]);
                     //println!(" {}", dm0.actions[0].get_squares());
@@ -1213,8 +1211,8 @@ mod tests {
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(0, &s0, &s0.bitwise_xor(&msk16));
-        dm0.eval_sample_arbitrary(0, &s1, &s1.bitwise_xor(&msk16));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.bitwise_xor(&msk16)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.bitwise_xor(&msk16)));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
@@ -1238,9 +1236,9 @@ mod tests {
         let s3 = dm0.state_from_string("s0b011").unwrap();
         let s5 = dm0.state_from_string("s0b101").unwrap();
 
-        dm0.eval_sample_arbitrary(0, &s0, &s0);
-        dm0.eval_sample_arbitrary(0, &s3, &s3);
-        dm0.eval_sample_arbitrary(0, &s5, &s5);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
@@ -1279,18 +1277,18 @@ mod tests {
         let s0 = dm0.state_from_string("s0b0000").unwrap();
         let sf = dm0.state_from_string("s0b1111").unwrap();
 
-        dm0.eval_sample_arbitrary(0, &s0, &s0);
-        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
         // Establish pnc for group XXXX.
-        dm0.eval_sample_arbitrary(0, &s0, &s0);
-        dm0.eval_sample_arbitrary(0, &sf, &sf);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
 
         println!("\nActs: {}", &dm0.actions);
 
         // Break group XXXX
         let s5 = dm0.state_from_string("s0b0101").unwrap();
 
-        dm0.eval_sample_arbitrary(0, &s5, &s0);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         println!("\nActs: {}", &dm0.actions);
         assert!(dm0.actions[0]
@@ -1303,7 +1301,7 @@ mod tests {
         assert!(needs.len() == 1);
         assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101").unwrap()));
 
-        dm0.eval_sample_arbitrary(0, &s5, &s0);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs2: {}", &needs);
@@ -1311,7 +1309,7 @@ mod tests {
         if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()) {
             // Seek even closer sample s1101
             let sd = dm0.state_from_string("s0b1101").unwrap();
-            dm0.eval_sample_arbitrary(0, &sd, &s0);
+            dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert!(needs.len() == 1);
@@ -1319,7 +1317,7 @@ mod tests {
                 needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap())
             );
 
-            dm0.eval_sample_arbitrary(0, &sd, &s0);
+            dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
             let mut found = false;
@@ -1342,7 +1340,7 @@ mod tests {
         {
             // Seek even closer sample s0111
             let s7 = dm0.state_from_string("s0b0111").unwrap();
-            dm0.eval_sample_arbitrary(0, &s7, &s0);
+            dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert!(needs.len() == 1);
@@ -1350,7 +1348,7 @@ mod tests {
                 needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
             );
 
-            dm0.eval_sample_arbitrary(0, &s7, &s0);
+            dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
             let mut found = false;
@@ -1398,7 +1396,7 @@ mod tests {
             act_num: 0,
             target_state: sdb.clone(),
         };
-        dm0.actions[0].eval_need_sample(&sdb, &ndx, &sd9, 0);
+        dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sdb.clone(), 0, sd9.clone()));
 
         // Sample 2
         let se5 = dm0.state_from_string("s0b1110_0101").unwrap();
@@ -1408,7 +1406,7 @@ mod tests {
             act_num: 0,
             target_state: se5.clone(),
         };
-        dm0.actions[0].eval_need_sample(&se5, &ndx, &se7, 0);
+        dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(se5.clone(), 0, se7.clone()));
 
         // Sample 3
         let s25 = dm0.state_from_string("s0b0010_0101").unwrap();
@@ -1418,7 +1416,7 @@ mod tests {
             act_num: 0,
             target_state: s25.clone(),
         };
-        dm0.actions[0].eval_need_sample(&s25, &ndx, &s27, 0);
+        dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s25.clone(), 0, s27.clone()));
 
         // Sample 4    // Set up a limited group.
         let s2c = dm0.state_from_string("s0b0010_1100").unwrap();
@@ -1428,7 +1426,7 @@ mod tests {
             act_num: 0,
             target_state: s2c.clone(),
         };
-        dm0.actions[0].eval_need_sample(&s2c, &ndx, &s2e, 0);
+        dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s2c.clone(), 0, s2e.clone()));
 
         // Sample 5
         let sd3 = dm0.state_from_string("s0b1101_0011").unwrap();
@@ -1441,7 +1439,7 @@ mod tests {
             far: dm0.state_from_string("s0b0010_1100").unwrap(),
             num_x: 8,
         };
-        dm0.actions[0].eval_need_sample(&sd3, &ndx, &sd1, 0);
+        dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
 
         println!("\nActs: {}", &dm0.actions);
         assert!(dm0.actions[0].groups.len() == 1);
@@ -1479,12 +1477,12 @@ mod tests {
         let s05 = dm0.state_from_string("s0b0101").unwrap();
 
         // Start group.
-        dm0.eval_sample_arbitrary(act0, &s0b, &s0b);
-        dm0.eval_sample_arbitrary(act0, &s05, &s05);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0b.clone(), act0, s0b.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s05.clone(), act0, s05.clone()));
 
         // Confirm group.
-        dm0.eval_sample_arbitrary(act0, &s0b, &s0b);
-        dm0.eval_sample_arbitrary(act0, &s05, &s05);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0b.clone(), act0, s0b.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s05.clone(), act0, s05.clone()));
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.
@@ -1501,7 +1499,7 @@ mod tests {
         // Add a way to change bit position 1, 0->1.
         let s10 = dm0.state_from_string("s0x10").unwrap();
         let s12 = dm0.state_from_string("s0x12").unwrap();
-        dm0.eval_sample_arbitrary(act0, &s10, &s12);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s10.clone(), act0, s12.clone()));
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.
@@ -1519,7 +1517,7 @@ mod tests {
         // Add a way to change bit position 0, 0->1.
         let s21 = dm0.state_from_string("s0x21").unwrap();
         let s20 = dm0.state_from_string("s0x20").unwrap();
-        dm0.eval_sample_arbitrary(act0, &s21, &s20);
+        dm0.eval_sample_arbitrary(&SomeSample::new(s21.clone(), act0, s20.clone()));
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.

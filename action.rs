@@ -170,10 +170,10 @@ impl SomeAction {
 
     /// Store and evaluate a sample if it forms a new square,
     /// or causes a change to an existing square (change in pn or pnc).
-    pub fn eval_sample(&mut self, initial: &SomeState, result: &SomeState) {
-        if self.store_sample(initial, result) {
-            self.check_square_new_sample(initial);
-            self.eval_sample_check_anchor(initial);
+    pub fn eval_sample(&mut self, smpl: &SomeSample) {
+        if self.store_sample(smpl) {
+            self.check_square_new_sample(smpl);
+            self.eval_sample_check_anchor(smpl);
         }
     }
 
@@ -181,24 +181,24 @@ impl SomeAction {
     /// A new square (in group X) may have a higher anchor rating
     /// than the current (group X) anchor.
     /// An square must exist to set an anchor.
-    fn eval_sample_check_anchor(&mut self, initial: &SomeState) {
-        if self.groups.num_groups_state_in(initial) != 1 {
+    fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
+        if self.groups.num_groups_state_in(&smpl.initial) != 1 {
             return;
         }
 
-        let Some(sqrx) = self.squares.find(initial) else { println!("eval_sample_check_anchor: 1: This should not happen"); return; };
+        let Some(sqrx) = self.squares.find(&smpl.initial) else { println!("eval_sample_check_anchor: 1: This should not happen"); return; };
 
         if sqrx.results.len() != 1 {
             return;
         }
 
-        let grps_in: RegionStore = self.groups.groups_state_in(initial);
+        let grps_in: RegionStore = self.groups.groups_state_in(&smpl.initial);
 
         let Some(grpx) = self.groups.find(&grps_in[0]) else { println!("eval_sample_check_anchor: 2: This should not happen"); return; };
 
         let Some(anchor) = &grpx.anchor else { return; };
 
-        if anchor == initial {
+        if anchor == &smpl.initial {
             return;
         }
 
@@ -207,28 +207,22 @@ impl SomeAction {
         // The current anchor rate may have changed, so recalculate it.
         let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
 
-        let sqr_rate = self.group_anchor_rate(grpx, initial, &anchor_states);
+        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial, &anchor_states);
 
         if sqr_rate > anchor_rate {
             println!(
                 "Changing group {} anchor from {} {:?} to {} {:?}",
-                grpx.region, anchor, anchor_rate, initial, sqr_rate
+                grpx.region, anchor, anchor_rate, smpl.initial, sqr_rate
             );
 
-            self.groups.set_anchor(&grps_in[0], initial);
+            self.groups.set_anchor(&grps_in[0], &smpl.initial);
         }
     } // end eval_sample_check_anchors
 
     /// Evaluate a sample taken to satisfy a need.
-    pub fn eval_need_sample(
-        &mut self,
-        initial: &SomeState,
-        ndx: &SomeNeed,
-        result: &SomeState,
-        dom: usize,
-    ) {
+    pub fn eval_need_sample(&mut self, ndx: &SomeNeed, dom: usize, smpl: &SomeSample) {
         // Processing for all samples that will be stored.
-        self.eval_sample(initial, result);
+        self.eval_sample(smpl);
 
         // Additional processing for selected kinds of need
         match ndx {
@@ -400,31 +394,31 @@ impl SomeAction {
     /// If a square is currently stored for the sample, update the square.
     /// If the square invalidates any group, store a new square.
     /// In most cases, if the sample is as expected, no new square will be stored.
-    fn eval_step_sample(&mut self, cur: &SomeState, new_state: &SomeState) {
+    fn eval_step_sample(&mut self, smpl: &SomeSample) {
         // If a square exists, update it.
-        if let Some(sqrx) = self.squares.find_mut(cur) {
+        if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
             // println!("about to add result to sqr {}", cur.str());
-            if sqrx.add_result(new_state.clone()) {
-                self.check_square_new_sample(cur);
+            if sqrx.add_result(smpl.result.clone()) {
+                self.check_square_new_sample(smpl);
             }
             return;
         }
 
         // Check if any groups are invalidated
-        if self.groups.any_groups_invalidated(cur, new_state) {
-            self.eval_sample(cur, new_state);
+        if self.groups.any_groups_invalidated(smpl) {
+            self.eval_sample(smpl);
         }
     } // end eval_step_sample
 
     /// Store a sample.
     /// Update an existing square or create a new square.
     /// Return true if something changed, like pn or pnc.
-    fn store_sample(&mut self, cur: &SomeState, new_state: &SomeState) -> bool {
+    fn store_sample(&mut self, smpl: &SomeSample) -> bool {
         // Get an existing square and update, or create a new square.
         //println!("store_sample");
-        if let Some(sqrx) = self.squares.find_mut(cur) {
+        if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
             // println!("about to add result to sqr {}", cur.str());
-            return sqrx.add_result(new_state.clone());
+            return sqrx.add_result(smpl.result.clone());
         }
 
         // println!("No square found for state {}", cur.str());
@@ -432,7 +426,7 @@ impl SomeAction {
             self.cleanup_trigger -= 1;
         }
         self.squares.insert(
-            SomeSquare::new(cur.clone(), new_state.clone()),
+            SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
             self.dom_num,
             self.num,
         );
@@ -444,10 +438,10 @@ impl SomeAction {
     /// Add a group for the square if the square is in no valid group.
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
-    fn check_square_new_sample(&mut self, key: &SomeState) {
+    fn check_square_new_sample(&mut self, smpl: &SomeSample) {
         //println!("check_square_new_sample for {}", key);
 
-        let sqrx = self.squares.find(key).unwrap();
+        let sqrx = self.squares.find(&smpl.initial).unwrap();
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
@@ -455,7 +449,7 @@ impl SomeAction {
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
-            if *key != regx.state1 && *key != regx.state2 {
+            if smpl.initial != regx.state1 && smpl.initial != regx.state2 {
                 let Some(sqr1) = self.squares.find(&regx.state1) else {
                     panic!("Can't find group defining square?");
                 };
@@ -508,9 +502,9 @@ impl SomeAction {
         }
 
         // Create a group for square if needed
-        let grps_in = self.groups.groups_state_in(key);
+        let grps_in = self.groups.groups_state_in(&smpl.initial);
         if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
-            self.create_groups_from_square(key);
+            self.create_groups_from_square(&smpl.initial);
         }
 
         if regs_invalid.is_empty() {
@@ -2133,28 +2127,31 @@ impl SomeAction {
         ndx: &SomeNeed,
     ) -> SomeSample {
         let astate = self.do_something.take_action(cur_state);
-        self.eval_need_sample(cur_state, ndx, &astate, dom);
-        SomeSample::new(cur_state.clone(), self.num, astate)
+        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
+        self.eval_need_sample(ndx, dom, &asample);
+        asample
     }
 
     /// Take an action with the current state.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
         let astate = self.do_something.take_action(cur_state);
-        self.eval_step_sample(cur_state, &astate);
-        SomeSample::new(cur_state.clone(), self.num, astate)
+        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
+        self.eval_step_sample(&asample);
+        asample
     }
 
     /// Take an action with a given state.
     pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
         //println!("action {} take_action_arbitrary", self.num);
         let astate = self.do_something.take_action(cur_state);
+        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
 
         if self.groups.any_superset_of_state(cur_state) {
-            self.eval_step_sample(cur_state, &astate);
+            self.eval_step_sample(&asample);
         } else {
-            self.eval_sample(cur_state, &astate);
+            self.eval_sample(&asample);
         }
-        SomeSample::new(cur_state.clone(), self.num, astate)
+        asample
     }
 
     /// Return a change with all changes that can be made for the action.
@@ -2188,24 +2185,26 @@ mod tests {
 
         // Eval sample that other samples will be incompatible with.
         let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();
-        act0.eval_sample(&s7, &s7);
-        //act0.get_needs(&s7, 0, &mem, &chg);
+        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
         // Process three similar samples.
-        act0.eval_sample(
-            &SomeState::new_from_string(1, "s0b1011").unwrap(),
-            &SomeState::new_from_string(1, "s0b1010").unwrap(),
-        );
+        act0.eval_sample(&SomeSample::new(
+            SomeState::new_from_string(1, "s0b1011").unwrap(),
+            0,
+            SomeState::new_from_string(1, "s0b1010").unwrap(),
+        ));
 
-        act0.eval_sample(
-            &SomeState::new_from_string(1, "s0b1101").unwrap(),
-            &SomeState::new_from_string(1, "s0b1100").unwrap(),
-        );
+        act0.eval_sample(&SomeSample::new(
+            SomeState::new_from_string(1, "s0b1101").unwrap(),
+            0,
+            SomeState::new_from_string(1, "s0b1100").unwrap(),
+        ));
 
-        act0.eval_sample(
-            &SomeState::new_from_string(1, "s0b0001").unwrap(),
-            &SomeState::new_from_string(1, "s0b0000").unwrap(),
-        );
+        act0.eval_sample(&SomeSample::new(
+            SomeState::new_from_string(1, "s0b0001").unwrap(),
+            0,
+            SomeState::new_from_string(1, "s0b0000").unwrap(),
+        ));
 
         if act0.groups.len() != 4 {
             println!("Groups {}", act0.groups);
@@ -2265,10 +2264,10 @@ mod tests {
         let regx = SomeRegion::new(sta_1.clone(), sta_f.clone());
 
         // Make square F, Pn::Two. LSB 1->1 and 1->0.
-        act0.eval_sample(&sta_f, &sta_f);
-        act0.eval_sample(&sta_f, &sta_e);
-        act0.eval_sample(&sta_f, &sta_f);
-        act0.eval_sample(&sta_f, &sta_e);
+        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_f.clone()));
+        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
+        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_f.clone()));
+        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2278,7 +2277,7 @@ mod tests {
         }
 
         // Set up square 1. Pn::One. LSB 1->0. Inside XXX1, outside X1X1.
-        act0.eval_sample(&sta_1, &sta_0);
+        act0.eval_sample(&SomeSample::new(sta_1.clone(), 0, sta_0.clone()));
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2288,10 +2287,10 @@ mod tests {
         }
 
         // Make square 5, Pn::Two. LSB 1->0 and 1->1.
-        act0.eval_sample(&sta_5, &sta_4);
-        act0.eval_sample(&sta_5, &sta_5);
-        act0.eval_sample(&sta_5, &sta_4);
-        act0.eval_sample(&sta_5, &sta_5);
+        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_4.clone()));
+        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_5.clone()));
+        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_4.clone()));
+        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_5.clone()));
 
         // Squares F and 5 make a region, X1X1, a subset of XXX1.
 
@@ -2303,13 +2302,13 @@ mod tests {
         }
 
         // Set up square 7. Pn::One. LSB 1->1. Inside X1X1.
-        act0.eval_sample(&sta_7, &sta_7);
+        act0.eval_sample(&SomeSample::new(sta_7.clone(), 0, sta_7.clone()));
 
         // Set up square D. Pn::One. LSB 1->0. Inside X1X1.
-        act0.eval_sample(&sta_d, &sta_c);
+        act0.eval_sample(&SomeSample::new(sta_d.clone(), 0, sta_c.clone()));
 
         // Set up square B. Pn::One. LSB 1->0. Outside X1X1.
-        act0.eval_sample(&sta_b, &sta_a);
+        act0.eval_sample(&SomeSample::new(sta_b.clone(), 0, sta_a.clone()));
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2319,7 +2318,7 @@ mod tests {
         }
 
         // Try a bad square 3.  2 LSB 11->01.
-        act0.eval_sample(&sta_3, &sta_1);
+        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_1.clone()));
 
         // Should fail.
         if act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2332,7 +2331,7 @@ mod tests {
         act0.squares.remove(&sta_3);
 
         // Add new square 3.  LSB 1->1.
-        act0.eval_sample(&sta_3, &sta_3);
+        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
         // Should be OK so far.
         if !act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2342,7 +2341,7 @@ mod tests {
         }
 
         // Square 3 to pnc, Pn::One.
-        act0.eval_sample(&sta_3, &sta_3);
+        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
         // Should fail.
         if act0.no_incompatible_square_combination_in_region(&regx) {
@@ -2363,18 +2362,18 @@ mod tests {
 
         let mut act0 = SomeAction::new(0, 0, 1);
 
-        act0.eval_sample(&sf, &sf);
-        act0.eval_sample(&sf, &se);
-        act0.eval_sample(&sf, &sf);
-        act0.eval_sample(&sf, &se);
+        act0.eval_sample(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
+        act0.eval_sample(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up 2-result square s1.
         let s1 = SomeState::new_from_string(1, "s0b0001").unwrap();
         let s0 = SomeState::new_from_string(1, "s0b0000").unwrap();
-        act0.eval_sample(&s1, &s1);
-        act0.eval_sample(&s1, &s0);
-        act0.eval_sample(&s1, &s1);
-        act0.eval_sample(&s1, &s0);
+        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
+        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
+        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
+        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
 
         let memory = VecDeque::<SomeSample>::new();
         let nds = act0.get_needs(

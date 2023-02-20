@@ -5,6 +5,7 @@ use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered::remove_unordered;
+use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 
@@ -281,9 +282,9 @@ impl GroupStore {
 
     /// Check groups with a given sample.
     /// Return true if any groups are invalidated.
-    pub fn any_groups_invalidated(&mut self, init: &SomeState, rslt: &SomeState) -> bool {
+    pub fn any_groups_invalidated(&mut self, smpl: &SomeSample) -> bool {
         for grpx in &mut self.avec {
-            if grpx.region.is_superset_of_state(init) && !grpx.check_subset_sample(init, rslt) {
+            if grpx.region.is_superset_of_state(&smpl.initial) && !grpx.check_subset_sample(smpl) {
                 return true;
             }
         }

@@ -1,5 +1,6 @@
-//! A Sample is a state, a applied action, and a result state.
+//! A Sample is a state, an applied action, and a result state.
 
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,7 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SomeSample {
     pub initial: SomeState,
-    pub action: usize,
+    pub act_num: usize,
     pub result: SomeState,
 }
 
@@ -20,12 +21,17 @@ impl fmt::Display for SomeSample {
 }
 
 impl SomeSample {
-    pub fn new(initial: SomeState, action: usize, result: SomeState) -> Self {
+    pub fn new(initial: SomeState, act_num: usize, result: SomeState) -> Self {
         Self {
             initial,
-            action,
+            act_num,
             result,
         }
+    }
+
+    /// Create a rule from a sample.
+    pub fn rule(&self) -> SomeRule {
+        SomeRule::new(&self.initial, &self.result)
     }
 
     /// Return a string to represent a SomeSample instance.
@@ -33,7 +39,7 @@ impl SomeSample {
         format!(
             "{} - {} -> {}",
             self.initial.formatted_string(),
-            self.action,
+            self.act_num,
             self.result.formatted_string()
         )
     }

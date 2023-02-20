@@ -32,6 +32,7 @@ mod squarestore;
 mod state;
 use state::somestate_ref_vec_string;
 mod sample;
+use sample::SomeSample;
 mod statestore;
 use statestore::StateStore;
 mod domain;
@@ -698,7 +699,8 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         };
 
         println!("Act {act_num} take sample {i_state} -> {r_state}");
-        dmx.eval_sample_arbitrary(act_num, &i_state, &r_state);
+        let smpl = SomeSample::new(i_state, act_num, r_state);
+        dmx.eval_sample_arbitrary(&smpl);
         return Ok(());
     } // end command ss 4
 
