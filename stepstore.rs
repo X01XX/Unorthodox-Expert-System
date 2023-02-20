@@ -194,7 +194,7 @@ impl StepStore {
 
         // Check if any pair of single-bit changes, all steps, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
-            //println!("forward_depth_first_search2: mutually exclusive change rules found");
+            //println!("get_steps_by_bit_change: mutually exclusive change rules found");
             return None;
         }
 
@@ -215,7 +215,7 @@ impl StepStore {
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
-            //println!("mex checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
+            //println!("any_mutually_exclusive_changes checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
                 return true;
             }
@@ -237,7 +237,7 @@ fn all_mutually_exclusive_changes(
                 return false;
             }
             if refx.mutually_exclusive(refy, wanted) {
-                //println!("step {} mutually exclusive to step {}", refx, refy);
+                //println!("all_mutually_exclusive_changes step {} mutually exclusive to step {}", refx, refy);
             } else {
                 return false;
             }

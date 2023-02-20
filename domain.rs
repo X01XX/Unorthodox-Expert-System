@@ -21,6 +21,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
+use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -48,7 +49,6 @@ impl fmt::Display for SomeDomain {
 
 const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
 
-//#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeDomain struct, a state and actions that can be run.
 pub struct SomeDomain {
@@ -60,7 +60,7 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
-    pub memory: VecDeque<SomeState>,
+    pub memory: VecDeque<SomeSample>,
 }
 
 impl SomeDomain {
@@ -74,7 +74,7 @@ impl SomeDomain {
             num: 0, // May be changed later
             actions: ActionStore::new(num_ints),
             cur_state,
-            memory: VecDeque::<SomeState>::with_capacity(MAX_MEMORY),
+            memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
         }
     }
 
@@ -117,33 +117,41 @@ impl SomeDomain {
         r_state: &SomeState,
     ) {
         self.actions[act_num].eval_sample(i_state, r_state);
-        self.set_state(r_state);
+        self.set_state_memory(SomeSample::new(i_state.clone(), act_num, r_state.clone()));
     }
 
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        let astate = self.actions[ndx.act_num()].take_action_need(self.num, &self.cur_state, ndx);
+        let asample = self.actions[ndx.act_num()].take_action_need(self.num, &self.cur_state, ndx);
 
-        self.set_state(&astate);
+        self.set_state_memory(asample);
     }
 
     /// Take an action with the current state.
     /// Save sample if it is not in a group, or invalidates a group.
     pub fn take_action_arbitrary(&mut self, act_num: usize) {
-        let astate = self.actions[act_num].take_action_arbitrary(&self.cur_state);
+        let asample = self.actions[act_num].take_action_arbitrary(&self.cur_state);
 
-        self.set_state(&astate);
+        self.set_state_memory(asample);
     }
 
     /// Set the current state field.
-    pub fn set_state(&mut self, new_state: &SomeState) {
+    pub fn set_state_memory(&mut self, asample: SomeSample) {
+        let new_state = asample.result.clone();
+
         // Update memory.
         if self.memory.len() >= MAX_MEMORY {
             self.memory.pop_back();
         }
-        self.memory.push_front(self.cur_state.clone());
+        self.memory.push_front(asample);
 
+        // Set current state.
+        self.cur_state = new_state;
+    }
+
+    /// Set current state field, without affecting memory.
+    pub fn set_state(&mut self, new_state: &SomeState) {
         // Set current state.
         self.cur_state = new_state.clone();
     }
@@ -181,11 +189,11 @@ impl SomeDomain {
         }
 
         for stpx in pln.iter() {
-            let astate = self.actions[stpx.act_num].take_action_step(&self.cur_state);
+            let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
 
             let prev_state = self.cur_state.clone();
 
-            self.set_state(&astate);
+            self.set_state_memory(asample);
 
             if stpx.result.is_superset_of_state(&self.cur_state) {
                 continue;
@@ -197,9 +205,9 @@ impl SomeDomain {
             if prev_state == self.cur_state && stpx.alt_rule {
                 println!("Try action a second time");
 
-                let astate = self.actions[stpx.act_num].take_action_step(&self.cur_state);
+                let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
 
-                self.set_state(&astate);
+                self.set_state_memory(asample);
 
                 if stpx.result.is_superset_of_state(&self.cur_state) {
                     continue;
@@ -356,12 +364,10 @@ impl SomeDomain {
             //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
-            if let Some(step_to_goal_plan) =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1)
-            {
-                return SomePlan::new_with_step(self.num, stepy).link(&step_to_goal_plan);
-            }
-            return None;
+            let Some(step_to_goal_plan) =
+                self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
+
+            return SomePlan::new_with_step(self.num, stepy).link(&step_to_goal_plan);
         }
 
         // Process a backward chaining step.
@@ -417,7 +423,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-        if rand::random::<bool>() {
+        let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
             let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepx.initial, depth) else { return None; };
 
             // Restrict the step initial region, in case it is different from the to_step_plan result region,
@@ -426,19 +432,18 @@ impl SomeDomain {
 
             let Some(from_step_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth) else { return None; };
 
-            // Try linking two plans together with the step.
-            return to_step_plan
-                .link(&SomePlan::new_with_step(self.num, stepy))?
-                .link(&from_step_plan);
-        }
+            (to_step_plan, stepy, from_step_plan)
+        } else {
+            let Some(from_step_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
 
-        let Some(from_step_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
+            // Restrict the step result region, in case it is different from the from_step_plan initial region,
+            // possibly changing the step initial region.
+            let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
-        // Restrict the step result region, in case it is different from the from_step_plan initial region,
-        // possibly changing the step initial region.
-        let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
+            let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
 
-        let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
+            (to_step_plan, stepy, from_step_plan)
+        };
 
         // Try linking two plans together with the step.
         to_step_plan
@@ -459,12 +464,11 @@ impl SomeDomain {
 
         let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
 
-        // Tune maximum depth to be a multiple of the number of bit changes required.
-        //let num_depth = 3 * required_change.number_changes();
-        let num_depth = 3 * cur_reg.diff_mask(goal_reg).num_one_bits();
-
         // Figure the required change.
         let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
+
+        // Tune maximum depth to be a multiple of the number of bit changes required.
+        let num_depth = 3 * required_change.number_changes();
 
         // Get steps, check if steps include all changes needed.
         let Some(steps_str) = self.get_steps(&required_change) else { return None; };
@@ -472,7 +476,7 @@ impl SomeDomain {
         // Get vector of steps for each bit change.
         let Some(steps_by_change_vov) = steps_str.get_steps_by_bit_change(&required_change) else { return None; };
 
-        // steps_str, and steps_by_change_vov, are calculated ahead so that thay don't have to be
+        // Calculated steps_str, and steps_by_change_vov, ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
         let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
@@ -519,13 +523,11 @@ impl SomeDomain {
         let steps_str: StepStore = self.actions.get_steps(required_change);
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        if let Some(can_change) = steps_str.aggregate_changes() {
-            if required_change.is_subset_of(&can_change) {
-            } else {
-                //println!("get_steps: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
-                return None;
-            }
+        let Some(can_change) = steps_str.aggregate_changes() else { return None; };
+
+        if required_change.is_subset_of(&can_change) {
         } else {
+            //println!("get_steps: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", &required_change, &can_change);
             return None;
         }
 
@@ -539,14 +541,12 @@ impl SomeDomain {
             return true;
         }
 
-        if let Some(pln) = self.make_plan(goal_region) {
-            // Do the plan
-            self.run_plan(&pln);
-            goal_region.is_superset_of_state(&self.cur_state)
-        } else {
-            false
-        }
-    } // end to_region
+        let Some(pln) = self.make_plan(goal_region) else { return false; };
+
+        // Do the plan
+        self.run_plan(&pln);
+        goal_region.is_superset_of_state(&self.cur_state)
+    }
 
     /// Return a Region from a string.
     /// Left-most, consecutive, zeros can be omitted.
@@ -643,24 +643,26 @@ impl SomeDomain {
 
         // Check for steps that may have two results
         for stpx in planx.iter() {
-            if stpx.alt_rule {
-                if let Some(sqrx) = self.actions[stpx.act_num]
-                    .squares
-                    .find(&stpx.initial.state1)
-                {
-                    // For an alternating square, you want the most recent result to be NEQ the desired next result.
-                    if *sqrx.most_recent_result() == stpx.result.state1 {
-                        if rate > 4 {
-                            rate -= 5;
-                        } else {
-                            rate = 0;
-                        }
+            if !stpx.alt_rule {
+                continue;
+            }
+
+            if let Some(sqrx) = self.actions[stpx.act_num]
+                .squares
+                .find(&stpx.initial.state1)
+            {
+                // For an alternating square, you want the most recent result to be NEQ the desired next result.
+                if *sqrx.most_recent_result() == stpx.result.state1 {
+                    if rate > 4 {
+                        rate -= 5;
+                    } else {
+                        rate = 0;
                     }
-                } else if rate > 1 {
-                    rate -= 2;
-                } else {
-                    rate = 0;
                 }
+            } else if rate > 1 {
+                rate -= 2;
+            } else {
+                rate = 0;
             }
         }
         rate
@@ -820,7 +822,7 @@ mod tests {
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0]
-            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
+            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
         assert!(nds1.len() == 1);
         assert!(
@@ -857,13 +859,14 @@ mod tests {
 
         // Check needs for pn > 1 and not in group, and current state not in a group.
         let nds1 = dm0.get_needs();
+        println!("needs: {}", nds1);
 
         assert!(nds1.len() == 2);
         assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
         );
         assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
+            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
         );
 
         // Err(String::from("Done"));
@@ -880,7 +883,7 @@ mod tests {
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0]
-            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeState>::new());
+            .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
         assert!(nds1.len() == 1);
         assert!(

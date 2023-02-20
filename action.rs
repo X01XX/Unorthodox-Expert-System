@@ -21,6 +21,7 @@ use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
+use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
@@ -195,26 +196,26 @@ impl SomeAction {
 
         let Some(grpx) = self.groups.find(&grps_in[0]) else { println!("eval_sample_check_anchor: 2: This should not happen"); return; };
 
-        if let Some(anchor) = &grpx.anchor {
-            if anchor == initial {
-                return;
-            }
+        let Some(anchor) = &grpx.anchor else { return; };
 
-            let anchor_states: Vec<&SomeState> = self.groups.anchor_states();
+        if anchor == initial {
+            return;
+        }
 
-            // The current anchor rate may have changed, so recalculate it.
-            let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
+        let anchor_states: Vec<&SomeState> = self.groups.anchor_states();
 
-            let sqr_rate = self.group_anchor_rate(grpx, initial, &anchor_states);
+        // The current anchor rate may have changed, so recalculate it.
+        let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
 
-            if sqr_rate > anchor_rate {
-                println!(
-                    "Changing group {} anchor from {} {:?} to {} {:?}",
-                    grpx.region, anchor, anchor_rate, initial, sqr_rate
-                );
+        let sqr_rate = self.group_anchor_rate(grpx, initial, &anchor_states);
 
-                self.groups.set_anchor(&grps_in[0], initial);
-            }
+        if sqr_rate > anchor_rate {
+            println!(
+                "Changing group {} anchor from {} {:?} to {} {:?}",
+                grpx.region, anchor, anchor_rate, initial, sqr_rate
+            );
+
+            self.groups.set_anchor(&grps_in[0], initial);
         }
     } // end eval_sample_check_anchors
 
@@ -247,26 +248,26 @@ impl SomeAction {
 
                 if sqrx.pn == Pn::One || sqrx.pnc {
                     //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.pn, sqrx.pnc);
-                    if let Some(sqry) = self.squares.find(far) {
-                        if (sqry.pn == Pn::One || sqry.pnc)
-                            && (sqrx.state == sqry.state
-                                || self.can_combine(sqrx, sqry) == Some(true))
-                        {
-                            let regz = SomeRegion::new(sqrx.state.clone(), sqry.state.clone());
+                    let Some(sqry) = self.squares.find(far) else { return; };
 
-                            let rulsxy = if sqrx.pn == Pn::Unpredictable {
-                                RuleStore::new()
-                            } else {
-                                sqrx.rules.union(&sqry.rules).unwrap()
-                            };
+                    if (sqry.pn == Pn::One || sqry.pnc)
+                        && (sqrx.state == sqry.state || self.can_combine(sqrx, sqry) == Some(true))
+                    {
+                        let regz = SomeRegion::new(sqrx.state.clone(), sqry.state.clone());
 
-                            self.groups.push(
-                                SomeGroup::new(regz, rulsxy, sqrx.pnc && sqry.pnc),
-                                dom,
-                                self.num,
-                            );
-                        } // end if sqry.pn ==
-                    } // end find far
+                        // Generate group rules.
+                        let rulsxy = if sqrx.pn == Pn::Unpredictable {
+                            RuleStore::new()
+                        } else {
+                            sqrx.rules.union(&sqry.rules).unwrap()
+                        };
+
+                        self.groups.push(
+                            SomeGroup::new(regz, rulsxy, sqrx.pnc && sqry.pnc),
+                            dom,
+                            self.num,
+                        );
+                    } // end if sqry.pn ==
                 } // end if sqrx.pn ==
             } // end process AStateMakeGroup Need
 
@@ -332,12 +333,11 @@ impl SomeAction {
             } // end match SeekEdgeNeed
 
             SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                if let Some(sqr1) = self.squares.find(&grp_reg.state1) {
-                    if let Some(sqr2) = self.squares.find(&grp_reg.state2) {
-                        if sqr1.pnc && sqr2.pnc {
-                            self.set_group_pnc(grp_reg);
-                        }
-                    }
+                let Some(sqr1) = self.squares.find(&grp_reg.state1) else { return; };
+                let Some(sqr2) = self.squares.find(&grp_reg.state2) else { return; };
+
+                if sqr1.pnc && sqr2.pnc {
+                    self.set_group_pnc(grp_reg);
                 }
             }
 
@@ -347,46 +347,52 @@ impl SomeAction {
 
     /// Check a group for pnc, set it if needed
     pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
-        if let Some(grpx) = self.groups.find_mut(grp_reg) {
-            if grpx.pnc {
-                println!(
-                    "ConfirmGroup {} already pnc and ConfirmGroup need?",
-                    grpx.region
-                );
-            } else if let Some(sqr1) = self.squares.find(&grpx.region.state1) {
-                if sqr1.pnc {
-                    if let Some(sqr2) = self.squares.find(&grpx.region.state2) {
-                        if sqr2.pnc {
-                            grpx.set_pnc();
-                        }
-                    } else {
-                        println!(
-                            "ConfirmGroup {} state2 {} square not found?",
-                            grpx.region, grpx.region.state2
-                        );
-                    }
-                }
-            } else {
-                println!(
-                    "ConfirmGroup {} state1 {} square not found?",
-                    grpx.region, grpx.region.state1
-                );
-            }
-        } else {
-            println!("ConfirmGroup {grp_reg} group not found?");
+        let Some(grpx) = self.groups.find_mut(grp_reg) else { println!("ConfirmGroup {grp_reg} group not found?"); return; };
+
+        if grpx.pnc {
+            println!(
+                "ConfirmGroup {} already pnc and ConfirmGroup need?",
+                grpx.region
+            );
+            return;
+        }
+
+        let Some(sqr1) = self.squares.find(&grpx.region.state1) else { panic!(
+                "ConfirmGroup {} state1 {} square not found?",
+                grpx.region, grpx.region.state1
+            ); };
+
+        if !sqr1.pnc {
+            return;
+        }
+
+        if grpx.region.state1 == grpx.region.state2 {
+            grpx.set_pnc();
+            return;
+        }
+
+        let Some(sqr2) = self.squares.find(&grpx.region.state2) else {
+            panic!(
+                "ConfirmGroup {} state2 {} square not found?",
+                grpx.region, grpx.region.state2
+            ); };
+
+        if sqr2.pnc {
+            grpx.set_pnc();
         }
     }
 
     /// Set a group anchor.
     pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-        if let Some(grpx) = self.groups.find_mut(grp_reg) {
-            if grpx.pnc {
-                grpx.set_anchor(anchor);
-            } else {
-                println!("set_group_anchor {} not pnc?", grpx.region);
-            }
+        let Some(grpx) = self.groups.find_mut(grp_reg) else {
+                println!("set_group_anchor {grp_reg} group not found?");
+                return;
+            };
+
+        if grpx.pnc {
+            grpx.set_anchor(anchor);
         } else {
-            println!("set_group_anchor {grp_reg} group not found?");
+            println!("set_group_anchor {} not pnc?", grpx.region);
         }
     }
 
@@ -483,16 +489,21 @@ impl SomeAction {
 
         // Check for any effects on group limited setting
         for grpx in self.groups.iter_mut() {
-            if grpx.limited {
-                if let Some(anchor_state) = &grpx.anchor {
-                    if anchor_state.is_adjacent(&sqrx.state) {
-                        if let Some(anchor_sqr) = self.squares.find(anchor_state) {
-                            if anchor_sqr.can_combine(sqrx) == Some(true) {
-                                grpx.set_limited_off();
-                            }
-                        }
-                    }
-                }
+            if !grpx.limited {
+                continue;
+            }
+
+            let Some(anchor_state) = &grpx.anchor else { continue; };
+
+            if !anchor_state.is_adjacent(&sqrx.state) {
+                continue;
+            };
+
+            let Some(anchor_sqr) = self.squares.find(anchor_state) else {
+                panic!("Anchor state not found?"); };
+
+            if anchor_sqr.can_combine(sqrx) == Some(true) {
+                grpx.set_limited_off();
             }
         }
 
@@ -553,22 +564,22 @@ impl SomeAction {
 
         let mut group_added = false;
         for regx in rsx.iter() {
-            if let Some(sqrx) = self.squares.find(&regx.state1) {
-                if let Some(sqry) = self.squares.find(&regx.state2) {
-                    let ruls = if sqrx.pn == Pn::Unpredictable {
-                        RuleStore::new()
-                    } else {
-                        sqrx.rules.union(&sqry.rules).unwrap()
-                    };
+            let Some(sqrx) = self.squares.find(&regx.state1) else { panic!("Region state square not found?"); };
 
-                    self.groups.push(
-                        SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
-                        self.dom_num,
-                        self.num,
-                    );
-                    group_added = true;
-                }
-            }
+            let Some(sqry) = self.squares.find(&regx.state2) else { panic!("Region state square not found?"); };
+
+            let ruls = if sqrx.pn == Pn::Unpredictable {
+                RuleStore::new()
+            } else {
+                sqrx.rules.union(&sqry.rules).unwrap()
+            };
+
+            self.groups.push(
+                SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
+                self.dom_num,
+                self.num,
+            );
+            group_added = true;
         } // next regx
 
         if group_added || num_grps_in > 0 {
@@ -590,7 +601,7 @@ impl SomeAction {
     pub fn state_not_in_group_needs(
         &self,
         cur_state: &SomeState,
-        memory: &VecDeque<SomeState>,
+        memory: &VecDeque<SomeSample>,
     ) -> NeedStore {
         let mut nds = NeedStore::new();
 
@@ -605,14 +616,14 @@ impl SomeAction {
 
         // Check memory
         for stax in memory.iter() {
-            if stax == cur_state {
+            if &stax.initial == cur_state {
                 continue;
             }
-            if !self.groups.any_superset_of_state(stax) {
+            if !self.groups.any_superset_of_state(&stax.initial) {
                 nds.push(SomeNeed::StateNotInGroup {
                     dom_num: 0, // will be set later
                     act_num: self.num,
-                    target_state: stax.clone(),
+                    target_state: stax.initial.clone(),
                 });
             }
         } // next stax
@@ -644,7 +655,7 @@ impl SomeAction {
         &mut self,
         cur_state: &SomeState,
         dom: usize,
-        memory: &VecDeque<SomeState>,
+        memory: &VecDeque<SomeSample>,
         agg_changes: &SomeChange,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
@@ -691,8 +702,11 @@ impl SomeAction {
             // Edit out subset group adds, dups may still exist.
             let mut new_grp_regs = RegionStore::new();
             for ndx in nds.iter_mut() {
-                if let SomeNeed::AddGroup { group_region, .. } = ndx {
-                    new_grp_regs.push_nosubs(group_region.clone());
+                match ndx {
+                    SomeNeed::AddGroup { group_region, .. } => {
+                        new_grp_regs.push_nosubs(group_region.clone())
+                    }
+                    _ => continue,
                 };
             } // Next ndx
 
@@ -749,32 +763,32 @@ impl SomeAction {
                         group_region: greg,
                         anchor: sta1,
                     } => {
-                        if let Some(grpx) = self.groups.find_mut(greg) {
-                            if let Some(anchor) = &grpx.anchor {
-                                println!(
-                                    "\nDom {} Act {} Group {} setting anchor from {} to {}",
-                                    dom, self.num, greg, anchor, sta1
-                                );
-                            } else {
-                                println!(
-                                    "\nDom {} Act {} Group {} setting anchor to {}",
-                                    dom, self.num, greg, sta1
-                                );
-                            }
-                            grpx.set_anchor(sta1);
-                            try_again = true;
-                            break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
+                        let Some(grpx) = self.groups.find_mut(greg) else { continue; };
+
+                        if let Some(anchor) = &grpx.anchor {
+                            println!(
+                                "\nDom {} Act {} Group {} setting anchor from {} to {}",
+                                dom, self.num, greg, anchor, sta1
+                            );
+                        } else {
+                            println!(
+                                "\nDom {} Act {} Group {} setting anchor to {}",
+                                dom, self.num, greg, sta1
+                            );
                         }
+                        grpx.set_anchor(sta1);
+                        try_again = true;
+                        break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
-                        if let Some(grpx) = self.groups.find_mut(greg) {
-                            println!(
-                                "\nDom {} Act {} Group {} remove anchor",
-                                dom, self.num, greg
-                            );
-                            try_again = true;
-                            grpx.set_anchor_off();
-                        }
+                        let Some(grpx) = self.groups.find_mut(greg) else { continue; };
+
+                        println!(
+                            "\nDom {} Act {} Group {} remove anchor",
+                            dom, self.num, greg
+                        );
+                        try_again = true;
+                        grpx.set_anchor_off();
                     }
                     SomeNeed::InactivateSeekEdge { reg: regx } => {
                         println!("\nDom {} Act {} remove seek edge {}", dom, self.num, regx);
@@ -867,6 +881,7 @@ impl SomeAction {
                     if grpx.region.state1 == stax || grpx.region.state2 == stax {
                         continue 'next_stax;
                     }
+
                     if let Some(stay) = &grpx.anchor {
                         if *stay == stax {
                             continue 'next_stax;
@@ -1140,21 +1155,21 @@ impl SomeAction {
 
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
-            if let Some(stax) = &grpx.anchor {
-                anchors.push(stax);
+            let Some(stax) = &grpx.anchor else { continue; };
 
-                if self.groups.num_groups_state_in(stax) != 1 {
-                    ret_nds.push(SomeNeed::RemoveGroupAnchor {
-                        group_region: grpx.region.clone(),
-                    });
-                }
+            anchors.push(stax);
+
+            if self.groups.num_groups_state_in(stax) != 1 {
+                ret_nds.push(SomeNeed::RemoveGroupAnchor {
+                    group_region: grpx.region.clone(),
+                });
             }
         }
         if !ret_nds.is_empty() {
             return ret_nds;
         }
 
-        // Find squares in one group for each group, that may be an anchor
+        // Get anchor needs.
         for (group_num, grpx) in self.groups.iter().enumerate() {
             if !grpx.pnc {
                 continue;
@@ -1995,39 +2010,39 @@ impl SomeAction {
                 }
                 Pn::Two => {
                     for ruly in grpx.rules.iter() {
-                        if let Some(rulx) = ruly.parse_for_changes(achange) {
-                            // See if an existing square is ready to produce the desired result
-                            let i_reg = rulx.initial_region();
-                            let stas = self.squares.stas_in_reg(&i_reg);
+                        let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
 
-                            let mut found = false;
-                            for stax in &stas {
-                                let sqrx = self.squares.find(stax).unwrap();
+                        // See if an existing square is ready to produce the desired result
+                        let i_reg = rulx.initial_region();
+                        let stas = self.squares.stas_in_reg(&i_reg);
 
-                                // Will include at least one bit change desired, but maybe others.
-                                let expected_result = rulx.result_from_initial_state(stax);
+                        let mut found = false;
+                        for stax in &stas {
+                            let sqrx = self.squares.find(stax).unwrap();
 
-                                // If a Pn::Two squares last result is not equal to what is wanted,
-                                // the next result should be.
-                                if sqrx.most_recent_result() != &expected_result {
-                                    let stpx = SomeStep::new(
-                                        self.num,
-                                        rulx.restrict_initial_region(&SomeRegion::new(
-                                            sqrx.state.clone(),
-                                            sqrx.state.clone(),
-                                        )),
-                                        false,
-                                        grpx.region.clone(),
-                                    );
-                                    stps.push(stpx);
-                                    found = true;
-                                } // end if
-                            } // next stax
+                            // Will include at least one bit change desired, but maybe others.
+                            let expected_result = rulx.result_from_initial_state(stax);
 
-                            if !found {
-                                stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
-                            }
-                        } // endif Some(rulx)
+                            // If a Pn::Two squares last result is not equal to what is wanted,
+                            // the next result should be.
+                            if sqrx.most_recent_result() != &expected_result {
+                                let stpx = SomeStep::new(
+                                    self.num,
+                                    rulx.restrict_initial_region(&SomeRegion::new(
+                                        sqrx.state.clone(),
+                                        sqrx.state.clone(),
+                                    )),
+                                    false,
+                                    grpx.region.clone(),
+                                );
+                                stps.push(stpx);
+                                found = true;
+                            } // end if
+                        } // next stax
+
+                        if !found {
+                            stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
+                        }
                     } // next ruly
                 } // end match Two
                 Pn::Unpredictable => (),
@@ -2116,35 +2131,30 @@ impl SomeAction {
         dom: usize,
         cur_state: &SomeState,
         ndx: &SomeNeed,
-    ) -> SomeState {
+    ) -> SomeSample {
         let astate = self.do_something.take_action(cur_state);
         self.eval_need_sample(cur_state, ndx, &astate, dom);
-        astate
+        SomeSample::new(cur_state.clone(), self.num, astate)
     }
 
     /// Take an action with the current state.
-    pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeState {
+    pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
         let astate = self.do_something.take_action(cur_state);
         self.eval_step_sample(cur_state, &astate);
-        astate
+        SomeSample::new(cur_state.clone(), self.num, astate)
     }
 
-    /// Take an action with the current state.
-    pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeState {
+    /// Take an action with a given state.
+    pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
         //println!("action {} take_action_arbitrary", self.num);
         let astate = self.do_something.take_action(cur_state);
 
         if self.groups.any_superset_of_state(cur_state) {
             self.eval_step_sample(cur_state, &astate);
         } else {
-            let ndx = SomeNeed::StateNotInGroup {
-                dom_num: self.dom_num,
-                act_num: self.num,
-                target_state: cur_state.clone(),
-            };
-            self.eval_need_sample(cur_state, &ndx, &astate, self.dom_num);
+            self.eval_sample(cur_state, &astate);
         }
-        astate
+        SomeSample::new(cur_state.clone(), self.num, astate)
     }
 
     /// Return a change with all changes that can be made for the action.
@@ -2366,7 +2376,7 @@ mod tests {
         act0.eval_sample(&s1, &s1);
         act0.eval_sample(&s1, &s0);
 
-        let memory = VecDeque::<SomeState>::new();
+        let memory = VecDeque::<SomeSample>::new();
         let nds = act0.get_needs(
             &s1,
             0,

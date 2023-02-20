@@ -97,49 +97,6 @@ impl SomePlan {
         })
     }
 
-    // Check if a plan is a valid sequence of steps.
-    // Each step changes something.
-    // Sequential step pairs result and initial regions are equal.
-    // The result appears only once in the chain of steps.
-    // The initial and result regions of the whole plan are not the same.
-    //    pub fn is_valid(&self) -> bool {
-    //        if self.is_empty() {
-    //            return true;
-    //        }
-
-    //        if self.len() > 1 {
-    //            for inx in 1..self.len() {
-    //                // Step changes something.
-    //                if self.steps[inx].initial == self.steps[inx].result {
-    //                    return false;
-    //                }
-    //                // Step is linked with previous step.
-    //                if self.steps[inx - 1].result == self.steps[inx].initial {
-    //                } else {
-    //                    return false;
-    //                }
-    //            }
-    //        }
-
-    //        let rslt = self.result_region();
-
-    //        // Steps as a whole cause a change.
-    //        if self.initial_region() == rslt {
-    //            return false;
-    //        }
-
-    // Result does not repeat.
-    //        if self.len() > 1 {
-    //            for inx in 0..(self.len() - 1) {
-    //                if self.steps[inx].result == *rslt {
-    //                    return false;
-    //                }
-    //            }
-    //        }
-
-    //        true
-    //    }
-
     /// Return a plan after restricting its initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
         if self.is_empty() || !regx.intersects(self.initial_region()) {

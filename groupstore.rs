@@ -79,7 +79,7 @@ impl GroupStore {
 
         let mut rmvec = Vec::<usize>::new();
 
-        for (inx, grpx) in self.avec.iter().enumerate() {
+        for (inx, grpx) in self.avec.iter_mut().enumerate() {
             if grpx.region.is_superset_of_state(&sqrx.state) && !grpx.check_subset_square(sqrx) {
                 if sqrx.pn > grpx.pn {
                     println!(

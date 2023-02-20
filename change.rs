@@ -210,6 +210,24 @@ mod tests {
         if reg_result != reg_1100 {
             return Err(format!("result {} ne {}!", reg_result, reg_1100));
         }
+
+        let reg_0x1x = dm0.region_from_string("r0X1X").unwrap();
+
+        let reg_01x1 = dm0.region_from_string("r01X1").unwrap();
+
+        let cng1 = SomeChange::region_to_region(&reg_01x1, &reg_0x1x);
+
+        println!("change from {} to {} is {}", reg_01x1, reg_0x1x, cng1);
+
+        let reg_result = SomeRegion::new(
+            cng1.apply_to_state(&reg_01x1.state1),
+            cng1.apply_to_state(&reg_01x1.state2),
+        );
+
+        if !reg_0x1x.is_superset_of(&reg_result) {
+            return Err(format!("result {} ne {}!", reg_result, reg_1100));
+        }
+
         Ok(())
     }
 }

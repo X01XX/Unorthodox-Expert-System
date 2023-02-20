@@ -5,6 +5,7 @@
 use crate::action::SomeAction;
 use crate::change::SomeChange;
 use crate::needstore::NeedStore;
+use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::stepstore::StepStore;
 
@@ -71,7 +72,7 @@ impl ActionStore {
         &mut self,
         cur: &SomeState,
         dom: usize,
-        memory: &VecDeque<SomeState>,
+        memory: &VecDeque<SomeSample>,
     ) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");

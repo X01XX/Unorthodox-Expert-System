@@ -66,20 +66,18 @@ pub fn take_action(
 /// Domain 0, act 0, actions, given the current state.
 /// The SomeMask argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
-    let new_state;
-
     let sta1 = SomeMask::new_from_string(cur.num_ints(), "m0x01").unwrap();
     let sta2 = SomeMask::new_from_string(cur.num_ints(), "m0x02").unwrap();
     let sta4 = SomeMask::new_from_string(cur.num_ints(), "m0x04").unwrap();
     let sta8 = SomeMask::new_from_string(cur.num_ints(), "m0x08").unwrap();
 
-    if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
+    let new_state = if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
         || !cur.is_bit_set(3) && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
     {
         // ....X1X1
         //new_state = cur.toggle_bits("0x01");
-        new_state = cur.bitwise_xor(&sta1);
+        cur.bitwise_xor(&sta1)
     } else if cur.is_bit_set(1) {
         // ...101x, 1x10, alternate between two changes.
         let mut sample_num = rand::thread_rng().gen_range(1..3);
@@ -92,9 +90,9 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         }
 
         if sample_num == 2 {
-            new_state = cur.bitwise_xor(&sta2);
+            cur.bitwise_xor(&sta2)
         } else if sample_num == 1 {
-            new_state = cur.bitwise_xor(&sta4);
+            cur.bitwise_xor(&sta4)
         } else {
             panic!("1/2 change failed!");
         }
@@ -112,15 +110,15 @@ pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
         }
 
         if sample_num == 3 {
-            new_state = cur.bitwise_xor(&sta2);
+            cur.bitwise_xor(&sta2)
         } else if sample_num == 1 {
-            new_state = cur.bitwise_xor(&sta4);
+            cur.bitwise_xor(&sta4)
         } else if sample_num == 2 {
-            new_state = cur.bitwise_xor(&sta8);
+            cur.bitwise_xor(&sta8)
         } else {
             panic!("1/2/3 change failed");
         }
-    }
+    };
 
     println!(
         "\nDom 0 Act 0 {} -> {} R[{}]",

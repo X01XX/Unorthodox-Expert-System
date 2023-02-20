@@ -31,6 +31,7 @@ mod square;
 mod squarestore;
 mod state;
 use state::somestate_ref_vec_string;
+mod sample;
 mod statestore;
 use statestore::StateStore;
 mod domain;
@@ -118,7 +119,7 @@ fn run_step_by_step(file_path: &str) {
 fn run_to_end(dmxs: &mut DomainStore) {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        do_a_step(dmxs);
+        generate_and_display_needs(dmxs);
 
         // Check for end.
         if dmxs.can_do.is_empty() {
@@ -282,7 +283,7 @@ fn do_one_session() -> Result<usize, String> {
 
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        do_a_step(&mut dmxs);
+        generate_and_display_needs(&mut dmxs);
 
         // Check for end.
         if dmxs.can_do.is_empty() {
@@ -302,7 +303,7 @@ pub fn do_session(dmxs: &mut DomainStore) {
 
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        do_a_step(dmxs);
+        generate_and_display_needs(dmxs);
 
         if dmxs.can_do.is_empty() {
             to_end = false;
@@ -402,7 +403,9 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "run" => {
-                run_to_end(dmxs);
+                if !dmxs.can_do.is_empty() {
+                    run_to_end(dmxs);
+                }
             }
             "ss" => match do_sample_state_command(dmxs, &cmd) {
                 Ok(()) => return,
@@ -423,8 +426,8 @@ fn command_loop(dmxs: &mut DomainStore) {
     } // end loop
 } // end command_loop
 
-/// Do a step, return a vector of needs that can be done.
-fn do_a_step(dmxs: &mut DomainStore) {
+/// Generate and display domain and needs.
+fn generate_and_display_needs(dmxs: &mut DomainStore) {
     // Get the needs of all Domains / Actions
     dmxs.get_needs();
 

@@ -613,7 +613,7 @@ impl DomainStore {
         self[dmx].state_from_string(str)
     }
 
-    /// Set the current state field, of the current domain.
+    // Set the current state field, of the current domain.
     pub fn set_state(&mut self, new_state: &SomeState) {
         let dmx = self.current_domain;
         self[dmx].set_state(new_state)
