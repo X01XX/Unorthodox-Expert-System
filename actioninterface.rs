@@ -33,18 +33,17 @@ impl ActionInterface {
         dom_num: usize,
         act_num: usize,
     ) -> SomeState {
-        if dom_num == 0 && act_num == 0 {
-            let anum = if let Some(x) = self.ahash.get(cur_state) {
-                *x
-            } else {
-                rand::thread_rng().gen_range(0..4)
-            };
+        let mut anum = 0;
 
-            let ret_state = crate::actions::take_action(dom_num, act_num, cur_state, anum);
-            self.ahash.insert(cur_state.clone(), (anum + 1) % 4);
-            ret_state
-        } else {
-            take_action(dom_num, act_num, cur_state, 0)
+        if dom_num == 0 && act_num == 0 {
+            if let Some(val) = self.ahash.get_mut(cur_state) {
+                anum = *val;
+                *val = (anum + 1) % 4;
+            } else {
+                anum = rand::thread_rng().gen_range(0..4);
+                self.ahash.insert(cur_state.clone(), (anum + 1) % 4);
+            };
         }
+        take_action(dom_num, act_num, cur_state, anum)
     }
 }

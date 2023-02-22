@@ -459,6 +459,11 @@ impl SomeNeed {
     /// Return true if a state satisfies a need.
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
         match self {
+            SomeNeed::ContradictoryIntersection { target_region, .. } => {
+                if target_region.is_superset_of_state(cur_state) {
+                    return true;
+                }
+            }
             SomeNeed::AStateMakeGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
@@ -466,11 +471,6 @@ impl SomeNeed {
             }
             SomeNeed::StateNotInGroup { target_state, .. } => {
                 if cur_state == target_state {
-                    return true;
-                }
-            }
-            SomeNeed::ContradictoryIntersection { target_region, .. } => {
-                if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
