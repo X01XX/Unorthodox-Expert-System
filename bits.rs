@@ -13,7 +13,7 @@
 //!
 
 /// The iunsigned integer type used in a vector of bits.
-type Bitint = u8;
+pub type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
 const NUM_BITS_PER_INT: usize = u8::BITS as usize;
@@ -257,6 +257,27 @@ impl SomeBits {
             ary2.push(intx ^ other.ints[inx]);
         }
         Self { ints: ary2 }
+    }
+
+    /// Return the bitwise XOR of a bit number.
+    pub fn b_xor_bit(&self, bit_num: usize) -> Self {
+        let num_ints = self.ints.len();
+
+        let num_bits = num_ints * NUM_BITS_PER_INT;
+
+        if bit_num >= num_bits {
+            panic!("bit num too large");
+        }
+
+        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
+
+        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+
+        let mut ary2 = self.clone();
+
+        ary2.ints[int_num] ^= (2 ^ bit_pos) as Bitint;
+
+        ary2
     }
 
     /// Return Bits that are the same

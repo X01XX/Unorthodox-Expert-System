@@ -117,7 +117,7 @@ impl SomeAction {
             groups: GroupStore::new(num_ints),
             squares: SquareStore::new(),
             seek_edge: RegionStore::new(),
-            do_something: ActionInterface::new(dom_num, act_num),
+            do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
         }
     }
@@ -2126,7 +2126,9 @@ impl SomeAction {
         cur_state: &SomeState,
         ndx: &SomeNeed,
     ) -> SomeSample {
-        let astate = self.do_something.take_action(cur_state);
+        let astate = self
+            .do_something
+            .take_action(cur_state, self.dom_num, self.num);
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
         self.eval_need_sample(ndx, dom, &asample);
         asample
@@ -2134,7 +2136,9 @@ impl SomeAction {
 
     /// Take an action with the current state.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
-        let astate = self.do_something.take_action(cur_state);
+        let astate = self
+            .do_something
+            .take_action(cur_state, self.dom_num, self.num);
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
         self.eval_step_sample(&asample);
         asample
@@ -2143,7 +2147,9 @@ impl SomeAction {
     /// Take an action with a given state.
     pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
         //println!("action {} take_action_arbitrary", self.num);
-        let astate = self.do_something.take_action(cur_state);
+        let astate = self
+            .do_something
+            .take_action(cur_state, self.dom_num, self.num);
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
 
         if self.groups.any_superset_of_state(cur_state) {

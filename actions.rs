@@ -6,21 +6,19 @@
 //! Storing a function pointer in the SomeAction runs into problems with the parallel crate
 //! and the serialization crate.
 
-use crate::mask::SomeMask;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
-use rand::Rng;
 
 /// Take an action given the domain number, action number, current_state and last change mask (if any).
 pub fn take_action(
     dom_num: usize,
     act_num: usize,
     cur_state: &SomeState,
-    cmask: Option<&SomeMask>,
+    anum: usize,
 ) -> SomeState {
     if dom_num == 0 {
         if act_num == 0 {
-            dom0_act0(cur_state, cmask)
+            dom0_act0(cur_state, anum)
         } else if act_num == 1 {
             dom0_act1(cur_state)
         } else if act_num == 2 {
@@ -65,58 +63,34 @@ pub fn take_action(
 
 /// Domain 0, act 0, actions, given the current state.
 /// The SomeMask argument is a kludge to support multiple result actions.
-pub fn dom0_act0(cur: &SomeState, cmask: Option<&SomeMask>) -> SomeState {
-    let sta1 = SomeMask::new_from_string(cur.num_ints(), "m0x01").unwrap();
-    let sta2 = SomeMask::new_from_string(cur.num_ints(), "m0x02").unwrap();
-    let sta4 = SomeMask::new_from_string(cur.num_ints(), "m0x04").unwrap();
-    let sta8 = SomeMask::new_from_string(cur.num_ints(), "m0x08").unwrap();
-
+pub fn dom0_act0(cur: &SomeState, anum: usize) -> SomeState {
     let new_state = if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
         || !cur.is_bit_set(3) && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
     {
         // ....X1X1
         //new_state = cur.toggle_bits("0x01");
-        cur.bitwise_xor(&sta1)
+        cur.bitwise_xor_bit(1)
     } else if cur.is_bit_set(1) {
         // ...101x, 1x10, alternate between two changes.
-        let mut sample_num = rand::thread_rng().gen_range(1..3);
-        if let Some(amsk) = cmask {
-            if amsk.is_bit_set(1) {
-                sample_num = 1;
-            } else if amsk.is_bit_set(2) {
-                sample_num = 2;
-            }
-        }
+        let sample_num = anum % 2;
 
-        if sample_num == 2 {
-            cur.bitwise_xor(&sta2)
-        } else if sample_num == 1 {
-            cur.bitwise_xor(&sta4)
+        if sample_num == 0 {
+            cur.bitwise_xor_bit(2)
         } else {
-            panic!("1/2 change failed!");
+            cur.bitwise_xor_bit(4)
         }
     } else {
-        // ...000x, 0x00, alternate between 3 changes.
-        let mut sample_num = rand::thread_rng().gen_range(1..4);
-        if let Some(amsk) = cmask {
-            if amsk.is_bit_set(1) {
-                sample_num = 1;
-            } else if amsk.is_bit_set(2) {
-                sample_num = 2;
-            } else if amsk.is_bit_set(3) {
-                sample_num = 3;
-            }
-        }
+        // ...000x, 0x00, alternate between 4 changes.
 
-        if sample_num == 3 {
-            cur.bitwise_xor(&sta2)
-        } else if sample_num == 1 {
-            cur.bitwise_xor(&sta4)
-        } else if sample_num == 2 {
-            cur.bitwise_xor(&sta8)
+        if anum == 0 {
+            cur.bitwise_xor_bit(1)
+        } else if anum == 1 {
+            cur.bitwise_xor_bit(2)
+        } else if anum == 2 {
+            cur.bitwise_xor_bit(4)
         } else {
-            panic!("1/2/3 change failed");
+            cur.bitwise_xor_bit(2)
         }
     };
 

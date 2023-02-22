@@ -139,6 +139,13 @@ impl SomeState {
         }
     }
 
+    /// Return a SomeState instance, representing a bitwise XOr of a state and a simple number.
+    pub fn bitwise_xor_bit(&self, num: usize) -> Self {
+        SomeState {
+            bts: self.bts.b_xor_bit(num),
+        }
+    }
+
     /// Return a mask of the bits values that are the same.
     pub fn bitwise_eqv(&self, other: &impl BitsRef) -> SomeMask {
         SomeMask::new(self.bts.b_eqv(other.bitsref()))

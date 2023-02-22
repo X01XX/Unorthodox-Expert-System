@@ -358,10 +358,10 @@ impl SomeDomain {
             //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
-            let Some(step_to_goal_plan) =
+            let Some(plan_to_goal) =
                 self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
 
-            return SomePlan::new_with_step(self.num, stepy).link(&step_to_goal_plan);
+            return SomePlan::new_with_step(self.num, stepy).link(&plan_to_goal);
         }
 
         // Process a backward chaining step.
@@ -369,9 +369,9 @@ impl SomeDomain {
             //println!("backward step");
             let stepy = stepx.restrict_result_region(goal_reg);
 
-            return self
-                .plan_steps_between(from_reg, &stepy.initial, depth - 1)?
-                .link(&SomePlan::new_with_step(self.num, stepy));
+            let Some(plan_to_step) = self.plan_steps_between(from_reg, &stepy.initial, depth - 1) else { return None; };
+
+            return plan_to_step.link(&SomePlan::new_with_step(self.num, stepy));
         }
 
         // Must be an asymmetric step.
