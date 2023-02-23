@@ -275,7 +275,7 @@ impl SomeBits {
 
         let mut ary2 = self.clone();
 
-        ary2.ints[int_num] ^= (2 ^ bit_pos) as Bitint;
+        ary2.ints[int_num] ^= (1 << bit_pos) as Bitint;
 
         ary2
     }
