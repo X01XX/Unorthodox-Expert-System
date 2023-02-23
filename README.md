@@ -1,5 +1,5 @@
 # Unorthodox-Expert-System
-An expert of its own state. Rules can be developed, revised, and used without human intervention.
+An expert of its own state. Rules can be developed, revised, and used without human intervention. The rules are low-level, probably not what you expect.
 
 Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html. Also, squares that are only in one region have a special significance.
 
