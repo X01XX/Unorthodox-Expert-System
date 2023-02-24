@@ -205,7 +205,8 @@ fn init() -> DomainStore {
     // Add domain to the DomainStore.
     let inx0 = dmxs.push(SomeDomain::new(dom_num_ints));
 
-    // Add actions 0 through 8;
+    // Add actions 0 through 9;
+    dmxs[inx0].add_action();
     dmxs[inx0].add_action();
     dmxs[inx0].add_action();
     dmxs[inx0].add_action();

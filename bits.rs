@@ -9,10 +9,10 @@
 //!
 //! The integer type/size can be increased, change "u8", below, the format string literal "08b" in the formatted_string function.
 //!
-//! test.rs, and change the constants, below, as needed.
+//! Change the constants, below, as needed.
 //!
 
-/// The iunsigned integer type used in a vector of bits.
+/// The unsigned integer type used in a vector of bits.
 pub type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
@@ -259,8 +259,9 @@ impl SomeBits {
         Self { ints: ary2 }
     }
 
-    /// Return the bitwise XOR of a bit number.
-    pub fn b_xor_bit(&self, bit_num: usize) -> Self {
+    /// Return a copy of an instance, with a bit position changed.
+    /// X to X-not for a specific bit.
+    pub fn change_bit(&self, bit_num: usize) -> Self {
         let num_ints = self.ints.len();
 
         let num_bits = num_ints * NUM_BITS_PER_INT;
@@ -276,6 +277,50 @@ impl SomeBits {
         let mut ary2 = self.clone();
 
         ary2.ints[int_num] ^= (1 << bit_pos) as Bitint;
+
+        ary2
+    }
+
+    /// Return a copy of an instance, with a bit position set to 1.
+    /// X to 1 for a specific bit.
+    pub fn set_bit_to_1(&self, bit_num: usize) -> Self {
+        let num_ints = self.ints.len();
+
+        let num_bits = num_ints * NUM_BITS_PER_INT;
+
+        if bit_num >= num_bits {
+            panic!("bit num too large");
+        }
+
+        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
+
+        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+
+        let mut ary2 = self.clone();
+
+        ary2.ints[int_num] |= (1 << bit_pos) as Bitint;
+
+        ary2
+    }
+
+    /// Return a copy of an instance, with a bit position set to 0.
+    /// X to 0, for a specific bit.
+    pub fn set_bit_to_0(&self, bit_num: usize) -> Self {
+        let num_ints = self.ints.len();
+
+        let num_bits = num_ints * NUM_BITS_PER_INT;
+
+        if bit_num >= num_bits {
+            panic!("bit num too large");
+        }
+
+        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
+
+        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+
+        let mut ary2 = self.clone();
+
+        ary2.ints[int_num] &= !(1 << bit_pos) as Bitint;
 
         ary2
     }
@@ -736,6 +781,41 @@ mod tests {
 
         if bitsz.is_not_high() {
             return Err(String::from("Result not high?"));
+        }
+        Ok(())
+    }
+
+    // Test change_bit functions.
+    #[test]
+    fn change_bits() -> Result<(), String> {
+        let bx11 = SomeBits::new_from_string(1, "0x11").unwrap();
+        let mut btest = SomeBits::new_low(1);
+        btest = btest.change_bit(0).change_bit(4);
+        if bx11 != btest {
+            return Err(format!(
+                "{} NE {} ?",
+                bx11.formatted_string('b'),
+                btest.formatted_string('b')
+            ));
+        }
+
+        let bx10 = SomeBits::new_from_string(1, "0x10").unwrap();
+        btest = btest.set_bit_to_0(0);
+        if bx10 != btest {
+            return Err(format!(
+                "{} NE {} ?",
+                bx10.formatted_string('b'),
+                btest.formatted_string('b')
+            ));
+        }
+
+        btest = btest.set_bit_to_1(0);
+        if bx11 != btest {
+            return Err(format!(
+                "{} NE {} ?",
+                bx11.formatted_string('b'),
+                btest.formatted_string('b')
+            ));
         }
         Ok(())
     }

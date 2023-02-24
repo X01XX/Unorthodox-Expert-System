@@ -689,20 +689,20 @@ mod tests {
         let sf = dm0.state_from_string("s0b1111").unwrap();
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.xor_bit_number(0)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.xor_bit_number(0)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(0)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.change_bit(0)));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.xor_bit_number(1)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.xor_bit_number(1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.change_bit(1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.change_bit(1)));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.xor_bit_number(2)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.xor_bit_number(2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.change_bit(2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.change_bit(2)));
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.xor_bit_number(3)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sf.xor_bit_number(3))); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.change_bit(3)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sf.change_bit(3))); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
@@ -745,20 +745,20 @@ mod tests {
         let sb = dm0.state_from_string("s0b1011").unwrap();
 
         // Create group for region XXXX->XXXx, Act 0.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.xor_bit_number(0)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.xor_bit_number(0)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(0)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.change_bit(0)));
 
         // Create group for region XXXX->XXxX, Act 1.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.xor_bit_number(1)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.xor_bit_number(1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s0.change_bit(1)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sf.change_bit(1)));
 
         // Create group for region XXXX-XxXX, Act 2.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.xor_bit_number(2)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.xor_bit_number(2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s0.change_bit(2)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sf.change_bit(2)));
 
         // Create group for region X0XX->x0XX, Act 3.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.xor_bit_number(3)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), 3, sb.xor_bit_number(3)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s0.change_bit(3)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), 3, sb.change_bit(3)));
 
         println!("\nActs: {}", &dm0.actions);
 
@@ -1199,8 +1199,8 @@ mod tests {
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.xor_bit_number(4)));
-        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.xor_bit_number(4)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(4)));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.change_bit(4)));
 
         if let Some(_grpx) = dm0.actions[0]
             .groups

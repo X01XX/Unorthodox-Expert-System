@@ -139,10 +139,24 @@ impl SomeState {
         }
     }
 
-    /// Return a SomeState instance, representing a bitwise XOr of a state and a simple number.
-    pub fn xor_bit_number(&self, num: usize) -> Self {
+    /// Return a copy of an instance, with a bit position changed.
+    pub fn change_bit(&self, num: usize) -> Self {
         SomeState {
-            bts: self.bts.b_xor_bit(num),
+            bts: self.bts.change_bit(num),
+        }
+    }
+
+    /// Return a copy of an instance, with a bit position set to 1.
+    pub fn set_bit_to_1(&self, num: usize) -> Self {
+        SomeState {
+            bts: self.bts.set_bit_to_1(num),
+        }
+    }
+
+    /// Return a copy of an instance, with a bit position set to 0.
+    pub fn set_bit_to_0(&self, num: usize) -> Self {
+        SomeState {
+            bts: self.bts.set_bit_to_0(num),
         }
     }
 
