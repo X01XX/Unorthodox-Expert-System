@@ -1,4 +1,29 @@
-// Main function for an Unorthodox Expert System
+/*
+ * Unorthodox Expert System
+ *
+ * Copyright 2021 Bitflogger <earl.dukerschein@wisc.edu>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ *
+ */
+
+/*
+ * For use outside of the license, contact the Wisconsin Alumni Research Foundation (WARF).
+ */
 
 //#![allow(
 //dead_code,
@@ -399,7 +424,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "ps" => match do_print_squares_command(dmxs, &cmd) {
-                Ok(()) => return,
+                Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
                 }
@@ -745,8 +770,8 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
 
         println!("Squares of Action {act_num} in region {aregion} are:\n");
 
-        let stas = dmx.actions[act_num].squares.stas_in_reg(&aregion);
-        if stas.is_empty() {
+        let sqrs = dmx.actions[act_num].squares.squares_in_reg(&aregion);
+        if sqrs.is_empty() {
             println!("No squares in region {aregion}");
             return Ok(());
         }
@@ -755,8 +780,7 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
         let mut min_pn = Pn::Unpredictable;
         let mut max_pn_reg: Option<SomeRegion> = None;
 
-        for stax in stas.iter() {
-            let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+        for sqrx in sqrs.iter() {
             println!("    {sqrx}");
 
             if sqrx.pn < min_pn {
@@ -778,8 +802,7 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
         // Get rule union, if any
         let mut rules: Option<RuleStore> = None;
         let mut non_pn_stas = StateStore::new();
-        for stax in stas.iter() {
-            let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+        for sqrx in sqrs.iter() {
             if sqrx.pn == max_pn {
                 if max_pn < Pn::Unpredictable {
                     if let Some(ruls) = rules {

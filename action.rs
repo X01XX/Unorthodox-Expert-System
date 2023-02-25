@@ -59,7 +59,7 @@ impl fmt::Display for SomeAction {
 
             let cnt: usize = stas_in
                 .iter()
-                .map(|x| usize::from(regs.state_in_1_region(x)))
+                .map(|stax| usize::from(regs.state_in_1_region(stax)))
                 .sum();
 
             let _ = write!(
@@ -1795,9 +1795,9 @@ impl SomeAction {
     ) -> SomeNeed {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", &regx, &grpx.region, &grpx.rules, &grpy.region, &grpy.rules);
         // Check for any squares in the region
-        let stas_in = self.squares.stas_in_reg(regx);
+        let sqrs_in = self.squares.squares_in_reg(regx);
 
-        if stas_in.is_empty() {
+        if sqrs_in.is_empty() {
             let ruls1 = if grpx.rules.is_empty() {
                 RuleStore::new()
             } else {
@@ -1828,8 +1828,7 @@ impl SomeAction {
         let mut max_rslts = 0;
         // change start
         let mut stas_check = Vec::<&SomeState>::new();
-        for stax in &stas_in {
-            let sqrz = self.squares.find(stax).unwrap();
+        for sqrz in &sqrs_in {
             if sqrz.pnc {
                 panic!(
                     "Square {} is pnc in contradictory intersection {}\n  of group {}\n and group {}",
@@ -1899,14 +1898,12 @@ impl SomeAction {
 
                         // See if an existing square is ready to produce the desired result
                         let i_reg = rulx.initial_region();
-                        let stas = self.squares.stas_in_reg(&i_reg);
+                        let sqrs = self.squares.squares_in_reg(&i_reg);
 
                         let mut found = false;
-                        for stax in &stas {
-                            let sqrx = self.squares.find(stax).unwrap();
-
+                        for sqrx in &sqrs {
                             // Will include at least one bit change desired, but maybe others.
-                            let expected_result = rulx.result_from_initial_state(stax);
+                            let expected_result = rulx.result_from_initial_state(&sqrx.state);
 
                             // If a Pn::Two squares last result is not equal to what is wanted,
                             // the next result should be.
