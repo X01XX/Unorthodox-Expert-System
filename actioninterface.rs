@@ -40,6 +40,7 @@ impl ActionInterface {
                 anum = *val;
                 *val = (anum + 1) % 4;
             } else {
+                // Start a new state counter at a random place in the cycle.
                 anum = rand::thread_rng().gen_range(0..4);
                 self.ahash.insert(cur_state.clone(), (anum + 1) % 4);
             };
