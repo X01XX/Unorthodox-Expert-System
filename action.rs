@@ -140,7 +140,7 @@ impl SomeAction {
         }
 
         if sqrx.pn == sqry.pn {
-            if !self.no_incompatible_pn_square_in_region(
+            if self.any_incompatible_pn_square_in_region(
                 &SomeRegion::new(sqrx.state.clone(), sqry.state.clone()),
                 sqrx.pn,
             ) {
@@ -158,7 +158,7 @@ impl SomeAction {
             ) {
                 return Some(false);
             }
-        } else if !self.no_incompatible_square_combination_in_region(&SomeRegion::new(
+        } else if self.any_incompatible_square_combination_in_region(&SomeRegion::new(
             sqrx.state.clone(),
             sqry.state.clone(),
         )) {
@@ -202,12 +202,10 @@ impl SomeAction {
             return;
         }
 
-        let anchor_states: Vec<&SomeState> = self.groups.anchor_states();
-
         // The current anchor rate may have changed, so recalculate it.
-        let anchor_rate = self.group_anchor_rate(grpx, anchor, &anchor_states);
+        let anchor_rate = self.group_anchor_rate(grpx, anchor);
 
-        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial, &anchor_states);
+        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
 
         if sqr_rate > anchor_rate {
             println!(
@@ -1190,12 +1188,7 @@ impl SomeAction {
     ///     The number of adjacent states that are anchors of other groups,
     ///     The number adjacent states that are in only one group,
     ///     The number of samples taken for the adjacent states.
-    fn group_anchor_rate(
-        &self,
-        grpx: &SomeGroup,
-        stax: &SomeState,
-        anchors: &[&SomeState],
-    ) -> (usize, usize, usize) {
+    fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
         assert!(self.groups.num_groups_state_in(stax) == 1);
 
         let mut sta_rate = (0, 0, 0);
@@ -1221,10 +1214,12 @@ impl SomeAction {
             //    &sta_adj, &stax, &greg
             //);
 
-            if anchors.contains(&&sta_adj) {
+            let stats = self.groups.in_one_anchor(&sta_adj);
+
+            if stats == Some(true) {
                 sta_rate.0 += 1;
                 sta_rate.1 += 1;
-            } else if self.groups.num_groups_state_in(&sta_adj) == 1 {
+            } else if stats == Some(false) {
                 //println!("{} is in only one group", &sta_adj);
                 sta_rate.1 += 1;
             }
@@ -1295,7 +1290,7 @@ impl SomeAction {
                 continue;
             }
 
-            let sta_rate = self.group_anchor_rate(grpx, stax, &adj_anchors);
+            let sta_rate = self.group_anchor_rate(grpx, stax);
 
             //println!("group {} possible anchor {} rating {} {} {}", &grpx.region, &stax, sta_rate.0, sta_rate.1, sta_rate.2);
 
@@ -1546,23 +1541,23 @@ impl SomeAction {
     } // end group_pair_needs
 
     /// Return true if there is no invalid combination of squares in a region.
-    fn no_incompatible_square_combination_in_region(&self, regx: &SomeRegion) -> bool {
+    fn any_incompatible_square_combination_in_region(&self, regx: &SomeRegion) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
         if sqrs_in_reg.len() < 2 {
-            return true;
+            return false;
         }
 
         for inx in 0..(sqrs_in_reg.len() - 1) {
             for iny in (inx + 1)..sqrs_in_reg.len() {
                 if sqrs_in_reg[inx].can_combine(sqrs_in_reg[iny]) == Some(false) {
-                    return false;
+                    return true;
                 }
             }
         }
 
-        true
+        false
     }
 
     /// Return true if all square rules in a region are a subset of given rules.
@@ -1585,16 +1580,16 @@ impl SomeAction {
     }
 
     /// Return true if there is no square with an incompatible Pn value.
-    fn no_incompatible_pn_square_in_region(&self, regx: &SomeRegion, pnx: Pn) -> bool {
+    fn any_incompatible_pn_square_in_region(&self, regx: &SomeRegion, pnx: Pn) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
         for sqrx in &sqrs_in_reg {
             if sqrx.pn != pnx && (sqrx.pnc || sqrx.pn > pnx) {
-                return false;
+                return true;
             }
         }
-        true
+        false
     }
 
     /// Return needs to define a region, from the combination of two smaller regions.
@@ -1704,10 +1699,10 @@ impl SomeAction {
         let reg_both = grpx.region.union(&grpy.region);
 
         if grpx.pn == Pn::Unpredictable {
-            if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            if self.any_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
+                return nds;
             }
-            return nds;
+            return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
         }
 
         if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
@@ -1742,10 +1737,10 @@ impl SomeAction {
         let reg_both = grpx.region.union(&grpy.region);
 
         if grpx.pn == Pn::Unpredictable {
-            if self.no_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            if self.any_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
+                return nds;
             }
-            return nds;
+            return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
         }
 
         let rulsx = grpx.rules.restrict_initial_region(&reg_int);
@@ -2136,7 +2131,7 @@ mod tests {
     }
 
     #[test]
-    fn no_incompatible_square_combination_in_region() -> Result<(), String> {
+    fn any_incompatible_square_combination_in_region() -> Result<(), String> {
         // Init states.
         let sta_f = SomeState::new_from_string(1, "s0b1111").unwrap();
         let sta_e = SomeState::new_from_string(1, "s0b1110").unwrap();
@@ -2164,7 +2159,7 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
 
         // Should be OK so far.
-        if !act0.no_incompatible_square_combination_in_region(&regx) {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             return Err("Result 1 is false?".to_owned());
         } else {
             println!("Result 1 as expected");
@@ -2174,7 +2169,7 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_1.clone(), 0, sta_0.clone()));
 
         // Should be OK so far.
-        if !act0.no_incompatible_square_combination_in_region(&regx) {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             return Err("Result 2 is false?".to_owned());
         } else {
             println!("Result 2 as expected");
@@ -2189,7 +2184,7 @@ mod tests {
         // Squares F and 5 make a region, X1X1, a subset of XXX1.
 
         // Should be OK so far.
-        if !act0.no_incompatible_square_combination_in_region(&regx) {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             return Err("Result 3 is false?".to_owned());
         } else {
             println!("Result 3 as expected");
@@ -2205,7 +2200,7 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_b.clone(), 0, sta_a.clone()));
 
         // Should be OK so far.
-        if !act0.no_incompatible_square_combination_in_region(&regx) {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             return Err("Result 4 is false?".to_owned());
         } else {
             println!("Result 4 as expected");
@@ -2215,10 +2210,10 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_1.clone()));
 
         // Should fail.
-        if act0.no_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 5 is true?".to_owned());
-        } else {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             println!("Result 5 as expected");
+        } else {
+            return Err("Result 5 is true?".to_owned());
         }
 
         // Remove square 3.
@@ -2228,7 +2223,7 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
         // Should be OK so far.
-        if !act0.no_incompatible_square_combination_in_region(&regx) {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             return Err("Result 6 is false?".to_owned());
         } else {
             println!("Result 6 as expected");
@@ -2238,10 +2233,10 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
         // Should fail.
-        if act0.no_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 7 is true?".to_owned());
-        } else {
+        if act0.any_incompatible_square_combination_in_region(&regx) {
             println!("Result 7 as expected");
+        } else {
+            return Err("Result 7 is true?".to_owned());
         }
 
         Ok(())

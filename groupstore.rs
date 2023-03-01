@@ -155,6 +155,34 @@ impl GroupStore {
         }
     }
 
+    /// Check if a state is in only one group, and if so, it is equal to the anchor.
+    /// Some(true) = State is in only one group, and is equal to the anchor of that group.
+    /// Some(false) = State is in only one group.
+    /// None = neither case is true.
+    pub fn in_one_anchor(&self, astate: &SomeState) -> Option<bool> {
+        let mut num = 0;
+        let mut index = 0;
+
+        for (inx, grpx) in self.avec.iter().enumerate() {
+            if grpx.region.is_superset_of_state(astate) {
+                num += 1;
+                if num > 1 {
+                    return None;
+                }
+                index = inx;
+            }
+        }
+        if num == 1 {
+            if let Some(anchor) = &self.avec[index].anchor {
+                if astate == anchor {
+                    return Some(true);
+                }
+            }
+            return Some(false);
+        }
+        None
+    }
+
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
@@ -163,14 +191,6 @@ impl GroupStore {
             }
         }
         false
-    }
-
-    /// Return a list of anchor states.
-    pub fn anchor_states(&self) -> Vec<&SomeState> {
-        self.avec
-            .iter()
-            .filter_map(|grpx| grpx.anchor.as_ref())
-            .collect()
     }
 
     /// Return true if any group is a superset, or equal, to a region.
