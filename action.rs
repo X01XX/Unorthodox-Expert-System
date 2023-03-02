@@ -168,19 +168,48 @@ impl SomeAction {
         cmbx
     }
 
+    pub fn square_check_additional_sample(&mut self, smpl: &SomeSample) {
+        let sqrx = self.squares.find_mut(&smpl.initial).unwrap();
+        
+        // println!("about to add result to sqr {}", cur.str());
+        if sqrx.add_result(smpl.result.clone()) {
+            self.check_square_new_sample(smpl);
+        }
+    }
+
+    pub fn add_new_square(&mut self, smpl: &SomeSample) {
+        if self.cleanup_trigger > 0 {
+            self.cleanup_trigger -= 1;
+        }
+        self.squares.insert(
+            SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
+            self.dom_num,
+            self.num,
+        );
+        self.check_square_new_sample(smpl);
+        self.eval_sample_check_anchor(smpl);
+    }
+
     /// Store and evaluate a sample if it forms a new square,
     /// or causes a change to an existing square (change in pn or pnc).
     pub fn eval_sample(&mut self, smpl: &SomeSample) {
-        if self.store_sample(smpl) {
-            self.check_square_new_sample(smpl);
-            self.eval_sample_check_anchor(smpl);
+        // Check if sample is for an existing square.
+        if self.squares.find(&smpl.initial).is_some() {
+            self.square_check_additional_sample(smpl);
+        } else {
+            self.add_new_square(smpl);
         }
+
+//        if self.store_sample(smpl) {
+//            self.check_square_new_sample(smpl);
+//            self.eval_sample_check_anchor(smpl);
+//        }
     }
 
     /// Check for anchor change due to a square change.
     /// A new square (in group X) may have a higher anchor rating
     /// than the current (group X) anchor.
-    /// An square must exist to set an anchor.
+    /// A square must exist to set an anchor.
     fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
         if self.groups.num_groups_state_in(&smpl.initial) != 1 {
             return;
@@ -407,29 +436,6 @@ impl SomeAction {
             self.eval_sample(smpl);
         }
     } // end eval_step_sample
-
-    /// Store a sample.
-    /// Update an existing square or create a new square.
-    /// Return true if something changed, like pn or pnc.
-    fn store_sample(&mut self, smpl: &SomeSample) -> bool {
-        // Get an existing square and update, or create a new square.
-        //println!("store_sample");
-        if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
-            // println!("about to add result to sqr {}", cur.str());
-            return sqrx.add_result(smpl.result.clone());
-        }
-
-        // println!("No square found for state {}", cur.str());
-        if self.cleanup_trigger > 0 {
-            self.cleanup_trigger -= 1;
-        }
-        self.squares.insert(
-            SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
-            self.dom_num,
-            self.num,
-        );
-        true
-    }
 
     /// Check a square, referenced by state, against valid groups.
     /// The square may invalidate some groups.
@@ -1188,20 +1194,13 @@ impl SomeAction {
     ///     The number of adjacent states that are anchors of other groups,
     ///     The number adjacent states that are in only one group,
     ///     The number of samples taken for the adjacent states.
+    /// To set an anchor, a square with at least one sample is required, but ..
+    /// To rate a possible anchor state, no sample of the state is requried.
+    /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
         assert!(self.groups.num_groups_state_in(stax) == 1);
 
         let mut sta_rate = (0, 0, 0);
-
-        if let Some(sqrx) = self.squares.find(stax) {
-            sta_rate.2 += sqrx.rate();
-        }
-
-        // Rate far state
-        let sta_far = grpx.region.far_state(stax);
-        if let Some(sqrx) = self.squares.find(&sta_far) {
-            sta_rate.2 += sqrx.rate();
-        }
 
         // Get masks of edge bits to use to limit group.
         let edge_msks = grpx.region.same_bits().split();
@@ -1254,21 +1253,28 @@ impl SomeAction {
 
         // For adjacent (other group) anchors,
         // store corresponding state in group region,
-        // which may not have been sampled yet.
+        // which has not have been sampled yet.
         let mut stas_in: Vec<&SomeState> = self.squares.stas_in_reg(&grpx.region);
+        
+        // Home for additional states, that have not been sampled yet, so their
+        // reference can be pushed to the stas_in vector.
         let mut additional_stas = StateStore::new();
+
         for ancx in &adj_anchors {
             // Calc state in group that corresponds to an adjacent anchor.
             let stay = ancx.bitwise_xor(&grpx.region.diff_mask_state(ancx));
 
+            // Check if the state has not been sampled already.
             if !stas_in.contains(&&stay) {
-                // The state may have been sampled already.
+
+                // The state may be in the vertor already, due to being
+                // adjacent to more than one external regions' anchor.
                 if !additional_stas.contains(&stay) {
-                    // The state may be adjacent to more than one anchor.
                     additional_stas.push(stay);
                 }
             }
         }
+        // Add additional state references to stas_in vector.
         for stax in additional_stas.iter() {
             stas_in.push(stax);
         }

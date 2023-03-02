@@ -14,7 +14,7 @@ impl fmt::Display for PlanStore {
 
         let mut rc_str = String::new();
 
-        rc_str.push_str("\n[");
+        rc_str.push_str("\n(");
 
         for planx in &self.avec {
             if flg == 1 {
@@ -23,7 +23,7 @@ impl fmt::Display for PlanStore {
             let _ = write!(rc_str, "{}", &planx);
             flg = 1;
         }
-        rc_str.push(']');
+        rc_str.push(')');
 
         write!(f, "{rc_str}")
     }
@@ -83,7 +83,7 @@ impl PlanStore {
         let mut rc_str = String::new();
 
         if self.avec.len() > 1 {
-            rc_str.push_str("( ");
+            rc_str.push('(');
         }
         let mut not_first = false;
         for planx in &self.avec {
@@ -94,7 +94,7 @@ impl PlanStore {
             not_first = true;
         }
         if self.avec.len() > 1 {
-            rc_str.push_str(" )");
+            rc_str.push(')');
         }
         rc_str
     }
