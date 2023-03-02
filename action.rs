@@ -168,15 +168,18 @@ impl SomeAction {
         cmbx
     }
 
+    /// Check the consequences of adding a new sample to an existing square.
     pub fn square_check_additional_sample(&mut self, smpl: &SomeSample) {
         let sqrx = self.squares.find_mut(&smpl.initial).unwrap();
-        
+
         // println!("about to add result to sqr {}", cur.str());
         if sqrx.add_result(smpl.result.clone()) {
             self.check_square_new_sample(smpl);
         }
     }
 
+    /// Add a new square from a sample.
+    /// Check the consequenses of adding the square.
     pub fn add_new_square(&mut self, smpl: &SomeSample) {
         if self.cleanup_trigger > 0 {
             self.cleanup_trigger -= 1;
@@ -199,25 +202,14 @@ impl SomeAction {
         } else {
             self.add_new_square(smpl);
         }
-
-//        if self.store_sample(smpl) {
-//            self.check_square_new_sample(smpl);
-//            self.eval_sample_check_anchor(smpl);
-//        }
     }
 
-    /// Check for anchor change due to a square change.
-    /// A new square (in group X) may have a higher anchor rating
-    /// than the current (group X) anchor.
-    /// A square must exist to set an anchor.
+    /// Check for anchor change due to a new sample.
+    /// A square implied by the sample, in a group, may have a higher anchor rating
+    /// than the current group anchor.
     fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
+
         if self.groups.num_groups_state_in(&smpl.initial) != 1 {
-            return;
-        }
-
-        let Some(sqrx) = self.squares.find(&smpl.initial) else { println!("eval_sample_check_anchor: 1: This should not happen"); return; };
-
-        if sqrx.results.len() != 1 {
             return;
         }
 
@@ -241,6 +233,15 @@ impl SomeAction {
                 "Changing group {} anchor from {} {:?} to {} {:?}",
                 grpx.region, anchor, anchor_rate, smpl.initial, sqr_rate
             );
+
+            if self.squares.find(&smpl.initial).is_some() {
+            } else {
+                self.squares.insert(
+                    SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
+                    self.dom_num,
+                    self.num,
+                );
+            }
 
             self.groups.set_anchor(&grps_in[0], &smpl.initial);
         }
@@ -434,6 +435,8 @@ impl SomeAction {
         // Check if any groups are invalidated
         if self.groups.any_groups_invalidated(smpl) {
             self.eval_sample(smpl);
+        } else {
+            self.eval_sample_check_anchor(smpl);
         }
     } // end eval_step_sample
 
@@ -1255,7 +1258,7 @@ impl SomeAction {
         // store corresponding state in group region,
         // which has not have been sampled yet.
         let mut stas_in: Vec<&SomeState> = self.squares.stas_in_reg(&grpx.region);
-        
+
         // Home for additional states, that have not been sampled yet, so their
         // reference can be pushed to the stas_in vector.
         let mut additional_stas = StateStore::new();
@@ -1266,7 +1269,6 @@ impl SomeAction {
 
             // Check if the state has not been sampled already.
             if !stas_in.contains(&&stay) {
-
                 // The state may be in the vertor already, due to being
                 // adjacent to more than one external regions' anchor.
                 if !additional_stas.contains(&stay) {
