@@ -63,7 +63,12 @@ impl RegionStore {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.len() == 0
+        self.avec.is_empty()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
     }
 
     /// Add a region to the vector.

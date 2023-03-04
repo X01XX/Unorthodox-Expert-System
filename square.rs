@@ -120,7 +120,7 @@ impl SomeSquare {
                     }
                 }
                 Pn::Unpredictable => {
-                    if !self.rules.is_empty() {
+                    if self.rules.is_not_empty() {
                         self.rules = RuleStore::new();
                     }
                 }

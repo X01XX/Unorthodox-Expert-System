@@ -184,11 +184,9 @@ impl ResultStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if !self.astore.is_empty() {
-            rc_len += self.astore.len() * self.astore[0].formatted_string_length();
-            if self.astore.len() > 1 {
-                rc_len += (self.astore.len() - 1) * 2;
-            }
+        rc_len += self.astore.len() * self.astore[0].formatted_string_length();
+        if self.astore.len() > 1 {
+            rc_len += (self.astore.len() - 1) * 2;
         }
 
         rc_len

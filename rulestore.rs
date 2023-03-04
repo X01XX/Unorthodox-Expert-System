@@ -89,7 +89,12 @@ impl RuleStore {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.len() == 0
+        self.avec.is_empty()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
     }
 
     /// Add a rule to a RuleStore.
@@ -255,8 +260,8 @@ impl RuleStore {
 
     /// Return Truth value of a possible union.
     pub fn can_form_union(&self, other: &Self) -> Option<bool> {
-        assert!(!self.is_empty());
-        assert!(!other.is_empty());
+        assert!(self.is_not_empty());
+        assert!(other.is_not_empty());
 
         // Handle Pn1 vs. Pn2.
         // The Pn1 type should not have enough samples to be pnc, caller to insure.
@@ -340,7 +345,7 @@ impl RuleStore {
 
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        assert!(!self.is_empty());
+        assert!(self.is_not_empty());
         assert!(regx.intersects(&self.initial_region()));
         let mut rcrs = Self::new();
 
@@ -359,7 +364,7 @@ impl RuleStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 3;
 
-        if !self.avec.is_empty() {
+        if self.is_not_empty() {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;

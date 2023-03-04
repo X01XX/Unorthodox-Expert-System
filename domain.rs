@@ -96,15 +96,8 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     pub fn get_needs(&mut self) -> NeedStore {
         // Get all needs.
-        let mut nst = self
-            .actions
-            .get_needs(&self.cur_state, self.num, &self.memory);
-
-        for ndx in nst.iter_mut() {
-            ndx.set_dom(self.num);
-        }
-
-        nst
+        self.actions
+            .get_needs(&self.cur_state, self.num, &self.memory)
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -157,7 +150,7 @@ impl SomeDomain {
         if pln.is_empty() {
             return true;
         }
-        self.run_plan2(pln, 3) // Init depth counter.
+        self.run_plan2(pln, 3)
     }
 
     /// Run a plan, with a recursion depth check.
@@ -168,9 +161,9 @@ impl SomeDomain {
     /// sample to be the alternate result.
     ///   If the alternate result has no changes, the action can be immediately tried again.
     ///   If the alternate result changes something, a re-plan-to-goal is done.
-    fn run_plan2(&mut self, pln: &SomePlan, depth: usize) -> bool {
-        if depth == 0 {
-            println!("\nDepth exceeded, at plan {}", &pln);
+    fn run_plan2(&mut self, pln: &SomePlan, retries: usize) -> bool {
+        if retries == 0 {
+            println!("\nNumber retries exceeded, at plan {}", &pln);
             return false;
         }
 
@@ -226,7 +219,7 @@ impl SomeDomain {
                     &pln.result_region(),
                     &planx.str_terse()
                 );
-                return self.run_plan2(&planx, depth - 1);
+                return self.run_plan2(&planx, retries - 1);
             }
             println!(
                 "A plan from {} to {} is not found",
@@ -925,7 +918,7 @@ mod tests {
         //println!("needs {}", nds4);
 
         // Check for no more needs.
-        assert!(nds4.len() == 0);
+        assert!(nds4.is_empty());
 
         Ok(())
     }
@@ -1361,7 +1354,7 @@ mod tests {
         }
 
         let needs = dm0.get_needs();
-        assert!(dm0.actions[0].seek_edge.len() == 0);
+        assert!(dm0.actions[0].seek_edge.is_empty());
 
         println!("\nActs: {}", &dm0.actions);
         println!("needs9: {}", &needs);

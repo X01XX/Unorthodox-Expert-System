@@ -132,7 +132,7 @@ impl SomePlan {
 
     /// Add a step to a SomePlan.
     pub fn push(&mut self, stepx: SomeStep) {
-        if !self.is_empty() {
+        if self.is_not_empty() {
             assert!(self.result_region() == &stepx.initial);
         }
         self.steps.push(stepx);
@@ -287,7 +287,12 @@ impl SomePlan {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.steps.len() == 0
+        self.steps.is_empty()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.steps.is_empty()
     }
 
     /// Return a step iterator.
@@ -297,13 +302,13 @@ impl SomePlan {
 
     /// Return the initial region of a plan that contains at least one step.
     pub fn initial_region(&self) -> &SomeRegion {
-        assert!(!self.is_empty());
+        assert!(self.is_not_empty());
         &self.steps[0].initial
     }
 
     /// Return the result region of a plan that contains at least one step.
     pub fn result_region(&self) -> &SomeRegion {
-        assert!(!self.is_empty());
+        assert!(self.is_not_empty());
         &self[self.len() - 1].result
     }
 

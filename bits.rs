@@ -194,7 +194,7 @@ impl SomeBits {
 
     /// Return true if a bit is one at a given position number.
     /// Match the intuition of a hexidecimal representation.
-    /// Like 0xfa1ce. The least significant bit, in this case its equal 0, is bit number zero.
+    /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
     /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
         let num_ints = self.ints.len();
@@ -545,6 +545,10 @@ impl SomeBits {
     /// roughly half the bits.
     pub fn half_bits(&self) -> Self {
         let one_bits: Vec<SomeBits> = self.split();
+
+        if one_bits.len() < 2 {
+            panic!("Less than two bits {}?", self);
+        }
 
         let indices: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
 
@@ -1114,6 +1118,21 @@ mod tests {
             .just_one_bit()
         {
             return Err(String::from("Test 10 failed?"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn half_bits() -> Result<(), String> {
+        let bts = SomeBits::new_from_string(2, "0x5555").unwrap();
+        let hbts = bts.half_bits();
+        let num_bits = hbts.num_one_bits();
+        if num_bits != 4 {
+            return Err(format!(
+                "num bts {} num hbts {} ne 4?",
+                bts.num_one_bits(),
+                num_bits
+            ));
         }
         Ok(())
     }

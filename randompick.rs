@@ -36,7 +36,7 @@ impl RandomPick {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.items.len() == 0
+        self.items.is_empty()
     }
 
     /// Pick a random item from a RandomPick vector.

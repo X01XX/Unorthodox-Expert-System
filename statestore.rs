@@ -47,7 +47,12 @@ impl StateStore {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.len() == 0
+        self.avec.is_empty()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
     }
 
     /// Return an immuable iterator.
@@ -64,7 +69,7 @@ impl StateStore {
     pub fn formatted_string_length(&self) -> usize {
         let mut rc_len = 2;
 
-        if !self.avec.is_empty() {
+        if self.is_not_empty() {
             rc_len += self.avec.len() * self.avec[0].formatted_string_length();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;

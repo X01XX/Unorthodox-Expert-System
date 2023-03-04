@@ -151,7 +151,7 @@ impl DomainStore {
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
-            .filter(|ndsx| !ndsx.is_empty())
+            .filter(|ndsx| ndsx.is_not_empty())
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
@@ -174,11 +174,11 @@ impl DomainStore {
 
     /// Run a vector of plans.
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
-        assert!(!plans.is_empty());
+        assert!(plans.is_not_empty());
 
         // Run a non-empty plan for one domain.
         if plans.len() == 1 {
-            if !plans[0].is_empty() && !self.run_plan(&plans[0]) {
+            if plans[0].is_not_empty() && !self.run_plan(&plans[0]) {
                 return false;
             }
             return true;
@@ -285,7 +285,7 @@ impl DomainStore {
             //
             // To avoid the cycles required to make plans for many needs,
             //   Process needs by groups of the same, decreasing priority (increasing priority number),
-            //   until at least one has a plan.
+            //   until len() == 0at least one has a plan.
             //
 
             // Randomly pick up to SPAN needs at a time, from the current priority.
@@ -436,7 +436,7 @@ impl DomainStore {
 
     /// Return true if the store is empty
     pub fn is_empty(&self) -> bool {
-        self.avec.len() == 0
+        self.avec.is_empty()
     }
 
     /// Return a vector of domain current state references, in domain number order.
@@ -491,7 +491,7 @@ impl DomainStore {
 
         // If the current state is not in at least one optimal region,
         // return a need to move to an optimal region.
-        if !notsups.is_empty() {
+        if notsups.is_not_empty() {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToOptimalRegion {
                 target_regions: notsups[inx].clone(),

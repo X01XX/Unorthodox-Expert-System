@@ -51,7 +51,12 @@ impl PlanStore {
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.len() == 0
+        self.avec.is_empty()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
     }
 
     /// Add a plan to the vector.
@@ -69,7 +74,7 @@ impl PlanStore {
         let mut rc_str = String::new();
 
         for planx in &self.avec {
-            if !planx.is_empty() {
+            if planx.is_not_empty() {
                 let _ = write!(rc_str, "\nPlan, Domain {}:\n", planx.dom_num);
                 rc_str.push_str(&planx.str2());
                 rc_str.push('\n');
