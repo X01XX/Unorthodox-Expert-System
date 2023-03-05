@@ -10,7 +10,7 @@ use crate::optimalregionsstore::OptimalRegionsStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::regionstore::RegionStore;
-use crate::state::{somestate_ref_vec_string, SomeState};
+use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
 
 use rand::Rng;
@@ -20,7 +20,7 @@ use std::fmt::Write as _; // import without risk of name clashing
 use std::mem;
 use std::ops::{Index, IndexMut};
 
-use crate::randompick::RandomPick;
+use crate::randompick;
 
 use rayon::prelude::*;
 
@@ -290,7 +290,7 @@ impl DomainStore {
 
             // Randomly pick up to SPAN needs at a time, from the current priority.
             // The length of rp1 goes down as numbers are chosen.
-            let mut rp1 = RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
+            let mut rp1 = randompick::RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
 
             while !rp1.is_empty() {
                 let mut end = SPAN;
@@ -511,7 +511,7 @@ impl DomainStore {
         if optimal_supersets.is_empty() {
             print!(
                 "\nAll Current states: {} in optimal regions: None, not in ",
-                somestate_ref_vec_string(&all_states)
+                state::somestate_ref_vec_string(&all_states)
             );
             for optx in self.optimal.iter() {
                 print!(" {optx}");
@@ -520,7 +520,7 @@ impl DomainStore {
             ret = true;
             print!(
                 "\nAll Current states: {} in optimal regions: ",
-                somestate_ref_vec_string(&all_states)
+                state::somestate_ref_vec_string(&all_states)
             );
             for optx in optimal_supersets.iter() {
                 print!(" {optx}");
@@ -627,7 +627,10 @@ mod tests {
         dmxs[inx1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
-        println!("all states {}", somestate_ref_vec_string(&all_states));
+        println!(
+            "all states {}",
+            state::somestate_ref_vec_string(&all_states)
+        );
 
         if all_states.len() != 2 {
             return Err(format!("Invalid length {}", all_states.len()));
@@ -708,7 +711,10 @@ mod tests {
         }
 
         let all_states = dmxs.all_current_states();
-        println!("\nCurr st: {}", somestate_ref_vec_string(&all_states));
+        println!(
+            "\nCurr st: {}",
+            state::somestate_ref_vec_string(&all_states)
+        );
 
         println!(
             "\nNumber supersets: {}",

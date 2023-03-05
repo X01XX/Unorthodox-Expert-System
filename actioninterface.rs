@@ -3,7 +3,7 @@
 //!
 //! Storing a function pointer in SomeAction runs into problems with the parallel crate
 //! and the serialization crate.
-use crate::actions::take_action;
+use crate::actions;
 use crate::state::SomeState;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -45,6 +45,6 @@ impl ActionInterface {
                 self.ahash.insert(cur_state.clone(), (anum + 1) % 4);
             };
         }
-        take_action(dom_num, act_num, cur_state, anum)
+        actions::take_action(dom_num, act_num, cur_state, anum)
     }
 }

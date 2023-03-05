@@ -103,6 +103,8 @@ impl SomeDomain {
     /// Evaluate an arbitrary sample given by the user.
     /// This tends to break things for an action, unless all samples are arbitrary.
     /// Useful for testing a wholly different series of samples/results.
+    /// Using the command: ss  action-number  initial-state  result-state
+    /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
         self.actions[smpl.act_num].eval_sample(smpl);
         self.set_state_memory(smpl.clone());
@@ -117,7 +119,6 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state.
-    /// Save sample if it is not in a group, or invalidates a group.
     pub fn take_action_arbitrary(&mut self, act_num: usize) {
         let asample = self.actions[act_num].take_action_arbitrary(&self.cur_state);
 
@@ -128,7 +129,7 @@ impl SomeDomain {
     pub fn set_state_memory(&mut self, asample: SomeSample) {
         let new_state = asample.result.clone();
 
-        // Update memory.
+        // Save sample in memory.
         if self.memory.len() >= MAX_MEMORY {
             self.memory.pop_back();
         }
@@ -153,7 +154,7 @@ impl SomeDomain {
         self.run_plan2(pln, 3)
     }
 
-    /// Run a plan, with a recursion depth check.
+    /// Run a plan, with a retry limit.
     /// An unexpected result has a few flavors.
     /// A step from a group whose rule is a combination of samples that covers too broad a region.
     ///   The rule is deleted and maybe others are formed.  A re-plan-to-goal is done.
@@ -523,7 +524,7 @@ impl SomeDomain {
 
     /// Change the current state to be within a given region.
     /// Return True if the change succeeds.
-    pub fn to_region(&mut self, goal_region: &SomeRegion) -> bool {
+    pub fn seek_state_in_region(&mut self, goal_region: &SomeRegion) -> bool {
         if goal_region.is_superset_of_state(&self.cur_state) {
             return true;
         }

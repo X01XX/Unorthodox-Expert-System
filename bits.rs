@@ -24,7 +24,7 @@ const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
 /// Mask for the highest nibble in an integer.
 const INT_HIGH_NIBBLE: Bitint = 15 << (NUM_BITS_PER_INT - 4);
 
-use crate::randompick::random_x_of_n;
+use crate::randompick;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -550,7 +550,7 @@ impl SomeBits {
             panic!("Less than two bits {}?", self);
         }
 
-        let indices: Vec<usize> = random_x_of_n(one_bits.len() / 2, one_bits.len());
+        let indices: Vec<usize> = randompick::random_x_of_n(one_bits.len() / 2, one_bits.len());
 
         let mut or_bts = SomeBits::new_low(self.num_ints());
 

@@ -4,7 +4,7 @@
 //! may not have the same number of integers, hence the *_each functions.
 
 use crate::region::SomeRegion;
-use crate::removeunordered::remove_unordered;
+use crate::removeunordered;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -195,7 +195,7 @@ impl RegionStore {
 
         // Remove the region
         if fnd {
-            remove_unordered(&mut self.avec, inx);
+            removeunordered::remove_unordered(&mut self.avec, inx);
         }
 
         fnd
@@ -231,7 +231,7 @@ impl RegionStore {
 
         // Remove identified regions, in reverse order
         for inx in rmvec.iter().rev() {
-            remove_unordered(&mut self.avec, *inx);
+            removeunordered::remove_unordered(&mut self.avec, *inx);
         }
 
         self.avec.push(reg);
@@ -258,7 +258,7 @@ impl RegionStore {
 
         // Remove identified regions, in reverse (highest index) order
         for inx in rmvec.iter().rev() {
-            remove_unordered(&mut self.avec, *inx);
+            removeunordered::remove_unordered(&mut self.avec, *inx);
         }
 
         self.avec.push(reg);

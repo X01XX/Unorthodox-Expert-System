@@ -52,18 +52,16 @@ mod resultstore;
 mod rule;
 mod rulestore;
 use rulestore::RuleStore;
+mod sample;
 mod square;
 mod squarestore;
 mod state;
-use state::somestate_ref_vec_string;
-mod sample;
 use sample::SomeSample;
 mod statestore;
 use statestore::StateStore;
 mod domain;
-pub use domain::SomeDomain;
+use domain::SomeDomain;
 mod needstore;
-pub use needstore::NeedStore;
 mod plan;
 mod pn;
 use pn::Pn;
@@ -71,7 +69,7 @@ mod actions;
 mod domainstore;
 mod step;
 mod stepstore;
-pub use domainstore::{DomainStore, InxPlan};
+use domainstore::{DomainStore, InxPlan};
 mod actioninterface;
 mod optimalregionsstore;
 mod planstore;
@@ -461,7 +459,7 @@ fn generate_and_display_needs(dmxs: &mut DomainStore) {
     println!(
         "\nStep {} All domain states: {}",
         dmxs.step_num,
-        somestate_ref_vec_string(&dmxs.all_current_states())
+        state::somestate_ref_vec_string(&dmxs.all_current_states())
     );
     assert!(dmxs.step_num < 1000); // Remove for continuous use
 
@@ -550,7 +548,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 // Show "before" state before running need.
                 println!(
                     "\nAll domain states: {}",
-                    somestate_ref_vec_string(&dmxs.all_current_states())
+                    state::somestate_ref_vec_string(&dmxs.all_current_states())
                 );
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();
@@ -654,7 +652,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
                     dmx.get_current_state(),
                     goal_region
                 );
-            } else if dmx.to_region(&goal_region) {
+            } else if dmx.seek_state_in_region(&goal_region) {
                 println!("\nChange to region succeeded");
             } else {
                 println!("\nChange to region failed");

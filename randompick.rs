@@ -5,7 +5,7 @@
 //! potentially until all numbers are chosen.
 //!
 
-use crate::removeunordered::remove_unordered;
+use crate::removeunordered;
 use rand::Rng;
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ impl RandomPick {
 
         let anumber = self.items[inx];
 
-        remove_unordered(&mut self.items, inx);
+        removeunordered::remove_unordered(&mut self.items, inx);
 
         Some(anumber)
     }

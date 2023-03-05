@@ -2,7 +2,7 @@
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
-use crate::removeunordered::remove_unordered;
+use crate::removeunordered;
 use crate::step::SomeStep;
 
 use serde::{Deserialize, Serialize};
@@ -208,7 +208,7 @@ impl StepStore {
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
             for inx in inxs.iter() {
-                remove_unordered(&mut steps_by_change_vov, *inx);
+                removeunordered::remove_unordered(&mut steps_by_change_vov, *inx);
             }
         }
 

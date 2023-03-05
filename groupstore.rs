@@ -4,7 +4,7 @@ use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::removeunordered::remove_unordered;
+use crate::removeunordered;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
@@ -115,7 +115,7 @@ impl GroupStore {
                 "\nDom {} Act {} Group {} deleted",
                 dom, act, self.avec[*inx].region
             );
-            remove_unordered(&mut self.avec, *inx);
+            removeunordered::remove_unordered(&mut self.avec, *inx);
         }
 
         if !rmvec.is_empty() {
@@ -261,7 +261,7 @@ impl GroupStore {
                 "\nDom {} Act {} Group {} deleted",
                 dom, act, self.avec[*inx].region
             );
-            remove_unordered(&mut self.avec, *inx);
+            removeunordered::remove_unordered(&mut self.avec, *inx);
         }
 
         !rmvec.is_empty()

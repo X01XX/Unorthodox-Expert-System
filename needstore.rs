@@ -2,7 +2,7 @@
 
 use crate::need::SomeNeed;
 use crate::region::SomeRegion;
-use crate::removeunordered::remove_unordered;
+use crate::removeunordered;
 
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
@@ -112,7 +112,7 @@ impl NeedStore {
 
     /// Remove a need from a NeedStore
     pub fn remove_unordered(&mut self, inx: usize) {
-        remove_unordered(&mut self.avec, inx);
+        removeunordered::remove_unordered(&mut self.avec, inx);
     }
 } // end impl NeedStore
 
