@@ -168,16 +168,6 @@ impl SomeAction {
         cmbx
     }
 
-    /// Check the consequences of adding a new sample to an existing square.
-    pub fn square_check_additional_sample(&mut self, smpl: &SomeSample) {
-        let sqrx = self.squares.find_mut(&smpl.initial).unwrap();
-
-        // println!("about to add result to sqr {}", cur.str());
-        if sqrx.add_result(smpl.result.clone()) {
-            self.check_square_new_sample(&smpl.initial);
-        }
-    }
-
     /// Add a new square from a sample.
     /// Check the consequenses of adding the square.
     pub fn add_new_square(&mut self, smpl: &SomeSample) {
@@ -197,8 +187,11 @@ impl SomeAction {
     /// or causes a change to an existing square (change in pn or pnc).
     pub fn eval_sample(&mut self, smpl: &SomeSample) {
         // Check if sample is for an existing square.
-        if self.squares.find(&smpl.initial).is_some() {
-            self.square_check_additional_sample(smpl);
+        if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
+            if sqrx.add_result(smpl.result.clone()) {
+                self.check_square_new_sample(&smpl.initial);
+            }
+            //self.square_check_additional_sample(smpl);
         } else {
             self.add_new_square(smpl);
         }
@@ -264,7 +257,10 @@ impl SomeAction {
 
                 // Form the rules, make the group
                 // If the squares are incompatible, or need more samples, skip action.
-                let sqrx = self.squares.find(sta).unwrap();
+                let sqrx = self
+                    .squares
+                    .find(sta)
+                    .expect("Square not found, state given by need should be an existing square");
 
                 if sqrx.pn == Pn::One || sqrx.pnc {
                     //println!("AStateMakeGroup: sqr {} sampled, pn {} pnc {}", &sqrx, sqrx.pn, sqrx.pnc);
@@ -279,7 +275,7 @@ impl SomeAction {
                         let rulsxy = if sqrx.pn == Pn::Unpredictable {
                             RuleStore::new()
                         } else {
-                            sqrx.rules.union(&sqry.rules).unwrap()
+                            sqrx.rules.union(&sqry.rules).expect("Need should not be generated unless the squares rules are compatible")
                         };
 
                         self.groups.push(
@@ -302,9 +298,18 @@ impl SomeAction {
                     let mut make_groups_from = Vec::<SomeState>::new();
 
                     // Find the squares
-                    let sqr1 = self.squares.find(&greg.state1).unwrap();
-                    let sqr2 = self.squares.find(&greg.state2).unwrap();
-                    let sqr3 = self.squares.find(sta).unwrap();
+                    let sqr1 = self
+                        .squares
+                        .find(&greg.state1)
+                        .expect("Group region states should refer to existing squares");
+                    let sqr2 = self
+                        .squares
+                        .find(&greg.state2)
+                        .expect("Group region states should refer to existing squares");
+                    let sqr3 = self
+                        .squares
+                        .find(sta)
+                        .expect("Need should only apply to an existing square");
 
                     // Process next sample of square in-between for new square and state1 square.
                     // Should be different from state1 square or state2 square.
@@ -444,7 +449,10 @@ impl SomeAction {
     fn check_square_new_sample(&mut self, key: &SomeState) {
         //println!("check_square_new_sample for {}", key);
 
-        let sqrx = self.squares.find(key).unwrap();
+        let sqrx = self
+            .squares
+            .find(key)
+            .expect("key should always refer to an existing square");
 
         // Get groups invalidated, which may orphan some squares.
         //let regs_invalid = self.validate_groups_new_sample(&key);
@@ -546,8 +554,10 @@ impl SomeAction {
             return;
         }
 
-        // Get square, it should exist.
-        let sqrx = self.squares.find(key).unwrap();
+        let sqrx = self
+            .squares
+            .find(key)
+            .expect("key should refer to an existing square");
 
         // Check if square can be used to create groups.
         // Allowing a square to make a group with a single sample is needed
@@ -579,7 +589,7 @@ impl SomeAction {
             let ruls = if sqrx.pn == Pn::Unpredictable {
                 RuleStore::new()
             } else {
-                sqrx.rules.union(&sqry.rules).unwrap()
+                sqrx.rules.union(&sqry.rules).expect("Square rules should have been found compatible in possible_regions_from_square")
             };
 
             self.groups.push(
@@ -733,11 +743,17 @@ impl SomeAction {
                         }
 
                         // Calc pnc
-                        let sqrx = self.squares.find(&group_region.state1).unwrap();
+                        let sqrx = self
+                            .squares
+                            .find(&group_region.state1)
+                            .expect("Group region states should refer to existing squares");
                         let pnc = if group_region.state2 == group_region.state1 {
                             sqrx.pnc
                         } else {
-                            let sqry = self.squares.find(&group_region.state2).unwrap();
+                            let sqry = self
+                                .squares
+                                .find(&group_region.state2)
+                                .expect("Group region states should refer to existing squares");
                             sqrx.pnc && sqry.pnc
                         };
 
@@ -935,8 +951,14 @@ impl SomeAction {
         'next_regx: for regx in self.seek_edge.iter() {
             //print!("seek_edge_needs: checking reg {} ", &regx);
             // Get the squares represented by the states that form the region
-            let sqr1 = self.squares.find(&regx.state1).unwrap();
-            let sqr2 = self.squares.find(&regx.state2).unwrap();
+            let sqr1 = self
+                .squares
+                .find(&regx.state1)
+                .expect("Group region states should refer to existing squares");
+            let sqr2 = self
+                .squares
+                .find(&regx.state2)
+                .expect("Group region states should refer to existing squares");
 
             // Check that squares that define the region are pnc.
             if !sqr1.pnc {
@@ -1085,7 +1107,10 @@ impl SomeAction {
                 continue;
             }
 
-            let sqrx = self.squares.find(&grpx.region.state1).unwrap();
+            let sqrx = self
+                .squares
+                .find(&grpx.region.state1)
+                .expect("Group region states should refer to existing squares");
             if !sqrx.pnc {
                 ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
@@ -1104,7 +1129,10 @@ impl SomeAction {
                 continue;
             }
 
-            let sqry = self.squares.find(&grpx.region.state2).unwrap();
+            let sqry = self
+                .squares
+                .find(&grpx.region.state2)
+                .expect("Group region states should refer to existing squares");
             if !sqry.pnc {
                 ret_nds.push(SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
@@ -1306,7 +1334,10 @@ impl SomeAction {
             //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
             if cfmv_max.contains(&anchor) {
                 //println!("group {} anchor {} still good, cfmv_max", grpx.region, anchor);
-                let anchor_sqr = self.squares.find(anchor).unwrap();
+                let anchor_sqr = self
+                    .squares
+                    .find(anchor)
+                    .expect("Group anchor state should refer to an existing square");
                 if anchor_sqr.pnc {
                     // println!("group {} anchor {} pnc", &greg, &anchor_sta);
                 } else {
@@ -1371,7 +1402,10 @@ impl SomeAction {
         // Else limit the group.
         let mut ret_nds = NeedStore::new();
 
-        let anchor_sqr = self.squares.find(anchor_sta).unwrap();
+        let anchor_sqr = self
+            .squares
+            .find(anchor_sta)
+            .expect("Group region anchor should refer to an existing square");
 
         // Check each adjacent external state
         let mut nds_grp = NeedStore::new(); // needs for more samples
@@ -1405,7 +1439,10 @@ impl SomeAction {
                         let ruls = if anchor_sqr.pn == Pn::Unpredictable {
                             RuleStore::new()
                         } else {
-                            anchor_sqr.rules.union(&adj_sqr.rules).unwrap()
+                            anchor_sqr
+                                .rules
+                                .union(&adj_sqr.rules)
+                                .expect("This should work due to the call to can_combine")
                         };
                         nds_grp_add.push(SomeNeed::AddGroup {
                             group_region: regz,
@@ -1609,7 +1646,11 @@ impl SomeAction {
         // Gather anchor squares
         let mut anchor_sqrs = Vec::<&SomeSquare>::with_capacity(anchor_stas.len());
         for stax in anchor_stas.iter() {
-            anchor_sqrs.push(self.squares.find(stax).unwrap());
+            anchor_sqrs.push(
+                self.squares
+                    .find(stax)
+                    .expect("Group region states should refer to existing squares"),
+            );
         }
 
         // Check the far states from the anchors, form pairs.
@@ -1623,7 +1664,9 @@ impl SomeAction {
                     let rules = if sqrx.pn == Pn::Unpredictable {
                         RuleStore::new()
                     } else {
-                        sqrx.rules.union(&sqr2.rules).unwrap()
+                        sqrx.rules
+                            .union(&sqr2.rules)
+                            .expect("Any two squares in a group should be compatible")
                     };
                     nds.push(SomeNeed::AddGroup {
                         group_region: SomeRegion::new(sqr2.state.clone(), sqrx.state.clone()),
@@ -1968,7 +2011,10 @@ impl SomeAction {
 
         // Print possible regions
         for regx in rsx.iter() {
-            let sqry = self.squares.find(&regx.state2).unwrap();
+            let sqry = self
+                .squares
+                .find(&regx.state2)
+                .expect("Group region states should refer to existing squares");
             if sqry.pn == Pn::Unpredictable {
                 println!(
                     "\n  Square {} [Unpredictable] can combine with\n  Square {} [Unpredictable]\n  giving {} [Unpredictable]",
@@ -1982,7 +2028,9 @@ impl SomeAction {
                     sqry.state,
                     sqry.rules,
                     regx,
-                    &sqrx.rules.union(&sqry.rules).unwrap()
+                    &sqrx.rules.union(&sqry.rules).expect(
+                        "Square rules should be compatible due to previous can_combine call"
+                    )
                 );
             }
         }

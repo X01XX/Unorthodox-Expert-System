@@ -73,7 +73,10 @@ pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
     let mut rp1 = RandomPick::new(n);
 
     for _ in 0..x {
-        x_vec.push(rp1.pick().unwrap());
+        x_vec.push(
+            rp1.pick()
+                .expect("rp1.pick() should work until all number are exahsted"),
+        );
     }
 
     x_vec

@@ -257,7 +257,11 @@ fn init() -> DomainStore {
 
     // Load optimal regions
     let mut regstr1 = RegionStore::with_capacity(2);
-    regstr1.push(dmxs[inx0].region_from_string_pad_x("r0x0x").unwrap());
+    regstr1.push(
+        dmxs[inx0]
+            .region_from_string_pad_x("r0x0x")
+            .expect("String should be formatted correctly"),
+    );
     regstr1.push(
         dmxs[inx1]
             .region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
@@ -265,7 +269,11 @@ fn init() -> DomainStore {
     );
 
     let mut regstr2 = RegionStore::with_capacity(2);
-    regstr2.push(dmxs[inx0].region_from_string_pad_x("r0xx1").unwrap());
+    regstr2.push(
+        dmxs[inx0]
+            .region_from_string_pad_x("r0xx1")
+            .expect("String should be formatted correctly"),
+    );
     regstr2.push(
         dmxs[inx1]
             .region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
@@ -273,7 +281,11 @@ fn init() -> DomainStore {
     );
 
     let mut regstr3 = RegionStore::with_capacity(2);
-    regstr3.push(dmxs[inx0].region_from_string_pad_x("rx1x1").unwrap());
+    regstr3.push(
+        dmxs[inx0]
+            .region_from_string_pad_x("rx1x1")
+            .expect("String should be formatted correctly"),
+    );
     regstr3.push(
         dmxs[inx1]
             .region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
@@ -281,7 +293,11 @@ fn init() -> DomainStore {
     );
 
     let mut regstr4 = RegionStore::with_capacity(2);
-    regstr4.push(dmxs[inx0].region_from_string_pad_x("r1110").unwrap());
+    regstr4.push(
+        dmxs[inx0]
+            .region_from_string_pad_x("r1110")
+            .expect("String should be formatted correctly"),
+    );
     regstr4.push(
         dmxs[inx1]
             .region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
@@ -510,7 +526,10 @@ fn do_print_plan_details(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Str
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
                 let ndx = &dmxs.needs[dmxs.can_do[n_num].inx];
-                let pln = &dmxs.can_do[n_num].plans.as_ref().unwrap();
+                let pln = &dmxs.can_do[n_num]
+                    .plans
+                    .as_ref()
+                    .expect("Any need in the can_do vector should have a non-None plan");
 
                 println!("\n{} Need: {}", &n_num, &ndx);
                 match ndx {
@@ -592,7 +611,10 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
             } else {
                 let nd_inx = dmxs.can_do[n_num].inx;
 
-                let plans = &dmxs.can_do[n_num].plans.as_ref().unwrap();
+                let plans = &dmxs.can_do[n_num]
+                    .plans
+                    .as_ref()
+                    .expect("Any need in the can_do vector should have a non-None plan");
 
                 println!(
                     "\nNeed chosen: {:2} {} {}",
@@ -834,7 +856,9 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
         } else if let Some(ruls) = rules {
             rules_str = ruls.formatted_string();
             for stax in non_pn_stas.iter() {
-                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                let sqrx = dmx.actions[act_num].squares.find(stax).expect(
+                    "States in the non_pn_stas StateStore should all reference existing squares",
+                );
                 if !sqrx.rules.is_subset_of(&ruls) {
                     form_group = false;
                 }
@@ -887,12 +911,17 @@ fn do_adjacent_anchor_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result
     if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
         if let Some(anchor) = &grpx.anchor {
             println!("\n  {aregion}");
-            let sqrx = dmx.actions[act_num].squares.find(anchor).unwrap();
+            let sqrx = dmx.actions[act_num]
+                .squares
+                .find(anchor)
+                .expect("Group anchor should refer to an existing square");
             println!("anchor {sqrx}");
             let stas_adj = dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {
                 if stax.is_adjacent(anchor) {
-                    let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                    let sqrx = dmx.actions[act_num].squares.find(stax).expect(
+                        "Call to stas_adj_reg should return states that refer to existing squares",
+                    );
                     println!("adj    {sqrx}");
                 }
             }
@@ -1028,7 +1057,9 @@ fn usage() {
 pub fn pause_for_input(prompt: &str) -> String {
     // Print prompt without going to a new line
     print!("{prompt}");
-    io::stdout().flush().unwrap();
+    io::stdout()
+        .flush()
+        .expect("This system call should have worked");
 
     // Init and read in string
     let mut in_str = String::new();

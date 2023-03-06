@@ -244,14 +244,14 @@ impl RuleStore {
             let mut ret_store = Self::new();
 
             if ordera {
-                ret_store.push(rul0.unwrap());
-                ret_store.push(rul1.unwrap());
+                ret_store.push(rul0.expect("rul0 was previously checked for is_none()"));
+                ret_store.push(rul1.expect("rul1 was previously checked for is_none()"));
                 return Some(ret_store);
             }
 
             // Must be orderb = true.
-            ret_store.push(rul2.unwrap());
-            ret_store.push(rul3.unwrap());
+            ret_store.push(rul2.expect("rul2 was previously checked for is_none()"));
+            ret_store.push(rul3.expect("rul3 was previously checked for is_none()"));
             return Some(ret_store);
         } // end if self.len() == 2
 

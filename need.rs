@@ -417,7 +417,9 @@ impl SomeNeed {
     /// Ugly, slow, but it works.
     pub fn name(&self) -> String {
         let str = format!("{self:?}");
-        let first_space = str.find(char::is_whitespace).unwrap();
+        let first_space = str
+            .find(char::is_whitespace)
+            .expect("format result should contain a space after the type name");
         str[0..first_space].to_string()
     }
 
