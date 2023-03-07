@@ -22,7 +22,7 @@ impl fmt::Display for SomeSquare {
         }
 
         let _ = write!(rc_str, ", {}", self.rules);
-        let _ = write!(rc_str, ", rslts: {}", &self.results);
+        //let _ = write!(rc_str, ", rslts: {}", &self.results);
 
         rc_str.push(']');
 

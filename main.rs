@@ -382,12 +382,23 @@ fn command_loop(dmxs: &mut DomainStore) {
 
         // Do commands
         match cmd[0] {
-            "aj" => match do_adjacent_anchor_command(dmxs, &cmd) {
-                Ok(()) => continue,
-                Err(error) => {
-                    println!("{error}");
+            "aj" => {
+                if cmd.len() == 2 {
+                    match display_action_anchor_info(dmxs, &cmd) {
+                        Ok(()) => continue,
+                        Err(error) => {
+                            println!("{error}");
+                        }
+                    }
+                } else if cmd.len() == 3 {
+                    match display_group_anchor_info(dmxs, &cmd) {
+                        Ok(()) => continue,
+                        Err(error) => {
+                            println!("{error}");
+                        }
+                    }
                 }
-            },
+            }
             "cd" => match do_change_domain(dmxs, &cmd) {
                 Ok(()) => {
                     dmxs.print_domain();
@@ -642,7 +653,6 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
 }
 
 /// Do a change-state command.
-/// Return 1 is Ok, 0 if not.
 fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     // Get state from string
 
@@ -657,7 +667,6 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
 }
 
 /// Do to-region command.
-/// Return 1 is Ok, 0 if not.
 fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
     let dmx = &mut dmxs[dom_num];
@@ -686,7 +695,6 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 }
 
 /// Do sample-state command.
-/// Return 1 is Ok, 0 if not.
 fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
     let dmx = &mut dmxs[dom_num];
@@ -753,14 +761,36 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
     Err(format!("Did not understand {cmd:?}"))
 }
 
+/// Display anchors, rating, and adjacent squares, for an action.
+/// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
+/// should equal the sum of the first two number of the rating.
+fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+    let dom_num = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_num];
+
+    if cmd.len() == 1 {
+        return Err("Need to supply an action number".to_string());
+    }
+
+    // Get action number
+    let act_num = match dmx.act_num_from_string(cmd[1]) {
+        Ok(act_num) => act_num,
+        Err(error) => {
+            return Err(error);
+        }
+    };
+
+    // Display the rates
+    dmxs[dom_num].display_action_anchor_info(act_num)
+}
+
 /// Do print-squares command.
-/// Return 1 is Ok, 0 if not.
 fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
     let dmx = &mut dmxs[dom_num];
 
     if cmd.len() == 1 {
-        return Ok(());
+        return Err("Need to supply at least an action number".to_string());
     }
 
     // Get action number
@@ -880,8 +910,7 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
 }
 
 /// Do adjacent-anchor command.
-/// Return 1 is Ok, 0 if not.
-fn do_adjacent_anchor_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn display_group_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
     let dmx = &mut dmxs[dom_num];
 
@@ -908,34 +937,10 @@ fn do_adjacent_anchor_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result
         }
     };
 
-    if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-        if let Some(anchor) = &grpx.anchor {
-            println!("\n  {aregion}");
-            let sqrx = dmx.actions[act_num]
-                .squares
-                .find(anchor)
-                .expect("Group anchor should refer to an existing square");
-            println!("anchor {sqrx}");
-            let stas_adj = dmx.actions[act_num].squares.stas_adj_reg(&grpx.region);
-            for stax in stas_adj.iter() {
-                if stax.is_adjacent(anchor) {
-                    let sqrx = dmx.actions[act_num].squares.find(stax).expect(
-                        "Call to stas_adj_reg should return states that refer to existing squares",
-                    );
-                    println!("adj    {sqrx}");
-                }
-            }
-        } else {
-            println!("\nGroup {aregion} does not have an anchor defined");
-        }
-    } else {
-        println!("\nGroup with region {aregion} not found");
-    }
-    Ok(())
+    dmx.display_group_anchor_info(act_num, &aregion)
 }
 
 /// Do print-group-defining-squares command.
-/// Return 1 is Ok, 0 if not.
 fn do_print_group_defining_squares_command(
     dmxs: &mut DomainStore,
     cmd: &Vec<&str>,
@@ -1005,8 +1010,8 @@ fn usage() {
     );
     println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
-    println!("\n\n    aj <act num> <group-region>    - For an Action in the CDD, print adJacent squares to the groups anchor");
-
+    println!("\n\n    aj <act num>             - For an Action in the CDD, display all groups anchor, and adJacent, info.");
+    println!("    aj <act num> <region>    - For an Action in the CDD, display group anchor, and adJacent, info.");
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
     println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");

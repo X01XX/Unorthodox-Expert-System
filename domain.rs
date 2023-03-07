@@ -655,6 +655,20 @@ impl SomeDomain {
         }
         rate
     }
+
+    /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
+    pub fn display_action_anchor_info(&self, act_num: usize) -> Result<(), String> {
+        self.actions[act_num].display_anchor_info()
+    }
+
+    /// Display a group anchor and adjacent squares.
+    pub fn display_group_anchor_info(
+        &self,
+        act_num: usize,
+        aregion: &SomeRegion,
+    ) -> Result<(), String> {
+        self.actions[act_num].display_group_anchor_info(aregion)
+    }
 } // end impl SomeDomain
 
 /// Return the first state value.

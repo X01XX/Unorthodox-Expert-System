@@ -1214,7 +1214,7 @@ impl SomeAction {
     /// To set an anchor, a square with at least one sample is required, but ..
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
-    fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
+    pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
         assert!(self.groups.num_groups_state_in(stax) == 1);
 
         let mut anchors = 0;
@@ -1236,7 +1236,6 @@ impl SomeAction {
 
             if stats == Some(true) {
                 anchors += 1;
-                in_1_group += 1;
             } else if stats == Some(false) {
                 //println!("{} is in only one group", &sta_adj);
                 in_1_group += 1;
@@ -2097,6 +2096,71 @@ impl SomeAction {
     /// of its aggregate changes into the parent ActionStore struct.
     pub fn reset_agg_chgs_updated(&mut self) {
         self.groups.reset_agg_chgs_updated();
+    }
+
+    /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
+    pub fn display_anchor_info(&self) -> Result<(), String> {
+        println!("Act: {} group anchor rates", self.num);
+        for grpx in self.groups.iter() {
+            if grpx.anchor.is_some() {
+                match self.display_group_anchor_info2(grpx) {
+                    Ok(()) => (),
+                    Err(error) => return Err(format!("display_anchor_info {error}")),
+                }
+            }
+        } // next grpx
+        Ok(())
+    }
+
+    /// Display a groups' achor info, given the groups' region.
+    pub fn display_group_anchor_info(&self, aregion: &SomeRegion) -> Result<(), String> {
+        if let Some(grpx) = self.groups.find(aregion) {
+            self.display_group_anchor_info2(grpx)
+        } else {
+            Err("Group with region {aregion} not found".to_string())
+        }
+    }
+
+    /// Display a groups' achor info.
+    pub fn display_group_anchor_info2(&self, grpx: &SomeGroup) -> Result<(), String> {
+        if let Some(anchor) = &grpx.anchor {
+            println!("\nGroup:   {}", grpx.region);
+            let sqrx = self
+                .squares
+                .find(anchor)
+                .expect("Group anchor should refer to an existing square");
+            let rate = self.group_anchor_rate(grpx, anchor);
+            println!("anchor {sqrx} rate {:?}", rate);
+            let stas_adj = self.squares.stas_adj_reg(&grpx.region);
+            for stax in stas_adj.iter() {
+                if stax.is_adjacent(anchor) {
+                    let sqrx = self.squares.find(stax).expect(
+                        "Call to stas_adj_reg should return states that refer to existing squares",
+                    );
+                    let grps = self.groups.groups_state_in(stax);
+                    if grps.len() == 1 {
+                        if let Some(grpy) = self.groups.find(&grps[0]) {
+                            if let Some(anchory) = &grpy.anchor {
+                                if stax == anchory {
+                                    println!("adj    {sqrx} in one group {} is anchor", grps[0]);
+                                } else {
+                                    println!("adj    {sqrx} in one group {}", grps[0]);
+                                }
+                            } else {
+                                println!("adj    {sqrx} in one group {}", grps[0]);
+                            }
+                        } else {
+                            return Err(format!("group {} not found?", grps[0]));
+                        }
+                    } else {
+                        println!("adj    {sqrx} in groups {grps}");
+                    }
+                }
+            } // next stax
+        } else {
+            println!("Group {} does not have an anchor defined", grpx.region);
+        }
+        Ok(())
     }
 } // end impl SomeAction
 
