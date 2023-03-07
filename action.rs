@@ -1215,14 +1215,17 @@ impl SomeAction {
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
-        assert!(self.groups.num_groups_state_in(stax) == 1);
+        //assert!(self.groups.num_groups_state_in(stax) == 1);
+        if self.groups.num_groups_state_in(stax) != 1 {
+            return (0, 0, 0);
+        }
 
         let mut anchors = 0;
         let mut in_1_group = 0;
         let mut sqr_samples = 0;
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.same_bits().split();
+        let edge_msks = grpx.region.edge_mask().split();
 
         // Rate adjacent external states
         for edge_bit in &edge_msks {
@@ -1412,15 +1415,13 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         // Ignore bits that cannot be changed by any action.
-        let same_bits = grpx.region.same_bits();
+        let edge_mask = grpx.region.edge_mask();
 
-        let one_bits = same_bits.bitwise_and(&agg_changes.b10.bitwise_and(&grpx.region.state1));
+        let change_bits = edge_mask
+            .bitwise_and(&agg_changes.b10)
+            .bitwise_and(&agg_changes.b01);
 
-        let zero_bits = same_bits
-            .bitwise_and(&agg_changes.b01)
-            .bitwise_and(&grpx.region.state1.bitwise_not());
-
-        let edge_msks: Vec<SomeMask> = one_bits.bitwise_or(&zero_bits).split();
+        let edge_msks: Vec<SomeMask> = change_bits.split();
 
         for mskx in &edge_msks {
             let adj_sta = anchor_sta.bitwise_xor(mskx);
@@ -2103,10 +2104,7 @@ impl SomeAction {
         println!("Act: {} group anchor rates", self.num);
         for grpx in self.groups.iter() {
             if grpx.anchor.is_some() {
-                match self.display_group_anchor_info2(grpx) {
-                    Ok(()) => (),
-                    Err(error) => return Err(format!("display_anchor_info {error}")),
-                }
+                self.display_group_anchor_info2(grpx)?
             }
         } // next grpx
         Ok(())

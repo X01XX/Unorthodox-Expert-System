@@ -337,7 +337,7 @@ mod tests {
         Ok(())
     }
 
-    // Test can_combine cannot compare the same square.
+    // Test can_combine, cannot compare the same square.
     #[test]
     #[should_panic]
     fn can_combine_not_same() {

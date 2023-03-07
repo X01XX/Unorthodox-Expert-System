@@ -21,6 +21,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
@@ -656,9 +657,37 @@ impl SomeDomain {
         rate
     }
 
+    /// Return the current maximum region.
+    pub fn maximum_region(&self) -> SomeRegion {
+        SomeRegion::new(
+            self.cur_state.clone(),
+            self.cur_state
+                .bitwise_xor(&self.actions.aggregate_changes.bits_change_mask()),
+        )
+    }
+
+    pub fn regions_not_covered(&self, act_num: usize) -> RegionStore {
+        let mut ncov = RegionStore::new();
+        ncov.push(self.maximum_region());
+
+        for grpx in self.actions[act_num].groups.iter() {
+            ncov = ncov.subtract_region(&grpx.region);
+        }
+        ncov
+    }
+
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_num: usize) -> Result<(), String> {
-        self.actions[act_num].display_anchor_info()
+        let max_region = self.maximum_region();
+
+        self.actions[act_num].display_anchor_info()?;
+
+        let whats_left = self.regions_not_covered(act_num);
+        println!(
+            "\nMaximum Region: {}, Regions not covered by a group: {}",
+            max_region, whats_left
+        );
+        Ok(())
     }
 
     /// Display a group anchor and adjacent squares.
@@ -1514,6 +1543,9 @@ mod tests {
         let s21 = dm0.state_from_string("s0x21").unwrap();
         let s20 = dm0.state_from_string("s0x20").unwrap();
         dm0.eval_sample_arbitrary(&SomeSample::new(s21.clone(), act0, s20.clone()));
+
+        // Add a way to change bit position 0, 1->0.
+        dm0.eval_sample_arbitrary(&SomeSample::new(s20.clone(), act0, s21.clone()));
 
         // Print domain and needs, if needed for error resolution.
         // Also get_needs checks the limited flag for each group.

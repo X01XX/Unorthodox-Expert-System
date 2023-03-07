@@ -221,14 +221,12 @@ impl SomeGroup {
     pub fn check_limited(&mut self, new_chgs: &SomeChange) {
         assert!(self.limited);
 
-        let same_bits = self.region.same_bits();
+        let edge_mask = self.region.edge_mask();
 
-        let one_bits = same_bits.bitwise_and(&new_chgs.b10.bitwise_and(&self.region.state1));
+        let positions = edge_mask
+            .bitwise_and(&new_chgs.b01)
+            .bitwise_and(&new_chgs.b10);
 
-        let zero_bits =
-            same_bits.bitwise_and(&new_chgs.b01.bitwise_and(&self.region.state1.bitwise_not()));
-
-        let positions = &one_bits.bitwise_or(&zero_bits);
         //        println!(
         //            "Check limited setting for {} with {} positions {}",
         //            self.region, new_chgs, positions

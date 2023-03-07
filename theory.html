@@ -1537,6 +1537,25 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p>
     Its unlikley, but sampling a contradictory region could invalidate both regions.
     </p>
+    <h3>Limiting an Optimistic Union</h3>
+    <p class="indent1">
+    For any region, a square that is only in that region may be used to limit the region.  I call that square an <i>anchor</i>.
+    </p>
+    <p class="indent1">
+    When looking for samples of squares adjacent to a given anchor, outside of a region, there is the issue of what squares are reachable.
+    </p>
+    <p class="indent1">
+    Make a mask of all bit positions that can change in both ways.
+    </p>
+    <p class="indent2">
+    For all available rules, grenerate the bitwise OR of all 0&#8594;1 masks, and the bitwise OR of all 1&#8594;0 masks.
+    </p>
+    <p class="indent2">
+    Make the bitwise AND of the two masks.
+    </p>
+    <p class="indent1">
+    Squares that are needed are adjacent to the anchor for each region edge position that matches a bit in the mask.
+    </p>
     <h3>Generating a rule-path, to translate a from-region to a goal-region.</h3>
     <p class="indent1">
     This has some similarities to the Traveling Salesperson Problem, going to the initial region of a rule, to change a bit value, then to the initial region of another rule.
@@ -1753,7 +1772,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 10/21/2022</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/07/2023</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>

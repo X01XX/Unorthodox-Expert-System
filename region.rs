@@ -276,8 +276,8 @@ impl SomeRegion {
         self.state1.bitwise_and(&self.state2).to_mask()
     }
 
-    /// Return a mask of same bits.
-    pub fn same_bits(&self) -> SomeMask {
+    /// Return a mask of edge (non-X) bits.
+    pub fn edge_mask(&self) -> SomeMask {
         self.state1.bitwise_eqv(&self.state2)
     }
 
@@ -379,8 +379,8 @@ impl SomeRegion {
     // Return a region with masked bit positions set to X.
     //    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
     //        Self::new(
-    //            &self.state1.bitwise_or(&msk),
-    //            &self.state2.bitwise_and(&msk.bitwise_not())),
+    //            self.state1.bitwise_or(msk),
+    //            self.state2.bitwise_and(&msk.bitwise_not()),
     //        )
     //    }
 
@@ -435,7 +435,7 @@ impl SomeRegion {
             return ret_vec;
         };
 
-        let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.same_bits()).split();
+        let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
 
         for mskx in x_over_not_xs.iter() {
             if mskx.bitwise_and(&reg_int.state1).is_low() {
@@ -457,14 +457,14 @@ mod tests {
     use crate::regionstore::RegionStore;
 
     #[test]
-    fn same_bits() -> Result<(), String> {
+    fn edge_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string(1, "r101XX0").unwrap();
         let msk0 = SomeMask::new_from_string(1, "m0b1111_1001").unwrap();
-        let same = reg0.same_bits();
-        if msk0 != same {
+        let edges = reg0.edge_mask();
+        if msk0 != edges {
             return Err(format!(
                 "same bits {} not EQ to expected mask {}",
-                same, msk0
+                edges, msk0
             ));
         }
 
