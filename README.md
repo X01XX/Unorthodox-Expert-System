@@ -11,7 +11,7 @@ Run under Rust, a command help screen will display.
 
 Simply pressing the Enter key and seeing what happens is all you need to do.
 
-To start, the current state is not predictable, so a need is created for all possible actions, to get a sample of the state.
+To start, the current state is not predictable, so a need is created for all actions, to get a sample of the state.
 
 As samples are taken, and the current state changes for some samples, the program combines similar samples/results into regions, called "groups", which predict sample results for states that may not have been sampled yet.
 
