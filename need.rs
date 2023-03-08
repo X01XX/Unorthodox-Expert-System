@@ -39,6 +39,15 @@ impl fmt::Display for SomeNeed {
                 format!(
                 "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)")
             }
+            SomeNeed::StateInRemainder {
+                dom_num,
+                act_num,
+                target_state,
+            } => {
+                let pri = self.priority();
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} in remainder)")
+            }
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 act_num,
@@ -150,6 +159,11 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
     },
+    StateInRemainder {
+        dom_num: usize,
+        act_num: usize,
+        target_state: SomeState,
+    },
     /// Sample a state to resolve a contradictory intersection of two groups.
     ContradictoryIntersection {
         dom_num: usize,
@@ -242,6 +256,22 @@ impl PartialEq for SomeNeed {
                 target_state,
             } => {
                 if let SomeNeed::StateNotInGroup {
+                    dom_num: dom_num_2,
+                    act_num: act_num_2,
+                    target_state: target_state_2,
+                } = other
+                {
+                    return dom_num == dom_num_2
+                        && act_num == act_num_2
+                        && target_state == target_state_2;
+                }
+            }
+            SomeNeed::StateInRemainder {
+                dom_num,
+                act_num,
+                target_state,
+            } => {
+                if let SomeNeed::StateInRemainder {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
                     target_state: target_state_2,
@@ -435,6 +465,7 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
+            SomeNeed::StateInRemainder { .. } => 450,
             SomeNeed::StateNotInGroup { .. } => 500,
             SomeNeed::ToOptimalRegion { .. } => 600,
             _ => panic!(
@@ -476,6 +507,11 @@ impl SomeNeed {
                     return true;
                 }
             }
+            SomeNeed::StateInRemainder { target_state, .. } => {
+                if cur_state == target_state {
+                    return true;
+                }
+            }
             SomeNeed::ConfirmGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
@@ -509,6 +545,7 @@ impl SomeNeed {
         match self {
             SomeNeed::AStateMakeGroup { act_num, .. } => *act_num,
             SomeNeed::StateNotInGroup { act_num, .. } => *act_num,
+            SomeNeed::StateInRemainder { act_num, .. } => *act_num,
             SomeNeed::ContradictoryIntersection { act_num, .. } => *act_num,
             SomeNeed::ConfirmGroup { act_num, .. } => *act_num,
             SomeNeed::SeekEdge { act_num, .. } => *act_num,
@@ -526,6 +563,7 @@ impl SomeNeed {
         match self {
             SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num,
             SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num,
+            SomeNeed::StateInRemainder { dom_num, .. } => *dom_num,
             SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num,
             SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num,
             SomeNeed::SeekEdge { dom_num, .. } => *dom_num,
@@ -550,6 +588,14 @@ impl SomeNeed {
                 SomeRegion::new(target_state.clone(), target_state.clone()),
             )),
             SomeNeed::StateNotInGroup {
+                dom_num,
+                target_state,
+                ..
+            } => TargetStore::new_with_target(SomeTarget::new(
+                *dom_num,
+                SomeRegion::new(target_state.clone(), target_state.clone()),
+            )),
+            SomeNeed::StateInRemainder {
                 dom_num,
                 target_state,
                 ..
@@ -607,23 +653,4 @@ impl SomeNeed {
             ),
         }
     } // end target
-
-    /// Set the Domain number for a need.
-    pub fn set_dom(&mut self, num: usize) {
-        match self {
-            SomeNeed::AStateMakeGroup { dom_num, .. } => *dom_num = num,
-            SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num = num,
-            SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num = num,
-            SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num = num,
-            SomeNeed::SeekEdge { dom_num, .. } => *dom_num = num,
-            SomeNeed::LimitGroup { dom_num, .. } => *dom_num = num,
-            SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num = num,
-            _ => {
-                panic!(
-                    "SomeNeed::set_dom should not be called for the {} need.",
-                    self.name()
-                );
-            }
-        };
-    } // end set_dom
 }

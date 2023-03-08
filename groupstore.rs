@@ -2,6 +2,7 @@
 
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
+use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered;
@@ -61,16 +62,26 @@ impl GroupStore {
 
     /// Calculate and set the aggregate changes and updated flag.
     fn calc_aggregate_changes(&mut self) {
-        let mut ret_chn = SomeChange::new_low(self.aggregate_changes.num_ints());
+        let mut new_chgs = SomeChange::new_low(self.aggregate_changes.num_ints());
 
         for grpx in &self.avec {
             for rulx in grpx.rules.iter() {
-                ret_chn = ret_chn.bitwise_or_rule(rulx);
+                new_chgs = new_chgs.bitwise_or_rule(rulx);
             }
         }
-        self.aggregate_changes = ret_chn;
+
+        let additions = new_chgs.minus(&self.aggregate_changes);
+
+        self.aggregate_changes = new_chgs;
         self.agg_chgs_updated = true;
-        self.check_limited();
+
+        if additions.is_not_low() {
+            let b01_to_check = additions.b01.bitwise_and(&self.aggregate_changes.b10);
+
+            let b10_to_check = additions.b10.bitwise_and(&self.aggregate_changes.b01);
+
+            self.check_limited(&b01_to_check.bitwise_or(&b10_to_check));
+        }
     }
 
     /// Check groups with a recently changed sqaure.
@@ -355,10 +366,10 @@ impl GroupStore {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self) {
+    pub fn check_limited(&mut self, change_mask: &SomeMask) {
         for grpx in &mut self.avec {
             if grpx.limited {
-                grpx.check_limited(&self.aggregate_changes);
+                grpx.check_limited(change_mask);
             }
         }
     }

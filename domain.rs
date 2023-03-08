@@ -886,12 +886,9 @@ mod tests {
         let nds1 = dm0.get_needs();
         println!("needs: {}", nds1);
 
-        assert!(nds1.len() == 2);
+        assert!(nds1.len() == 1);
         assert!(
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
-        );
-        assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
         );
 
         // Err(String::from("Done"));
@@ -1031,12 +1028,8 @@ mod tests {
         println!("dm0 {}", &dm0.actions[0]);
 
         let msk_f = dm0.mask_from_string("m0b1111").unwrap();
-        let cngx = SomeChange {
-            b01: msk_f.clone(),
-            b10: msk_f,
-        };
 
-        let nds1 = dm0.actions[0].limit_groups_needs(&cngx);
+        let nds1 = dm0.actions[0].limit_groups_needs(&msk_f);
         println!("needs1 are {}", nds1);
 
         let mut found = false;
@@ -1055,7 +1048,7 @@ mod tests {
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds2 = dm0.actions[0].limit_groups_needs(&cngx);
+        let nds2 = dm0.actions[0].limit_groups_needs(&msk_f);
         println!("needs2 are {}", nds2);
 
         let s06 = dm0.state_from_string("s0b00000110").unwrap();
@@ -1068,7 +1061,7 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
 
         println!("dm0 {}", &dm0.actions[0]);
-        let nds3 = dm0.actions[0].limit_groups_needs(&cngx);
+        let nds3 = dm0.actions[0].limit_groups_needs(&msk_f);
         println!("needs3 are {}", nds3);
 
         let mut found = false;

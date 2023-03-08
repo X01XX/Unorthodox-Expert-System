@@ -3,7 +3,7 @@
 //! This represents a group of two squares, that are
 //! mutually compatible, as are any squares between them.
 
-use crate::change::SomeChange;
+use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
@@ -218,14 +218,12 @@ impl SomeGroup {
     /// Check limited setting in groups due to new bit that can change.
     /// If the group region has a non-X bit position matching a new bit position that can change,
     /// set the limited indicator to false.
-    pub fn check_limited(&mut self, new_chgs: &SomeChange) {
+    pub fn check_limited(&mut self, change_mask: &SomeMask) {
         assert!(self.limited);
 
         let edge_mask = self.region.edge_mask();
 
-        let positions = edge_mask
-            .bitwise_and(&new_chgs.b01)
-            .bitwise_and(&new_chgs.b10);
+        let positions = edge_mask.bitwise_and(change_mask);
 
         //        println!(
         //            "Check limited setting for {} with {} positions {}",

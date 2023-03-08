@@ -106,6 +106,11 @@ impl SomeChange {
         self.b10.is_low()
     }
 
+    /// Return true if any bits are set
+    pub fn is_not_low(&self) -> bool {
+        !self.is_low()
+    }
+
     /// Return the number of changes in a SomeChange instance.
     pub fn number_changes(&self) -> usize {
         self.b01.num_one_bits() + self.b10.num_one_bits()
@@ -158,6 +163,14 @@ impl SomeChange {
         SomeChange {
             b01: f_zeros.bitwise_and(&t_ones.bitwise_and(&to_not_x)),
             b10: f_ones.bitwise_and(&t_zeros.bitwise_and(&to_not_x)),
+        }
+    }
+
+    /// For a given change, subtract an other change.
+    pub fn minus(&self, other: &SomeChange) -> Self {
+        SomeChange {
+            b01: self.b01.bitwise_xor(&self.b01.bitwise_and(&other.b01)),
+            b10: self.b10.bitwise_xor(&self.b10.bitwise_and(&other.b10)),
         }
     }
 } // end impl SomeChange

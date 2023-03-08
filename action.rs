@@ -103,6 +103,9 @@ pub struct SomeAction {
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,
+    /// When the action has no needs, check for any missed regions.
+    remainder_checked: bool,
+    remainder_check_state: Option<SomeState>,
 }
 
 impl SomeAction {
@@ -119,6 +122,8 @@ impl SomeAction {
             seek_edge: RegionStore::new(),
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
+            remainder_checked: false,
+            remainder_check_state: None,
         }
     }
 
@@ -630,6 +635,7 @@ impl SomeAction {
                 act_num: self.num,
                 target_state: cur_state.clone(),
             });
+            return nds;
         }
 
         // Check memory
@@ -696,7 +702,7 @@ impl SomeAction {
             nds.append(&mut self.group_pair_needs());
 
             // Check for squares in-one-group needs
-            nds.append(&mut self.limit_groups_needs(agg_changes));
+            nds.append(&mut self.limit_groups_needs(&agg_changes.bits_change_mask()));
 
             // Check for repeating housekeeping needs loop
             if cnt > 20 {
@@ -860,12 +866,68 @@ impl SomeAction {
                 // Look for needs for states not in groups
                 nds.append(&mut self.state_not_in_group_needs(cur_state, memory));
 
+                if nds.is_empty() {
+                    if self.remainder_checked {
+                        if let Some(astate) = &self.remainder_check_state {
+                            //println!("dom {} act {} remainder need 2 added for {}", self.dom_num, self.num, astate);
+                            nds.push(SomeNeed::StateInRemainder {
+                                dom_num: self.dom_num,
+                                act_num: self.num,
+                                target_state: astate.clone(),
+                            });
+                        }
+                    } else {
+                        self.remainder_checked = true;
+
+                        let max_reg = SomeRegion::new(
+                            cur_state.clone(),
+                            cur_state.bitwise_xor(&agg_changes.b01.bitwise_and(&agg_changes.b10)),
+                        );
+
+                        self.remainder_check_state = self.remainder_check_state(max_reg);
+
+                        if let Some(astate) = &self.remainder_check_state {
+                            //println!("dom {} act {} remainder need 1 added for {}", self.dom_num, self.num, astate);
+                            nds.push(SomeNeed::StateInRemainder {
+                                dom_num: self.dom_num,
+                                act_num: self.num,
+                                target_state: astate.clone(),
+                            });
+                        } else {
+                            //println!("dom {} act {} remainder_check_state returns None", self.dom_num, self.num);
+                        }
+                    }
+                } else {
+                    self.remainder_checked = false;
+                    self.remainder_check_state = None;
+                }
+
                 return nds;
             }
 
             nds = NeedStore::new();
         } // end loop
     } // end get_needs
+
+    /// Check for needs in a region not covered by current groups.
+    fn remainder_check_state(&self, max_region: SomeRegion) -> Option<SomeState> {
+        let mut remainder_regs = RegionStore::new();
+        remainder_regs.push(max_region);
+
+        for grpx in self.groups.iter() {
+            remainder_regs = remainder_regs.subtract_region(&grpx.region);
+        }
+
+        //println!("dom {} act {} remainder is {}", self.dom_num, self.num, remainder_regs);
+
+        if remainder_regs.is_not_empty() {
+            //println!("Checking null check state, returning {}", remainder_regs[0].state1);
+            return Some(remainder_regs[0].state1.clone());
+        }
+
+        //println!("Checking null check state, returning None");
+        None
+    }
 
     /// Cleanup, that is delete unneeded squares
     fn cleanup(&mut self, needs: &NeedStore) {
@@ -1163,18 +1225,14 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn limit_groups_needs(&self, agg_changes: &SomeChange) -> NeedStore {
+    pub fn limit_groups_needs(&self, change_mask: &SomeMask) -> NeedStore {
         //println!("limit_groups_needs chg {}", changes_mask);
 
         let mut ret_nds = NeedStore::new();
 
-        let mut anchors = Vec::<&SomeState>::new();
-
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
             let Some(stax) = &grpx.anchor else { continue; };
-
-            anchors.push(stax);
 
             if self.groups.num_groups_state_in(stax) != 1 {
                 ret_nds.push(SomeNeed::RemoveGroupAnchor {
@@ -1192,12 +1250,12 @@ impl SomeAction {
                 continue;
             }
 
-            let mut ndx = self.limit_group_anchor_needs(grpx, &anchors, group_num);
+            let mut ndx = self.limit_group_anchor_needs(grpx, group_num);
 
             if ndx.is_empty() {
                 if let Some(anchor) = &grpx.anchor {
                     if !grpx.limited {
-                        ndx = self.limit_group_adj_needs(grpx, anchor, agg_changes, group_num);
+                        ndx = self.limit_group_adj_needs(grpx, anchor, change_mask, group_num);
                     }
                 }
             }
@@ -1256,21 +1314,10 @@ impl SomeAction {
     /// If no state in the group is in only one group, return an empty NeedStore.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return an empty NeedStore.
-    pub fn limit_group_anchor_needs(
-        &self,
-        grpx: &SomeGroup,
-        anchors: &[&SomeState],
-        group_num: usize,
-    ) -> NeedStore {
+    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, group_num: usize) -> NeedStore {
         let mut ret_nds = NeedStore::new();
 
-        // Find (other group) anchors that are adjacent to the group.
-        let mut adj_anchors = Vec::<&SomeState>::new();
-        for ancx in anchors.iter() {
-            if grpx.region.is_adjacent_state(ancx) {
-                adj_anchors.push(ancx);
-            }
-        }
+        let adj_squares = self.squares.stas_adj_reg(&grpx.region);
 
         // For adjacent (other group) anchors,
         // store corresponding state in group region,
@@ -1281,7 +1328,7 @@ impl SomeAction {
         // reference can be pushed to the stas_in vector.
         let mut additional_stas = StateStore::new();
 
-        for ancx in &adj_anchors {
+        for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
             let stay = ancx.bitwise_xor(&grpx.region.diff_mask_state(ancx));
 
@@ -1393,7 +1440,7 @@ impl SomeAction {
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
-        agg_changes: &SomeChange,
+        change_mask: &SomeMask,
         group_num: usize,
     ) -> NeedStore {
         // If any external adjacent states have not been sampled, or not enough,
@@ -1417,9 +1464,7 @@ impl SomeAction {
         // Ignore bits that cannot be changed by any action.
         let edge_mask = grpx.region.edge_mask();
 
-        let change_bits = edge_mask
-            .bitwise_and(&agg_changes.b10)
-            .bitwise_and(&agg_changes.b01);
+        let change_bits = edge_mask.bitwise_and(change_mask);
 
         let edge_msks: Vec<SomeMask> = change_bits.split();
 
