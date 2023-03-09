@@ -770,10 +770,16 @@ impl SomeAction {
                         );
                         try_again = true;
                     }
-                    SomeNeed::SetGroupLimited { group_region: greg } => {
+                    SomeNeed::SetGroupLimited {
+                        group_region: greg,
+                        num_adj,
+                    } => {
                         if let Some(grpx) = self.groups.find_mut(greg) {
-                            println!("\nDom {} Act {} Group {} limited", dom, self.num, greg);
-                            grpx.set_limited();
+                            println!(
+                                "\nDom {} Act {} Group {} limited num adj {}",
+                                dom, self.num, greg, num_adj
+                            );
+                            grpx.set_limited(*num_adj);
                         }
                     }
                     SomeNeed::SetGroupAnchor {
@@ -887,6 +893,9 @@ impl SomeAction {
                         self.remainder_check_state = self.remainder_check_state(max_reg);
 
                         if let Some(astate) = &self.remainder_check_state {
+                            //match self.display_anchor_info() {
+                            //    _ => ()
+                            //}
                             //println!("dom {} act {} remainder need 1 added for {}", self.dom_num, self.num, astate);
                             nds.push(SomeNeed::StateInRemainder {
                                 dom_num: self.dom_num,
@@ -912,13 +921,18 @@ impl SomeAction {
     /// Check for needs in a region not covered by current groups.
     fn remainder_check_state(&self, max_region: SomeRegion) -> Option<SomeState> {
         let mut remainder_regs = RegionStore::new();
-        remainder_regs.push(max_region);
+        remainder_regs.push(max_region.clone());
 
         for grpx in self.groups.iter() {
             remainder_regs = remainder_regs.subtract_region(&grpx.region);
         }
 
-        //println!("dom {} act {} remainder is {}", self.dom_num, self.num, remainder_regs);
+        if remainder_regs.is_not_empty() {
+            println!(
+                "dom {} act {} max_region {} remainder is {}",
+                self.dom_num, self.num, max_region, remainder_regs
+            );
+        }
 
         if remainder_regs.is_not_empty() {
             //println!("Checking null check state, returning {}", remainder_regs[0].state1);
@@ -1534,6 +1548,7 @@ impl SomeAction {
         if grpx.region.state1 == grpx.region.state2 {
             ret_nds.push(SomeNeed::SetGroupLimited {
                 group_region: grpx.region.clone(),
+                num_adj: edge_msks.len(),
             });
             return ret_nds;
         }
@@ -1545,6 +1560,7 @@ impl SomeAction {
                 // Set the group limited
                 ret_nds.push(SomeNeed::SetGroupLimited {
                     group_region: grpx.region.clone(),
+                    num_adj: edge_msks.len(),
                 });
             } else {
                 // Get additional samples of the far state.
@@ -2205,6 +2221,10 @@ impl SomeAction {
         }
         Ok(())
     }
+
+    pub fn check_limited(&mut self, change_mask: &SomeMask) {
+        self.groups.check_limited(change_mask);
+    }
 } // end impl SomeAction
 
 // Some action tests are made from the domain level.
@@ -2216,8 +2236,6 @@ mod tests {
     fn groups_formed_1() -> Result<(), String> {
         // Init action
         let mut act0 = SomeAction::new(0, 0, 1);
-        //let mem = VecDeque::<SomeState>::new();
-        //let chg = SomeChange::new_low(1);
 
         // Eval sample that other samples will be incompatible with.
         let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();

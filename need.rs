@@ -124,8 +124,11 @@ impl fmt::Display for SomeNeed {
             SomeNeed::RemoveGroupAnchor { group_region } => {
                 format!("N(Remove anchor for group {group_region})")
             }
-            SomeNeed::SetGroupLimited { group_region } => {
-                format!("N(set group {group_region} limited)")
+            SomeNeed::SetGroupLimited {
+                group_region,
+                num_adj,
+            } => {
+                format!("N(set group {group_region} limited, num adj {num_adj})")
             }
             SomeNeed::SetGroupAnchor {
                 group_region,
@@ -218,7 +221,10 @@ pub enum SomeNeed {
     RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set a group to limited, using a state
     /// that is only in that group, has adjacent, external, dissimilar squares.
-    SetGroupLimited { group_region: SomeRegion },
+    SetGroupLimited {
+        group_region: SomeRegion,
+        num_adj: usize,
+    },
     SetGroupAnchor {
         group_region: SomeRegion,
         anchor: SomeState,
@@ -385,9 +391,10 @@ impl PartialEq for SomeNeed {
                     return group_region == group_region_2;
                 }
             }
-            SomeNeed::SetGroupLimited { group_region } => {
+            SomeNeed::SetGroupLimited { group_region, .. } => {
                 if let SomeNeed::SetGroupLimited {
                     group_region: group_region_2,
+                    ..
                 } = other
                 {
                     return group_region == group_region_2;

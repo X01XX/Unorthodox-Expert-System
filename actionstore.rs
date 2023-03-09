@@ -4,6 +4,7 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
+use crate::mask::SomeMask;
 use crate::needstore::NeedStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
@@ -67,6 +68,13 @@ impl ActionStore {
             .push(SomeAction::new(dom_num, self.avec.len(), num_ints));
     }
 
+    /// Check limited flage due to new changes.
+    pub fn check_limited(&mut self, change_mask: &SomeMask) {
+        for actx in self.avec.iter_mut() {
+            actx.check_limited(change_mask);
+        }
+    }
+
     /// Get needs for all actions in the store.
     pub fn get_needs(
         &mut self,
@@ -122,7 +130,7 @@ impl ActionStore {
         self.avec.iter()
     }
 
-    /// Return all possible changes.
+    /// Calc all possible changes.
     pub fn calc_aggregate_changes(&mut self) {
         // Check for any action agg_chgs_updated set to true.
         let mut no_recalc = true;
@@ -139,17 +147,30 @@ impl ActionStore {
         }
 
         // Recalc ActionStore aggregate_changes.
-        self.aggregate_changes = SomeChange::new_low(self.num_ints());
+        let mut new_chgs = SomeChange::new_low(self.num_ints());
 
         for actx in &self.avec {
-            self.aggregate_changes = self.aggregate_changes.bitwise_or(actx.aggregate_changes());
+            new_chgs = new_chgs.bitwise_or(actx.aggregate_changes());
         }
+
+        // Check for new changes.
+        let additions = new_chgs.minus(&self.aggregate_changes);
 
         // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.avec {
             if actx.agg_chgs_updated() {
                 actx.reset_agg_chgs_updated();
             }
+        }
+
+        self.aggregate_changes = new_chgs;
+
+        if additions.is_not_low() {
+            self.check_limited(
+                &additions
+                    .b01
+                    .bitwise_or(&additions.b01.bitwise_or(&additions.b10)),
+            );
         }
     }
 } // end impl ActionStore

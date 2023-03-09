@@ -70,18 +70,8 @@ impl GroupStore {
             }
         }
 
-        let additions = new_chgs.minus(&self.aggregate_changes);
-
         self.aggregate_changes = new_chgs;
         self.agg_chgs_updated = true;
-
-        if additions.is_not_low() {
-            let b01_to_check = additions.b01.bitwise_and(&self.aggregate_changes.b10);
-
-            let b10_to_check = additions.b10.bitwise_and(&self.aggregate_changes.b01);
-
-            self.check_limited(&b01_to_check.bitwise_or(&b10_to_check));
-        }
     }
 
     /// Check groups with a recently changed sqaure.

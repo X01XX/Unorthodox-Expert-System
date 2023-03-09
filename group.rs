@@ -45,6 +45,8 @@ pub struct SomeGroup {
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
+    /// Number adjacent squares used to limit a group.
+    pub anchor_num: usize,
 }
 
 impl SomeGroup {
@@ -53,7 +55,7 @@ impl SomeGroup {
     pub fn new(regionx: SomeRegion, ruls: RuleStore, pnc: bool) -> Self {
         //        println!(
         //            "adding group {}",
-        //            SomeRegion::new(&sta1, &sta2)
+        //            SomeRegion::newif additions.is_not_low() {
         //        );
         assert!(ruls.len() < 3);
 
@@ -71,6 +73,7 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
+            anchor_num: 0,
         }
     }
 
@@ -110,7 +113,7 @@ impl SomeGroup {
         match &self.anchor {
             Some(sta1) => {
                 if self.limited {
-                    let _ = write!(rc_str, ", limited using {sta1}");
+                    let _ = write!(rc_str, ", limited using {sta1} num adj {}", self.anchor_num);
                 } else {
                     let _ = write!(rc_str, ", limiting using {sta1}");
                 }
@@ -180,20 +183,24 @@ impl SomeGroup {
         assert!(self.anchor.is_some());
 
         self.anchor = None;
+
         self.limited = false;
+        self.anchor_num = 0;
     }
 
     /// Set limited to false.
     pub fn set_limited_off(&mut self) {
         //        assert!(self.limited);
         self.limited = false;
+        self.anchor_num = 0;
     }
 
     /// Set limited to true.
-    pub fn set_limited(&mut self) {
+    pub fn set_limited(&mut self, num: usize) {
         //        assert!(!self.limited);
 
         self.limited = true;
+        self.anchor_num = num;
 
         if let Some(astate) = &self.anchor {
             if self.region.state1 == self.region.state2 {
@@ -211,8 +218,10 @@ impl SomeGroup {
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: &SomeState) {
-        self.limited = false;
         self.anchor = Some(astate.clone());
+
+        self.limited = false;
+        self.anchor_num = 0;
     }
 
     /// Check limited setting in groups due to new bit that can change.
@@ -232,6 +241,7 @@ impl SomeGroup {
 
         if !positions.is_low() {
             self.limited = false;
+            self.anchor_num = 0;
             //println!("resetting limit flag!");
         }
     }
