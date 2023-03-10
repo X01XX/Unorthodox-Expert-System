@@ -42,11 +42,11 @@ impl fmt::Display for SomeNeed {
             SomeNeed::StateInRemainder {
                 dom_num,
                 act_num,
-                target_state,
+                target_region,
             } => {
                 let pri = self.priority();
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} in remainder)")
+                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_region} in remainder)")
             }
             SomeNeed::ContradictoryIntersection {
                 dom_num,
@@ -165,7 +165,7 @@ pub enum SomeNeed {
     StateInRemainder {
         dom_num: usize,
         act_num: usize,
-        target_state: SomeState,
+        target_region: SomeRegion,
     },
     /// Sample a state to resolve a contradictory intersection of two groups.
     ContradictoryIntersection {
@@ -275,17 +275,17 @@ impl PartialEq for SomeNeed {
             SomeNeed::StateInRemainder {
                 dom_num,
                 act_num,
-                target_state,
+                target_region,
             } => {
                 if let SomeNeed::StateInRemainder {
                     dom_num: dom_num_2,
                     act_num: act_num_2,
-                    target_state: target_state_2,
+                    target_region: target_region_2,
                 } = other
                 {
                     return dom_num == dom_num_2
                         && act_num == act_num_2
-                        && target_state == target_state_2;
+                        && target_region == target_region_2;
                 }
             }
             SomeNeed::ContradictoryIntersection {
@@ -514,8 +514,8 @@ impl SomeNeed {
                     return true;
                 }
             }
-            SomeNeed::StateInRemainder { target_state, .. } => {
-                if cur_state == target_state {
+            SomeNeed::StateInRemainder { target_region, .. } => {
+                if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
@@ -604,12 +604,9 @@ impl SomeNeed {
             )),
             SomeNeed::StateInRemainder {
                 dom_num,
-                target_state,
+                target_region,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
-                *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 target_region,

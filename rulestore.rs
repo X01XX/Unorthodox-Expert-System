@@ -346,7 +346,11 @@ impl RuleStore {
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         assert!(self.is_not_empty());
-        assert!(regx.intersects(&self.initial_region()));
+        assert!(
+            regx.intersects(&self.initial_region()),
+            "{}",
+            format!("{} does not intersect {}", regx, self.initial_region())
+        );
         let mut rcrs = Self::new();
 
         for rulx in self.avec.iter() {

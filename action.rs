@@ -105,7 +105,7 @@ pub struct SomeAction {
     cleanup_trigger: usize,
     /// When the action has no needs, check for any missed regions.
     remainder_checked: bool,
-    remainder_check_state: Option<SomeState>,
+    remainder_check_region: Option<SomeRegion>,
 }
 
 impl SomeAction {
@@ -113,7 +113,7 @@ impl SomeAction {
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
     pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
-        assert!(num_ints > 0);
+        assert_ne!(num_ints, 0);
         SomeAction {
             num: act_num,
             dom_num,
@@ -123,14 +123,14 @@ impl SomeAction {
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
-            remainder_check_state: None,
+            remainder_check_region: None,
         }
     }
 
     /// Return the truth value for the combination of any two different squares,
     /// and the squares between them.
     fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Option<bool> {
-        assert!(sqrx.state != sqry.state);
+        assert_ne!(sqrx.state, sqry.state);
         //println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
         let cmbx = sqrx.can_combine(sqry);
@@ -297,7 +297,7 @@ impl SomeAction {
                 in_group: greg,
                 ..
             } => {
-                assert!(greg.state1 != greg.state2);
+                assert_ne!(greg.state1, greg.state2);
 
                 if *sta != greg.state1 && *sta != greg.state2 {
                     let mut make_groups_from = Vec::<SomeState>::new();
@@ -359,7 +359,7 @@ impl SomeAction {
                     }
                 }
             } // end match SeekEdgeNeed
-
+            // Check if group can be confirmed.
             SomeNeed::ConfirmGroup { grp_reg, .. } => {
                 let Some(sqr1) = self.squares.find(&grp_reg.state1) else { return; };
                 let Some(sqr2) = self.squares.find(&grp_reg.state2) else { return; };
@@ -368,7 +368,11 @@ impl SomeAction {
                     self.set_group_pnc(grp_reg);
                 }
             }
-
+            // Reset remainder check fields.
+            SomeNeed::StateInRemainder { .. } => {
+                self.remainder_checked = false;
+                self.remainder_check_region = None;
+            }
             _ => (),
         } // end match ndx
     } // end eval_need_sample
@@ -874,12 +878,12 @@ impl SomeAction {
 
                 if nds.is_empty() {
                     if self.remainder_checked {
-                        if let Some(astate) = &self.remainder_check_state {
+                        if let Some(aregion) = &self.remainder_check_region {
                             //println!("dom {} act {} remainder need 2 added for {}", self.dom_num, self.num, astate);
                             nds.push(SomeNeed::StateInRemainder {
                                 dom_num: self.dom_num,
                                 act_num: self.num,
-                                target_state: astate.clone(),
+                                target_region: aregion.clone(),
                             });
                         }
                     } else {
@@ -890,9 +894,9 @@ impl SomeAction {
                             cur_state.bitwise_xor(&agg_changes.b01.bitwise_and(&agg_changes.b10)),
                         );
 
-                        self.remainder_check_state = self.remainder_check_state(max_reg);
+                        self.remainder_check_region = self.remainder_check_region(max_reg);
 
-                        if let Some(astate) = &self.remainder_check_state {
+                        if let Some(aregion) = &self.remainder_check_region {
                             //match self.display_anchor_info() {
                             //    _ => ()
                             //}
@@ -900,7 +904,7 @@ impl SomeAction {
                             nds.push(SomeNeed::StateInRemainder {
                                 dom_num: self.dom_num,
                                 act_num: self.num,
-                                target_state: astate.clone(),
+                                target_region: aregion.clone(),
                             });
                         } else {
                             //println!("dom {} act {} remainder_check_state returns None", self.dom_num, self.num);
@@ -908,7 +912,7 @@ impl SomeAction {
                     }
                 } else {
                     self.remainder_checked = false;
-                    self.remainder_check_state = None;
+                    self.remainder_check_region = None;
                 }
 
                 return nds;
@@ -919,7 +923,7 @@ impl SomeAction {
     } // end get_needs
 
     /// Check for needs in a region not covered by current groups.
-    fn remainder_check_state(&self, max_region: SomeRegion) -> Option<SomeState> {
+    fn remainder_check_region(&self, max_region: SomeRegion) -> Option<SomeRegion> {
         let mut remainder_regs = RegionStore::new();
         remainder_regs.push(max_region.clone());
 
@@ -936,7 +940,11 @@ impl SomeAction {
 
         if remainder_regs.is_not_empty() {
             //println!("Checking null check state, returning {}", remainder_regs[0].state1);
-            return Some(remainder_regs[0].state1.clone());
+            let mut inx = 0;
+            if remainder_regs.len() > 1 {
+                inx = rand::thread_rng().gen_range(0..remainder_regs.len());
+            }
+            return Some(remainder_regs[inx].clone());
         }
 
         //println!("Checking null check state, returning None");
@@ -1287,7 +1295,7 @@ impl SomeAction {
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
-        //assert!(self.groups.num_groups_state_in(stax) == 1);
+        //assert_eq!(self.groups.num_groups_state_in(stax), 1);
         if self.groups.num_groups_state_in(stax) != 1 {
             return (0, 0, 0);
         }

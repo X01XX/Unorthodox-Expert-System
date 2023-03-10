@@ -147,7 +147,7 @@ impl SomeDomain {
 
     /// Run a plan, return true if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
-        assert!(pln.dom_num == self.num);
+        assert_eq!(pln.dom_num, self.num);
 
         if pln.is_empty() {
             return true;
@@ -745,8 +745,8 @@ mod tests {
         dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
         let mut toreg = dm0.region_from_string("r1000").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert!(aplan.len() == 4);
-            assert!(*aplan.result_region() == toreg);
+            assert_eq!(aplan.len(), 4);
+            assert_eq!(*aplan.result_region(), toreg);
         } else {
             return Err(String::from("no plan found to r1000?"));
         }
@@ -755,8 +755,8 @@ mod tests {
         dm0.set_state(&dm0.state_from_string("s0b1000").unwrap());
         toreg = dm0.region_from_string("r111").unwrap();
         if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert!(aplan.len() == 4);
-            assert!(*aplan.result_region() == toreg);
+            assert_eq!(aplan.len(), 4);
+            assert_eq!(*aplan.result_region(), toreg);
         } else {
             return Err(String::from("no plan found to r111?"));
         }
@@ -810,7 +810,7 @@ mod tests {
 
         if let Some(aplan) = dm0.make_plan(&toreg) {
             //assert!(aplan.len() == 5);
-            assert!(*aplan.result_region() == toreg);
+            assert_eq!(*aplan.result_region(), toreg);
             println!("plan 1: {} len = {}", aplan, aplan.len());
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
@@ -824,7 +824,7 @@ mod tests {
 
         // Try to get plan up to 5 times.
         if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert!(*aplan.result_region() == toreg);
+            assert_eq!(*aplan.result_region(), toreg);
             println!("plan 2: {} len = {}", aplan, aplan.len());
         } else {
             return Err(String::from("No plan found s1100 to r0111?"));
@@ -845,7 +845,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0]
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
-        assert!(nds1.len() == 1);
+        assert_eq!(nds1.len(), 1);
         assert!(
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
         );
@@ -886,7 +886,7 @@ mod tests {
         let nds1 = dm0.get_needs();
         println!("needs: {}", nds1);
 
-        assert!(nds1.len() == 1);
+        assert_eq!(nds1.len(), 1);
         assert!(
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
         );
@@ -907,7 +907,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0]
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
-        assert!(nds1.len() == 1);
+        assert_eq!(nds1.len(), 1);
         assert!(
             nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
         );
@@ -939,7 +939,7 @@ mod tests {
         let nds2 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds2);
 
-        assert!(nds2.len() == 2);
+        assert_eq!(nds2.len(), 2);
         assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
         assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
 
@@ -949,7 +949,7 @@ mod tests {
         let nds3 = dm0.actions[0].confirm_group_needs();
         //println!("needs {}", nds3);
 
-        assert!(nds3.len() == 1);
+        assert_eq!(nds3.len(), 1);
         assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
 
         // Satisfy second need.
@@ -995,7 +995,7 @@ mod tests {
 
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
-        assert!(nds1.len() == 1);
+        assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need(
             "ContradictoryIntersection",
             &dm0.region_from_string("rX100").unwrap()
@@ -1316,21 +1316,21 @@ mod tests {
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs1: {}", &needs);
 
-        assert!(needs.len() == 1);
+        assert_eq!(needs.len(), 1);
         assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101").unwrap()));
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs2: {}", &needs);
-        assert!(needs.len() == 1);
+        assert_eq!(needs.len(), 1);
         if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()) {
             // Seek even closer sample s1101
             let sd = dm0.state_from_string("s0b1101").unwrap();
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
-            assert!(needs.len() == 1);
+            assert_eq!(needs.len(), 1);
             assert!(
                 needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap())
             );
@@ -1361,7 +1361,7 @@ mod tests {
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
-            assert!(needs.len() == 1);
+            assert_eq!(needs.len(), 1);
             assert!(
                 needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
             );
@@ -1460,7 +1460,7 @@ mod tests {
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
 
         println!("\nActs: {}", &dm0.actions);
-        assert!(dm0.actions[0].groups.len() == 1);
+        assert_eq!(dm0.actions[0].groups.len(), 1);
         if let Some(_grpx) = dm0.actions[0]
             .groups
             .find(&dm0.region_from_string("rxxxx_xxxx").unwrap())

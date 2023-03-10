@@ -500,12 +500,12 @@ mod tests {
     #[test]
     fn eq() -> Result<(), String> {
         let reg1 = SomeRegion::new(
-            SomeState::new_from_string(1, "s0b1010").unwrap(),
-            SomeState::new_from_string(1, "s0b0101").unwrap(),
+            SomeState::new_from_string(1, "s0b1010")?,
+            SomeState::new_from_string(1, "s0b0101")?,
         );
         let reg2 = SomeRegion::new(
-            SomeState::new_from_string(1, "s0b0001").unwrap(),
-            SomeState::new_from_string(1, "s0b1110").unwrap(),
+            SomeState::new_from_string(1, "s0b0001")?,
+            SomeState::new_from_string(1, "s0b1110")?,
         );
         assert!(reg1.eq(&reg2));
 
