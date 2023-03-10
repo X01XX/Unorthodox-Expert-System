@@ -357,12 +357,12 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "r0x1x").unwrap();
-        let reg3 = SomeRegion::new_from_string(1, "r1x1x").unwrap();
-        let reg4 = SomeRegion::new_from_string(1, "r111x").unwrap();
-        let reg5 = SomeRegion::new_from_string(1, "r101x").unwrap();
-        let reg6 = SomeRegion::new_from_string(1, "r000x").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0x0x")?;
+        let reg2 = SomeRegion::new_from_string(1, "r0x1x")?;
+        let reg3 = SomeRegion::new_from_string(1, "r1x1x")?;
+        let reg4 = SomeRegion::new_from_string(1, "r111x")?;
+        let reg5 = SomeRegion::new_from_string(1, "r101x")?;
+        let reg6 = SomeRegion::new_from_string(1, "r000x")?;
 
         let step1 = SomeStep::new(
             0,
@@ -404,7 +404,7 @@ mod tests {
         if stp_str3.len() != 4 {
             return Err(format!("Len NE 4? {}", stp_str3).to_string());
         }
-        let reg45 = SomeRegion::new_from_string(1, "r010x").unwrap();
+        let reg45 = SomeRegion::new_from_string(1, "r010x")?;
         if stp_str3.initial_region() != &reg45 {
             return Err(format!(
                 "initial {} NE {} ?",
@@ -435,11 +435,11 @@ mod tests {
     fn shortcuts() -> Result<(), String> {
         let mut pln1 = SomePlan::new(0);
 
-        let reg0 = SomeRegion::new_from_string(1, "r0000").unwrap();
-        let reg1 = SomeRegion::new_from_string(1, "r0001").unwrap();
-        let reg3 = SomeRegion::new_from_string(1, "r0011").unwrap();
-        let reg5 = SomeRegion::new_from_string(1, "r0101").unwrap();
-        let reg7 = SomeRegion::new_from_string(1, "r0111").unwrap();
+        let reg0 = SomeRegion::new_from_string(1, "r0000")?;
+        let reg1 = SomeRegion::new_from_string(1, "r0001")?;
+        let reg3 = SomeRegion::new_from_string(1, "r0011")?;
+        let reg5 = SomeRegion::new_from_string(1, "r0101")?;
+        let reg7 = SomeRegion::new_from_string(1, "r0111")?;
 
         let step1 = SomeStep::new(
             0,
@@ -485,7 +485,7 @@ mod tests {
 
         if let Some(pln1s) = pln1.shortcuts() {
             println!("shortcut found: {}", pln1s);
-            assert!(pln1s.len() == 1);
+            assert_eq!(pln1s.len(), 1);
             if pln1s.len() != 1 {
                 return Err(format!("Len NE 1? {}", pln1s).to_string());
             }

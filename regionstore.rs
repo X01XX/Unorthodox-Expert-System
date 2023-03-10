@@ -434,6 +434,11 @@ impl RegionStore {
         }
         true
     }
+
+    /// Make the get function for RegionStore.
+    pub fn get(&self, index: usize) -> Option<&SomeRegion> {
+        self.avec.get(index)
+    }
 }
 
 impl Index<usize> for RegionStore {
@@ -451,9 +456,9 @@ mod tests {
     fn remove_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(3);
 
-        let reg1 = SomeRegion::new_from_string(1, "r0x0x").unwrap();
-        let reg2 = SomeRegion::new_from_string(1, "r0xx1").unwrap();
-        let reg3 = SomeRegion::new_from_string(1, "rx1x1").unwrap();
+        let reg1 = SomeRegion::new_from_string(1, "r0x0x")?;
+        let reg2 = SomeRegion::new_from_string(1, "r0xx1")?;
+        let reg3 = SomeRegion::new_from_string(1, "rx1x1")?;
 
         regstr.push(reg1.clone());
         regstr.push(reg2.clone());
@@ -468,49 +473,49 @@ mod tests {
     #[test]
     fn subtract_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        let regx = SomeRegion::new_from_string(1, "r0101").unwrap();
+        let regx = SomeRegion::new_from_string(1, "r0101")?;
 
         let reg_rslt = regstr.subtract_region(&regx);
         println!("results {}", reg_rslt);
 
         assert!(reg_rslt.len() == 7);
-        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r0x11").unwrap()));
-        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r00x1").unwrap()));
-        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "rx111").unwrap()));
-        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r11x1").unwrap()));
+        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r0x11")?));
+        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r00x1")?));
+        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "rx111")?));
+        assert!(reg_rslt.contains(&SomeRegion::new_from_string(1, "r11x1")?));
         Ok(())
     }
 
     #[test]
     fn subtract() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx11x").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx11x")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
         let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r01x1").unwrap());
-        regstr2.push(SomeRegion::new_from_string(1, "r0x01").unwrap());
+        regstr2.push(SomeRegion::new_from_string(1, "r01x1")?);
+        regstr2.push(SomeRegion::new_from_string(1, "r0x01")?);
 
         let regstr3 = regstr.subtract(&regstr2);
         println!("regstr3: {}", &regstr3);
 
         assert!(regstr3.len() == 5);
-        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0x00").unwrap()));
-        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0011").unwrap()));
-        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r11x1").unwrap()));
-        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "rx110").unwrap()));
-        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r111x").unwrap()));
+        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0x00")?));
+        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r0011")?));
+        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r11x1")?));
+        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "rx110")?));
+        assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r111x")?));
         Ok(())
     }
 
@@ -519,12 +524,12 @@ mod tests {
         let mut regstr = RegionStore::with_capacity(2);
         assert!(regstr.union() == None);
 
-        regstr.push(SomeRegion::new_from_string(2, "r000111xxx").unwrap());
-        regstr.push(SomeRegion::new_from_string(2, "r01x01x01x").unwrap());
+        regstr.push(SomeRegion::new_from_string(2, "r000111xxx")?);
+        regstr.push(SomeRegion::new_from_string(2, "r01x01x01x")?);
 
         if let Some(regx) = regstr.union() {
             println!("regx {}", &regx);
-            assert!(regx == SomeRegion::new_from_string(2, "rxxx1xxxx").unwrap());
+            assert!(regx == SomeRegion::new_from_string(2, "rxxx1xxxx")?);
         } else {
             return Err(String::from("Union returns None?"));
         }
@@ -535,20 +540,20 @@ mod tests {
     fn push_nosups() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        regstr.push_nosups(SomeRegion::new_from_string(1, "r0111").unwrap());
+        regstr.push_nosups(SomeRegion::new_from_string(1, "r0111")?);
         println!("results {}", &regstr);
 
         assert!(regstr.len() == 3);
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0x0x").unwrap()));
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r1110").unwrap()));
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0111").unwrap()));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0x0x")?));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r1110")?));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0111")?));
         Ok(())
     }
 
@@ -556,20 +561,20 @@ mod tests {
     fn push_nosubs() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        regstr.push_nosubs(SomeRegion::new_from_string(1, "rxxx1").unwrap());
+        regstr.push_nosubs(SomeRegion::new_from_string(1, "rxxx1")?);
         println!("results {}", &regstr);
 
         assert!(regstr.len() == 3);
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0x0x").unwrap()));
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r1110").unwrap()));
-        assert!(regstr.contains(&SomeRegion::new_from_string(1, "rxxx1").unwrap()));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r0x0x")?));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "r1110")?));
+        assert!(regstr.contains(&SomeRegion::new_from_string(1, "rxxx1")?));
         Ok(())
     }
 
@@ -577,15 +582,15 @@ mod tests {
     fn state_in_1_region() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0100").unwrap()));
-        assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0111").unwrap()));
+        assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0100")?));
+        assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0111")?));
         Ok(())
     }
 
@@ -593,20 +598,19 @@ mod tests {
     fn not_supersets_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        let regstr2 =
-            regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap());
+        let regstr2 = regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0b0111")?);
         println!("not supersets {}", &regstr2);
 
         assert!(regstr2.len() == 2);
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0x0x").unwrap()));
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r1110").unwrap()));
+        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0x0x")?));
+        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r1110")?));
         Ok(())
     }
 
@@ -614,19 +618,19 @@ mod tests {
     fn supersets_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        let regstr2 = regstr.supersets_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap());
+        let regstr2 = regstr.supersets_of_state(&SomeState::new_from_string(1, "s0b0111")?);
         println!("supersets {}", &regstr2);
 
         assert!(regstr2.len() == 2);
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0xx1").unwrap()));
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "rx1x1").unwrap()));
+        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0xx1")?));
+        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "rx1x1")?));
         Ok(())
     }
 
@@ -634,15 +638,15 @@ mod tests {
     fn any_superset_of_state() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b0111").unwrap()));
-        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b1011").unwrap()));
+        assert!(regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b0111")?));
+        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string(1, "s0b1011")?));
         Ok(())
     }
 
@@ -650,15 +654,15 @@ mod tests {
     fn any_intersection() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_intersection(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
-        assert!(!regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1").unwrap()));
+        assert!(regstr.any_intersection(&SomeRegion::new_from_string(1, "r1xx1")?));
+        assert!(!regstr.any_intersection(&SomeRegion::new_from_string(1, "r10x1")?));
         Ok(())
     }
 
@@ -666,15 +670,15 @@ mod tests {
     fn any_subset_of() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_subset_of(&SomeRegion::new_from_string(1, "rx11x").unwrap()));
-        assert!(!regstr.any_subset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
+        assert!(regstr.any_subset_of(&SomeRegion::new_from_string(1, "rx11x")?));
+        assert!(!regstr.any_subset_of(&SomeRegion::new_from_string(1, "r1xx1")?));
         Ok(())
     }
 
@@ -682,15 +686,15 @@ mod tests {
     fn any_superset_of() -> Result<(), String> {
         let mut regstr = RegionStore::with_capacity(4);
 
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1").unwrap());
-        regstr.push(SomeRegion::new_from_string(1, "r1110").unwrap());
+        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
+        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
+        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
+        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_superset_of(&SomeRegion::new_from_string(1, "r01x1").unwrap()));
-        assert!(!regstr.any_superset_of(&SomeRegion::new_from_string(1, "r1xx1").unwrap()));
+        assert!(regstr.any_superset_of(&SomeRegion::new_from_string(1, "r01x1")?));
+        assert!(!regstr.any_superset_of(&SomeRegion::new_from_string(1, "r1xx1")?));
         Ok(())
     }
 }

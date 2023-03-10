@@ -225,7 +225,7 @@ impl SomeBits {
 
     /// Return the bitwise AND of two SomeBits structs.
     pub fn b_and(&self, other: &Self) -> Self {
-        assert!(self.num_ints() == other.num_ints());
+        assert_eq!(self.num_ints(), other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -237,7 +237,7 @@ impl SomeBits {
 
     /// Return the bitwise OR of two SomeBits structs.
     pub fn b_or(&self, other: &Self) -> Self {
-        assert!(self.num_ints() == other.num_ints());
+        assert_eq!(self.num_ints(), other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -249,7 +249,7 @@ impl SomeBits {
 
     /// Return the bitwise XOR of two SomeBits structs.
     pub fn b_xor(&self, other: &Self) -> Self {
-        assert!(self.num_ints() == other.num_ints());
+        assert_eq!(self.num_ints(), other.num_ints());
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -623,8 +623,8 @@ mod tests {
             }
 
             // Get new bits values
-            let bits_hex = SomeBits::new_from_string(2, &bits_hex_str).unwrap();
-            let bits_bin = SomeBits::new_from_string(2, &bits_bin_str).unwrap();
+            let bits_hex = SomeBits::new_from_string(2, &bits_hex_str)?;
+            let bits_bin = SomeBits::new_from_string(2, &bits_bin_str)?;
 
             // Compare the bits string and predicted string.
             match bits_hex == bits_bin {
@@ -647,12 +647,12 @@ mod tests {
     // Test b_eqv
     #[test]
     fn b_eqv() -> Result<(), String> {
-        let b1 = SomeBits::new_from_string(2, "0x5555").unwrap();
-        let b2 = SomeBits::new_from_string(2, "0xa675").unwrap();
+        let b1 = SomeBits::new_from_string(2, "0x5555")?;
+        let b2 = SomeBits::new_from_string(2, "0xa675")?;
         let b3 = b1.b_eqv(&b2);
         println!("b3 = {}", b3);
-        let b4 = SomeBits::new_from_string(2, "0x0cdf").unwrap();
-        assert!(b3 == b4);
+        let b4 = SomeBits::new_from_string(2, "0x0cdf")?;
+        assert_eq!(b3, b4);
         Ok(())
     }
 
@@ -792,7 +792,7 @@ mod tests {
     // Test change_bit functions.
     #[test]
     fn change_bits() -> Result<(), String> {
-        let bx11 = SomeBits::new_from_string(1, "0x11").unwrap();
+        let bx11 = SomeBits::new_from_string(1, "0x11")?;
         let mut btest = SomeBits::new_low(1);
         btest = btest.change_bit(0).change_bit(4);
         if bx11 != btest {
@@ -803,7 +803,7 @@ mod tests {
             ));
         }
 
-        let bx10 = SomeBits::new_from_string(1, "0x10").unwrap();
+        let bx10 = SomeBits::new_from_string(1, "0x10")?;
         btest = btest.set_bit_to_0(0);
         if bx10 != btest {
             return Err(format!(
@@ -827,23 +827,19 @@ mod tests {
     // Test SomeBits::distance
     #[test]
     fn distance() -> Result<(), String> {
-        if 0 != SomeBits::new_from_string(2, "0x0")
-            .unwrap()
-            .distance(&SomeBits::new_from_string(2, "0x0").unwrap())
+        if 0 != SomeBits::new_from_string(2, "0x0")?.distance(&SomeBits::new_from_string(2, "0x0")?)
         {
             return Err(String::from("Result  1 not 0?"));
         }
 
-        if 8 != SomeBits::new_from_string(2, "0x5555")
-            .unwrap()
-            .distance(&SomeBits::new_from_string(2, "0x0").unwrap())
+        if 8 != SomeBits::new_from_string(2, "0x5555")?
+            .distance(&SomeBits::new_from_string(2, "0x0")?)
         {
             return Err(String::from("Result 2 not 8?"));
         }
 
-        if 7 != SomeBits::new_from_string(2, "0xaaaa")
-            .unwrap()
-            .distance(&SomeBits::new_from_string(2, "0x02").unwrap())
+        if 7 != SomeBits::new_from_string(2, "0xaaaa")?
+            .distance(&SomeBits::new_from_string(2, "0x02")?)
         {
             return Err(String::from("Result 3 not 7?"));
         }
@@ -854,7 +850,7 @@ mod tests {
     // Test SomeBits::high_bit_nonzero
     #[test]
     fn high_bit_nonzero() -> Result<(), String> {
-        let mut btest = SomeBits::new_from_string(1, "0x1").unwrap();
+        let mut btest = SomeBits::new_from_string(1, "0x1")?;
 
         if btest.high_bit_nonzero() {
             return Err(String::from("Result 1 true?"));
@@ -874,7 +870,7 @@ mod tests {
     // Test SomeBits::is_bit_set
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let test_bits = SomeBits::new_from_string(2, "0x5aa5").unwrap();
+        let test_bits = SomeBits::new_from_string(2, "0x5aa5")?;
 
         if !test_bits.is_bit_set(0) {
             return Err(String::from("Test 0 failed?"));
@@ -945,7 +941,7 @@ mod tests {
     // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
-        let mut btest = SomeBits::new_from_string(1, "0x1").unwrap();
+        let mut btest = SomeBits::new_from_string(1, "0x1")?;
         let bone = btest.clone();
 
         if btest.is_high() {
@@ -965,7 +961,7 @@ mod tests {
     // Test SomeBits::is_low
     #[test]
     fn is_low() -> Result<(), String> {
-        if SomeBits::new_from_string(1, "0xa5").unwrap().is_low() {
+        if SomeBits::new_from_string(1, "0xa5")?.is_low() {
             return Err(String::from("Test 1 failed?"));
         }
 
@@ -973,7 +969,7 @@ mod tests {
             return Err(String::from("Test 2 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x2000").unwrap().is_low() {
+        if SomeBits::new_from_string(2, "0x2000")?.is_low() {
             return Err(String::from("Test 3 failed?"));
         }
 
@@ -987,27 +983,23 @@ mod tests {
     // Test SomeBits::is_subset_of
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x0").unwrap()) {
+        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x0")?) {
             return Err(String::from("Test 1 failed?"));
         }
-        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x5").unwrap()) {
+        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x5")?) {
             return Err(String::from("Test 2 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x5555")
-            .unwrap()
-            .is_subset_of(&SomeBits::new_from_string(2, "0x7777").unwrap())
+        if !SomeBits::new_from_string(2, "0x5555")?
+            .is_subset_of(&SomeBits::new_from_string(2, "0x7777")?)
         {
             return Err(String::from("Test 3 failed?"));
         }
-        if SomeBits::new_from_string(2, "0x5")
-            .unwrap()
-            .is_subset_of(&SomeBits::new_from_string(2, "0x1").unwrap())
+        if SomeBits::new_from_string(2, "0x5")?.is_subset_of(&SomeBits::new_from_string(2, "0x1")?)
         {
             return Err(String::from("Test 4 failed?"));
         }
-        if SomeBits::new_from_string(2, "0x7777")
-            .unwrap()
-            .is_subset_of(&SomeBits::new_from_string(2, "0x5555").unwrap())
+        if SomeBits::new_from_string(2, "0x7777")?
+            .is_subset_of(&SomeBits::new_from_string(2, "0x5555")?)
         {
             return Err(String::from("Test 5 failed?"));
         }
@@ -1017,33 +1009,28 @@ mod tests {
     // Test SomeBits::is_superset_of
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        if !SomeBits::new_from_string(2, "0x0")
-            .unwrap()
-            .is_superset_of(&SomeBits::new_from_string(2, "0x0").unwrap())
+        if !SomeBits::new_from_string(2, "0x0")?
+            .is_superset_of(&SomeBits::new_from_string(2, "0x0")?)
         {
             return Err(String::from("Test 1 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x5")
-            .unwrap()
-            .is_superset_of(&SomeBits::new_from_string(2, "0x0").unwrap())
+        if !SomeBits::new_from_string(2, "0x5")?
+            .is_superset_of(&SomeBits::new_from_string(2, "0x0")?)
         {
             return Err(String::from("Test 2 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x7777")
-            .unwrap()
-            .is_superset_of(&SomeBits::new_from_string(2, "0x5555").unwrap())
+        if !SomeBits::new_from_string(2, "0x7777")?
+            .is_superset_of(&SomeBits::new_from_string(2, "0x5555")?)
         {
             return Err(format!("Test 3 failed?"));
         }
-        if SomeBits::new_from_string(2, "0x1")
-            .unwrap()
-            .is_superset_of(&SomeBits::new_from_string(2, "0x5").unwrap())
+        if SomeBits::new_from_string(2, "0x1")?
+            .is_superset_of(&SomeBits::new_from_string(2, "0x5")?)
         {
             return Err(String::from("Test 4 failed?"));
         }
-        if SomeBits::new_from_string(2, "0x5555")
-            .unwrap()
-            .is_superset_of(&SomeBits::new_from_string(2, "0x7777").unwrap())
+        if SomeBits::new_from_string(2, "0x5555")?
+            .is_superset_of(&SomeBits::new_from_string(2, "0x7777")?)
         {
             return Err(String::from("Test 5 failed?"));
         }
@@ -1053,70 +1040,40 @@ mod tests {
     // Test SomeBits::just_one_bit
     #[test]
     fn just_one_bit() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5000")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x5000")?.just_one_bit() {
             return Err(String::from("Test 1 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x0300")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x0300")?.just_one_bit() {
             return Err(String::from("Test 2 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x0060")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x0060")?.just_one_bit() {
             return Err(String::from("Test 3 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x0007")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x0007")?.just_one_bit() {
             return Err(String::from("Test 4 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x0102")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x0102")?.just_one_bit() {
             return Err(String::from("Test 5 failed?"));
         }
 
-        if SomeBits::new_from_string(2, "0x4080")
-            .unwrap()
-            .just_one_bit()
-        {
+        if SomeBits::new_from_string(2, "0x4080")?.just_one_bit() {
             return Err(String::from("Test 6 failed?"));
         }
 
-        if !SomeBits::new_from_string(2, "0x4000")
-            .unwrap()
-            .just_one_bit()
-        {
+        if !SomeBits::new_from_string(2, "0x4000")?.just_one_bit() {
             return Err(String::from("Test 7 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x0800")
-            .unwrap()
-            .just_one_bit()
-        {
+        if !SomeBits::new_from_string(2, "0x0800")?.just_one_bit() {
             return Err(String::from("Test 8 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x0010")
-            .unwrap()
-            .just_one_bit()
-        {
+        if !SomeBits::new_from_string(2, "0x0010")?.just_one_bit() {
             return Err(String::from("Test 9 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x0002")
-            .unwrap()
-            .just_one_bit()
-        {
+        if !SomeBits::new_from_string(2, "0x0002")?.just_one_bit() {
             return Err(String::from("Test 10 failed?"));
         }
         Ok(())
@@ -1124,7 +1081,7 @@ mod tests {
 
     #[test]
     fn half_bits() -> Result<(), String> {
-        let bts = SomeBits::new_from_string(2, "0x5555").unwrap();
+        let bts = SomeBits::new_from_string(2, "0x5555")?;
         let hbts = bts.half_bits();
         let num_bits = hbts.num_one_bits();
         if num_bits != 4 {
@@ -1140,18 +1097,10 @@ mod tests {
     // Test SomeBits::num_one_bits
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555")
-            .unwrap()
-            .num_one_bits()
-            != 8
-        {
+        if SomeBits::new_from_string(2, "0x5555")?.num_one_bits() != 8 {
             return Err(String::from("Test 1 failed?"));
         }
-        if SomeBits::new_from_string(2, "0xaaaa")
-            .unwrap()
-            .num_one_bits()
-            != 8
-        {
+        if SomeBits::new_from_string(2, "0xaaaa")?.num_one_bits() != 8 {
             return Err(String::from("Test 2 failed?"));
         }
         Ok(())
@@ -1160,8 +1109,8 @@ mod tests {
     // Test SomeBits::push_1
     #[test]
     fn push_1() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555").unwrap().push_1()
-            != SomeBits::new_from_string(2, "0xaaab").unwrap()
+        if SomeBits::new_from_string(2, "0x5555")?.push_1()
+            != SomeBits::new_from_string(2, "0xaaab")?
         {
             return Err(String::from("Test 1 failed?"));
         }
@@ -1171,8 +1120,8 @@ mod tests {
     // Test SomeBits::shift_left
     #[test]
     fn shift_left() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555").unwrap().shift_left()
-            != SomeBits::new_from_string(2, "0xaaaa").unwrap()
+        if SomeBits::new_from_string(2, "0x5555")?.shift_left()
+            != SomeBits::new_from_string(2, "0xaaaa")?
         {
             return Err(String::from("Test 1 failed?"));
         }
@@ -1182,8 +1131,8 @@ mod tests {
     // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x505").unwrap().shift_left4()
-            != SomeBits::new_from_string(2, "0x5050").unwrap()
+        if SomeBits::new_from_string(2, "0x505")?.shift_left4()
+            != SomeBits::new_from_string(2, "0x5050")?
         {
             return Err(String::from("Test 1 failed?"));
         }
@@ -1193,20 +1142,20 @@ mod tests {
     // Test SomeBits::split
     #[test]
     fn split() -> Result<(), String> {
-        let avec: Vec<SomeBits> = SomeBits::new_from_string(2, "0x5050").unwrap().split();
+        let avec: Vec<SomeBits> = SomeBits::new_from_string(2, "0x5050")?.split();
         if avec.len() != 4 {
             return Err(String::from("Test 1 failed?"));
         }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x4000").unwrap()) {
+        if !avec.contains(&SomeBits::new_from_string(2, "0x4000")?) {
             return Err(String::from("Test 2 failed?"));
         }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x1000").unwrap()) {
+        if !avec.contains(&SomeBits::new_from_string(2, "0x1000")?) {
             return Err(String::from("Test 3 failed?"));
         }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x0040").unwrap()) {
+        if !avec.contains(&SomeBits::new_from_string(2, "0x0040")?) {
             return Err(String::from("Test 4 failed?"));
         }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x0010").unwrap()) {
+        if !avec.contains(&SomeBits::new_from_string(2, "0x0010")?) {
             return Err(String::from("Test 5 failed?"));
         }
         Ok(())
@@ -1214,27 +1163,21 @@ mod tests {
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x0")
-            .unwrap()
-            .is_adjacent(&SomeBits::new_from_string(2, "0x11").unwrap())
+        if SomeBits::new_from_string(2, "0x0")?.is_adjacent(&SomeBits::new_from_string(2, "0x11")?)
         {
             return Err(String::from("Test 1 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x1")
-            .unwrap()
-            .is_adjacent(&SomeBits::new_from_string(2, "0x11").unwrap())
+        if !SomeBits::new_from_string(2, "0x1")?.is_adjacent(&SomeBits::new_from_string(2, "0x11")?)
         {
             return Err(String::from("Test 2 failed?"));
         }
-        if SomeBits::new_from_string(2, "0x0")
-            .unwrap()
-            .is_adjacent(&SomeBits::new_from_string(2, "0x1100").unwrap())
+        if SomeBits::new_from_string(2, "0x0")?
+            .is_adjacent(&SomeBits::new_from_string(2, "0x1100")?)
         {
             return Err(String::from("Test 3 failed?"));
         }
-        if !SomeBits::new_from_string(2, "0x100")
-            .unwrap()
-            .is_adjacent(&SomeBits::new_from_string(2, "0x1100").unwrap())
+        if !SomeBits::new_from_string(2, "0x100")?
+            .is_adjacent(&SomeBits::new_from_string(2, "0x1100")?)
         {
             return Err(String::from("Test 4 failed?"));
         }

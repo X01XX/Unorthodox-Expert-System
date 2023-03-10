@@ -618,12 +618,12 @@ mod tests {
 
         // Create domain 0, using 1 integer for bits.
         let inx0 = dmxs.push(SomeDomain::new(1));
-        let init_state1 = dmxs[inx0].state_from_string("s0x12").unwrap();
+        let init_state1 = dmxs[inx0].state_from_string("s0x12")?;
         dmxs[inx0].set_state(&init_state1);
 
         // Create domain 1, using 2 integers for bits.
         let inx1 = dmxs.push(SomeDomain::new(2));
-        let init_state2 = dmxs[inx1].state_from_string("s0xabcd").unwrap();
+        let init_state2 = dmxs[inx1].state_from_string("s0xabcd")?;
         dmxs[inx1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
@@ -668,36 +668,20 @@ mod tests {
 
         // Load optimal regions
         let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(dmxs[inx0].region_from_string("r0x0x").unwrap());
-        regstr1.push(
-            dmxs[inx1]
-                .region_from_string("rXXXXXX10_1XXX_XXXX")
-                .unwrap(),
-        );
+        regstr1.push(dmxs[inx0].region_from_string("r0x0x")?);
+        regstr1.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(dmxs[inx0].region_from_string("r0xx1").unwrap());
-        regstr2.push(
-            dmxs[inx1]
-                .region_from_string("rXXXXXX10_1XXX_XXXX")
-                .unwrap(),
-        );
+        regstr2.push(dmxs[inx0].region_from_string("r0xx1")?);
+        regstr2.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr3 = RegionStore::with_capacity(2);
-        regstr3.push(dmxs[inx0].region_from_string("rx1x1").unwrap());
-        regstr3.push(
-            dmxs[inx1]
-                .region_from_string("rXXXXXX10_1XXX_XXXX")
-                .unwrap(),
-        );
+        regstr3.push(dmxs[inx0].region_from_string("rx1x1")?);
+        regstr3.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr4 = RegionStore::with_capacity(2);
-        regstr4.push(dmxs[inx0].region_from_string("r1110").unwrap());
-        regstr4.push(
-            dmxs[inx1]
-                .region_from_string("rXXXXXX10_1XXX_XXXX")
-                .unwrap(),
-        );
+        regstr4.push(dmxs[inx0].region_from_string("r1110")?);
+        regstr4.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add optimal region stores.
         dmxs.add_optimal(regstr1);

@@ -219,16 +219,16 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
+        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
 
-        let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+        let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
         if pn != Pn::One {
             return Err(String::from("Test 1 Pn NE One?"));
         }
 
         // Test additional adds.
         for _ in 0..8 {
-            let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+            let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
             if pn != Pn::One {
                 return Err(String::from("Test 2 Pn NE One?"));
             }
@@ -244,20 +244,20 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
             return Err(String::from("Test 1 Pn NE Two?"));
         }
 
-        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
 
         if pn != Pn::Two {
             return Err(String::from("Test 2 Pn NE Two?"));
         }
 
-        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
             return Err(String::from("Test 3 Pn NE Two?"));
@@ -265,13 +265,13 @@ mod tests {
 
         // Test additional adds.
         for _ in 0..4 {
-            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
+            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
 
             if pn != Pn::Two {
                 return Err(String::from("Test 4 Pn NE Two?"));
             }
 
-            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+            pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
             if pn != Pn::Two {
                 return Err(String::from("Test 5 Pn NE Two?"));
@@ -285,28 +285,28 @@ mod tests {
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
             return Err(String::from("Test 1 Pn NE Two?"));
         }
 
-        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap()); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?); // two results, but out of order
 
         if pn != Pn::Unpredictable {
             return Err(String::from("Test 2 Pn NE Unpredictable?"));
         }
 
         // Test three different results.
-        rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505").unwrap());
-        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
+        rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
             return Err(String::from("Test 3 Pn NE Two?"));
         }
 
-        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap()); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x502")?); // two results, but out of order
 
         if pn != Pn::Unpredictable {
             return Err(String::from("Test 4 Pn NE Unpredictable?"));
@@ -318,23 +318,23 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x500").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x501").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x502").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x503").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x504").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x505").unwrap());
-        rslt_str.add_result(SomeState::new_from_string(2, "s0x506").unwrap());
+        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x500")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x501")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x502")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x503")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
+        rslt_str.add_result(SomeState::new_from_string(2, "s0x506")?);
 
-        if *rslt_str.first() != SomeState::new_from_string(2, "s0x504").unwrap() {
+        if *rslt_str.first() != SomeState::new_from_string(2, "s0x504")? {
             return Err(String::from("Test 1 first not s0x0504?"));
         }
 
-        if *rslt_str.second() != SomeState::new_from_string(2, "s0x505").unwrap() {
+        if *rslt_str.second() != SomeState::new_from_string(2, "s0x505")? {
             return Err(String::from("Test 2 second not s0x0505?"));
         }
 
-        if *rslt_str.most_recent_result() != SomeState::new_from_string(2, "s0x506").unwrap() {
+        if *rslt_str.most_recent_result() != SomeState::new_from_string(2, "s0x506")? {
             return Err(String::from("Test 3 most_recent_result not s0x0506?"));
         }
 

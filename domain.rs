@@ -716,14 +716,14 @@ mod tests {
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0b0").unwrap();
-        let sf = dm0.state_from_string("s0b1111").unwrap();
+        let s0 = dm0.state_from_string("s0b0")?;
+        let sf = dm0.state_from_string("s0b1111")?;
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(0)));
@@ -742,8 +742,8 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sf.change_bit(3))); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        dm0.set_state(&dm0.state_from_string("s0b111").unwrap());
-        let mut toreg = dm0.region_from_string("r1000").unwrap();
+        dm0.set_state(&dm0.state_from_string("s0b111")?);
+        let mut toreg = dm0.region_from_string("r1000")?;
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert_eq!(aplan.len(), 4);
             assert_eq!(*aplan.result_region(), toreg);
@@ -752,8 +752,8 @@ mod tests {
         }
 
         // Get plan for 8 to 7
-        dm0.set_state(&dm0.state_from_string("s0b1000").unwrap());
-        toreg = dm0.region_from_string("r111").unwrap();
+        dm0.set_state(&dm0.state_from_string("s0b1000")?);
+        toreg = dm0.region_from_string("r111")?;
         if let Some(aplan) = dm0.make_plan(&toreg) {
             assert_eq!(aplan.len(), 4);
             assert_eq!(*aplan.result_region(), toreg);
@@ -771,15 +771,15 @@ mod tests {
     fn make_plan_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0b0").unwrap();
-        let sf = dm0.state_from_string("s0b1111").unwrap();
-        let sb = dm0.state_from_string("s0b1011").unwrap();
+        let s0 = dm0.state_from_string("s0b0")?;
+        let sf = dm0.state_from_string("s0b1111")?;
+        let sb = dm0.state_from_string("s0b1011")?;
 
         // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(0)));
@@ -804,9 +804,9 @@ mod tests {
         // Get plan for 7 to C
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
-        let s7 = dm0.state_from_string("s0x07").unwrap();
+        let s7 = dm0.state_from_string("s0x07")?;
         dm0.set_state(&s7);
-        let mut toreg = dm0.region_from_string("r1100").unwrap();
+        let mut toreg = dm0.region_from_string("r1100")?;
 
         if let Some(aplan) = dm0.make_plan(&toreg) {
             //assert!(aplan.len() == 5);
@@ -819,8 +819,8 @@ mod tests {
         println!("*****************************");
 
         // Get plan for C to 7
-        dm0.set_state(&dm0.state_from_string("s0b1100").unwrap());
-        toreg = dm0.region_from_string("r0111").unwrap();
+        dm0.set_state(&dm0.state_from_string("s0b1100")?);
+        toreg = dm0.region_from_string("r0111")?;
 
         // Try to get plan up to 5 times.
         if let Some(aplan) = dm0.make_plan(&toreg) {
@@ -838,7 +838,7 @@ mod tests {
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -846,18 +846,13 @@ mod tests {
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
         assert_eq!(nds1.len(), 1);
-        assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
-        );
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s0b1").unwrap();
+        let s1 = dm0.state_from_string("s0b1")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
-        if let Some(_grpx) = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("r1").unwrap())
-        {
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
         } else {
             return Err(String::from("Group r1 not found ??"));
         }
@@ -866,19 +861,16 @@ mod tests {
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
-        let s1 = dm0.state_from_string("s0b1").unwrap();
+        let s1 = dm0.state_from_string("s0b1")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(
             s1.clone(),
             0,
-            dm0.state_from_string("s0").unwrap(),
+            dm0.state_from_string("s0")?,
         ));
 
         println!("\nActs: {}", &dm0.actions[0]);
 
-        if let Some(_grpx) = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("r1").unwrap())
-        {
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
             return Err(String::from("Group r1  found ??"));
         }
 
@@ -887,9 +879,7 @@ mod tests {
         println!("needs: {}", nds1);
 
         assert_eq!(nds1.len(), 1);
-        assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0").unwrap())
-        );
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0")?));
 
         // Err(String::from("Done"));
         Ok(())
@@ -900,7 +890,7 @@ mod tests {
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
         // Check need for the current state not in a group.
@@ -908,30 +898,22 @@ mod tests {
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
         assert_eq!(nds1.len(), 1);
-        assert!(
-            nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1").unwrap())
-        );
+        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s0b1").unwrap();
+        let s1 = dm0.state_from_string("s0b1")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
-        if let Some(_grpx) = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("r1").unwrap())
-        {
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
         } else {
             return Err(String::from("Group r1 not found ??"));
         }
 
         // Expand group
-        let s2 = dm0.state_from_string("s0b10").unwrap();
+        let s2 = dm0.state_from_string("s0b10")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
 
-        if let Some(_grpx) = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("rXX").unwrap())
-        {
+        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXX")?) {
         } else {
             return Err(String::from("Group rXX not found ??"));
         }
@@ -940,8 +922,8 @@ mod tests {
         println!("needs {}", nds2);
 
         assert_eq!(nds2.len(), 2);
-        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
-        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10").unwrap()));
+        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1")?));
+        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10")?));
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
@@ -950,7 +932,7 @@ mod tests {
         //println!("needs {}", nds3);
 
         assert_eq!(nds3.len(), 1);
-        assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1").unwrap()));
+        assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1")?));
 
         // Satisfy second need.
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
@@ -974,13 +956,13 @@ mod tests {
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
-        let s00 = dm0.state_from_string("s0b0").unwrap();
-        let s01 = dm0.state_from_string("s0b01").unwrap();
-        let s06 = dm0.state_from_string("s0b110").unwrap();
-        let s0d = dm0.state_from_string("s0b1101").unwrap();
+        let s00 = dm0.state_from_string("s0b0")?;
+        let s01 = dm0.state_from_string("s0b01")?;
+        let s06 = dm0.state_from_string("s0b110")?;
+        let s0d = dm0.state_from_string("s0b1101")?;
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(&SomeSample::new(s00.clone(), 0, s01.clone()));
@@ -998,7 +980,7 @@ mod tests {
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need(
             "ContradictoryIntersection",
-            &dm0.region_from_string("rX100").unwrap()
+            &dm0.region_from_string("rX100")?
         ));
 
         Ok(())
@@ -1008,26 +990,26 @@ mod tests {
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        let s04 = dm0.state_from_string("s0b00000100").unwrap();
+        let s04 = dm0.state_from_string("s0b00000100")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s04.clone(), 0, s04.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s04.clone(), 0, s04.clone()));
 
-        let sf9 = dm0.state_from_string("s0b11111001").unwrap();
+        let sf9 = dm0.state_from_string("s0b11111001")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(sf9.clone(), 0, sf9.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(sf9.clone(), 0, sf9.clone()));
 
         println!("dm0 {}", &dm0.actions[0]);
 
         // Set group pnc
-        let grp_reg = dm0.region_from_string("rXXXX_XX0X").unwrap();
+        let grp_reg = dm0.region_from_string("rXXXX_XX0X")?;
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let msk_f = dm0.mask_from_string("m0b1111").unwrap();
+        let msk_f = dm0.mask_from_string("m0b1111")?;
 
         let nds1 = dm0.actions[0].limit_groups_needs(&msk_f);
         println!("needs1 are {}", nds1);
@@ -1051,12 +1033,12 @@ mod tests {
         let nds2 = dm0.actions[0].limit_groups_needs(&msk_f);
         println!("needs2 are {}", nds2);
 
-        let s06 = dm0.state_from_string("s0b00000110").unwrap();
+        let s06 = dm0.state_from_string("s0b00000110")?;
         assert!(
             nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
         );
 
-        let s02 = dm0.state_from_string("s0b00000010").unwrap();
+        let s02 = dm0.state_from_string("s0b00000010")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
 
@@ -1093,20 +1075,20 @@ mod tests {
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
-        let s5 = dm0.state_from_string("s0b101").unwrap();
+        let s5 = dm0.state_from_string("s0b101")?;
 
-        let s4 = dm0.state_from_string("s0b100").unwrap();
+        let s4 = dm0.state_from_string("s0b100")?;
 
-        let sf = dm0.state_from_string("s0b1111").unwrap();
+        let sf = dm0.state_from_string("s0b1111")?;
 
-        let se = dm0.state_from_string("s0b1110").unwrap();
+        let se = dm0.state_from_string("s0b1110")?;
 
-        let s7 = dm0.state_from_string("s0b111").unwrap();
+        let s7 = dm0.state_from_string("s0b111")?;
 
-        let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
+        let rx1x1 = dm0.region_from_string("rx1x1")?;
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s4.clone()));
@@ -1161,20 +1143,20 @@ mod tests {
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
-        let s5 = dm0.state_from_string("s0b101").unwrap();
+        let s5 = dm0.state_from_string("s0b101")?;
 
-        let s4 = dm0.state_from_string("s0b100").unwrap();
+        let s4 = dm0.state_from_string("s0b100")?;
 
-        let sf = dm0.state_from_string("s0b1111").unwrap();
+        let sf = dm0.state_from_string("s0b1111")?;
 
-        let se = dm0.state_from_string("s0b1110").unwrap();
+        let se = dm0.state_from_string("s0b1110")?;
 
-        let s7 = dm0.state_from_string("s0b111").unwrap();
+        let s7 = dm0.state_from_string("s0b111")?;
 
-        let rx1x1 = dm0.region_from_string("rx1x1").unwrap();
+        let rx1x1 = dm0.region_from_string("rx1x1")?;
 
         //println!(
         //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
@@ -1221,11 +1203,11 @@ mod tests {
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(2);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0b0001010010101000").unwrap();
-        let s1 = dm0.state_from_string("s0b1111010110101011").unwrap();
+        let s0 = dm0.state_from_string("s0b0001010010101000")?;
+        let s1 = dm0.state_from_string("s0b1111010110101011")?;
         // Region                        XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
@@ -1234,7 +1216,7 @@ mod tests {
 
         if let Some(_grpx) = dm0.actions[0]
             .groups
-            .find(&dm0.region_from_string("rXXX1010X101010XX").unwrap())
+            .find(&dm0.region_from_string("rXXX1010X101010XX")?)
         {
         } else {
             return Err(String::from("Group rXXX1010X101010XX not found ??"));
@@ -1247,12 +1229,12 @@ mod tests {
     fn compatible_group_intersection_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
-        let s0 = dm0.state_from_string("s0b000").unwrap();
-        let s3 = dm0.state_from_string("s0b011").unwrap();
-        let s5 = dm0.state_from_string("s0b101").unwrap();
+        let s0 = dm0.state_from_string("s0b000")?;
+        let s3 = dm0.state_from_string("s0b011")?;
+        let s5 = dm0.state_from_string("s0b101")?;
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
@@ -1262,18 +1244,17 @@ mod tests {
 
         if let Some(grpx) = dm0.actions[0]
             .groups
-            .find(&dm0.region_from_string("r00XX").unwrap())
+            .find(&dm0.region_from_string("r00XX")?)
         {
             if let Some(grpy) = dm0.actions[0]
                 .groups
-                .find(&dm0.region_from_string("r0XX1").unwrap())
+                .find(&dm0.region_from_string("r0XX1")?)
             {
                 let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
                 println!("needs {}", &nds1);
-                assert!(nds1.contains_similar_need(
-                    "AStateMakeGroup",
-                    &dm0.region_from_string("r100").unwrap()
-                ));
+                assert!(
+                    nds1.contains_similar_need("AStateMakeGroup", &dm0.region_from_string("r100")?)
+                );
             } else {
                 return Err(String::from("Group r0XX1 not found ??"));
             }
@@ -1288,12 +1269,12 @@ mod tests {
     fn seek_edge_needs() -> Result<(), String> {
         // Crate a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
         // Establish group XXXX
-        let s0 = dm0.state_from_string("s0b0000").unwrap();
-        let sf = dm0.state_from_string("s0b1111").unwrap();
+        let s0 = dm0.state_from_string("s0b0000")?;
+        let sf = dm0.state_from_string("s0b1111")?;
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
@@ -1304,42 +1285,40 @@ mod tests {
         println!("\nActs: {}", &dm0.actions);
 
         // Break group XXXX
-        let s5 = dm0.state_from_string("s0b0101").unwrap();
+        let s5 = dm0.state_from_string("s0b0101")?;
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         println!("\nActs: {}", &dm0.actions);
         assert!(dm0.actions[0]
             .seek_edge
-            .contains(&dm0.region_from_string("rx1x1").unwrap()));
+            .contains(&dm0.region_from_string("rx1x1")?));
 
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs1: {}", &needs);
 
         assert_eq!(needs.len(), 1);
-        assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101").unwrap()));
+        assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101")?));
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         let needs = dm0.actions[0].seek_edge_needs();
         println!("needs2: {}", &needs);
         assert_eq!(needs.len(), 1);
-        if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap()) {
+        if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?) {
             // Seek even closer sample s1101
-            let sd = dm0.state_from_string("s0b1101").unwrap();
+            let sd = dm0.state_from_string("s0b1101")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert_eq!(needs.len(), 1);
-            assert!(
-                needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101").unwrap())
-            );
+            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
             let mut found = false;
-            let regexp = dm0.region_from_string("r11x1").unwrap();
+            let regexp = dm0.region_from_string("r11x1")?;
             for needx in needs.iter() {
                 match needx {
                     SomeNeed::AddSeekEdge { reg } => {
@@ -1354,23 +1333,20 @@ mod tests {
 
             // At the next run of get_needs, r11x1 will replace the superset region rx1x1, then
             // r11x1 will be deleted because its defining squares are adjacent.
-        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
-        {
+        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111")?) {
             // Seek even closer sample s0111
-            let s7 = dm0.state_from_string("s0b0111").unwrap();
+            let s7 = dm0.state_from_string("s0b0111")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs3: {}", &needs);
             assert_eq!(needs.len(), 1);
-            assert!(
-                needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111").unwrap())
-            );
+            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111")?));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs4: {}", &needs);
             let mut found = false;
-            let regexp = dm0.region_from_string("rx111").unwrap();
+            let regexp = dm0.region_from_string("rx111")?;
             for needx in needs.iter() {
                 match needx {
                     SomeNeed::AddSeekEdge { reg } => {
@@ -1403,12 +1379,12 @@ mod tests {
     fn astate_make_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
         // Sample 1
-        let sdb = dm0.state_from_string("s0b1101_1011").unwrap();
-        let sd9 = dm0.state_from_string("s0b1101_1001").unwrap();
+        let sdb = dm0.state_from_string("s0b1101_1011")?;
+        let sd9 = dm0.state_from_string("s0b1101_1001")?;
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1417,8 +1393,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sdb.clone(), 0, sd9.clone()));
 
         // Sample 2
-        let se5 = dm0.state_from_string("s0b1110_0101").unwrap();
-        let se7 = dm0.state_from_string("s0b1110_0111").unwrap();
+        let se5 = dm0.state_from_string("s0b1110_0101")?;
+        let se7 = dm0.state_from_string("s0b1110_0111")?;
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1427,8 +1403,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(se5.clone(), 0, se7.clone()));
 
         // Sample 3
-        let s25 = dm0.state_from_string("s0b0010_0101").unwrap();
-        let s27 = dm0.state_from_string("s0b0010_0111").unwrap();
+        let s25 = dm0.state_from_string("s0b0010_0101")?;
+        let s27 = dm0.state_from_string("s0b0010_0111")?;
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1437,8 +1413,8 @@ mod tests {
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s25.clone(), 0, s27.clone()));
 
         // Sample 4    // Set up a limited group.
-        let s2c = dm0.state_from_string("s0b0010_1100").unwrap();
-        let s2e = dm0.state_from_string("s0b0010_1110").unwrap();
+        let s2c = dm0.state_from_string("s0b0010_1100")?;
+        let s2e = dm0.state_from_string("s0b0010_1110")?;
         let ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
@@ -1447,14 +1423,14 @@ mod tests {
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s2c.clone(), 0, s2e.clone()));
 
         // Sample 5
-        let sd3 = dm0.state_from_string("s0b1101_0011").unwrap();
-        let sd1 = dm0.state_from_string("s0b1101_0001").unwrap();
+        let sd3 = dm0.state_from_string("s0b1101_0011")?;
+        let sd1 = dm0.state_from_string("s0b1101_0001")?;
         let ndx = SomeNeed::AStateMakeGroup {
             dom_num: 0,
             act_num: 0,
             target_state: sd3.clone(),
-            for_reg: dm0.region_from_string("rxxxx_xxxx").unwrap(),
-            far: dm0.state_from_string("s0b0010_1100").unwrap(),
+            for_reg: dm0.region_from_string("rxxxx_xxxx")?,
+            far: dm0.state_from_string("s0b0010_1100")?,
             num_x: 8,
         };
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
@@ -1463,7 +1439,7 @@ mod tests {
         assert_eq!(dm0.actions[0].groups.len(), 1);
         if let Some(_grpx) = dm0.actions[0]
             .groups
-            .find(&dm0.region_from_string("rxxxx_xxxx").unwrap())
+            .find(&dm0.region_from_string("rxxxx_xxxx")?)
         {
         } else {
             return Err(String::from("Group rxxxx_xxxx not found ??"));
@@ -1487,12 +1463,12 @@ mod tests {
 
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1011").unwrap();
+        dm0.cur_state = dm0.state_from_string("s0b1011")?;
         dm0.add_action();
 
         // Create group XXX1 -> XXX1, no way to change any bit.
-        let s0b = dm0.state_from_string("s0b1011").unwrap();
-        let s05 = dm0.state_from_string("s0b0101").unwrap();
+        let s0b = dm0.state_from_string("s0b1011")?;
+        let s05 = dm0.state_from_string("s0b0101")?;
 
         // Start group.
         dm0.eval_sample_arbitrary(&SomeSample::new(s0b.clone(), act0, s0b.clone()));
@@ -1515,8 +1491,8 @@ mod tests {
         }
 
         // Add a way to change bit position 1, 0->1.
-        let s10 = dm0.state_from_string("s0x10").unwrap();
-        let s12 = dm0.state_from_string("s0x12").unwrap();
+        let s10 = dm0.state_from_string("s0x10")?;
+        let s12 = dm0.state_from_string("s0x12")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s10.clone(), act0, s12.clone()));
 
         // Print domain and needs, if needed for error resolution.
@@ -1533,8 +1509,8 @@ mod tests {
         }
 
         // Add a way to change bit position 0, 0->1.
-        let s21 = dm0.state_from_string("s0x21").unwrap();
-        let s20 = dm0.state_from_string("s0x20").unwrap();
+        let s21 = dm0.state_from_string("s0x21")?;
+        let s20 = dm0.state_from_string("s0x20")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s21.clone(), act0, s20.clone()));
 
         // Add a way to change bit position 0, 1->0.

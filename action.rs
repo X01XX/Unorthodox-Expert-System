@@ -51,6 +51,10 @@ impl fmt::Display for SomeAction {
             let _ = write!(rc_str, ", seek_edge within: {}", self.seek_edge);
         }
 
+        if let Some(aregion) = &self.remainder_check_region {
+            let _ = write!(rc_str, ", remainder: {}", aregion);
+        }
+
         let regs = self.groups.regions();
 
         let mut fil = ",\n       Grps: ";
@@ -2251,52 +2255,40 @@ mod tests {
 
         // Process three similar samples.
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b1011").unwrap(),
+            SomeState::new_from_string(1, "s0b1011")?,
             0,
-            SomeState::new_from_string(1, "s0b1010").unwrap(),
+            SomeState::new_from_string(1, "s0b1010")?,
         ));
 
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b1101").unwrap(),
+            SomeState::new_from_string(1, "s0b1101")?,
             0,
-            SomeState::new_from_string(1, "s0b1100").unwrap(),
+            SomeState::new_from_string(1, "s0b1100")?,
         ));
 
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b0001").unwrap(),
+            SomeState::new_from_string(1, "s0b0001")?,
             0,
-            SomeState::new_from_string(1, "s0b0000").unwrap(),
+            SomeState::new_from_string(1, "s0b0000")?,
         ));
 
         if act0.groups.len() != 4 {
             println!("Groups {}", act0.groups);
             return Err(format!("Four groups not formed?"));
         }
-        if let Some(_) = act0
-            .groups
-            .find(&SomeRegion::new_from_string(1, "r0111").unwrap())
-        {
+        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "r0111")?) {
         } else {
             return Err("Region 0111 not found!".to_string());
         }
-        if let Some(_) = act0
-            .groups
-            .find(&SomeRegion::new_from_string(1, "r1xx1").unwrap())
-        {
+        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "r1xx1")?) {
         } else {
             return Err("Region 1XX1 not found!".to_string());
         }
-        if let Some(_) = act0
-            .groups
-            .find(&SomeRegion::new_from_string(1, "rxx01").unwrap())
-        {
+        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "rxx01")?) {
         } else {
             return Err("Region XX01 not found!".to_string());
         }
-        if let Some(_) = act0
-            .groups
-            .find(&SomeRegion::new_from_string(1, "rx0x1").unwrap())
-        {
+        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "rx0x1")?) {
         } else {
             return Err("Region X0X1 not found!".to_string());
         }
@@ -2306,18 +2298,18 @@ mod tests {
     #[test]
     fn any_incompatible_square_combination_in_region() -> Result<(), String> {
         // Init states.
-        let sta_f = SomeState::new_from_string(1, "s0b1111").unwrap();
-        let sta_e = SomeState::new_from_string(1, "s0b1110").unwrap();
-        let sta_d = SomeState::new_from_string(1, "s0b1101").unwrap();
-        let sta_c = SomeState::new_from_string(1, "s0b1100").unwrap();
-        let sta_b = SomeState::new_from_string(1, "s0b1011").unwrap();
-        let sta_a = SomeState::new_from_string(1, "s0b1010").unwrap();
-        let sta_7 = SomeState::new_from_string(1, "s0b0111").unwrap();
-        let sta_5 = SomeState::new_from_string(1, "s0b0101").unwrap();
-        let sta_4 = SomeState::new_from_string(1, "s0b0100").unwrap();
-        let sta_3 = SomeState::new_from_string(1, "s0b0011").unwrap();
-        let sta_1 = SomeState::new_from_string(1, "s0b0001").unwrap();
-        let sta_0 = SomeState::new_from_string(1, "s0b0000").unwrap();
+        let sta_f = SomeState::new_from_string(1, "s0b1111")?;
+        let sta_e = SomeState::new_from_string(1, "s0b1110")?;
+        let sta_d = SomeState::new_from_string(1, "s0b1101")?;
+        let sta_c = SomeState::new_from_string(1, "s0b1100")?;
+        let sta_b = SomeState::new_from_string(1, "s0b1011")?;
+        let sta_a = SomeState::new_from_string(1, "s0b1010")?;
+        let sta_7 = SomeState::new_from_string(1, "s0b0111")?;
+        let sta_5 = SomeState::new_from_string(1, "s0b0101")?;
+        let sta_4 = SomeState::new_from_string(1, "s0b0100")?;
+        let sta_3 = SomeState::new_from_string(1, "s0b0011")?;
+        let sta_1 = SomeState::new_from_string(1, "s0b0001")?;
+        let sta_0 = SomeState::new_from_string(1, "s0b0000")?;
 
         // Init action
         let mut act0 = SomeAction::new(0, 0, 1);
@@ -2419,8 +2411,8 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Set up 2-result square sf.
-        let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
-        let se = SomeState::new_from_string(1, "s0b1110").unwrap();
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
 
         let mut act0 = SomeAction::new(0, 0, 1);
 
@@ -2430,8 +2422,8 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up 2-result square s1.
-        let s1 = SomeState::new_from_string(1, "s0b0001").unwrap();
-        let s0 = SomeState::new_from_string(1, "s0b0000").unwrap();
+        let s1 = SomeState::new_from_string(1, "s0b0001")?;
+        let s0 = SomeState::new_from_string(1, "s0b0000")?;
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
@@ -2443,8 +2435,8 @@ mod tests {
             0,
             &memory,
             &SomeChange::new(
-                SomeMask::new_from_string(1, "m0b1111").unwrap(),
-                SomeMask::new_from_string(1, "m0b1111").unwrap(),
+                SomeMask::new_from_string(1, "m0b1111")?,
+                SomeMask::new_from_string(1, "m0b1111")?,
             ),
         );
         println!("Act: {}", &act0);

@@ -208,13 +208,13 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(1, "s0b1010").unwrap();
-        let sta2 = SomeState::new_from_string(1, "s0b1010").unwrap();
+        let sta1 = SomeState::new_from_string(1, "s0b1010")?;
+        let sta2 = SomeState::new_from_string(1, "s0b1010")?;
         if sta1 != sta2 {
             return Err(format!("sta1 {} ne sta2 {}?", sta1, sta2));
         }
 
-        let sta3 = SomeState::new_from_string(1, "s0b1001").unwrap();
+        let sta3 = SomeState::new_from_string(1, "s0b1001")?;
         if sta1 == sta3 {
             return Err(format!("sta1 {} eq sta3 {}?", sta1, sta3));
         }

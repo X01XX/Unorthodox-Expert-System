@@ -183,15 +183,15 @@ mod tests {
     #[test]
     fn apply_to_state() -> Result<(), String> {
         // Test changing two bits.
-        let reg0 = SomeRegion::new_from_string(1, "r0101").unwrap();
-        let reg1 = SomeRegion::new_from_string(1, "r1001").unwrap();
+        let reg0 = SomeRegion::new_from_string(1, "r0101")?;
+        let reg1 = SomeRegion::new_from_string(1, "r1001")?;
 
         let cng = SomeChange::region_to_region(&reg0, &reg1);
-        let sta = SomeState::new_from_string(1, "s0b0101").unwrap();
+        let sta = SomeState::new_from_string(1, "s0b0101")?;
 
         let sta2 = cng.apply_to_state(&sta);
 
-        let sta3 = SomeState::new_from_string(1, "s0b1001").unwrap();
+        let sta3 = SomeState::new_from_string(1, "s0b1001")?;
         if sta2 != sta3 {
             return Err(format!("sta2 {} not {} ?", sta2, sta3));
         }
@@ -212,9 +212,9 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let dm0 = SomeDomain::new(1);
 
-        let reg_0x1x = dm0.region_from_string("r0X1X").unwrap();
+        let reg_0x1x = dm0.region_from_string("r0X1X")?;
 
-        let reg_1100 = dm0.region_from_string("r1100").unwrap();
+        let reg_1100 = dm0.region_from_string("r1100")?;
 
         let cng1 = SomeChange::region_to_region(&reg_0x1x, &reg_1100);
 
@@ -229,9 +229,9 @@ mod tests {
             return Err(format!("result {} ne {}!", reg_result, reg_1100));
         }
 
-        let reg_0x1x = dm0.region_from_string("r0X1X").unwrap();
+        let reg_0x1x = dm0.region_from_string("r0X1X")?;
 
-        let reg_01x1 = dm0.region_from_string("r01X1").unwrap();
+        let reg_01x1 = dm0.region_from_string("r01X1")?;
 
         let cng1 = SomeChange::region_to_region(&reg_01x1, &reg_0x1x);
 

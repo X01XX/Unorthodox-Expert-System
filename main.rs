@@ -92,50 +92,62 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
 
-    let mut run_times = 0;
-    let mut file_path = String::new();
+    if args.len() == 1 {
+        run_step_by_step();
+        return;
+    }
 
-    if args.len() > 1 {
+    if args.len() == 2 {
         if args[1] == "h" || args[1] == "help" {
             usage();
             return;
         }
-        let argx = args[1].parse::<usize>();
-        if let Ok(runs) = argx {
-            run_times = runs;
+        if let Ok(runs) = args[1].parse::<usize>() {
+            match runs {
+                0 => {
+                    usage();
+                    eprintln!("Did not understand {:?}", args);
+                    return;
+                }
+                1 => {
+                    let mut dmxs = domainstore_init();
+                    run_to_end(&mut dmxs);
+                }
+                _ => run_number_times(runs),
+            }
         } else {
-            file_path = args[1].clone();
+            // Run with arg[1] as file path.
+            run_with_file(&args[1]);
         }
+        return;
     }
 
-    match run_times {
-        0 => run_step_by_step(&file_path),
-        1 => {
-            let mut dmxs = init();
-            run_to_end(&mut dmxs);
-        }
-        _ => run_number_times(run_times),
-    }
+    usage();
+    eprintln!("Did not understand {:?}", args);
 } // end main
 
-/// Run with user input step by step
-fn run_step_by_step(file_path: &str) {
+/// Run with user input step by step.
+fn run_step_by_step() {
+    usage();
+    do_session(&mut domainstore_init());
+}
+
+/// Load data from a file, then run with user input, step by step.
+fn run_with_file(file_path: &str) {
+    usage();
     // Init DomainStore or read in from file.
-    let mut dmxs = if file_path.is_empty() {
-        init()
-    } else {
+    let mut dmxs = 
         match load_data(file_path) {
             Ok(new_dmxs) => {
                 println!("Data loaded");
                 new_dmxs
             }
             Err(why) => {
-                println!("{why}");
+                eprintln!("{why}");
                 return;
             }
-        } // end match load_data
-    };
-    usage();
+        };
+
     do_session(&mut dmxs);
 }
 
@@ -218,7 +230,7 @@ fn run_number_times(num_runs: usize) {
 }
 
 /// Initialize a Domain Store, with two domains and 11 actions.
-fn init() -> DomainStore {
+fn domainstore_init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
@@ -320,7 +332,7 @@ fn init() -> DomainStore {
 /// Return error if no needs that can be done are available and
 /// there are needs than cannot be done.
 fn do_one_session() -> Result<usize, String> {
-    let mut dmxs = init();
+    let mut dmxs = domainstore_init();
 
     loop {
         // Generate needs, get can_do and cant_do need vectors.
@@ -618,7 +630,7 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
             if n_num >= dmxs.can_do.len() {
-                return Err(format!("Invalid Need Number: {}", cmd[1]));
+                Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
                 let nd_inx = dmxs.can_do[n_num].inx;
 
@@ -646,9 +658,7 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                 Ok(())
             }
         }
-        Err(error) => {
-            return Err(format!("{error}"));
-        }
+        Err(error) => Err(format!("{error}")),
     }
 }
 
@@ -984,10 +994,10 @@ fn do_print_group_defining_squares_command(
                 println!("state2   {}", &sqrx);
                 return Ok(());
             }
-            return Err(format!("state2   {} not found?", &grpx.region.state1));
+            Err(format!("state2   {} not found?", &grpx.region.state1))
         }
     } else {
-        return Err(format!("\nGroup with region {} not found", &aregion));
+        Err(format!("\nGroup with region {} not found", &aregion))
     }
 }
 
@@ -1115,9 +1125,9 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
 
             // Open a file in write-only mode, returns `io::Result<File>`
             match File::create(path) {
-                Err(why) => return Err(format!("Couldn't create {display}: {why}")),
+                Err(why) => Err(format!("Couldn't create {display}: {why}")),
                 Ok(mut file) => match file.write_all(serialized.as_bytes()) {
-                    Err(why) => return Err(format!("Couldn't write to {display}: {why}")),
+                    Err(why) => Err(format!("Couldn't write to {display}: {why}")),
                     Ok(_) => {
                         println!("Data written");
                         Ok(())
@@ -1125,6 +1135,6 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
                 },
             }
         }
-        Err(error) => return Err(format!("Couldn't serialize {path_str}: {error}")),
+        Err(error) => Err(format!("Couldn't serialize {path_str}: {error}")),
     } // end match serialized_r
 } // end store_data
