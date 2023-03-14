@@ -52,13 +52,10 @@ pub struct SomeSquare {
 impl SomeSquare {
     /// Return a new Square instance.
     pub fn new(state: SomeState, result_state: SomeState) -> Self {
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new(&state, &result_state));
-
         Self {
-            state,
-            results: ResultStore::new(result_state),
-            rules,
+            state: state.clone(),
+            results: ResultStore::new(vec![result_state.clone()]),
+            rules: RuleStore::new(vec![SomeRule::new(&state, &result_state)]),
             pn: Pn::One,
             pnc: false,
         }
@@ -105,23 +102,21 @@ impl SomeSquare {
             match self.pn {
                 Pn::One => {
                     if self.rules.len() != 1 {
-                        self.rules = RuleStore::new();
-                        self.rules
-                            .push(SomeRule::new(&self.state, self.results.first()));
+                        self.rules =
+                            RuleStore::new(vec![SomeRule::new(&self.state, self.results.first())]);
                     }
                 }
                 Pn::Two => {
                     if self.rules.len() != 2 {
-                        self.rules = RuleStore::new();
-                        self.rules
-                            .push(SomeRule::new(&self.state, self.results.first()));
-                        self.rules
-                            .push(SomeRule::new(&self.state, self.results.second()));
+                        self.rules = RuleStore::new(vec![
+                            SomeRule::new(&self.state, self.results.first()),
+                            SomeRule::new(&self.state, self.results.second()),
+                        ]);
                     }
                 }
                 Pn::Unpredictable => {
                     if self.rules.is_not_empty() {
-                        self.rules = RuleStore::new();
+                        self.rules = RuleStore::new(vec![]);
                     }
                 }
             }

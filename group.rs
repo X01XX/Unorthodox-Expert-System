@@ -254,8 +254,7 @@ mod tests {
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true);
@@ -273,8 +272,7 @@ mod tests {
     #[test]
     fn check_subset_square() -> Result<(), String> {
         // Test if sqrx.pn > self.pn
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
@@ -290,9 +288,10 @@ mod tests {
         }
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01")?);
+        let rules = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "10/x1/x0/00")?,
+            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+        ]);
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
@@ -309,7 +308,7 @@ mod tests {
         }
 
         // Test if self.pn == Pn::Unpredictable
-        let rules = RuleStore::new();
+        let rules = RuleStore::new(vec![]);
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
@@ -325,8 +324,7 @@ mod tests {
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
@@ -355,8 +353,7 @@ mod tests {
     #[test]
     fn check_union_square() -> Result<(), String> {
         // Test if sqrx.pn > self.pn {
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
@@ -372,9 +369,10 @@ mod tests {
         }
 
         // Test if sqrx.pn < self.pn && sqrx.pnc
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01")?);
+        let rules = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "10/x1/x0/00")?,
+            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+        ]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
@@ -390,8 +388,7 @@ mod tests {
         }
 
         // Test self.rules.can_form_union(&sqrx.rules)
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
@@ -414,9 +411,10 @@ mod tests {
             return Err(format!("check_union_square: test 3b failed!"));
         }
 
-        let mut rules = RuleStore::new();
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/00")?);
-        rules.push(SomeRule::new_from_string(1, "10/x1/x0/01")?);
+        let rules = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "10/x1/x0/00")?,
+            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+        ]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
         let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
 

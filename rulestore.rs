@@ -49,10 +49,8 @@ impl Eq for RuleStore {}
 
 impl RuleStore {
     /// Return a new, empty, RuleStore.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeRule>::with_capacity(2),
-        }
+    pub fn new(avec: Vec<SomeRule>) -> Self {
+        Self { avec }
     }
 
     /// Return if a square result rulestore is valid
@@ -204,9 +202,7 @@ impl RuleStore {
 
         if self.len() == 1 {
             if let Some(rulx) = self.avec[0].union(&other.avec[0]) {
-                let mut ret_store = Self::new();
-                ret_store.push(rulx);
-                return Some(ret_store);
+                return Some(Self::new(vec![rulx]));
             }
 
             return None;
@@ -241,18 +237,12 @@ impl RuleStore {
                 return None;
             }
 
-            let mut ret_store = Self::new();
-
             if ordera {
-                ret_store.push(rul0.expect("rul0 was previously checked for is_none()"));
-                ret_store.push(rul1.expect("rul1 was previously checked for is_none()"));
-                return Some(ret_store);
+                return Some(Self::new(vec![rul0.unwrap(), rul1.unwrap()]));
             }
 
             // Must be orderb = true.
-            ret_store.push(rul2.expect("rul2 was previously checked for is_none()"));
-            ret_store.push(rul3.expect("rul3 was previously checked for is_none()"));
-            return Some(ret_store);
+            return Some(Self::new(vec![rul2.unwrap(), rul3.unwrap()]));
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");
@@ -305,9 +295,7 @@ impl RuleStore {
         if self.len() == 1 {
             let Some(int1) = self[0].intersection(&other[0]) else { return None; };
 
-            let mut ars = Self::new();
-            ars.push(int1);
-            return Some(ars);
+            return Some(Self::new(vec![int1]));
         }
 
         if self.len() == 2 {
@@ -315,11 +303,8 @@ impl RuleStore {
             if let Some(int00) = self[0].intersection(&other[0]) {
                 if let Some(int11) = self[1].intersection(&other[1]) {
                     if int00.initial_region() == int11.initial_region() {
-                        let mut ord1 = Self::new();
-                        ord1.push(int00);
-                        ord1.push(int11);
-                        //println!("pn3 intersection of {} and {} is1 {}", self, other, ord1);
-                        return Some(ord1);
+                        //println!("pn3 intersection of {} and {}", self, other);
+                        return Some(Self::new(vec![int00, int11]));
                     }
                 }
             }
@@ -328,11 +313,8 @@ impl RuleStore {
             if let Some(int01) = self[0].intersection(&other[1]) {
                 if let Some(int10) = self[1].intersection(&other[0]) {
                     if int01.initial_region() == int10.initial_region() {
-                        let mut ord2 = Self::new();
-                        ord2.push(int01);
-                        ord2.push(int10);
-                        //println!("pn3 intersection of {} and {} is2 {}", self, other, ord2);
-                        return Some(ord2);
+                        //println!("pn3 intersection of {} and {}", self, other);
+                        return Some(Self::new(vec![int01, int10]));
                     }
                 }
             }
@@ -351,12 +333,13 @@ impl RuleStore {
             "{}",
             format!("{} does not intersect {}", regx, self.initial_region())
         );
-        let mut rcrs = Self::new();
+        let mut rcrs = Vec::<SomeRule>::with_capacity(self.avec.len());
 
         for rulx in self.avec.iter() {
             rcrs.push(rulx.restrict_initial_region(regx));
         }
-        rcrs
+
+        Self::new(rcrs)
     }
 
     /// Return the initial region of the first rule in the store.
@@ -412,13 +395,15 @@ mod tests {
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
         // Produce R[00/00/00/00/00/XX/XX/11, 00/00/00/00/00/XX/XX/10].
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/11/11")?);
-        rul_str1.push(SomeRule::new_from_string(1, "00/11/10")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/11/11")?,
+            SomeRule::new_from_string(1, "00/11/10")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/10")?);
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/11")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "11/00/10")?,
+            SomeRule::new_from_string(1, "11/00/11")?,
+        ]);
 
         if let Some(rul_str3) = rul_str1.union(&rul_str2) {
             let regx = SomeRegion::new_from_string(1, "r101")?;
@@ -440,16 +425,13 @@ mod tests {
     #[test]
     fn intersection() -> Result<(), String> {
         // Intersect two single-rule RuleStores, it should work.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "X0/11/11/10/00")?]);
 
         if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
             println!("test_intersection 1 passed = {}", &rul_str3);
-            let mut rul_str4 = RuleStore::new();
-            rul_str4.push(SomeRule::new_from_string(1, "00/11/11/10/00")?);
+            let rul_str4 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/11/11/10/00")?]);
             if rul_str3 != rul_str4 {
                 return Err(String::from("Test 1 failed"));
             }
@@ -458,24 +440,24 @@ mod tests {
         }
 
         // Produce failure due to bit 3, Xx intersect 11 = null.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/Xx/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/Xx/XX/Xx/xx")?]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "X0/11/11/10/00")?]);
 
         if let Some(_rul_str3) = rul_str1.intersection(&rul_str2) {
             return Err(String::from("Test 2 failed"));
         }
 
         // Intersect two two-rule RuleStores, it should work.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
-        rul_str1.push(SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?,
+            SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/10/00")?);
-        rul_str2.push(SomeRule::new_from_string(1, "X0/11/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "X1/11/11/10/00")?,
+            SomeRule::new_from_string(1, "X0/11/11/10/00")?,
+        ]);
 
         if let Some(rul_str3) = rul_str1.intersection(&rul_str2) {
             println!("Test 3 passed = {}", &rul_str3);
@@ -492,13 +474,15 @@ mod tests {
         }
 
         // Intersect two two-rule RuleStores, it should not work, due to the left-most bit.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
-        rul_str1.push(SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?,
+            SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/10/00")?);
-        rul_str2.push(SomeRule::new_from_string(1, "X1/11/11/11/00")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "X1/11/11/10/00")?,
+            SomeRule::new_from_string(1, "X1/11/11/11/00")?,
+        ]);
 
         if let Some(_rul_str3) = rul_str1.intersection(&rul_str2) {
             return Err(String::from("Test 4 failed"));
@@ -510,32 +494,31 @@ mod tests {
     #[test]
     fn is_subset_of() -> Result<(), String> {
         // Compare one-rule RuleStores.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "00/11/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/11/11/10/00")?]);
 
         if rul_str2.is_subset_of(&rul_str1) {
         } else {
             return Err(String::from("Test 1 failed"));
         }
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "00/10/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/10/11/10/00")?]);
 
         if rul_str2.is_subset_of(&rul_str1) {
             return Err(String::from("Test 2 failed"));
         }
 
         // Compare two two-rule RuleStores.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
-        rul_str1.push(SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?,
+            SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "00/11/11/10/00")?);
-        rul_str2.push(SomeRule::new_from_string(1, "01/11/11/10/00")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/11/11/10/00")?,
+            SomeRule::new_from_string(1, "01/11/11/10/00")?,
+        ]);
 
         if rul_str2.is_subset_of(&rul_str1) {
         } else {
@@ -551,8 +534,7 @@ mod tests {
     #[test]
     fn is_superset_of_rule() -> Result<(), String> {
         // Compare a rule to a one-rule RuleStore.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?]);
 
         let rul2 = SomeRule::new_from_string(1, "00/11/11/10/00")?;
 
@@ -568,9 +550,10 @@ mod tests {
         }
 
         // Compare rule to a two-rule RuleStore.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?);
-        rul_str1.push(SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/X1/XX/Xx/xx")?,
+            SomeRule::new_from_string(1, "01/X1/XX/Xx/xx")?,
+        ]);
 
         let rul2 = SomeRule::new_from_string(1, "00/11/11/10/00")?;
 
@@ -589,11 +572,9 @@ mod tests {
     #[test]
     fn union() -> Result<(), String> {
         // Produce /X0/X1/XX/Xx/XX.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/01/00/01/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/01/00/01/xx")?]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "10/11/11/10/xx")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "10/11/11/10/xx")?]);
 
         if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
         } else {
@@ -601,24 +582,24 @@ mod tests {
         }
 
         // Fail due to bit 1 being 0X.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/01/00/01/xx")?);
+        let rul_str1 = RuleStore::new(vec![SomeRule::new_from_string(1, "00/01/00/01/xx")?]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "10/11/11/00/xx")?);
+        let rul_str2 = RuleStore::new(vec![SomeRule::new_from_string(1, "10/11/11/00/xx")?]);
 
         if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
             return Err(String::from("Test 2 failed"));
         }
 
         // Produce R[00/00/00/00/00/XX/XX/11, 00/00/00/00/00/XX/XX/10].
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/11/11")?);
-        rul_str1.push(SomeRule::new_from_string(1, "00/11/10")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/11/11")?,
+            SomeRule::new_from_string(1, "00/11/10")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/10")?);
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/11")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "11/00/10")?,
+            SomeRule::new_from_string(1, "11/00/11")?,
+        ]);
 
         if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
         } else {
@@ -626,13 +607,15 @@ mod tests {
         }
 
         // Fail due to bit 1 forming 0X.
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/01/11")?);
-        rul_str1.push(SomeRule::new_from_string(1, "00/00/10")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/01/11")?,
+            SomeRule::new_from_string(1, "00/00/10")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/10")?);
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/11")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "11/00/10")?,
+            SomeRule::new_from_string(1, "11/00/11")?,
+        ]);
 
         if let Some(rul_str3) = rul_str1.union(&rul_str2) {
             println!("rule? {}", rul_str3);
@@ -640,13 +623,15 @@ mod tests {
         }
 
         // Fail due to X1 and X0 forming (XX, Xx) and (X0, X1)
-        let mut rul_str1 = RuleStore::new();
-        rul_str1.push(SomeRule::new_from_string(1, "00/01/X1")?);
-        rul_str1.push(SomeRule::new_from_string(1, "00/00/X0")?);
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "00/01/X1")?,
+            SomeRule::new_from_string(1, "00/00/X0")?,
+        ]);
 
-        let mut rul_str2 = RuleStore::new();
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/X0")?);
-        rul_str2.push(SomeRule::new_from_string(1, "11/00/X1")?);
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string(1, "11/00/X0")?,
+            SomeRule::new_from_string(1, "11/00/X1")?,
+        ]);
 
         if let Some(_rul_str3) = rul_str1.union(&rul_str2) {
             return Err(String::from("Test 5 failed"));

@@ -45,10 +45,10 @@ pub struct GroupStore {
 
 impl GroupStore {
     /// Return a new, empty, GroupStore.
-    pub fn new(num_ints: usize) -> Self {
-        assert!(num_ints > 0);
+    pub fn new(num_ints: usize, avec: Vec<SomeGroup>) -> Self {
+        debug_assert!(num_ints > 0);
         Self {
-            avec: Vec::<SomeGroup>::with_capacity(10),
+            avec,
             aggregate_changes: SomeChange::new_low(num_ints),
             agg_chgs_updated: false,
         }
@@ -77,7 +77,7 @@ impl GroupStore {
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
     pub fn check_square(&mut self, sqrx: &SomeSquare, dom: usize, act: usize) -> RegionStore {
-        let mut regs_invalid = RegionStore::new();
+        let mut regs_invalid = RegionStore::new(vec![]);
 
         let mut rmvec = Vec::<usize>::new();
 

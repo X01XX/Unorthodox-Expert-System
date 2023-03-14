@@ -33,6 +33,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
 use std::fmt::Write as _; // import without risk of name clashing
+use std::str::FromStr;
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -68,12 +69,12 @@ impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(num_ints: usize) -> Self {
-        assert!(num_ints > 0);
+        debug_assert_ne!(num_ints, 0);
         // Set up a domain instance with the correct value for num_ints
         let cur_state = initialize_state(num_ints);
         SomeDomain {
             num: 0, // May be changed later
-            actions: ActionStore::new(num_ints),
+            actions: ActionStore::new(num_ints, vec![]),
             cur_state,
             memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
         }
@@ -289,7 +290,7 @@ impl SomeDomain {
                     let stepz = stepy.restrict_result_region(goal_reg);
 
                     //println!("random_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
-                    return Some(SomePlan::new_with_step(self.num, stepz));
+                    return Some(SomePlan::new(self.num, vec![stepz]));
                 }
             }
         }
@@ -321,15 +322,15 @@ impl SomeDomain {
         if !asym_inx.is_empty() {
             // find min number of steps for the selected bit-changes
             let mut min_steps = 99;
-            for inx in asym_inx.iter() {
+            for inx in &asym_inx {
                 if steps_by_change_vov[*inx].len() < min_steps {
                     min_steps = steps_by_change_vov[*inx].len();
                 }
             }
             // Assemble possible steps
-            for inx in asym_inx.iter() {
-                if steps_by_change_vov[*inx].len() == min_steps {
-                    for stepx in steps_by_change_vov[*inx].iter() {
+            for inx in asym_inx.into_iter() {
+                if steps_by_change_vov[inx].len() == min_steps {
+                    for stepx in steps_by_change_vov[inx].iter() {
                         selected_steps.push(stepx);
                     }
                 }
@@ -356,7 +357,7 @@ impl SomeDomain {
             let Some(plan_to_goal) =
                 self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
 
-            return SomePlan::new_with_step(self.num, stepy).link(&plan_to_goal);
+            return SomePlan::new(self.num, vec![stepy]).link(&plan_to_goal);
         }
 
         // Process a backward chaining step.
@@ -366,7 +367,7 @@ impl SomeDomain {
 
             let Some(plan_to_step) = self.plan_steps_between(from_reg, &stepy.initial, depth - 1) else { return None; };
 
-            return plan_to_step.link(&SomePlan::new_with_step(self.num, stepy));
+            return plan_to_step.link(&SomePlan::new(self.num, vec![stepy]));
         }
 
         // Must be an asymmetric step.
@@ -436,7 +437,7 @@ impl SomeDomain {
 
         // Try linking two plans together with the step.
         to_step_plan
-            .link(&SomePlan::new_with_step(self.num, stepy))?
+            .link(&SomePlan::new(self.num, vec![stepy]))?
             .link(&from_step_plan)
     }
 
@@ -448,7 +449,7 @@ impl SomeDomain {
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
-            return Some(SomePlan::new(self.num));
+            return Some(SomePlan::new(self.num, vec![]));
         }
 
         let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
@@ -565,7 +566,7 @@ impl SomeDomain {
     /// Left-most, consecutive, zeros can be omitted.
     /// Returns an error if the string is bad or no action exists of that number.
     pub fn act_num_from_string(&self, str_num: &str) -> Result<usize, String> {
-        match str_num.parse::<usize>() {
+        match usize::from_str(str_num) {
             Ok(act_num) => {
                 if act_num >= self.actions.len() {
                     return Err(format!("Action number too large {act_num}"));
@@ -667,8 +668,7 @@ impl SomeDomain {
     }
 
     pub fn regions_not_covered(&self, act_num: usize) -> RegionStore {
-        let mut ncov = RegionStore::new();
-        ncov.push(self.maximum_region());
+        let mut ncov = RegionStore::new(vec![self.maximum_region()]);
 
         for grpx in self.actions[act_num].groups.iter() {
             ncov = ncov.subtract_region(&grpx.region);

@@ -117,13 +117,13 @@ impl SomeAction {
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
     pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
-        assert_ne!(num_ints, 0);
+        debug_assert!(num_ints > 0);
         SomeAction {
             num: act_num,
             dom_num,
-            groups: GroupStore::new(num_ints),
+            groups: GroupStore::new(num_ints, vec![]),
             squares: SquareStore::new(),
-            seek_edge: RegionStore::new(),
+            seek_edge: RegionStore::new(vec![]),
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
@@ -282,7 +282,7 @@ impl SomeAction {
 
                         // Generate group rules.
                         let rulsxy = if sqrx.pn == Pn::Unpredictable {
-                            RuleStore::new()
+                            RuleStore::new(vec![])
                         } else {
                             sqrx.rules.union(&sqry.rules).expect("Need should not be generated unless the squares rules are compatible")
                         };
@@ -600,7 +600,7 @@ impl SomeAction {
             let Some(sqry) = self.squares.find(&regx.state2) else { panic!("Region state square not found?"); };
 
             let ruls = if sqrx.pn == Pn::Unpredictable {
-                RuleStore::new()
+                RuleStore::new(vec![])
             } else {
                 sqrx.rules.union(&sqry.rules).expect("Square rules should have been found compatible in possible_regions_from_square")
             };
@@ -634,7 +634,7 @@ impl SomeAction {
         cur_state: &SomeState,
         memory: &VecDeque<SomeSample>,
     ) -> NeedStore {
-        let mut nds = NeedStore::new();
+        let mut nds = NeedStore::new(vec![]);
 
         // Check if current state is in any groups
         if !self.groups.any_superset_of_state(cur_state) {
@@ -693,7 +693,7 @@ impl SomeAction {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
         // loop until no housekeeping need is returned.
-        let mut nds = NeedStore::new();
+        let mut nds = NeedStore::new(vec![]);
         let mut cnt = 0;
         loop {
             cnt += 1;
@@ -719,7 +719,7 @@ impl SomeAction {
             }
 
             // Edit out subset group adds, dups may still exist.
-            let mut new_grp_regs = RegionStore::new();
+            let mut new_grp_regs = RegionStore::new(vec![]);
             for ndx in nds.iter_mut() {
                 match ndx {
                     SomeNeed::AddGroup { group_region, .. } => {
@@ -922,14 +922,13 @@ impl SomeAction {
                 return nds;
             }
 
-            nds = NeedStore::new();
+            nds = NeedStore::new(vec![]);
         } // end loop
     } // end get_needs
 
     /// Check for needs in a region not covered by current groups.
     fn remainder_check_region(&self, max_region: SomeRegion) -> Option<SomeRegion> {
-        let mut remainder_regs = RegionStore::new();
-        remainder_regs.push(max_region.clone());
+        let mut remainder_regs = RegionStore::new(vec![max_region.clone()]);
 
         for grpx in self.groups.iter() {
             remainder_regs = remainder_regs.subtract_region(&grpx.region);
@@ -1032,9 +1031,9 @@ impl SomeAction {
     /// within the invalidated group.
     pub fn seek_edge_needs(&self) -> NeedStore {
         //println!("seek_edge_needs");
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
-        let mut new_regs = RegionStore::new();
+        let mut new_regs = RegionStore::new(vec![]);
 
         'next_regx: for regx in self.seek_edge.iter() {
             //print!("seek_edge_needs: checking reg {} ", &regx);
@@ -1138,7 +1137,7 @@ impl SomeAction {
         // Apply new seek edge regions
         // After get_needs does the housekeeping, it will run this again
         if new_regs.is_not_empty() {
-            ret_nds = NeedStore::new();
+            ret_nds = NeedStore::with_capacity(new_regs.len());
             for regx in new_regs.iter() {
                 ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
             }
@@ -1150,7 +1149,7 @@ impl SomeAction {
     /// Generate needs for seek_edge regions that have no squares between the region defining states.
     pub fn seek_edge_needs2(&self, regx: &SomeRegion) -> NeedStore {
         //println!("seek_edge_needs2");
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
         if regx.state1.is_adjacent(&regx.state2) {
             ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
@@ -1188,7 +1187,7 @@ impl SomeAction {
     /// Groups closer to the beginning of the group will have priority due to lower group number.
     pub fn confirm_group_needs(&mut self) -> NeedStore {
         //println!("confirm_group_needs");
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
         for (group_num, grpx) in self.groups.iter_mut().enumerate() {
             if grpx.pnc {
@@ -1254,7 +1253,7 @@ impl SomeAction {
     pub fn limit_groups_needs(&self, change_mask: &SomeMask) -> NeedStore {
         //println!("limit_groups_needs chg {}", changes_mask);
 
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
@@ -1341,7 +1340,7 @@ impl SomeAction {
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return an empty NeedStore.
     pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, group_num: usize) -> NeedStore {
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
         let adj_squares = self.squares.stas_adj_reg(&grpx.region);
 
@@ -1352,7 +1351,7 @@ impl SomeAction {
 
         // Home for additional states, that have not been sampled yet, so their
         // reference can be pushed to the stas_in vector.
-        let mut additional_stas = StateStore::new();
+        let mut additional_stas = Vec::<SomeState>::new();
 
         for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
@@ -1475,7 +1474,7 @@ impl SomeAction {
         // If the group far state has not been sampled, or not enough, return a need for that.
         //
         // Else limit the group.
-        let mut ret_nds = NeedStore::new();
+        let mut ret_nds = NeedStore::new(vec![]);
 
         let anchor_sqr = self
             .squares
@@ -1483,8 +1482,8 @@ impl SomeAction {
             .expect("Group region anchor should refer to an existing square");
 
         // Check each adjacent external state
-        let mut nds_grp = NeedStore::new(); // needs for more samples
-        let mut nds_grp_add = NeedStore::new(); // needs for added group
+        let mut nds_grp = NeedStore::new(vec![]); // needs for more samples
+        let mut nds_grp_add = NeedStore::new(vec![]); // needs for added group
 
         // Get masks of edge bits to use to limit group.
         // Ignore bits that cannot be changed by any action.
@@ -1508,7 +1507,7 @@ impl SomeAction {
                         let regz = SomeRegion::new(anchor_sta.clone(), adj_sta);
 
                         let ruls = if anchor_sqr.pn == Pn::Unpredictable {
-                            RuleStore::new()
+                            RuleStore::new(vec![])
                         } else {
                             anchor_sqr
                                 .rules
@@ -1604,7 +1603,7 @@ impl SomeAction {
     /// Check group pairs for an intersection.
     pub fn group_pair_needs(&self) -> NeedStore {
         //println!("group_pair_needs");
-        let mut nds = NeedStore::new();
+        let mut nds = NeedStore::new(vec![]);
 
         if self.groups.len() < 2 {
             return nds;
@@ -1701,12 +1700,11 @@ impl SomeAction {
     ) -> NeedStore {
         //println!("region_defining_needs for {}", regx);
 
-        let mut nds = NeedStore::new();
+        let mut nds = NeedStore::new(vec![]);
 
         // Gather the states from the regions, they may share one defining state.
-        let mut anchor_stas = StateStore::new();
-        anchor_stas.push(reg1.state1.clone());
-        anchor_stas.push(reg1.state2.clone());
+        let mut anchor_stas = StateStore::new(vec![reg1.state1.clone(), reg1.state2.clone()]);
+
         if anchor_stas.contains(&reg2.state1) {
         } else {
             anchor_stas.push(reg2.state1.clone());
@@ -1735,7 +1733,7 @@ impl SomeAction {
             if let Some(sqr2) = self.squares.find(&sta2) {
                 if sqr2.pnc && sqrx.pnc || sqrx.pn == Pn::One && sqr2.pn == Pn::One {
                     let rules = if sqrx.pn == Pn::Unpredictable {
-                        RuleStore::new()
+                        RuleStore::new(vec![])
                     } else {
                         sqrx.rules
                             .union(&sqr2.rules)
@@ -1799,7 +1797,7 @@ impl SomeAction {
 
     /// Check two groups for combining needs.
     pub fn group_pair_combine_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        let nds = NeedStore::new();
+        let nds = NeedStore::new(vec![]);
 
         let reg_both = grpx.region.union(&grpy.region);
 
@@ -1829,14 +1827,12 @@ impl SomeAction {
         //                    &grpx.region, &grpx.pn, &grpy.region, grpy.pn
         //                );
 
-        let mut nds = NeedStore::new();
+        let mut nds = NeedStore::new(vec![]);
 
         let Some(reg_int) = grpx.region.intersection(&grpy.region) else { return nds; };
 
         if grpx.pn != grpy.pn {
-            let mut nds = NeedStore::new();
-            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
-            return nds;
+            return NeedStore::new(vec![self.cont_int_region_need(&reg_int, grpx, grpy)]);
         }
 
         let reg_both = grpx.region.union(&grpy.region);
@@ -1899,13 +1895,13 @@ impl SomeAction {
 
         if sqrs_in.is_empty() {
             let ruls1 = if grpx.rules.is_empty() {
-                RuleStore::new()
+                RuleStore::new(vec![])
             } else {
                 grpx.rules.restrict_initial_region(regx)
             };
 
             let ruls2 = if grpy.rules.is_empty() {
-                RuleStore::new()
+                RuleStore::new(vec![])
             } else {
                 grpy.rules.restrict_initial_region(regx)
             };
@@ -1952,13 +1948,13 @@ impl SomeAction {
         }
 
         let ruls1 = if grpx.rules.is_empty() {
-            RuleStore::new()
+            RuleStore::new(vec![])
         } else {
             grpx.rules.restrict_initial_region(regx)
         };
 
         let ruls2 = if grpy.rules.is_empty() {
-            RuleStore::new()
+            RuleStore::new(vec![])
         } else {
             grpy.rules.restrict_initial_region(regx)
         };
@@ -1982,7 +1978,7 @@ impl SomeAction {
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
-        let mut stps = StepStore::new();
+        let mut stps = StepStore::new(vec![]);
 
         for grpx in self.groups.iter() {
             match grpx.pn {
@@ -2042,7 +2038,7 @@ impl SomeAction {
     fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
         //println!("possible_group_regions from sqr {}", &sqrx.state);
 
-        let mut rsx = RegionStore::new();
+        let mut rsx = RegionStore::new(vec![]);
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
@@ -2148,11 +2144,8 @@ impl SomeAction {
 
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
 
-        if self.groups.any_superset_of_state(cur_state) {
-            self.eval_step_sample(&asample);
-        } else {
-            self.eval_sample(&asample);
-        }
+        self.eval_sample(&asample);
+
         asample
     }
 

@@ -554,8 +554,8 @@ impl SomeBits {
 
         let mut or_bts = SomeBits::new_low(self.num_ints());
 
-        for inx in &indices {
-            or_bts = or_bts.b_or(&one_bits[*inx]);
+        for inx in indices {
+            or_bts = or_bts.b_or(&one_bits[inx]);
         }
         or_bts
     }

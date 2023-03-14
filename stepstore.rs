@@ -26,21 +26,12 @@ pub struct StepStore {
 
 impl StepStore {
     /// Return a new, empty, StepStore.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeStep>::with_capacity(5),
-        }
-    }
-
-    /// Return a new StepStore with a given step.
-    pub fn new_with_step(astep: SomeStep) -> Self {
-        let mut vecx = Vec::<SomeStep>::with_capacity(2);
-        vecx.push(astep);
-        Self { avec: vecx }
+    pub fn new(avec: Vec<SomeStep>) -> Self {
+        Self { avec }
     }
 
     /// Return a new, empty, StepStore, with an expected capacity.
-    pub fn new_with_capacity(num: usize) -> Self {
+    pub fn with_capacity(num: usize) -> Self {
         Self {
             avec: Vec::<SomeStep>::with_capacity(num),
         }
@@ -116,8 +107,7 @@ impl StepStore {
 
     /// Given a number of steps, and a required change, return a vector of vectors
     /// where the sub-vectors indicate a single bit change that is required.
-    /// Note that a step that changes more than one bit may end up in more than one sub-vector.
-    pub fn steps_by_change_bit(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
+    pub fn split_steps_by_bit_change(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
         let mut b01 = Vec::<SomeMask>::new();
 
         if required_change.b01.is_not_low() {
@@ -193,18 +183,20 @@ impl StepStore {
         &self,
         required_change: &SomeChange,
     ) -> Option<Vec<Vec<&SomeStep>>> {
-        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will appear more than once)
+        // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)
         let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
-            self.steps_by_change_bit(required_change);
+            self.split_steps_by_bit_change(required_change);
 
-        // Check if any pair of single-bit changes, all steps, are mutually exclusive.
+        // These may be low-level rules, but at least they have some sense of where they are going!
+
+        // Check if any pair of single-bit change, all steps in vectors, are mutually exclusive.
         if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
             //println!("get_steps_by_bit_change: mutually exclusive change rules found");
             return None;
         }
 
-        // Check for steps that should be done after all the others.
-        // To void some backtracking.
+        // Check for step vectors where all steps should be done after all steps in at least one other step vector,
+        // to void backtracking/loops.
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
             for inx in inxs.iter() {
@@ -230,7 +222,7 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
     false
 }
 
-/// Return true if all combinations of steps are mutually exclusive
+/// Return true if all combinations of steps, in two vectors, are mutually exclusive.
 fn all_mutually_exclusive_changes(
     vec_x: &[&SomeStep],
     vec_y: &[&SomeStep],
@@ -251,8 +243,8 @@ fn all_mutually_exclusive_changes(
     true
 }
 
-/// Return a vector of reverse sorted indices, of step vectors that should be done later
-/// than all other steps.
+/// Return a vector of descending indices, of step vectors that should be done later
+/// than at least one other step vector.
 fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
     let mut inxs = Vec::<usize>::new();
 

@@ -48,18 +48,10 @@ pub struct SomePlan {
 
 impl SomePlan {
     /// Return a new, empty, plan.
-    pub fn new(dom_num: usize) -> Self {
+    pub fn new(dom_num: usize, stepvec: Vec<SomeStep>) -> Self {
         Self {
             dom_num,
-            steps: StepStore::new(),
-        }
-    }
-
-    /// Return a new plan with one given step.
-    pub fn new_with_step(dom_num: usize, stepx: SomeStep) -> Self {
-        Self {
-            dom_num,
-            steps: StepStore::new_with_step(stepx),
+            steps: StepStore::new(stepvec),
         }
     }
 
@@ -69,7 +61,7 @@ impl SomePlan {
             return None;
         }
 
-        let mut steps = StepStore::new_with_capacity(self.len());
+        let mut steps = StepStore::with_capacity(self.len());
 
         let mut cur_reg = regx.clone();
 
@@ -103,7 +95,7 @@ impl SomePlan {
             return None;
         }
 
-        let mut steps = StepStore::new_with_capacity(self.len());
+        let mut steps = StepStore::with_capacity(self.len());
 
         let mut cur_reg = regx.clone();
 
@@ -203,7 +195,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = SomePlan::new(self.dom_num);
+                    let mut steps2 = SomePlan::new(self.dom_num, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
@@ -243,7 +235,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = SomePlan::new(self.dom_num);
+                    let mut steps2 = SomePlan::new(self.dom_num, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {
@@ -376,9 +368,7 @@ mod tests {
             false,
             reg2.clone(),
         );
-        let mut stp_str1 = SomePlan::new(0);
-        stp_str1.push(step1);
-        stp_str1.push(step2);
+        let stp_str1 = SomePlan::new(0, vec![step1, step2]);
 
         let step4 = SomeStep::new(
             0,
@@ -392,9 +382,7 @@ mod tests {
             false,
             reg5.clone(),
         );
-        let mut stp_str2 = SomePlan::new(0);
-        stp_str2.push(step4);
-        stp_str2.push(step5);
+        let stp_str2 = SomePlan::new(0, vec![step4, step5]);
 
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
@@ -433,8 +421,6 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let mut pln1 = SomePlan::new(0);
-
         let reg0 = SomeRegion::new_from_string(1, "r0000")?;
         let reg1 = SomeRegion::new_from_string(1, "r0001")?;
         let reg3 = SomeRegion::new_from_string(1, "r0011")?;
@@ -447,7 +433,6 @@ mod tests {
             false,
             reg1.clone(),
         );
-        pln1.push(step1);
 
         let step2 = SomeStep::new(
             0,
@@ -455,7 +440,6 @@ mod tests {
             false,
             reg3.clone(),
         );
-        pln1.push(step2);
 
         let step3 = SomeStep::new(
             0,
@@ -463,7 +447,6 @@ mod tests {
             false,
             reg7.clone(),
         );
-        pln1.push(step3);
 
         let step4 = SomeStep::new(
             0,
@@ -471,7 +454,6 @@ mod tests {
             false,
             reg5.clone(),
         );
-        pln1.push(step4);
 
         let step5 = SomeStep::new(
             0,
@@ -479,7 +461,8 @@ mod tests {
             false,
             reg5.clone(),
         );
-        pln1.push(step5);
+
+        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
 
         println!("pln1: {}", pln1);
 
@@ -507,15 +490,12 @@ mod tests {
             return Err(format!("No shortcut found for {}?", pln1).to_string());
         }
 
-        let mut pln2 = SomePlan::new(0);
-
         let step1 = SomeStep::new(
             0,
             SomeRule::region_to_region(&reg1, &reg3),
             false,
             reg1.clone(),
         );
-        pln2.push(step1);
 
         let step2 = SomeStep::new(
             0,
@@ -523,7 +503,8 @@ mod tests {
             false,
             reg3.clone(),
         );
-        pln2.push(step2);
+
+        let pln2 = SomePlan::new(0, vec![step1, step2]);
 
         if let Some(pln2s) = pln2.shortcuts() {
             return Err(format!("shortcut found for {} is {} ?", pln2, pln2s).to_string());

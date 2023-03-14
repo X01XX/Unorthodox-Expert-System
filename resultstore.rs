@@ -105,12 +105,12 @@ pub struct ResultStore {
 
 impl ResultStore {
     /// Return a new ResultStore, with an initial result.
-    pub fn new(st: SomeState) -> Self {
+    pub fn new(mut st: Vec<SomeState>) -> Self {
         let mut ret = Self {
             astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
             num_results: 1,
         };
-        ret.astore.push(st);
+        ret.astore.append(&mut st);
         ret
     }
 
@@ -219,7 +219,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
 
         let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
         if pn != Pn::One {
@@ -244,7 +244,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
@@ -299,7 +299,7 @@ mod tests {
         }
 
         // Test three different results.
-        rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x505")?);
+        rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
         if pn != Pn::Two {
@@ -318,7 +318,7 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::new_from_string(2, "s0x500")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x500")?]);
         rslt_str.add_result(SomeState::new_from_string(2, "s0x501")?);
         rslt_str.add_result(SomeState::new_from_string(2, "s0x502")?);
         rslt_str.add_result(SomeState::new_from_string(2, "s0x503")?);

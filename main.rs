@@ -57,9 +57,9 @@ mod square;
 mod squarestore;
 mod state;
 use sample::SomeSample;
-mod statestore;
-use statestore::StateStore;
+use state::SomeState;
 mod domain;
+mod statestore;
 use domain::SomeDomain;
 mod needstore;
 mod plan;
@@ -94,36 +94,43 @@ fn main() {
 
     if args.len() == 1 {
         run_step_by_step();
-        return;
+        process::exit(0);
     }
 
     if args.len() == 2 {
         if args[1] == "h" || args[1] == "help" {
             usage();
-            return;
+            process::exit(0);
         }
         if let Ok(runs) = args[1].parse::<usize>() {
             match runs {
                 0 => {
                     usage();
                     eprintln!("Did not understand {:?}", args);
-                    return;
+                    process::exit(1);
                 }
                 1 => {
                     let mut dmxs = domainstore_init();
                     run_to_end(&mut dmxs);
                 }
-                _ => run_number_times(runs),
+                _ => {
+                    let fails = run_number_times(runs);
+                    if fails == 0 {
+                        return;
+                    }
+                    process::exit(1);
+                }
             }
         } else {
             // Run with arg[1] as file path.
             run_with_file(&args[1]);
         }
-        return;
+        process::exit(0);
     }
 
     usage();
     eprintln!("Did not understand {:?}", args);
+    process::exit(1);
 } // end main
 
 /// Run with user input step by step.
@@ -136,17 +143,16 @@ fn run_step_by_step() {
 fn run_with_file(file_path: &str) {
     usage();
     // Init DomainStore or read in from file.
-    let mut dmxs = 
-        match load_data(file_path) {
-            Ok(new_dmxs) => {
-                println!("Data loaded");
-                new_dmxs
-            }
-            Err(why) => {
-                eprintln!("{why}");
-                return;
-            }
-        };
+    let mut dmxs = match load_data(file_path) {
+        Ok(new_dmxs) => {
+            println!("Data loaded");
+            new_dmxs
+        }
+        Err(why) => {
+            eprintln!("{why}");
+            return;
+        }
+    };
 
     do_session(&mut dmxs);
 }
@@ -169,7 +175,8 @@ fn run_to_end(dmxs: &mut DomainStore) {
 }
 
 /// Run a number of times without user input, generate aggregae data.
-fn run_number_times(num_runs: usize) {
+/// Return number failures, that is the number of seessions that ended with unsatisfied needs.
+fn run_number_times(num_runs: usize) -> usize {
     let mut runs_left = num_runs;
     let mut runs = 0;
     let mut failures = 0;
@@ -196,7 +203,7 @@ fn run_number_times(num_runs: usize) {
 
     if duration_vec.is_empty() {
         println!("Number with unsatisfied needs: {failures}");
-        return;
+        return 1;
     }
 
     let mut duration_total = Duration::new(0, 0);
@@ -227,93 +234,82 @@ fn run_number_times(num_runs: usize) {
     let average = duration_total / runs as u32;
     println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.3?}, high: {:.3?}, low: {:.3?} Number with unsatisfied needs {}",
          runs, steps_total / runs, steps_high, steps_low, average, duration_high, duration_low, failures);
+    failures
 }
 
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn domainstore_init() -> DomainStore {
     // Start a DomainStore
-    let mut dmxs = DomainStore::new();
+    let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
-    // Create domain 0.
-    let dom_num_ints: usize = 1;
+    // Add actions 0 through 9 to Domain 0;
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
+    dmxs[0].add_action();
 
-    // Add domain to the DomainStore.
-    let inx0 = dmxs.push(SomeDomain::new(dom_num_ints));
-
-    // Add actions 0 through 9;
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-    dmxs[inx0].add_action();
-
-    // Create domain 1.
-    let dom_num_ints: usize = 2;
-
-    // Add a domain to the DomainStore.
-    let inx1 = dmxs.push(SomeDomain::new(dom_num_ints));
-
-    // Add actions 0 through 5.
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
-    dmxs[inx1].add_action();
+    // Add actions 0 through 6 to domain 1.
+    dmxs[1].add_action();
+    dmxs[1].add_action();
+    dmxs[1].add_action();
+    dmxs[1].add_action();
+    dmxs[1].add_action();
+    dmxs[1].add_action();
+    dmxs[1].add_action();
 
     // Load optimal regions
     let mut regstr1 = RegionStore::with_capacity(2);
     regstr1.push(
-        dmxs[inx0]
+        dmxs[0]
             .region_from_string_pad_x("r0x0x")
             .expect("String should be formatted correctly"),
     );
     regstr1.push(
-        dmxs[inx1]
+        dmxs[1]
             .region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
-            .unwrap(),
+            .expect("String should be formatted correctly"),
     );
 
     let mut regstr2 = RegionStore::with_capacity(2);
     regstr2.push(
-        dmxs[inx0]
+        dmxs[0]
             .region_from_string_pad_x("r0xx1")
             .expect("String should be formatted correctly"),
     );
     regstr2.push(
-        dmxs[inx1]
+        dmxs[1]
             .region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
-            .unwrap(),
+            .expect("String should be formatted correctly"),
     );
 
     let mut regstr3 = RegionStore::with_capacity(2);
     regstr3.push(
-        dmxs[inx0]
+        dmxs[0]
             .region_from_string_pad_x("rx1x1")
             .expect("String should be formatted correctly"),
     );
     regstr3.push(
-        dmxs[inx1]
+        dmxs[1]
             .region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
-            .unwrap(),
+            .expect("String should be formatted correctly"),
     );
 
     let mut regstr4 = RegionStore::with_capacity(2);
     regstr4.push(
-        dmxs[inx0]
+        dmxs[0]
             .region_from_string_pad_x("r1110")
             .expect("String should be formatted correctly"),
     );
     regstr4.push(
-        dmxs[inx1]
+        dmxs[1]
             .region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
-            .unwrap(),
+            .expect("String should be formatted correctly"),
     );
 
     // Add optimal regionstores.
@@ -438,7 +434,7 @@ fn command_loop(dmxs: &mut DomainStore) {
             },
             "exit" | "q" | "quit" => {
                 println!("Done");
-                process::exit(1);
+                process::exit(0);
             }
             "fsd" => match store_data(dmxs, &cmd) {
                 Ok(()) => continue,
@@ -861,7 +857,7 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
 
         // Get rule union, if any
         let mut rules: Option<RuleStore> = None;
-        let mut non_pn_stas = StateStore::new();
+        let mut non_pn_stas = Vec::<SomeState>::new();
         for sqrx in sqrs.iter() {
             if sqrx.pn == max_pn {
                 if max_pn < Pn::Unpredictable {

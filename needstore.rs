@@ -39,14 +39,12 @@ pub struct NeedStore {
 
 impl NeedStore {
     /// Return a new NeedStore instance.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeNeed>::new(),
-        }
+    pub fn new(avec: Vec<SomeNeed>) -> Self {
+        Self { avec }
     }
 
     /// Return a new NeedStore with a given capacity.
-    pub fn new_with_capacity(size: usize) -> Self {
+    pub fn with_capacity(size: usize) -> Self {
         Self {
             avec: Vec::<SomeNeed>::with_capacity(size),
         }

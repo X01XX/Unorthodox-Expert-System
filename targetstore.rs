@@ -38,15 +38,15 @@ pub struct TargetStore {
 
 impl TargetStore {
     /// Return a new, empty, TargetStore instance.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeTarget>::new(),
-        }
+    pub fn new(avec: Vec<SomeTarget>) -> Self {
+        Self { avec }
     }
 
-    /// Return a new TargetStore, with a given terget.
-    pub fn new_with_target(target: SomeTarget) -> Self {
-        Self { avec: vec![target] }
+    /// Return a new, empty, TargetStore, with an expected capacity.
+    pub fn with_capacity(num: usize) -> Self {
+        Self {
+            avec: Vec::<SomeTarget>::with_capacity(num),
+        }
     }
 
     /// Return the length of the SomeTarget vector.
@@ -66,7 +66,7 @@ impl TargetStore {
 
     /// Return true is a TargetStore is a superset of a StateStore.
     pub fn is_superset_of_states(&self, states: &Vec<&SomeState>) -> bool {
-        assert!(self.len() == states.len());
+        assert_eq!(self.len(), states.len());
 
         for (inx, targx) in self.avec.iter().enumerate() {
             if targx.is_superset_of_state(states[inx]) {
@@ -79,7 +79,7 @@ impl TargetStore {
 
     /// Return true if the one region in a TargetStore is a superset of a given state.
     pub fn is_superset_of_state(&self, state: &SomeState) -> bool {
-        assert!(self.len() == 1);
+        assert_eq!(self.len(), 1);
         self.avec[0].is_superset_of_state(state)
     }
 } // end impl TargetStore

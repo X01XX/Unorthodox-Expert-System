@@ -38,10 +38,8 @@ pub struct PlanStore {
 
 impl PlanStore {
     /// Return a new PlanStore instance.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomePlan>::new(),
-        }
+    pub fn new(avec: Vec<SomePlan>) -> Self {
+        Self { avec }
     }
 
     /// Return the length of the SomePlan vector.

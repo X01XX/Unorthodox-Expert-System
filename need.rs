@@ -590,62 +590,62 @@ impl SomeNeed {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::StateNotInGroup {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::StateInRemainder {
                 dom_num,
                 target_region,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
+            } => TargetStore::new(vec![SomeTarget::new(*dom_num, target_region.clone())]),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
                 target_region,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(*dom_num, target_region.clone())),
+            } => TargetStore::new(vec![SomeTarget::new(*dom_num, target_region.clone())]),
             SomeNeed::ConfirmGroup {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::SeekEdge {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::LimitGroup {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::LimitGroupAdj {
                 dom_num,
                 target_state,
                 ..
-            } => TargetStore::new_with_target(SomeTarget::new(
+            } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
-            )),
+            )]),
             SomeNeed::ToOptimalRegion { target_regions, .. } => {
-                let mut targ = TargetStore::new();
+                let mut targ = TargetStore::with_capacity(target_regions.len());
                 for (dom_numx, targx) in target_regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
                 }

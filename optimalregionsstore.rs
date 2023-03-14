@@ -17,9 +17,14 @@ pub struct OptimalRegionsStore {
 
 impl OptimalRegionsStore {
     /// Return a new OptimalRegionsStores instance.
-    pub fn new() -> Self {
+    pub fn new(optimal: Vec<RegionStore>) -> Self {
+        Self { optimal }
+    }
+
+    /// Return a new OptimalRegionStore instance, empty, with a specified capacity.
+    pub fn with_capacity(num: usize) -> Self {
         Self {
-            optimal: Vec::<RegionStore>::new(),
+            optimal: Vec::<RegionStore>::with_capacity(num),
         }
     }
 
@@ -131,7 +136,7 @@ impl OptimalRegionsStore {
     pub fn and_intersections(&self) -> Self {
         //println!("and_intersections of {}", &self.formatted_string());
 
-        let mut optimal_and_ints = OptimalRegionsStore::new();
+        let mut optimal_and_ints = OptimalRegionsStore::with_capacity(self.len());
 
         for regstrx in &self.optimal {
             optimal_and_ints.push(regstrx.clone());

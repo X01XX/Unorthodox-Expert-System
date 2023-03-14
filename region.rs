@@ -414,7 +414,7 @@ impl SomeRegion {
 
     /// Return states in a region, given a list of states.
     pub fn states_in(&self, stas: &StateStore) -> StateStore {
-        let mut stsin = StateStore::new();
+        let mut stsin = Vec::<SomeState>::new();
 
         for stax in stas.iter() {
             if self.is_superset_of_state(stax) {
@@ -422,7 +422,7 @@ impl SomeRegion {
             }
         } // next stax
 
-        stsin
+        StateStore::new(stsin)
     }
 
     /// Given a region, and a second region, return the
@@ -789,14 +789,14 @@ mod tests {
         let st8 = SomeState::new_from_string(1, "s0b1000")?;
         let std = SomeState::new_from_string(1, "s0b1101")?;
         let ste = SomeState::new_from_string(1, "s0b1110")?;
-        let mut sta_str = StateStore::new();
-
-        sta_str.push(st1);
-        sta_str.push(st6.clone());
-        sta_str.push(st7.clone());
-        sta_str.push(st8);
-        sta_str.push(std.clone());
-        sta_str.push(ste.clone());
+        let sta_str = StateStore::new(vec![
+            st1,
+            st6.clone(),
+            st7.clone(),
+            st8,
+            std.clone(),
+            ste.clone(),
+        ]);
 
         let sta_str2 = reg0.states_in(&sta_str);
         assert!(sta_str2.len() == 4);
@@ -817,7 +817,7 @@ mod tests {
 
         let regvec = reg0.subtract(&reg1);
 
-        let mut regs = RegionStore::new();
+        let mut regs = RegionStore::new(vec![]);
         for regx in &regvec {
             regs.push(regx.clone());
         }

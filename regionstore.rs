@@ -43,10 +43,8 @@ impl Eq for RegionStore {}
 
 impl RegionStore {
     /// Return a new, empty, RegionStore.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeRegion>::with_capacity(5),
-        }
+    pub fn new(avec: Vec<SomeRegion>) -> Self {
+        Self { avec }
     }
 
     /// Return a new RegionStore instance, empty, with a specified capacity.
@@ -338,7 +336,7 @@ impl RegionStore {
 
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
-        let mut ret_str = RegionStore::new();
+        let mut ret_str = RegionStore::new(vec![]);
 
         for regy in &self.avec {
             if regx.intersects(regy) {

@@ -22,10 +22,8 @@ pub struct StateStore {
 
 impl StateStore {
     /// Return a new, empty, StateStore instance.
-    pub fn new() -> Self {
-        Self {
-            avec: Vec::<SomeState>::new(),
-        }
+    pub fn new(avec: Vec<SomeState>) -> Self {
+        Self { avec }
     }
 
     /// Return a new, empty, StateStore instance, with a specified capacity.

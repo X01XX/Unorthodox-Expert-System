@@ -43,10 +43,10 @@ pub struct ActionStore {
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new(num_ints: usize) -> Self {
+    pub fn new(num_ints: usize, avec: Vec<SomeAction>) -> Self {
         assert!(num_ints > 0);
         ActionStore {
-            avec: Vec::<SomeAction>::with_capacity(5),
+            avec,
             aggregate_changes: SomeChange::new_low(num_ints),
         }
     }
@@ -95,7 +95,7 @@ impl ActionStore {
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::new_with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
+        let mut nds_agg = NeedStore::with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
 
         for nst in vecx.iter_mut() {
             nds_agg.append(nst);
@@ -115,7 +115,7 @@ impl ActionStore {
             .collect::<Vec<StepStore>>();
 
         // Aggregate the results into one StepStore
-        let mut stps_agg = StepStore::new_with_capacity(stps.iter().map(|stpsx| stpsx.len()).sum());
+        let mut stps_agg = StepStore::with_capacity(stps.iter().map(|stpsx| stpsx.len()).sum());
 
         for stp in stps.iter_mut() {
             stps_agg.append(stp);

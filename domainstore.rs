@@ -83,15 +83,18 @@ pub struct DomainStore {
 
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
-    pub fn new() -> Self {
+    pub fn new(mut avec: Vec<SomeDomain>) -> Self {
+        for (inx, domx) in avec.iter_mut().enumerate() {
+            domx.num = inx;
+        }
         Self {
-            avec: Vec::<SomeDomain>::new(),
+            avec,
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
-            optimal_and_ints: OptimalRegionsStore::new(),
-            optimal: OptimalRegionsStore::new(),
-            needs: NeedStore::new(),
+            optimal_and_ints: OptimalRegionsStore::new(vec![]),
+            optimal: OptimalRegionsStore::new(vec![]),
+            needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
             cant_do: Vec::<InxPlan>::new(),
             step_num: 0,
@@ -102,7 +105,7 @@ impl DomainStore {
     /// One region for each domain.
     /// The logical "and" of each domain region given.
     pub fn add_optimal(&mut self, regstr: RegionStore) {
-        assert!(regstr.len() == self.avec.len());
+        debug_assert!(regstr.len() == self.avec.len());
 
         if self.optimal.any_supersets_of(&regstr) {
             println!("Superset optimal regions found");
@@ -127,7 +130,7 @@ impl DomainStore {
     /// Add a Domain struct to the store.
     /// Add optimal regions after the last domain has been added.
     pub fn push(&mut self, mut domx: SomeDomain) -> usize {
-        assert!(self.optimal.is_empty());
+        debug_assert!(self.optimal.is_empty());
 
         let dom_num = self.avec.len();
 
@@ -155,7 +158,7 @@ impl DomainStore {
             .collect::<Vec<NeedStore>>();
 
         // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::new_with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
+        let mut nds_agg = NeedStore::with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
 
         for nst in vecx.iter_mut() {
             nds_agg.append(nst);
@@ -238,7 +241,7 @@ impl DomainStore {
             .any_supersets_of_states(&self.all_current_states());
 
         let optimal_priority = SomeNeed::ToOptimalRegion {
-            target_regions: RegionStore::new(),
+            target_regions: RegionStore::new(vec![]),
         }
         .priority();
 
@@ -343,7 +346,7 @@ impl DomainStore {
     /// Return an Option PlanStore, to go from the current state to the region or each target.
     /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
-        let mut plans = PlanStore::new();
+        let mut plans = Vec::<SomePlan>::new();
 
         for targx in targets.iter() {
             if let Some(planx) = self.avec[targx.dom_num].make_plan(&targx.region) {
@@ -353,7 +356,7 @@ impl DomainStore {
         if plans.is_empty() || plans.len() < targets.len() {
             return None;
         }
-        Some(plans)
+        Some(PlanStore::new(plans))
     }
 
     /// Choose a need, given a vector of needs,
@@ -614,17 +617,15 @@ mod tests {
     #[test]
     fn all_current_states() -> Result<(), String> {
         // Init a DomainStore.
-        let mut dmxs = DomainStore::new();
+        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
-        // Create domain 0, using 1 integer for bits.
-        let inx0 = dmxs.push(SomeDomain::new(1));
-        let init_state1 = dmxs[inx0].state_from_string("s0x12")?;
-        dmxs[inx0].set_state(&init_state1);
+        // Ste state for domain 0, using 1 integer for bits.
+        let init_state1 = dmxs[0].state_from_string("s0x12")?;
+        dmxs[0].set_state(&init_state1);
 
-        // Create domain 1, using 2 integers for bits.
-        let inx1 = dmxs.push(SomeDomain::new(2));
-        let init_state2 = dmxs[inx1].state_from_string("s0xabcd")?;
-        dmxs[inx1].set_state(&init_state2);
+        // Set state for domain 1, using 2 integers for bits.
+        let init_state2 = dmxs[1].state_from_string("s0xabcd")?;
+        dmxs[1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
         println!(
@@ -652,36 +653,30 @@ mod tests {
     #[test]
     fn check_optimal() -> Result<(), String> {
         // Start a DomainStore
-        let mut dmxs = DomainStore::new();
+        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
-        // Add  a domain to the DomainStore, using one integer for bits.
-        let inx0 = dmxs.push(SomeDomain::new(1));
+        // Add action to domain 0.
+        dmxs[0].add_action();
 
-        // Add actions 0 through 8;
-        dmxs[inx0].add_action();
-
-        // Add  a domain to the DomainStore, using one integer for bits.
-        let inx1 = dmxs.push(SomeDomain::new(2));
-
-        // Add actions 0 through 4.
-        dmxs[inx1].add_action();
+        // Add action to domain 1.
+        dmxs[1].add_action();
 
         // Load optimal regions
         let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(dmxs[inx0].region_from_string("r0x0x")?);
-        regstr1.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr1.push(dmxs[0].region_from_string("r0x0x")?);
+        regstr1.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(dmxs[inx0].region_from_string("r0xx1")?);
-        regstr2.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr2.push(dmxs[0].region_from_string("r0xx1")?);
+        regstr2.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr3 = RegionStore::with_capacity(2);
-        regstr3.push(dmxs[inx0].region_from_string("rx1x1")?);
-        regstr3.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr3.push(dmxs[0].region_from_string("rx1x1")?);
+        regstr3.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr4 = RegionStore::with_capacity(2);
-        regstr4.push(dmxs[inx0].region_from_string("r1110")?);
-        regstr4.push(dmxs[inx1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr4.push(dmxs[0].region_from_string("r1110")?);
+        regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add optimal region stores.
         dmxs.add_optimal(regstr1);
