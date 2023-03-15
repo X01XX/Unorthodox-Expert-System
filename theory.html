@@ -1570,7 +1570,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     A region that is unpredictable cannot be invalidated by a single sample.  It is also useless, or even obstrucitve, in calculating plans.
     </p>
     <p class="indent1">
-    It is uneconomical of storage and cycles to save every sample, like the samples from executing plans, and accidentally store multiple samples of a predictable square in an unpredictable region.
+    By not taking part in executing plans, an unpredictable region is unlikely to have any samples, other than the ones needed to establish an anchor and far square.
     </p>
     <p class="indent1">
     It is possible for a predictable region to intersect an unpredictable region, causing repeated sampling of a square in the contradictory intersection.
