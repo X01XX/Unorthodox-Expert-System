@@ -18,15 +18,10 @@ impl RandomPick {
     /// The argument should be GT zero, the vector with be populated with that range of numbers, starting at zero.
     pub fn new(number_items: usize) -> Self {
         assert!(number_items > 0);
-        let mut ret = RandomPick {
-            items: Vec::<usize>::with_capacity(number_items),
-        };
 
-        for num in 0..number_items {
-            ret.items.push(num);
+        Self {
+            items: (0..number_items).collect(),
         }
-
-        ret
     }
 
     /// Return the current length of the vector.
@@ -75,7 +70,7 @@ pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
     for _ in 0..x {
         x_vec.push(
             rp1.pick()
-                .expect("rp1.pick() should work until all number are exahsted"),
+                .expect("rp1.pick() should work until all number are exhausted"),
         );
     }
 

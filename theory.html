@@ -1559,6 +1559,22 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
     If a new rule is found, with the ability to change a bit that could not be changed before, regions with an edge that matches the new change will need additional adjacent samples.
     </p>
+    <h3>The difficulty with a limited, unpredictable, region.</h3>
+    <p class="indent1">
+    A limited region is guaranteed not to be larger, but could in reality consist of smaller subregions.
+    </p>
+    <p class="indent1">
+    A region that is predictable, can conceivably be invalidated, and split into subregions, by a single sample.
+    </p>
+    <p class="indent1">
+    A region that is unpredictable cannot be invalidated by a single sample.  It is also useless, or even obstrucitve, in calculating plans.
+    </p>
+    <p class="indent1">
+    It is uneconomical of storage and cycles to save every sample, like the samples from executing plans, and accidentally store multiple samples of a predictable square in an unpredictable region.
+    </p>
+    <p class="indent1">
+    It is possible for a predictable region to intersect an unpredictable region, causing repeated sampling of a square in the contradictory intersection.
+    </p>
     <h3>Generating a rule-path, to translate a from-region to a goal-region.</h3>
     <p class="indent1">
     This has some similarities to the Traveling Salesperson Problem, going to the initial region of a rule, to change a bit value, then to the initial region of another rule.
@@ -1775,7 +1791,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/10/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/15/2023</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
