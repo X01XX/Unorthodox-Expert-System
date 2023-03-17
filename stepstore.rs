@@ -230,7 +230,7 @@ fn all_mutually_exclusive_changes(
 ) -> bool {
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
-            if ptr_eq(*refx, *refy) {
+            if std::ptr::eq(refx, refy) {
                 return false;
             }
             if refx.mutually_exclusive(refy, wanted) {
@@ -279,7 +279,7 @@ fn step_vecs_order_bad(
     assert!(!vec_y.is_empty());
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
-            if ptr_eq(*refx, *refy) {
+            if std::ptr::eq(refx, refy) {
                 return false;
             }
             if !refx.rule.order_bad(&refy.rule, wanted) {
@@ -289,12 +289,6 @@ fn step_vecs_order_bad(
     } // next refx
 
     true
-}
-
-/// Return true if two references are identical, thanks to
-/// github.com/rust-lang/rfcs/issues/1155, (eddyb, kimundi and RalfJung)
-fn ptr_eq<T>(a: *const T, b: *const T) -> bool {
-    a == b
 }
 
 impl Index<usize> for StepStore {

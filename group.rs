@@ -89,14 +89,7 @@ impl SomeGroup {
 
         let _ = write!(rc_str, ", pn: {}", self.pn);
 
-        if self.pnc {
-            rc_str.push_str(", pnc: t, ");
-        } else {
-            rc_str.push_str(", pnc: f, ");
-        }
-        //        if self.limited {
-        //            rc_str.push_str(&format!(", limited"));
-        //        }
+        rc_str.push_str(if self.pnc { ", pnc: t, " } else { ", pnc: f, " });
 
         match self.pn {
             Pn::One => {

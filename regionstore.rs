@@ -365,7 +365,7 @@ impl RegionStore {
     }
 
     /// Return True if a RegionStore is a superset of all corresponding states in a StateStore.
-    pub fn is_superset_of_states(&self, stas: &Vec<&SomeState>) -> bool {
+    pub fn is_superset_of_states(&self, stas: &[&SomeState]) -> bool {
         assert!(self.len() == stas.len());
 
         for (inx, stasx) in self.avec.iter().enumerate() {

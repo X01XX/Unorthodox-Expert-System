@@ -579,7 +579,8 @@ impl SomeDomain {
 
     /// Return the index value of a chosen Plan
     /// TODO better criteria.
-    fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
+    //fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
+    fn choose_a_plan(&self, ret_plans: &[SomePlan]) -> usize {
         assert!(!ret_plans.is_empty());
 
         if ret_plans.len() == 1 {

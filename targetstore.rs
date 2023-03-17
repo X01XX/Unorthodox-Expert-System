@@ -65,7 +65,7 @@ impl TargetStore {
     }
 
     /// Return true is a TargetStore is a superset of a StateStore.
-    pub fn is_superset_of_states(&self, states: &Vec<&SomeState>) -> bool {
+    pub fn is_superset_of_states(&self, states: &[&SomeState]) -> bool {
         assert_eq!(self.len(), states.len());
 
         for (inx, targx) in self.avec.iter().enumerate() {
