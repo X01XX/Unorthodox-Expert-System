@@ -25,7 +25,6 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -266,7 +265,7 @@ impl SomePlan {
             } else {
                 rs.push(',');
             }
-            let _ = write!(rs, "{}", stpx.act_num);
+            rs.push_str(&format!("{}", stpx.act_num));
         }
         rs.push(']');
         rs
@@ -315,19 +314,18 @@ impl SomePlan {
         for stpx in self.steps.iter() {
             let df = stpx.initial.diff_mask(&stpx.result);
 
-            let _ = write!(
-                rc_str,
+            rc_str.push_str(&format!(
                 "{} Action {:02} Group {} Rule {}\n{}\n",
                 &stpx.initial,
                 &stpx.act_num,
                 &stpx.group_reg,
                 &stpx.rule,
                 &df.str2()
-            );
+            ));
         }
 
         let x = self.steps.len() - 1;
-        let _ = write!(rc_str, "{}", &self.steps[x].result);
+        rc_str.push_str(&format!("{}", &self.steps[x].result));
 
         rc_str
     }

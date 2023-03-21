@@ -32,7 +32,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::str::FromStr;
 
 impl fmt::Display for SomeDomain {
@@ -41,7 +40,7 @@ impl fmt::Display for SomeDomain {
 
         rc_str.push_str(&self.num.to_string());
 
-        let _ = write!(rc_str, ", Current State: {}", &self.cur_state);
+        rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
 
         rc_str.push(')');
 
@@ -51,6 +50,7 @@ impl fmt::Display for SomeDomain {
 
 const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
 
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeDomain struct, a state and actions that can be run.
 pub struct SomeDomain {
@@ -78,6 +78,11 @@ impl SomeDomain {
             cur_state,
             memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
         }
+    }
+
+    /// Set the domain number.
+    pub fn set_domain_num(&mut self, dom_num: usize) {
+        self.num = dom_num;
     }
 
     /// Return the number of integers used in a SomeBits instance.

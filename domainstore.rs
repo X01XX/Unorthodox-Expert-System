@@ -16,7 +16,6 @@ use crate::targetstore::TargetStore;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::mem;
 use std::ops::{Index, IndexMut};
 
@@ -33,7 +32,7 @@ impl fmt::Display for DomainStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &mskx);
+            rc_str.push_str(&format!("{}", &mskx));
             flg = 1;
         }
         rc_str.push(']');
@@ -85,7 +84,7 @@ impl DomainStore {
     /// Return a new, empty, DomainStore struct.
     pub fn new(mut avec: Vec<SomeDomain>) -> Self {
         for (inx, domx) in avec.iter_mut().enumerate() {
-            domx.num = inx;
+            domx.set_domain_num(inx);
         }
         Self {
             avec,
@@ -134,7 +133,7 @@ impl DomainStore {
 
         let dom_num = self.avec.len();
 
-        domx.num = dom_num;
+        domx.set_domain_num(dom_num);
 
         self.avec.push(domx);
 

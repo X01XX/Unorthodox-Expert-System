@@ -8,21 +8,19 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rc_str = String::from("S[");
-        let _ = write!(rc_str, "{}", &self.state);
-        let _ = write!(rc_str, ", pn: {}", &self.pn);
+        rc_str.push_str(&format!("{}", &self.state));
+        rc_str.push_str(&format!(", pn: {}", &self.pn));
         if self.pnc {
             rc_str.push_str(", pnc: t");
         } else {
             rc_str.push_str(", pnc: f");
         }
 
-        let _ = write!(rc_str, ", {}", self.rules);
-        //let _ = write!(rc_str, ", rslts: {}", &self.results);
+        rc_str.push_str(&format!(", {}", self.rules));
 
         rc_str.push(']');
 
@@ -123,15 +121,15 @@ impl SomeSquare {
         }
 
         if self.pn != sav_pn {
-            let _ = write!(str_info, ", pn changed from {} to {}", &sav_pn, &self.pn);
+            str_info.push_str(&format!(", pn changed from {} to {}", &sav_pn, &self.pn));
         } else {
-            let _ = write!(str_info, ", pn {}", &self.pn);
+            str_info.push_str(&format!(", pn {}", &self.pn));
         }
 
         if self.pnc != sav_pnc {
-            let _ = write!(str_info, ", pnc changed from {} to {}", &sav_pnc, &self.pnc);
+            str_info.push_str(&format!(", pnc changed from {} to {}", &sav_pnc, &self.pnc));
         } else {
-            let _ = write!(str_info, ", pnc {}", &self.pnc);
+            str_info.push_str(&format!(", pnc {}", &self.pnc));
         }
 
         println!("{}", &str_info);
@@ -161,10 +159,10 @@ impl SomeSquare {
     /// Return a String representing a SomeSquare instance.
     pub fn formatted_string2(&self) -> String {
         let mut rc_str = String::from("S[");
-        let _ = write!(rc_str, "{}", &self.state);
-        let _ = write!(rc_str, ", pn: {}", &self.pn);
-        let _ = write!(rc_str, ", pnc: {}", &self.pnc);
-        let _ = write!(rc_str, ", {}", self.rules);
+        rc_str.push_str(&format!("{}", &self.state));
+        rc_str.push_str(&format!(", pn: {}", &self.pn));
+        rc_str.push_str(&format!(", pnc: {}", &self.pnc));
+        rc_str.push_str(&format!(", {}", self.rules));
 
         rc_str.push(']');
         rc_str

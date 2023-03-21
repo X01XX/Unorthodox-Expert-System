@@ -14,7 +14,6 @@ use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
@@ -26,7 +25,7 @@ impl fmt::Display for ActionStore {
         let mut rc_str = String::new();
 
         for actx in &self.avec {
-            let _ = write!(rc_str, "\n  {}", &actx);
+            rc_str.push_str(&format!("\n  {}", &actx));
         }
 
         write!(f, "{rc_str}")

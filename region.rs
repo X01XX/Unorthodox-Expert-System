@@ -68,6 +68,11 @@ impl SomeRegion {
     ///
     /// A state string can be used, like "s101010" or s0x34", making
     /// a region with no X bit positions.
+    ///
+    /// The case of an X bit position gives information about the two states that form the region.
+    /// X = (1, 0).
+    /// x = (0, 1).
+    /// XxXx = (1010, 0101).
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         assert!(num_ints > 0);
         let mut msk_high = SomeMask::new_low(num_ints);
@@ -453,8 +458,8 @@ impl SomeRegion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::randompick::RandomPick;
     use crate::regionstore::RegionStore;
+    use rand::Rng;
 
     #[test]
     fn edge_mask() -> Result<(), String> {
@@ -474,25 +479,29 @@ mod tests {
     // Test new_from_string, using randomly chosen digits.
     #[test]
     fn new_from_string() -> Result<(), String> {
-        // Init possible hexadecimal digits.
-        let chars = "01Xx01Xx01Xx01Xx";
+        let chars = ['0', '1', 'X', 'x']; // Possible chars to use.
 
-        // Check 16 times.
-        for _ in 0..16 {
-            let mut inxs = RandomPick::new(16);
-
-            // Init string
+        // Check 32 random regions.
+        for _ in 0..32 {
+            // Init region string
             let mut reg_from_str = String::from("r");
 
             for _ in 0..16 {
-                if let Some(inx) = inxs.pick() {
-                    // Add to the source string of a bits instance.
-                    reg_from_str.push(chars.as_bytes()[inx] as char);
-                }
+                let inx = rand::thread_rng().gen_range(0..100);
+                // Add random character to string.
+                reg_from_str.push(chars[inx % 4]);
             }
 
             // Get new bits instance.
-            let _reg_instance = SomeRegion::new_from_string(2, &reg_from_str)?;
+            let reg_instance = SomeRegion::new_from_string(2, &reg_from_str)?;
+
+            // Check for the expected states forming the region.
+            let state1_str =
+                "s0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
+            let state1 = SomeState::new_from_string(2, &state1_str)?;
+            let state2 = reg_instance.far_state(&state1);
+            assert!(reg_instance.state1 == state1);
+            assert!(reg_instance.state2 == state2);
         }
         Ok(())
     }

@@ -4,7 +4,6 @@ use crate::state::SomeState;
 use crate::target::SomeTarget;
 
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::Iter;
 
@@ -20,7 +19,7 @@ impl fmt::Display for TargetStore {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
-            let _ = write!(rc_str, "{}", &targx);
+            rc_str.push_str(&format!("{}", &targx));
             flg = 1;
         }
         rc_str.push(']');

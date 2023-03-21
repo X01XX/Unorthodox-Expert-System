@@ -13,7 +13,6 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SomeGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -87,7 +86,7 @@ impl SomeGroup {
         let mut rc_str = String::from("G(");
         rc_str.push_str(&self.region.formatted_string());
 
-        let _ = write!(rc_str, ", pn: {}", self.pn);
+        rc_str.push_str(&format!(", pn: {}", self.pn));
 
         rc_str.push_str(if self.pnc { ", pnc: t, " } else { ", pnc: f, " });
 
@@ -106,9 +105,12 @@ impl SomeGroup {
         match &self.anchor {
             Some(sta1) => {
                 if self.limited {
-                    let _ = write!(rc_str, ", limited using {sta1} num adj {}", self.anchor_num);
+                    rc_str.push_str(&format!(
+                        ", limited using {sta1} num adj {}",
+                        self.anchor_num
+                    ));
                 } else {
-                    let _ = write!(rc_str, ", limiting using {sta1}");
+                    rc_str.push_str(&format!(", limiting using {sta1}"));
                 }
             }
             None => (),

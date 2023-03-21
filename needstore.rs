@@ -4,8 +4,8 @@ use crate::need::SomeNeed;
 use crate::region::SomeRegion;
 use crate::removeunordered;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::{Iter, IterMut};
 
@@ -21,7 +21,7 @@ impl fmt::Display for NeedStore {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
-            let _ = write!(rc_str, "{}", &needx);
+            rc_str.push_str(&format!("{}", &needx));
             flg = 1;
         }
         rc_str.push(']');
@@ -29,7 +29,7 @@ impl fmt::Display for NeedStore {
         write!(f, "{rc_str}")
     }
 }
-use serde::{Deserialize, Serialize};
+
 #[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NeedStore {

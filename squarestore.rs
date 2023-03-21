@@ -10,7 +10,6 @@ use crate::statestore::StateStore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for SquareStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -21,7 +20,7 @@ impl fmt::Display for SquareStore {
             if flg == 1 {
                 rc_str.push_str(",\n");
             }
-            let _ = write!(rc_str, "{sqrx}");
+            rc_str.push_str(&format!("{sqrx}"));
             flg = 1;
         }
 
@@ -37,10 +36,8 @@ pub struct SquareStore {
 
 impl SquareStore {
     /// Return a new, empty, SquareStore.
-    pub fn new() -> Self {
-        Self {
-            ahash: HashMap::new(),
-        }
+    pub fn new(ahash: HashMap<SomeState, SomeSquare>) -> Self {
+        Self { ahash }
     }
 
     /// Remove a square
@@ -113,9 +110,8 @@ impl SquareStore {
 
     /// Return a StateStore of square states not in a list of regions.
     pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
-        StateStore {
-            avec: self
-                .ahash
+        StateStore::new(
+            self.ahash
                 .keys()
                 .filter_map(|keyx| {
                     if !regs.any_superset_of_state(keyx) {
@@ -125,14 +121,13 @@ impl SquareStore {
                     }
                 })
                 .collect(),
-        }
+        )
     }
 
     /// Return a StateStore of squares with pn GT Pn:One, not yet pnc.
     pub fn pn_gt1_no_pnc(&self) -> StateStore {
-        StateStore {
-            avec: self
-                .ahash
+        StateStore::new(
+            self.ahash
                 .values()
                 .filter_map(|sqrx| {
                     if sqrx.pn != Pn::One && !sqrx.pnc {
@@ -142,14 +137,13 @@ impl SquareStore {
                     }
                 })
                 .collect(),
-        }
+        )
     }
 
     /// Return a StateStore of square states that are only in one region of a RegionStore.
     pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
-        StateStore {
-            avec: self
-                .ahash
+        StateStore::new(
+            self.ahash
                 .keys()
                 .filter_map(|keyx| {
                     if regs.state_in_1_region(keyx) {
@@ -159,14 +153,13 @@ impl SquareStore {
                     }
                 })
                 .collect(),
-        }
+        )
     }
 
     /// Return a StateStore of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
-        StateStore {
-            avec: self
-                .ahash
+        StateStore::new(
+            self.ahash
                 .keys()
                 .filter_map(|keyx| {
                     if regx.is_adjacent_state(keyx) {
@@ -176,6 +169,6 @@ impl SquareStore {
                     }
                 })
                 .collect(),
-        }
+        )
     }
 } // end impl SquareStore

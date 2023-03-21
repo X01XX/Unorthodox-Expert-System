@@ -87,7 +87,6 @@ const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twi
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for ResultStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -202,7 +201,7 @@ impl ResultStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &rsltx);
+            rc_str.push_str(&format!("{}", &rsltx));
             flg = 1;
         }
 

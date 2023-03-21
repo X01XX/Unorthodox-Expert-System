@@ -1,6 +1,6 @@
 [package]
 name = "ues"
-version = "2.4.2"
+version = "2.4.3"
 authors = ["Bitflogger<earl.dukerschein@wisc.edu>"]
 edition = "2021"
 
@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 rayon = "1.7.0"
-serde = { version = "1.0.156", features = ["derive"] }
+serde = { version = "1.0.158", features = ["derive"] }
 serde_yaml = "0.9.19"
-readonly = "0.2.5"
+readonly = "0.2.7"
 unicode-segmentation = "1.10.0"

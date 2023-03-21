@@ -13,11 +13,9 @@ use crate::rule::SomeRule;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index;
 use std::slice::Iter;
 
-#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
@@ -371,7 +369,7 @@ impl RuleStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &strx);
+            rc_str.push_str(&format!("{}", &strx));
             flg = 1;
         }
         rc_str.push(']');

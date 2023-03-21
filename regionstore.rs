@@ -9,8 +9,6 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
-
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -20,6 +18,7 @@ impl fmt::Display for RegionStore {
     }
 }
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RegionStore {
     /// A vector of regions.
@@ -290,7 +289,7 @@ impl RegionStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &regx);
+            rc_str.push_str(&format!("{}", &regx));
             flg = 1;
         }
 

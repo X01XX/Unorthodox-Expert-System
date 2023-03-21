@@ -4,7 +4,6 @@ use crate::plan::SomePlan;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index; // IndexMut
 use std::slice::Iter;
 
@@ -20,7 +19,7 @@ impl fmt::Display for PlanStore {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
-            let _ = write!(rc_str, "{}", &planx);
+            rc_str.push_str(&format!("{}", &planx));
             flg = 1;
         }
         rc_str.push(')');
@@ -29,8 +28,8 @@ impl fmt::Display for PlanStore {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[readonly::make]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct PlanStore {
     /// A vector of SomePlan instances.
     pub avec: Vec<SomePlan>,
@@ -73,7 +72,7 @@ impl PlanStore {
 
         for planx in &self.avec {
             if planx.is_not_empty() {
-                let _ = write!(rc_str, "\nPlan, Domain {}:\n", planx.dom_num);
+                rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
                 rc_str.push_str(&planx.str2());
                 rc_str.push('\n');
             }

@@ -31,9 +31,9 @@ use crate::stepstore::StepStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 /// Number of new squares added before a cleanup check is run.
 const CLEANUP: usize = 5;
@@ -48,11 +48,11 @@ impl fmt::Display for SomeAction {
         rc_str += &self.squares.len().to_string();
 
         if self.seek_edge.is_not_empty() {
-            let _ = write!(rc_str, ", seek_edge within: {}", self.seek_edge);
+            rc_str.push_str(&format!(", seek_edge within: {}", self.seek_edge));
         }
 
         if let Some(aregion) = &self.remainder_check_region {
-            let _ = write!(rc_str, ", remainder: {}", aregion);
+            rc_str.push_str(&format!(", remainder: {}", aregion));
         }
 
         let regs = self.groups.regions();
@@ -66,14 +66,13 @@ impl fmt::Display for SomeAction {
                 .map(|stax| usize::from(regs.state_in_1_region(stax)))
                 .sum();
 
-            let _ = write!(
-                rc_str,
+            rc_str.push_str(&format!(
                 "{}{} num Sqrs: {} in1: {})",
                 &fil,
                 &grpx.formatted_string(),
                 &stas_in.len(),
                 &cnt,
-            );
+            ));
 
             fil = ",\n             ";
         }
@@ -122,7 +121,7 @@ impl SomeAction {
             num: act_num,
             dom_num,
             groups: GroupStore::new(num_ints, vec![]),
-            squares: SquareStore::new(),
+            squares: SquareStore::new(HashMap::new()),
             seek_edge: RegionStore::new(vec![]),
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,

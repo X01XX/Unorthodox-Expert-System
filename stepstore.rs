@@ -7,7 +7,6 @@ use crate::step::SomeStep;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -97,7 +96,7 @@ impl StepStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &stpx);
+            rc_str.push_str(&format!("{}", &stpx));
             flg = 1;
         }
         rc_str.push(']');

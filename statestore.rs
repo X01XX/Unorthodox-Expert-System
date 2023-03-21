@@ -6,7 +6,6 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
-use std::fmt::Write as _; // import without risk of name clashing
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -17,7 +16,7 @@ impl fmt::Display for StateStore {
 #[derive(Debug, Clone, Default)]
 pub struct StateStore {
     /// A vector of states.
-    pub avec: Vec<SomeState>,
+    avec: Vec<SomeState>,
 }
 
 impl StateStore {
@@ -87,7 +86,7 @@ impl StateStore {
             if flg == 1 {
                 rc_str.push_str(", ");
             }
-            let _ = write!(rc_str, "{}", &stax);
+            rc_str.push_str(&format!("{}", &stax));
             flg = 1;
         }
 

@@ -13,6 +13,7 @@ use crate::state::SomeState;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl fmt::Display for SomeNeed {
@@ -143,7 +144,7 @@ impl fmt::Display for SomeNeed {
         write!(f, "{rc_str}")
     }
 }
-use serde::{Deserialize, Serialize};
+
 #[derive(Debug, Serialize, Deserialize)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
