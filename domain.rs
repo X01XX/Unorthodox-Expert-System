@@ -1017,9 +1017,11 @@ mod tests {
 
         let msk_f = dm0.mask_from_string("m0b1111")?;
 
-        let nds1 = dm0.actions[0].limit_groups_needs(&msk_f);
-        println!("needs1 are {}", nds1);
+        let Some(nds1) = dm0.actions[0].limit_groups_needs(&msk_f) else {
+            return Err("needs1 are None".to_string());
+        };
 
+        println!("needs1 are {}", nds1);
         let mut found = false;
         for needx in nds1.iter() {
             match needx {
@@ -1036,9 +1038,11 @@ mod tests {
         dm0.actions[0].set_group_anchor(&grp_reg, &s04);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let nds2 = dm0.actions[0].limit_groups_needs(&msk_f);
-        println!("needs2 are {}", nds2);
+        let Some(nds2) = dm0.actions[0].limit_groups_needs(&msk_f) else {
+            return Err("needs2 are None".to_string());
+        };
 
+        println!("needs2 are {}", nds2);
         let s06 = dm0.state_from_string("s0b00000110")?;
         assert!(
             nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
@@ -1049,7 +1053,9 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
 
         println!("dm0 {}", &dm0.actions[0]);
-        let nds3 = dm0.actions[0].limit_groups_needs(&msk_f);
+        let Some(nds3) = dm0.actions[0].limit_groups_needs(&msk_f) else {
+            return Err("needs3 are None".to_string());
+        };
         println!("needs3 are {}", nds3);
 
         let mut found = false;

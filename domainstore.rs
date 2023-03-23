@@ -239,10 +239,14 @@ impl DomainStore {
             .optimal
             .any_supersets_of_states(&self.all_current_states());
 
-        let optimal_priority = SomeNeed::ToOptimalRegion {
-            target_regions: RegionStore::new(vec![]),
-        }
-        .priority();
+        let optimal_priority = if in_optimal {
+            SomeNeed::ToOptimalRegion {
+                target_regions: RegionStore::new(vec![]),
+            }
+            .priority()
+        } else {
+            0
+        };
 
         //println!("evaluate_needs: in_optimal {in_optimal}, optimal_priority {optimal_priority}");
 

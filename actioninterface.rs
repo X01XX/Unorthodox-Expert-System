@@ -33,18 +33,18 @@ impl ActionInterface {
         dom_num: usize,
         act_num: usize,
     ) -> SomeState {
-        let mut anum = 0;
+        let mut sample_hint = 0;
 
         if dom_num == 0 && act_num == 0 {
             if let Some(val) = self.ahash.get_mut(cur_state) {
-                anum = *val;
-                *val = (anum + 1) % 4;
+                sample_hint = *val;
+                *val = (sample_hint + 1) % 4;
             } else {
                 // Start a new state counter at a random place in the cycle.
-                anum = rand::thread_rng().gen_range(0..4);
-                self.ahash.insert(cur_state.clone(), (anum + 1) % 4);
+                sample_hint = rand::thread_rng().gen_range(0..4);
+                self.ahash.insert(cur_state.clone(), (sample_hint + 1) % 4);
             };
         }
-        actions::take_action(dom_num, act_num, cur_state, anum)
+        actions::take_action(dom_num, act_num, cur_state, sample_hint)
     }
 }

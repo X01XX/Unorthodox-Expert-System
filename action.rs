@@ -709,7 +709,9 @@ impl SomeAction {
             nds.append(&mut self.group_pair_needs());
 
             // Check for squares in-one-group needs
-            nds.append(&mut self.limit_groups_needs(&agg_changes.bits_change_mask()));
+            if let Some(mut ndx) = self.limit_groups_needs(&agg_changes.bits_change_mask()) {
+                nds.append(&mut ndx);
+            }
 
             // Check for repeating housekeeping needs loop
             if cnt > 20 {
@@ -825,8 +827,8 @@ impl SomeAction {
                         self.seek_edge.remove_region(regx);
                     }
                     SomeNeed::AddSeekEdge { reg: regx } => {
-                        try_again = true;
                         if self.seek_edge.push_nosups(regx.clone()) {
+                            try_again = true;
                         } else {
                             println!(
                                 "Dom {} Act {} need {} failed to add to\n{}",
@@ -880,6 +882,7 @@ impl SomeAction {
                 nds.append(&mut self.state_not_in_group_needs(cur_state, memory));
 
                 if nds.is_empty() {
+                    // Do remainder check.
                     if self.remainder_checked {
                         if let Some(aregion) = &self.remainder_check_region {
                             //println!("dom {} act {} remainder need 2 added for {}", self.dom_num, self.num, astate);
@@ -909,8 +912,6 @@ impl SomeAction {
                                 act_num: self.num,
                                 target_region: aregion.clone(),
                             });
-                        } else {
-                            //println!("dom {} act {} remainder_check_state returns None", self.dom_num, self.num);
                         }
                     }
                 } else {
@@ -953,7 +954,7 @@ impl SomeAction {
         None
     }
 
-    /// Cleanup, that is delete unneeded squares
+    /// Cleanup unneeded squares.
     fn cleanup(&mut self, needs: &NeedStore) {
         let mut first_del = true;
 
@@ -1249,8 +1250,8 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn limit_groups_needs(&self, change_mask: &SomeMask) -> NeedStore {
-        //println!("limit_groups_needs chg {}", changes_mask);
+    pub fn limit_groups_needs(&self, change_mask: &SomeMask) -> Option<NeedStore> {
+        //println!("limit_groups_needs chg {}", change_mask);
 
         let mut ret_nds = NeedStore::new(vec![]);
 
@@ -1265,7 +1266,7 @@ impl SomeAction {
             }
         }
         if ret_nds.is_not_empty() {
-            return ret_nds;
+            return Some(ret_nds);
         }
 
         // Get anchor needs.
@@ -1274,18 +1275,32 @@ impl SomeAction {
                 continue;
             }
 
-            let mut ndx = self.limit_group_anchor_needs(grpx, group_num);
+            if let Some(mut ndx) = self.limit_group_anchor_needs(grpx, group_num) {
+                ret_nds.append(&mut ndx);
+            } else if let Some(anchor) = &grpx.anchor {
+                if !grpx.limited {
+                    // Get masks of edge bits to use to limit group.
+                    // Ignore bits that cannot be changed by any action.
+                    let change_bits = grpx.region.edge_mask().bitwise_and(change_mask);
+                    let edge_msks: Vec<SomeMask> = change_bits.split();
 
-            if ndx.is_empty() {
-                if let Some(anchor) = &grpx.anchor {
-                    if !grpx.limited {
-                        ndx = self.limit_group_adj_needs(grpx, anchor, change_mask, group_num);
+                    if let Some(mut ndx) =
+                        self.limit_group_adj_needs(grpx, anchor, &edge_msks, group_num)
+                    {
+                        ret_nds.append(&mut ndx);
+                    } else {
+                        ret_nds.push(SomeNeed::SetGroupLimited {
+                            group_region: grpx.region.clone(),
+                            num_adj: edge_msks.len(),
+                        });
                     }
                 }
             }
-            ret_nds.append(&mut ndx);
         }
-        ret_nds
+        if ret_nds.is_not_empty() {
+            return Some(ret_nds);
+        }
+        None
     } // end limit_groups_needs
 
     /// Return a rate for a possible anchor for a group.
@@ -1335,10 +1350,14 @@ impl SomeAction {
     }
 
     /// Return the limiting anchor needs for a group.
-    /// If no state in the group is in only one group, return an empty NeedStore.
+    /// If no state in the group is in only one group, return None.
     /// If an existing anchor has the same, or better, rating than other possible states,
-    /// return an empty NeedStore.
-    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, group_num: usize) -> NeedStore {
+    /// return None.
+    pub fn limit_group_anchor_needs(
+        &self,
+        grpx: &SomeGroup,
+        group_num: usize,
+    ) -> Option<NeedStore> {
         let mut ret_nds = NeedStore::new(vec![]);
 
         let adj_squares = self.squares.stas_adj_reg(&grpx.region);
@@ -1402,6 +1421,11 @@ impl SomeAction {
             }
         } // next stax
 
+        if cfmv_max.is_empty() {
+            //println!("group {} cfmv_max empty", grpx.region);
+            return None;
+        }
+
         // Check current anchor, if any
         if let Some(anchor) = &grpx.anchor {
             //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
@@ -1411,35 +1435,33 @@ impl SomeAction {
                     .squares
                     .find(anchor)
                     .expect("Group anchor state should refer to an existing square");
-                if anchor_sqr.pnc {
-                    // println!("group {} anchor {} pnc", &greg, &anchor_sta);
-                } else {
-                    // Get additional samples of the anchor
-                    ret_nds.push(SomeNeed::LimitGroup {
-                        dom_num: self.dom_num,
-                        act_num: self.num,
-                        anchor: anchor.clone(),
-                        target_state: anchor.clone(),
-                        for_group: grpx.region.clone(),
-                        group_num,
-                    });
-                }
-                return ret_nds;
-            } else {
-                //println!("anchor changing for group {} from {}", grpx.region, anchor);
-            }
-        }
 
-        if cfmv_max.is_empty() {
-            //println!("group {} cfmv_max empty", grpx.region);
-            return ret_nds;
+                if anchor_sqr.pnc {
+                    return None;
+                    // println!("group {} anchor {} pnc", &greg, &anchor_sta);
+                }
+
+                // Get additional samples of the anchor
+                ret_nds.push(SomeNeed::LimitGroup {
+                    dom_num: self.dom_num,
+                    act_num: self.num,
+                    anchor: anchor.clone(),
+                    target_state: anchor.clone(),
+                    for_group: grpx.region.clone(),
+                    group_num,
+                });
+
+                return Some(ret_nds);
+            }
         }
 
         // Select an anchor
         let mut cfm_max = cfmv_max[0];
+
         if cfmv_max.len() > 1 {
             cfm_max = cfmv_max[rand::thread_rng().gen_range(0..cfmv_max.len())];
         }
+
         if let Some(_sqrx) = self.squares.find(cfm_max) {
             ret_nds.push(SomeNeed::SetGroupAnchor {
                 group_region: grpx.region.clone(),
@@ -1456,17 +1478,17 @@ impl SomeAction {
                 group_num,
             });
         }
-        ret_nds
+        Some(ret_nds)
     } // end limit_group_anchor_needs
 
-    /// Return the limiting needs for a group with an anchor chosen.
+    /// Return the limiting needs for a group with an anchor chosen, but not yet set to limited.
     pub fn limit_group_adj_needs(
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
-        change_mask: &SomeMask,
+        edge_msks: &[SomeMask],
         group_num: usize,
-    ) -> NeedStore {
+    ) -> Option<NeedStore> {
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
@@ -1484,15 +1506,7 @@ impl SomeAction {
         let mut nds_grp = NeedStore::new(vec![]); // needs for more samples
         let mut nds_grp_add = NeedStore::new(vec![]); // needs for added group
 
-        // Get masks of edge bits to use to limit group.
-        // Ignore bits that cannot be changed by any action.
-        let edge_mask = grpx.region.edge_mask();
-
-        let change_bits = edge_mask.bitwise_and(change_mask);
-
-        let edge_msks: Vec<SomeMask> = change_bits.split();
-
-        for mskx in &edge_msks {
+        for mskx in edge_msks {
             let adj_sta = anchor_sta.bitwise_xor(mskx);
 
             //println!("*** for group {} checking adj sqr {}", &greg, &adj_sta);
@@ -1530,6 +1544,7 @@ impl SomeAction {
                     });
                 }
             } else {
+                // Get first sample of adjacent square.
                 nds_grp.push(SomeNeed::LimitGroupAdj {
                     dom_num: self.dom_num,
                     act_num: self.num,
@@ -1543,12 +1558,12 @@ impl SomeAction {
 
         if nds_grp_add.is_not_empty() {
             //println!("*** nds_grp_add {}", &nds_grp_add);
-            return nds_grp_add;
+            return Some(nds_grp_add);
         }
 
         if nds_grp.is_not_empty() {
             //println!("*** nds_grp {}", &nds_grp);
-            return nds_grp;
+            return Some(nds_grp);
         }
 
         // Process far state, after the anchor and adjacent, external, checks have been made.
@@ -1556,22 +1571,14 @@ impl SomeAction {
 
         // Group is non-X, so no far state
         if grpx.region.state1 == grpx.region.state2 {
-            ret_nds.push(SomeNeed::SetGroupLimited {
-                group_region: grpx.region.clone(),
-                num_adj: edge_msks.len(),
-            });
-            return ret_nds;
+            return None;
         }
 
         let sta_far = grpx.region.far_state(anchor_sta);
 
         if let Some(sqrf) = self.squares.find(&sta_far) {
             if sqrf.pnc {
-                // Set the group limited
-                ret_nds.push(SomeNeed::SetGroupLimited {
-                    group_region: grpx.region.clone(),
-                    num_adj: edge_msks.len(),
-                });
+                return None;
             } else {
                 // Get additional samples of the far state.
                 ret_nds.push(SomeNeed::LimitGroup {
@@ -1596,7 +1603,11 @@ impl SomeAction {
         }
 
         //println!("limit_group_needs: returning {}", &ret_nds);
-        ret_nds
+        if ret_nds.is_empty() {
+            None
+        } else {
+            Some(ret_nds)
+        }
     } // end limit_group_adj_needs
 
     /// Check group pairs for an intersection.
