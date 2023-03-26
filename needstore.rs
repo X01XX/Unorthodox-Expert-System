@@ -65,11 +65,6 @@ impl NeedStore {
         !self.avec.is_empty()
     }
 
-    /// Return true if a need is already in a NeedStore.
-    pub fn contains(&self, aneed: &SomeNeed) -> bool {
-        self.avec.contains(aneed)
-    }
-
     /// Return true if a need with a given type and target is in a NeedStore.
     /// Used in tests.rs, so far.
     pub fn contains_similar_need(&self, name: &str, target: &SomeRegion) -> bool {
@@ -88,9 +83,7 @@ impl NeedStore {
 
     /// Add a need to the vector.
     pub fn push(&mut self, val: SomeNeed) {
-        if !self.contains(&val) {
-            self.avec.push(val);
-        }
+        self.avec.push(val);
     }
 
     /// Append a Needstore.

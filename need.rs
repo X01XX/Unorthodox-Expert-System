@@ -145,7 +145,7 @@ impl fmt::Display for SomeNeed {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Housekeeping, add a group.
