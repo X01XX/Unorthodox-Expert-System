@@ -228,9 +228,10 @@ impl SomeBits {
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
-        for (inx, intx) in self.ints.iter().enumerate() {
-            ary2.push(intx & other.ints[inx]);
+        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
+            ary2.push(x & y);
         }
+
         Self { ints: ary2 }
     }
 
@@ -240,9 +241,10 @@ impl SomeBits {
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
-        for (inx, intx) in self.ints.iter().enumerate() {
-            ary2.push(intx | other.ints[inx]);
+        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
+            ary2.push(x | y);
         }
+
         Self { ints: ary2 }
     }
 
@@ -252,9 +254,10 @@ impl SomeBits {
 
         let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
 
-        for (inx, intx) in self.ints.iter().enumerate() {
-            ary2.push(intx ^ other.ints[inx]);
+        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
+            ary2.push(x ^ y);
         }
+
         Self { ints: ary2 }
     }
 
@@ -388,7 +391,7 @@ impl SomeBits {
 
     /// Return true if two bits instances are adjacent.
     pub fn is_adjacent(&self, other: &SomeBits) -> bool {
-        self.distance(other) == 1
+        self.b_xor(other).just_one_bit()
     }
 
     /// Return true if only one bit is set to one.
@@ -396,8 +399,10 @@ impl SomeBits {
         let mut cnt = 0;
 
         for intx in &self.ints {
+            if *intx == 0 {
+                continue;
+            }
             cnt += intx.count_ones();
-
             if cnt > 1 {
                 return false;
             }
@@ -430,16 +435,11 @@ impl SomeBits {
             carry = next_carry;
         }
 
-        // Overflow check
-        if carry > 0 {
-            panic!("Bits shift_left overflow, carry {carry}");
-        }
-
         Self { ints: ints2 }
     }
 
-    /// Return a copy, shifted left by 1 bit
-    /// The Most Significant 4 bit values are lost.
+    /// Return a copy, shifted left by 4 bits.
+    /// The Most Significant 4 bit value is lost.
     pub fn shift_left4(&self) -> Self {
         let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
@@ -450,11 +450,6 @@ impl SomeBits {
 
             ints2[int_inx] = (self.ints[int_inx] << 4) + carry;
             carry = next_carry;
-        }
-
-        // Overflow check
-        if carry > 0 {
-            panic!("Bits shift_left4 overflow");
         }
 
         Self { ints: ints2 }
@@ -540,8 +535,8 @@ impl SomeBits {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
 
-    /// Given a mask of more than one bit, return a SomeBits that is a random selection of
-    /// roughly half the bits.
+    /// Given a mask of more than one bit set to one, return a SomeBits instance
+    /// that is a random selection of roughly half the bits.
     pub fn half_bits(&self) -> Self {
         let one_bits: Vec<SomeBits> = self.split();
 
@@ -1140,7 +1135,7 @@ mod tests {
     // Test SomeBits::shift_left
     #[test]
     fn shift_left() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555")?.shift_left()
+        if SomeBits::new_from_string(2, "0xd555")?.shift_left()
             != SomeBits::new_from_string(2, "0xaaaa")?
         {
             return Err(String::from("Test 1 failed?"));
@@ -1151,7 +1146,7 @@ mod tests {
     // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x505")?.shift_left4()
+        if SomeBits::new_from_string(2, "0xf505")?.shift_left4()
             != SomeBits::new_from_string(2, "0x5050")?
         {
             return Err(String::from("Test 1 failed?"));
