@@ -149,19 +149,14 @@ impl DomainStore {
         self.step_num += 1;
 
         // Get all needs.
-        let mut vecx: Vec<NeedStore> = self
+        let vecx: Vec<SomeNeed> = self
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|domx| domx.get_needs())
-            .filter(|ndsx| ndsx.is_not_empty())
-            .collect::<Vec<NeedStore>>();
+            .map(|domx| domx.get_needs().avec)
+            .flatten()
+            .collect::<Vec<SomeNeed>>();
 
-        // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
-
-        for nst in vecx.iter_mut() {
-            nds_agg.append(nst);
-        }
+        let mut nds_agg = NeedStore::new(vecx);
 
         // Get optimal region needs.
         if let Some(needx) = self.check_optimal() {

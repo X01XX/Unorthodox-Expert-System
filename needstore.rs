@@ -30,11 +30,11 @@ impl fmt::Display for NeedStore {
     }
 }
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NeedStore {
     /// A vector of SomeNeed instances.
-    avec: Vec<SomeNeed>,
+    pub avec: Vec<SomeNeed>,
 }
 
 impl NeedStore {

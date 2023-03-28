@@ -5,9 +5,11 @@
 use crate::action::SomeAction;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
+use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
+use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 
 use std::collections::VecDeque;
@@ -86,42 +88,30 @@ impl ActionStore {
 
         self.calc_aggregate_changes();
 
-        let mut vecx: Vec<NeedStore> = self
+        let vecx: Vec<SomeNeed> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, memory, &self.aggregate_changes))
-            .filter(|ndstrx| ndstrx.is_not_empty())
-            .collect::<Vec<NeedStore>>();
+            .map(|actx| {
+                actx.get_needs(cur, dom, memory, &self.aggregate_changes)
+                    .avec
+            })
+            .flatten()
+            .collect::<Vec<SomeNeed>>();
 
-        // Aggregate the results into one NeedStore
-        let mut nds_agg = NeedStore::with_capacity(vecx.iter().map(|ndsx| ndsx.len()).sum());
-
-        for nst in vecx.iter_mut() {
-            nds_agg.append(nst);
-        }
-
-        nds_agg
+        NeedStore::new(vecx)
     }
 
     /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         // Run a thread for each action
-        let mut stps: Vec<StepStore> = self
+        let stps: Vec<SomeStep> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_steps(achange))
-            .filter(|strx| strx.is_not_empty())
-            .collect::<Vec<StepStore>>();
+            .map(|actx| actx.get_steps(achange).avec)
+            .flatten()
+            .collect::<Vec<SomeStep>>();
 
-        // Aggregate the results into one StepStore
-        let mut stps_agg = StepStore::with_capacity(stps.iter().map(|stpsx| stpsx.len()).sum());
-
-        for stp in stps.iter_mut() {
-            stps_agg.append(stp);
-        }
-
-        //println!("actionstore:get_steps possible steps: {}", stps.str());
-        stps_agg
+        StepStore::new(stps)
     }
 
     /// Return an iterator

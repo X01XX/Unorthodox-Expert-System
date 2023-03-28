@@ -719,7 +719,7 @@ impl SomeAction {
                 panic!("Dom {} Act {} loop count GT 20!", dom, self.num);
             }
 
-            // Edit out subset group adds, dups may still exist.
+            // Edit out subset/eq group adds.
             let mut new_grp_regs = RegionStore::new(vec![]);
             for ndx in nds.iter_mut() {
                 match ndx {
@@ -1700,8 +1700,8 @@ impl SomeAction {
         false
     }
 
-    /// Return needs to define a region, from the combination of two smaller regions.
-    /// This assumes there are no incompatible squares in the region.
+    /// Return needs to define a group region, from the combination of two smaller group regions.
+    /// This assumes there are no incompatible squares in the combined region.
     fn region_defining_needs(
         &self,
         regx: &SomeRegion,
@@ -1713,34 +1713,38 @@ impl SomeAction {
         let mut nds = NeedStore::new(vec![]);
 
         // Gather the states from the regions, they may share one defining state.
-        let mut anchor_stas = StateStore::new(vec![reg1.state1.clone(), reg1.state2.clone()]);
+        let mut defining_stas = StateStore::new(vec![reg1.state1.clone(), reg1.state2.clone()]);
 
-        if anchor_stas.contains(&reg2.state1) {
+        if defining_stas.contains(&reg2.state1) {
         } else {
-            anchor_stas.push(reg2.state1.clone());
+            defining_stas.push(reg2.state1.clone());
         }
-        if anchor_stas.contains(&reg2.state2) {
+        if defining_stas.contains(&reg2.state2) {
         } else {
-            anchor_stas.push(reg2.state2.clone());
+            defining_stas.push(reg2.state2.clone());
         }
 
-        // Gather anchor squares
-        let mut anchor_sqrs = Vec::<&SomeSquare>::with_capacity(anchor_stas.len());
-        for stax in anchor_stas.iter() {
-            anchor_sqrs.push(
+        // Gather defining squares
+        let mut defining_sqrs = Vec::<&SomeSquare>::with_capacity(defining_stas.len());
+        for stax in defining_stas.iter() {
+            defining_sqrs.push(
                 self.squares
                     .find(stax)
                     .expect("Group region states should refer to existing squares"),
             );
         }
 
-        // Check the far states from the anchors, form pairs.
+        // Check the far states from possible defining squares, form pairs.
+        // Return a need to form a group, if possible.
+        // Otherwise choose a pairs that minimizes the additional samples needed to form the region,
+        // return needs for more samples of the pairs.
         let mut num_samples = 0;
         let mut pairs = Vec::<(SomeState, &SomeSquare)>::new();
-        for sqrx in &anchor_sqrs {
+        for sqrx in &defining_sqrs {
             let sta2 = regx.far_state(&sqrx.state);
 
-            if let Some(sqr2) = self.squares.find(&sta2) {
+            let rate = if let Some(sqr2) = self.squares.find(&sta2) {
+                // Check if a group can be formed.
                 if sqr2.pnc && sqrx.pnc || sqrx.pn == Pn::One && sqr2.pn == Pn::One {
                     let rules = if sqrx.pn == Pn::Unpredictable {
                         RuleStore::new(vec![])
@@ -1755,17 +1759,22 @@ impl SomeAction {
                     });
                     return nds;
                 }
-                if sqr2.len_results() > num_samples {
-                    pairs = Vec::<(SomeState, &SomeSquare)>::new();
-                    num_samples = sqr2.len_results();
-                }
-                if sqr2.len_results() == num_samples {
-                    pairs.push((sta2, sqrx));
-                }
-            } else if num_samples == 0 {
+
+                // Return pair rate
+                sqr2.rate() + sqrx.rate()
+            } else {
+                // Return sqrx rate.
+                sqrx.rate()
+            };
+
+            if rate > num_samples {
+                pairs = Vec::<(SomeState, &SomeSquare)>::new();
+                num_samples = rate;
+            }
+            if rate == num_samples {
                 pairs.push((sta2, sqrx));
             }
-        }
+        } // next sqrx
 
         // Get more samples
         for pairx in &pairs {

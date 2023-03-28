@@ -16,7 +16,7 @@ impl fmt::Display for StepStore {
     }
 }
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct StepStore {
     /// A vector for steps.

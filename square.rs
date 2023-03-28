@@ -59,16 +59,19 @@ impl SomeSquare {
         }
     }
 
-    /// Return a rate for a square, to determine an anchor weight.
-    /// Squares that are pnc are equal weight.
-    /// Other squares are the weight of their number of results stored,
-    /// presumably LT 4.
+    /// Return a rate for a square.
+    /// Squares that are pnc are equal to the minimum number of samples needed to reach pnc.
+    /// Otherwise, the rate is the number of results stored.
     pub fn rate(&self) -> usize {
         if self.pnc {
-            return 4;
+            match self.pn {
+                Pn::One => 2,
+                Pn::Two => 4,
+                Pn::Unpredictable => 3,
+            }
+        } else {
+            self.len_results()
         }
-
-        self.len_results()
     }
 
     /// Return a string representing a square.
