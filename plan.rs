@@ -1,6 +1,6 @@
-//! The Plan struct.  A StepStore struct where each step leads to the next.
+//! The Plan struct.
 //!
-//! A StepStore is zero or more steps that may not be related.
+//! A StepStore is zero, or more, steps that may not be related.
 //!
 //! A Plan uses a StepStore but enforces relatedness,
 //! where the result of one step is equal to the initial region

@@ -315,24 +315,6 @@ impl RegionStore {
     //        ret_store
     //    }
 
-    /// Return the union of regions in the store
-    pub fn union(&self) -> Option<SomeRegion> {
-        if self.is_empty() {
-            return None;
-        }
-
-        if self.len() == 1 {
-            return Some(self[0].clone());
-        }
-
-        let mut ret_reg = self[0].clone();
-        for regx in &self.avec {
-            ret_reg = ret_reg.union(regx);
-        }
-
-        Some(ret_reg)
-    }
-
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
         let mut ret_str = RegionStore::new(vec![]);
@@ -364,7 +346,8 @@ impl RegionStore {
     }
 
     /// Return True if a RegionStore is a superset of all corresponding states in a StateStore.
-    pub fn is_superset_of_states(&self, stas: &[&SomeState]) -> bool {
+    /// Used in optimal regionstore calculations.
+    pub fn is_superset_corr_states(&self, stas: &[&SomeState]) -> bool {
         assert!(self.len() == stas.len());
 
         for (inx, stasx) in self.avec.iter().enumerate() {
@@ -377,8 +360,9 @@ impl RegionStore {
         true
     }
 
-    /// Return True if a RegionStore is a superset of a given RegionStore.
-    pub fn is_superset_of(&self, regs: &RegionStore) -> bool {
+    /// Return True if a RegionStore is a superset of corresponding regions in a given RegionStore.
+    /// Used in optimal regionstore calculations.
+    pub fn is_superset_corr(&self, regs: &RegionStore) -> bool {
         assert!(self.len() == regs.len());
 
         for inx in 0..self.len() {
@@ -392,7 +376,8 @@ impl RegionStore {
     }
 
     /// Return true if corresponding regions in two RegionStores are equal.
-    pub fn equal_each(&self, other: &RegionStore) -> bool {
+    /// Used in optimal regionstore calculations.
+    pub fn equal_corr(&self, other: &RegionStore) -> bool {
         for inx in 0..self.len() {
             if self[inx] == other[inx] {
             } else {
@@ -403,7 +388,8 @@ impl RegionStore {
     }
 
     /// Return an intersection of corresponding regions, of two RegionStores.
-    pub fn intersect_each(&self, other: &RegionStore) -> Option<RegionStore> {
+    /// Used in optimal regionstore calculations.
+    pub fn intersect_corr(&self, other: &RegionStore) -> Option<RegionStore> {
         assert!(self.len() == other.len());
 
         let mut ret = RegionStore::with_capacity(self.len());
@@ -422,7 +408,8 @@ impl RegionStore {
     }
 
     /// Return true if each region in a RegionStore is a subset, in order, of two RegionStores.
-    pub fn subset_each(&self, other: &RegionStore) -> bool {
+    /// Used in optimal regionstore calculations.
+    pub fn subset_corr(&self, other: &RegionStore) -> bool {
         for inx in 0..self.len() {
             if self[inx].is_subset_of(&other[inx]) {
             } else {
@@ -430,11 +417,6 @@ impl RegionStore {
             }
         }
         true
-    }
-
-    /// Make the get function for RegionStore.
-    pub fn get(&self, index: usize) -> Option<&SomeRegion> {
-        self.avec.get(index)
     }
 }
 
@@ -513,23 +495,6 @@ mod tests {
         assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r11x1")?));
         assert!(regstr3.contains(&SomeRegion::new_from_string(1, "rx110")?));
         assert!(regstr3.contains(&SomeRegion::new_from_string(1, "r111x")?));
-        Ok(())
-    }
-
-    #[test]
-    fn union() -> Result<(), String> {
-        let mut regstr = RegionStore::with_capacity(2);
-        assert!(regstr.union() == None);
-
-        regstr.push(SomeRegion::new_from_string(2, "r000111xxx")?);
-        regstr.push(SomeRegion::new_from_string(2, "r01x01x01x")?);
-
-        if let Some(regx) = regstr.union() {
-            println!("regx {}", &regx);
-            assert!(regx == SomeRegion::new_from_string(2, "rxxx1xxxx")?);
-        } else {
-            return Err(String::from("Union returns None?"));
-        }
         Ok(())
     }
 

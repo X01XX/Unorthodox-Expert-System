@@ -47,9 +47,7 @@ impl Eq for SomeRegion {}
 impl SomeRegion {
     /// Create new region from two states.
     ///
-    /// Keep the order of the states given. This is used in
-    /// SomeAction::create_groups_from_square for prosessing the regions
-    /// returned from SomeAction::possible_group_regions.
+    /// For a region used to define a group, the states have corresponding squares that have been sampled.
     pub fn new(sta1: SomeState, sta2: SomeState) -> Self {
         Self {
             state1: sta1,
@@ -389,7 +387,7 @@ impl SomeRegion {
     //        )
     //    }
 
-    /// Return a mask of different bit with a given state.
+    /// Return a mask of different bits with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         self.state1
             .bitwise_xor(sta1)

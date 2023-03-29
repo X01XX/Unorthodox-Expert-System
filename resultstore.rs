@@ -139,12 +139,12 @@ impl ResultStore {
 
     /// Return the first result.
     pub fn first(&self) -> &SomeState {
-        self.astore.get(0).unwrap()
+        &self.astore[0]
     }
 
     /// Return the second result.
     pub fn second(&self) -> &SomeState {
-        self.astore.get(1).unwrap()
+        &self.astore[1]
     }
 
     /// Return the most recent result.

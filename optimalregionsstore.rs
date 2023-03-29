@@ -59,7 +59,7 @@ impl OptimalRegionsStore {
     pub fn number_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
         self.optimal
             .iter()
-            .map(|regsx| usize::from(regsx.is_superset_of_states(stas)))
+            .map(|regsx| usize::from(regsx.is_superset_corr_states(stas)))
             .sum()
     }
 
@@ -70,7 +70,7 @@ impl OptimalRegionsStore {
                 .optimal
                 .iter()
                 .filter_map(|regsx| {
-                    if regsx.is_superset_of_states(stas) {
+                    if regsx.is_superset_corr_states(stas) {
                         None
                     } else {
                         Some(regsx.clone())
@@ -83,7 +83,7 @@ impl OptimalRegionsStore {
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
         for regsx in &self.optimal {
-            if regsx.is_superset_of_states(stas) {
+            if regsx.is_superset_corr_states(stas) {
                 return true;
             }
         }
@@ -93,7 +93,7 @@ impl OptimalRegionsStore {
     /// Return true if any RegionStore is a superset of a given RegionStore.
     pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
         for regsx in &self.optimal {
-            if regsx.is_superset_of(regs) {
+            if regsx.is_superset_corr(regs) {
                 return true;
             }
         }
@@ -107,7 +107,7 @@ impl OptimalRegionsStore {
                 .optimal
                 .iter()
                 .filter_map(|regsx| {
-                    if regsx.is_superset_of_states(stas) {
+                    if regsx.is_superset_corr_states(stas) {
                         Some(regsx.clone())
                     } else {
                         None
@@ -149,7 +149,7 @@ impl OptimalRegionsStore {
             for inx in 0..(lenx - 1) {
                 for iny in (inx + 1)..lenx {
                     if let Some(an_int) =
-                        optimal_and_ints[inx].intersect_each(&optimal_and_ints[iny])
+                        optimal_and_ints[inx].intersect_corr(&optimal_and_ints[iny])
                     {
                         if !optimal_and_ints.contains(&an_int) {
                             optimal_and_ints.push(an_int);
@@ -166,7 +166,7 @@ impl OptimalRegionsStore {
     /// Return true if an equal RegionStore is already in the OptimalRegionsStore.
     fn contains(&self, regstr: &RegionStore) -> bool {
         for regstrx in &self.optimal {
-            if regstrx.equal_each(regstr) {
+            if regstrx.equal_corr(regstr) {
                 return true;
             }
         }

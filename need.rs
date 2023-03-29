@@ -234,7 +234,7 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
     },
-    /// Move current state to given regions.
+    /// Move all current domain states to the corresponding regions.
     ToOptimalRegion { target_regions: RegionStore },
 }
 
