@@ -1,8 +1,6 @@
 //! The DomainStore struct, a vector of SomeDomain structs.
 
 /// The highest number of needs to seek a plan for, in parallel.
-const SPAN: usize = 6;
-
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -18,8 +16,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::mem;
 use std::ops::{Index, IndexMut};
-
-use crate::randompick;
 
 use rayon::prelude::*;
 
@@ -220,14 +216,12 @@ impl DomainStore {
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         self.avec[dmxi].get_current_state()
     }
-
     /// Set needs, can_do and cant_do for the DomainStore.
     /// Select up to a given number (SPAN) of the lowest value priority needs,
     /// return a span of needs when one, or more, needs can be planned.
     /// Each InxPlan will contain an index to the NeedStore, and a PlanStore.
     pub fn evaluate_needs(&mut self) {
         //println!("evaluate_needs: {} needs", self.needs.len());
-        let mut last_priority = 0;
 
         // Get optimal region info.
         let in_optimal = self
@@ -240,104 +234,93 @@ impl DomainStore {
             }
             .priority()
         } else {
-            0
+            usize::MAX
         };
+
+        // Sort needs by ascending priority.
+        self.needs.avec.sort_by_key(|ndx| ndx.priority());
+        if self.needs.is_not_empty() {
+            println!(
+                "\nNumber needs: {}, first need priority {}, last need priority {}",
+                self.needs.len(),
+                self.needs[0].priority(),
+                self.needs[self.needs.len() - 1].priority()
+            );
+        } else {
+            println!("\nNumber needs: 0");
+            self.can_do = Vec::<InxPlan>::new();
+            self.cant_do = Vec::<InxPlan>::new();
+            return;
+        }
 
         //println!("evaluate_needs: in_optimal {in_optimal}, optimal_priority {optimal_priority}");
 
-        loop {
-            // find next lowest priority number (highest priority)needs
-            let mut avec = Vec::<usize>::new();
-            let mut least_priority = usize::MAX;
+        // Init curent priority value and start index.
+        let mut cur_pri = self.needs[0].priority();
+        if cur_pri > optimal_priority {
+            return;
+        }
+        let mut cur_pri_start = 0;
 
-            for ndsx in self.needs.iter() {
-                let pri = ndsx.priority();
-                if pri > last_priority && pri < least_priority {
-                    least_priority = pri;
-                }
-            }
+        // Find current priority end index.
+        let mut cur_pri_end = cur_pri_start;
+        let needs_len = self.needs.len();
+        while cur_pri_end < needs_len {
+            // Scan next items of the same priority.
+            loop {
+                cur_pri_end += 1;
+                if cur_pri_end == needs_len || self.needs[cur_pri_end].priority() > cur_pri {
+                    // process priority slice.
 
-            //println!("least priority = {}", least_priority);
+                    println!(
+                        "Priority {}, slice: {}..{}, span {}",
+                        cur_pri,
+                        cur_pri_start,
+                        cur_pri_end,
+                        cur_pri_end - cur_pri_start
+                    );
 
-            // If in optimal region, and priority not LE optimal priority, stop evaluating needs.
-            if in_optimal && least_priority > optimal_priority {
-                self.can_do = Vec::<InxPlan>::new();
-                self.cant_do = Vec::<InxPlan>::new();
-                return;
-            }
+                    // Test all needs of this priority for plans.
+                    let mut ndsinx_plan = (cur_pri_start..cur_pri_end)
+                        .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+                        .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[nd_inx].target())))
+                        .map(|plnstr| InxPlan {
+                            inx: plnstr.0,
+                            plans: plnstr.1,
+                        })
+                        .collect::<Vec<InxPlan>>();
 
-            // No plans found for any need, or no needs.
-            if least_priority == usize::MAX {
-                self.can_do = Vec::<InxPlan>::new();
-                self.cant_do = Vec::<InxPlan>::new();
-                return;
-            }
+                    let mut can_do = Vec::<InxPlan>::new();
+                    let mut cant_do = Vec::<InxPlan>::new();
 
-            // Load avec with indices to needs of the current priority.
-            for (inx, ndsx) in self.needs.iter().enumerate() {
-                if ndsx.priority() == least_priority {
-                    avec.push(inx);
-                }
-            }
-            //println!("evaluate_needs: number {least_priority} found is {}", avec.len());
-
-            // Scan needs to see what can be achieved with a plan.
-            // Run make_plans in parallel for selected needs.
-            //
-            // To avoid the cycles required to make plans for many needs,
-            //   Process needs by groups of the same, decreasing priority (increasing priority number),
-            //   until len() == 0at least one has a plan.
-            //
-
-            // Randomly pick up to SPAN needs at a time, from the current priority.
-            // The length of rp1 goes down as numbers are chosen.
-            let mut rp1 = randompick::RandomPick::new(avec.len()); // put numbers 0..avec.len() into a vector.
-
-            while !rp1.is_empty() {
-                let mut end = SPAN;
-
-                if end > rp1.len() {
-                    end = rp1.len();
-                }
-
-                let mut avec2 = Vec::<usize>::with_capacity(end);
-                for _inx in 0..end {
-                    avec2.push(avec[rp1.pick().unwrap()]);
-                }
-
-                let mut ndsinx_plan = avec2
-                    .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-                    .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[*nd_inx].target())))
-                    .map(|plnstr| InxPlan {
-                        inx: *plnstr.0,
-                        plans: plnstr.1,
-                    })
-                    .collect::<Vec<InxPlan>>();
-
-                let mut can_do = Vec::<InxPlan>::new();
-                let mut cant_do = Vec::<InxPlan>::new();
-
-                // If at least one plan found, return vector of InxPlan structs.
-                for ndsinx in ndsinx_plan.iter_mut() {
-                    if ndsinx.plans.is_some() {
-                        can_do.push(mem::take(ndsinx));
-                    } else {
-                        cant_do.push(mem::take(ndsinx));
+                    // If at least one plan found, return vector of InxPlan structs.
+                    for ndsinx in ndsinx_plan.iter_mut() {
+                        if ndsinx.plans.is_some() {
+                            can_do.push(mem::take(ndsinx));
+                        } else {
+                            cant_do.push(mem::take(ndsinx));
+                        }
                     }
-                }
 
-                //println!("evaluate_needs: can_do {} cant_do {}", can_do.len(), cant_do.len());
-                if !can_do.is_empty() {
-                    //println!("evaluate_needs: RETURNING can_do {} cant_do {}", can_do.len(), cant_do.len());
-                    self.can_do = can_do;
-                    self.cant_do = cant_do;
-                    return;
-                }
-            } // end while
+                    if !can_do.is_empty() {
+                        self.can_do = can_do;
+                        self.cant_do = cant_do;
+                        return;
+                    }
 
-            // Increase the lower bound of the next, least, priority number.
-            last_priority = least_priority;
-        } // end loop
+                    if cur_pri_end == needs_len {
+                        break;
+                    }
+                    cur_pri_start = cur_pri_end;
+                    cur_pri = self.needs[cur_pri_start].priority();
+                    if cur_pri > optimal_priority {
+                        return;
+                    }
+                    cur_pri_end = cur_pri_start;
+                    break;
+                }
+            } // End loop
+        } // End while
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 

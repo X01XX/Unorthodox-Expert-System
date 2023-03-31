@@ -24,15 +24,15 @@ impl RandomPick {
         }
     }
 
-    /// Return the current length of the vector.
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
+    //    /// Return the current length of the vector.
+    //    pub fn len(&self) -> usize {
+    //        self.items.len()
+    //    }
 
-    /// Return true if the store is empty.
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
+    //    /// Return true if the store is empty.
+    //    pub fn is_empty(&self) -> bool {
+    //        self.items.is_empty()
+    //    }
 
     /// Pick a random item from a RandomPick vector.
     /// If the item chosen is not at the end, the values will be swapped.

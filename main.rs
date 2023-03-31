@@ -25,7 +25,7 @@
  * For use outside of the license, contact the Wisconsin Alumni Research Foundation (WARF).
  */
 
-//#![allow(
+//#[allow(
 //dead_code,
 //unused_variables,
 //  unused_macros,
