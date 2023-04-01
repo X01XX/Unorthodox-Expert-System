@@ -645,22 +645,11 @@ impl SomeAction {
             return nds;
         }
 
-        // Check memory
-        for stax in memory.iter() {
-            if &stax.initial == cur_state {
-                continue;
-            }
-            if !self.groups.any_superset_of_state(&stax.initial) {
-                nds.push(SomeNeed::StateNotInGroup {
-                    dom_num: self.dom_num,
-                    act_num: self.num,
-                    target_state: stax.initial.clone(),
-                });
-            }
-        } // next stax
-
         // Look for a pn > 1, pnc == false, not in group squares
         // Extra samples are needed to gain pnc, then the first group.
+        let mut target: Option<&SomeState> = None;
+        let mut dist = usize::MAX;
+
         let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
 
         for stax in sqrs_pngt1.iter() {
@@ -668,10 +657,39 @@ impl SomeAction {
                 continue;
             }
 
+            if cur_state.distance(stax) < dist {
+                target = Some(stax);
+                dist = cur_state.distance(stax);
+            }
+        }
+        if let Some(stax) = target {
             nds.push(SomeNeed::StateNotInGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: stax.clone(),
+            });
+            return nds;
+        }
+
+        // Check memory
+        let mut target: Option<&SomeSample> = None;
+        let mut dist = usize::MAX;
+
+        for smpx in memory.iter() {
+            if &smpx.initial == cur_state || self.groups.any_superset_of_state(&smpx.initial) {
+                continue;
+            }
+            if cur_state.distance(&smpx.initial) < dist {
+                target = Some(smpx);
+                dist = cur_state.distance(&smpx.initial);
+            }
+        } // next stax
+
+        if let Some(smpx) = target {
+            nds.push(SomeNeed::StateNotInGroup {
+                dom_num: self.dom_num,
+                act_num: self.num,
+                target_state: smpx.initial.clone(),
             });
         }
 

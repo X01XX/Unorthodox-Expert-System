@@ -228,7 +228,7 @@ impl DomainStore {
             .optimal
             .any_supersets_of_states(&self.all_current_states());
 
-        let optimal_priority = if in_optimal {
+        let optimal_priority = if in_optimal && self.boredom < self.boredom_limit {
             SomeNeed::ToOptimalRegion {
                 target_regions: RegionStore::new(vec![]),
             }
@@ -272,7 +272,7 @@ impl DomainStore {
                 if cur_pri_end == needs_len || self.needs[cur_pri_end].priority() > cur_pri {
                     // process priority slice.
 
-                    println!(
+                    print!(
                         "Priority {}, slice: {}..{}, span {}",
                         cur_pri,
                         cur_pri_start,
@@ -303,10 +303,16 @@ impl DomainStore {
                     }
 
                     if !can_do.is_empty() {
+                        if can_do.len() == 1 {
+                            println!(", found 1 need that can be done.");
+                        } else {
+                            println!(", found {} needs that can be done.", can_do.len());
+                        }
                         self.can_do = can_do;
                         self.cant_do = cant_do;
                         return;
                     }
+                    println!(" ");
 
                     if cur_pri_end == needs_len {
                         break;

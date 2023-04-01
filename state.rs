@@ -207,6 +207,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn distance() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(2, "s0xabc4")?;
+        let sta2 = SomeState::new_from_string(2, "s0x5430")?;
+
+        let dist = sta1.distance(&sta2);
+        println!("distance {}", dist);
+        assert!(13 == dist);
+        Ok(())
+    }
+
+    #[test]
     fn eq() -> Result<(), String> {
         let sta1 = SomeState::new_from_string(1, "s0b1010")?;
         let sta2 = SomeState::new_from_string(1, "s0b1010")?;
