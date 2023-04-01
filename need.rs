@@ -274,6 +274,7 @@ impl SomeNeed {
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
             SomeNeed::ToOptimalRegion { .. } => 450,
+            // Some needs should have a higher priority number compared to ToOptimalRegion.
             SomeNeed::StateInRemainder { .. } => 500,
             SomeNeed::StateNotInGroup { .. } => 600,
 

@@ -4,34 +4,52 @@ use crate::regionstore::RegionStore;
 
 use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
+
+impl fmt::Display for OptimalRegions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut str = self.regions.formatted_string();
+        str.push_str(&format!("/{}", self.value));
+        write!(f, "{}", str)
+    }
+}
+
+//#[readonly::make]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+pub struct OptimalRegions {
+    /// Regions, in domain order, describing the requirements for an optimal state.
+    pub regions: RegionStore,
+    /// A value for being in the optimal state.
+    pub value: usize,
+}
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A struct of optimal RegionStores, where each RegionStore contains a list
 /// of domain optimal regions, in domain number order.
 pub struct OptimalRegionsStore {
-    pub optimal: Vec<RegionStore>,
+    pub optimal: Vec<OptimalRegions>,
 }
 
 impl OptimalRegionsStore {
     /// Return a new OptimalRegionsStores instance.
-    pub fn new(optimal: Vec<RegionStore>) -> Self {
+    pub fn new(optimal: Vec<OptimalRegions>) -> Self {
         Self { optimal }
     }
 
     /// Return a new OptimalRegionStore instance, empty, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
-            optimal: Vec::<RegionStore>::with_capacity(num),
+            optimal: Vec::<OptimalRegions>::with_capacity(num),
         }
     }
 
     /// Add a RegionsStore.
-    pub fn push(&mut self, rsx: RegionStore) {
-        if !self.contains(&rsx) {
-            self.optimal.push(rsx);
+    pub fn push(&mut self, regions: RegionStore, value: usize) {
+        if !self.contains(&regions) {
+            self.optimal.push(OptimalRegions { regions, value });
         }
     }
 
@@ -51,7 +69,7 @@ impl OptimalRegionsStore {
     }
 
     /// Return an iterator
-    pub fn iter(&self) -> Iter<RegionStore> {
+    pub fn iter(&self) -> Iter<OptimalRegions> {
         self.optimal.iter()
     }
 
@@ -59,7 +77,7 @@ impl OptimalRegionsStore {
     pub fn number_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
         self.optimal
             .iter()
-            .map(|regsx| usize::from(regsx.is_superset_corr_states(stas)))
+            .map(|regsx| usize::from(regsx.regions.is_superset_corr_states(stas)))
             .sum()
     }
 
@@ -70,7 +88,7 @@ impl OptimalRegionsStore {
                 .optimal
                 .iter()
                 .filter_map(|regsx| {
-                    if regsx.is_superset_corr_states(stas) {
+                    if regsx.regions.is_superset_corr_states(stas) {
                         None
                     } else {
                         Some(regsx.clone())
@@ -83,7 +101,7 @@ impl OptimalRegionsStore {
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
         for regsx in &self.optimal {
-            if regsx.is_superset_corr_states(stas) {
+            if regsx.regions.is_superset_corr_states(stas) {
                 return true;
             }
         }
@@ -93,7 +111,7 @@ impl OptimalRegionsStore {
     /// Return true if any RegionStore is a superset of a given RegionStore.
     pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
         for regsx in &self.optimal {
-            if regsx.is_superset_corr(regs) {
+            if regsx.regions.is_superset_corr(regs) {
                 return true;
             }
         }
@@ -107,7 +125,7 @@ impl OptimalRegionsStore {
                 .optimal
                 .iter()
                 .filter_map(|regsx| {
-                    if regsx.is_superset_corr_states(stas) {
+                    if regsx.regions.is_superset_corr_states(stas) {
                         Some(regsx.clone())
                     } else {
                         None
@@ -125,7 +143,7 @@ impl OptimalRegionsStore {
             if not_first {
                 ret_str.push_str(", ");
             }
-            ret_str.push_str(&regstrx.formatted_string());
+            ret_str.push_str(&regstrx.regions.formatted_string());
             not_first = true;
         }
         ret_str.push(']');
@@ -139,7 +157,7 @@ impl OptimalRegionsStore {
         let mut optimal_and_ints = OptimalRegionsStore::with_capacity(self.len());
 
         for regstrx in &self.optimal {
-            optimal_and_ints.push(regstrx.clone());
+            optimal_and_ints.optimal.push(regstrx.clone());
         }
 
         let mut changed = true;
@@ -148,11 +166,15 @@ impl OptimalRegionsStore {
             let lenx = optimal_and_ints.len();
             for inx in 0..(lenx - 1) {
                 for iny in (inx + 1)..lenx {
-                    if let Some(an_int) =
-                        optimal_and_ints[inx].intersect_corr(&optimal_and_ints[iny])
+                    if let Some(an_int) = optimal_and_ints[inx]
+                        .regions
+                        .intersect_corr(&optimal_and_ints[iny].regions)
                     {
                         if !optimal_and_ints.contains(&an_int) {
-                            optimal_and_ints.push(an_int);
+                            optimal_and_ints.push(
+                                an_int,
+                                optimal_and_ints[inx].value + optimal_and_ints[iny].value,
+                            );
                             changed = true;
                         }
                     }
@@ -166,7 +188,7 @@ impl OptimalRegionsStore {
     /// Return true if an equal RegionStore is already in the OptimalRegionsStore.
     fn contains(&self, regstr: &RegionStore) -> bool {
         for regstrx in &self.optimal {
-            if regstrx.equal_corr(regstr) {
+            if regstrx.regions.equal_corr(regstr) {
                 return true;
             }
         }
@@ -175,8 +197,8 @@ impl OptimalRegionsStore {
 }
 
 impl Index<usize> for OptimalRegionsStore {
-    type Output = RegionStore;
-    fn index(&self, i: usize) -> &RegionStore {
+    type Output = OptimalRegions;
+    fn index(&self, i: usize) -> &OptimalRegions {
         &self.optimal[i]
     }
 }

@@ -99,7 +99,7 @@ impl DomainStore {
     /// Add an optimal region.
     /// One region for each domain.
     /// The logical "and" of each domain region given.
-    pub fn add_optimal(&mut self, regstr: RegionStore) {
+    pub fn add_optimal(&mut self, regstr: RegionStore, value: usize) {
         debug_assert!(regstr.len() == self.avec.len());
 
         if self.optimal.any_supersets_of(&regstr) {
@@ -113,7 +113,7 @@ impl DomainStore {
             }
         }
 
-        self.optimal.push(regstr);
+        self.optimal.push(regstr, value);
 
         if self.optimal.len() == 1 {
             self.optimal_and_ints = self.optimal.clone();
@@ -442,10 +442,18 @@ impl DomainStore {
 
     /// Set the boredom limit.
     pub fn set_boredom_limit(&mut self) {
+        let mut boredom_limit = 0;
+        self.boredom = 0;
         // Get the optimal regions the current state is in.
-        let all_states = self.all_current_states();
-        let num_sups = self.optimal.number_supersets_of_states(&all_states);
-        self.boredom_limit = 3 * num_sups;
+        for optregs in self.optimal.iter() {
+            if optregs
+                .regions
+                .is_superset_corr_states(&self.all_current_states())
+            {
+                boredom_limit += optregs.value;
+            }
+        }
+        self.boredom_limit = boredom_limit;
         self.boredom = 0;
     }
 
@@ -484,7 +492,7 @@ impl DomainStore {
         if notsups.is_not_empty() {
             let inx = rand::thread_rng().gen_range(0..notsups.len());
             return Some(SomeNeed::ToOptimalRegion {
-                target_regions: notsups[inx].clone(),
+                target_regions: notsups[inx].regions.clone(),
             });
         }
 
@@ -504,7 +512,7 @@ impl DomainStore {
                 state::somestate_ref_vec_string(&all_states)
             );
             for optx in self.optimal.iter() {
-                print!(" {optx}");
+                print!(" {}/{}", optx.regions, optx.value);
             }
         } else {
             ret = true;
@@ -513,12 +521,12 @@ impl DomainStore {
                 state::somestate_ref_vec_string(&all_states)
             );
             for optx in optimal_supersets.iter() {
-                print!(" {optx}");
+                print!(" {}/{}", optx.regions, optx.value);
             }
             print!(", not in: ");
             let optimal_not_supersets = self.optimal.not_supersets_of_states(&all_states);
             for optx in optimal_not_supersets.iter() {
-                print!(" {optx}");
+                print!(" {}/{}", optx.regions, optx.value);
             }
         }
 
@@ -666,10 +674,10 @@ mod tests {
         regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add optimal region stores.
-        dmxs.add_optimal(regstr1);
-        dmxs.add_optimal(regstr2);
-        dmxs.add_optimal(regstr3);
-        dmxs.add_optimal(regstr4);
+        dmxs.add_optimal(regstr1, 1);
+        dmxs.add_optimal(regstr2, 1);
+        dmxs.add_optimal(regstr3, 1);
+        dmxs.add_optimal(regstr4, 1);
 
         println!("Optimal and ints:");
         for regstrx in dmxs.optimal_and_ints.iter() {

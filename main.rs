@@ -313,10 +313,10 @@ fn domainstore_init() -> DomainStore {
     );
 
     // Add optimal regionstores.
-    dmxs.add_optimal(regstr1);
-    dmxs.add_optimal(regstr2);
-    dmxs.add_optimal(regstr3);
-    dmxs.add_optimal(regstr4);
+    dmxs.add_optimal(regstr1, 3);
+    dmxs.add_optimal(regstr2, 2);
+    dmxs.add_optimal(regstr3, 4);
+    dmxs.add_optimal(regstr4, 1);
 
     //println!("optimal and ints: {}", dmxs.optimal_and_ints.formatted_string());
     dmxs
