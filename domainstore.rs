@@ -4,9 +4,10 @@
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-use crate::optimalregionsstore::OptimalRegionsStore;
+use crate::optimalregionsstore::{OptimalRegions, OptimalRegionsStore};
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
+use crate::randompick::RandomPick;
 use crate::regionstore::RegionStore;
 use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
@@ -484,19 +485,57 @@ impl DomainStore {
             self.boredom_limit = 0;
         }
 
-        // Get regions the current state is not in.
-        let notsups = self.optimal_and_ints.not_supersets_of_states(&all_states);
+        self.choose_optimal_goal(&all_states)
+    }
 
-        // If the current state is not in at least one optimal region,
-        // return a need to move to an optimal region.
-        if notsups.is_not_empty() {
-            let inx = rand::thread_rng().gen_range(0..notsups.len());
+    /// Return a need for moving to an optimal region.
+    fn choose_optimal_goal(&self, all_states: &[&SomeState]) -> Option<SomeNeed> {
+        // Get regions the current state is not in.
+        let notsups: Vec<&OptimalRegions> =
+            self.optimal_and_ints.not_supersets_of_states(all_states);
+
+        // If the current state is not in at least one optimal region, return None.
+        if notsups.is_empty() {
+            return None;
+        }
+
+        // If the current state is not in only one optimal region, return a need to go there.
+        if notsups.len() == 1 {
+            return Some(SomeNeed::ToOptimalRegion {
+                target_regions: notsups[0].regions.clone(),
+            });
+        }
+
+        if notsups.len() == 2 {
+            let inx = rand::thread_rng().gen_range(0..2);
+
             return Some(SomeNeed::ToOptimalRegion {
                 target_regions: notsups[inx].regions.clone(),
             });
         }
 
-        None
+        // Randomly pick two, then take the one with the highest rate.
+        let mut rp1 = RandomPick::new(notsups.len());
+
+        // Randomly pick an index value.
+        let inx1 = rp1.pick().unwrap();
+        let dist1 = notsups[inx1].regions.distance_corr_states(all_states);
+        let rate1 = (notsups[inx1].value * 1000) / dist1;
+
+        // Randomly pick an index value NE inx1.
+        let inx2 = rp1.pick().unwrap();
+        let dist2 = notsups[inx2].regions.distance_corr_states(all_states);
+        let rate2 = (notsups[inx2].value * 1000) / dist2;
+
+        if rate1 > rate2 {
+            return Some(SomeNeed::ToOptimalRegion {
+                target_regions: notsups[inx1].regions.clone(),
+            });
+        }
+
+        Some(SomeNeed::ToOptimalRegion {
+            target_regions: notsups[inx2].regions.clone(),
+        })
     }
 
     /// Print current states and optimal information.

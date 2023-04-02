@@ -82,20 +82,11 @@ impl OptimalRegionsStore {
     }
 
     /// Return a Vector of RegionStores not supersets of a given StateStore.
-    pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Self {
-        Self {
-            optimal: self
-                .optimal
-                .iter()
-                .filter_map(|regsx| {
-                    if regsx.regions.is_superset_corr_states(stas) {
-                        None
-                    } else {
-                        Some(regsx.clone())
-                    }
-                })
-                .collect(),
-        }
+    pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&OptimalRegions> {
+        self.optimal
+            .iter()
+            .filter(|regsx| !regsx.regions.is_superset_corr_states(stas))
+            .collect()
     }
 
     /// Return true if any RegionStore is a superset of a StateStore.

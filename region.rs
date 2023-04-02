@@ -387,6 +387,11 @@ impl SomeRegion {
     //        )
     //    }
 
+    /// Return the distance from a region to a state.
+    pub fn distance_state(&self, stax: &SomeState) -> usize {
+        self.diff_mask_state(stax).num_one_bits()
+    }
+
     /// Return a mask of different bits with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         self.state1
@@ -771,6 +776,18 @@ mod tests {
 
         if reg0.diff_mask_state(&state0) != SomeMask::new_from_string(1, "m0b110")? {
             return Err(String::from("Result not m0b110?"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn distance_state() -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(1, "rXX0011")?;
+        let state0 = SomeState::new_from_string(1, "s0b010101")?;
+
+        let dist = reg0.distance_state(&state0);
+        if dist != 2 {
+            return Err(format!("Result {} not 2?", dist));
         }
         Ok(())
     }

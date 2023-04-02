@@ -350,14 +350,30 @@ impl RegionStore {
     pub fn is_superset_corr_states(&self, stas: &[&SomeState]) -> bool {
         assert!(self.len() == stas.len());
 
-        for (inx, stasx) in self.avec.iter().enumerate() {
-            if stasx.is_superset_of_state(stas[inx]) {
+        for (inx, regx) in self.avec.iter().enumerate() {
+            if regx.is_superset_of_state(stas[inx]) {
             } else {
                 return false;
             }
         }
 
         true
+    }
+
+    /// Return the sum of distances between corresponding regions and states.
+    /// Used in optimal regionstore calculations.
+    pub fn distance_corr_states(&self, stas: &[&SomeState]) -> usize {
+        debug_assert!(self.len() == stas.len());
+
+        let mut dist = 0;
+        for (inx, regx) in self.avec.iter().enumerate() {
+            if regx.is_superset_of_state(stas[inx]) {
+            } else {
+                dist += regx.distance_state(stas[inx]);
+            }
+        }
+
+        dist
     }
 
     /// Return True if a RegionStore is a superset of corresponding regions in a given RegionStore.
