@@ -87,17 +87,15 @@ impl StepStore {
 
     /// Return a string representing a StepStore.
     pub fn formatted_string(&self, prefix: &str) -> String {
-        let mut flg = 0;
         let mut rc_str = String::with_capacity(prefix.len() + self.formatted_string_length());
         rc_str.push_str(prefix);
         rc_str.push('[');
 
-        for stpx in &self.avec {
-            if flg == 1 {
+        for (inx, stpx) in self.avec.iter().enumerate() {
+            if inx > 0 {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&format!("{}", &stpx));
-            flg = 1;
         }
         rc_str.push(']');
 

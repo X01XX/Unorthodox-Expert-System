@@ -182,11 +182,8 @@ impl SomeState {
 pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
     let mut ret_str = String::from("[");
 
-    let mut first = true;
-    for stax in avec.iter() {
-        if first {
-            first = false;
-        } else {
+    for (inx, stax) in avec.iter().enumerate() {
+        if inx > 0 {
             ret_str.push_str(", ");
         }
         ret_str.push_str(&format!("{stax}"));

@@ -25,6 +25,26 @@ pub struct OptimalRegions {
     pub value: usize,
 }
 
+impl fmt::Display for OptimalRegionsStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.formatted_string())
+    }
+}
+
+impl OptimalRegions {
+    pub fn vec_ref_string(avec: &[&OptimalRegions]) -> String {
+        let mut ret_str = String::from("[");
+        for (inx, orx) in avec.iter().enumerate() {
+            if inx > 0 {
+                ret_str.push_str(", ");
+            }
+            ret_str.push_str(&format!("{}", orx));
+        }
+        ret_str.push(']');
+        ret_str
+    }
+}
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A struct of optimal RegionStores, where each RegionStore contains a list
@@ -110,32 +130,21 @@ impl OptimalRegionsStore {
     }
 
     /// Return list of optimal regions that are superset of a StateStore.
-    pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Self {
-        Self {
-            optimal: self
-                .optimal
-                .iter()
-                .filter_map(|regsx| {
-                    if regsx.regions.is_superset_corr_states(stas) {
-                        Some(regsx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
+    pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&OptimalRegions> {
+        self.optimal
+            .iter()
+            .filter(|regsx| regsx.regions.is_superset_corr_states(stas))
+            .collect()
     }
 
     /// Return a string represeting an OptimalRegionsStore.
     pub fn formatted_string(&self) -> String {
         let mut ret_str = String::from("[");
-        let mut not_first = false;
-        for regstrx in &self.optimal {
-            if not_first {
+        for (inx, orx) in self.optimal.iter().enumerate() {
+            if inx > 0 {
                 ret_str.push_str(", ");
             }
-            ret_str.push_str(&regstrx.regions.formatted_string());
-            not_first = true;
+            ret_str.push_str(&format!("{}", orx));
         }
         ret_str.push(']');
         ret_str

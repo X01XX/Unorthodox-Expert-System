@@ -22,15 +22,13 @@ use rayon::prelude::*;
 
 impl fmt::Display for DomainStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
         let mut rc_str = String::from("[");
 
-        for mskx in &self.avec {
-            if flg == 1 {
+        for (inx, mskx) in self.avec.iter().enumerate() {
+            if inx > 0 {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&format!("{}", &mskx));
-            flg = 1;
         }
         rc_str.push(']');
 
@@ -231,7 +229,10 @@ impl DomainStore {
 
         let optimal_priority = if in_optimal && self.boredom < self.boredom_limit {
             SomeNeed::ToOptimalRegion {
-                target_regions: RegionStore::new(vec![]),
+                target_regions: OptimalRegions {
+                    regions: RegionStore::new(vec![]),
+                    value: 0,
+                },
             }
             .priority()
         } else {
@@ -491,8 +492,7 @@ impl DomainStore {
     /// Return a need for moving to an optimal region.
     fn choose_optimal_goal(&self, all_states: &[&SomeState]) -> Option<SomeNeed> {
         // Get regions the current state is not in.
-        let notsups: Vec<&OptimalRegions> =
-            self.optimal_and_ints.not_supersets_of_states(all_states);
+        let notsups = self.optimal_and_ints.not_supersets_of_states(all_states);
 
         // If the current state is not in at least one optimal region, return None.
         if notsups.is_empty() {
@@ -502,7 +502,7 @@ impl DomainStore {
         // If the current state is not in only one optimal region, return a need to go there.
         if notsups.len() == 1 {
             return Some(SomeNeed::ToOptimalRegion {
-                target_regions: notsups[0].regions.clone(),
+                target_regions: notsups[0].clone(),
             });
         }
 
@@ -510,7 +510,7 @@ impl DomainStore {
             let inx = rand::thread_rng().gen_range(0..2);
 
             return Some(SomeNeed::ToOptimalRegion {
-                target_regions: notsups[inx].regions.clone(),
+                target_regions: notsups[inx].clone(),
             });
         }
 
@@ -529,12 +529,12 @@ impl DomainStore {
 
         if rate1 > rate2 {
             return Some(SomeNeed::ToOptimalRegion {
-                target_regions: notsups[inx1].regions.clone(),
+                target_regions: notsups[inx1].clone(),
             });
         }
 
         Some(SomeNeed::ToOptimalRegion {
-            target_regions: notsups[inx2].regions.clone(),
+            target_regions: notsups[inx2].clone(),
         })
     }
 
@@ -547,26 +547,22 @@ impl DomainStore {
         let optimal_supersets = self.optimal.supersets_of_states(&all_states);
         if optimal_supersets.is_empty() {
             print!(
-                "\nAll Current states: {} in optimal regions: None, not in ",
-                state::somestate_ref_vec_string(&all_states)
+                "\nAll Current states: {} in optimal regions: None, not in {}",
+                state::somestate_ref_vec_string(&all_states),
+                self.optimal
             );
-            for optx in self.optimal.iter() {
-                print!(" {}/{}", optx.regions, optx.value);
-            }
         } else {
             ret = true;
             print!(
-                "\nAll Current states: {} in optimal regions: ",
-                state::somestate_ref_vec_string(&all_states)
+                "\nAll Current states: {} in optimal regions: {}",
+                state::somestate_ref_vec_string(&all_states),
+                OptimalRegions::vec_ref_string(&optimal_supersets)
             );
-            for optx in optimal_supersets.iter() {
-                print!(" {}/{}", optx.regions, optx.value);
-            }
-            print!(", not in: ");
-            let optimal_not_supersets = self.optimal.not_supersets_of_states(&all_states);
-            for optx in optimal_not_supersets.iter() {
-                print!(" {}/{}", optx.regions, optx.value);
-            }
+
+            print!(
+                ", not in: {}",
+                OptimalRegions::vec_ref_string(&self.optimal.not_supersets_of_states(&all_states))
+            );
         }
 
         println!(
@@ -574,6 +570,7 @@ impl DomainStore {
             self.boredom, self.boredom_limit
         );
         println!(" ");
+
         ret
     }
 

@@ -193,16 +193,14 @@ impl ResultStore {
 
     /// Return a string to represent a ResultStore.
     pub fn formatted_string(&self) -> String {
-        let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());
         rc_str.push('[');
 
-        for rsltx in self.astore.iter() {
-            if flg == 1 {
+        for (inx, rsltx) in self.astore.iter().enumerate() {
+            if inx > 0 {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&format!("{}", &rsltx));
-            flg = 1;
         }
 
         rc_str.push(']');

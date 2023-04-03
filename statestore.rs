@@ -78,16 +78,14 @@ impl StateStore {
 
     /// Return a string representing a StateStore.
     pub fn formatted_string(&self) -> String {
-        let mut flg = 0;
         let mut rc_str = String::with_capacity(self.formatted_string_length());
         rc_str.push('[');
 
-        for stax in &self.avec {
-            if flg == 1 {
+        for (inx, stax) in self.avec.iter().enumerate() {
+            if inx > 0 {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&format!("{}", &stax));
-            flg = 1;
         }
 
         rc_str.push(']');

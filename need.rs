@@ -6,8 +6,8 @@
 //! Samples to limit a group.
 //! Housekeeping needs, like adding a group.
 
+use crate::optimalregionsstore::OptimalRegions;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::target::SomeTarget;
@@ -235,7 +235,7 @@ pub enum SomeNeed {
         target_state: SomeState,
     },
     /// Move all current domain states to the corresponding regions.
-    ToOptimalRegion { target_regions: RegionStore },
+    ToOptimalRegion { target_regions: OptimalRegions },
 }
 
 impl SomeNeed {
@@ -447,8 +447,8 @@ impl SomeNeed {
                 SomeRegion::new(target_state.clone(), target_state.clone()),
             )]),
             SomeNeed::ToOptimalRegion { target_regions, .. } => {
-                let mut targ = TargetStore::with_capacity(target_regions.len());
-                for (dom_numx, targx) in target_regions.iter().enumerate() {
+                let mut targ = TargetStore::with_capacity(target_regions.regions.len());
+                for (dom_numx, targx) in target_regions.regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
                 }
                 targ

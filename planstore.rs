@@ -87,13 +87,12 @@ impl PlanStore {
         if self.avec.len() > 1 {
             rc_str.push('(');
         }
-        let mut not_first = false;
-        for planx in &self.avec {
-            if not_first {
+
+        for (inx, planx) in self.avec.iter().enumerate() {
+            if inx > 0 {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&planx.str_terse());
-            not_first = true;
         }
         if self.avec.len() > 1 {
             rc_str.push(')');
