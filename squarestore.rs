@@ -125,50 +125,24 @@ impl SquareStore {
     }
 
     /// Return a StateStore of squares with pn GT Pn:One, not yet pnc.
-    pub fn pn_gt1_no_pnc(&self) -> StateStore {
-        StateStore::new(
-            self.ahash
-                .values()
-                .filter_map(|sqrx| {
-                    if sqrx.pn != Pn::One && !sqrx.pnc {
-                        Some(sqrx.state.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
-    }
-
-    /// Return a StateStore of square states that are only in one region of a RegionStore.
-    pub fn states_in_1_region(&self, regs: &RegionStore) -> StateStore {
-        StateStore::new(
-            self.ahash
-                .keys()
-                .filter_map(|keyx| {
-                    if regs.state_in_1_region(keyx) {
-                        Some(keyx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
+    pub fn pn_gt1_no_pnc(&self) -> Vec<&SomeState> {
+        self.ahash
+            .values()
+            .filter_map(|sqrx| {
+                if sqrx.pn != Pn::One && !sqrx.pnc {
+                    Some(&sqrx.state)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Return a StateStore of square states that are adjacent to a given region.
-    pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
-        StateStore::new(
-            self.ahash
-                .keys()
-                .filter_map(|keyx| {
-                    if regx.is_adjacent_state(keyx) {
-                        Some(keyx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
+    pub fn stas_adj_reg(&self, regx: &SomeRegion) -> Vec<&SomeState> {
+        self.ahash
+            .keys()
+            .filter(|keyx| regx.is_adjacent_state(keyx))
+            .collect()
     }
 } // end impl SquareStore

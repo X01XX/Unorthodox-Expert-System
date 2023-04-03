@@ -15,7 +15,6 @@ use crate::targetstore::TargetStore;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::mem;
 use std::ops::{Index, IndexMut};
 
 use rayon::prelude::*;
@@ -69,8 +68,8 @@ pub struct DomainStore {
     pub needs: NeedStore,
     /// Vector of InxPlans for selected needs, where a plan was calculated.
     pub can_do: Vec<InxPlan>,
-    /// Vector of InxPlans for selected needs, where a plan could not be calculated.
-    pub cant_do: Vec<InxPlan>,
+    /// Vector of indicies for selected needs, where a plan could not be calculated.
+    pub cant_do: Vec<usize>,
     /// The current step number.
     pub step_num: usize,
 }
@@ -90,7 +89,7 @@ impl DomainStore {
             optimal: OptimalRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
-            cant_do: Vec::<InxPlan>::new(),
+            cant_do: Vec::<usize>::new(),
             step_num: 0,
         }
     }
@@ -144,22 +143,21 @@ impl DomainStore {
         self.step_num += 1;
 
         // Get all needs.
-        let vecx: Vec<SomeNeed> = self
+        let mut vecx: Vec<SomeNeed> = self
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs().avec)
             .flatten()
             .collect::<Vec<SomeNeed>>();
 
-        let mut nds_agg = NeedStore::new(vecx);
-
         // Get optimal region needs.
         if let Some(needx) = self.check_optimal() {
-            nds_agg.push(needx);
+            vecx.push(needx);
         }
 
-        //println!("number needs = {}", nds_agg.len());
-        self.needs = nds_agg;
+        // Sort needs by ascending priority, and store.
+        vecx.sort_by_key(|ndx| ndx.priority());
+        self.needs = NeedStore::new(vecx);
 
         self.evaluate_needs();
     }
@@ -215,12 +213,32 @@ impl DomainStore {
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         self.avec[dmxi].get_current_state()
     }
-    /// Set needs, can_do and cant_do for the DomainStore.
-    /// Select up to a given number (SPAN) of the lowest value priority needs,
-    /// return a span of needs when one, or more, needs can be planned.
-    /// Each InxPlan will contain an index to the NeedStore, and a PlanStore.
+    /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
+    /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
     pub fn evaluate_needs(&mut self) {
         //println!("evaluate_needs: {} needs", self.needs.len());
+
+        // Init self need can/can't do vectors.
+        self.can_do = Vec::<InxPlan>::new();
+        self.cant_do = Vec::<usize>::new();
+
+        if self.needs.is_empty() {
+            println!("\nNumber needs: 0");
+            return;
+        }
+
+        let mut cur_pri = self.needs[0].priority();
+        let mut count = 0;
+        print!("\nNumber needs: {}, priority(count): ", self.needs.len());
+        for needx in self.needs.iter() {
+            if needx.priority() > cur_pri {
+                print!("{}({}) ", cur_pri, count);
+                cur_pri = needx.priority();
+                count = 0;
+            }
+            count += 1;
+        }
+        println!("{}({}) ", cur_pri, count);
 
         // Get optimal region info.
         let in_optimal = self
@@ -239,96 +257,70 @@ impl DomainStore {
             usize::MAX
         };
 
-        // Sort needs by ascending priority.
-        self.needs.avec.sort_by_key(|ndx| ndx.priority());
-        if self.needs.is_not_empty() {
-            println!(
-                "\nNumber needs: {}, first need priority {}, last need priority {}",
-                self.needs.len(),
-                self.needs[0].priority(),
-                self.needs[self.needs.len() - 1].priority()
-            );
-        } else {
-            println!("\nNumber needs: 0");
-            self.can_do = Vec::<InxPlan>::new();
-            self.cant_do = Vec::<InxPlan>::new();
-            return;
-        }
-
-        //println!("evaluate_needs: in_optimal {in_optimal}, optimal_priority {optimal_priority}");
-
-        // Init curent priority value and start index.
+        // Init current priority value and start index.
         let mut cur_pri = self.needs[0].priority();
-        if cur_pri > optimal_priority {
-            return;
-        }
+
         let mut cur_pri_start = 0;
 
         // Find current priority end index.
         let mut cur_pri_end = cur_pri_start;
         let needs_len = self.needs.len();
-        while cur_pri_end < needs_len {
-            // Scan next items of the same priority.
-            loop {
+
+        // Scan successive slices of items with the same priority.
+        loop {
+            // Find end of current slice.
+            while cur_pri_end < needs_len && self.needs[cur_pri_end].priority() == cur_pri {
                 cur_pri_end += 1;
-                if cur_pri_end == needs_len || self.needs[cur_pri_end].priority() > cur_pri {
-                    // process priority slice.
+                continue;
+            }
+            // Process a priority slice.
+            print!(
+                "Priority {}, slice: {}..{}",
+                cur_pri, cur_pri_start, cur_pri_end,
+            );
 
-                    print!(
-                        "Priority {}, slice: {}..{}, span {}",
-                        cur_pri,
-                        cur_pri_start,
-                        cur_pri_end,
-                        cur_pri_end - cur_pri_start
-                    );
+            // Test all slice needs for plans.
+            let mut ndsinx_plan = (cur_pri_start..cur_pri_end)
+                .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+                .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[nd_inx].target())))
+                .map(|plnstr| InxPlan {
+                    inx: plnstr.0,
+                    plans: plnstr.1,
+                })
+                .collect::<Vec<InxPlan>>();
 
-                    // Test all needs of this priority for plans.
-                    let mut ndsinx_plan = (cur_pri_start..cur_pri_end)
-                        .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                        .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[nd_inx].target())))
-                        .map(|plnstr| InxPlan {
-                            inx: plnstr.0,
-                            plans: plnstr.1,
-                        })
-                        .collect::<Vec<InxPlan>>();
+            let mut can_do = Vec::<InxPlan>::new();
+            let mut cant_do = Vec::<usize>::new();
 
-                    let mut can_do = Vec::<InxPlan>::new();
-                    let mut cant_do = Vec::<InxPlan>::new();
-
-                    // If at least one plan found, return vector of InxPlan structs.
-                    for ndsinx in ndsinx_plan.iter_mut() {
-                        if ndsinx.plans.is_some() {
-                            can_do.push(mem::take(ndsinx));
-                        } else {
-                            cant_do.push(mem::take(ndsinx));
-                        }
-                    }
-
-                    if !can_do.is_empty() {
-                        if can_do.len() == 1 {
-                            println!(", found 1 need that can be done.");
-                        } else {
-                            println!(", found {} needs that can be done.", can_do.len());
-                        }
-                        self.can_do = can_do;
-                        self.cant_do = cant_do;
-                        return;
-                    }
-                    println!(" ");
-
-                    if cur_pri_end == needs_len {
-                        break;
-                    }
-                    cur_pri_start = cur_pri_end;
-                    cur_pri = self.needs[cur_pri_start].priority();
-                    if cur_pri > optimal_priority {
-                        return;
-                    }
-                    cur_pri_end = cur_pri_start;
-                    break;
+            // If at least one plan found, return vector of InxPlan structs.
+            for ndsinx in ndsinx_plan.iter_mut() {
+                if ndsinx.plans.is_some() {
+                    can_do.push(ndsinx.clone());
+                } else {
+                    cant_do.push(ndsinx.inx);
                 }
-            } // End loop
-        } // End while
+            }
+
+            if !can_do.is_empty() {
+                if can_do.len() == 1 {
+                    println!(", found 1 need that can be done.");
+                } else {
+                    println!(", found {} needs that can be done.", can_do.len());
+                }
+                self.can_do = can_do;
+                self.cant_do = cant_do;
+                return;
+            }
+            println!(" ");
+
+            if cur_pri_end == needs_len || cur_pri > optimal_priority {
+                return;
+            }
+
+            cur_pri_start = cur_pri_end;
+            cur_pri = self.needs[cur_pri_start].priority();
+            cur_pri_end = cur_pri_start;
+        } // End loop
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
@@ -624,6 +616,38 @@ impl DomainStore {
     pub fn set_state(&mut self, new_state: &SomeState) {
         let dmx = self.current_domain;
         self[dmx].set_state(new_state)
+    }
+
+    /// Generate and display domain and needs.
+    pub fn generate_and_display_needs(&mut self) {
+        // Get the needs of all Domains / Actions
+        self.get_needs();
+        self.display_needs();
+    }
+
+    pub fn display_needs(&self) {
+        println!(
+            "\nStep {} All domain states: {}",
+            self.step_num,
+            state::somestate_ref_vec_string(&self.all_current_states())
+        );
+        assert!(self.step_num < 1000); // Remove for continuous use
+
+        self.print_domain();
+
+        // Print needs that cannot be done.
+        if self.cant_do.is_empty() {
+            println!("\nNeeds that cannot be done: None");
+        } else {
+            println!("\nNeeds that cannot be done:");
+
+            for ndplnx in self.cant_do.iter() {
+                println!("   {}", self.needs[*ndplnx]);
+            }
+        }
+
+        // Print needs that can be done.
+        self.print_can_do();
     }
 } // end impl DomainStore
 

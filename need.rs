@@ -273,11 +273,10 @@ impl SomeNeed {
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
-            SomeNeed::ToOptimalRegion { .. } => 450,
+            SomeNeed::StateNotInGroup { .. } => 500,
+            SomeNeed::ToOptimalRegion { .. } => 600,
             // Some needs should have a higher priority number compared to ToOptimalRegion.
-            SomeNeed::StateInRemainder { .. } => 500,
-            SomeNeed::StateNotInGroup { .. } => 600,
-
+            SomeNeed::StateInRemainder { .. } => 700,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()

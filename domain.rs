@@ -176,11 +176,11 @@ impl SomeDomain {
         }
 
         if !pln.initial_region().is_superset_of_state(&self.cur_state) {
-            println!(
+            panic!(
                 "\nCurrent state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
             );
-            return false;
+            //return false;
         }
 
         for stpx in pln.iter() {

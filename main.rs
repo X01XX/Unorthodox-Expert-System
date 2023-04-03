@@ -136,7 +136,12 @@ fn main() {
 /// Run with user input step by step.
 fn run_step_by_step() {
     usage();
-    do_session(&mut domainstore_init());
+    // Generate needs, get can_do and cant_do need vectors.
+    let mut dmxs = domainstore_init();
+
+    dmxs.generate_and_display_needs();
+
+    do_session(&mut dmxs);
 }
 
 /// Load data from a file, then run with user input, step by step.
@@ -154,6 +159,9 @@ fn run_with_file(file_path: &str) {
         }
     };
 
+    // Generate needs, get can_do and cant_do need vectors.
+    dmxs.display_needs();
+
     do_session(&mut dmxs);
 }
 
@@ -161,7 +169,7 @@ fn run_with_file(file_path: &str) {
 fn run_to_end(dmxs: &mut DomainStore) {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        generate_and_display_needs(dmxs);
+        dmxs.generate_and_display_needs();
 
         // Check for end.
         if dmxs.can_do.is_empty() {
@@ -332,7 +340,7 @@ fn do_one_session() -> Result<usize, String> {
 
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        generate_and_display_needs(&mut dmxs);
+        dmxs.generate_and_display_needs();
 
         // Check for end.
         if dmxs.can_do.is_empty() {
@@ -348,22 +356,11 @@ fn do_one_session() -> Result<usize, String> {
 
 /// Do a session, step by step, taking user commands.
 pub fn do_session(dmxs: &mut DomainStore) {
-    let mut to_end = false;
-
     loop {
-        // Generate needs, get can_do and cant_do need vectors.
-        generate_and_display_needs(dmxs);
-
-        if dmxs.can_do.is_empty() {
-            to_end = false;
-        }
-
-        if to_end {
-            do_any_need(dmxs);
-            continue;
-        }
-
         command_loop(dmxs);
+
+        // Generate needs, get can_do and cant_do need vectors.
+        dmxs.generate_and_display_needs();
     } // end loop
 } // end do_session
 
@@ -485,35 +482,6 @@ fn command_loop(dmxs: &mut DomainStore) {
         };
     } // end loop
 } // end command_loop
-
-/// Generate and display domain and needs.
-fn generate_and_display_needs(dmxs: &mut DomainStore) {
-    // Get the needs of all Domains / Actions
-    dmxs.get_needs();
-
-    println!(
-        "\nStep {} All domain states: {}",
-        dmxs.step_num,
-        state::somestate_ref_vec_string(&dmxs.all_current_states())
-    );
-    assert!(dmxs.step_num < 1000); // Remove for continuous use
-
-    dmxs.print_domain();
-
-    // Print needs that cannot be done.
-    if dmxs.cant_do.is_empty() {
-        println!("\nNeeds that cannot be done: None");
-    } else {
-        println!("\nNeeds that cannot be done:");
-
-        for ndplnx in dmxs.cant_do.iter() {
-            println!("   {}", dmxs.needs[ndplnx.inx]);
-        }
-    }
-
-    // Print needs that can be done.
-    dmxs.print_can_do();
-}
 
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {

@@ -653,7 +653,7 @@ impl SomeAction {
         let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
 
         for stax in sqrs_pngt1.iter() {
-            if stax == cur_state || self.groups.any_superset_of_state(stax) {
+            if *stax == cur_state || self.groups.any_superset_of_state(stax) {
                 continue;
             }
 
@@ -2242,7 +2242,7 @@ impl SomeAction {
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(&grps[0]) {
                             if let Some(anchory) = &grpy.anchor {
-                                if stax == anchory {
+                                if *stax == anchory {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
                                 } else {
                                     println!("adj    {sqrx} in one group {}", grps[0]);
