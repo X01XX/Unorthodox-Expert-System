@@ -157,22 +157,6 @@ impl GroupStore {
     }
 
     /// Return the groups regions a state is in.
-    pub fn groups_state_inx(&self, stax: &SomeState) -> RegionStore {
-        RegionStore::new(
-            self.avec
-                .iter()
-                .filter_map(|grpx| {
-                    if grpx.region.is_superset_of_state(stax) {
-                        Some(grpx.region.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
-    }
-
-    /// Return the groups regions a state is in.
     pub fn groups_state_in(&self, stax: &SomeState) -> Vec<&SomeRegion> {
         self.avec
             .iter()
@@ -354,9 +338,6 @@ impl GroupStore {
     }
 
     /// Return a RegionStore of regions of each group.
-    //    pub fn regions(&self) -> RegionStore {
-    //        RegionStore::new(self.avec.iter().map(|grpx| grpx.region.clone()).collect())
-    //    }
     pub fn regions(&self) -> Vec<&SomeRegion> {
         self.avec.iter().map(|grpx| &grpx.region).collect()
     }
@@ -384,17 +365,6 @@ impl GroupStore {
     /// Find a group that matches a region, return a reference.
     pub fn find(&self, val: &SomeRegion) -> Option<&SomeGroup> {
         self.avec.iter().find(|&grpx| grpx.region == *val)
-    }
-
-    /// Set the anchor for a group.
-    pub fn set_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-        for grpx in &mut self.avec {
-            if grpx.region == *grp_reg {
-                grpx.set_anchor(anchor); //, rate);
-                return;
-            }
-        }
-        panic!("Group not found");
     }
 
     /// Check limited setting in groups due to new bit that can change.

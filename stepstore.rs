@@ -196,6 +196,9 @@ impl StepStore {
         // to void backtracking/loops.
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
+            if inxs.len() == steps_by_change_vov.len() {
+                return None;
+            }
             for inx in inxs.iter() {
                 removeunordered::remove_unordered(&mut steps_by_change_vov, *inx);
             }
@@ -205,7 +208,7 @@ impl StepStore {
     }
 } // end impl StepStore
 
-/// Return true if any single-bit change vector pairs are all mutually exclusive
+/// Return true if any single-bit change step vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
@@ -219,7 +222,7 @@ fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &Some
     false
 }
 
-/// Return true if all combinations of steps, in two vectors, are mutually exclusive.
+/// Return true if all combinations of steps, in two step vectors, are mutually exclusive.
 fn all_mutually_exclusive_changes(
     vec_x: &[&SomeStep],
     vec_y: &[&SomeStep],
@@ -246,17 +249,20 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
     let mut inxs = Vec::<usize>::new();
 
     // Generate a vector of indices of changes that should be done later.
-    'next_inx: for inx in 0..by_change.len() {
+    for inx in 0..by_change.len() {
         for iny in 0..by_change.len() {
             if iny == inx {
                 continue;
             }
-            if !step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) {
-                continue 'next_inx;
+            if step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) && !inxs.contains(&inx)
+            {
+                inxs.push(inx);
+            }
+            if step_vecs_order_bad(&by_change[iny], &by_change[inx], wanted) && !inxs.contains(&iny)
+            {
+                inxs.push(iny);
             }
         } // next iny
-
-        inxs.push(inx);
     } //next inx
 
     // Return a vector of indices in descending order.
@@ -266,7 +272,8 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
     inxs
 }
 
-/// Return true if the order of step vectors, arg one to arg two, is bad.
+/// Return true if the order of all steps in step vector arg one will reuire a
+/// wanted bit change to be reversed in order to do any step in step vector arg two.
 fn step_vecs_order_bad(
     vec_x: &Vec<&SomeStep>,
     vec_y: &Vec<&SomeStep>,

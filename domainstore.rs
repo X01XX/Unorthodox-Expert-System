@@ -324,7 +324,7 @@ impl DomainStore {
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
-    /// Return an Option PlanStore, to go from the current state to the region or each target.
+    /// Return an Option PlanStore, to go from the current state to the region of each target.
     /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
         let mut plans = Vec::<SomePlan>::new();

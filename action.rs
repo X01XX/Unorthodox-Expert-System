@@ -207,34 +207,27 @@ impl SomeAction {
     /// A square implied by the sample, in a group, may have a higher anchor rating
     /// than the current group anchor.
     fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
-        let grp_reg: SomeRegion;
-        let mut sqr_rate: (usize, usize, usize);
-        let mut anchor_rate: (usize, usize, usize);
+        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else { return };
 
-        // Hide an immutable reference so a mutable reference can be used later.
-        (grp_reg, sqr_rate, anchor_rate) = {
-            let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else { return };
+        let Some(anchor) = &grpx.anchor else { return; };
 
-            let Some(anchor) = &grpx.anchor else { return; };
+        if anchor == &smpl.initial {
+            return;
+        }
 
-            if anchor == &smpl.initial {
-                return;
-            }
+        // The current anchor rate may have changed, so recalculate it.
+        let anchor_rate = self.group_anchor_rate(grpx, anchor);
 
-            // The current anchor rate may have changed, so recalculate it.
-            anchor_rate = self.group_anchor_rate(grpx, anchor);
+        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
 
-            sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
+        if sqr_rate <= anchor_rate {
+            return;
+        }
 
-            if sqr_rate <= anchor_rate {
-                return;
-            }
-
-            (grpx.region.clone(), sqr_rate, anchor_rate)
-        };
+        let grp_reg = grpx.region.clone();
 
         // Get a mutable reference.
-        let Some(grpx) = self.groups.find_mut(&grp_reg) else { return; };
+        let Some(grpx) = self.groups.find_mut(&grp_reg) else { panic!("Should work") };
 
         println!(
             "Changing group {} anchor from {} {:?} to {} {:?}",
@@ -245,6 +238,7 @@ impl SomeAction {
             sqr_rate
         );
 
+        // Create a new square, if none exists already.
         if self.squares.find(&smpl.initial).is_none() {
             self.squares.insert(
                 SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
