@@ -118,46 +118,12 @@ impl RegionStore {
         false
     }
 
-    /// Return a RegionStore of supersets of a state.
-    pub fn supersets_of_state(&self, sta: &SomeState) -> Self {
-        Self {
-            avec: self
-                .avec
-                .iter()
-                .filter_map(|regx| {
-                    if regx.is_superset_of_state(sta) {
-                        Some(regx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
-    }
-
     /// Return the number of supersets of a state.
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
         self.avec
             .iter()
             .map(|regx| usize::from(regx.is_superset_of_state(sta)))
             .sum()
-    }
-
-    /// Return a RegionStore of not supersets of a state.
-    pub fn not_supersets_of_state(&self, sta: &SomeState) -> Self {
-        Self {
-            avec: self
-                .avec
-                .iter()
-                .filter_map(|regx| {
-                    if regx.is_superset_of_state(sta) {
-                        None
-                    } else {
-                        Some(regx.clone())
-                    }
-                })
-                .collect(),
-        }
     }
 
     /// Return true if a RegionStore contains a region.
@@ -285,6 +251,23 @@ impl RegionStore {
         rc_str.push('[');
 
         for (inx, regx) in self.avec.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &regx));
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
+
+    /// Return a string representing a vector of regions.
+    pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
+        let mut rc_str = String::new();
+        rc_str.push('[');
+
+        for (inx, regx) in avec.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
@@ -567,46 +550,6 @@ mod tests {
 
         assert!(regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0100")?));
         assert!(!regstr.state_in_1_region(&SomeState::new_from_string(1, "s0b0111")?));
-        Ok(())
-    }
-
-    #[test]
-    fn not_supersets_of_state() -> Result<(), String> {
-        let mut regstr = RegionStore::with_capacity(4);
-
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
-        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
-        // Intersections, 0x01, 01x1.
-        // Intersections of intersections, 0101.
-
-        let regstr2 = regstr.not_supersets_of_state(&SomeState::new_from_string(1, "s0b0111")?);
-        println!("not supersets {}", &regstr2);
-
-        assert!(regstr2.len() == 2);
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0x0x")?));
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r1110")?));
-        Ok(())
-    }
-
-    #[test]
-    fn supersets_of_state() -> Result<(), String> {
-        let mut regstr = RegionStore::with_capacity(4);
-
-        regstr.push(SomeRegion::new_from_string(1, "r0x0x")?);
-        regstr.push(SomeRegion::new_from_string(1, "r0xx1")?);
-        regstr.push(SomeRegion::new_from_string(1, "rx1x1")?);
-        regstr.push(SomeRegion::new_from_string(1, "r1110")?);
-        // Intersections, 0x01, 01x1.
-        // Intersections of intersections, 0101.
-
-        let regstr2 = regstr.supersets_of_state(&SomeState::new_from_string(1, "s0b0111")?);
-        println!("supersets {}", &regstr2);
-
-        assert!(regstr2.len() == 2);
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "r0xx1")?));
-        assert!(regstr2.contains(&SomeRegion::new_from_string(1, "rx1x1")?));
         Ok(())
     }
 

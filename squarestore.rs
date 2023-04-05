@@ -2,7 +2,6 @@
 
 use crate::pn::Pn;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
@@ -45,14 +44,14 @@ impl SquareStore {
         self.ahash.remove(stax);
     }
 
+    pub fn del_squares(&mut self, sqrs: &StateStore) {
+        for sqrx in sqrs.iter() {
+            self.ahash.remove(sqrx);
+        }
+    }
     /// Return the number of squares stored.
     pub fn len(&self) -> usize {
         self.ahash.len()
-    }
-
-    /// Return the states for all squares.
-    pub fn all_square_keys(&self) -> Vec<SomeState> {
-        self.ahash.keys().cloned().collect()
     }
 
     /// Return a list of squares in a given region.
@@ -106,22 +105,6 @@ impl SquareStore {
         );
         assert!(self.find(&sqrx.state).is_none());
         self.ahash.insert(sqrx.state.clone(), sqrx);
-    }
-
-    /// Return a StateStore of square states not in a list of regions.
-    pub fn not_in_regions(&self, regs: &RegionStore) -> StateStore {
-        StateStore::new(
-            self.ahash
-                .keys()
-                .filter_map(|keyx| {
-                    if !regs.any_superset_of_state(keyx) {
-                        Some(keyx.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
     }
 
     /// Return a StateStore of squares with pn GT Pn:One, not yet pnc.

@@ -55,15 +55,13 @@ impl fmt::Display for SomeAction {
             rc_str.push_str(&format!(", remainder: {}", aregion));
         }
 
-        let regs = self.groups.regions();
-
         let mut fil = ",\n       Grps: ";
         for grpx in self.groups.iter() {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
             let cnt: usize = stas_in
                 .iter()
-                .map(|stax| usize::from(regs.state_in_1_region(stax)))
+                .map(|stax| usize::from(self.groups.num_state_in(stax) == 1))
                 .sum();
 
             rc_str.push_str(&format!(
@@ -209,41 +207,53 @@ impl SomeAction {
     /// A square implied by the sample, in a group, may have a higher anchor rating
     /// than the current group anchor.
     fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
-        if self.groups.num_groups_state_in(&smpl.initial) != 1 {
-            return;
-        }
+        let grp_reg: SomeRegion;
+        let mut sqr_rate: (usize, usize, usize);
+        let mut anchor_rate: (usize, usize, usize);
 
-        let grps_in: RegionStore = self.groups.groups_state_in(&smpl.initial);
+        // Hide an immutable reference so a mutable reference can be used later.
+        (grp_reg, sqr_rate, anchor_rate) = {
+            let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else { return };
 
-        let Some(grpx) = self.groups.find(&grps_in[0]) else { println!("eval_sample_check_anchor: 2: This should not happen"); return; };
+            let Some(anchor) = &grpx.anchor else { return; };
 
-        let Some(anchor) = &grpx.anchor else { return; };
-
-        if anchor == &smpl.initial {
-            return;
-        }
-
-        // The current anchor rate may have changed, so recalculate it.
-        let anchor_rate = self.group_anchor_rate(grpx, anchor);
-
-        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
-
-        if sqr_rate > anchor_rate {
-            println!(
-                "Changing group {} anchor from {} {:?} to {} {:?}",
-                grpx.region, anchor, anchor_rate, smpl.initial, sqr_rate
-            );
-
-            if self.squares.find(&smpl.initial).is_none() {
-                self.squares.insert(
-                    SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
-                    self.dom_num,
-                    self.num,
-                );
+            if anchor == &smpl.initial {
+                return;
             }
 
-            self.groups.set_anchor(&grps_in[0], &smpl.initial);
+            // The current anchor rate may have changed, so recalculate it.
+            anchor_rate = self.group_anchor_rate(grpx, anchor);
+
+            sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
+
+            if sqr_rate <= anchor_rate {
+                return;
+            }
+
+            (grpx.region.clone(), sqr_rate, anchor_rate)
+        };
+
+        // Get a mutable reference.
+        let Some(grpx) = self.groups.find_mut(&grp_reg) else { return; };
+
+        println!(
+            "Changing group {} anchor from {} {:?} to {} {:?}",
+            grpx.region,
+            grpx.anchor.as_ref().unwrap(),
+            anchor_rate,
+            smpl.initial,
+            sqr_rate
+        );
+
+        if self.squares.find(&smpl.initial).is_none() {
+            self.squares.insert(
+                SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
+                self.dom_num,
+                self.num,
+            );
         }
+
+        grpx.set_anchor(&smpl.initial);
     } // end eval_sample_check_anchors
 
     /// Evaluate a sample taken to satisfy a need.
@@ -534,16 +544,13 @@ impl SomeAction {
             return;
         }
 
-        // Check squares that may not be in a group
-
-        let regs = self.groups.regions();
-
-        let keys = self.squares.not_in_regions(&regs);
-
-        for keyx in keys.iter() {
-            // A later square may be in a group created by an earlier square
-            if self.groups.num_groups_state_in(keyx) == 0 {
-                self.create_groups_from_square(keyx);
+        // Check squares from invalidated groups that may not be in any group.
+        for regx in regs_invalid.iter() {
+            if self.groups.num_groups_state_in(&regx.state1) == 0 {
+                self.create_groups_from_square(&regx.state1);
+            }
+            if regx.state2 != regx.state1 && self.groups.num_groups_state_in(&regx.state1) == 0 {
+                self.create_groups_from_square(&regx.state1);
             }
         }
     } // end check_square_new_sample
@@ -769,7 +776,9 @@ impl SomeAction {
                                     dom,
                                     self.num,
                                     &group_region,
-                                    self.groups.supersets_of(group_region)
+                                    RegionStore::vec_ref_string(
+                                        &self.groups.supersets_of(group_region)
+                                    )
                                 );
                             }
                             continue;
@@ -974,15 +983,15 @@ impl SomeAction {
 
     /// Cleanup unneeded squares.
     fn cleanup(&mut self, needs: &NeedStore) {
-        let mut first_del = true;
+        // Store for keys of squares to delete.
+        let mut to_del = StateStore::new(vec![]);
 
-        // Don't delete squares currently in needs.
-        'next_stax: for stax in self.squares.all_square_keys() {
+        'next_keyx: for keyx in self.squares.ahash.keys() {
             // Check needs
             for ndx in needs.iter() {
                 for targx in ndx.target().iter() {
-                    if targx.is_superset_of_state(&stax) {
-                        continue 'next_stax;
+                    if targx.is_superset_of_state(keyx) {
+                        continue 'next_keyx;
                     }
                 }
             }
@@ -990,54 +999,48 @@ impl SomeAction {
             // Don't delete squares in groups.
             // let mut in_groups = false;
             for grpx in self.groups.iter() {
-                if grpx.region.is_superset_of_state(&stax) {
-                    if grpx.region.state1 == stax || grpx.region.state2 == stax {
-                        continue 'next_stax;
+                if grpx.region.is_superset_of_state(keyx) {
+                    if grpx.region.state1 == *keyx || grpx.region.state2 == *keyx {
+                        continue 'next_keyx;
                     }
 
                     if let Some(stay) = &grpx.anchor {
-                        if *stay == stax {
-                            continue 'next_stax;
+                        if stay == keyx {
+                            continue 'next_keyx;
                         }
-                        if stax == grpx.region.far_state(stay) {
-                            continue 'next_stax;
+                        if *keyx == grpx.region.far_state(stay) {
+                            continue 'next_keyx;
                         }
                     }
                 } else if let Some(stay) = &grpx.anchor {
-                    if stax.is_adjacent(stay) {
-                        continue 'next_stax;
+                    if keyx.is_adjacent(stay) {
+                        continue 'next_keyx;
                     }
                 }
             }
 
             // Don't delete squares in seek edge regions.
             for regx in self.seek_edge.iter() {
-                if regx.is_superset_of_state(&stax) {
-                    continue 'next_stax;
+                if regx.is_superset_of_state(keyx) {
+                    continue 'next_keyx;
                 }
             }
 
             // Don't delete squares that are not in a group.
             // That is, squares with Pn: > One that need more samples.
-            if self.groups.num_groups_state_in(&stax) == 0 {
+            if self.groups.num_groups_state_in(keyx) == 0 {
                 continue;
             }
 
-            // Display and remove.
-            if first_del {
-                first_del = false;
-                print!(
-                    "\nDom {} Act {} deleted unneeded squares: ",
-                    self.dom_num, self.num
-                );
-            }
+            to_del.push(keyx.clone());
+        }
 
-            print!(" {stax}");
-            self.squares.remove(&stax);
-        } // next stax
-
-        if !first_del {
-            println!(" ");
+        if !to_del.is_empty() {
+            println!(
+                "\nDom {} Act {} deleted unneeded squares: {}",
+                self.dom_num, self.num, to_del
+            );
+            self.squares.del_squares(&to_del);
         }
     } // end cleanup
 
@@ -2240,7 +2243,7 @@ impl SomeAction {
                     );
                     let grps = self.groups.groups_state_in(stax);
                     if grps.len() == 1 {
-                        if let Some(grpy) = self.groups.find(&grps[0]) {
+                        if let Some(grpy) = self.groups.find(grps[0]) {
                             if let Some(anchory) = &grpy.anchor {
                                 if *stax == anchory {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
@@ -2254,7 +2257,10 @@ impl SomeAction {
                             return Err(format!("group {} not found?", grps[0]));
                         }
                     } else {
-                        println!("adj    {sqrx} in groups {grps}");
+                        println!(
+                            "adj    {sqrx} in groups {}",
+                            RegionStore::vec_ref_string(&grps)
+                        );
                     }
                 }
             } // next stax

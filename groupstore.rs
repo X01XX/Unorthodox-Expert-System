@@ -139,8 +139,25 @@ impl GroupStore {
         num_grps
     }
 
+    /// Return group reference if a state is in, if any.
+    pub fn state_in_1_group(&self, stax: &SomeState) -> Option<&SomeGroup> {
+        let mut num_grps = 0;
+        let mut ret: Option<&SomeGroup> = None;
+
+        for grpx in &self.avec {
+            if grpx.region.is_superset_of_state(stax) {
+                if num_grps > 0 {
+                    return None;
+                }
+                num_grps += 1;
+                ret = Some(grpx);
+            }
+        }
+        ret
+    }
+
     /// Return the groups regions a state is in.
-    pub fn groups_state_in(&self, stax: &SomeState) -> RegionStore {
+    pub fn groups_state_inx(&self, stax: &SomeState) -> RegionStore {
         RegionStore::new(
             self.avec
                 .iter()
@@ -153,6 +170,20 @@ impl GroupStore {
                 })
                 .collect(),
         )
+    }
+
+    /// Return the groups regions a state is in.
+    pub fn groups_state_in(&self, stax: &SomeState) -> Vec<&SomeRegion> {
+        self.avec
+            .iter()
+            .filter_map(|grpx| {
+                if grpx.region.is_superset_of_state(stax) {
+                    Some(&grpx.region)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Check if a state is in only one group, and if so, it is equal to the anchor.
@@ -193,6 +224,17 @@ impl GroupStore {
         false
     }
 
+    /// Return the number of groups a state is in.
+    pub fn num_state_in(&self, stax: &SomeState) -> usize {
+        let mut count = 0;
+        for grpx in &self.avec {
+            if grpx.region.is_superset_of_state(stax) {
+                count += 1;
+            }
+        }
+        count
+    }
+
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
         for grpx in &self.avec {
@@ -204,19 +246,17 @@ impl GroupStore {
     }
 
     /// Return regions of any group is a superset, or equal, to a region.
-    pub fn supersets_of(&self, reg: &SomeRegion) -> RegionStore {
-        RegionStore::new(
-            self.avec
-                .iter()
-                .filter_map(|grpx| {
-                    if reg.is_subset_of(&grpx.region) {
-                        Some(grpx.region.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
+    pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+        self.avec
+            .iter()
+            .filter_map(|grpx| {
+                if reg.is_subset_of(&grpx.region) {
+                    Some(&grpx.region)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     //    /// Find and remove a given group, identified by region.
@@ -275,7 +315,10 @@ impl GroupStore {
             let regs = self.supersets_of(&grp.region);
             println!(
                 "Dom {} Act {} skipped adding group {}, a superset exists in {}",
-                &dom, &act, &grp.region, &regs
+                &dom,
+                &act,
+                &grp.region,
+                RegionStore::vec_ref_string(&regs)
             );
             return false;
         }
@@ -311,8 +354,11 @@ impl GroupStore {
     }
 
     /// Return a RegionStore of regions of each group.
-    pub fn regions(&self) -> RegionStore {
-        RegionStore::new(self.avec.iter().map(|grpx| grpx.region.clone()).collect())
+    //    pub fn regions(&self) -> RegionStore {
+    //        RegionStore::new(self.avec.iter().map(|grpx| grpx.region.clone()).collect())
+    //    }
+    pub fn regions(&self) -> Vec<&SomeRegion> {
+        self.avec.iter().map(|grpx| &grpx.region).collect()
     }
 
     /// Return an iterator
