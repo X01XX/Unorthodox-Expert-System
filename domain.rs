@@ -1249,9 +1249,16 @@ mod tests {
         let s3 = dm0.state_from_string("s0b011")?;
         let s5 = dm0.state_from_string("s0b101")?;
 
+        // Form groups.
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        // Dup samples.
+        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        // Set groups pnc to true.
+        dm0.get_needs();
 
         println!("\nActs: {}", &dm0.actions[0]);
 

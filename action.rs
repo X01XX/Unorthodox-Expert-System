@@ -1701,9 +1701,8 @@ impl SomeAction {
         false
     }
 
-    /// Return needs to define a group region, from the combination of two smaller group regions.
-    /// This assumes there are no incompatible squares in the combined region.
-    fn region_defining_needs(
+    /// Return needs to define a group region, from the combination of two smaller group regions, if possible.
+    fn region_combine_needs(
         &self,
         regx: &SomeRegion,
         reg1: &SomeRegion,
@@ -1819,20 +1818,24 @@ impl SomeAction {
     pub fn group_pair_combine_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
         let nds = NeedStore::new(vec![]);
 
+        if grpx.limited || grpy.limited || !grpx.pnc || !grpy.pnc {
+            return nds;
+        }
+
         let reg_both = grpx.region.union(&grpy.region);
 
         if grpx.pn == Pn::Unpredictable {
             if self.any_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
                 return nds;
             }
-            return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            return self.region_combine_needs(&reg_both, &grpx.region, &grpy.region);
         }
 
         if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
             if (grpx.pn == Pn::One || (grpx.pnc && grpy.pnc))
                 && self.all_subset_rules_in_region(&reg_both, &rulsxy)
             {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+                return self.region_combine_needs(&reg_both, &grpx.region, &grpy.region);
             }
         }
         nds
@@ -1855,45 +1858,34 @@ impl SomeAction {
             return NeedStore::new(vec![self.cont_int_region_need(&reg_int, grpx, grpy)]);
         }
 
-        let reg_both = grpx.region.union(&grpy.region);
-
         if grpx.pn == Pn::Unpredictable {
-            if self.any_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
-                return nds;
-            }
-            return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
+            return self.group_pair_combine_needs(grpx, grpy);
         }
 
         let rulsx = grpx.rules.restrict_initial_region(&reg_int);
         let rulsy = grpy.rules.restrict_initial_region(&reg_int);
 
-        // If contradictory, return needs to resolve
-        if rulsx != rulsy {
-            // Check if a valid sub-region of the intersection exists
-            if let Some(rulsxy) = rulsx.intersection(&rulsy) {
-                // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
-                let ok_reg = rulsxy.initial_region();
-
-                // to avoid subtraction, use the far sub-region
-                let regy = reg_int.far_reg(&ok_reg);
-
-                //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
-
-                nds.push(self.cont_int_region_need(&regy, grpx, grpy));
-            } else {
-                //println!("pn2 whole intersection is bad");
-                nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
-            }
-
-            return nds;
+        // If rules are the same, check if a combination could be made.
+        if rulsx == rulsy {
+            return self.group_pair_combine_needs(grpx, grpy);
         }
 
-        if let Some(rulsxy) = grpx.rules.union(&grpy.rules) {
-            if (grpx.pn == Pn::One || (grpx.pnc && grpy.pnc))
-                && self.all_subset_rules_in_region(&reg_both, &rulsxy)
-            {
-                return self.region_defining_needs(&reg_both, &grpx.region, &grpy.region);
-            }
+        // If contradictory, return needs to resolve
+
+        // Check if a valid sub-region of the intersection exists
+        if let Some(rulsxy) = rulsx.intersection(&rulsy) {
+            // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
+            let ok_reg = rulsxy.initial_region();
+
+            // to avoid subtraction, use the far sub-region
+            let regy = reg_int.far_reg(&ok_reg);
+
+            //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
+
+            nds.push(self.cont_int_region_need(&regy, grpx, grpy));
+        } else {
+            //println!("pn2 whole intersection is bad");
+            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
         }
 
         nds
