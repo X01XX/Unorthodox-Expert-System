@@ -1035,7 +1035,8 @@ mod tests {
         }
         assert!(found);
 
-        dm0.actions[0].set_group_anchor(&grp_reg, &s04);
+        let Some(grpx) = dm0.actions[0].groups.find_mut(&grp_reg) else { panic!("should work"); };
+        grpx.set_anchor(&s04);
         println!("dm0 {}", &dm0.actions[0]);
 
         let Some(nds2) = dm0.actions[0].limit_groups_needs(&msk_f) else {

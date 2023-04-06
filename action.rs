@@ -81,7 +81,7 @@ impl fmt::Display for SomeAction {
     }
 }
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeAction struct, aggregate the best current guess at what an action
 /// will do for any state.
@@ -418,20 +418,6 @@ impl SomeAction {
 
         if sqr2.pnc {
             grpx.set_pnc();
-        }
-    }
-
-    /// Set a group anchor.
-    pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-        let Some(grpx) = self.groups.find_mut(grp_reg) else {
-                println!("set_group_anchor {grp_reg} group not found?");
-                return;
-            };
-
-        if grpx.pnc {
-            grpx.set_anchor(anchor);
-        } else {
-            println!("set_group_anchor {} not pnc?", grpx.region);
         }
     }
 
