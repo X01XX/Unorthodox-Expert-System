@@ -71,10 +71,10 @@ mod step;
 mod stepstore;
 use domainstore::{DomainStore, InxPlan};
 mod actioninterface;
-mod optimalregionsstore;
 mod planstore;
 mod randompick;
 mod removeunordered;
+mod selectregionsstore;
 mod target;
 mod targetstore;
 
@@ -320,13 +320,26 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    // Add optimal regionstores.
-    dmxs.add_optimal(regstr1, 3);
-    dmxs.add_optimal(regstr2, 2);
-    dmxs.add_optimal(regstr3, 4);
-    dmxs.add_optimal(regstr4, 1);
+    let mut regstr5 = RegionStore::with_capacity(2);
+    regstr5.push(
+        dmxs[0]
+            .region_from_string_pad_x("rXXxx")
+            .expect("String should be formatted correctly"),
+    );
+    regstr5.push(
+        dmxs[1]
+            .region_from_string_pad_x("rXXXXXX00_X1XX_XXXX")
+            .expect("String should be formatted correctly"),
+    );
 
-    //println!("optimal and ints: {}", dmxs.optimal_and_ints.formatted_string());
+    // Add select regionstores.
+    dmxs.add_select(regstr1, 3);
+    dmxs.add_select(regstr2, 2);
+    dmxs.add_select(regstr3, 4);
+    dmxs.add_select(regstr4, 1);
+    dmxs.add_select(regstr5, -1);
+
+    //println!("select and ints: {}", dmxs.select_and_ints.formatted_string());
     dmxs
 }
 
@@ -520,7 +533,7 @@ fn do_print_plan_details(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Str
 
                 println!("\n{} Need: {}", &n_num, &ndx);
                 match ndx {
-                    SomeNeed::ToOptimalRegion { .. } => {
+                    SomeNeed::ToSelectRegion { .. } => {
                         println!("\n{}", &pln.str2());
                     }
                     _ => {
@@ -545,7 +558,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     let nd_inx = inx_pln.inx;
 
     match dmxs.needs[nd_inx] {
-        SomeNeed::ToOptimalRegion { .. } => {
+        SomeNeed::ToSelectRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
         _ => {
@@ -568,7 +581,16 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     match dmxs.needs[nd_inx] {
-        SomeNeed::ToOptimalRegion { .. } => {
+        SomeNeed::ToSelectRegion { .. } => {
+            if dmxs.needs[nd_inx]
+                .target()
+                .is_superset_of_states(&dmxs.all_current_states())
+            {
+                dmxs.set_boredom_limit();
+                return true;
+            }
+        }
+        SomeNeed::FromSelectRegion { .. } => {
             if dmxs.needs[nd_inx]
                 .target()
                 .is_superset_of_states(&dmxs.all_current_states())
@@ -1015,10 +1037,10 @@ fn usage() {
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
-    println!("\n    If there is an optimal region for the CDD, when no more needs can be done, the program will seek to change the current state");
-    println!("    to be in an optimal region.");
-    println!("\n    If there is another optimal region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
-    println!("    and seek to move the current state to a different optimal region, or to an intersection of optimal regions.");
+    println!("\n    If there is an select region for the CDD, when no more needs can be done, the program will seek to change the current state");
+    println!("    to be in an select region.");
+    println!("\n    If there is another select region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
+    println!("    and seek to move the current state to a different select region, or to an intersection of select regions.");
     println!(
         "\n    \"P:0[]\" means Plan: Domain 0. The current state can be used to satisfy the need."
     );
@@ -1027,9 +1049,9 @@ fn usage() {
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
     println!("    will get things moving again.");
-    println!("\n    After no more needs can be done, optimal region seeking logic will be used.  If there are more than one optimal");
-    println!("    regions, repeatedly pressing enter will increase the boredom duration, and after 3 times the number of optimal regions");
-    println!("    the current state is in, a different optimal region will be sought.");
+    println!("\n    After no more needs can be done, select region seeking logic will be used.  If there are more than one select");
+    println!("    regions, repeatedly pressing enter will increase the boredom duration, and after 3 times the number of select regions");
+    println!("    the current state is in, a different select region will be sought.");
 }
 
 ///Pause for input from user.

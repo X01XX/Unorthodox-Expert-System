@@ -4,16 +4,18 @@
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-use crate::optimalregionsstore::{OptimalRegions, OptimalRegionsStore};
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::randompick::RandomPick;
 use crate::regionstore::RegionStore;
+use crate::removeunordered;
+use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
@@ -54,16 +56,16 @@ pub struct DomainStore {
     pub avec: Vec<SomeDomain>,
     /// Domain displayed to user.
     pub current_domain: usize,
-    /// A counter to indicate the number of steps the current state is in the same optimal region.
+    /// A counter to indicate the number of steps the current state is in the same select region.
     pub boredom: usize,
-    /// A limit for becomming bored, then moving to another optimal state.
+    /// A limit for becomming bored, then moving to another select state.
     pub boredom_limit: usize,
-    /// Zero, or more, optimal regions that are sought if there are no needs.
+    /// Zero, or more, select regions that are sought if there are no needs.
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
-    pub optimal: OptimalRegionsStore,
-    /// RegionStore to add all possible intersections of the optimal states to discern.
-    pub optimal_and_ints: OptimalRegionsStore,
+    pub select: SelectRegionsStore,
+    /// RegionStore to add all possible intersections of the select states to discern.
+    pub select_and_ints: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
     /// Vector of InxPlans for selected needs, where a plan was calculated.
@@ -85,8 +87,8 @@ impl DomainStore {
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
-            optimal_and_ints: OptimalRegionsStore::new(vec![]),
-            optimal: OptimalRegionsStore::new(vec![]),
+            select_and_ints: SelectRegionsStore::new(vec![]),
+            select: SelectRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
             cant_do: Vec::<usize>::new(),
@@ -94,14 +96,14 @@ impl DomainStore {
         }
     }
 
-    /// Add an optimal region.
+    /// Add an select region.
     /// One region for each domain.
     /// The logical "and" of each domain region given.
-    pub fn add_optimal(&mut self, regstr: RegionStore, value: usize) {
+    pub fn add_select(&mut self, regstr: RegionStore, value: isize) {
         debug_assert!(regstr.len() == self.avec.len());
 
-        if self.optimal.any_supersets_of(&regstr) {
-            println!("Superset optimal regions found");
+        if self.select.any_supersets_of(&regstr) {
+            println!("Superset select regions found");
             return;
         }
 
@@ -111,19 +113,19 @@ impl DomainStore {
             }
         }
 
-        self.optimal.push(regstr, value);
+        self.select.push(regstr, value);
 
-        if self.optimal.len() == 1 {
-            self.optimal_and_ints = self.optimal.clone();
+        if self.select.len() == 1 {
+            self.select_and_ints = self.select.clone();
         } else {
-            self.optimal_and_ints = self.optimal.and_intersections();
+            self.select_and_ints = self.select.and_intersections();
         }
     }
 
     /// Add a Domain struct to the store.
-    /// Add optimal regions after the last domain has been added.
+    /// Add select regions after the last domain has been added.
     pub fn push(&mut self, mut domx: SomeDomain) -> usize {
-        debug_assert!(self.optimal.is_empty());
+        debug_assert!(self.select.is_empty());
 
         let dom_num = self.avec.len();
 
@@ -150,8 +152,8 @@ impl DomainStore {
             .flatten()
             .collect::<Vec<SomeNeed>>();
 
-        // Get optimal region needs.
-        if let Some(needx) = self.check_optimal() {
+        // Get select region needs.
+        if let Some(needx) = self.check_select() {
             vecx.push(needx);
         }
 
@@ -175,7 +177,7 @@ impl DomainStore {
         }
 
         if plans.len() == self.len() {
-            // Run plans in parallel for achieving a state in an optimal region, when the number of domains is GT 1.
+            // Run plans in parallel for achieving a state in an select region, when the number of domains is GT 1.
             if self
                 .avec
                 .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
@@ -240,14 +242,14 @@ impl DomainStore {
         }
         println!("{}({}) ", cur_pri, count);
 
-        // Get optimal region info.
-        let in_optimal = self
-            .optimal
+        // Get select region info.
+        let in_select = self
+            .select
             .any_supersets_of_states(&self.all_current_states());
 
-        let optimal_priority = if in_optimal && self.boredom < self.boredom_limit {
-            SomeNeed::ToOptimalRegion {
-                target_regions: OptimalRegions {
+        let select_priority = if in_select && self.boredom < self.boredom_limit {
+            SomeNeed::ToSelectRegion {
+                target_regions: SelectRegions {
                     regions: RegionStore::new(vec![]),
                     value: 0,
                 },
@@ -313,7 +315,7 @@ impl DomainStore {
             }
             println!(" ");
 
-            if cur_pri_end == needs_len || cur_pri > optimal_priority {
+            if cur_pri_end == needs_len || cur_pri > select_priority {
                 return;
             }
 
@@ -438,8 +440,8 @@ impl DomainStore {
     pub fn set_boredom_limit(&mut self) {
         let mut boredom_limit = 0;
         self.boredom = 0;
-        // Get the optimal regions the current state is in.
-        for optregs in self.optimal.iter() {
+        // Get the select regions the current state is in.
+        for optregs in self.select.iter() {
             if optregs
                 .regions
                 .is_superset_corr_states(&self.all_current_states())
@@ -447,16 +449,20 @@ impl DomainStore {
                 boredom_limit += optregs.value;
             }
         }
-        self.boredom_limit = boredom_limit;
+        if boredom_limit > 0 {
+            self.boredom_limit = boredom_limit as usize;
+        } else {
+            self.boredom_limit = 0;
+        }
         self.boredom = 0;
     }
 
     /// Do functions related to the wish to be in an optimum region.
     /// Increment the boredom duration, if needed.
-    /// Return a need to move to another optimal region, if needed.
-    pub fn check_optimal(&mut self) -> Option<SomeNeed> {
-        // Check if there are no optimal regions.
-        if self.optimal.is_empty() {
+    /// Return a need to move to another select region, if needed.
+    pub fn check_select(&mut self) -> Option<SomeNeed> {
+        // Check if there are no select regions.
+        if self.select.is_empty() {
             return None;
         }
 
@@ -467,8 +473,17 @@ impl DomainStore {
             all_states.push(domx.get_current_state());
         }
 
-        // Check current status within an optimal region, or not.
-        if self.optimal.any_supersets_of_states(&all_states) {
+        // Get value of select states.
+        let val = self.select.value_supersets_of_states(&all_states);
+
+        if val < 0 {
+            self.boredom = 0;
+            self.boredom_limit = 0;
+            return self.choose_select_goal(&all_states);
+        }
+
+        // Check current status within an select region, or not.
+        if self.select.any_supersets_of_states(&all_states) {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
                 return None;
@@ -478,22 +493,38 @@ impl DomainStore {
             self.boredom_limit = 0;
         }
 
-        self.choose_optimal_goal(&all_states)
+        self.choose_select_goal(&all_states)
     }
 
-    /// Return a need for moving to an optimal region.
-    fn choose_optimal_goal(&self, all_states: &[&SomeState]) -> Option<SomeNeed> {
+    /// Return a need for moving to an select region.
+    fn choose_select_goal(&self, all_states: &[&SomeState]) -> Option<SomeNeed> {
         // Get regions the current state is not in.
-        let notsups = self.optimal_and_ints.not_supersets_of_states(all_states);
+        let mut notsups = self.select_and_ints.not_supersets_of_states(all_states);
 
-        // If the current state is not in at least one optimal region, return None.
+        // Remove negative value regions.
+        let mut inxs = Vec::<usize>::with_capacity(notsups.len());
+        for (inx, nsupx) in notsups.iter().enumerate() {
+            if nsupx.value < 1 {
+                inxs.push(inx);
+            }
+        }
+        if inxs.len() > 1 {
+            inxs.reverse();
+        }
+        if !inxs.is_empty() {
+            for iny in inxs.iter() {
+                removeunordered::remove_unordered(&mut notsups, *iny);
+            }
+        }
+
+        // If the current state is not in at least one select region, return None.
         if notsups.is_empty() {
             return None;
         }
 
-        // If the current state is not in only one optimal region, return a need to go there.
+        // If the current state is not in an select region, return a need to go there.
         if notsups.len() == 1 {
-            return Some(SomeNeed::ToOptimalRegion {
+            return Some(SomeNeed::ToSelectRegion {
                 target_regions: notsups[0].clone(),
             });
         }
@@ -501,7 +532,7 @@ impl DomainStore {
         if notsups.len() == 2 {
             let inx = rand::thread_rng().gen_range(0..2);
 
-            return Some(SomeNeed::ToOptimalRegion {
+            return Some(SomeNeed::ToSelectRegion {
                 target_regions: notsups[inx].clone(),
             });
         }
@@ -512,48 +543,48 @@ impl DomainStore {
         // Randomly pick an index value.
         let inx1 = rp1.pick().unwrap();
         let dist1 = notsups[inx1].regions.distance_corr_states(all_states);
-        let rate1 = (notsups[inx1].value * 1000) / dist1;
+        let rate1 = (notsups[inx1].value as usize * 1000) / dist1;
 
         // Randomly pick an index value NE inx1.
         let inx2 = rp1.pick().unwrap();
         let dist2 = notsups[inx2].regions.distance_corr_states(all_states);
-        let rate2 = (notsups[inx2].value * 1000) / dist2;
+        let rate2 = (notsups[inx2].value as usize * 1000) / dist2;
 
         if rate1 > rate2 {
-            return Some(SomeNeed::ToOptimalRegion {
+            return Some(SomeNeed::ToSelectRegion {
                 target_regions: notsups[inx1].clone(),
             });
         }
 
-        Some(SomeNeed::ToOptimalRegion {
+        Some(SomeNeed::ToSelectRegion {
             target_regions: notsups[inx2].clone(),
         })
     }
 
-    /// Print current states and optimal information.
-    /// Return true if the current states are in an optimal region.
-    pub fn print_optimal(&self) -> bool {
+    /// Print current states and select information.
+    /// Return true if the current states are in an select region.
+    pub fn print_select(&self) -> bool {
         let mut ret = false;
 
         let all_states = self.all_current_states();
-        let optimal_supersets = self.optimal.supersets_of_states(&all_states);
-        if optimal_supersets.is_empty() {
+        let select_supersets = self.select.supersets_of_states(&all_states);
+        if select_supersets.is_empty() {
             print!(
-                "\nAll Current states: {} in optimal regions: None, not in {}",
+                "\nAll Current states: {} in select regions: None, not in {}",
                 state::somestate_ref_vec_string(&all_states),
-                self.optimal
+                self.select
             );
         } else {
             ret = true;
             print!(
-                "\nAll Current states: {} in optimal regions: {}",
+                "\nAll Current states: {} in select regions: {}",
                 state::somestate_ref_vec_string(&all_states),
-                OptimalRegions::vec_ref_string(&optimal_supersets)
+                SelectRegions::vec_ref_string(&select_supersets)
             );
 
             print!(
                 ", not in: {}",
-                OptimalRegions::vec_ref_string(&self.optimal.not_supersets_of_states(&all_states))
+                SelectRegions::vec_ref_string(&self.select.not_supersets_of_states(&all_states))
             );
         }
 
@@ -561,6 +592,7 @@ impl DomainStore {
             ", Boredom level = {} of limit {}",
             self.boredom, self.boredom_limit
         );
+
         println!(" ");
 
         ret
@@ -576,14 +608,37 @@ impl DomainStore {
 
         let cur_state = &self.avec[dom_num].get_current_state();
 
-        println!("\nDom: {dom_num} Current State: {cur_state}");
+        // Calc current status.
+        let all_states = self.all_current_states();
+        let select_supersets = self.select.supersets_of_states(&all_states);
+        let mut in_pos = false;
+        let mut in_neg = false;
+        for optx in select_supersets.iter() {
+            match optx.value.cmp(&0) {
+                Ordering::Less => in_neg = true,
+                Ordering::Greater => in_pos = true,
+                _ => (),
+            }
+        }
+
+        let status = if in_pos && in_neg {
+            "Conflicted"
+        } else if in_pos {
+            "Positive"
+        } else if in_neg {
+            "Negative"
+        } else {
+            "Neutral"
+        };
+
+        println!("\nDom: {dom_num} Current State: {cur_state} Status: {status}");
     }
 
     /// Print needs that can be done.
     pub fn print_can_do(&self) {
         if self.can_do.is_empty() {
             println!("\nNeeds that can be done: None");
-            self.print_optimal();
+            self.print_select();
         } else {
             println!("\nNeeds that can be done:");
 
@@ -706,7 +761,7 @@ mod tests {
     }
 
     #[test]
-    fn check_optimal() -> Result<(), String> {
+    fn check_select() -> Result<(), String> {
         // Start a DomainStore
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
@@ -716,7 +771,7 @@ mod tests {
         // Add action to domain 1.
         dmxs[1].add_action();
 
-        // Load optimal regions
+        // Load select regions
         let mut regstr1 = RegionStore::with_capacity(2);
         regstr1.push(dmxs[0].region_from_string("r0x0x")?);
         regstr1.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
@@ -733,14 +788,14 @@ mod tests {
         regstr4.push(dmxs[0].region_from_string("r1110")?);
         regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
-        // Add optimal region stores.
-        dmxs.add_optimal(regstr1, 1);
-        dmxs.add_optimal(regstr2, 1);
-        dmxs.add_optimal(regstr3, 1);
-        dmxs.add_optimal(regstr4, 1);
+        // Add select region stores.
+        dmxs.add_select(regstr1, 1);
+        dmxs.add_select(regstr2, 1);
+        dmxs.add_select(regstr3, 1);
+        dmxs.add_select(regstr4, 1);
 
-        println!("Optimal and ints:");
-        for regstrx in dmxs.optimal_and_ints.iter() {
+        println!("Select and ints:");
+        for regstrx in dmxs.select_and_ints.iter() {
             println!("regstrx: {}", regstrx);
         }
 
@@ -752,11 +807,11 @@ mod tests {
 
         println!(
             "\nNumber supersets: {}",
-            dmxs.optimal.number_supersets_of_states(&all_states)
+            dmxs.select.number_supersets_of_states(&all_states)
         );
 
-        if let Some(needx) = dmxs.check_optimal() {
-            println!("\nCheck_optimal returns {}", needx);
+        if let Some(needx) = dmxs.check_select() {
+            println!("\nCheck_select returns {}", needx);
         } else {
             println!("\nCheck_otimal returns None");
         }

@@ -6,9 +6,9 @@
 //! Samples to limit a group.
 //! Housekeeping needs, like adding a group.
 
-use crate::optimalregionsstore::OptimalRegions;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
+use crate::selectregionsstore::SelectRegions;
 use crate::state::SomeState;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
@@ -135,9 +135,13 @@ impl fmt::Display for SomeNeed {
                 format!(
                 "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)")
             }
-            SomeNeed::ToOptimalRegion { target_regions } => {
+            SomeNeed::ToSelectRegion { target_regions } => {
                 let pri = self.priority();
-                format!("N(Pri {pri} To Optimal Regions {target_regions})")
+                format!("N(Pri {pri} To Select Regions {target_regions})")
+            }
+            SomeNeed::FromSelectRegion { target_regions } => {
+                let pri = self.priority();
+                format!("N(Pri {pri} From Select Regions {target_regions})")
             }
         }; // end match
 
@@ -234,8 +238,10 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
     },
-    /// Move all current domain states to the corresponding regions.
-    ToOptimalRegion { target_regions: OptimalRegions },
+    /// Move all current domain states to the corresponding regions of an SelectRegion.
+    ToSelectRegion { target_regions: SelectRegions },
+    /// Move all current domain states from the corresponding regions of an OptmalRegion.
+    FromSelectRegion { target_regions: SelectRegions },
 }
 
 impl SomeNeed {
@@ -256,7 +262,8 @@ impl SomeNeed {
             SomeNeed::SetGroupLimited { .. } => "SetGroupLimited",
             SomeNeed::StateInRemainder { .. } => "StateInRemainder",
             SomeNeed::StateNotInGroup { .. } => "StateNotInGroup",
-            SomeNeed::ToOptimalRegion { .. } => "ToOptimalRegion",
+            SomeNeed::ToSelectRegion { .. } => "ToSelectRegion",
+            SomeNeed::FromSelectRegion { .. } => "FromSelectRegion",
         }
     }
 
@@ -269,13 +276,14 @@ impl SomeNeed {
             // By ascending priority number.
             SomeNeed::SeekEdge { .. } => 100,
             SomeNeed::ContradictoryIntersection { .. } => 200,
+            SomeNeed::FromSelectRegion { .. } => 250,
             SomeNeed::AStateMakeGroup { num_x, .. } => 399 - num_x,
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
             SomeNeed::StateNotInGroup { .. } => 500,
-            SomeNeed::ToOptimalRegion { .. } => 600,
-            // Some needs should have a higher priority number compared to ToOptimalRegion.
+            SomeNeed::ToSelectRegion { .. } => 600,
+            // Some needs should have a higher priority number compared to ToSelectRegion.
             SomeNeed::StateInRemainder { .. } => 700,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
@@ -445,7 +453,14 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(target_state.clone(), target_state.clone()),
             )]),
-            SomeNeed::ToOptimalRegion { target_regions, .. } => {
+            SomeNeed::ToSelectRegion { target_regions, .. } => {
+                let mut targ = TargetStore::with_capacity(target_regions.regions.len());
+                for (dom_numx, targx) in target_regions.regions.iter().enumerate() {
+                    targ.push(SomeTarget::new(dom_numx, targx.clone()));
+                }
+                targ
+            }
+            SomeNeed::FromSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(target_regions.regions.len());
                 for (dom_numx, targx) in target_regions.regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
