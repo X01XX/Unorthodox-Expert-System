@@ -6,6 +6,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+use crate::randompick::RandomPick;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -213,9 +214,15 @@ impl SelectRegionsStore {
 
         for selx in sup_store.iter() {
             let edges = selx.regions.edge_mask_corr();
-            for inx in 0..edges.len() {
+            let mut rp1 = RandomPick::new(edges.len());
+            while let Some(inx) = rp1.pick() {
+                if edges[inx].is_low() { continue; }
+                
                 let edge_mask_per_bit = edges[inx].split();
-                for edgex in &edge_mask_per_bit {
+                let mut rp2 = RandomPick::new(edge_mask_per_bit.len());
+
+                while let Some(iny) = rp2.pick() {
+                    let edgex = &edge_mask_per_bit[iny];
                     // Assemble altered vector of state refs.
                     let new_state = all_states[inx].bitwise_xor(edgex);
                     let mut statesx = Vec::<&SomeState>::with_capacity(all_states.len());
