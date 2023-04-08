@@ -118,7 +118,7 @@ impl DomainStore {
         if self.select.len() == 1 {
             self.select_and_ints = self.select.clone();
         } else {
-            self.select_and_ints = self.select.and_intersections();
+            self.select_and_ints = self.select.split_by_partial_intersections();
         }
     }
 
@@ -501,7 +501,7 @@ impl DomainStore {
         // Get regions the current state is not in.
         let mut notsups = self.select_and_ints.not_supersets_of_states(all_states);
 
-        // Remove negative value regions.
+        // Remove negative, and zero, value regions.
         let mut inxs = Vec::<usize>::with_capacity(notsups.len());
         for (inx, nsupx) in notsups.iter().enumerate() {
             if nsupx.value < 1 {
@@ -611,24 +611,24 @@ impl DomainStore {
         // Calc current status.
         let all_states = self.all_current_states();
         let select_supersets = self.select.supersets_of_states(&all_states);
-        let mut in_pos = false;
-        let mut in_neg = false;
+        let mut in_pos = 0;
+        let mut in_neg = 0;
         for optx in select_supersets.iter() {
             match optx.value.cmp(&0) {
-                Ordering::Less => in_neg = true,
-                Ordering::Greater => in_pos = true,
+                Ordering::Less => in_neg += optx.value,
+                Ordering::Greater => in_pos += optx.value,
                 _ => (),
             }
         }
 
-        let status = if in_pos && in_neg {
-            "Conflicted"
-        } else if in_pos {
-            "Positive"
-        } else if in_neg {
-            "Negative"
+        let status = if in_pos > 0 && in_neg < 0 {
+            format!("Conflicted {}/{}", in_pos, in_neg)
+        } else if in_pos > 0 {
+            format!("Positive {}", in_pos)
+        } else if in_neg < 0 {
+            format!("Negative {}", in_neg)
         } else {
-            "Neutral"
+            "Neutral".to_string()
         };
 
         println!("\nDom: {dom_num} Current State: {cur_state} Status: {status}");

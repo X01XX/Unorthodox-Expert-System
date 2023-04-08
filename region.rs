@@ -77,6 +77,8 @@ impl SomeRegion {
 
         let mut msk_low = SomeMask::new_low(num_ints);
 
+        let mut num_bits = 0;
+
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "r" {
@@ -117,7 +119,12 @@ impl SomeRegion {
                     "Did not understand the string {str}, invalid character?"
                 ));
             }
+            num_bits += 1;
         } // end for ch
+
+        if num_bits > (num_ints * crate::bits::NUM_BITS_PER_INT) {
+            return Err(format!("String {str}, too long?"));
+        }
 
         Ok(SomeRegion::new(msk_high.to_state(), msk_low.to_state()))
     } // end new_from_string

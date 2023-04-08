@@ -16,7 +16,7 @@
 pub type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
-const NUM_BITS_PER_INT: usize = u8::BITS as usize;
+pub const NUM_BITS_PER_INT: usize = u8::BITS as usize;
 
 /// Mask for the highest bit in an integer.
 const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);

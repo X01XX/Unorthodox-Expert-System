@@ -25,15 +25,6 @@
  * For use outside of the license, contact the Wisconsin Alumni Research Foundation (WARF).
  */
 
-//#[allow(
-//dead_code,
-//unused_variables,
-//  unused_macros,
-//  unused_imports,
-//  unused_assignments,
-//  unused_mut
-//)]
-
 use std::env;
 mod action;
 mod actionstore;

@@ -3,6 +3,7 @@
 //! In the case of Optimal Regions, per domain, the regions in a RegionStore
 //! may not have the same number of integers, hence the *_each functions.
 
+use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::removeunordered;
 use crate::state::SomeState;
@@ -329,10 +330,10 @@ impl RegionStore {
     /// Return True if a RegionStore is a superset of all corresponding states in a StateStore.
     /// Used in optimal regionstore calculations.
     pub fn is_superset_corr_states(&self, stas: &[&SomeState]) -> bool {
-        assert!(self.len() == stas.len());
+        debug_assert!(self.len() == stas.len());
 
-        for (inx, regx) in self.avec.iter().enumerate() {
-            if regx.is_superset_of_state(stas[inx]) {
+        for (x, y) in self.iter().zip(stas.iter()) {
+            if x.is_superset_of_state(y) {
             } else {
                 return false;
             }
@@ -347,10 +348,10 @@ impl RegionStore {
         debug_assert!(self.len() == stas.len());
 
         let mut dist = 0;
-        for (inx, regx) in self.avec.iter().enumerate() {
-            if regx.is_superset_of_state(stas[inx]) {
+        for (x, y) in self.iter().zip(stas.iter()) {
+            if x.is_superset_of_state(y) {
             } else {
-                dist += regx.distance_state(stas[inx]);
+                dist += x.distance_state(y);
             }
         }
 
@@ -359,11 +360,11 @@ impl RegionStore {
 
     /// Return True if a RegionStore is a superset of corresponding regions in a given RegionStore.
     /// Used in optimal regionstore calculations.
-    pub fn is_superset_corr(&self, regs: &RegionStore) -> bool {
-        assert!(self.len() == regs.len());
+    pub fn is_superset_corr(&self, other: &RegionStore) -> bool {
+        debug_assert!(self.len() == other.len());
 
-        for inx in 0..self.len() {
-            if self.avec[inx].is_superset_of(&regs[inx]) {
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x.is_superset_of(y) {
             } else {
                 return false;
             }
@@ -375,6 +376,8 @@ impl RegionStore {
     /// Return true if corresponding regions in two RegionStores are equal.
     /// Used in optimal regionstore calculations.
     pub fn equal_corr(&self, other: &RegionStore) -> bool {
+        debug_assert!(self.len() == other.len());
+
         for inx in 0..self.len() {
             if self[inx] == other[inx] {
             } else {
@@ -386,14 +389,14 @@ impl RegionStore {
 
     /// Return an intersection of corresponding regions, of two RegionStores.
     /// Used in optimal regionstore calculations.
-    pub fn intersect_corr(&self, other: &RegionStore) -> Option<RegionStore> {
-        assert!(self.len() == other.len());
+    pub fn intersection_corr(&self, other: &RegionStore) -> Option<RegionStore> {
+        debug_assert!(self.len() == other.len());
 
         let mut ret = RegionStore::with_capacity(self.len());
 
-        for inx in 0..self.len() {
-            if self[inx].intersects(&other[inx]) {
-                if let Some(reg_int) = self[inx].intersection(&other[inx]) {
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x.intersects(y) {
+                if let Some(reg_int) = x.intersection(y) {
                     ret.push(reg_int);
                 }
             } else {
@@ -404,17 +407,215 @@ impl RegionStore {
         Some(ret)
     }
 
+    /// Return true if there is an intersection of corresponding regions, of two RegionStores.
+    pub fn intersects_corr(&self, other: &RegionStore) -> bool {
+        debug_assert!(self.len() == other.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            if !x.intersects(y) {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Return true if each region in a RegionStore is a subset, in order, of two RegionStores.
     /// Used in optimal regionstore calculations.
     pub fn subset_corr(&self, other: &RegionStore) -> bool {
-        for inx in 0..self.len() {
-            if self[inx].is_subset_of(&other[inx]) {
+        debug_assert!(self.len() == other.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x.is_subset_of(y) {
             } else {
                 return false;
             }
         }
         true
     }
+
+    /// Return a vector of masks representing X/non-x bit positions of self / other.
+    pub fn xb_mask_corr(&self, other: &RegionStore) -> Vec<SomeMask> {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
+
+        for (x, b) in self.iter().zip(other.iter()) {
+            ret_msks.push(x.x_mask().bitwise_and(&b.x_mask().bitwise_not()));
+        }
+
+        ret_msks
+    }
+
+    /// Subtract corresponding regions from a RegionStore
+    pub fn subtract_corr(&self, other: &RegionStore) -> Vec<RegionStore> {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret_str = Vec::<RegionStore>::new();
+
+        let xb_msks = self.xb_mask_corr(other);
+
+        for inx in 0..self.len() {
+            if xb_msks[inx].is_low() {
+                continue;
+            }
+            let single_bits = xb_msks[inx].split();
+
+            for bitx in single_bits.iter() {
+                let mut new_store = RegionStore::with_capacity(self.len());
+
+                for iny in 0..self.len() {
+                    if iny == inx {
+                        new_store.push(match bitx.bitwise_and(&other[inx].state1).is_low() {
+                            true =>
+                            // process x/0
+                            {
+                                self[inx].set_to_ones(bitx)
+                            }
+                            false =>
+                            // process x/1
+                            {
+                                self[inx].set_to_zeros(bitx)
+                            }
+                        });
+                    } else {
+                        new_store.push(self[iny].clone());
+                    }
+                }
+                ret_str.push(new_store);
+            }
+        }
+        ret_str
+    }
+} // End impl RegionStore.
+
+/// Return true if a vector of regionstores contains a given regionstore,
+/// comparing corresponding regions.
+#[allow(dead_code)]
+fn vec_rs_corr_contains(avec: &Vec<RegionStore>, ars: &RegionStore) -> bool {
+    for rsx in avec {
+        if rsx.equal_corr(ars) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Return true if a vector of regionstores contains a superset of a given regionstore,
+/// comparing corresponding regions.
+fn vec_rs_corr_any_superset(avec: &Vec<RegionStore>, ars: &RegionStore) -> bool {
+    for rsx in avec {
+        if rsx.is_superset_corr(ars) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Split regions by intersections to get a list of regionstores that are subset
+/// of all regionstores they intersect.
+pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> Vec<RegionStore> {
+    let mut ret_vec = Vec::<RegionStore>::new();
+
+    // Copy RegionStores.
+    let mut tmp_vec = Vec::<RegionStore>::new();
+    for rsx in rs_vec {
+        tmp_vec.push(rsx.clone());
+    }
+
+    loop {
+        // Find regions that are either subset of another or do not intersect another.
+        let mut next_vec = Vec::<RegionStore>::new();
+
+        'top_loop: for rsy in tmp_vec.into_iter() {
+            for rsx in rs_vec.iter() {
+                if rsy.intersects_corr(rsx) {
+                    if rsy.subset_corr(rsx) {
+                        continue;
+                    }
+
+                    // Partial intersection found, so subtract it.
+                    let splits = rsy.subtract_corr(rsx);
+                    for splx in splits {
+                        if !vec_rs_corr_any_superset(&next_vec, &splx) {
+                            next_vec.push(splx);
+                        }
+                    }
+                    // Also add the intersection.
+                    let intx = rsy.intersection_corr(rsx).unwrap();
+                    if !vec_rs_corr_any_superset(&next_vec, &intx) {
+                        next_vec.push(intx);
+                    }
+                    continue 'top_loop;
+                }
+            } // next rsx
+              // No non-superset intersections, so save in return vector.
+            if !vec_rs_corr_any_superset(&ret_vec, &rsy) {
+                ret_vec.push(rsy);
+            }
+        } // next rsy
+
+        if next_vec.is_empty() {
+            // Check that no intersection is a superset of another.
+            for intx in 0..(ret_vec.len() - 1) {
+                for inty in (intx + 1)..ret_vec.len() {
+                    if ret_vec[intx].is_superset_corr(&ret_vec[inty]) {
+                        panic!("{} superset {}", ret_vec[intx], ret_vec[inty]);
+                    }
+                    if ret_vec[inty].is_superset_corr(&ret_vec[intx]) {
+                        panic!("{} superset {}", ret_vec[inty], ret_vec[intx]);
+                    }
+                }
+            }
+
+            return ret_vec;
+        }
+        tmp_vec = next_vec;
+    } // End loop
+}
+
+/// Subtract a vector of RegionStores (arg2) from another vector of RegionStores (arg1).
+#[allow(dead_code)]
+pub fn vec_rs_corr_subtract(rs_vec: &[RegionStore], sub_vec: &[RegionStore]) -> Vec<RegionStore> {
+    let mut ret_vec = Vec::<RegionStore>::new();
+
+    // Copy RegionStores.
+    let mut tmp_vec = Vec::<RegionStore>::new();
+    for rsx in rs_vec {
+        tmp_vec.push(rsx.clone());
+    }
+
+    loop {
+        // Find regions that are either subset of another or do not intersect another.
+        let mut next_vec = Vec::<RegionStore>::new();
+
+        'top_loop: for rsy in tmp_vec.into_iter() {
+            for rsx in sub_vec.iter() {
+                if rsy.intersects_corr(rsx) {
+                    if rsy.subset_corr(rsx) {
+                        continue 'top_loop;
+                    } else {
+                        // Partial intersection found, so split reigons.
+                        let splits = rsy.subtract_corr(rsx);
+                        for splx in splits {
+                            if !vec_rs_corr_contains(&next_vec, &splx) {
+                                next_vec.push(splx);
+                            }
+                        }
+                        continue 'top_loop;
+                    }
+                }
+            } // next rsx
+              // No non-superset intersections, so save in return vector.
+            if !vec_rs_corr_contains(&ret_vec, &rsy) {
+                ret_vec.push(rsy);
+            }
+        } // next rsy
+
+        if next_vec.is_empty() {
+            return ret_vec;
+        }
+        tmp_vec = next_vec;
+    } // End loop
 }
 
 impl Index<usize> for RegionStore {
@@ -427,6 +628,189 @@ impl Index<usize> for RegionStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_vec_rs_corr_subtract() -> Result<(), String> {
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
+        let vec1 = vec![regstr1];
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
+        let vec2 = vec![regstr2];
+
+        let subt = vec_rs_corr_subtract(&vec1, &vec2);
+
+        println!("Subtract: {}", vec1[0]);
+        println!("From:     {}", vec2[0]);
+        println!("Result:");
+        for rsx in &subt {
+            println!("       {}", rsx);
+        }
+
+        assert!(subt.len() == 4);
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x011")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_00x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x11")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_001x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_vec_rs_corr_split_by_partial_intersection() -> Result<(), String> {
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(SomeRegion::new_from_string(1, "rx1x1")?);
+
+        let mut regstr3 = RegionStore::with_capacity(1);
+        regstr3.push(SomeRegion::new_from_string(1, "r0xx1")?);
+
+        let mut regstr4 = RegionStore::with_capacity(1);
+        regstr4.push(SomeRegion::new_from_string(1, "r0x1x")?);
+
+        let mut rs_vec = Vec::<RegionStore>::with_capacity(4);
+        rs_vec.push(regstr1);
+        rs_vec.push(regstr2);
+        rs_vec.push(regstr3);
+        rs_vec.push(regstr4);
+
+        let rslt = vec_rs_corr_split_by_partial_intersection(&rs_vec);
+
+        println!("Initial:");
+        for rsx in &rs_vec {
+            println!("  {}", rsx);
+        }
+        println!("Result:");
+        for rsx in &rslt {
+            println!("  {}", rsx);
+        }
+
+        // Check that every item in the result has no partial intersection with the initial regionstores.
+        for rsy in &rslt {
+            for rsx in &rs_vec {
+                if rsy.intersects_corr(rsx) {
+                    if rsy.subset_corr(rsx) {
+                        continue;
+                    } else {
+                        panic!("{} is partial intersection with {}", rsx, rsy);
+                    }
+                }
+            } // Next rsx
+        } // Next rsy
+
+        // Check that the result accounts for all area in the initial regionstores.
+        let subt = vec_rs_corr_subtract(&rs_vec, &rslt);
+        if !subt.is_empty() {
+            println!("Regions not acocunted for:");
+            for rsx in &subt {
+                println!("  {}", rsx);
+            }
+            return Err("Regions not accounted for".to_string());
+        }
+
+        // Check that no intersection is a superset of another.
+        for intx in 0..(rslt.len() - 1) {
+            for inty in (intx + 1)..rslt.len() {
+                if rslt[intx].is_superset_corr(&rslt[inty]) {
+                    return Err(format!("{} intersects {}", rslt[intx], rslt[inty]));
+                }
+                if rslt[inty].is_superset_corr(&rslt[intx]) {
+                    return Err(format!("{} intersects {}", rslt[inty], rslt[intx]));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // for [r0000_x0x1, r0000_0000_0000_0x1x]
+    //   - [r0000_1001, r0000_0000_0000_0110]
+    // 0   [r0000_x011, r0000_0000_0000_0x1x]
+    // 1   [r0000_00x1, r0000_0000_0000_0x1x]
+    // 2   [r0000_x0x1, r0000_0000_0000_0x11]
+    // 3   [r0000_x0x1, r0000_0000_0000_001x]
+    #[test]
+    fn subtract_corr() -> Result<(), String> {
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
+
+        let subt = regstr1.subtract_corr(&regstr2);
+
+        println!("for {}", regstr1);
+        println!("  - {}", regstr2);
+
+        for (inx, rsx) in subt.iter().enumerate() {
+            println!("{}   {}", inx, rsx);
+        }
+        assert!(subt.len() == 4);
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x011")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_00x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x11")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        let mut regstr3 = RegionStore::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
+        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_001x")?);
+        assert!(vec_rs_corr_contains(&subt, &regstr3));
+
+        Ok(())
+    }
+
+    #[test]
+    fn xb_mask_corr() -> Result<(), String> {
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
+
+        let xb_msks = regstr1.xb_mask_corr(&regstr2);
+
+        println!("msk0 = {}, msk1 = {}", xb_msks[0], xb_msks[1]);
+
+        assert!(xb_msks[0] == SomeMask::new_from_string(1, "m0b1010")?);
+        assert!(xb_msks[1] == SomeMask::new_from_string(2, "m0b0101")?);
+
+        Ok(())
+    }
 
     #[test]
     fn remove_region() -> Result<(), String> {
