@@ -10,6 +10,7 @@ use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::selectregionsstore::SelectRegions;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
 
@@ -139,9 +140,9 @@ impl fmt::Display for SomeNeed {
                 let pri = self.priority();
                 format!("N(Pri {pri} To Select Regions {target_regions})")
             }
-            SomeNeed::FromSelectRegion { target_regions } => {
+            SomeNeed::FromSelectRegion { target_states } => {
                 let pri = self.priority();
-                format!("N(Pri {pri} From Select Regions {target_regions})")
+                format!("N(Pri {pri} From Select Regions {target_states})")
             }
         }; // end match
 
@@ -241,7 +242,7 @@ pub enum SomeNeed {
     /// Move all current domain states to the corresponding regions of an SelectRegion.
     ToSelectRegion { target_regions: SelectRegions },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
-    FromSelectRegion { target_regions: SelectRegions },
+    FromSelectRegion { target_states: StateStore },
 }
 
 impl SomeNeed {
@@ -460,10 +461,13 @@ impl SomeNeed {
                 }
                 targ
             }
-            SomeNeed::FromSelectRegion { target_regions, .. } => {
-                let mut targ = TargetStore::with_capacity(target_regions.regions.len());
-                for (dom_numx, targx) in target_regions.regions.iter().enumerate() {
-                    targ.push(SomeTarget::new(dom_numx, targx.clone()));
+            SomeNeed::FromSelectRegion { target_states, .. } => {
+                let mut targ = TargetStore::with_capacity(1);
+                for (dom_numx, statex) in target_states.iter().enumerate() {
+                    targ.push(SomeTarget::new(
+                        dom_numx,
+                        SomeRegion::new(statex.clone(), statex.clone()),
+                    ));
                 }
                 targ
             }

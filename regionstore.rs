@@ -446,6 +446,17 @@ impl RegionStore {
         ret_msks
     }
 
+    /// Return a vector of masks representing edge bit positions.
+    pub fn edge_mask_corr(&self) -> Vec<SomeMask> {
+        let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
+
+        for regx in self.iter() {
+            ret_msks.push(regx.edge_mask());
+        }
+
+        ret_msks
+    }
+
     /// Subtract corresponding regions from a RegionStore
     pub fn subtract_corr(&self, other: &RegionStore) -> Vec<RegionStore> {
         debug_assert!(self.len() == other.len());

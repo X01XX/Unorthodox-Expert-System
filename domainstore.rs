@@ -139,7 +139,8 @@ impl DomainStore {
     /// Get needs for each Domain.
     /// Run in parallel per Domain.
     /// Each Domain uses parallel processing to get needs for each Action.
-    /// Return selected plans.
+    ///  plans.
+    /// Set DomainStore fields with need info.
     pub fn get_needs(&mut self) {
         // Inc step number.
         self.step_num += 1;
@@ -153,8 +154,8 @@ impl DomainStore {
             .collect::<Vec<SomeNeed>>();
 
         // Get select region needs.
-        if let Some(needx) = self.check_select() {
-            vecx.push(needx);
+        if let Some(mut needs) = self.check_select() {
+            vecx.append(&mut needs.avec);
         }
 
         // Sort needs by ascending priority, and store.
@@ -460,7 +461,7 @@ impl DomainStore {
     /// Do functions related to the wish to be in an optimum region.
     /// Increment the boredom duration, if needed.
     /// Return a need to move to another select region, if needed.
-    pub fn check_select(&mut self) -> Option<SomeNeed> {
+    pub fn check_select(&mut self) -> Option<NeedStore> {
         // Check if there are no select regions.
         if self.select.is_empty() {
             return None;
@@ -479,7 +480,7 @@ impl DomainStore {
         if val < 0 {
             self.boredom = 0;
             self.boredom_limit = 0;
-            return self.choose_select_goal(&all_states);
+            return self.select.choose_select_exit_needs(&all_states);
         }
 
         // Check current status within an select region, or not.
@@ -494,6 +495,7 @@ impl DomainStore {
         }
 
         self.choose_select_goal(&all_states)
+            .map(|needx| NeedStore::new(vec![needx]))
     }
 
     /// Return a need for moving to an select region.

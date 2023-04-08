@@ -2,6 +2,7 @@
 
 use crate::state::SomeState;
 
+use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
 
@@ -13,7 +14,7 @@ impl fmt::Display for StateStore {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct StateStore {
     /// A vector of states.
     avec: Vec<SomeState>,

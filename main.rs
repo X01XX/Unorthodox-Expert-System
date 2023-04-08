@@ -552,6 +552,9 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
         SomeNeed::ToSelectRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
+        SomeNeed::FromSelectRegion { .. } => {
+            //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
+        }
         _ => {
             let nd_dom = dmxs.needs[nd_inx].dom_num();
             if dom_num != nd_dom {

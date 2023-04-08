@@ -2,7 +2,11 @@
 
 use crate::regionstore::{vec_rs_corr_split_by_partial_intersection, RegionStore};
 
+use crate::need::SomeNeed;
+use crate::needstore::NeedStore;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
@@ -194,7 +198,58 @@ impl SelectRegionsStore {
         }
         false
     }
-}
+
+    /// Return needs to exit negative select regions.
+    pub fn choose_select_exit_needs(&self, all_states: &[&SomeState]) -> Option<NeedStore> {
+        let mut ret_nds = NeedStore::new(vec![]);
+
+        let mut sup_store = Vec::<&SelectRegions>::new();
+
+        for selx in self.regionstores.iter() {
+            if selx.value < 0 && selx.regions.is_superset_corr_states(all_states) {
+                sup_store.push(selx);
+            }
+        }
+
+        for selx in sup_store.iter() {
+            let edges = selx.regions.edge_mask_corr();
+            for inx in 0..edges.len() {
+                let edge_mask_per_bit = edges[inx].split();
+                for edgex in &edge_mask_per_bit {
+                    // Assemble altered vector of state refs.
+                    let new_state = all_states[inx].bitwise_xor(edgex);
+                    let mut statesx = Vec::<&SomeState>::with_capacity(all_states.len());
+                    for (iny, stax) in all_states.iter().enumerate() {
+                        if iny == inx {
+                            statesx.push(&new_state);
+                        } else {
+                            statesx.push(stax);
+                        }
+                    }
+                    if self.value_supersets_of_states(&statesx) >= 0 {
+                        // Assemble states for need.
+                        let mut statesy = StateStore::with_capacity(all_states.len());
+                        for stax in statesx.into_iter() {
+                            statesy.push(stax.clone());
+                        }
+                        ret_nds.push(SomeNeed::FromSelectRegion {
+                            target_states: statesy,
+                        });
+                        if ret_nds.len() > 4 {
+                            return Some(ret_nds);
+                        }
+                    }
+                }
+            }
+        }
+
+        if ret_nds.is_empty() {
+            None
+        } else {
+            Some(ret_nds)
+        }
+    }
+} // End impl SelectRegionsStore
 
 impl Index<usize> for SelectRegionsStore {
     type Output = SelectRegions;
