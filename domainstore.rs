@@ -47,6 +47,8 @@ pub struct InxPlan {
     pub inx: usize,
     /// Plan to satisfy need, may be empty if the current state satisfies the need, or None.
     pub plans: Option<PlanStore>,
+    /// Rate based on the select regions a plan passes through.
+    pub rate: isize,
 }
 
 #[readonly::make]
@@ -289,6 +291,7 @@ impl DomainStore {
                 .map(|plnstr| InxPlan {
                     inx: plnstr.0,
                     plans: plnstr.1,
+                    rate: 0,
                 })
                 .collect::<Vec<InxPlan>>();
 
@@ -297,7 +300,8 @@ impl DomainStore {
 
             // If at least one plan found, return vector of InxPlan structs.
             for ndsinx in ndsinx_plan.iter_mut() {
-                if ndsinx.plans.is_some() {
+                if let Some(aplan) = &ndsinx.plans {
+                    ndsinx.rate = self.rate_plan(aplan);
                     can_do.push(ndsinx.clone());
                 } else {
                     cant_do.push(ndsinx.inx);
@@ -343,6 +347,10 @@ impl DomainStore {
         Some(PlanStore::new(plans))
     }
 
+    fn rate_plan(&self, aplan: &PlanStore) -> isize {
+        self.select.rate_plan(aplan, self.all_current_states())
+    }
+
     /// Choose a need, given a vector of needs,
     /// a vector of InxPlans Vec::<{ inx: need vector index, pln: Some(plan}>
     /// at least one do
@@ -357,24 +365,48 @@ impl DomainStore {
 
         //println!("choose_need: number InxPlans {}", can_do.len());
 
+        // Find least negative plan rate.
+        let mut max_rate: isize = std::isize::MIN;
+        for inx_planx in self.can_do.iter() {
+            if inx_planx.rate > max_rate {
+                max_rate = inx_planx.rate;
+            }
+        }
+
+        // Make selection of max_rate plans.
+        let mut max_rate_inxplans = Vec::<usize>::new();
+
+        // Push index to max rate plans.
+        for (inx, inx_planx) in self.can_do.iter().enumerate() {
+            if inx_planx.rate == max_rate {
+                max_rate_inxplans.push(inx);
+            }
+        }
+
+        println!("max rate {max_rate}");
+        if max_rate_inxplans.len() < self.can_do.len() {
+            println!("skipped low rate plans");
+        }
+
         // Make selection of min_len plans.
         let mut min_len_inxplans = Vec::<usize>::new();
 
         // Find the shortest plan length
         let mut min_plan_len = std::usize::MAX;
-        for inx_planx in self.can_do.iter() {
-            if let Some(plans) = &inx_planx.plans {
-                if plans.len() < min_plan_len {
-                    min_plan_len = plans.len();
+        for inx in &max_rate_inxplans {
+            if let Some(plans) = &self.can_do[*inx].plans {
+                if plans.number_steps() < min_plan_len {
+                    min_plan_len = plans.number_steps();
                 }
             }
         }
+        println!("min len = {}", min_plan_len);
 
         // Push index to shortest plan needs
-        for (inx, inx_planx) in self.can_do.iter().enumerate() {
-            if let Some(plans) = &inx_planx.plans {
-                if plans.len() == min_plan_len {
-                    min_len_inxplans.push(inx);
+        for inx in &max_rate_inxplans {
+            if let Some(plans) = &self.can_do[*inx].plans {
+                if plans.number_steps() == min_plan_len {
+                    min_len_inxplans.push(*inx);
                 }
             }
         }
@@ -645,12 +677,22 @@ impl DomainStore {
             println!("\nNeeds that can be done:");
 
             for (inx, ndplnx) in self.can_do.iter().enumerate() {
-                println!(
-                    "{:2} {} {}",
-                    inx,
-                    &self.needs[ndplnx.inx],
-                    ndplnx.plans.as_ref().unwrap().str_terse()
-                );
+                if ndplnx.rate != 0 {
+                    println!(
+                        "{:2} {} {}/{}",
+                        inx,
+                        &self.needs[ndplnx.inx],
+                        ndplnx.plans.as_ref().unwrap().str_terse(),
+                        ndplnx.rate,
+                    );
+                } else {
+                    println!(
+                        "{:2} {} {}",
+                        inx,
+                        &self.needs[ndplnx.inx],
+                        ndplnx.plans.as_ref().unwrap().str_terse(),
+                    );
+                }
             } // next ndplnx
         }
     }

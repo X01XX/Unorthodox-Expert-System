@@ -99,6 +99,15 @@ impl PlanStore {
         }
         rc_str
     }
+
+    /// Return the number of steps in the plans of the PlanStore.
+    pub fn number_steps(&self) -> usize {
+        let mut ret = 0;
+        for planx in &self.avec {
+            ret += planx.len();
+        }
+        ret
+    }
 } // end impl PlanStore
 
 impl Index<usize> for PlanStore {

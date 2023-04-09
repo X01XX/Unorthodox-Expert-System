@@ -4,9 +4,11 @@ use crate::regionstore::{vec_rs_corr_split_by_partial_intersection, RegionStore}
 
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
+use crate::randompick::RandomPick;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::randompick::RandomPick;
+//use crate::plan::SomePlan;
+use crate::planstore::PlanStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -216,8 +218,10 @@ impl SelectRegionsStore {
             let edges = selx.regions.edge_mask_corr();
             let mut rp1 = RandomPick::new(edges.len());
             while let Some(inx) = rp1.pick() {
-                if edges[inx].is_low() { continue; }
-                
+                if edges[inx].is_low() {
+                    continue;
+                }
+
                 let edge_mask_per_bit = edges[inx].split();
                 let mut rp2 = RandomPick::new(edge_mask_per_bit.len());
 
@@ -255,6 +259,36 @@ impl SelectRegionsStore {
         } else {
             Some(ret_nds)
         }
+    }
+
+    /// If the end of a single-domain plan is not in a negative select region, return
+    /// the sum of all negative select regions a plan goes through.
+    /// Otherwise return 0.
+    pub fn rate_plan<'a>(&self, aplan: &'a PlanStore, mut all_states: Vec<&'a SomeState>) -> isize {
+        if aplan.len() != 1 || aplan[0].steps.len() < 2 {
+            return 0;
+        }
+
+        let dom_num = aplan[0].dom_num;
+
+        // Check goal of the plan.
+        all_states[dom_num] = &aplan[0].steps[aplan[0].steps.len() - 1].initial.state1;
+        let valx = self.value_supersets_of_states(&all_states);
+        if valx < 0 {
+            return 0;
+        }
+
+        let mut sum: isize = 0;
+
+        for stepx in aplan[0].iter() {
+            all_states[dom_num] = &stepx.initial.state1;
+            let valx = self.value_supersets_of_states(&all_states);
+            if valx < 0 {
+                sum += valx;
+            }
+        }
+
+        sum
     }
 } // End impl SelectRegionsStore
 

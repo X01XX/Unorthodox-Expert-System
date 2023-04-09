@@ -314,12 +314,12 @@ fn domainstore_init() -> DomainStore {
     let mut regstr5 = RegionStore::with_capacity(2);
     regstr5.push(
         dmxs[0]
-            .region_from_string_pad_x("rXXxx")
+            .region_from_string_pad_x("rXX00")
             .expect("String should be formatted correctly"),
     );
     regstr5.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXX00_X1XX_XXXX")
+            .region_from_string_pad_x("rXXXXXXxx_xxXX_XXXX")
             .expect("String should be formatted correctly"),
     );
 
