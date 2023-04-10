@@ -19,7 +19,6 @@
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
@@ -329,6 +328,29 @@ impl SomePlan {
 
         rc_str
     }
+
+    /// Return true if two plans are equal.
+    pub fn eq(&self, other: &SomePlan) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        if self.dom_num != other.dom_num {
+            return false;
+        }
+        if self.is_empty() {
+            return true;
+        }
+        if self[0].initial != other[0].initial {
+            return false;
+        }
+        for (stpx, stpy) in self.iter().zip(other.iter()) {
+            if stpx.result != stpy.result {
+                return false;
+            }
+        }
+        true
+    }
+
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {

@@ -26,6 +26,7 @@ use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -214,26 +215,6 @@ impl SomeDomain {
                 &prev_state, &stpx.act_num, &self.cur_state, stpx,
             );
 
-            // Try re-plan to goal
-            if pln.result_region().is_superset_of_state(&self.cur_state) {
-                println!("The unexpected result is in the goal region");
-                return true;
-            }
-
-            if let Some(planx) = self.make_plan(pln.result_region()) {
-                println!(
-                    "The new plan from {} to {} is {}",
-                    &self.cur_state,
-                    &pln.result_region(),
-                    &planx.str_terse()
-                );
-                return self.run_plan2(&planx, retries - 1);
-            }
-            println!(
-                "A plan from {} to {} is not found",
-                &self.cur_state,
-                &pln.result_region(),
-            );
             return false;
         } // next stpx
 
@@ -449,12 +430,12 @@ impl SomeDomain {
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
-    pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<SomePlan> {
+    pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<Vec::<SomePlan>> {
         //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
-            return Some(SomePlan::new(self.num, vec![]));
+            return Some(vec![SomePlan::new(self.num, vec![])]);
         }
 
         let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
@@ -491,15 +472,20 @@ impl SomeDomain {
             return None;
         }
 
+        if plans.len() > 1 {
+            tools::vec_remove_dups(&mut plans, SomePlan::eq);
+        }
+
         // Return one of the plans, avoiding the need to clone.
         if plans.len() == 1 {
             //println!("make_plan returned plan");
-            return Some(plans.remove(0));
+            return Some(vec![plans.remove(0)]);
         }
 
         //println!("make_plan returned plan");
-        let inx = self.choose_a_plan(&plans);
-        Some(plans.remove(inx))
+        //let inx = self.choose_a_plan(&plans);
+        //Some(plans.remove(inx))
+        Some(plans)
     } // end make plan
 
     /// Get steps that may allow a change to be made.
@@ -527,20 +513,6 @@ impl SomeDomain {
         }
 
         Some(steps_str)
-    }
-
-    /// Change the current state to be within a given region.
-    /// Return True if the change succeeds.
-    pub fn seek_state_in_region(&mut self, goal_region: &SomeRegion) -> bool {
-        if goal_region.is_superset_of_state(&self.cur_state) {
-            return true;
-        }
-
-        let Some(pln) = self.make_plan(goal_region) else { return false; };
-
-        // Do the plan
-        self.run_plan(&pln);
-        goal_region.is_superset_of_state(&self.cur_state)
     }
 
     /// Return a Region from a string.
@@ -581,88 +553,6 @@ impl SomeDomain {
             Err(error) => Err(format!("\nDid not understand action number, {error}")),
         }
     } // end act_num_from_string
-
-    /// Return the index value of a chosen Plan
-    /// TODO better criteria.
-    //fn choose_a_plan(&self, ret_plans: &Vec<SomePlan>) -> usize {
-    fn choose_a_plan(&self, ret_plans: &[SomePlan]) -> usize {
-        assert!(!ret_plans.is_empty());
-
-        if ret_plans.len() == 1 {
-            return 0;
-        }
-
-        // Find plan maximum length
-        let mut max_len = 0;
-        for rets in ret_plans.iter() {
-            if rets.len() > max_len {
-                max_len = rets.len();
-            }
-        } // next rets
-
-        //println!("ret_plans len = {} min {} max {}", ret_plans.len(), &min_len, &max_len);
-
-        // Rate plans, highest rate is best.
-        let rates_vec: Vec<(usize, usize)> = ret_plans
-            .par_iter()
-            .enumerate() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|(inx, planx)| (inx, self.rate_a_plan(planx)))
-            .collect::<Vec<(usize, usize)>>();
-
-        // Find max rate
-        let mut max_rate = 0;
-        for rtx in rates_vec.iter() {
-            if rtx.1 > max_rate {
-                max_rate = rtx.1;
-            }
-        }
-
-        // Gather highest rated plan indexes
-        let mut inx_ary = Vec::<usize>::new();
-
-        for rtx in rates_vec.iter() {
-            if rtx.1 == max_rate {
-                inx_ary.push(rtx.0);
-            }
-        }
-
-        // Choose a step
-        inx_ary[rand::thread_rng().gen_range(0..inx_ary.len())]
-    } // end choose_a_plan
-
-    /// Rate a given plan.
-    /// Length of plan is rated inversely.
-    /// Return an integer, higher is better.
-    fn rate_a_plan(&self, planx: &SomePlan) -> usize {
-        // Rate the length of the plan
-        let mut rate = 1000 - planx.len();
-
-        // Check for steps that may have two results
-        for stpx in planx.iter() {
-            if !stpx.alt_rule {
-                continue;
-            }
-
-            if let Some(sqrx) = self.actions[stpx.act_num]
-                .squares
-                .find(&stpx.initial.state1)
-            {
-                // For an alternating square, you want the most recent result to be NEQ the desired next result.
-                if *sqrx.most_recent_result() == stpx.result.state1 {
-                    if rate > 4 {
-                        rate -= 5;
-                    } else {
-                        rate = 0;
-                    }
-                }
-            } else if rate > 1 {
-                rate -= 2;
-            } else {
-                rate = 0;
-            }
-        }
-        rate
-    }
 
     /// Return the current maximum region.
     pub fn maximum_region(&self) -> SomeRegion {
@@ -715,6 +605,7 @@ pub fn initialize_state(num_ints: usize) -> SomeState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domainstore::DomainStore;
 
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
@@ -727,6 +618,8 @@ mod tests {
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
+        let mut dmxs = DomainStore::new(vec![dm0]);
+        let dm0 = &mut dmxs[0];
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -749,22 +642,13 @@ mod tests {
 
         // Get plan for 7 to 8
         dm0.set_state(&dm0.state_from_string("s0b111")?);
-        let mut toreg = dm0.region_from_string("r1000")?;
-        if let Some(aplan) = dm0.make_plan(&toreg) {
+        let toreg = dm0.region_from_string("r1000")?;
+
+        if let Some(aplan) = dmxs.get_plan(0, &toreg) {
             assert_eq!(aplan.len(), 4);
             assert_eq!(*aplan.result_region(), toreg);
         } else {
             return Err(String::from("no plan found to r1000?"));
-        }
-
-        // Get plan for 8 to 7
-        dm0.set_state(&dm0.state_from_string("s0b1000")?);
-        toreg = dm0.region_from_string("r111")?;
-        if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert_eq!(aplan.len(), 4);
-            assert_eq!(*aplan.result_region(), toreg);
-        } else {
-            return Err(String::from("no plan found to r111?"));
         }
 
         Ok(())
@@ -782,6 +666,8 @@ mod tests {
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
+        let mut dmxs = DomainStore::new(vec![dm0]);
+        let dm0 = &mut dmxs[0];
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -812,28 +698,13 @@ mod tests {
         // which is outside of the Glide Path.
         let s7 = dm0.state_from_string("s0x07")?;
         dm0.set_state(&s7);
-        let mut toreg = dm0.region_from_string("r1100")?;
+        let toreg = dm0.region_from_string("r1100")?;
 
-        if let Some(aplan) = dm0.make_plan(&toreg) {
-            //assert!(aplan.len() == 5);
+        if let Some(aplan) = &mut dmxs.get_plan(0, &toreg) {
             assert_eq!(*aplan.result_region(), toreg);
             println!("plan 1: {} len = {}", aplan, aplan.len());
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
-        }
-
-        println!("*****************************");
-
-        // Get plan for C to 7
-        dm0.set_state(&dm0.state_from_string("s0b1100")?);
-        toreg = dm0.region_from_string("r0111")?;
-
-        // Try to get plan up to 5 times.
-        if let Some(aplan) = dm0.make_plan(&toreg) {
-            assert_eq!(*aplan.result_region(), toreg);
-            println!("plan 2: {} len = {}", aplan, aplan.len());
-        } else {
-            return Err(String::from("No plan found s1100 to r0111?"));
         }
 
         Ok(())

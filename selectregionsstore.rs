@@ -7,13 +7,14 @@ use crate::needstore::NeedStore;
 use crate::randompick::RandomPick;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-//use crate::plan::SomePlan;
+use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
+use rand::Rng;
 
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -261,34 +262,79 @@ impl SelectRegionsStore {
         }
     }
 
-    /// If the end of a single-domain plan is not in a negative select region, return
-    /// the sum of all negative select regions a plan goes through.
-    /// Otherwise return 0.
-    pub fn rate_plan<'a>(&self, aplan: &'a PlanStore, mut all_states: Vec<&'a SomeState>) -> isize {
-        if aplan.len() != 1 || aplan[0].steps.len() < 2 {
+    /// Return the index of the highest rating of a plan, in a vector of plans.
+    /// All plans should be for the same domain.
+    pub fn rate_plans_vec<'a>(&self, plan_vec: Vec<&'a SomePlan>, mut all_states: Vec<&'a SomeState>) -> usize {
+        assert!(!plan_vec.is_empty());
+
+        if plan_vec.len() == 1 {
             return 0;
         }
 
-        let dom_num = aplan[0].dom_num;
+        let mut rates = Vec::<isize>::with_capacity(plan_vec.len());
 
-        // Check goal of the plan.
-        all_states[dom_num] = &aplan[0].steps[aplan[0].steps.len() - 1].initial.state1;
-        let valx = self.value_supersets_of_states(&all_states);
-        if valx < 0 {
+        for planx in plan_vec.iter() {
+            rates.push(self.rate_plan(planx, &mut all_states));
+        }
+        
+        let max_rate = rates.iter().min().unwrap();
+
+        let mut max_rate_inxs = Vec::<usize>::new();
+        for (inx, rtx) in rates.iter().enumerate() {
+            if rtx == max_rate {
+                max_rate_inxs.push(inx);
+            }
+        }
+
+        if max_rate_inxs.len() == 1 {
+            return max_rate_inxs[0];
+        }
+
+        max_rate_inxs[rand::thread_rng().gen_range(0..max_rate_inxs.len())]
+    }
+
+    /// Return the sum of all select regions values a plan goes through.
+    /// This ignores the select regions a plan starts, or end, in.
+    pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, all_states: &mut [&'a SomeState]) -> isize {
+        if aplan.len() < 2 {
             return 0;
         }
+
+        let dom_num = aplan.dom_num;
 
         let mut sum: isize = 0;
 
-        for stepx in aplan[0].iter() {
+        for (inx, stepx) in aplan.iter().enumerate() {
+            if inx == 0 { continue; }
             all_states[dom_num] = &stepx.initial.state1;
-            let valx = self.value_supersets_of_states(&all_states);
+            let valx = self.value_supersets_of_states(all_states);
             if valx < 0 {
                 sum += valx;
             }
         }
 
         sum
+    }
+
+    /// Return the sum of all select regions values a plan goes through.
+    /// This ignores the select regions a plan starts, or end, in.
+    /// If GT 1 plan is in the PlanStore, the result will be zero, which is a problem to be delt with later.
+    pub fn rate_plans_store<'a>(&self, aplan: &'a PlanStore, mut all_states: Vec<&'a SomeState>) -> isize {
+        let mut inx = 0;
+        let mut num_inx = 0;
+        for (iny, plnx) in aplan.iter().enumerate() {
+            if !plnx.is_empty() {
+                inx = iny;
+                num_inx += 1;
+            }
+        }
+        if num_inx != 1
+        {
+            return 0;
+        }
+
+        self.rate_plan(&aplan[inx], &mut all_states)
+
     }
 } // End impl SelectRegionsStore
 

@@ -26,6 +26,7 @@
  */
 
 use std::env;
+mod tools;
 mod action;
 mod actionstore;
 mod bits;
@@ -571,7 +572,16 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     if let Some(plans) = &inx_pln.plans {
-        dmxs.run_plans(plans);
+        if !dmxs.run_plans(plans) {
+            if let Some(plans) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
+                println!("Unexpected result try again");
+                if !dmxs.run_plans(&plans) {
+                    println!("Unexpected result, giving up");
+                }
+            } else {
+                println!("Unexpected result try again, new path to goal not found");
+            }
+        }
     }
 
     match dmxs.needs[nd_inx] {
@@ -673,7 +683,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
                     dmx.get_current_state(),
                     goal_region
                 );
-            } else if dmx.seek_state_in_region(&goal_region) {
+            } else if dmxs.seek_state_in_region(dom_num, &goal_region) {
                 println!("\nChange to region succeeded");
             } else {
                 println!("\nChange to region failed");

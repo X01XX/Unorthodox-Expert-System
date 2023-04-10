@@ -12,6 +12,7 @@ use crate::removeunordered;
 use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
+use crate::region::SomeRegion;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -171,15 +172,14 @@ impl DomainStore {
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
         assert!(plans.is_not_empty());
 
-        // Run a non-empty plan for one domain.
-        if plans.len() == 1 {
-            if plans[0].is_not_empty() && !self.run_plan(&plans[0]) {
-                return false;
+            // Handle one plan for one domain.
+            if plans.len() == 1 {
+                if plans[0].is_not_empty() {
+                    return self.run_plan(&plans[0]);
+                }
+                return true;
             }
-            return true;
-        }
 
-        if plans.len() == self.len() {
             // Run plans in parallel for achieving a state in an select region, when the number of domains is GT 1.
             if self
                 .avec
@@ -193,7 +193,6 @@ impl DomainStore {
             {
                 return true;
             }
-        }
 
         false
     }
@@ -337,7 +336,7 @@ impl DomainStore {
         let mut plans = Vec::<SomePlan>::new();
 
         for targx in targets.iter() {
-            if let Some(planx) = self.avec[targx.dom_num].make_plan(&targx.region) {
+            if let Some(planx) = self.get_plan(targx.dom_num, &targx.region) {
                 plans.push(planx);
             }
         }
@@ -348,7 +347,70 @@ impl DomainStore {
     }
 
     fn rate_plan(&self, aplan: &PlanStore) -> isize {
-        self.select.rate_plan(aplan, self.all_current_states())
+        self.select.rate_plans_store(aplan, self.all_current_states())
+    }
+
+    /// Get plans to move to a goal region, choose a plan.
+    pub fn get_plan(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<SomePlan> {
+
+        if let Some(mut plans) = self.avec[dom_num].make_plan(goal_region) {
+            if plans.len() == 1 {
+                return Some(plans.remove(0));
+            }
+            return Some(plans.remove(self.choose_a_plan(&plans)));
+        }
+        None
+    }
+
+    /// Choose a plan from a vector of plans, for a need.
+    /// Return index of plan chosen.
+    pub fn choose_a_plan(&self, plans: &[SomePlan]) -> usize {
+        assert!(!plans.is_empty());
+
+        // No choice to be made.
+        if plans.len() == 1 {
+            return 0;
+        }
+
+        // Gather plan rate data.
+        let mut rates  = Vec::<isize>::with_capacity(plans.len());
+        for planx in plans.iter() {
+            rates.push(self.select.rate_plan(planx, &mut self.all_current_states()));
+        }
+        let max_rate = rates.iter().max().unwrap();
+
+        // Find plans with the max rate.
+        let mut max_rate_plans = Vec::<usize>::new();
+        for (inx, rate) in rates.iter().enumerate() {
+            if rate == max_rate {
+                max_rate_plans.push(inx);
+            }
+        }
+
+        if max_rate_plans.len() == 1 {
+            return max_rate_plans[0];
+        }
+
+        // Gather length data.
+        let mut lengths = Vec::<usize>::new();
+        for inx in 0..max_rate_plans.len() {
+            lengths.push(plans[max_rate_plans[inx]].len());
+        }
+        let min_len  = lengths.iter().min().unwrap();
+        
+        // Find plans with the min length.
+        let mut min_len_plans = Vec::<usize>::new();
+        for (inx, lenx) in lengths.iter().enumerate() {
+            if lenx == min_len {
+                min_len_plans.push(max_rate_plans[inx]);
+            }
+        }
+
+        if min_len_plans.len() == 1 {
+            return min_len_plans[0];
+        }
+
+        min_len_plans[rand::thread_rng().gen_range(0..min_len_plans.len())]
     }
 
     /// Choose a need, given a vector of needs,
@@ -383,9 +445,9 @@ impl DomainStore {
             }
         }
 
-        println!("max rate {max_rate}");
+        //println!("max rate {max_rate}");
         if max_rate_inxplans.len() < self.can_do.len() {
-            println!("skipped low rate plans");
+            //println!("skipped low rate plans");
         }
 
         // Make selection of min_len plans.
@@ -400,7 +462,7 @@ impl DomainStore {
                 }
             }
         }
-        println!("min len = {}", min_plan_len);
+        //println!("min len = {}", min_plan_len);
 
         // Push index to shortest plan needs
         for inx in &max_rate_inxplans {
@@ -747,6 +809,20 @@ impl DomainStore {
 
         // Print needs that can be done.
         self.print_can_do();
+    }
+
+    /// Change the current state to be within a given region.
+    /// Return True if the change succeeds.
+    pub fn seek_state_in_region(&mut self, dom_num: usize, goal_region: &SomeRegion) -> bool {
+        if goal_region.is_superset_of_state(&self.avec[dom_num].cur_state) {
+            return true;
+        }
+
+        let Some(pln) = self.get_plan(dom_num, goal_region) else { return false; };
+
+        // Do the plan
+        self.run_plan(&pln);
+        goal_region.is_superset_of_state(&self.avec[dom_num].cur_state)
     }
 } // end impl DomainStore
 
