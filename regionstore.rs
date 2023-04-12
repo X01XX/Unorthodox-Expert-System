@@ -546,12 +546,13 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
 
                     // Partial intersection found, so subtract it.
                     let splits = rsy.subtract_corr(rsx);
+                    // Add each fragment, if no superset exists.
                     for splx in splits {
                         if !vec_rs_corr_any_superset(&next_vec, &splx) {
                             next_vec.push(splx);
                         }
                     }
-                    // Also add the intersection.
+                    // Also add the intersection, if no superset exists.
                     let intx = rsy.intersection_corr(rsx).unwrap();
                     if !vec_rs_corr_any_superset(&next_vec, &intx) {
                         next_vec.push(intx);
@@ -559,25 +560,15 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
                     continue 'top_loop;
                 }
             } // next rsx
-              // No non-superset intersections, so save in return vector.
+
+            // No partial intersection, so add it, if no superset exists.
+            // Eventually, each fragment (of fragment (of fragment)) reaches here.
             if !vec_rs_corr_any_superset(&ret_vec, &rsy) {
                 ret_vec.push(rsy);
             }
         } // next rsy
 
         if next_vec.is_empty() {
-            // Check that no intersection is a superset of another.
-            for intx in 0..(ret_vec.len() - 1) {
-                for inty in (intx + 1)..ret_vec.len() {
-                    if ret_vec[intx].is_superset_corr(&ret_vec[inty]) {
-                        panic!("{} superset {}", ret_vec[intx], ret_vec[inty]);
-                    }
-                    if ret_vec[inty].is_superset_corr(&ret_vec[intx]) {
-                        panic!("{} superset {}", ret_vec[inty], ret_vec[intx]);
-                    }
-                }
-            }
-
             return ret_vec;
         }
         tmp_vec = next_vec;

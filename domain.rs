@@ -430,7 +430,7 @@ impl SomeDomain {
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
-    pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<Vec::<SomePlan>> {
+    pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
         //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         if goal_reg.is_superset_of_state(&self.cur_state) {

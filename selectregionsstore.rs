@@ -4,17 +4,18 @@ use crate::regionstore::{vec_rs_corr_split_by_partial_intersection, RegionStore}
 
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-use crate::randompick::RandomPick;
-use crate::state::SomeState;
-use crate::statestore::StateStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
+use crate::randompick::RandomPick;
+use crate::region::SomeRegion;
+use crate::state::SomeState;
+use crate::statestore::StateStore;
 
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
-use rand::Rng;
 
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -31,6 +32,13 @@ pub struct SelectRegions {
     pub regions: RegionStore,
     /// A value for being in the select state.
     pub value: isize,
+}
+
+impl Index<usize> for SelectRegions {
+    type Output = SomeRegion;
+    fn index(&self, i: usize) -> &SomeRegion {
+        &self.regions[i]
+    }
 }
 
 impl fmt::Display for SelectRegionsStore {
@@ -169,12 +177,12 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return a list of regionstores, split by partial intersection, until
+    /// Return a list of regionstores, split by intersections, until
     /// none have a partial intersection with the original regionstores.
     /// Some result regionstores may overlap each other.
     /// The original regionstores minus the result regionstores should be null.
     /// Each result regionstore will be a subset of one, or more, of the original regionstores.
-    pub fn split_by_partial_intersections(&self) -> Self {
+    pub fn split_by_intersections(&self) -> Self {
         let mut rs = Vec::<RegionStore>::with_capacity(self.len());
         for reg_valx in &self.regionstores {
             rs.push(reg_valx.regions.clone());
@@ -264,7 +272,11 @@ impl SelectRegionsStore {
 
     /// Return the index of the highest rating of a plan, in a vector of plans.
     /// All plans should be for the same domain.
-    pub fn rate_plans_vec<'a>(&self, plan_vec: Vec<&'a SomePlan>, mut all_states: Vec<&'a SomeState>) -> usize {
+    pub fn rate_plans_vec<'a>(
+        &self,
+        plan_vec: Vec<&'a SomePlan>,
+        mut all_states: Vec<&'a SomeState>,
+    ) -> usize {
         assert!(!plan_vec.is_empty());
 
         if plan_vec.len() == 1 {
@@ -276,7 +288,7 @@ impl SelectRegionsStore {
         for planx in plan_vec.iter() {
             rates.push(self.rate_plan(planx, &mut all_states));
         }
-        
+
         let max_rate = rates.iter().min().unwrap();
 
         let mut max_rate_inxs = Vec::<usize>::new();
@@ -305,7 +317,9 @@ impl SelectRegionsStore {
         let mut sum: isize = 0;
 
         for (inx, stepx) in aplan.iter().enumerate() {
-            if inx == 0 { continue; }
+            if inx == 0 {
+                continue;
+            }
             all_states[dom_num] = &stepx.initial.state1;
             let valx = self.value_supersets_of_states(all_states);
             if valx < 0 {
@@ -319,7 +333,11 @@ impl SelectRegionsStore {
     /// Return the sum of all select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
     /// If GT 1 plan is in the PlanStore, the result will be zero, which is a problem to be delt with later.
-    pub fn rate_plans_store<'a>(&self, aplan: &'a PlanStore, mut all_states: Vec<&'a SomeState>) -> isize {
+    pub fn rate_plans_store<'a>(
+        &self,
+        aplan: &'a PlanStore,
+        mut all_states: Vec<&'a SomeState>,
+    ) -> isize {
         let mut inx = 0;
         let mut num_inx = 0;
         for (iny, plnx) in aplan.iter().enumerate() {
@@ -328,13 +346,36 @@ impl SelectRegionsStore {
                 num_inx += 1;
             }
         }
-        if num_inx != 1
-        {
+        if num_inx != 1 {
             return 0;
         }
 
         self.rate_plan(&aplan[inx], &mut all_states)
+    }
 
+    /// Return the number of negative select regions a plan passes though, restricted to the domain number
+    /// part of select regions.
+    ///
+    /// This ignores the first step initial region, and the last step result reigon.
+    ///
+    /// If running multiple domain plans, and at least one plan never passes through a
+    /// negative domain-restricted region (result = 0), the the plans can be run in parallel.
+    pub fn number_negative_regions(&self, aplan: &SomePlan) -> usize {
+        if aplan.len() < 2 {
+            return 0;
+        }
+        let mut ret: usize = 0;
+        for inx in 1..aplan.len() {
+            for regsx in self.regionstores.iter() {
+                if regsx.value >= 0 {
+                    continue;
+                }
+                if regsx[aplan.dom_num].is_superset_of(&aplan[inx].initial) {
+                    ret += 1;
+                }
+            }
+        }
+        ret
     }
 } // End impl SelectRegionsStore
 

@@ -26,7 +26,6 @@
  */
 
 use std::env;
-mod tools;
 mod action;
 mod actionstore;
 mod bits;
@@ -34,6 +33,7 @@ mod group;
 mod groupstore;
 mod mask;
 mod need;
+mod tools;
 use need::SomeNeed;
 mod region;
 use region::SomeRegion;
@@ -330,6 +330,7 @@ fn domainstore_init() -> DomainStore {
     dmxs.add_select(regstr3, 4);
     dmxs.add_select(regstr4, 1);
     dmxs.add_select(regstr5, -1);
+    dmxs.calc_select();
 
     //println!("select and ints: {}", dmxs.select_and_ints.formatted_string());
     dmxs

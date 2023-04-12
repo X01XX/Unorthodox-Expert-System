@@ -350,7 +350,6 @@ impl SomePlan {
         }
         true
     }
-
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {

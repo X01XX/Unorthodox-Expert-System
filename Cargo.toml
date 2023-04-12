@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 rayon = "1.7.0"
-serde = { version = "1.0.158", features = ["derive"] }
-serde_yaml = "0.9.19"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_yaml = "0.9.21"
 readonly = "0.2.7"
-unicode-segmentation = "1.10.0"
+unicode-segmentation = "1.10.1"

@@ -7,12 +7,13 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::randompick::RandomPick;
+use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered;
 use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
-use crate::region::SomeRegion;
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -117,11 +118,14 @@ impl DomainStore {
         }
 
         self.select.push(regstr, value);
+    }
 
+    /// Calculate parts of select regions, in case any overlapp.
+    pub fn calc_select(&mut self) {
         if self.select.len() == 1 {
             self.select_and_ints = self.select.clone();
         } else {
-            self.select_and_ints = self.select.split_by_partial_intersections();
+            self.select_and_ints = self.select.split_by_intersections();
         }
     }
 
@@ -172,29 +176,108 @@ impl DomainStore {
     pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
         assert!(plans.is_not_empty());
 
-            // Handle one plan for one domain.
-            if plans.len() == 1 {
-                if plans[0].is_not_empty() {
-                    return self.run_plan(&plans[0]);
+        // Identify non-empty plans.
+        let mut non_empty_plans = Vec::<usize>::new();
+        for (inx, planx) in plans.iter().enumerate() {
+            if planx.is_not_empty() {
+                non_empty_plans.push(inx);
+            }
+        }
+
+        // Check for all empty plans.
+        if non_empty_plans.is_empty() {
+            return true;
+        }
+
+        // Handle only one, non-empty, plan.
+        if non_empty_plans.len() == 1 {
+            return self.run_plan(&plans[non_empty_plans[0]]);
+        }
+
+        // Check if any plan never passes though a negative (domain restricted) select region.
+        for inx in non_empty_plans.iter() {
+            if self.number_negative_regions(&plans[*inx]) == 0 {
+                // Run plans in parallel.
+                if self
+                    .avec
+                    .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
+                    .map(|domx| domx.run_plan(&plans[domx.num]))
+                    .filter(|b| *b) // filter out any false returns.
+                    .collect::<Vec<bool>>()
+                    .len()
+                    == plans.len()
+                // Does the number of true returns equal the number of plans run?
+                {
+                    return true;
                 }
-                return true;
+                return false;
             }
+        }
 
-            // Run plans in parallel for achieving a state in an select region, when the number of domains is GT 1.
-            if self
-                .avec
-                .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-                .map(|domx| domx.run_plan(&plans[domx.num]))
-                .filter(|b| *b) // filter out any false returns.
-                .collect::<Vec<bool>>()
-                .len()
-                == plans.len()
-            // Does the number of true returns equal the number of plans run?
-            {
-                return true;
+        // Look at running plans in different order, to minimize negative select regions passed though.
+        let orders = tools::anyxofvec_order_matters(
+            non_empty_plans.len(),
+            (0..non_empty_plans.len()).collect(),
+        );
+        //println!("orders {:?}", orders);
+
+        // Rate each option.
+        let mut rates = Vec::<isize>::with_capacity(orders.len());
+        for orderx in orders.iter() {
+            let mut rate: isize = 0;
+            let mut all_states = self.all_current_states();
+            for itemx in orderx.iter() {
+                rate += self
+                    .select
+                    .rate_plan(&plans[non_empty_plans[*itemx]], &mut all_states);
+                all_states[plans[non_empty_plans[*itemx]].dom_num] =
+                    &plans[non_empty_plans[*itemx]].result_region().state1;
             }
+            rates.push(rate);
+        }
+        //println!("rates: {:?}", rates);
 
-        false
+        // Get best rate.
+        let max_rate = rates.iter().max().unwrap();
+
+        // Get rate of end-state of the plans.
+        let mut end_states = self.all_current_states();
+        for planx in plans.iter() {
+            if !planx.is_empty() {
+                end_states[planx.dom_num] = &planx.result_region().state1;
+            }
+        }
+
+        let _end_rate = self.select.value_supersets_of_states(&end_states);
+
+        // Check plans max rate to end rate.
+        //println!("best rate {max_rate} end rate {end_rate}");
+        // TODO if end-state too low in value, don't run the plans.
+
+        // Save indices of best orders.
+        let mut max_rates = Vec::<usize>::new();
+        for (inx, rate) in rates.iter().enumerate() {
+            if rate == max_rate {
+                max_rates.push(inx);
+            }
+        }
+
+        // Select the max rate order.
+        let mut inx = 0;
+        if max_rates.len() > 1 {
+            inx = rand::thread_rng().gen_range(0..max_rates.len());
+        }
+
+        // Get ref to chosen order.
+        let orderx = &orders[inx];
+
+        // Run plans in order.
+        for itemx in orderx.iter() {
+            if !self.run_plan(&plans[non_empty_plans[*itemx]]) {
+                return false;
+            }
+        }
+        true
     }
 
     /// Run a plan for a given Domain.
@@ -346,13 +429,20 @@ impl DomainStore {
         Some(PlanStore::new(plans))
     }
 
+    /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
     fn rate_plan(&self, aplan: &PlanStore) -> isize {
-        self.select.rate_plans_store(aplan, self.all_current_states())
+        self.select
+            .rate_plans_store(aplan, self.all_current_states())
+    }
+
+    /// Return the sum of all negative select regions a plan passes though, restricted to the domain number
+    /// part of select regions.
+    fn number_negative_regions(&self, aplan: &SomePlan) -> usize {
+        self.select.number_negative_regions(aplan)
     }
 
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plan(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<SomePlan> {
-
         if let Some(mut plans) = self.avec[dom_num].make_plan(goal_region) {
             if plans.len() == 1 {
                 return Some(plans.remove(0));
@@ -373,7 +463,7 @@ impl DomainStore {
         }
 
         // Gather plan rate data.
-        let mut rates  = Vec::<isize>::with_capacity(plans.len());
+        let mut rates = Vec::<isize>::with_capacity(plans.len());
         for planx in plans.iter() {
             rates.push(self.select.rate_plan(planx, &mut self.all_current_states()));
         }
@@ -396,8 +486,8 @@ impl DomainStore {
         for inx in 0..max_rate_plans.len() {
             lengths.push(plans[max_rate_plans[inx]].len());
         }
-        let min_len  = lengths.iter().min().unwrap();
-        
+        let min_len = lengths.iter().min().unwrap();
+
         // Find plans with the min length.
         let mut min_len_plans = Vec::<usize>::new();
         for (inx, lenx) in lengths.iter().enumerate() {
@@ -913,6 +1003,7 @@ mod tests {
         dmxs.add_select(regstr2, 1);
         dmxs.add_select(regstr3, 1);
         dmxs.add_select(regstr4, 1);
+        dmxs.calc_select();
 
         println!("Select and ints:");
         for regstrx in dmxs.select_and_ints.iter() {
