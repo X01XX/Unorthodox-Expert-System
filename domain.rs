@@ -594,6 +594,11 @@ impl SomeDomain {
     ) -> Result<(), String> {
         self.actions[act_num].display_group_anchor_info(aregion)
     }
+
+    /// Get aggregate changes for a domain.
+    pub fn aggregate_changes(&self) -> &SomeChange {
+        &self.actions.aggregate_changes
+    }
 } // end impl SomeDomain
 
 /// Return the first state value.

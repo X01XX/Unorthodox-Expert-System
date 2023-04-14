@@ -83,6 +83,11 @@ impl SomeState {
         }
     }
 
+    /// Return a new state, all zeros.
+    pub fn new_low(num_ints: usize) -> Self {
+        Self::new(SomeBits::new_low(num_ints))
+    }
+
     /// Return true if a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)

@@ -1,5 +1,6 @@
 //! The DomainStore struct, a vector of SomeDomain structs.
 
+use crate::change::SomeChange;
 /// The highest number of needs to seek a plan for, in parallel.
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
@@ -120,8 +121,9 @@ impl DomainStore {
         self.select.push(regstr, value);
     }
 
-    /// Calculate parts of select regions, in case any overlapp.
+    /// Calculate parts of select regions, in case of any overlapps.
     pub fn calc_select(&mut self) {
+        // Calc any subregions due to intersecitons.
         if self.select.len() == 1 {
             self.select_and_ints = self.select.clone();
         } else {
@@ -664,7 +666,9 @@ impl DomainStore {
         if val < 0 {
             self.boredom = 0;
             self.boredom_limit = 0;
-            return self.select.choose_select_exit_needs(&all_states);
+            return self
+                .select
+                .choose_select_exit_needs(&all_states, &self.aggregate_changes());
         }
 
         // Check current status within an select region, or not.
@@ -680,6 +684,15 @@ impl DomainStore {
 
         self.choose_select_goal(&all_states)
             .map(|needx| NeedStore::new(vec![needx]))
+    }
+
+    /// Return a vector of aggregate change references, per domain.
+    pub fn aggregate_changes(&self) -> Vec<&SomeChange> {
+        let mut change_vec = Vec::<&SomeChange>::with_capacity(self.len());
+        for domx in self.avec.iter() {
+            change_vec.push(domx.aggregate_changes());
+        }
+        change_vec
     }
 
     /// Return a need for moving to an select region.
@@ -939,7 +952,7 @@ mod tests {
         // Init a DomainStore.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
-        // Ste state for domain 0, using 1 integer for bits.
+        // Set state for domain 0, using 1 integer for bits.
         let init_state1 = dmxs[0].state_from_string("s0x12")?;
         dmxs[0].set_state(&init_state1);
 
