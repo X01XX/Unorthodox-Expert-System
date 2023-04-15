@@ -1,7 +1,6 @@
 //! The DomainStore struct, a vector of SomeDomain structs.
 
 use crate::change::SomeChange;
-/// The highest number of needs to seek a plan for, in parallel.
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -14,7 +13,6 @@ use crate::removeunordered;
 use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::{self, SomeState};
 use crate::targetstore::TargetStore;
-use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -52,6 +50,8 @@ pub struct InxPlan {
     pub plans: Option<PlanStore>,
     /// Rate based on the select regions a plan passes through.
     pub rate: isize,
+    /// Order to run plans, is any.  Otherwise, run in parallel.
+    pub order: Option<Vec<usize>>,
 }
 
 #[readonly::make]
@@ -175,109 +175,41 @@ impl DomainStore {
     }
 
     /// Run a vector of plans.
-    pub fn run_plans(&mut self, plans: &PlanStore) -> bool {
+    /// The vector may have one plan, or a plan for each domain, some of which may be empty.
+    pub fn run_plans(&mut self, plans: &PlanStore, order: &Option<Vec<usize>>) -> bool {
         assert!(plans.is_not_empty());
 
-        // Identify non-empty plans.
-        let mut non_empty_plans = Vec::<usize>::new();
-        for (inx, planx) in plans.iter().enumerate() {
-            if planx.is_not_empty() {
-                non_empty_plans.push(inx);
-            }
-        }
-
-        // Check for all empty plans.
-        if non_empty_plans.is_empty() {
-            return true;
-        }
-
-        // Handle only one, non-empty, plan.
-        if non_empty_plans.len() == 1 {
-            return self.run_plan(&plans[non_empty_plans[0]]);
+        if plans.len() == 1 {
+            return self.avec[plans[0].dom_num].run_plan(&plans[0]);
         }
 
         // Check if any plan never passes though a negative (domain restricted) select region.
-        for inx in non_empty_plans.iter() {
-            if self.number_negative_regions(&plans[*inx]) == 0 {
-                // Run plans in parallel.
-                if self
-                    .avec
-                    .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-                    .map(|domx| domx.run_plan(&plans[domx.num]))
-                    .filter(|b| *b) // filter out any false returns.
-                    .collect::<Vec<bool>>()
-                    .len()
-                    == plans.len()
-                // Does the number of true returns equal the number of plans run?
-                {
-                    return true;
-                }
-                return false;
+        if order.is_none() {
+            // Run plans in parallel.
+            if self
+                .avec
+                .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
+                .map(|domx| domx.run_plan(&plans[domx.num]))
+                .filter(|b| *b) // filter out any false returns.
+                .collect::<Vec<bool>>()
+                .len()
+                == plans.len()
+            // Does the number of true returns equal the number of plans run?
+            {
+                return true;
             }
+            return false;
         }
-
-        // Look at running plans in different order, to minimize negative select regions passed though.
-        let orders = tools::anyxofvec_order_matters(
-            non_empty_plans.len(),
-            (0..non_empty_plans.len()).collect(),
-        );
-        //println!("orders {:?}", orders);
-
-        // Rate each option.
-        let mut rates = Vec::<isize>::with_capacity(orders.len());
-        for orderx in orders.iter() {
-            let mut rate: isize = 0;
-            let mut all_states = self.all_current_states();
-            for itemx in orderx.iter() {
-                rate += self
-                    .select
-                    .rate_plan(&plans[non_empty_plans[*itemx]], &mut all_states);
-                all_states[plans[non_empty_plans[*itemx]].dom_num] =
-                    &plans[non_empty_plans[*itemx]].result_region().state1;
-            }
-            rates.push(rate);
-        }
-        //println!("rates: {:?}", rates);
-
-        // Get best rate.
-        let max_rate = rates.iter().max().unwrap();
-
-        // Get rate of end-state of the plans.
-        let mut end_states = self.all_current_states();
-        for planx in plans.iter() {
-            if !planx.is_empty() {
-                end_states[planx.dom_num] = &planx.result_region().state1;
-            }
-        }
-
-        let _end_rate = self.select.value_supersets_of_states(&end_states);
-
-        // Check plans max rate to end rate.
-        //println!("best rate {max_rate} end rate {end_rate}");
-        // TODO if end-state too low in value, don't run the plans.
-
-        // Save indices of best orders.
-        let mut max_rates = Vec::<usize>::new();
-        for (inx, rate) in rates.iter().enumerate() {
-            if rate == max_rate {
-                max_rates.push(inx);
-            }
-        }
-
-        // Select the max rate order.
-        let mut inx = 0;
-        if max_rates.len() > 1 {
-            inx = rand::thread_rng().gen_range(0..max_rates.len());
-        }
-
-        // Get ref to chosen order.
-        let orderx = &orders[inx];
 
         // Run plans in order.
-        for itemx in orderx.iter() {
-            if !self.run_plan(&plans[non_empty_plans[*itemx]]) {
-                return false;
+        if let Some(order_vec) = order {
+            for itemx in order_vec.iter() {
+                if !self.run_plan(&plans[*itemx]) {
+                    return false;
+                }
             }
+        } else {
+            panic!("This should not happen");
         }
         true
     }
@@ -376,6 +308,7 @@ impl DomainStore {
                     inx: plnstr.0,
                     plans: plnstr.1,
                     rate: 0,
+                    order: None,
                 })
                 .collect::<Vec<InxPlan>>();
 
@@ -385,7 +318,7 @@ impl DomainStore {
             // If at least one plan found, return vector of InxPlan structs.
             for ndsinx in ndsinx_plan.iter_mut() {
                 if let Some(aplan) = &ndsinx.plans {
-                    ndsinx.rate = self.rate_plan(aplan);
+                    (ndsinx.rate, ndsinx.order) = self.rate_plans(aplan);
                     can_do.push(ndsinx.clone());
                 } else {
                     cant_do.push(ndsinx.inx);
@@ -432,13 +365,13 @@ impl DomainStore {
     }
 
     /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
-    fn rate_plan(&self, aplan: &PlanStore) -> isize {
-        self.select
-            .rate_plans_store(aplan, self.all_current_states())
+    fn rate_plans(&self, aplan: &PlanStore) -> (isize, Option<Vec<usize>>) {
+        self.select.rate_plans(aplan, &self.all_current_states())
     }
 
     /// Return the sum of all negative select regions a plan passes though, restricted to the domain number
     /// part of select regions.
+    #[allow(dead_code)]
     fn number_negative_regions(&self, aplan: &SomePlan) -> usize {
         self.select.number_negative_regions(aplan)
     }
@@ -466,8 +399,10 @@ impl DomainStore {
 
         // Gather plan rate data.
         let mut rates = Vec::<isize>::with_capacity(plans.len());
+        let current_states = self.all_current_states();
+
         for planx in plans.iter() {
-            rates.push(self.select.rate_plan(planx, &mut self.all_current_states()));
+            rates.push(self.select.rate_plan(planx, &current_states));
         }
         let max_rate = rates.iter().max().unwrap();
 
@@ -662,7 +597,6 @@ impl DomainStore {
 
         // Get value of select states.
         let val = self.select.value_supersets_of_states(&all_states);
-
         if val < 0 {
             self.boredom = 0;
             self.boredom_limit = 0;
@@ -950,6 +884,8 @@ mod tests {
     #[test]
     fn all_current_states() -> Result<(), String> {
         // Init a DomainStore.
+        // Domain 0 uses 1 integer for bits.
+        // Domain 1 uses 2 integers for bits.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
 
         // Set state for domain 0, using 1 integer for bits.
@@ -977,8 +913,6 @@ mod tests {
         if *all_states[1] != init_state2 {
             return Err(format!("Invalid second state {}", all_states[1]));
         }
-
-        //assert!(1 == 2);
 
         Ok(())
     }
@@ -1023,21 +957,58 @@ mod tests {
             println!("regstrx: {}", regstrx);
         }
 
-        let all_states = dmxs.all_current_states();
-        println!(
-            "\nCurr st: {}",
-            state::somestate_ref_vec_string(&all_states)
-        );
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x12")?;
+        dmxs[0].set_state(&state1);
 
-        println!(
-            "\nNumber supersets: {}",
-            dmxs.select.number_supersets_of_states(&all_states)
-        );
+        // Set state for domain 1.
+        let state2 = dmxs[1].state_from_string("s0xabcd")?;
+        dmxs[1].set_state(&state2);
+
+        dmxs.boredom = 0;
+        dmxs.boredom_limit = 0;
+
+        let num_sup = dmxs
+            .select
+            .number_supersets_of_states(&vec![&state1, &state2]);
+        println!("\nNumber supersets: {num_sup}",);
+        if num_sup > 0 {
+            return Err(format!("num_sup {num_sup} GT 0?"));
+        }
 
         if let Some(needx) = dmxs.check_select() {
             println!("\nCheck_select returns {}", needx);
         } else {
-            println!("\nCheck_otimal returns None");
+            return Err(format!("No need found?"));
+        }
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x05")?;
+        dmxs[0].set_state(&state1);
+
+        // Set state for domain 1.
+        let state2 = dmxs[1].state_from_string("s0xa28d")?;
+        dmxs[1].set_state(&state2);
+
+        dmxs.boredom = 0;
+        dmxs.boredom_limit = 2;
+        println!(
+            "\nBoredom level {} Boredom_limit {}",
+            dmxs.boredom, dmxs.boredom_limit
+        );
+
+        let num_sup = dmxs
+            .select
+            .number_supersets_of_states(&vec![&state1, &state2]);
+        println!("\nNumber supersets: {num_sup}",);
+        if num_sup != 3 {
+            return Err(format!("num_sup {num_sup} NE 3?"));
+        }
+
+        if let Some(needx) = dmxs.check_select() {
+            return Err(format!("\nCheck_select returns need? {}", needx));
+        } else {
+            println!("\nCheck_select returns None");
         }
 
         println!(
@@ -1045,9 +1016,11 @@ mod tests {
             dmxs.boredom, dmxs.boredom_limit
         );
 
-        println!(" ");
+        let val = dmxs
+            .select
+            .value_supersets_of_states(&vec![&state1, &state2]);
+        println!("val = {val}");
 
-        //return Err("done".to_string());
         Ok(())
     }
 }

@@ -11,6 +11,7 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -312,46 +313,17 @@ impl SelectRegionsStore {
         Some(ret_nds)
     }
 
-    /// Return the index of the highest rating of a plan, in a vector of plans.
-    /// All plans should be for the same domain.
-    pub fn rate_plans_vec<'a>(
-        &self,
-        plan_vec: Vec<&'a SomePlan>,
-        mut all_states: Vec<&'a SomeState>,
-    ) -> usize {
-        assert!(!plan_vec.is_empty());
-
-        if plan_vec.len() == 1 {
-            return 0;
-        }
-
-        let mut rates = Vec::<isize>::with_capacity(plan_vec.len());
-
-        for planx in plan_vec.iter() {
-            rates.push(self.rate_plan(planx, &mut all_states));
-        }
-
-        let max_rate = rates.iter().min().unwrap();
-
-        let mut max_rate_inxs = Vec::<usize>::new();
-        for (inx, rtx) in rates.iter().enumerate() {
-            if rtx == max_rate {
-                max_rate_inxs.push(inx);
-            }
-        }
-
-        if max_rate_inxs.len() == 1 {
-            return max_rate_inxs[0];
-        }
-
-        max_rate_inxs[rand::thread_rng().gen_range(0..max_rate_inxs.len())]
-    }
-
     /// Return the sum of all select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
-    pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, all_states: &mut [&'a SomeState]) -> isize {
+    pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, current_states: &[&'a SomeState]) -> isize {
         if aplan.len() < 2 {
             return 0;
+        }
+
+        // Create a mutable state ref vector.
+        let mut all_states = Vec::<&SomeState>::with_capacity(current_states.len());
+        for statex in current_states.iter() {
+            all_states.push(statex);
         }
 
         let dom_num = aplan.dom_num;
@@ -363,7 +335,7 @@ impl SelectRegionsStore {
                 continue;
             }
             all_states[dom_num] = &stepx.initial.state1;
-            let valx = self.value_supersets_of_states(all_states);
+            let valx = self.value_supersets_of_states(&all_states);
             if valx < 0 {
                 sum += valx;
             }
@@ -375,24 +347,81 @@ impl SelectRegionsStore {
     /// Return the sum of all select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
     /// If GT 1 plan is in the PlanStore, the result will be zero, which is a problem to be delt with later.
-    pub fn rate_plans_store<'a>(
+    pub fn rate_plans<'a>(
         &self,
-        aplan: &'a PlanStore,
-        mut all_states: Vec<&'a SomeState>,
-    ) -> isize {
-        let mut inx = 0;
-        let mut num_inx = 0;
-        for (iny, plnx) in aplan.iter().enumerate() {
+        plans: &'a PlanStore,
+        current_states: &Vec<&'a SomeState>,
+    ) -> (isize, Option<Vec<usize>>) {
+        let mut non_empty_plans = Vec::<usize>::new();
+        for (iny, plnx) in plans.iter().enumerate() {
             if !plnx.is_empty() {
-                inx = iny;
-                num_inx += 1;
+                non_empty_plans.push(iny);
             }
         }
-        if num_inx != 1 {
-            return 0;
+        if non_empty_plans.is_empty() {
+            return (0, None);
         }
 
-        self.rate_plan(&aplan[inx], &mut all_states)
+        if non_empty_plans.len() == 1 {
+            let ret = self.rate_plan(&plans[non_empty_plans[0]], current_states);
+            return (ret, None);
+        }
+
+        // Rate multi-plan PlanStore, figure ordering needed, if any.
+        // Check if any plan never passes though a negative (domain restricted) select region.
+        for inx in non_empty_plans.iter() {
+            if self.number_negative_regions(&plans[*inx]) == 0 {
+                // Run plans in parallel.
+                return (0, None);
+            }
+        }
+
+        // See if there is a preferred ordering.
+        // Look at running plans in different order, to minimize negative select regions passed though.
+        let mut orders = tools::anyxofvec_order_matters(
+            non_empty_plans.len(),
+            (0..non_empty_plans.len()).collect(),
+        );
+        //println!("orders {:?}", orders);
+
+        // Create mutable current_states vector.
+        let mut all_states = Vec::<&SomeState>::with_capacity(current_states.len());
+        for stateref in current_states.iter() {
+            all_states.push(stateref);
+        }
+
+        // Rate each option.
+        let mut rates = Vec::<isize>::with_capacity(orders.len());
+        for orderx in orders.iter() {
+            let mut rate: isize = 0;
+
+            for itemx in orderx.iter() {
+                rate += self.rate_plan(&plans[non_empty_plans[*itemx]], &all_states);
+                all_states[plans[non_empty_plans[*itemx]].dom_num] =
+                    &plans[non_empty_plans[*itemx]].result_region().state1;
+            }
+            rates.push(rate);
+        }
+        //println!("rates: {:?}", rates);
+
+        // Get best rate.
+        let max_rate = *rates.iter().max().unwrap();
+
+        // Save indices of best orders.
+        let mut max_rates = Vec::<usize>::new();
+        for (inx, rate) in rates.iter().enumerate() {
+            if *rate == max_rate {
+                max_rates.push(inx);
+            }
+        }
+
+        // Select the max rate order.
+        let mut inx = 0;
+        if max_rates.len() > 1 {
+            inx = rand::thread_rng().gen_range(0..max_rates.len());
+        }
+
+        (max_rate, Some(orders.remove(inx)))
     }
 
     /// Return the number of negative select regions a plan passes though, restricted to the domain number

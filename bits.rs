@@ -103,6 +103,8 @@ impl SomeBits {
 
         let mut base = 2;
 
+        let lsb = num_ints - 1;
+
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "0" {
@@ -120,8 +122,6 @@ impl SomeBits {
                 }
                 return Err(format!("String {str}, should start with 0b or 0x?"));
             }
-
-            let lsb = num_ints - 1;
 
             if chr == "_" {
                 continue;
@@ -572,7 +572,6 @@ mod tests {
     use super::*;
     use rand::Rng;
 
-    // Test new
     #[test]
     fn new() -> Result<(), String> {
         let bitx = SomeBits {

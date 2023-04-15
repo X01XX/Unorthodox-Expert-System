@@ -573,10 +573,12 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     if let Some(plans) = &inx_pln.plans {
-        if !dmxs.run_plans(plans) {
+        if !dmxs.run_plans(plans, &inx_pln.order) {
             if let Some(plans) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
                 println!("Unexpected result try again");
-                if !dmxs.run_plans(&plans) {
+                let current_states = dmxs.all_current_states();
+                let (_, order) = dmxs.select.rate_plans(&plans, &current_states);
+                if !dmxs.run_plans(&plans, &order) {
                     println!("Unexpected result, giving up");
                 }
             } else {
