@@ -249,15 +249,23 @@ impl SelectRegionsStore {
             target_masks.push(SomeMask::new_low(statex.num_ints()));
         }
 
+        // Make masks for what can change.
+        let mut change_mask = Vec::<SomeMask>::with_capacity(changes.len());
+        for (cngx, stax) in changes.iter().zip(all_states.iter()) {
+            change_mask.push(
+                cngx.b10
+                    .bitwise_and(*stax)
+                    .bitwise_or(&cngx.b01.bitwise_and(&stax.bitwise_not())),
+            );
+        }
+
         for selx in sup_store.iter() {
             // Get edges mask for a negative superset
             let mut edges = selx.regions.edge_mask_corr();
 
-            // Restrict masks, based on what can change.
-            for inx in 0..edges.len() {
+            for (edgex, mskx) in edges.iter_mut().zip(change_mask.iter()) {
                 //println!("choose_select_exit_needs: edge {} and b10 {} and b01 {}", edges[inx], changes[inx].b01, changes[inx].b10);
-                edges[inx] =
-                    edges[inx].bitwise_and(&changes[inx].b01.bitwise_and(&changes[inx].b10));
+                *edgex = edgex.bitwise_and(mskx);
             }
 
             // Identify non-zero edge masks.
@@ -346,7 +354,6 @@ impl SelectRegionsStore {
 
     /// Return the sum of all select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
-    /// If GT 1 plan is in the PlanStore, the result will be zero, which is a problem to be delt with later.
     pub fn rate_plans<'a>(
         &self,
         plans: &'a PlanStore,
@@ -367,7 +374,8 @@ impl SelectRegionsStore {
             return (ret, None);
         }
 
-        // Rate multi-plan PlanStore, figure ordering needed, if any.
+        // Rate a multi-plan PlanStore.
+
         // Check if any plan never passes though a negative (domain restricted) select region.
         for inx in non_empty_plans.iter() {
             if self.number_negative_regions(&plans[*inx]) == 0 {
