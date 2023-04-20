@@ -302,7 +302,7 @@ impl GroupStore {
                 &dom,
                 &act,
                 &grp.region,
-                RegionStore::vec_ref_string(&regs)
+                SomeRegion::vec_ref_string(&regs)
             );
             return false;
         }

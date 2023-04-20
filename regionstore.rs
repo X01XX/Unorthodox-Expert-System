@@ -119,6 +119,28 @@ impl RegionStore {
         false
     }
 
+    /// Return vector of regions that are a superset of a given region.
+    pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+        let mut ret_vec = Vec::<&SomeRegion>::new();
+        for regx in &self.avec {
+            if regx.is_superset_of(reg) {
+                ret_vec.push(regx);
+            }
+        }
+        ret_vec
+    }
+
+    /// Return vector of regions that are a superset of a given state.
+    pub fn supersets_of_state(&self, sta: &SomeState) -> Vec<&SomeRegion> {
+        let mut ret_vec = Vec::<&SomeRegion>::new();
+        for regx in &self.avec {
+            if regx.is_superset_of_state(sta) {
+                ret_vec.push(regx);
+            }
+        }
+        ret_vec
+    }
+
     /// Return the number of supersets of a state.
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
         self.avec
@@ -264,7 +286,7 @@ impl RegionStore {
     }
 
     /// Return a string representing a vector of regions.
-    pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
+    pub fn vec_ref_string(avec: &[&RegionStore]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -272,7 +294,7 @@ impl RegionStore {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &regx));
+            rc_str.push_str(&format!("{}", regx));
         }
 
         rc_str.push(']');
@@ -378,8 +400,8 @@ impl RegionStore {
     pub fn equal_corr(&self, other: &RegionStore) -> bool {
         debug_assert!(self.len() == other.len());
 
-        for inx in 0..self.len() {
-            if self[inx] == other[inx] {
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x == y {
             } else {
                 return false;
             }
@@ -493,6 +515,61 @@ impl RegionStore {
                     }
                 }
                 ret_str.push(new_store);
+            }
+        }
+        ret_str
+    }
+
+    /// Subtract corresponding regions from a RegionStore,
+    /// Limit regions considered to those containing any region in a given vector.
+    pub fn subtract_corr_containing(
+        &self,
+        other: &RegionStore,
+        containing: &[&RegionStore],
+    ) -> Vec<RegionStore> {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret_str = Vec::<RegionStore>::new();
+
+        let xb_msks = self.xb_mask_corr(other);
+
+        for inx in 0..self.len() {
+            if xb_msks[inx].is_low() {
+                continue;
+            }
+            let single_bits = xb_msks[inx].split();
+
+            for bitx in single_bits.iter() {
+                let mut new_store = RegionStore::with_capacity(self.len());
+
+                for iny in 0..self.len() {
+                    if iny == inx {
+                        new_store.push(match bitx.bitwise_and(&other[inx].state1).is_low() {
+                            true =>
+                            // process x/0
+                            {
+                                self[inx].set_to_ones(bitx)
+                            }
+                            false =>
+                            // process x/1
+                            {
+                                self[inx].set_to_zeros(bitx)
+                            }
+                        });
+                    } else {
+                        new_store.push(self[iny].clone());
+                    }
+                } // Next iny.
+                let mut contains = false;
+                for regsx in containing.iter() {
+                    if new_store.is_superset_corr(regsx) {
+                        contains = true;
+                        break;
+                    }
+                }
+                if contains {
+                    ret_str.push(new_store);
+                }
             }
         }
         ret_str

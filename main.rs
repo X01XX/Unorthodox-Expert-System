@@ -563,7 +563,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 // Show "before" state before running need.
                 println!(
                     "\nAll domain states: {}",
-                    state::somestate_ref_vec_string(&dmxs.all_current_states())
+                    SomeState::vec_ref_string(&dmxs.all_current_states())
                 );
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();

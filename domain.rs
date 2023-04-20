@@ -430,7 +430,7 @@ impl SomeDomain {
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
-    pub fn make_plan(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
+    pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
         //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
@@ -440,8 +440,17 @@ impl SomeDomain {
 
         let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
 
+        self.make_plans2(&cur_reg, goal_reg)
+    }
+
+    /// Make a plan to change from a region to another region.
+    pub fn make_plans2(
+        &self,
+        from_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+    ) -> Option<Vec<SomePlan>> {
         // Figure the required change.
-        let required_change = SomeChange::region_to_region(&cur_reg, goal_reg);
+        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 3 * required_change.number_changes();
@@ -458,7 +467,7 @@ impl SomeDomain {
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.random_depth_first_search(
-                    &cur_reg,
+                    from_reg,
                     goal_reg,
                     &steps_str,
                     &steps_by_change_vov,
@@ -554,7 +563,7 @@ impl SomeDomain {
         }
     } // end act_num_from_string
 
-    /// Return the current maximum region.
+    /// Return the current maximum region that can eb reached from the current state.
     pub fn maximum_region(&self) -> SomeRegion {
         SomeRegion::new(
             self.cur_state.clone(),

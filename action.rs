@@ -756,7 +756,7 @@ impl SomeAction {
                                     dom,
                                     self.num,
                                     &group_region,
-                                    RegionStore::vec_ref_string(
+                                    SomeRegion::vec_ref_string(
                                         &self.groups.supersets_of(group_region)
                                     )
                                 );
@@ -2231,7 +2231,7 @@ impl SomeAction {
                     } else {
                         println!(
                             "adj    {sqrx} in groups {}",
-                            RegionStore::vec_ref_string(&grps)
+                            SomeRegion::vec_ref_string(&grps)
                         );
                     }
                 }

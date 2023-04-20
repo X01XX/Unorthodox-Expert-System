@@ -463,6 +463,23 @@ impl SomeRegion {
         }
         ret_vec
     }
+
+    /// Return a string representing a vector of regions.
+    pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
+        let mut rc_str = String::new();
+        rc_str.push('[');
+
+        for (inx, regx) in avec.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &regx));
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
 } // end impl SomeRegion
 
 #[cfg(test)]

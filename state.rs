@@ -181,21 +181,21 @@ impl SomeState {
     pub fn to_mask(&self) -> SomeMask {
         SomeMask::new(self.bts.clone())
     }
-} // end impl SomeState
 
-/// Return a string to display a vector of SomeState references.
-pub fn somestate_ref_vec_string(avec: &[&SomeState]) -> String {
-    let mut ret_str = String::from("[");
+    /// Return a string to display a vector of SomeState references.
+    pub fn vec_ref_string(avec: &[&SomeState]) -> String {
+        let mut ret_str = String::from("[");
 
-    for (inx, stax) in avec.iter().enumerate() {
-        if inx > 0 {
-            ret_str.push_str(", ");
+        for (inx, stax) in avec.iter().enumerate() {
+            if inx > 0 {
+                ret_str.push_str(", ");
+            }
+            ret_str.push_str(&format!("{stax}"));
         }
-        ret_str.push_str(&format!("{stax}"));
+        ret_str.push(']');
+        ret_str
     }
-    ret_str.push(']');
-    ret_str
-}
+} // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.
 impl BitsRef for SomeState {

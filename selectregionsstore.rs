@@ -33,6 +33,9 @@ pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
     pub regions: RegionStore,
     /// A value for being in the select state.
+    /// A Positive value is, so far, the value given to a goal state in the regions.
+    /// A negative value is, so far, given to a plan that passes through the regions on the way to a goal,
+    /// not counting the beginning and end state.
     pub value: isize,
 }
 
@@ -116,6 +119,20 @@ impl SelectRegionsStore {
         self.regionstores
             .iter()
             .map(|regsx| usize::from(regsx.regions.is_superset_corr_states(stas)))
+            .sum()
+    }
+
+    /// Return the rate of a vector of states, the result/goal of a number of domain plans.
+    pub fn rate_states(&self, stas: &[&SomeState]) -> isize {
+        self.regionstores
+            .iter()
+            .map(|regsx| {
+                if regsx.regions.is_superset_corr_states(stas) {
+                    regsx.value
+                } else {
+                    0
+                }
+            })
             .sum()
     }
 
@@ -352,8 +369,8 @@ impl SelectRegionsStore {
         sum
     }
 
-    /// Return the sum of all select regions values a plan goes through.
-    /// This ignores the select regions a plan starts, or end, in.
+    /// Return the sum of all select negative regions values a plan goes through.
+    /// This ignores the select regions a plan starts, or ends, in.
     pub fn rate_plans<'a>(
         &self,
         plans: &'a PlanStore,

@@ -68,7 +68,7 @@ pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<V
         for itemx in rlst.iter() {
             cap += itemx[1].len();
         }
-        // Init result vectore.
+        // Init result vector.
         let mut rlst2 = Vec::<Vec<Vec<T>>>::with_capacity(cap);
 
         for itemx in rlst.iter() {

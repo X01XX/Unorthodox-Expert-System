@@ -11,7 +11,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered;
 use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
-use crate::state::{self, SomeState};
+use crate::state::SomeState;
 use crate::targetstore::TargetStore;
 
 use rand::Rng;
@@ -378,7 +378,7 @@ impl DomainStore {
 
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plan(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<SomePlan> {
-        if let Some(mut plans) = self.avec[dom_num].make_plan(goal_region) {
+        if let Some(mut plans) = self.avec[dom_num].make_plans(goal_region) {
             if plans.len() == 1 {
                 return Some(plans.remove(0));
             }
@@ -704,14 +704,14 @@ impl DomainStore {
         if select_supersets.is_empty() {
             print!(
                 "\nAll Current states: {} in select regions: None, not in {}",
-                state::somestate_ref_vec_string(&all_states),
+                SomeState::vec_ref_string(&all_states),
                 self.select
             );
         } else {
             ret = true;
             print!(
                 "\nAll Current states: {} in select regions: {}",
-                state::somestate_ref_vec_string(&all_states),
+                SomeState::vec_ref_string(&all_states),
                 SelectRegions::vec_ref_string(&select_supersets)
             );
 
@@ -827,7 +827,7 @@ impl DomainStore {
         println!(
             "\nStep {} All domain states: {}",
             self.step_num,
-            state::somestate_ref_vec_string(&self.all_current_states())
+            SomeState::vec_ref_string(&self.all_current_states())
         );
         assert!(self.step_num < 1000); // Remove for continuous use
 
@@ -861,6 +861,19 @@ impl DomainStore {
         self.run_plan(&pln);
         goal_region.is_superset_of_state(&self.avec[dom_num].cur_state)
     }
+
+    /// Return a store of regions that have a positive value.
+    #[allow(dead_code)]
+    fn positive_regions(&self, dom_num: usize) -> RegionStore {
+        let mut pos_regs = RegionStore::new(vec![self[dom_num].maximum_region()]);
+
+        for selregs in self.select.iter() {
+            if selregs.value < 0 && !selregs.regions[dom_num].x_mask().is_high() {
+                pos_regs = pos_regs.subtract_region(&selregs.regions[dom_num]);
+            }
+        }
+        pos_regs
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -880,6 +893,144 @@ impl IndexMut<usize> for DomainStore {
 mod tests {
     use super::*;
     use crate::regionstore::RegionStore;
+    use crate::sample::SomeSample;
+
+    #[test]
+    fn avoidance() -> Result<(), String> {
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Init a domain, using one integer.
+        let mut domx = SomeDomain::new(1);
+
+        // Set up action to change the first bit.
+        domx.add_action();
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        domx.add_action();
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new(vec![domx]);
+
+        // Set select regions.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r01X1")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(
+            dmxs[0]
+                .region_from_string_pad_x("rX101")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr2, -2);
+
+        let mut regstr3 = RegionStore::with_capacity(1);
+        regstr3.push(
+            dmxs[0]
+                .region_from_string_pad_x("r111X")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr3, 2);
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x1")?;
+        dmxs[0].set_state(&state1);
+
+        println!("\nActions {}\n", dmxs[0].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let goal_region = SomeRegion::new(sf.clone(), sf.clone());
+
+        dmxs[0].get_needs(); // set aggregate changes
+
+        let max_reg = dmxs[0].maximum_region();
+        let glide_path = SomeRegion::new(s1.clone(), sf.clone());
+        println!("\nmax region {max_reg}, glide path {glide_path}");
+
+        let pos_regs = dmxs.positive_regions(0);
+        println!("\npos_regs: {}", &pos_regs);
+        assert!(pos_regs.len() > 1);
+
+        let regs_goal_in = pos_regs.supersets_of(&goal_region);
+        println!(
+            "\nGoal {} in pos_regs: {}",
+            goal_region,
+            SomeRegion::vec_ref_string(&regs_goal_in)
+        );
+        assert!(regs_goal_in.len() > 0);
+
+        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
+        println!(
+            "\ncur_state {} in pos_regs: {}",
+            dmxs[0].cur_state,
+            SomeRegion::vec_ref_string(&regs_cur_in)
+        );
+        assert!(regs_cur_in.len() > 0);
+
+        // Try to find a simple intersection of goal and cur_state regions.
+        let mut intersections = RegionStore::new(vec![]);
+        for greg in regs_goal_in.iter() {
+            for creg in regs_cur_in.iter() {
+                if greg.intersects(creg) {
+                    let int_reg = greg.intersection(creg).unwrap();
+                    //println!("goal region {} intersects cru region {} at {}", greg, creg, int_reg);
+                    intersections.push(int_reg);
+                }
+            }
+        }
+        println!("\nintersections {}", &intersections);
+        assert!(intersections.len() > 0);
+
+        let cur_reg = SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
+        for int_reg in intersections.iter() {
+            if let Some(plans) = dmxs[0].make_plans2(&cur_reg, int_reg) {
+                // choose plan.
+                let plan1 = &plans[0];
+                println!("\nplan 1: {} of {}", plan1, plans.len());
+
+                if let Some(plans) = dmxs[0].make_plans2(plan1.result_region(), &goal_region) {
+                    // choose a plan
+                    let plan2 = &plans[0];
+
+                    println!("\nplan 2: {} of {}", plan2, plans.len());
+                } else {
+                    return Err(format!("plan2 not found"));
+                }
+            } else {
+                return Err(format!("plan1 not found"));
+            }
+        }
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn all_current_states() -> Result<(), String> {
@@ -897,10 +1048,7 @@ mod tests {
         dmxs[1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
-        println!(
-            "all states {}",
-            state::somestate_ref_vec_string(&all_states)
-        );
+        println!("all states {}", SomeState::vec_ref_string(&all_states));
 
         if all_states.len() != 2 {
             return Err(format!("Invalid length {}", all_states.len()));
