@@ -480,6 +480,31 @@ impl SomeRegion {
 
         rc_str
     }
+
+    // Check any two region vectors for an intersection in their last items.
+    // Return vector of (arg 1 index, arg2 index, intersection region)
+    pub fn vec_ref_intersections(
+        arg1: &[Vec<&SomeRegion>],
+        arg2: &[Vec<&SomeRegion>],
+    ) -> Option<Vec<(usize, usize, SomeRegion)>> {
+        let mut ret_vec = Vec::<(usize, usize, SomeRegion)>::new();
+
+        for (inx_1, vec_1) in arg1.iter().enumerate() {
+            for (inx_2, vec_2) in arg2.iter().enumerate() {
+                if let Some(regx) = vec_1.last() {
+                    if let Some(regy) = vec_2.last() {
+                        if regx.intersects(regy) {
+                            ret_vec.push((inx_1, inx_2, regx.intersection(regy).unwrap()));
+                        }
+                    }
+                }
+            } // next inx_2, vec_2
+        } // next inx_1, vec_2
+        if ret_vec.is_empty() {
+            return None;
+        }
+        Some(ret_vec)
+    }
 } // end impl SomeRegion
 
 #[cfg(test)]

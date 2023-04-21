@@ -6,7 +6,6 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
-use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered;
@@ -616,8 +615,7 @@ impl DomainStore {
             self.boredom_limit = 0;
         }
 
-        self.choose_select_goal(&all_states)
-            .map(|needx| NeedStore::new(vec![needx]))
+        self.select_goal_needs(&all_states)
     }
 
     /// Return a vector of aggregate change references, per domain.
@@ -630,7 +628,7 @@ impl DomainStore {
     }
 
     /// Return a need for moving to an select region.
-    fn choose_select_goal(&self, all_states: &[&SomeState]) -> Option<SomeNeed> {
+    fn select_goal_needs(&self, all_states: &[&SomeState]) -> Option<NeedStore> {
         // Get regions the current state is not in.
         let mut notsups = self.select_and_ints.not_supersets_of_states(all_states);
 
@@ -655,43 +653,14 @@ impl DomainStore {
             return None;
         }
 
-        // If the current state is not in an select region, return a need to go there.
-        if notsups.len() == 1 {
-            return Some(SomeNeed::ToSelectRegion {
-                target_regions: notsups[0].clone(),
+        // Load return vector.
+        let mut ret_str = NeedStore::with_capacity(notsups.len());
+        for nsupx in notsups.iter() {
+            ret_str.push(SomeNeed::ToSelectRegion {
+                target_regions: (*nsupx).clone().clone(),
             });
         }
-
-        if notsups.len() == 2 {
-            let inx = rand::thread_rng().gen_range(0..2);
-
-            return Some(SomeNeed::ToSelectRegion {
-                target_regions: notsups[inx].clone(),
-            });
-        }
-
-        // Randomly pick two, then take the one with the highest rate.
-        let mut rp1 = RandomPick::new(notsups.len());
-
-        // Randomly pick an index value.
-        let inx1 = rp1.pick().unwrap();
-        let dist1 = notsups[inx1].regions.distance_corr_states(all_states);
-        let rate1 = (notsups[inx1].value as usize * 1000) / dist1;
-
-        // Randomly pick an index value NE inx1.
-        let inx2 = rp1.pick().unwrap();
-        let dist2 = notsups[inx2].regions.distance_corr_states(all_states);
-        let rate2 = (notsups[inx2].value as usize * 1000) / dist2;
-
-        if rate1 > rate2 {
-            return Some(SomeNeed::ToSelectRegion {
-                target_regions: notsups[inx1].clone(),
-            });
-        }
-
-        Some(SomeNeed::ToSelectRegion {
-            target_regions: notsups[inx2].clone(),
-        })
+        Some(ret_str)
     }
 
     /// Print current states and select information.
@@ -896,7 +865,9 @@ mod tests {
     use crate::sample::SomeSample;
 
     #[test]
-    fn avoidance() -> Result<(), String> {
+    /// Test case where positive regions the start and goal are in, intersect.
+    /// Avoidance 0 is randomly finding paths, and choosing the one with least intersections of negative regions.
+    fn avoidance1() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
         let s0 = SomeState::new_from_string(1, "s0b0")?;
 
@@ -950,14 +921,6 @@ mod tests {
                 .expect("String should be formatted correctly"),
         );
         dmxs.add_select(regstr2, -2);
-
-        let mut regstr3 = RegionStore::with_capacity(1);
-        regstr3.push(
-            dmxs[0]
-                .region_from_string_pad_x("r111X")
-                .expect("String should be formatted correctly"),
-        );
-        dmxs.add_select(regstr3, 2);
 
         // Set state for domain 0.
         let state1 = dmxs[0].state_from_string("s0x1")?;
@@ -1020,6 +983,14 @@ mod tests {
                     let plan2 = &plans[0];
 
                     println!("\nplan 2: {} of {}", plan2, plans.len());
+
+                    if let Some(planx) = plan1.link(&plan2) {
+                        let rate = dmxs.select.rate_plan(&planx, &dmxs.all_current_states());
+                        println!("final plan {} rate {}", planx, rate);
+                        assert!(rate == 0);
+                    } else {
+                        return Err(format!("plan1+2 cannot link?"));
+                    }
                 } else {
                     return Err(format!("plan2 not found"));
                 }
@@ -1029,6 +1000,449 @@ mod tests {
         }
 
         //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// but another region intersects both.
+    fn avoidance2() -> Result<(), String> {
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Init a domain, using one integer.
+        let mut domx = SomeDomain::new(1);
+
+        // Set up action to change the first bit.
+        domx.add_action();
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        domx.add_action();
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new(vec![domx]);
+
+        // Set select regions.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r0101")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(
+            dmxs[0]
+                .region_from_string_pad_x("r1001")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr2, -1);
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x1")?;
+        dmxs[0].set_state(&state1);
+
+        println!("\nActions {}\n", dmxs[0].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let goal_region = SomeRegion::new(sd.clone(), sd.clone());
+
+        dmxs[0].get_needs(); // set aggregate changes
+
+        let max_reg = dmxs[0].maximum_region();
+        let glide_path = SomeRegion::new(s1.clone(), sd.clone());
+        println!("\nmax region {max_reg}, glide path {glide_path}");
+
+        let pos_regs = dmxs.positive_regions(0);
+        println!("\npos_regs: {}", &pos_regs);
+        assert!(pos_regs.len() > 1);
+
+        let regs_goal_in = pos_regs.supersets_of(&goal_region);
+        println!(
+            "\nGoal {} in pos_regs: {}",
+            goal_region,
+            SomeRegion::vec_ref_string(&regs_goal_in)
+        );
+        assert!(regs_goal_in.len() > 0);
+
+        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
+        println!(
+            "\ncur_state {} in pos_regs: {}",
+            dmxs[0].cur_state,
+            SomeRegion::vec_ref_string(&regs_cur_in)
+        );
+        assert!(regs_cur_in.len() > 0);
+
+        // Try to find a simple intersection of goal and cur_state regions.
+        let mut intersections = RegionStore::new(vec![]);
+        for greg in regs_goal_in.iter() {
+            for creg in regs_cur_in.iter() {
+                if greg.intersects(creg) {
+                    let int_reg = greg.intersection(creg).unwrap();
+                    //println!("goal region {} intersects cru region {} at {}", greg, creg, int_reg);
+                    intersections.push(int_reg);
+                }
+            }
+        }
+        println!("\nintersections {}", &intersections);
+        assert!(intersections.len() == 0);
+
+        let mut other_pos_regions = Vec::<&SomeRegion>::new();
+        for regx in pos_regs.iter() {
+            if regx.is_superset_of_state(&dmxs[0].cur_state) || regx.is_superset_of(&goal_region) {
+                continue;
+            }
+            other_pos_regions.push(regx);
+        }
+        println!(
+            "\nOther regions: {}",
+            SomeRegion::vec_ref_string(&other_pos_regions)
+        );
+
+        let mut intersections = Vec::<(SomeRegion, SomeRegion)>::new();
+        for regx in other_pos_regions.iter() {
+            for cregx in regs_cur_in.iter() {
+                for gregx in regs_goal_in.iter() {
+                    if let Some(cint) = regx.intersection(cregx) {
+                        if let Some(gint) = regx.intersection(gregx) {
+                            intersections.push((cint, gint));
+                        }
+                    }
+                }
+            }
+        }
+        println!("\nIntersections:");
+        for intx in intersections.iter() {
+            println!("cint {}, gint {}", intx.0, intx.1);
+        }
+
+        let cur_reg = SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
+        for intx in intersections.iter() {
+            if let Some(plans1) = dmxs[0].make_plans2(&cur_reg, &intx.0) {
+                // Choose plan 1
+                let plan1 = &plans1[0];
+
+                if let Some(plans2) = dmxs[0].make_plans2(&plan1.result_region(), &intx.1) {
+                    // Choose plan 2
+                    let plan2 = &plans2[0];
+
+                    if let Some(plans3) = dmxs[0].make_plans2(&plan2.result_region(), &goal_region)
+                    {
+                        // Choose plan 3
+                        let plan3 = &plans3[0];
+
+                        if let Some(planx) = plan1.link(&plan2) {
+                            if let Some(plany) = planx.link(&plan3) {
+                                let rate =
+                                    dmxs.select.rate_plan(&plany, &dmxs.all_current_states());
+                                println!("final plan {} rate {}", plany, rate);
+                                assert!(rate == 0);
+                            } else {
+                                return Err(format!("plan1+2 and plan3 cannot link?"));
+                            }
+                        } else {
+                            return Err(format!("plan1+2 cannot link?"));
+                        }
+                    } else {
+                        return Err(format!("no plans3?"));
+                    }
+                } else {
+                    return Err(format!("no plans2?"));
+                }
+            } else {
+                return Err(format!("no plans1?"));
+            }
+        }
+        Ok(())
+    }
+    #[test]
+    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// and another region does not intersect both.
+    /// Generalized intersection checking is needed.
+    fn avoidance3() -> Result<(), String> {
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Init a domain, using one integer.
+        let mut domx = SomeDomain::new(1);
+
+        // Set up action to change the first bit.
+        domx.add_action();
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        domx.add_action();
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new(vec![domx]);
+
+        // Set select regions.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r0x00")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(
+            dmxs[0]
+                .region_from_string_pad_x("rx100")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr2, -1);
+
+        let mut regstr3 = RegionStore::with_capacity(1);
+        regstr3.push(
+            dmxs[0]
+                .region_from_string_pad_x("r01x1")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr3, -1);
+
+        let mut regstr4 = RegionStore::with_capacity(1);
+        regstr4.push(
+            dmxs[0]
+                .region_from_string_pad_x("r10x1")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr4, -1);
+
+        let mut regstr5 = RegionStore::with_capacity(1);
+        regstr5.push(
+            dmxs[0]
+                .region_from_string_pad_x("r101x")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr5, -1);
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x1")?;
+        dmxs[0].set_state(&state1);
+
+        println!("\nActions {}\n", dmxs[0].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let goal_region = SomeRegion::new(sd.clone(), sd.clone());
+
+        dmxs[0].get_needs(); // set aggregate changes
+
+        let max_reg = dmxs[0].maximum_region();
+        let glide_path = SomeRegion::new(s1.clone(), sd.clone());
+        println!("\nmax region {max_reg}, glide path {glide_path}");
+
+        let pos_regs = dmxs.positive_regions(0);
+        println!("\npos_regs: {}", &pos_regs);
+        assert!(pos_regs.len() > 1);
+
+        // Get regions the goal is in.
+        let regs_goal_in = pos_regs.supersets_of(&goal_region);
+        println!(
+            "\nGoal {} in pos_regs: {}",
+            goal_region,
+            SomeRegion::vec_ref_string(&regs_goal_in)
+        );
+        assert!(regs_goal_in.len() > 0);
+
+        // Get regions the current state is in.
+        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
+        println!(
+            "\ncur_state {} in pos_regs: {}",
+            dmxs[0].cur_state,
+            SomeRegion::vec_ref_string(&regs_cur_in)
+        );
+        assert!(regs_cur_in.len() > 0);
+
+        let mut other_pos_regions = Vec::<&SomeRegion>::new();
+        for regx in pos_regs.iter() {
+            if regx.is_superset_of_state(&dmxs[0].cur_state) || regx.is_superset_of(&goal_region) {
+                continue;
+            }
+            other_pos_regions.push(regx);
+        }
+        println!(
+            "\nOther regions: {}",
+            SomeRegion::vec_ref_string(&other_pos_regions)
+        );
+
+        // Make vectors to build intersections on.
+        let mut goal_options = Vec::<Vec<&SomeRegion>>::new();
+        for regx in regs_goal_in.iter() {
+            goal_options.push(vec![regx]);
+        }
+
+        let mut cur_options = Vec::<Vec<&SomeRegion>>::new();
+        for regx in regs_cur_in.iter() {
+            cur_options.push(vec![regx]);
+        }
+
+        let mut changed = true;
+        while changed {
+            changed = false;
+
+            // Check for intersections.
+            if let Some(intersections) =
+                SomeRegion::vec_ref_intersections(&goal_options, &cur_options)
+            {
+                for an_int in intersections.iter() {
+                    println!(
+                        "\n{} int {} at {}",
+                        SomeRegion::vec_ref_string(&cur_options[an_int.1]),
+                        SomeRegion::vec_ref_string(&goal_options[an_int.0]),
+                        an_int.2
+                    );
+                }
+                println!(" ");
+                let mut inx = 0;
+                if intersections.len() > 1 {
+                    inx = rand::thread_rng().gen_range(0..intersections.len());
+                }
+
+                println!(
+                    "\nan_int chosen {} int {} at {}",
+                    SomeRegion::vec_ref_string(&cur_options[intersections[inx].1]),
+                    SomeRegion::vec_ref_string(&goal_options[intersections[inx].0]),
+                    intersections[inx].2
+                );
+
+                let from_goal = &goal_options[intersections[inx].0];
+                let from_cur = &cur_options[intersections[inx].1];
+
+                // Fill from_cur with remaining from goal regions.
+                let mut final_path = <Vec<&SomeRegion>>::new();
+                for curx in from_cur.iter() {
+                    final_path.push(curx);
+                }
+                if from_cur.last().unwrap() == from_goal.last().unwrap() {
+                    final_path.pop();
+                }
+
+                for goalx in from_goal.iter().rev() {
+                    final_path.push(goalx);
+                }
+                final_path.push(&goal_region);
+                println!("final path {}", SomeRegion::vec_ref_string(&final_path));
+
+                // Process final_regs.
+                let mut final_plan: Option<SomePlan> = None;
+                let mut tmp_cur =
+                    SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
+                for inx in 0..(final_path.len() - 1) {
+                    let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
+                    if tmp_int == tmp_cur {
+                        continue;
+                    }
+                    println!(" figure plan for {} to {}", &tmp_cur, &tmp_int);
+                    if let Some(plans) = dmxs[0].make_plans2(&tmp_cur, &tmp_int) {
+                        println!(
+                            "\nplans {} to {} at {} = {}",
+                            tmp_cur,
+                            final_path[inx + 1],
+                            tmp_int,
+                            plans[0]
+                        );
+                        tmp_cur = plans[0].result_region().clone();
+                        if let Some(planx) = final_plan {
+                            final_plan = planx.link(&plans[0]);
+                        } else {
+                            final_plan = Some(plans[0].clone());
+                        }
+                    } else {
+                        panic!("problem");
+                    }
+                }
+                if let Some(planx) = final_plan {
+                    println!("final plan is {}", planx);
+                    return Ok(());
+                } else {
+                    println!("final plan is None");
+                    return Err(format!("no final plan?"));
+                }
+            }
+
+            // Build new connections.
+            for regx in other_pos_regions.iter() {
+                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
+                for vecx in cur_options.iter() {
+                    if vecx.contains(regx) {
+                        continue;
+                    }
+                    if let Some(regy) = vecx.last() {
+                        if regy.intersects(regx) {
+                            let mut tmp_vec = vecx.clone();
+                            tmp_vec.push(regx);
+                            tmp.push(tmp_vec);
+                            changed = true;
+                        }
+                    }
+                }
+                cur_options.append(&mut tmp);
+
+                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
+                for vecx in goal_options.iter() {
+                    if vecx.contains(regx) {
+                        continue;
+                    }
+                    if let Some(regy) = vecx.last() {
+                        if regy.intersects(regx) {
+                            let mut tmp_vec = vecx.clone();
+                            tmp_vec.push(regx);
+                            tmp.push(tmp_vec);
+                            changed = true;
+                        }
+                    }
+                }
+                goal_options.append(&mut tmp);
+
+                // for vecx in goal_options.iter()
+            }
+        }
+
         Ok(())
     }
 
