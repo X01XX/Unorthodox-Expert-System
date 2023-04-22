@@ -1372,6 +1372,7 @@ mod tests {
                 let mut final_plan: Option<SomePlan> = None;
                 let mut tmp_cur =
                     SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
+
                 for inx in 0..(final_path.len() - 1) {
                     let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
                     if tmp_int == tmp_cur {
@@ -1379,18 +1380,31 @@ mod tests {
                     }
                     println!(" figure plan for {} to {}", &tmp_cur, &tmp_int);
                     if let Some(plans) = dmxs[0].make_plans2(&tmp_cur, &tmp_int) {
+                        // Try to insure that the plan is within the positive region.
+                        let mut inz = 0;
+                        for (iny, planx) in plans.iter().enumerate() {
+                            // Check planx stays within the expected region, that is, it does not stray into a negative region.
+                            if let Some(regx) = planx.path_region() {
+                                if regx.is_subset_of(final_path[inx]) {
+                                    inz = iny;
+                                    break;
+                                }
+                            } else {
+                                return Err(format!("Empty plan {} or plan_path error?", planx));
+                            }
+                        }
                         println!(
                             "\nplans {} to {} at {} = {}",
                             tmp_cur,
                             final_path[inx + 1],
                             tmp_int,
-                            plans[0]
+                            plans[inz]
                         );
-                        tmp_cur = plans[0].result_region().clone();
+                        tmp_cur = plans[inz].result_region().clone();
                         if let Some(planx) = final_plan {
-                            final_plan = planx.link(&plans[0]);
+                            final_plan = planx.link(&plans[inz]);
                         } else {
-                            final_plan = Some(plans[0].clone());
+                            final_plan = Some(plans[inz].clone());
                         }
                     } else {
                         panic!("problem");
@@ -1398,6 +1412,7 @@ mod tests {
                 }
                 if let Some(planx) = final_plan {
                     println!("final plan is {}", planx);
+                    // assert!(1 == 2);
                     return Ok(());
                 } else {
                     println!("final plan is None");
@@ -1442,7 +1457,6 @@ mod tests {
                 // for vecx in goal_options.iter()
             }
         }
-
         Ok(())
     }
 

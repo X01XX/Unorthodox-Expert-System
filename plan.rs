@@ -350,6 +350,19 @@ impl SomePlan {
         }
         true
     }
+
+    /// Return the region encompassed by the path of a plan.
+    pub fn path_region(&self) -> Option<SomeRegion> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut ret_reg = self.initial_region().clone();
+        for stpx in self.iter() {
+            ret_reg = ret_reg.union(&stpx.result);
+        }
+        Some(ret_reg)
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {
@@ -363,6 +376,41 @@ impl Index<usize> for SomePlan {
 mod tests {
     use super::*;
     use crate::rule::SomeRule;
+
+    #[test]
+    fn path_region() -> Result<(), String> {
+        let planx = SomePlan::new(0, vec![]);
+        if let Some(regx) = planx.path_region() {
+            return Err(format!("Empty plan returns a region {}?", regx));
+        }
+
+        let step0 = SomeStep::new(
+            0,
+            SomeRule::new_from_string(1, "00/01/01/11").unwrap(),
+            false,
+            SomeRegion::new_from_string(1, "rXXXX").unwrap(),
+        ); // 1 -> 7
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_from_string(1, "01/11/10/11").unwrap(),
+            false,
+            SomeRegion::new_from_string(1, "rXXXX").unwrap(),
+        ); // 7 -> D
+        let planx = SomePlan::new(0, vec![step0, step1]);
+        if let Some(regx) = planx.path_region() {
+            println!("{} returned", regx);
+            let expected_region = SomeRegion::new_from_string(1, "rXXX1").unwrap();
+            if regx != expected_region {
+                return Err(format!(
+                    "Plan returns {} instead of {} for {}?",
+                    regx, expected_region, planx
+                ));
+            }
+        } else {
+            return Err(format!("Plan returns None for {}?", planx));
+        }
+        Ok(())
+    }
 
     // Test the link function. This also tests the len, push, result_region, initial_region,
     // restrict_initial_region and restrict_result_region functions.
