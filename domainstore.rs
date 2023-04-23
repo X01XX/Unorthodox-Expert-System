@@ -1355,18 +1355,29 @@ mod tests {
 
                 // Fill from_cur with remaining from goal regions.
                 let mut final_path = <Vec<&SomeRegion>>::new();
-                for curx in from_cur.iter() {
-                    final_path.push(curx);
-                }
-                if from_cur.last().unwrap() == from_goal.last().unwrap() {
-                    final_path.pop();
+                for regx in from_cur.iter() {
+                    final_path.push(regx);
+                    if regx.is_superset_of(&intersections[inx].2) {
+                        break;
+                    }
                 }
 
-                for goalx in from_goal.iter().rev() {
-                    final_path.push(goalx);
+                let mut from_goal2 = Vec::<&SomeRegion>::new();
+                for regx in from_goal.iter() {
+                    if *regx == &intersections[inx].2 {
+                        break;
+                    }
+                    from_goal2.push(regx);
+                    if regx.intersects(&intersections[inx].2) {
+                        break;
+                    }
+                }
+                println!("\nfrom_goal2 {}", SomeRegion::vec_ref_string(&from_goal2));
+                for regx in from_goal2.iter().rev() {
+                    final_path.push(regx);
                 }
                 final_path.push(&goal_region);
-                println!("final path {}", SomeRegion::vec_ref_string(&final_path));
+                println!("\nfinal path {}", SomeRegion::vec_ref_string(&final_path));
 
                 // Process final_regs.
                 let mut final_plan: Option<SomePlan> = None;
@@ -1376,6 +1387,13 @@ mod tests {
                 for inx in 0..(final_path.len() - 1) {
                     let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
                     if tmp_int == tmp_cur {
+                        println!(
+                            "{} int {} = {} which = cur {}",
+                            final_path[inx],
+                            final_path[inx + 1],
+                            tmp_int,
+                            tmp_cur
+                        );
                         continue;
                     }
                     println!(" figure plan for {} to {}", &tmp_cur, &tmp_int);
@@ -1411,8 +1429,10 @@ mod tests {
                     }
                 }
                 if let Some(planx) = final_plan {
-                    println!("final plan is {}", planx);
-                    // assert!(1 == 2);
+                    println!("\nfinal plan is {}\n", planx);
+                    assert!(planx.initial_region().state1 == dmxs[0].cur_state,);
+                    assert!(*planx.result_region() == goal_region);
+                    //assert!(1 == 2);
                     return Ok(());
                 } else {
                     println!("final plan is None");
@@ -1435,7 +1455,7 @@ mod tests {
                             changed = true;
                         }
                     }
-                }
+                } // next vecx
                 cur_options.append(&mut tmp);
 
                 let mut tmp = Vec::<Vec<&SomeRegion>>::new();
@@ -1451,12 +1471,10 @@ mod tests {
                             changed = true;
                         }
                     }
-                }
+                } // next vecx
                 goal_options.append(&mut tmp);
-
-                // for vecx in goal_options.iter()
-            }
-        }
+            } // next regx
+        } // end while
         Ok(())
     }
 
