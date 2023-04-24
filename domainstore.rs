@@ -360,6 +360,7 @@ impl DomainStore {
         if plans.is_empty() || plans.len() < targets.len() {
             return None;
         }
+
         Some(PlanStore::new(plans))
     }
 
@@ -378,6 +379,32 @@ impl DomainStore {
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plan(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<SomePlan> {
         if let Some(mut plans) = self.avec[dom_num].make_plans(goal_region) {
+            let mut max_rate: isize = -1000;
+            let all_states = self.all_current_states();
+            for planx in plans.iter() {
+                let ratex = self.select.rate_plan(planx, &all_states);
+                if ratex > max_rate {
+                    max_rate = ratex;
+                }
+            }
+
+            if max_rate < 0 {
+                let cur_region =
+                    SomeRegion::new(all_states[dom_num].clone(), all_states[dom_num].clone());
+                if let Some(planx) =
+                    self.avoid_negative_select_regions(dom_num, &cur_region, goal_region)
+                {
+                    let rate = self.select.rate_plan(&planx, &all_states);
+                    if rate > max_rate {
+                        println!(
+                            "\nBetter plan found: {} rate {} vs {}",
+                            planx, rate, max_rate
+                        );
+                        return Some(planx);
+                    }
+                }
+            }
+
             if plans.len() == 1 {
                 return Some(plans.remove(0));
             }
@@ -824,10 +851,10 @@ impl DomainStore {
             return true;
         }
 
-        let Some(pln) = self.get_plan(dom_num, goal_region) else { return false; };
+        let Some(planx) = self.get_plan(dom_num, goal_region) else { return false; };
 
         // Do the plan
-        self.run_plan(&pln);
+        self.run_plan(&planx);
         goal_region.is_superset_of_state(&self.avec[dom_num].cur_state)
     }
 
@@ -843,6 +870,247 @@ impl DomainStore {
         }
         pos_regs
     }
+
+    /// When the random depth-first plans all traverse a negative region, try to form a plan
+    /// by avoiding negative regions.
+    #[allow(dead_code)]
+    fn avoid_negative_select_regions(
+        &self,
+        dom_num: usize,
+        start_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+    ) -> Option<SomePlan> {
+        // Get (max region - negative regions), so potitive/non-negative regions.
+        let pos_regs = self.positive_regions(dom_num);
+        if pos_regs.is_empty() {
+            //println!("no pos regs");
+            return None;
+        }
+
+        // Get poitive regions the start region is in.
+        let mut regs_start_in = pos_regs.supersets_of(start_reg);
+
+        // Home for additional regions, caused by an adjacent positive region.
+        let mut additional_start_regs = Vec::<SomeRegion>::new();
+
+        let adj_regs = pos_regs.adjacent_to(start_reg);
+        for regx in adj_regs.iter() {
+            let adj_reg = start_reg.transpose_to(regx);
+            additional_start_regs.push(start_reg.union(&adj_reg));
+        }
+        for regx in additional_start_regs.iter() {
+            regs_start_in.push(regx);
+        }
+        if regs_start_in.is_empty() {
+            //println!("no start regs");
+            return None;
+        }
+
+        // Get positive regions the goal intersects.
+        let mut regs_goal_in = pos_regs.intersects_of(goal_reg);
+        //println!("intersects of {}", SomeRegion::vec_ref_string(&regs_goal_in));
+        // Home for additional regions, caused by an adjacent positive region.
+        let mut additional_goal_regs = Vec::<SomeRegion>::new();
+
+        let adj_regs = pos_regs.adjacent_to(goal_reg);
+        for regx in adj_regs.iter() {
+            let adj_reg = goal_reg.transpose_to(regx);
+            additional_goal_regs.push(goal_reg.union(&adj_reg));
+        }
+        for regx in additional_goal_regs.iter() {
+            regs_goal_in.push(regx);
+        }
+        if regs_goal_in.is_empty() {
+            //println!("no goal regs");
+            return None;
+        }
+
+        // Get positive regions the start region and goal region are not in.
+        let mut other_pos_regions = Vec::<&SomeRegion>::new();
+        for regx in pos_regs.iter() {
+            if regx.is_superset_of(start_reg) || regx.intersects(goal_reg) {
+                continue;
+            }
+            other_pos_regions.push(regx);
+        }
+        if other_pos_regions.is_empty() {
+            //println!("no other pos regs");
+            return None;
+        }
+
+        // Init vector to build intersections on, regions the start region is in.
+        let mut start_options = Vec::<Vec<&SomeRegion>>::new();
+        for regx in regs_start_in.iter() {
+            start_options.push(vec![regx]);
+        }
+
+        // Init vector to build intersections on, regions the goal is in.
+        let mut goal_options = Vec::<Vec<&SomeRegion>>::new();
+        for regx in regs_goal_in.iter() {
+            goal_options.push(vec![regx]);
+        }
+
+        // Successively add intersections of start/goal regions with other positive regions, until there is an intersection,
+        // or no more combinations.
+        // Keep all copies of each level of combinations found.
+        // So assuming 1 -> D, a level 1 start vector, [00x1], could intersect a third level goal vector, [11x1, x111, 0x11], at 0011.
+        let mut intersection_vec: Option<Vec<(usize, usize, SomeRegion)>> = None;
+
+        // Use level to avoid making the same copies every cycle.
+        let mut level = 0;
+
+        // Init flag to use to end the loop, if no changes and no intersection found.
+        let mut changed = true;
+
+        while changed {
+            changed = false;
+            level += 1;
+
+            // Check for intersections.
+            intersection_vec = SomeRegion::vec_ref_intersections(&start_options, &goal_options);
+
+            // End loop if intersection is found.
+            if intersection_vec.is_some() {
+                break;
+            }
+
+            // Add another layer of new connections.
+            // Scan poitive regions that do not intersect the start and goal region.
+            for regx in other_pos_regions.iter() {
+                // Add another layer of new connections, to the start options.
+                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
+                for vecx in start_options.iter() {
+                    if vecx.len() < level {
+                        continue;
+                    }
+                    if vecx.contains(regx) {
+                        continue;
+                    }
+                    // Check if positive region intersects the last region in the vector.
+                    if let Some(regy) = vecx.last() {
+                        if regy.intersects(regx) {
+                            let mut tmp_vec = vecx.clone();
+                            tmp_vec.push(regx);
+                            tmp.push(tmp_vec);
+                            changed = true;
+                        }
+                    }
+                } // next vecx
+                start_options.append(&mut tmp);
+
+                // Add another layer of new connections, to the goal options.
+                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
+                for vecx in goal_options.iter() {
+                    if vecx.len() < level {
+                        continue;
+                    }
+                    if vecx.contains(regx) {
+                        continue;
+                    }
+                    // Check if positive region intersects the last region in the vector.
+                    if let Some(regy) = vecx.last() {
+                        if regy.intersects(regx) {
+                            let mut tmp_vec = vecx.clone();
+                            tmp_vec.push(regx);
+                            tmp.push(tmp_vec);
+                            changed = true;
+                        }
+                    }
+                } // next vecx
+                goal_options.append(&mut tmp);
+            } // next regx
+        } // end while
+
+        // Get intersections, if any.
+        if intersection_vec.is_some() {
+            //println!("found intersections");
+        } else {
+            //println!("no intersections found");
+            return None;
+        }
+        let Some(intersections) = intersection_vec else { //println!("no intersections");
+                                                            return None; };
+
+        // Process intersection info, crating a path of intersecting positive regions, from start to goal.
+        'next_intersection: for an_int in intersections.iter() {
+            let tmp_start = &start_options[an_int.0];
+            let tmp_end = &goal_options[an_int.1];
+
+            // Fill tmp_start with remaining start goal regions.
+            let mut final_path = <Vec<&SomeRegion>>::new();
+            for regx in tmp_start.iter() {
+                final_path.push(regx);
+                if regx.is_superset_of(&an_int.2) {
+                    break;
+                }
+            }
+
+            let mut tmp_end2 = Vec::<&SomeRegion>::new();
+            for regx in tmp_end.iter() {
+                if *regx == &an_int.2 {
+                    break;
+                }
+                tmp_end2.push(regx);
+                if regx.intersects(&an_int.2) {
+                    break;
+                }
+            }
+
+            for regx in tmp_end2.iter().rev() {
+                final_path.push(regx);
+            }
+            final_path.push(goal_reg);
+
+            // Process final_path, turning it ino a plan.
+            let mut final_plan: Option<SomePlan> = None;
+
+            let mut tmp_next = SomeRegion::new(
+                self[dom_num].cur_state.clone(),
+                self[dom_num].cur_state.clone(),
+            );
+
+            for inx in 0..(final_path.len() - 1) {
+                let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
+                if tmp_int == tmp_next {
+                    continue;
+                }
+
+                if let Some(plans) = self[dom_num].make_plans2(&tmp_next, &tmp_int) {
+                    // Try to insure that the plan is within the positive region.
+                    let mut inz = 0;
+                    for (iny, planx) in plans.iter().enumerate() {
+                        // Check planx stays within the expected region, that is, it does not stray into a negative region.
+                        if let Some(regx) = planx.path_region() {
+                            if regx.is_subset_of(final_path[inx]) {
+                                inz = iny;
+                                break;
+                            }
+                        } else {
+                            continue 'next_intersection;
+                        }
+                    }
+                    tmp_next = plans[inz].result_region().clone();
+                    if let Some(planx) = final_plan {
+                        final_plan = planx.link(&plans[inz]);
+                    } else {
+                        final_plan = Some(plans[inz].clone());
+                    }
+                } else {
+                    //println!("plan {} to {} not found", tmp_next, tmp_int);
+                    return None;
+                }
+            }
+            if let Some(planx) = final_plan {
+                debug_assert!(planx.initial_region().state1 == self[dom_num].cur_state,);
+                debug_assert!(planx.result_region().is_subset_of(goal_reg));
+                //println!("avoid_negative_select_regions found a plan");
+                return Some(planx);
+            }
+            // continue 'next_intersection
+        }
+        //println!("avoid_negative_select_regions found nothing");
+        None
+    } // end avoid_negative_select_regions
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -929,78 +1197,20 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let goal_region = SomeRegion::new(sf.clone(), sf.clone());
-
         dmxs[0].get_needs(); // set aggregate changes
 
-        let max_reg = dmxs[0].maximum_region();
-        let glide_path = SomeRegion::new(s1.clone(), sf.clone());
-        println!("\nmax region {max_reg}, glide path {glide_path}");
+        let start_region = SomeRegion::new(state1.clone(), state1.clone());
+        let goal_region = SomeRegion::new(sf.clone(), sf.clone());
 
-        let pos_regs = dmxs.positive_regions(0);
-        println!("\npos_regs: {}", &pos_regs);
-        assert!(pos_regs.len() > 1);
-
-        let regs_goal_in = pos_regs.supersets_of(&goal_region);
-        println!(
-            "\nGoal {} in pos_regs: {}",
-            goal_region,
-            SomeRegion::vec_ref_string(&regs_goal_in)
-        );
-        assert!(regs_goal_in.len() > 0);
-
-        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
-        println!(
-            "\ncur_state {} in pos_regs: {}",
-            dmxs[0].cur_state,
-            SomeRegion::vec_ref_string(&regs_cur_in)
-        );
-        assert!(regs_cur_in.len() > 0);
-
-        // Try to find a simple intersection of goal and cur_state regions.
-        let mut intersections = RegionStore::new(vec![]);
-        for greg in regs_goal_in.iter() {
-            for creg in regs_cur_in.iter() {
-                if greg.intersects(creg) {
-                    let int_reg = greg.intersection(creg).unwrap();
-                    //println!("goal region {} intersects cru region {} at {}", greg, creg, int_reg);
-                    intersections.push(int_reg);
-                }
-            }
+        if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
+            println!("Plan found: {}", planx);
+            assert!(planx.initial_region() == &start_region);
+            assert!(planx.result_region() == &goal_region);
+            assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
+            //assert!(1 == 2);
+            return Ok(());
         }
-        println!("\nintersections {}", &intersections);
-        assert!(intersections.len() > 0);
-
-        let cur_reg = SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
-        for int_reg in intersections.iter() {
-            if let Some(plans) = dmxs[0].make_plans2(&cur_reg, int_reg) {
-                // choose plan.
-                let plan1 = &plans[0];
-                println!("\nplan 1: {} of {}", plan1, plans.len());
-
-                if let Some(plans) = dmxs[0].make_plans2(plan1.result_region(), &goal_region) {
-                    // choose a plan
-                    let plan2 = &plans[0];
-
-                    println!("\nplan 2: {} of {}", plan2, plans.len());
-
-                    if let Some(planx) = plan1.link(&plan2) {
-                        let rate = dmxs.select.rate_plan(&planx, &dmxs.all_current_states());
-                        println!("final plan {} rate {}", planx, rate);
-                        assert!(rate == 0);
-                    } else {
-                        return Err(format!("plan1+2 cannot link?"));
-                    }
-                } else {
-                    return Err(format!("plan2 not found"));
-                }
-            } else {
-                return Err(format!("plan1 not found"));
-            }
-        }
-
-        //assert!(1 == 2);
-        Ok(())
+        Err("No plan found?".to_string())
     }
 
     #[test]
@@ -1068,120 +1278,25 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
+        let start_region = SomeRegion::new(state1.clone(), state1.clone());
         let goal_region = SomeRegion::new(sd.clone(), sd.clone());
 
         dmxs[0].get_needs(); // set aggregate changes
 
-        let max_reg = dmxs[0].maximum_region();
-        let glide_path = SomeRegion::new(s1.clone(), sd.clone());
-        println!("\nmax region {max_reg}, glide path {glide_path}");
-
-        let pos_regs = dmxs.positive_regions(0);
-        println!("\npos_regs: {}", &pos_regs);
-        assert!(pos_regs.len() > 1);
-
-        let regs_goal_in = pos_regs.supersets_of(&goal_region);
-        println!(
-            "\nGoal {} in pos_regs: {}",
-            goal_region,
-            SomeRegion::vec_ref_string(&regs_goal_in)
-        );
-        assert!(regs_goal_in.len() > 0);
-
-        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
-        println!(
-            "\ncur_state {} in pos_regs: {}",
-            dmxs[0].cur_state,
-            SomeRegion::vec_ref_string(&regs_cur_in)
-        );
-        assert!(regs_cur_in.len() > 0);
-
-        // Try to find a simple intersection of goal and cur_state regions.
-        let mut intersections = RegionStore::new(vec![]);
-        for greg in regs_goal_in.iter() {
-            for creg in regs_cur_in.iter() {
-                if greg.intersects(creg) {
-                    let int_reg = greg.intersection(creg).unwrap();
-                    //println!("goal region {} intersects cru region {} at {}", greg, creg, int_reg);
-                    intersections.push(int_reg);
-                }
-            }
+        if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
+            println!("Plan found: {}", planx);
+            assert!(planx.initial_region() == &start_region);
+            assert!(planx.result_region() == &goal_region);
+            assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
+            //assert!(1 == 2);
+            return Ok(());
         }
-        println!("\nintersections {}", &intersections);
-        assert!(intersections.len() == 0);
-
-        let mut other_pos_regions = Vec::<&SomeRegion>::new();
-        for regx in pos_regs.iter() {
-            if regx.is_superset_of_state(&dmxs[0].cur_state) || regx.is_superset_of(&goal_region) {
-                continue;
-            }
-            other_pos_regions.push(regx);
-        }
-        println!(
-            "\nOther regions: {}",
-            SomeRegion::vec_ref_string(&other_pos_regions)
-        );
-
-        let mut intersections = Vec::<(SomeRegion, SomeRegion)>::new();
-        for regx in other_pos_regions.iter() {
-            for cregx in regs_cur_in.iter() {
-                for gregx in regs_goal_in.iter() {
-                    if let Some(cint) = regx.intersection(cregx) {
-                        if let Some(gint) = regx.intersection(gregx) {
-                            intersections.push((cint, gint));
-                        }
-                    }
-                }
-            }
-        }
-        println!("\nIntersections:");
-        for intx in intersections.iter() {
-            println!("cint {}, gint {}", intx.0, intx.1);
-        }
-
-        let cur_reg = SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
-        for intx in intersections.iter() {
-            if let Some(plans1) = dmxs[0].make_plans2(&cur_reg, &intx.0) {
-                // Choose plan 1
-                let plan1 = &plans1[0];
-
-                if let Some(plans2) = dmxs[0].make_plans2(&plan1.result_region(), &intx.1) {
-                    // Choose plan 2
-                    let plan2 = &plans2[0];
-
-                    if let Some(plans3) = dmxs[0].make_plans2(&plan2.result_region(), &goal_region)
-                    {
-                        // Choose plan 3
-                        let plan3 = &plans3[0];
-
-                        if let Some(planx) = plan1.link(&plan2) {
-                            if let Some(plany) = planx.link(&plan3) {
-                                let rate =
-                                    dmxs.select.rate_plan(&plany, &dmxs.all_current_states());
-                                println!("final plan {} rate {}", plany, rate);
-                                assert!(rate == 0);
-                            } else {
-                                return Err(format!("plan1+2 and plan3 cannot link?"));
-                            }
-                        } else {
-                            return Err(format!("plan1+2 cannot link?"));
-                        }
-                    } else {
-                        return Err(format!("no plans3?"));
-                    }
-                } else {
-                    return Err(format!("no plans2?"));
-                }
-            } else {
-                return Err(format!("no plans1?"));
-            }
-        }
-        Ok(())
+        Err("No plan found?".to_string())
     }
+
     #[test]
     /// Test case where positive regions the start and goal are in, do not intersect,
     /// and another region does not intersect both.
-    /// Generalized intersection checking is needed.
     fn avoidance3() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
         let s0 = SomeState::new_from_string(1, "s0b0")?;
@@ -1268,214 +1383,168 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
+        let start_region = SomeRegion::new(state1.clone(), state1.clone());
         let goal_region = SomeRegion::new(sd.clone(), sd.clone());
 
         dmxs[0].get_needs(); // set aggregate changes
 
-        let max_reg = dmxs[0].maximum_region();
-        let glide_path = SomeRegion::new(s1.clone(), sd.clone());
-        println!("\nmax region {max_reg}, glide path {glide_path}");
-
-        let pos_regs = dmxs.positive_regions(0);
-        println!("\npos_regs: {}", &pos_regs);
-        assert!(pos_regs.len() > 1);
-
-        // Get regions the goal is in.
-        let regs_goal_in = pos_regs.supersets_of(&goal_region);
-        println!(
-            "\nGoal {} in pos_regs: {}",
-            goal_region,
-            SomeRegion::vec_ref_string(&regs_goal_in)
-        );
-        assert!(regs_goal_in.len() > 0);
-
-        // Get regions the current state is in.
-        let regs_cur_in = pos_regs.supersets_of_state(&dmxs[0].cur_state);
-        println!(
-            "\ncur_state {} in pos_regs: {}",
-            dmxs[0].cur_state,
-            SomeRegion::vec_ref_string(&regs_cur_in)
-        );
-        assert!(regs_cur_in.len() > 0);
-
-        let mut other_pos_regions = Vec::<&SomeRegion>::new();
-        for regx in pos_regs.iter() {
-            if regx.is_superset_of_state(&dmxs[0].cur_state) || regx.is_superset_of(&goal_region) {
-                continue;
-            }
-            other_pos_regions.push(regx);
-        }
-        println!(
-            "\nOther regions: {}",
-            SomeRegion::vec_ref_string(&other_pos_regions)
-        );
-
-        // Make vectors to build intersections on.
-        let mut goal_options = Vec::<Vec<&SomeRegion>>::new();
-        for regx in regs_goal_in.iter() {
-            goal_options.push(vec![regx]);
+        if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
+            println!("Plan found: {}", planx);
+            assert!(planx.initial_region() == &start_region);
+            assert!(planx.result_region() == &goal_region);
+            assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
+            //assert!(1 == 2);
+            return Ok(());
         }
 
-        let mut cur_options = Vec::<Vec<&SomeRegion>>::new();
-        for regx in regs_cur_in.iter() {
-            cur_options.push(vec![regx]);
+        Err("No plan found?".to_string())
+    }
+
+    #[test]
+    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// and there is no path that does not cross a negative select region.
+    fn avoidance4() -> Result<(), String> {
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Init a domain, using one integer.
+        let mut domx = SomeDomain::new(1);
+
+        // Set up action to change the first bit.
+        domx.add_action();
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        domx.add_action();
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new(vec![domx]);
+
+        // Set select regions.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r01xx")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(
+            dmxs[0]
+                .region_from_string_pad_x("r10xx")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr2, -1);
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x1")?;
+        dmxs[0].set_state(&state1);
+
+        println!("\nActions {}\n", dmxs[0].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let start_region = SomeRegion::new(state1.clone(), state1.clone());
+        let goal_region = SomeRegion::new(sd.clone(), sd.clone());
+
+        dmxs[0].get_needs(); // set aggregate changes
+
+        if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
+            return Err(format!("Plan found {}?", planx));
         }
-
-        let mut changed = true;
-        while changed {
-            changed = false;
-
-            // Check for intersections.
-            if let Some(intersections) =
-                SomeRegion::vec_ref_intersections(&goal_options, &cur_options)
-            {
-                for an_int in intersections.iter() {
-                    println!(
-                        "\n{} int {} at {}",
-                        SomeRegion::vec_ref_string(&cur_options[an_int.1]),
-                        SomeRegion::vec_ref_string(&goal_options[an_int.0]),
-                        an_int.2
-                    );
-                }
-                println!(" ");
-                let mut inx = 0;
-                if intersections.len() > 1 {
-                    inx = rand::thread_rng().gen_range(0..intersections.len());
-                }
-
-                println!(
-                    "\nan_int chosen {} int {} at {}",
-                    SomeRegion::vec_ref_string(&cur_options[intersections[inx].1]),
-                    SomeRegion::vec_ref_string(&goal_options[intersections[inx].0]),
-                    intersections[inx].2
-                );
-
-                let from_goal = &goal_options[intersections[inx].0];
-                let from_cur = &cur_options[intersections[inx].1];
-
-                // Fill from_cur with remaining from goal regions.
-                let mut final_path = <Vec<&SomeRegion>>::new();
-                for regx in from_cur.iter() {
-                    final_path.push(regx);
-                    if regx.is_superset_of(&intersections[inx].2) {
-                        break;
-                    }
-                }
-
-                let mut from_goal2 = Vec::<&SomeRegion>::new();
-                for regx in from_goal.iter() {
-                    if *regx == &intersections[inx].2 {
-                        break;
-                    }
-                    from_goal2.push(regx);
-                    if regx.intersects(&intersections[inx].2) {
-                        break;
-                    }
-                }
-                println!("\nfrom_goal2 {}", SomeRegion::vec_ref_string(&from_goal2));
-                for regx in from_goal2.iter().rev() {
-                    final_path.push(regx);
-                }
-                final_path.push(&goal_region);
-                println!("\nfinal path {}", SomeRegion::vec_ref_string(&final_path));
-
-                // Process final_regs.
-                let mut final_plan: Option<SomePlan> = None;
-                let mut tmp_cur =
-                    SomeRegion::new(dmxs[0].cur_state.clone(), dmxs[0].cur_state.clone());
-
-                for inx in 0..(final_path.len() - 1) {
-                    let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
-                    if tmp_int == tmp_cur {
-                        println!(
-                            "{} int {} = {} which = cur {}",
-                            final_path[inx],
-                            final_path[inx + 1],
-                            tmp_int,
-                            tmp_cur
-                        );
-                        continue;
-                    }
-                    println!(" figure plan for {} to {}", &tmp_cur, &tmp_int);
-                    if let Some(plans) = dmxs[0].make_plans2(&tmp_cur, &tmp_int) {
-                        // Try to insure that the plan is within the positive region.
-                        let mut inz = 0;
-                        for (iny, planx) in plans.iter().enumerate() {
-                            // Check planx stays within the expected region, that is, it does not stray into a negative region.
-                            if let Some(regx) = planx.path_region() {
-                                if regx.is_subset_of(final_path[inx]) {
-                                    inz = iny;
-                                    break;
-                                }
-                            } else {
-                                return Err(format!("Empty plan {} or plan_path error?", planx));
-                            }
-                        }
-                        println!(
-                            "\nplans {} to {} at {} = {}",
-                            tmp_cur,
-                            final_path[inx + 1],
-                            tmp_int,
-                            plans[inz]
-                        );
-                        tmp_cur = plans[inz].result_region().clone();
-                        if let Some(planx) = final_plan {
-                            final_plan = planx.link(&plans[inz]);
-                        } else {
-                            final_plan = Some(plans[inz].clone());
-                        }
-                    } else {
-                        panic!("problem");
-                    }
-                }
-                if let Some(planx) = final_plan {
-                    println!("\nfinal plan is {}\n", planx);
-                    assert!(planx.initial_region().state1 == dmxs[0].cur_state,);
-                    assert!(*planx.result_region() == goal_region);
-                    //assert!(1 == 2);
-                    return Ok(());
-                } else {
-                    println!("final plan is None");
-                    return Err(format!("no final plan?"));
-                }
-            }
-
-            // Build new connections.
-            for regx in other_pos_regions.iter() {
-                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
-                for vecx in cur_options.iter() {
-                    if vecx.contains(regx) {
-                        continue;
-                    }
-                    if let Some(regy) = vecx.last() {
-                        if regy.intersects(regx) {
-                            let mut tmp_vec = vecx.clone();
-                            tmp_vec.push(regx);
-                            tmp.push(tmp_vec);
-                            changed = true;
-                        }
-                    }
-                } // next vecx
-                cur_options.append(&mut tmp);
-
-                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
-                for vecx in goal_options.iter() {
-                    if vecx.contains(regx) {
-                        continue;
-                    }
-                    if let Some(regy) = vecx.last() {
-                        if regy.intersects(regx) {
-                            let mut tmp_vec = vecx.clone();
-                            tmp_vec.push(regx);
-                            tmp.push(tmp_vec);
-                            changed = true;
-                        }
-                    }
-                } // next vecx
-                goal_options.append(&mut tmp);
-            } // next regx
-        } // end while
         Ok(())
+    }
+
+    #[test]
+    /// Test case where start and goal regions are not in a positive region, but are adjacent to a positive region.
+    fn avoidance5() -> Result<(), String> {
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Init a domain, using one integer.
+        let mut domx = SomeDomain::new(1);
+
+        // Set up action to change the first bit.
+        domx.add_action();
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        domx.add_action();
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the third bit.
+        domx.add_action();
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new(vec![domx]);
+
+        // Set select regions.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("rxx0x")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        // Set state for domain 0.
+        let state1 = dmxs[0].state_from_string("s0x1")?;
+        dmxs[0].set_state(&state1);
+
+        println!("\nActions {}\n", dmxs[0].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let start_region = SomeRegion::new(state1.clone(), state1.clone());
+        let goal_region = SomeRegion::new(sd.clone(), sd.clone());
+
+        dmxs[0].get_needs(); // set aggregate changes
+
+        if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
+            println!("Plan found: {}", planx);
+            assert!(planx.initial_region() == &start_region);
+            assert!(planx.result_region() == &goal_region);
+            assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
+            return Ok(());
+        }
+        Err(format!("Plan not found ?"))
     }
 
     #[test]

@@ -399,12 +399,36 @@ impl SomeRegion {
         self.diff_mask_state(stax).num_one_bits()
     }
 
+    /// Return the distance from a region to another.
+    pub fn distance(&self, regx: &SomeRegion) -> usize {
+        self.diff_mask(regx).num_one_bits()
+    }
+
     /// Return a mask of different bits with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
         self.state1
             .bitwise_xor(sta1)
             .bitwise_and(&self.state2.bitwise_xor(sta1))
             .to_mask()
+    }
+
+    /// Return a region that is a given region, transposed to another.
+    pub fn transpose_to(&self, other: &SomeRegion) -> SomeRegion {
+        if self.intersects(other) {
+            return self.intersection(other).unwrap();
+        }
+        let dif_bits = self.diff_mask(other);
+
+        let reg2 = SomeRegion::new(
+            self.state1.bitwise_xor(&dif_bits),
+            self.state2.bitwise_xor(&dif_bits),
+        );
+
+        if reg2.is_subset_of(other) {
+            return reg2;
+        }
+
+        reg2.intersection(other).unwrap()
     }
 
     /// Return a mask of different (non-x) bits between two regions.
@@ -512,6 +536,19 @@ mod tests {
     use super::*;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn test_transpose_to() -> Result<(), String> {
+        let reg0 = SomeRegion::new_from_string(1, "r0x0x")?;
+        let reg1 = SomeRegion::new_from_string(1, "rx110")?;
+        let reg3 = reg0.transpose_to(&reg1);
+        println!("reg3 is {reg3}");
+        let reg4 = SomeRegion::new_from_string(1, "r0110")?;
+        if reg3 == reg4 {
+            return Ok(());
+        }
+        Err(format!("Transpose {reg0} to {reg1} = {reg3}?"))
+    }
 
     #[test]
     fn edge_mask() -> Result<(), String> {

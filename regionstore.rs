@@ -130,6 +130,46 @@ impl RegionStore {
         ret_vec
     }
 
+    /// Return vector of regions that intersect a given region.
+    pub fn intersects_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+        let mut ret_vec = Vec::<&SomeRegion>::new();
+        for regx in &self.avec {
+            if regx.intersects(reg) {
+                ret_vec.push(regx);
+            }
+        }
+        ret_vec
+    }
+
+    /// Return vector of regions that are a adjacent to a given region.
+    pub fn adjacent_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+        let mut ret_vec = Vec::<&SomeRegion>::new();
+        for regx in &self.avec {
+            if regx.is_adjacent(reg) {
+                ret_vec.push(regx);
+            }
+        }
+        ret_vec
+    }
+
+    /// Return vector of regions that are closest to a given region.
+    pub fn closest_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+        let mut ret_vec = Vec::<&SomeRegion>::new();
+        let mut min_distance = usize::MAX;
+        for regx in &self.avec {
+            let dist = regx.distance(reg);
+            if dist < min_distance {
+                min_distance = dist;
+            }
+        }
+        for regx in &self.avec {
+            if regx.distance(reg) == min_distance {
+                ret_vec.push(regx);
+            }
+        }
+        ret_vec
+    }
+
     /// Return vector of regions that are a superset of a given state.
     pub fn supersets_of_state(&self, sta: &SomeState) -> Vec<&SomeRegion> {
         let mut ret_vec = Vec::<&SomeRegion>::new();
