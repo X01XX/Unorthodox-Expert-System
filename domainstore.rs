@@ -1076,28 +1076,29 @@ impl DomainStore {
                 }
 
                 if let Some(plans) = self[dom_num].make_plans2(&tmp_next, &tmp_int) {
-                    // Try to insure that the plan is within the positive region.
-                    let mut inz = 0;
+                    // Pick a plan that stays within the positive region.
+                    let mut inz: Option<usize> = None;
                     for (iny, planx) in plans.iter().enumerate() {
-                        // Check planx stays within the expected region, that is, it does not stray into a negative region.
                         if let Some(regx) = planx.path_region() {
                             if regx.is_subset_of(final_path[inx]) {
-                                inz = iny;
+                                inz = Some(iny);
                                 break;
                             }
-                        } else {
-                            continue 'next_intersection;
                         }
                     }
-                    tmp_next = plans[inz].result_region().clone();
-                    if let Some(planx) = final_plan {
-                        final_plan = planx.link(&plans[inz]);
+                    if let Some(inw) = inz {
+                        tmp_next = plans[inw].result_region().clone();
+                        if let Some(planx) = final_plan {
+                            final_plan = planx.link(&plans[inw]);
+                        } else {
+                            final_plan = Some(plans[inw].clone());
+                        }
                     } else {
-                        final_plan = Some(plans[inz].clone());
+                        continue 'next_intersection;
                     }
                 } else {
                     //println!("plan {} to {} not found", tmp_next, tmp_int);
-                    return None;
+                    continue 'next_intersection;
                 }
             }
             if let Some(planx) = final_plan {
@@ -1106,9 +1107,8 @@ impl DomainStore {
                 //println!("avoid_negative_select_regions found a plan");
                 return Some(planx);
             }
-            // continue 'next_intersection
-        }
-        //println!("avoid_negative_select_regions found nothing");
+        } // next intersection
+          //println!("avoid_negative_select_regions found nothing");
         None
     } // end avoid_negative_select_regions
 } // end impl DomainStore
