@@ -476,12 +476,12 @@ mod tests {
         }
 
         // Result 101X appears twice when linked in this order, so its invalid.
-        //        let Some(stp_str4) = stp_str2.link(&stp_str1) else { return Err("stp_str4 error".to_string()); };
-        //        if stp_str4.is_valid() {
-        //            return Err(format!("stp4 {} valid?", &stp_str4).to_string());
-        //        } else {
-        //            println!("Link not valid, as expected");
-        //        }
+        //let Some(stp_str4) = stp_str2.link(&stp_str1) else { return Err("stp_str4 error".to_string()); };
+        //if stp_str4.is_valid() {
+        //  return Err(format!("stp4 {} valid?", &stp_str4).to_string());
+        //} else {
+        //  println!("Link not valid, as expected");
+        //}
 
         Ok(())
     }

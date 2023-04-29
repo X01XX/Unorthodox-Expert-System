@@ -850,9 +850,9 @@ impl SomeAction {
 
             if !try_again {
                 //println!("Act: {} get_needs: returning: {}", &self.num, &nds);
-                //                if nds.is_empty() {
-                //                    return self.left_over_needs();
-                //                }
+                //if nds.is_empty() {
+                //  return self.left_over_needs();
+                //}
 
                 // Filter out housekeeping needs, if any.
                 let mut inxs = Vec::<usize>::with_capacity(nds.len());
@@ -1845,10 +1845,10 @@ impl SomeAction {
     /// Possibly combining two groups.
     /// Possibly checking for a contradictatory intersection.
     pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        //                println!(
-        //                    "groups_pair_intersection_needs {} {} and {} {}",
-        //                    &grpx.region, &grpx.pn, &grpy.region, grpy.pn
-        //                );
+        //println!(
+        //  "groups_pair_intersection_needs {} {} and {} {}",
+        //  &grpx.region, &grpx.pn, &grpy.region, grpy.pn
+        //);
 
         let mut nds = NeedStore::new(vec![]);
 

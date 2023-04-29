@@ -159,22 +159,6 @@ impl SomeDomain {
         if pln.is_empty() {
             return true;
         }
-        self.run_plan2(pln, 3)
-    }
-
-    /// Run a plan, with a retry limit.
-    /// An unexpected result has a few flavors.
-    /// A step from a group whose rule is a combination of samples that covers too broad a region.
-    ///   The rule is deleted and maybe others are formed.  A re-plan-to-goal is done.
-    /// A rule that has two expected results, in order, and the state is not known by a most-recent
-    /// sample to be the alternate result.
-    ///   If the alternate result has no changes, the action can be immediately tried again.
-    ///   If the alternate result changes something, a re-plan-to-goal is done.
-    fn run_plan2(&mut self, pln: &SomePlan, retries: usize) -> bool {
-        if retries == 0 {
-            println!("\nNumber retries exceeded, at plan {}", &pln);
-            return false;
-        }
 
         if !pln.initial_region().is_superset_of_state(&self.cur_state) {
             panic!(
@@ -196,8 +180,7 @@ impl SomeDomain {
             }
 
             // Handle unexpected/unwanted result
-            // May be an expected possibility from a two result state
-
+            // May be an expected possibility from a two result state.
             if prev_state == self.cur_state && stpx.alt_rule {
                 println!("Try action a second time");
 
@@ -655,10 +638,11 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sf.change_bit(3))); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        dm0.set_state(&dm0.state_from_string("s0b111")?);
+        let cur_state = dm0.state_from_string("s0b111")?;
+        dm0.set_state(&cur_state);
         let toreg = dm0.region_from_string("r1000")?;
 
-        if let Some(aplan) = dmxs.get_plan(0, &toreg) {
+        if let Some(aplan) = dmxs.get_plan(0, &toreg, &vec![&cur_state]) {
             assert_eq!(aplan.len(), 4);
             assert_eq!(*aplan.result_region(), toreg);
         } else {
@@ -714,7 +698,7 @@ mod tests {
         dm0.set_state(&s7);
         let toreg = dm0.region_from_string("r1100")?;
 
-        if let Some(aplan) = &mut dmxs.get_plan(0, &toreg) {
+        if let Some(aplan) = &mut dmxs.get_plan(0, &toreg, &vec![&s7]) {
             assert_eq!(*aplan.result_region(), toreg);
             println!("plan 1: {} len = {}", aplan, aplan.len());
         } else {

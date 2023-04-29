@@ -228,15 +228,15 @@ impl RegionStore {
     }
 
     // Add a region, removing subset (and equal) regions.
-    //    pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
-    //        if self.contains(&reg) {
-    //            return false;
-    //        }
+    //  pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
+    //      if self.contains(&reg) {
+    //          return false;
+    //      }
     //
-    //        self.avec.push(reg);
+    //      self.avec.push(reg);
     //
-    //        true
-    //    }
+    //      true
+    //  }
 
     /// Add a region, removing subset (and equal) regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
@@ -343,21 +343,21 @@ impl RegionStore {
     }
 
     // Return the result of intersection of two region stores
-    //    pub fn intersection(&self, other: &RegionStore) -> Self {
+    //  pub fn intersection(&self, other: &RegionStore) -> Self {
     //
-    //        let mut ret_store = Self::new();
+    //      let mut ret_store = Self::new();
     //
-    //        for regx in self.iter() {
+    //      for regx in self.iter() {
     //
-    //            for regy in other.iter() {
+    //          for regy in other.iter() {
     //
-    //                if regx.intersects(&regy) {
-    //                    ret_store.push_nosubs(regx.intersection(&regy));
-    //                }
-    //            }
-    //        }
-    //        ret_store
-    //    }
+    //              if regx.intersects(&regy) {
+    //                  ret_store.push_nosubs(regx.intersection(&regy));
+    //              }
+    //          }
+    //      }
+    //      ret_store
+    //  }
 
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {

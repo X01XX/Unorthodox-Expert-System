@@ -82,6 +82,11 @@ impl TargetStore {
         assert_eq!(self.len(), 1);
         self.avec[0].is_superset_of_state(state)
     }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
+    }
 } // end impl TargetStore
 
 impl Index<usize> for TargetStore {

@@ -550,6 +550,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     let dom_num = dmxs.current_domain;
     let nd_inx = inx_pln.inx;
 
+    // Display Domain info, if needed.
     match dmxs.needs[nd_inx] {
         SomeNeed::ToSelectRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
@@ -567,26 +568,27 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 );
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();
-                //                println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
+                //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
             }
         }
     }
 
+    // Run the plan, allow for one failure.
     if let Some(plans) = &inx_pln.plans {
-        if !dmxs.run_plans(plans, &inx_pln.order) {
+        if !dmxs.run_plans(plans) {
             if let Some(plans) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
                 println!("Unexpected result try again");
-                let current_states = dmxs.all_current_states();
-                let (_, order) = dmxs.select.rate_plans(&plans, &current_states);
-                if !dmxs.run_plans(&plans, &order) {
+                if !dmxs.run_plans(&plans) {
                     println!("Unexpected result, giving up");
                 }
+                return false;
             } else {
                 println!("Unexpected result try again, new path to goal not found");
             }
         }
     }
 
+    // Take action after the desired state is reached.
     match dmxs.needs[nd_inx] {
         SomeNeed::ToSelectRegion { .. } => {
             if dmxs.needs[nd_inx]
@@ -639,9 +641,15 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     &plans.str_terse()
                 );
 
-                if dom_num != dmxs.needs[nd_inx].dom_num() {
-                    dmxs.change_domain(dmxs.needs[nd_inx].dom_num());
-                    dmxs.print_domain();
+                match dmxs.needs[nd_inx] {
+                    SomeNeed::ToSelectRegion { .. } => (),
+                    SomeNeed::FromSelectRegion { .. } => (),
+                    _ => {
+                        if dom_num != dmxs.needs[nd_inx].dom_num() {
+                            dmxs.change_domain(dmxs.needs[nd_inx].dom_num());
+                            dmxs.print_domain();
+                        }
+                    }
                 }
 
                 if do_a_need(dmxs, dmxs.can_do[n_num].clone()) {

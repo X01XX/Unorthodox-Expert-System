@@ -387,12 +387,12 @@ impl SomeRegion {
     }
 
     // Return a region with masked bit positions set to X.
-    //    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
-    //        Self::new(
-    //            self.state1.bitwise_or(msk),
-    //            self.state2.bitwise_and(&msk.bitwise_not()),
-    //        )
-    //    }
+    //  pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+    //      Self::new(
+    //          self.state1.bitwise_or(msk),
+    //          self.state2.bitwise_and(&msk.bitwise_not()),
+    //          )
+    //  }
 
     /// Return the distance from a region to a state.
     pub fn distance_state(&self, stax: &SomeState) -> usize {

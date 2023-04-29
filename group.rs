@@ -52,10 +52,10 @@ impl SomeGroup {
     /// Return a new group, given a region, RuleStore, pnc values.
     /// The RuleStore will be empty for Pn::Unpredictable squares.
     pub fn new(regionx: SomeRegion, ruls: RuleStore, pnc: bool) -> Self {
-        //        println!(
-        //            "adding group {}",
-        //            SomeRegion::newif additions.is_not_low() {
-        //        );
+        //println!(
+        //  "adding group {}",
+        //  SomeRegion::newif additions.is_not_low() {
+        //);
         assert!(ruls.len() < 3);
 
         let mut pnx = Pn::One;
@@ -123,10 +123,10 @@ impl SomeGroup {
     /// Return true if a subset square is compatible with a group.
     pub fn check_subset_square(&self, sqrx: &SomeSquare) -> bool {
         assert!(self.region.is_superset_of_state(&sqrx.state));
-        //        println!(
-        //            "group:check_square grp {} sqr {}",
-        //            &self.region, &sqrx.state
-        //        );
+        //println!(
+        //  "group:check_square grp {} sqr {}",
+        //  &self.region, &sqrx.state
+        //);
 
         // Check if square is compatible with group.
         if sqrx.pn > self.pn {
