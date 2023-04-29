@@ -37,6 +37,6 @@ At a higher level, maybe something gets "bored", or "satiated", so the optimum s
 
 Regions that are considered negative can be added.  When making plans, the program will try not to traverse negative regions.  The beginning and end of the plan is not considered, and may be in a negative region.
 
-A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.  Plans for multiple domains can sometimes be run in parallel.
+A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
 
 There is a command for storing the states, and rules, to a text file.  Running the program with the file path as an argument loads the file.
