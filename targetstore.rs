@@ -55,7 +55,6 @@ impl TargetStore {
 
     /// Add a target to the vector.
     pub fn push(&mut self, val: SomeTarget) {
-        debug_assert_eq!(val.dom_num, self.avec.len());
         self.avec.push(val);
     }
 

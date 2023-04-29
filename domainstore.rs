@@ -607,7 +607,7 @@ impl DomainStore {
         }
 
         // Get all domain states vector.
-        // Calling self.all_current_states runs into problems with the combiler.
+        // Calling self.all_current_states runs into problems with the compiler.
         let mut all_states = Vec::<&SomeState>::with_capacity(self.len());
         for domx in self.avec.iter() {
             all_states.push(domx.get_current_state());
@@ -892,10 +892,10 @@ impl DomainStore {
         let all_states = self.all_current_states();
         let pos_regs = self.positive_regions(dom_num, &all_states);
         if pos_regs.is_empty() {
-            println!("no pos regs");
+            //println!("no pos regs");
             return None;
         }
-        println!("positive regions {}", pos_regs);
+        //println!("positive regions {}", pos_regs);
 
         // Get poitive regions the start region is in.
         let mut regs_start_in = pos_regs.supersets_of(start_reg);
@@ -1141,6 +1141,7 @@ mod tests {
     use super::*;
     use crate::regionstore::RegionStore;
     use crate::sample::SomeSample;
+    use crate::target::SomeTarget;
 
     #[test]
     /// Test case where positive regions the start and goal are in, intersect.
@@ -1555,6 +1556,152 @@ mod tests {
             return Ok(());
         }
         Err(format!("Plan not found ?"))
+    }
+
+    #[test]
+    /// Test case where ..
+    fn avoidance6() -> Result<(), String> {
+        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(1)]);
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+
+        dmxs[1].add_action();
+        dmxs[1].add_action();
+        dmxs[1].add_action();
+        dmxs[1].add_action();
+
+        let sf = SomeState::new_from_string(1, "s0b1111")?;
+        let s0 = SomeState::new_from_string(1, "s0b0")?;
+
+        // Set up action to change the first bit.
+        let s1 = SomeState::new_from_string(1, "s0b1")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        let s2 = SomeState::new_from_string(1, "s0b10")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        let s4 = SomeState::new_from_string(1, "s0b100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the fourth bit.
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Set up action to change the fourth bit.
+        let s8 = SomeState::new_from_string(1, "s0b1000")?;
+        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s7.clone()));
+
+        // Set up action to change the first bit.
+        let s1 = SomeState::new_from_string(1, "s0b0001")?;
+        let se = SomeState::new_from_string(1, "s0b1110")?;
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s1.clone()));
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, se.clone()));
+
+        // Set up action to change the second bit.
+        let s2 = SomeState::new_from_string(1, "s0b0010")?;
+        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s2.clone()));
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sd.clone()));
+
+        // Set up action to change the third bit.
+        let s4 = SomeState::new_from_string(1, "s0b0100")?;
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s4.clone()));
+        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sb.clone()));
+
+        // Init aggregate needs.
+        dmxs.get_needs();
+
+        // Set select regions.
+
+        // Set up dom 0 00XX dependent on dom 1 01XX.
+        let mut regstr0 = RegionStore::with_capacity(1);
+        regstr0.push(
+            dmxs[0]
+                .region_from_string_pad_x("r11xx")
+                .expect("String should be formatted correctly"),
+        );
+        regstr0.push(
+            dmxs[1]
+                .region_from_string_pad_x("r01xx")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr0, -1);
+
+        // Set up dom 0 00XX dependent on dom 1 10XX.
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r11xx")
+                .expect("String should be formatted correctly"),
+        );
+        regstr1.push(
+            dmxs[1]
+                .region_from_string_pad_x("r10xx")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+
+        // Set current state for domain 0.
+        let cur0 = dmxs[0].state_from_string("s0x0")?;
+        dmxs[0].set_state(&cur0);
+
+        // Set current state for domain 1.
+        let cur1 = dmxs[1].state_from_string("s0x1")?;
+        dmxs[1].set_state(&cur1);
+
+        println!("\nDom 0 Actions {}\n", dmxs[0].actions);
+        println!("\nDom 1 Actions {}\n", dmxs[1].actions);
+        println!("Select Regions: {}\n", dmxs.select);
+
+        let goal0_region = SomeRegion::new(sf.clone(), sf.clone());
+        let goal1_region = SomeRegion::new(sf.clone(), sf.clone());
+
+        let targets = TargetStore::new(vec![
+            SomeTarget::new(0, goal0_region),
+            SomeTarget::new(1, goal1_region),
+        ]);
+
+        let options =
+            crate::tools::anyxofvec_order_matters(targets.len(), (0..targets.len()).collect());
+        println!("options {:?}", options);
+
+        let all_states = dmxs.all_current_states();
+
+        // First option, [0, 1] will return a rate less than zero.
+        // Second option, [1, 0] will return a rate equal to zero.
+        for optx in options.iter() {
+            let mut targets_tmp = TargetStore::new(vec![]);
+            for itemx in optx.iter() {
+                targets_tmp.push(targets[*itemx].clone());
+            }
+
+            if let Some(plans) = dmxs.make_plans(&targets_tmp) {
+                let rate = dmxs.select.rate_plans(&plans, &all_states);
+                println!("Option {:?}, Plans {}, rate {}", optx, plans, rate);
+                if rate == 0 {
+                    return Ok(());
+                }
+            } else {
+                return Err(format!("No plan found?"));
+            }
+        }
+
+        Err(format!("Plan with rate 0 not found ?"))
     }
 
     #[test]

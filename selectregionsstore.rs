@@ -328,10 +328,9 @@ impl SelectRegionsStore {
         //let sup_store2 = self.negative_supersets_of_states(&all_states2);
         //println!("choose_select_exit_needs: target states are in {} negative select regions", sup_store2.len());
 
-        let mut ret_nds = NeedStore::new(vec![]);
-        ret_nds.push(SomeNeed::FromSelectRegion {
+        let ret_nds = NeedStore::new(vec![SomeNeed::FromSelectRegion {
             target_states: StateStore::new(target_states),
-        });
+        }]);
 
         //println!("choose_select_exit_needs: returning need: {}", ret_nds[0]);
         Some(ret_nds)

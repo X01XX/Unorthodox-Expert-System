@@ -202,7 +202,7 @@ impl SomeDomain {
         } // next stpx
 
         pln.result_region().is_superset_of_state(&self.cur_state)
-    } // end run_plan2
+    } // end run_plan
 
     /// Return the steps of a plan to go from a given state/region to a given region.
     pub fn random_depth_first_search(
