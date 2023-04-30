@@ -322,13 +322,13 @@ impl DomainStore {
     /// Return an Option PlanStore, to go from the current state to the region of each target.
     /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
-        let mut plans = Vec::<SomePlan>::new();
+        debug_assert!(targets.is_not_empty());
 
         let all_states = self.all_current_states();
 
-        debug_assert!(targets.is_not_empty());
-
         if targets.len() == 1 {
+            let mut plans = Vec::<SomePlan>::new();
+
             if let Some(planx) = self.get_plan(targets[0].dom_num, &targets[0].region, &all_states)
             {
                 plans.push(planx);
@@ -337,6 +337,46 @@ impl DomainStore {
                 return None;
             }
         }
+
+        // Handle GT 1 targets.
+
+        // Get different permutations of order in making plans.
+        // The plan order will affect combination of domain current states,
+        // which affect which negative select regions apply to a domain.
+        // like [[0, 1], [1, 0]].
+        let options =
+            crate::tools::anyxofvec_order_matters(targets.len(), (0..targets.len()).collect());
+
+        let mut selected_plan: Option<PlanStore> = None;
+        let mut max_rate: isize = -10000;
+
+        for optx in options.iter() {
+            // Load targets, in the option order.
+            let mut targets_tmp = TargetStore::new(vec![]);
+            for itemx in optx.iter() {
+                targets_tmp.push(targets[*itemx].clone());
+            }
+
+            // Try making plans.
+            if let Some(plans) = self.make_plans2(&targets_tmp) {
+                let rate = self.select.rate_plans(&plans, &all_states);
+                //println!("Option {:?}, Plans {}, rate {}", optx, plans, rate);
+                if rate > max_rate {
+                    max_rate = rate;
+                    selected_plan = Some(plans);
+                    if rate == 0 {
+                        break;
+                    }
+                }
+            }
+        } // next optx
+        selected_plan
+    }
+
+    // Return a PlanStore for a given arrangement of domain-specific targets.
+    pub fn make_plans2(&self, targets: &TargetStore) -> Option<PlanStore> {
+        let mut plans = Vec::<SomePlan>::new();
+        let all_states = self.all_current_states();
 
         // Init a current states vector.
         let mut current_states = Vec::<SomeState>::with_capacity(all_states.len());
@@ -1561,6 +1601,7 @@ mod tests {
     #[test]
     /// Test case where ..
     fn avoidance6() -> Result<(), String> {
+        // Init domainstore and two domains.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(1)]);
         dmxs[0].add_action();
         dmxs[0].add_action();
@@ -1676,32 +1717,59 @@ mod tests {
             SomeTarget::new(1, goal1_region),
         ]);
 
+        // Get different permutations of order in making plans.
+        // The plan order will affect combination of domain current states,
+        // which affect which negative select regions apply to a domain.
         let options =
             crate::tools::anyxofvec_order_matters(targets.len(), (0..targets.len()).collect());
-        println!("options {:?}", options);
+        println!("options {:?}", options); // like [[0, 1], [1, 0]]
 
         let all_states = dmxs.all_current_states();
 
-        // First option, [0, 1] will return a rate less than zero.
-        // Second option, [1, 0] will return a rate equal to zero.
+        // Option, [0, 1] will return a rate less than zero.
+        // Option, [1, 0] will return a rate equal to zero.
+        let mut found_negative = false;
+        let mut found_zero = false;
         for optx in options.iter() {
+            // Load targets, in the correct order.
             let mut targets_tmp = TargetStore::new(vec![]);
             for itemx in optx.iter() {
                 targets_tmp.push(targets[*itemx].clone());
             }
 
-            if let Some(plans) = dmxs.make_plans(&targets_tmp) {
+            // Try making plans.
+            if let Some(plans) = dmxs.make_plans2(&targets_tmp) {
                 let rate = dmxs.select.rate_plans(&plans, &all_states);
                 println!("Option {:?}, Plans {}, rate {}", optx, plans, rate);
+                if rate < 0 {
+                    found_negative = true;
+                }
                 if rate == 0 {
-                    return Ok(());
+                    found_zero = true;
                 }
             } else {
                 return Err(format!("No plan found?"));
             }
+        } // next optx
+        if found_negative && found_zero {
+            return Ok(());
         }
 
-        Err(format!("Plan with rate 0 not found ?"))
+        // Test make_plans, which does the same thing as above.
+        if let Some(plans) = dmxs.make_plans(&targets) {
+            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            println!("Plans {}, rate {}", plans, rate);
+            if rate != 0 {
+                return Err(format!("make_plans returns plan {}, rate {}?", plans, rate));
+            }
+        } else {
+            return Err(format!("make_plans returns no plan?"));
+        }
+
+        Err(format!(
+            "found rate zero {} found rate LT zero {} ?",
+            found_zero, found_negative
+        ))
     }
 
     #[test]
