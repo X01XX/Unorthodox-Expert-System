@@ -11,6 +11,7 @@ use crate::regionstore::RegionStore;
 use crate::removeunordered;
 use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::SomeState;
+use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
 
 use rand::Rng;
@@ -352,9 +353,9 @@ impl DomainStore {
 
         for optx in options.iter() {
             // Load targets, in the option order.
-            let mut targets_tmp = TargetStore::new(vec![]);
+            let mut targets_tmp = Vec::<&SomeTarget>::with_capacity(targets.len());
             for itemx in optx.iter() {
-                targets_tmp.push(targets[*itemx].clone());
+                targets_tmp.push(&targets[*itemx]);
             }
 
             // Try making plans.
@@ -364,7 +365,7 @@ impl DomainStore {
                 if rate > max_rate {
                     max_rate = rate;
                     selected_plan = Some(plans);
-                    if rate == 0 {
+                    if rate >= 0 {
                         break;
                     }
                 }
@@ -374,7 +375,7 @@ impl DomainStore {
     }
 
     // Return a PlanStore for a given arrangement of domain-specific targets.
-    pub fn make_plans2(&self, targets: &TargetStore) -> Option<PlanStore> {
+    pub fn make_plans2(&self, targets: &[&SomeTarget]) -> Option<PlanStore> {
         let mut plans = Vec::<SomePlan>::new();
         let all_states = self.all_current_states();
 
@@ -1732,9 +1733,9 @@ mod tests {
         let mut found_zero = false;
         for optx in options.iter() {
             // Load targets, in the correct order.
-            let mut targets_tmp = TargetStore::new(vec![]);
+            let mut targets_tmp = Vec::<&SomeTarget>::with_capacity(targets.len());
             for itemx in optx.iter() {
-                targets_tmp.push(targets[*itemx].clone());
+                targets_tmp.push(&targets[*itemx]);
             }
 
             // Try making plans.
