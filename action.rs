@@ -1990,53 +1990,77 @@ impl SomeAction {
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
+        debug_assert!(achange.b01.bitwise_and(&achange.b10).is_low()); // No X->x change wanted.
+
         let mut stps = StepStore::new(vec![]);
 
         for grpx in self.groups.iter() {
-            match grpx.pn {
-                Pn::One => {
-                    // Find bit changes that are desired
-                    if let Some(rulx) = grpx.rules[0].parse_for_changes(achange) {
-                        stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
-                    }
+            if grpx.pn == Pn::Unpredictable {
+                continue;
+            }
+
+            // Check if group rules cause at least one change that is needed.
+            let mut skip = true;
+            for rulx in grpx.rules.iter() {
+                if achange.b10.bitwise_and(&rulx.b01).is_not_low() {
+                    skip = false;
+                    break;
                 }
-                Pn::Two => {
-                    for ruly in grpx.rules.iter() {
-                        let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
+                if achange.b01.bitwise_and(&rulx.b01).is_not_low() {
+                    skip = false;
+                    break;
+                }
+            }
+            if skip {
+                continue;
+            }
 
-                        // See if an existing square is ready to produce the desired result
-                        let i_reg = rulx.initial_region();
-                        let sqrs = self.squares.squares_in_reg(&i_reg);
+            if grpx.pn == Pn::One {
+                // Find bit changes that are desired
+                if let Some(rulx) = grpx.rules[0].parse_for_changes(achange) {
+                    stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
+                }
+                continue;
+            }
 
-                        let mut found = false;
-                        for sqrx in &sqrs {
-                            // Will include at least one bit change desired, but maybe others.
-                            let expected_result = rulx.result_from_initial_state(&sqrx.state);
+            if grpx.pn == Pn::Two {
+                for ruly in grpx.rules.iter() {
+                    let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
 
-                            // If a Pn::Two squares last result is not equal to what is wanted,
-                            // the next result should be.
-                            if sqrx.most_recent_result() != &expected_result {
-                                let stpx = SomeStep::new(
-                                    self.num,
-                                    rulx.restrict_initial_region(&SomeRegion::new(
-                                        sqrx.state.clone(),
-                                        sqrx.state.clone(),
-                                    )),
-                                    false,
-                                    grpx.region.clone(),
-                                );
-                                stps.push(stpx);
-                                found = true;
-                            } // end if
-                        } // next stax
+                    // See if an existing square is ready to produce the desired result
+                    let i_reg = rulx.initial_region();
+                    let sqrs = self.squares.squares_in_reg(&i_reg);
 
-                        if !found {
-                            stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
-                        }
-                    } // next ruly
-                } // end match Two
-                Pn::Unpredictable => (),
-            } // end match grpx.pn
+                    let mut found = false;
+                    for sqrx in &sqrs {
+                        // Will include at least one bit change desired, but maybe others.
+                        let expected_result = rulx.result_from_initial_state(&sqrx.state);
+
+                        // If a Pn::Two squares last result is not equal to what is wanted,
+                        // the next result should be.
+                        if *sqrx.most_recent_result() != expected_result {
+                            let stpx = SomeStep::new(
+                                self.num,
+                                rulx.restrict_initial_region(&SomeRegion::new(
+                                    sqrx.state.clone(),
+                                    sqrx.state.clone(),
+                                )),
+                                false,
+                                grpx.region.clone(),
+                            );
+                            stps.push(stpx);
+                            found = true;
+                        } // end if
+                    } // next stax
+
+                    if !found {
+                        stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
+                    }
+                } // next ruly
+                continue;
+            } // end Pn::Two
+
+            panic!("Unrecognized Pn value?");
         } // next grpx
 
         // println!("Steps: {}", &stps);

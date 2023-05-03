@@ -576,9 +576,10 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     // Run the plan, allow for one failure.
     if let Some(plans) = &inx_pln.plans {
         if !dmxs.run_plans(plans) {
-            if let Some(plans) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
-                println!("Unexpected result try again");
-                if !dmxs.run_plans(&plans) {
+            println!("Run plan failed");
+            if let Some(plans2) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
+                println!("Try again with {}", plans2);
+                if !dmxs.run_plans(&plans2) {
                     println!("Unexpected result, giving up");
                 }
                 return false;

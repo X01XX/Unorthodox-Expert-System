@@ -107,7 +107,7 @@ impl ResultStore {
     pub fn new(mut st: Vec<SomeState>) -> Self {
         let mut ret = Self {
             astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
-            num_results: 1,
+            num_results: st.len(),
         };
         ret.astore.append(&mut st);
         ret
@@ -212,6 +212,74 @@ impl ResultStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_most_recent_result() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(2, "s0x1")?;
+        let sta2 = SomeState::new_from_string(2, "s0x2")?;
+        let sta3 = SomeState::new_from_string(2, "s0x3")?;
+        let sta4 = SomeState::new_from_string(2, "s0x4")?;
+        let sta5 = SomeState::new_from_string(2, "s0x5")?;
+        let sta6 = SomeState::new_from_string(2, "s0x6")?;
+        let sta7 = SomeState::new_from_string(2, "s0x7")?;
+        let sta8 = SomeState::new_from_string(2, "s0x8")?;
+        let sta9 = SomeState::new_from_string(2, "s0x9")?;
+
+        let mut rslt_str = ResultStore::new(vec![sta1.clone()]);
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta1 {
+            return Err(format!("mrr {} NE {}?", mrr, sta1));
+        }
+
+        rslt_str.add_result(sta2.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta2 {
+            return Err(format!("mrr {} NE {}?", mrr, sta2));
+        }
+
+        rslt_str.add_result(sta3.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta3 {
+            return Err(format!("mrr {} NE {}?", mrr, sta3));
+        }
+
+        rslt_str.add_result(sta4.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta4 {
+            return Err(format!("mrr {} NE {}?", mrr, sta4));
+        }
+
+        rslt_str.add_result(sta5.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta5 {
+            return Err(format!("mrr {} NE {}?", mrr, sta5));
+        }
+
+        rslt_str.add_result(sta6.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta6 {
+            return Err(format!("mrr {} NE {}?", mrr, sta6));
+        }
+
+        rslt_str.add_result(sta7.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta7 {
+            return Err(format!("mrr {} NE {}?", mrr, sta7));
+        }
+
+        rslt_str.add_result(sta8.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta8 {
+            return Err(format!("mrr {} NE {}?", mrr, sta8));
+        }
+
+        rslt_str.add_result(sta9.clone());
+        let mrr = rslt_str.most_recent_result();
+        if *mrr != sta9 {
+            return Err(format!("mrr {} NE {}?", mrr, sta9));
+        }
+        Ok(())
+    }
 
     // Test ResultStore::add_result for Pn::One
     #[test]

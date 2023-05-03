@@ -360,17 +360,17 @@ impl SomeRule {
         let i_reg_xes = i_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = i_reg_xes.bitwise_and(&cng_int.b01);
+        let to_ones = i_reg_xes.bitwise_and(&cng_int.b10);
 
         if to_ones.is_not_low() {
-            i_reg = i_reg.set_to_zeros(&to_ones);
+            i_reg = i_reg.set_to_ones(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = i_reg_xes.bitwise_and(&cng_int.b10);
+        let to_zeros = i_reg_xes.bitwise_and(&cng_int.b01);
 
         if to_zeros.is_not_low() {
-            i_reg = i_reg.set_to_ones(&to_zeros);
+            i_reg = i_reg.set_to_zeros(&to_zeros);
         }
 
         // Return a restricted rule
