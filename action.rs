@@ -2002,7 +2002,7 @@ impl SomeAction {
             // Check if group rules cause at least one change that is needed.
             let mut skip = true;
             for rulx in grpx.rules.iter() {
-                if achange.b10.bitwise_and(&rulx.b01).is_not_low() {
+                if achange.b10.bitwise_and(&rulx.b10).is_not_low() {
                     skip = false;
                     break;
                 }
