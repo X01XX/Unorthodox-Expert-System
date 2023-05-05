@@ -30,10 +30,12 @@ impl fmt::Display for SelectRegions {
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
+    /// If the regions are all X, except for one, then it affects only one domain.
+    /// Otherwise, it affects a combination of two, or more, domains.
     pub regions: RegionStore,
     /// A value for being in the select state.
-    /// A Positive value is, so far, the value given to a goal state in the regions.
-    /// A negative value is, so far, given to a plan that passes through the regions on the way to a goal,
+    /// A Positive value is, so far, given to a goal state.
+    /// A negative value is, so far, given to a plan that passes through the regions,
     /// not counting the beginning and end state.
     pub value: isize,
 }
@@ -161,7 +163,7 @@ impl SelectRegionsStore {
         false
     }
 
-    // Return the aggregate value of select regions the current states are in.
+    /// Return the aggregate value of select regions the current states are in.
     pub fn value_supersets_of_states(&self, stas: &[&SomeState]) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
@@ -275,65 +277,68 @@ impl SelectRegionsStore {
             );
         }
 
-        for selx in sup_store.iter() {
-            // Get edges mask for a negative superset
-            let mut edges = selx.regions.edge_mask_corr();
+        // Try to find bits to change, up to 5 times.
+        for _ in 0..5 {
+            for selx in sup_store.iter() {
+                // Get edges mask for a negative superset
+                let mut edges = selx.regions.edge_mask_corr();
 
-            for (edgex, mskx) in edges.iter_mut().zip(change_mask.iter()) {
-                //println!("choose_select_exit_needs: edge {} and b10 {} and b01 {}", edges[inx], changes[inx].b01, changes[inx].b10);
-                *edgex = edgex.bitwise_and(mskx);
-            }
-
-            // Identify non-zero edge masks.
-            let mut non_zero_edge_dom_ids = Vec::<usize>::new();
-            for (dom_numx, dom_edge_mask) in edges.iter().enumerate() {
-                if dom_edge_mask.is_not_low() {
-                    non_zero_edge_dom_ids.push(dom_numx);
+                for (edgex, mskx) in edges.iter_mut().zip(change_mask.iter()) {
+                    //println!("choose_select_exit_needs: edge {} and b10 {} and b01 {}", edges[inx], changes[inx].b01, changes[inx].b10);
+                    *edgex = edgex.bitwise_and(mskx);
                 }
+
+                // Identify non-zero edge masks.
+                let mut non_zero_edge_dom_ids = Vec::<usize>::new();
+                for (dom_numx, dom_edge_mask) in edges.iter().enumerate() {
+                    if dom_edge_mask.is_not_low() {
+                        non_zero_edge_dom_ids.push(dom_numx);
+                    }
+                }
+
+                // Check if stuck.
+                if non_zero_edge_dom_ids.is_empty() {
+                    //println!("choose_select_exit_needs: non zero edge masks not found?");
+                    return None;
+                }
+                //println!("choose_select_exit_needs: non zero edge masks found");
+
+                // Randomly choose a non-zero domain edge mask.
+                let dom_num = non_zero_edge_dom_ids
+                    [rand::thread_rng().gen_range(0..non_zero_edge_dom_ids.len())];
+
+                // Split the edge mask bits of the selected domain edge mask.
+                let single_bit_edge_masks = edges[dom_num].split();
+
+                // Randomly choose a mask.
+                let single_bit_edge_mask = &single_bit_edge_masks
+                    [rand::thread_rng().gen_range(0..single_bit_edge_masks.len())];
+                //println!("choose_select_exit_needs: mask {} chosen", single_bit_edge_mask);
+
+                // Do a Boolean OR with target masks, as two regions could have one edge in common, an XOR with the current state could be undone.
+                target_masks[dom_num] = target_masks[dom_num].bitwise_or(single_bit_edge_mask);
+            } // Next selx.
+
+            // Generate target states.
+            let mut target_states = Vec::<SomeState>::with_capacity(all_states.len());
+            for (statex, maskx) in all_states.iter().zip(target_masks.iter()) {
+                target_states.push(statex.bitwise_xor(maskx));
             }
 
-            // Check if stuck.
-            if non_zero_edge_dom_ids.is_empty() {
-                //println!("choose_select_exit_needs: non zero edge masks not found?");
-                return None;
+            let mut all_states2 = Vec::<&SomeState>::with_capacity(all_states.len());
+            for stax in target_states.iter() {
+                all_states2.push(stax);
             }
-            //println!("choose_select_exit_needs: non zero edge masks found");
+            if self.negative_supersets_of_states(&all_states2).is_empty() {
+                let ret_nds = NeedStore::new(vec![SomeNeed::ExitSelectRegion {
+                    target_states: StateStore::new(target_states),
+                }]);
 
-            // Randomly choose a non-zero domain edge mask.
-            let dom_num =
-                non_zero_edge_dom_ids[rand::thread_rng().gen_range(0..non_zero_edge_dom_ids.len())];
-
-            // Split the edge mask bits of the selected domain edge mask.
-            let single_bit_edge_masks = edges[dom_num].split();
-
-            // Randomly choose a mask.
-            let single_bit_edge_mask = &single_bit_edge_masks
-                [rand::thread_rng().gen_range(0..single_bit_edge_masks.len())];
-            //println!("choose_select_exit_needs: mask {} chosen", single_bit_edge_mask);
-
-            // Do a Boolean OR with target masks, as two regions could have one edge in common, an XOR with the current state could be undone.
-            target_masks[dom_num] = target_masks[dom_num].bitwise_or(single_bit_edge_mask);
-        } // Next selx.
-
-        // Generate target states.
-        let mut target_states = Vec::<SomeState>::with_capacity(all_states.len());
-        for (statex, maskx) in all_states.iter().zip(target_masks.iter()) {
-            target_states.push(statex.bitwise_xor(maskx));
+                //println!("choose_select_exit_needs: returning need: {}", ret_nds[0]);
+                return Some(ret_nds);
+            }
         }
-        let mut all_states2 = Vec::<&SomeState>::with_capacity(all_states.len());
-        for stax in target_states.iter() {
-            all_states2.push(stax);
-        }
-
-        //let sup_store2 = self.negative_supersets_of_states(&all_states2);
-        //println!("choose_select_exit_needs: target states are in {} negative select regions", sup_store2.len());
-
-        let ret_nds = NeedStore::new(vec![SomeNeed::FromSelectRegion {
-            target_states: StateStore::new(target_states),
-        }]);
-
-        //println!("choose_select_exit_needs: returning need: {}", ret_nds[0]);
-        Some(ret_nds)
+        None
     }
 
     /// Return the sum of all select regions values a plan goes through.

@@ -140,9 +140,9 @@ impl fmt::Display for SomeNeed {
                 let pri = self.priority();
                 format!("N(Pri {pri} To Select Regions {target_regions})")
             }
-            SomeNeed::FromSelectRegion { target_states } => {
+            SomeNeed::ExitSelectRegion { target_states } => {
                 let pri = self.priority();
-                format!("N(Pri {pri} From Select Regions {target_states})")
+                format!("N(Pri {pri} Exit Select Regions {target_states})")
             }
         }; // end match
 
@@ -242,7 +242,7 @@ pub enum SomeNeed {
     /// Move all current domain states to the corresponding regions of an SelectRegion.
     ToSelectRegion { target_regions: SelectRegions },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
-    FromSelectRegion { target_states: StateStore },
+    ExitSelectRegion { target_states: StateStore },
 }
 
 impl SomeNeed {
@@ -264,7 +264,7 @@ impl SomeNeed {
             SomeNeed::StateInRemainder { .. } => "StateInRemainder",
             SomeNeed::StateNotInGroup { .. } => "StateNotInGroup",
             SomeNeed::ToSelectRegion { .. } => "ToSelectRegion",
-            SomeNeed::FromSelectRegion { .. } => "FromSelectRegion",
+            SomeNeed::ExitSelectRegion { .. } => "ExitSelectRegion",
         }
     }
 
@@ -277,7 +277,7 @@ impl SomeNeed {
             // By ascending priority number.
             SomeNeed::SeekEdge { .. } => 100,
             SomeNeed::ContradictoryIntersection { .. } => 200,
-            SomeNeed::FromSelectRegion { .. } => 250,
+            SomeNeed::ExitSelectRegion { .. } => 250,
             SomeNeed::AStateMakeGroup { num_x, .. } => 399 - num_x,
             SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
             SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
@@ -461,7 +461,7 @@ impl SomeNeed {
                 }
                 targ
             }
-            SomeNeed::FromSelectRegion { target_states, .. } => {
+            SomeNeed::ExitSelectRegion { target_states, .. } => {
                 let mut targ = TargetStore::with_capacity(1);
                 for (dom_numx, statex) in target_states.iter().enumerate() {
                     targ.push(SomeTarget::new(

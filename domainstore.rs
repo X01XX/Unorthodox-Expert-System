@@ -893,10 +893,10 @@ impl DomainStore {
         goal_region.is_superset_of_state(&self.avec[dom_num].cur_state)
     }
 
-    /// Return regions that have a positive (or zero) value.
+    /// Return regions that have a positive, or zero, value.
     /// Assuming other region current states remain the same.
-    fn positive_regions(&self, dom_num: usize, all_states: &[&SomeState]) -> RegionStore {
-        let mut pos_regs = RegionStore::new(vec![self[dom_num].maximum_region()]);
+    fn non_negative_regions(&self, dom_num: usize, all_states: &[&SomeState]) -> RegionStore {
+        let mut nn_regs = RegionStore::new(vec![self[dom_num].maximum_region()]);
 
         for selectx in self.select.iter() {
             if selectx.value < 0 {
@@ -913,16 +913,15 @@ impl DomainStore {
                 }
 
                 if applies {
-                    pos_regs = pos_regs.subtract_region(&selectx.regions[dom_num]);
+                    nn_regs = nn_regs.subtract_region(&selectx.regions[dom_num]);
                 }
             }
         }
-        pos_regs
+        nn_regs
     }
 
     /// When the random depth-first plans all traverse a negative region, try to form a plan
     /// by avoiding negative regions.
-    #[allow(dead_code)]
     fn avoid_negative_select_regions(
         &self,
         dom_num: usize,
@@ -931,20 +930,20 @@ impl DomainStore {
     ) -> Option<SomePlan> {
         // Get (max region - negative regions), so potitive/non-negative regions.
         let all_states = self.all_current_states();
-        let pos_regs = self.positive_regions(dom_num, &all_states);
-        if pos_regs.is_empty() {
-            //println!("no pos regs");
+        let nn_regs = self.non_negative_regions(dom_num, &all_states);
+        if nn_regs.is_empty() {
+            //println!("no nn regs");
             return None;
         }
-        //println!("positive regions {}", pos_regs);
+        //println!("non-negative regions {}", nn_regs);
 
         // Get poitive regions the start region is in.
-        let mut regs_start_in = pos_regs.supersets_of(start_reg);
+        let mut regs_start_in = nn_regs.supersets_of(start_reg);
 
-        // Home for additional regions, caused by an adjacent positive region.
+        // Home for additional regions, caused by an adjacent non-negative region.
         let mut additional_start_regs = Vec::<SomeRegion>::new();
 
-        let adj_regs = pos_regs.adjacent_to(start_reg);
+        let adj_regs = nn_regs.adjacent_to(start_reg);
         for regx in adj_regs.iter() {
             let adj_reg = start_reg.transpose_to(regx);
             additional_start_regs.push(start_reg.union(&adj_reg));
@@ -957,13 +956,13 @@ impl DomainStore {
             return None;
         }
 
-        // Get positive regions the goal intersects.
-        let mut regs_goal_in = pos_regs.intersects_of(goal_reg);
+        // Get non-negative regions the goal intersects.
+        let mut regs_goal_in = nn_regs.intersects_of(goal_reg);
         //println!("intersects of {}", SomeRegion::vec_ref_string(&regs_goal_in));
-        // Home for additional regions, caused by an adjacent positive region.
+        // Home for additional regions, caused by an adjacent non-negative region.
         let mut additional_goal_regs = Vec::<SomeRegion>::new();
 
-        let adj_regs = pos_regs.adjacent_to(goal_reg);
+        let adj_regs = nn_regs.adjacent_to(goal_reg);
         for regx in adj_regs.iter() {
             let adj_reg = goal_reg.transpose_to(regx);
             additional_goal_regs.push(goal_reg.union(&adj_reg));
@@ -976,16 +975,16 @@ impl DomainStore {
             return None;
         }
 
-        // Get positive regions the start region and goal region are not in.
-        let mut other_pos_regions = Vec::<&SomeRegion>::new();
-        for regx in pos_regs.iter() {
+        // Get non-negative regions the start region and goal region are not in.
+        let mut other_nn_regions = Vec::<&SomeRegion>::new();
+        for regx in nn_regs.iter() {
             if regx.is_superset_of(start_reg) || regx.intersects(goal_reg) {
                 continue;
             }
-            other_pos_regions.push(regx);
+            other_nn_regions.push(regx);
         }
-        if other_pos_regions.is_empty() {
-            //println!("no other pos regs");
+        if other_nn_regions.is_empty() {
+            //println!("no other nn regs");
             return None;
         }
 
@@ -1027,7 +1026,7 @@ impl DomainStore {
 
             // Add another layer of new connections.
             // Scan poitive regions that do not intersect the start and goal region.
-            for regx in other_pos_regions.iter() {
+            for regx in other_nn_regions.iter() {
                 // Add another layer of new connections, to the start options.
                 let mut tmp = Vec::<Vec<&SomeRegion>>::new();
                 for vecx in start_options.iter() {
@@ -1082,7 +1081,7 @@ impl DomainStore {
         let Some(intersections) = intersection_vec else { //println!("no intersections");
                                                             return None; };
 
-        // Process intersection info, crating a path of intersecting positive regions, from start to goal.
+        // Process intersection info, crating a path of intersecting non-negative regions, from start to goal.
         'next_intersection: for an_int in intersections.iter() {
             let tmp_start = &start_options[an_int.0];
             let tmp_end = &goal_options[an_int.1];
@@ -1127,7 +1126,7 @@ impl DomainStore {
                 }
 
                 if let Some(plans) = self[dom_num].make_plans2(&tmp_next, &tmp_int) {
-                    // Pick a plan that stays within the positive region.
+                    // Pick a plan that stays within the non-negative region.
                     let mut inz: Option<usize> = None;
                     for (iny, planx) in plans.iter().enumerate() {
                         if let Some(regx) = planx.path_region() {
@@ -1266,7 +1265,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// but another region intersects both.
     fn avoidance2() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
@@ -1347,7 +1346,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// and another region does not intersect both.
     fn avoidance3() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
@@ -1453,7 +1452,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where positive regions the start and goal are in, do not intersect,
+    /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// and there is no path that does not cross a negative select region.
     fn avoidance4() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
@@ -1529,7 +1528,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where start and goal regions are not in a positive region, but are adjacent to a positive region.
+    /// Test case where start and goal regions are not in a non-negative region, but are adjacent to a non-negative region.
     fn avoidance5() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
         let s0 = SomeState::new_from_string(1, "s0b0")?;

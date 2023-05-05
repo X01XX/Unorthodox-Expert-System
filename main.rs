@@ -555,7 +555,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
         SomeNeed::ToSelectRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
-        SomeNeed::FromSelectRegion { .. } => {
+        SomeNeed::ExitSelectRegion { .. } => {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
         _ => {
@@ -600,7 +600,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 return true;
             }
         }
-        SomeNeed::FromSelectRegion { .. } => {
+        SomeNeed::ExitSelectRegion { .. } => {
             if dmxs.needs[nd_inx]
                 .target()
                 .is_superset_of_states(&dmxs.all_current_states())
@@ -644,7 +644,7 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
 
                 match dmxs.needs[nd_inx] {
                     SomeNeed::ToSelectRegion { .. } => (),
-                    SomeNeed::FromSelectRegion { .. } => (),
+                    SomeNeed::ExitSelectRegion { .. } => (),
                     _ => {
                         if dom_num != dmxs.needs[nd_inx].dom_num() {
                             dmxs.change_domain(dmxs.needs[nd_inx].dom_num());

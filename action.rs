@@ -566,12 +566,18 @@ impl SomeAction {
             return;
         }
 
+        let groups_in = grps_in.len();
+        let mut plural = "";
+        if groups_in != 1 {
+            plural = "s";
+        }
         println!(
-            "\nDom {} Act {} Square {} in {} groups",
+            "\nDom {} Act {} Square {} in {} group{}",
             self.dom_num,
             self.num,
             sqrx.str_terse(),
             grps_in.len(),
+            plural,
         );
 
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
@@ -604,12 +610,14 @@ impl SomeAction {
         }
 
         // Make a single-square group
-        let regz = SomeRegion::new(sqrx.state.clone(), sqrx.state.clone());
-        self.groups.push(
-            SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc),
-            self.dom_num,
-            self.num,
-        );
+        if groups_in == 0 {
+            let regz = SomeRegion::new(sqrx.state.clone(), sqrx.state.clone());
+            self.groups.push(
+                SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc),
+                self.dom_num,
+                self.num,
+            );
+        }
     } // end create_groups_from_square
 
     /// Return needs for states that are not in a group.
