@@ -310,6 +310,7 @@ impl DomainStore {
             println!(" ");
 
             if cur_pri_end == needs_len || cur_pri > select_priority {
+                self.cant_do = (0..self.needs.len()).collect();
                 return;
             }
 

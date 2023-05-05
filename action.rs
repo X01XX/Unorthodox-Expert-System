@@ -449,7 +449,7 @@ impl SomeAction {
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
     fn check_square_new_sample(&mut self, key: &SomeState) {
-        //println!("check_square_new_sample for {}", key);
+        println!("check_square_new_sample for {}", key);
 
         let sqrx = self
             .squares
@@ -525,20 +525,25 @@ impl SomeAction {
         }
 
         // Check squares from invalidated groups that may not be in any group.
+        let mut stas_to_check = Vec::<SomeState>::new();
         for regx in regs_invalid.iter() {
-            if self.groups.num_groups_state_in(&regx.state1) == 0 {
-                self.create_groups_from_square(&regx.state1);
+            let stas = self.squares.stas_in_reg(regx);
+
+            for stax in stas.iter() {
+                if self.groups.num_groups_state_in(stax) == 0 && !stas_to_check.contains(stax) {
+                    stas_to_check.push((*stax).clone());
+                }
             }
-            if regx.state2 != regx.state1 && self.groups.num_groups_state_in(&regx.state1) == 0 {
-                self.create_groups_from_square(&regx.state1);
-            }
+        }
+        for stax in stas_to_check.iter() {
+            self.create_groups_from_square(stax);
         }
     } // end check_square_new_sample
 
     /// Check groups due to a new, or updated, square.
     /// Create a group with the square, if needed.
     fn create_groups_from_square(&mut self, key: &SomeState) {
-        //println!("create_groups_from_square {}", &key);
+        println!("create_groups_from_square {}", &key);
 
         // Get groups the state is in
         let grps_in = self.groups.groups_state_in(key);
@@ -632,12 +637,28 @@ impl SomeAction {
 
         // Check if current state is in any groups
         if !self.groups.any_superset_of_state(cur_state) {
-            nds.push(SomeNeed::StateNotInGroup {
-                dom_num: self.dom_num,
-                act_num: self.num,
-                target_state: cur_state.clone(),
-            });
-            return nds;
+            if let Some(sqrx) = self.squares.find(cur_state) {
+                if sqrx.pn == Pn::One || sqrx.pnc {
+                    println!(
+                        "problem?: Dom {} Act {} square {} not in group?",
+                        self.dom_num, self.num, sqrx
+                    );
+                } else {
+                    nds.push(SomeNeed::StateNotInGroup {
+                        dom_num: self.dom_num,
+                        act_num: self.num,
+                        target_state: cur_state.clone(),
+                    });
+                    return nds;
+                }
+            } else {
+                nds.push(SomeNeed::StateNotInGroup {
+                    dom_num: self.dom_num,
+                    act_num: self.num,
+                    target_state: cur_state.clone(),
+                });
+                return nds;
+            }
         }
 
         // Look for a pn > 1, pnc == false, not in group squares
@@ -687,7 +708,6 @@ impl SomeAction {
                 target_state: smpx.initial.clone(),
             });
         }
-
         nds
     }
 
