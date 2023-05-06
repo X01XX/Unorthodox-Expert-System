@@ -543,7 +543,7 @@ impl SomeAction {
     /// Check groups due to a new, or updated, square.
     /// Create a group with the square, if needed.
     fn create_groups_from_square(&mut self, key: &SomeState) {
-        println!("create_groups_from_square {}", &key);
+        //println!("create_groups_from_square {}", &key);
 
         // Get groups the state is in
         let grps_in = self.groups.groups_state_in(key);
