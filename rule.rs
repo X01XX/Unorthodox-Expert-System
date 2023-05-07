@@ -351,30 +351,44 @@ impl SomeRule {
         let cng_int = change_needed.bitwise_and_rule(self);
 
         if cng_int.is_low() {
-            // No change, or no change is needed
+            // No change found, or no change is needed
             return None;
         }
 
         // Get rule initial region and x mask.
-        let mut i_reg = self.initial_region();
-        let i_reg_xes = i_reg.x_mask();
+        let mut p_reg = self.initial_region();
+        let p_reg_xes = p_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
-        let to_ones = i_reg_xes.bitwise_and(&cng_int.b10);
+        let to_ones = p_reg_xes.bitwise_and(&cng_int.b10);
 
         if to_ones.is_not_low() {
-            i_reg = i_reg.set_to_ones(&to_ones);
+            p_reg = p_reg.set_to_ones(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
-        let to_zeros = i_reg_xes.bitwise_and(&cng_int.b01);
+        let to_zeros = p_reg_xes.bitwise_and(&cng_int.b01);
 
         if to_zeros.is_not_low() {
-            i_reg = i_reg.set_to_zeros(&to_zeros);
+            p_reg = p_reg.set_to_zeros(&to_zeros);
+        }
+
+        // Parse out uneeded X->1, that is 0->1.
+        let x_to_1 = self.b01.bitwise_and(&self.b11);
+        let unneeded = x_to_1.bitwise_and(&change_needed.b01.bitwise_not());
+        if unneeded.is_not_low() {
+            p_reg = p_reg.set_to_ones(&unneeded);
+        }
+
+        // Parse out unneeded X->0, that is 1->0.
+        let x_to_0 = self.b10.bitwise_and(&self.b00);
+        let unneeded = x_to_0.bitwise_and(&change_needed.b10.bitwise_not());
+        if unneeded.is_not_low() {
+            p_reg = p_reg.set_to_zeros(&unneeded);
         }
 
         // Return a restricted rule
-        Some(self.restrict_initial_region(&i_reg))
+        Some(self.restrict_initial_region(&p_reg))
     }
 
     /// Return true if two rules are mutually exclusive.
@@ -705,20 +719,20 @@ mod tests {
 
     #[test]
     fn parse_for_changes() -> Result<(), String> {
-        let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx")?;
+        let rul1 = SomeRule::new_from_string(1, "X1/X1/X0/X0/Xx/Xx/Xx")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string(1, "m0b1010")?,
-            SomeMask::new_from_string(1, "m0b0101")?,
+            SomeMask::new_from_string(1, "m0b1000010")?,
+            SomeMask::new_from_string(1, "m0b0010001")?,
         );
 
         if let Some(rul2) = rul1.parse_for_changes(&chg1) {
             println!("rul2 {}", &rul2);
 
-            if rul2 != SomeRule::new_from_string(1, "01/10/01/10")? {
-                return Err(String::from("rul2 not 01/10/01/10?"));
+            if rul2 != SomeRule::new_from_string(1, "01/11/10/00/Xx/01/10")? {
+                return Err(String::from("rul2 not 01/11/10/00/Xx/01/10?"));
             }
         } else {
-            return Err("parse should suceed".to_string());
+            return Err("parse should succeed".to_string());
         }
 
         Ok(())
