@@ -449,7 +449,7 @@ impl SomeAction {
     /// If any groups were invalidated, check for any other squares
     /// that are in no groups.
     fn check_square_new_sample(&mut self, key: &SomeState) {
-        println!("check_square_new_sample for {}", key);
+        //println!("check_square_new_sample for {}", key);
 
         let sqrx = self
             .squares
@@ -2052,6 +2052,24 @@ impl SomeAction {
             }
 
             if grpx.pn == Pn::Two {
+                // Get restricted region for needed changes.
+                let mut parsed_region: Option<SomeRegion> = None;
+                for ruly in grpx.rules.iter() {
+                    let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
+                    parsed_region = Some(rulx.initial_region());
+                }
+                // Check if any rule has no changes, so a state could be sampled twice to get the desired change.
+                let mut one_no_change = false;
+                if let Some(regx) = parsed_region {
+                    for ruly in grpx.rules.iter() {
+                        let rulx = ruly.restrict_initial_region(&regx);
+                        if rulx.b01.is_low() && rulx.b10.is_low() {
+                            one_no_change = true;
+                            break;
+                        }
+                    }
+                }
+
                 for ruly in grpx.rules.iter() {
                     let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
 
@@ -2081,7 +2099,7 @@ impl SomeAction {
                         } // end if
                     } // next stax
 
-                    if !found {
+                    if !found && one_no_change {
                         stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                     }
                 } // next ruly

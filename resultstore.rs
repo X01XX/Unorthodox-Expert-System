@@ -207,6 +207,9 @@ impl ResultStore {
 
         rc_str
     }
+    pub fn num_results(&self) -> usize {
+        self.num_results
+    }
 } // end impl ResultStore
 
 #[cfg(test)]

@@ -86,7 +86,7 @@ impl SomeSquare {
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result {} {}",
             self.str_terse(),
-            self.results.len() + 1,
+            self.results.num_results() + 1,
             &st
         ));
 
@@ -147,6 +147,15 @@ impl SomeSquare {
     /// Return the first result for the square.
     pub fn first_result(&self) -> &SomeState {
         self.results.first()
+    }
+
+    /// Return the second result for the square.
+    pub fn second_result(&self) -> &SomeState {
+        self.results.second()
+    }
+
+    pub fn num_results(&self) -> usize {
+        self.results.num_results()
     }
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
