@@ -302,33 +302,6 @@ impl SomePlan {
         &self[self.len() - 1].result
     }
 
-    /// Return a second display version of a plan.
-    pub fn str2(&self) -> String {
-        if self.steps.is_empty() {
-            return String::from("Empty plan");
-        }
-
-        let mut rc_str = String::new();
-        //let inx_end = self.steps.len() - 1;
-        for stpx in self.steps.iter() {
-            let df = stpx.initial.diff_mask(&stpx.result);
-
-            rc_str.push_str(&format!(
-                "{} Action {:02} Group {} Rule {}\n{}\n",
-                &stpx.initial,
-                &stpx.act_num,
-                &stpx.group_reg,
-                &stpx.rule,
-                &df.str2()
-            ));
-        }
-
-        let x = self.steps.len() - 1;
-        rc_str.push_str(&format!("{}", &self.steps[x].result));
-
-        rc_str
-    }
-
     /// Return true if two plans are equal.
     pub fn eq(&self, other: &SomePlan) -> bool {
         if self.len() != other.len() {

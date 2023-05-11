@@ -146,7 +146,7 @@ impl SomeRule {
         *other == tmprul
     }
 
-    /// Return true is a rule is valid
+    /// Return true if a rule is valid
     pub fn is_valid(&self) -> bool {
         self.is_valid_union() && self.is_valid_intersection()
     }
@@ -335,7 +335,7 @@ impl SomeRule {
         strrc
     }
 
-    /// Of the changes in a rule, the rule initial region may be manipulated to
+    /// Of the wanted changes in a rule, the rule initial region may be manipulated to
     /// focus in on the desired changes.
     ///
     /// The change argument contains masks of changes (b01, b10) that are sought.

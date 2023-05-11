@@ -1791,7 +1791,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/15/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 05/09/2023</p>
   </div>
 <div id="addendum">
 	<h3>Addendums:</h3>
@@ -1996,13 +1996,13 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         If the result region of the first rule intersects the initial region of the second rule, the aggregate can be calculated as follows:
         </p>
     <p class="indent1">
-        0&#8594;0 mask = (0&#8594;0 &amp; 0&#8594;0) + (0&#8594;1 &amp; 1&#8594;0, note: rule 1 change reversed)
+        0&#8594;0 mask = (0&#8594;0 &amp; 0&#8594;0) + (0&#8594;1 &amp; 1&#8594;0), (note: rule 1 change reversed)
     </p>
     <p class="indent1">
         0&#8594;1 mask = (0&#8594;0 &amp; 0&#8594;1) + (0&#8594;1 &amp; 1&#8594;1)
     </p>
     <p class="indent1">
-        1&#8594;1 mask = (1&#8594;1 &amp; 1&#8594;1) + (1&#8594;0 &amp; 0&#8594;1, note: rule 1 change reversed)
+        1&#8594;1 mask = (1&#8594;1 &amp; 1&#8594;1) + (1&#8594;0 &amp; 0&#8594;1), (note: rule 1 change reversed)
     </p>
     <p class="indent1">
         1&#8594;0 mask = (1&#8594;1 &amp; 1&#8594;0) + (1&#8594;0 &amp; 0&#8594;0)
@@ -2019,6 +2019,18 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         <p class="indent1">
         If the result region of the first rule does not intersect the initial region of the second rule, a third rule
         can be calculated to make that change, then sequence all three rules.
+        </p>
+        <p class="indent1">
+	From initial state to goal region:
+        </p>
+        <p class="indent2">
+	0&#8594;1, or 1&#8594;0: One change is required, or otherwise, an odd number of changes.
+        </p>
+        <p class="indent2">
+	0&#8594;0, or 1&#8594;1: No change is required, or otherwise, an even number of changes.
+        </p>
+        <p class="indent2">
+	0&#8594;X, or 1&#8594;X: No change is required, or otherwise, any number of changes.
         </p>
    <h3>Rule for region to region change</h3>
        <p class="indent1">

@@ -787,7 +787,7 @@ impl DomainStore {
         let status = if in_pos > 0 && in_neg < 0 {
             format!("Conflicted {}/{}", in_pos, in_neg)
         } else if in_pos > 0 {
-            format!("Positive {}", in_pos)
+            format!("Positive {:+}", in_pos)
         } else if in_neg < 0 {
             format!("Negative {}", in_neg)
         } else {

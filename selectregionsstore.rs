@@ -21,7 +21,7 @@ use std::slice::Iter;
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.formatted_string();
-        str.push_str(&format!("/{}", self.value));
+        str.push_str(&format!("/{:+}", self.value));
         write!(f, "{}", str)
     }
 }

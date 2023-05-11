@@ -66,20 +66,6 @@ impl PlanStore {
         self.avec.iter()
     }
 
-    /// Return a second display version of a PlanStore.
-    pub fn str2(&self) -> String {
-        let mut rc_str = String::new();
-
-        for planx in &self.avec {
-            if planx.is_not_empty() {
-                rc_str.push_str(&format!("\nPlan, Domain {}:\n", planx.dom_num));
-                rc_str.push_str(&planx.str2());
-                rc_str.push('\n');
-            }
-        }
-        rc_str
-    }
-
     /// Return a more restricted display version of a PlanStore.
     pub fn str_terse(&self) -> String {
         let mut rc_str = String::new();

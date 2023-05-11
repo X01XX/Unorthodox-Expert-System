@@ -2030,11 +2030,7 @@ impl SomeAction {
             // Check if group rules cause at least one change that is needed.
             let mut skip = true;
             for rulx in grpx.rules.iter() {
-                if achange.b10.bitwise_and(&rulx.b10).is_not_low() {
-                    skip = false;
-                    break;
-                }
-                if achange.b01.bitwise_and(&rulx.b01).is_not_low() {
+                if achange.bitwise_and_rule(rulx).is_not_low() {
                     skip = false;
                     break;
                 }
@@ -2058,7 +2054,7 @@ impl SomeAction {
                     let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
                     parsed_region = Some(rulx.initial_region());
                 }
-                // Check if any rule has no changes, so a state could be sampled twice to get the desired change.
+                // Check if any rule has no changes, so a state could be sampled once, or twice, to get the desired change.
                 let mut one_no_change = false;
                 if let Some(regx) = parsed_region {
                     for ruly in grpx.rules.iter() {
@@ -2097,16 +2093,13 @@ impl SomeAction {
                             stps.push(stpx);
                             found = true;
                         } // end if
-                    } // next stax
+                    } // next sqrx
 
                     if !found && one_no_change {
                         stps.push(SomeStep::new(self.num, rulx, true, grpx.region.clone()));
                     }
                 } // next ruly
-                continue;
             } // end Pn::Two
-
-            panic!("Unrecognized Pn value?");
         } // next grpx
 
         // println!("Steps: {}", &stps);
