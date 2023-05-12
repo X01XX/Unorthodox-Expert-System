@@ -67,7 +67,7 @@ pub struct DomainStore {
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
     pub select: SelectRegionsStore,
-    /// RegionStore to add all possible intersections of the select states to discern.
+    /// RegionStore to add all possible positive intersections of the select states to discern.
     pub select_and_ints: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
@@ -730,24 +730,19 @@ impl DomainStore {
         let mut ret = false;
 
         let all_states = self.all_current_states();
-        let select_supersets = self.select.supersets_of_states(&all_states);
+        let select_supersets = self.select.positive_supersets_of_states(&all_states);
         if select_supersets.is_empty() {
             print!(
-                "\nAll Current states: {} in select regions: None, not in {}",
-                SomeState::vec_ref_string(&all_states),
-                self.select
+                "\nNot in select regions {}",
+                SelectRegions::vec_ref_string(&self.select.positive_select_regions())
             );
         } else {
             ret = true;
             print!(
-                "\nAll Current states: {} in select regions: {}",
-                SomeState::vec_ref_string(&all_states),
-                SelectRegions::vec_ref_string(&select_supersets)
-            );
-
-            print!(
-                ", not in: {}",
-                SelectRegions::vec_ref_string(&self.select.not_supersets_of_states(&all_states))
+                "\nNot in select regions {}",
+                SelectRegions::vec_ref_string(
+                    &self.select.positive_not_supersets_of_states(&all_states)
+                )
             );
         }
 
@@ -772,29 +767,31 @@ impl DomainStore {
         let cur_state = &self.avec[dom_num].get_current_state();
 
         // Calc current status.
+        let mut in_str = String::new();
         let all_states = self.all_current_states();
         let select_supersets = self.select.supersets_of_states(&all_states);
-        let mut in_pos = 0;
-        let mut in_neg = 0;
+        let mut in_pos = false;
+        let mut in_neg = false;
         for optx in select_supersets.iter() {
+            in_str += &format!("{} ", optx);
             match optx.value.cmp(&0) {
-                Ordering::Less => in_neg += optx.value,
-                Ordering::Greater => in_pos += optx.value,
+                Ordering::Less => in_neg = true,
+                Ordering::Greater => in_pos = true,
                 _ => (),
             }
         }
 
-        let status = if in_pos > 0 && in_neg < 0 {
-            format!("Conflicted {}/{}", in_pos, in_neg)
-        } else if in_pos > 0 {
-            format!("Positive {:+}", in_pos)
-        } else if in_neg < 0 {
-            format!("Negative {}", in_neg)
+        let status = if in_pos && in_neg {
+            "Conflicted".to_string()
+        } else if in_pos {
+            "Positive".to_string()
+        } else if in_neg {
+            "Negative".to_string()
         } else {
             "Neutral".to_string()
         };
 
-        println!("\nDom: {dom_num} Current State: {cur_state} Status: {status}");
+        println!("\nDom: {dom_num} Current State: {cur_state} Status: {status} {in_str}");
     }
 
     /// Print needs that can be done.

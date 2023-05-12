@@ -153,6 +153,22 @@ impl SelectRegionsStore {
             .collect()
     }
 
+    /// Return a Vector of positive value RegionStores not supersets of a given StateStore.
+    pub fn positive_not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
+        self.regionstores
+            .iter()
+            .filter(|regsx| !regsx.regions.is_superset_corr_states(stas) && regsx.value > 0)
+            .collect()
+    }
+
+    /// Return a Vector of positive value RegionStores.
+    pub fn positive_select_regions(&self) -> Vec<&SelectRegions> {
+        self.regionstores
+            .iter()
+            .filter(|regsx| regsx.value > 0)
+            .collect()
+    }
+
     /// Return true if any RegionStore is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
         for regsx in &self.regionstores {
@@ -189,6 +205,14 @@ impl SelectRegionsStore {
         self.regionstores
             .iter()
             .filter(|regsx| regsx.regions.is_superset_corr_states(stas))
+            .collect()
+    }
+
+    /// Return list of positive value select regions that are superset of a State vector.
+    pub fn positive_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
+        self.regionstores
+            .iter()
+            .filter(|regsx| regsx.regions.is_superset_corr_states(stas) && regsx.value > 0)
             .collect()
     }
 
@@ -234,7 +258,9 @@ impl SelectRegionsStore {
                     val += reg_valx.value;
                 }
             }
-            ret.push(reg_strx, val);
+            if val > 0 {
+                ret.push(reg_strx, val);
+            }
         }
         ret
     }

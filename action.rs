@@ -197,7 +197,6 @@ impl SomeAction {
             if sqrx.add_result(smpl.result.clone()) {
                 self.check_square_new_sample(&smpl.initial);
             }
-            //self.square_check_additional_sample(smpl);
         } else {
             self.add_new_square(smpl);
         }
