@@ -751,8 +751,6 @@ impl DomainStore {
             self.boredom, self.boredom_limit
         );
 
-        println!(" ");
-
         ret
     }
 

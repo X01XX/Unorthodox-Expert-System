@@ -14,6 +14,7 @@ use crate::statestore::StateStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
@@ -250,6 +251,7 @@ impl SelectRegionsStore {
             rs.push(reg_valx.regions.clone());
         }
 
+        let mut neg_ints = Self::new(vec![]);
         let mut ret = Self::new(vec![]);
         for reg_strx in vec_rs_corr_split_by_partial_intersection(&rs) {
             let mut val = 0;
@@ -258,10 +260,13 @@ impl SelectRegionsStore {
                     val += reg_valx.value;
                 }
             }
-            if val > 0 {
-                ret.push(reg_strx, val);
+            match val.cmp(&0) {
+                Ordering::Greater => ret.push(reg_strx, val),
+                Ordering::Less => neg_ints.push(reg_strx, val),
+                _ => (),
             }
         }
+
         ret
     }
 
