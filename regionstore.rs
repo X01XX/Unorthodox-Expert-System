@@ -663,15 +663,15 @@ fn vec_rs_corr_contains(avec: &Vec<RegionStore>, ars: &RegionStore) -> bool {
 //    false
 //}
 
-/// Return true if a vector of RegionStores contains a RegionStore equal_corresponding to a given RegionStore.
-pub fn vec_rs_any_eq_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool {
-    for regstx in rs_vec.iter() {
-        if regstx.eq_corr(reg_str) {
-            return true;
-        }
-    }
-    false
-}
+// Return true if a vector of RegionStores contains a RegionStore equal_corresponding to a given RegionStore.
+//pub fn vec_rs_any_eq_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool {
+//    for regstx in rs_vec.iter() {
+//        if regstx.eq_corr(reg_str) {
+//           return true;
+//        }
+//    }
+//    false
+//}
 
 /// Return true if any region is a superset, or equal, to a region.
 pub fn vec_rs_any_superset_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool {
@@ -750,28 +750,22 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
                     if pass == 1 {
                         let splits = rsx.subtract_corr(&int);
                         for rsz in splits.into_iter() {
-                            if !vec_rs_any_eq_corr(&next_vec, &rsz) {
-                                vec_rs_push_nosubs_corr(&mut next_vec, rsz);
-                            }
+                            vec_rs_push_nosubs_corr(&mut next_vec, rsz);
                         }
                     }
 
                     let splits = rsy.subtract_corr(&int);
                     for rsz in splits.into_iter() {
-                        if !vec_rs_any_eq_corr(&next_vec, &rsz) {
-                            vec_rs_push_nosubs_corr(&mut next_vec, rsz);
-                        }
+                        vec_rs_push_nosubs_corr(&mut next_vec, rsz);
                     }
 
-                    if !vec_rs_any_eq_corr(&next_vec, &int) {
-                        vec_rs_push_nosubs_corr(&mut next_vec, int);
-                    }
+                    vec_rs_push_nosubs_corr(&mut next_vec, int);
                 }
             } // next rsx
         } // next rsy
 
         for (iny, rsy) in tmp_vec.into_iter().enumerate() {
-            if !int_vec.contains(&iny) && !vec_rs_any_eq_corr(&ret_vec, &rsy) {
+            if !int_vec.contains(&iny) {
                 vec_rs_push_nosubs_corr(&mut ret_vec, rsy);
             }
         }
