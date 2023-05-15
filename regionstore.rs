@@ -663,6 +663,16 @@ fn vec_rs_corr_contains(avec: &Vec<RegionStore>, ars: &RegionStore) -> bool {
 //    false
 //}
 
+/// Return true if a vector of RegionStores contains a RegionStore equal_corresponding to a given RegionStore.
+pub fn vec_rs_any_eq_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool {
+    for regstx in rs_vec.iter() {
+        if regstx.eq_corr(reg_str) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Split regions by intersections to get a list of regionstores that are subset
 /// of all regionstores they intersect.
 pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> Vec<RegionStore> {
@@ -702,14 +712,7 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
                     if pass == 1 {
                         let splits = rsx.subtract_corr(&int);
                         for rsz in splits.into_iter() {
-                            let mut add_it = true;
-                            for regstx in &next_vec {
-                                if regstx.eq_corr(&rsz) {
-                                    add_it = false;
-                                    break;
-                                }
-                            }
-                            if add_it {
+                            if !vec_rs_any_eq_corr(&next_vec, &rsz) {
                                 next_vec.push(rsz);
                             }
                         }
@@ -717,44 +720,21 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
 
                     let splits = rsy.subtract_corr(&int);
                     for rsz in splits.into_iter() {
-                        let mut add_it = true;
-                        for regstx in &next_vec {
-                            if regstx.eq_corr(&rsz) {
-                                add_it = false;
-                                break;
-                            }
-                        }
-                        if add_it {
+                        if !vec_rs_any_eq_corr(&next_vec, &rsz) {
                             next_vec.push(rsz);
                         }
                     }
 
-                    let mut add_it = true;
-                    for regstx in &next_vec {
-                        if regstx.eq_corr(&int) {
-                            add_it = false;
-                            break;
-                        }
-                    }
-                    if add_it {
+                    if !vec_rs_any_eq_corr(&next_vec, &int) {
                         next_vec.push(int);
                     }
                 }
             } // next rsx
         } // next rsy
 
-        for (iny, rsy) in tmp_vec.iter().enumerate() {
-            if !int_vec.contains(&iny) {
-                let mut add_it = true;
-                for regstx in &ret_vec {
-                    if regstx.eq_corr(rsy) {
-                        add_it = false;
-                        break;
-                    }
-                }
-                if add_it {
-                    ret_vec.push(rsy.clone());
-                }
+        for (iny, rsy) in tmp_vec.into_iter().enumerate() {
+            if !int_vec.contains(&iny) && !vec_rs_any_eq_corr(&ret_vec, &rsy) {
+                ret_vec.push(rsy);
             }
         }
 
