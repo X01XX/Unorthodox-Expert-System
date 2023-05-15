@@ -238,7 +238,7 @@ impl RegionStore {
     //      true
     //  }
 
-    /// Add a region, removing subset (and equal) regions.
+    /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&reg) {
@@ -246,7 +246,7 @@ impl RegionStore {
             return false;
         }
 
-        // Identify subsets
+        // Identify subsets.
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, regx) in self.avec.iter().enumerate() {
@@ -255,7 +255,7 @@ impl RegionStore {
             }
         }
 
-        // Remove identified regions, in reverse order
+        // Remove identified regions, in descending index order.
         for inx in rmvec.iter().rev() {
             removeunordered::remove_unordered(&mut self.avec, *inx);
         }
@@ -673,6 +673,44 @@ pub fn vec_rs_any_eq_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool
     false
 }
 
+/// Return true if any region is a superset, or equal, to a region.
+pub fn vec_rs_any_superset_corr(rs_vec: &[RegionStore], reg_str: &RegionStore) -> bool {
+    for regx in rs_vec {
+        if regx.is_superset_corr(reg_str) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Add a corresponding RegionStore to a corresponding RegionStore vector.
+/// Skip add if there is any superset.
+/// Otherwise, remove any subset RegionStores.
+pub fn vec_rs_push_nosubs_corr(rs_vec: &mut Vec<RegionStore>, reg_str: RegionStore) -> bool {
+    // Check for supersets, which probably is an error
+    if vec_rs_any_superset_corr(rs_vec, &reg_str) {
+        return false;
+    }
+
+    // Identify subsets.
+    let mut rmvec = Vec::<usize>::new();
+
+    for (inx, regx) in rs_vec.iter().enumerate() {
+        if regx.subset_corr(&reg_str) {
+            rmvec.push(inx);
+        }
+    }
+
+    // Remove identified regions, in descending index order.
+    for inx in rmvec.iter().rev() {
+        removeunordered::remove_unordered(rs_vec, *inx);
+    }
+
+    rs_vec.push(reg_str);
+
+    true
+}
+
 /// Split regions by intersections to get a list of regionstores that are subset
 /// of all regionstores they intersect.
 pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> Vec<RegionStore> {
@@ -713,7 +751,7 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
                         let splits = rsx.subtract_corr(&int);
                         for rsz in splits.into_iter() {
                             if !vec_rs_any_eq_corr(&next_vec, &rsz) {
-                                next_vec.push(rsz);
+                                vec_rs_push_nosubs_corr(&mut next_vec, rsz);
                             }
                         }
                     }
@@ -721,12 +759,12 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
                     let splits = rsy.subtract_corr(&int);
                     for rsz in splits.into_iter() {
                         if !vec_rs_any_eq_corr(&next_vec, &rsz) {
-                            next_vec.push(rsz);
+                            vec_rs_push_nosubs_corr(&mut next_vec, rsz);
                         }
                     }
 
                     if !vec_rs_any_eq_corr(&next_vec, &int) {
-                        next_vec.push(int);
+                        vec_rs_push_nosubs_corr(&mut next_vec, int);
                     }
                 }
             } // next rsx
@@ -734,7 +772,7 @@ pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> V
 
         for (iny, rsy) in tmp_vec.into_iter().enumerate() {
             if !int_vec.contains(&iny) && !vec_rs_any_eq_corr(&ret_vec, &rsy) {
-                ret_vec.push(rsy);
+                vec_rs_push_nosubs_corr(&mut ret_vec, rsy);
             }
         }
 
@@ -963,7 +1001,7 @@ mod tests {
         regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
 
         let mut regstr2 = RegionStore::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string(1, "r11x1")?);
+        regstr2.push(SomeRegion::new_from_string(1, "r1xx1")?);
 
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
@@ -979,7 +1017,7 @@ mod tests {
         for rsx in &rslt {
             println!("  {}", rsx);
         }
-        assert!(rslt.len() == 4);
+        assert!(rslt.len() == 5);
         assert!(
             rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
                 1, "rx100"
@@ -997,7 +1035,88 @@ mod tests {
         );
         assert!(
             rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
-                1, "r1111"
+                1, "r10x1"
+            )?]))
+        );
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r1101"
+            )?]))
+        );
+
+        let mut rs_vec = Vec::<RegionStore>::with_capacity(2);
+
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(1);
+        regstr2.push(SomeRegion::new_from_string(1, "r01xx")?);
+
+        let mut regstr3 = RegionStore::with_capacity(1);
+        regstr3.push(SomeRegion::new_from_string(1, "rxxx1")?);
+
+        rs_vec.push(regstr2.clone());
+        rs_vec.push(regstr1.clone());
+        rs_vec.push(regstr3.clone());
+
+        println!("Initial6:");
+        for rsx in &rs_vec {
+            println!("  {}", rsx);
+        }
+
+        let rslt = vec_rs_corr_split_by_partial_intersection(&rs_vec);
+
+        println!("Result6:");
+        for rsx in &rslt {
+            println!("  {}", rsx);
+        }
+        assert!(rslt.len() == 8);
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "rx0x1"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r1100"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r1101"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r0110"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r0111"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r0100"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r0101"
+            )?]))
+        );
+
+        assert!(
+            rslt.contains(&RegionStore::new(vec![SomeRegion::new_from_string(
+                1, "r1x11"
             )?]))
         );
 
