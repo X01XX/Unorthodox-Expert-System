@@ -1117,8 +1117,8 @@ fn usage() {
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
     println!("    will get things moving again.");
-    println!("\n    After no more needs can be done, select region seeking logic will be used.  If there are more than one select");
-    println!("    regions, repeatedly pressing enter will increase the boredom duration, and after 3 times the number of select regions");
+    println!("\n    After no more needs can be done, select region seeking logic will be used.  If there is more than one select");
+    println!("    region, repeatedly pressing enter will increase the boredom duration, after the value of the select regions");
     println!("    the current state is in, a different select region will be sought.");
 }
 

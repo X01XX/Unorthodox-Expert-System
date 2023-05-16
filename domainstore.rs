@@ -121,11 +121,27 @@ impl DomainStore {
 
     /// Calculate parts of select regions, in case of any overlapps.
     pub fn calc_select(&mut self) {
-        // Calc any subregions due to intersecitons.
-        if self.select.len() == 1 {
-            self.select_and_ints = self.select.clone();
-        } else {
-            self.select_and_ints = self.select.split_by_intersections();
+        println!("\nSelect Regions: {}", self.select);
+        // Check for any intersection.
+        for inx in 0..(self.select.len() - 1) {
+            for iny in (inx + 1)..self.select.len() {
+                if self.select[inx]
+                    .regions
+                    .intersects_corr(&self.select[iny].regions)
+                {
+                    self.select_and_ints = self.select.split_by_intersections();
+                    println!(
+                        "\nSelect Regions positive fragments: {}",
+                        self.select_and_ints
+                    );
+                    return;
+                }
+            }
+        }
+        self.select_and_ints =
+            SelectRegionsStore::new(Vec::<SelectRegions>::with_capacity(self.select.len()));
+        for selx in self.select.iter() {
+            self.select_and_ints.push(selx.regions.clone(), selx.value);
         }
     }
 
@@ -724,34 +740,19 @@ impl DomainStore {
         Some(ret_str)
     }
 
-    /// Print current states and select information.
-    /// Return true if the current states are in an select region.
-    pub fn print_select(&self) -> bool {
-        let mut ret = false;
-
-        let all_states = self.all_current_states();
-        let select_supersets = self.select.positive_supersets_of_states(&all_states);
-        if select_supersets.is_empty() {
-            print!(
-                "\nNot in select regions {}",
-                SelectRegions::vec_ref_string(&self.select.positive_select_regions())
+    /// Print select region information.
+    pub fn print_select(&self) {
+        if self
+            .select
+            .any_supersets_of_states(&self.all_current_states())
+        {
+            println!(
+                "\nSelect Region boredom/satiation level = {} of limit {}",
+                self.boredom, self.boredom_limit
             );
         } else {
-            ret = true;
-            print!(
-                "\nNot in select regions {}",
-                SelectRegions::vec_ref_string(
-                    &self.select.positive_not_supersets_of_states(&all_states)
-                )
-            );
+            print!("\nNot in any select regions",);
         }
-
-        println!(
-            ", Boredom level = {} of limit {}",
-            self.boredom, self.boredom_limit
-        );
-
-        ret
     }
 
     /// Print a domain.

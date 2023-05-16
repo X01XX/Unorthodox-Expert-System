@@ -714,66 +714,87 @@ pub fn vec_rs_push_nosubs_corr(rs_vec: &mut Vec<RegionStore>, reg_str: RegionSto
 /// Split regions by intersections to get a list of regionstores that are subset
 /// of all regionstores they intersect.
 pub fn vec_rs_corr_split_by_partial_intersection(rs_vec: &Vec<RegionStore>) -> Vec<RegionStore> {
+    // Init return vector of RegionStores.
     let mut ret_vec = Vec::<RegionStore>::new();
 
-    // Copy RegionStores.
+    // Init temp vector, for RegionStore fragments.
     let mut tmp_vec = Vec::<RegionStore>::new();
-    for rsx in rs_vec {
-        tmp_vec.push(rsx.clone());
-    }
 
-    let mut pass = 0;
-    loop {
-        pass += 1;
+    // Init vector to note indices of RegionStores that are split.
+    let mut int_vec = Vec::<usize>::new();
 
-        // Find regions that are either subset of another or do not intersect another.
-        let mut next_vec = Vec::<RegionStore>::new();
+    // Get initial fragments, from any two non-subset intersecting RegionStores.
+    for inx in 0..(rs_vec.len() - 1) {
+        for iny in (inx + 1)..rs_vec.len() {
+            // Skip two equal regions.  If no other intersections, one will make it into the return vector.
+            if rs_vec[inx].eq_corr(&rs_vec[iny]) {
+                continue;
+            }
 
-        let mut int_vec = Vec::<usize>::new();
+            // If there is an intersection, split the RegionStores into fragments.
+            if let Some(int) = rs_vec[inx].intersection_corr(&rs_vec[iny]) {
+                int_vec.push(inx);
+                int_vec.push(iny);
 
-        for (iny, rsy) in tmp_vec.iter().enumerate() {
-            for rsx in rs_vec.iter() {
-                if rsy.intersects_corr(rsx) {
-                    // Eq, ignore.
-                    if rsy.eq_corr(rsx) {
-                        continue;
-                    }
-
-                    if pass > 1 && rsy.subset_corr(rsx) {
-                        continue;
-                    }
-
-                    int_vec.push(iny);
-
-                    let int = rsx.intersection_corr(rsy).unwrap();
-                    // Intersection found, so subtract it.
-                    if pass == 1 {
-                        let splits = rsx.subtract_corr(&int);
-                        for rsz in splits.into_iter() {
-                            vec_rs_push_nosubs_corr(&mut next_vec, rsz);
-                        }
-                    }
-
-                    let splits = rsy.subtract_corr(&int);
-                    for rsz in splits.into_iter() {
-                        vec_rs_push_nosubs_corr(&mut next_vec, rsz);
-                    }
-
-                    vec_rs_push_nosubs_corr(&mut next_vec, int);
+                let splits = rs_vec[inx].subtract_corr(&int);
+                for rsz in splits.into_iter() {
+                    vec_rs_push_nosubs_corr(&mut tmp_vec, rsz);
                 }
-            } // next rsx
-        } // next rsy
-
-        for (iny, rsy) in tmp_vec.into_iter().enumerate() {
-            if !int_vec.contains(&iny) {
-                vec_rs_push_nosubs_corr(&mut ret_vec, rsy);
+                let splits = rs_vec[iny].subtract_corr(&int);
+                for rsz in splits.into_iter() {
+                    vec_rs_push_nosubs_corr(&mut tmp_vec, rsz);
+                }
+                vec_rs_push_nosubs_corr(&mut tmp_vec, int);
             }
         }
+    }
+    // For RegionStores with no intersections, push to the return vector.
+    for (iny, rsy) in rs_vec.iter().enumerate() {
+        if !int_vec.contains(&iny) {
+            vec_rs_push_nosubs_corr(&mut ret_vec, rsy.clone());
+        }
+    }
 
-        if next_vec.is_empty() {
+    // Look for additional non-subset intersections.
+    loop {
+        // Init vector for next pass.
+        let mut next_pass = Vec::<RegionStore>::new();
+
+        // Check remaining fragments for additional intersections.
+        // If no intersections are found, add the fragment to the return vector,
+        // else add fragments of fragments to the next_pass vector.
+        for rsy in tmp_vec.into_iter() {
+            let mut split = false;
+
+            for rsx in rs_vec.iter() {
+                // Skip if a fragment is a subset, thats the end we are looking for.
+                if rsy.subset_corr(rsx) {
+                    continue;
+                }
+
+                // If there is an intersection, split into fragments.
+                if let Some(int) = rsy.intersection_corr(rsx) {
+                    let splits = rsy.subtract_corr(&int);
+                    for rsz in splits.into_iter() {
+                        vec_rs_push_nosubs_corr(&mut next_pass, rsz);
+                    }
+
+                    vec_rs_push_nosubs_corr(&mut next_pass, int);
+                    split = true;
+                }
+            } // next rsx
+              // If no intersectiosn, add to return vector.
+            if !split {
+                vec_rs_push_nosubs_corr(&mut ret_vec, rsy);
+            }
+        } // next rsy
+
+        // If no more fragments to check, return.
+        if next_pass.is_empty() {
             return ret_vec;
         }
-        tmp_vec = next_vec;
+        // Set up next fragments to check.
+        tmp_vec = next_pass;
     } // End loop
 }
 
@@ -788,9 +809,10 @@ pub fn vec_rs_corr_subtract(rs_vec: &[RegionStore], sub_vec: &[RegionStore]) -> 
         tmp_vec.push(rsx.clone());
     }
 
+    // Find regions that are either subset of another or do not intersect another.
     loop {
-        // Find regions that are either subset of another or do not intersect another.
-        let mut next_vec = Vec::<RegionStore>::new();
+        // Init vector for fragments to check in the next pass.
+        let mut next_pass = Vec::<RegionStore>::new();
 
         'top_loop: for rsy in tmp_vec.into_iter() {
             for rsx in sub_vec.iter() {
@@ -801,8 +823,8 @@ pub fn vec_rs_corr_subtract(rs_vec: &[RegionStore], sub_vec: &[RegionStore]) -> 
                         // Partial intersection found, so split reigons.
                         let splits = rsy.subtract_corr(rsx);
                         for splx in splits {
-                            if !vec_rs_corr_contains(&next_vec, &splx) {
-                                next_vec.push(splx);
+                            if !vec_rs_corr_contains(&next_pass, &splx) {
+                                next_pass.push(splx);
                             }
                         }
                         continue 'top_loop;
@@ -815,10 +837,10 @@ pub fn vec_rs_corr_subtract(rs_vec: &[RegionStore], sub_vec: &[RegionStore]) -> 
             }
         } // next rsy
 
-        if next_vec.is_empty() {
+        if next_pass.is_empty() {
             return ret_vec;
         }
-        tmp_vec = next_vec;
+        tmp_vec = next_pass;
     } // End loop
 }
 
