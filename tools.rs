@@ -49,7 +49,6 @@ pub fn vec_contains<T>(avec: &[T], item: &T, testfn: fn(&T, &T) -> bool) -> bool
 /// Any 3 of 5 = 5 * 4 * 3 = 60;
 /// Any 4 of 5 = 5 * 4 * 3 * 2 = 120;
 /// Any 5 of 5 = 5 * 4 * 3 * 2 * 1 = 120;
-#[allow(dead_code)]
 pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<Vec<T>> {
     debug_assert!(num_items <= vecx.len());
 

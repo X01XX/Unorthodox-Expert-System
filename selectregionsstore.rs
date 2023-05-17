@@ -1,6 +1,6 @@
 //! Implement a struct of Select RegionStores.
 
-use crate::regionstore::{vec_rs_corr_split_by_partial_intersection, RegionStore};
+use crate::regionstore::{vec_rs_corr_split_to_subsets, RegionStore};
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -253,7 +253,7 @@ impl SelectRegionsStore {
 
         let mut neg_ints = Self::new(vec![]);
         let mut ret = Self::new(vec![]);
-        for reg_strx in vec_rs_corr_split_by_partial_intersection(&rs) {
+        for reg_strx in vec_rs_corr_split_to_subsets(&rs) {
             let mut val = 0;
             for reg_valx in &self.regionstores {
                 if reg_valx.regions.is_superset_corr(&reg_strx) {

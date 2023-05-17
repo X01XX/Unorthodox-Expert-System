@@ -431,13 +431,6 @@ impl DomainStore {
         self.select.rate_plans(aplan, &self.all_current_states())
     }
 
-    /// Return the sum of all negative select regions a plan passes though, restricted to the domain number
-    /// part of select regions.
-    #[allow(dead_code)]
-    fn number_negative_regions(&self, aplan: &SomePlan) -> usize {
-        self.select.number_negative_regions(aplan)
-    }
-
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plan(
         &self,
