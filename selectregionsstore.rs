@@ -1,6 +1,6 @@
 //! Implement a struct of Select RegionStores.
 
-use crate::regionstorecorr::{vec_rs_split_to_subsets, RegionStoreCorr};
+use crate::regionstorecorr::RegionStoreCorr;
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -192,7 +192,7 @@ impl SelectRegionsStore {
     /// Return true if any SelectRegion is a superset of a given RegionStoreCorr.
     pub fn any_supersets_of(&self, regs: &RegionStoreCorr) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset(regs) {
+            if regsx.regions.is_superset_of(regs) {
                 return true;
             }
         }
@@ -248,10 +248,10 @@ impl SelectRegionsStore {
         }
 
         let mut ret = Self::new(vec![]);
-        for reg_strx in vec_rs_split_to_subsets(&rs) {
+        for reg_strx in RegionStoreCorr::vec_split_to_subsets(&rs) {
             let mut val = 0;
             for reg_valx in &self.regionstores {
-                if reg_valx.regions.is_superset(&reg_strx) {
+                if reg_valx.regions.is_superset_of(&reg_strx) {
                     val += reg_valx.value;
                 }
             }

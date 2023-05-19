@@ -475,8 +475,6 @@ impl SomeDomain {
         }
 
         //println!("make_plan returned plan");
-        //let inx = self.choose_a_plan(&plans);
-        //Some(plans.remove(inx))
         Some(plans)
     } // end make plan
 

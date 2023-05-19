@@ -758,32 +758,7 @@ impl DomainStore {
 
         let cur_state = &self.avec[dom_num].get_current_state();
 
-        // Calc current status.
-        let mut in_str = String::new();
-        let all_states = self.all_current_states();
-        let select_supersets = self.select.supersets_of_states(&all_states);
-        let mut in_pos = false;
-        let mut in_neg = false;
-        for optx in select_supersets.iter() {
-            in_str += &format!("{} ", optx);
-            match optx.value.cmp(&0) {
-                Ordering::Less => in_neg = true,
-                Ordering::Greater => in_pos = true,
-                _ => (),
-            }
-        }
-
-        let status = if in_pos && in_neg {
-            "Conflicted".to_string()
-        } else if in_pos {
-            "Positive".to_string()
-        } else if in_neg {
-            "Negative".to_string()
-        } else {
-            "Neutral".to_string()
-        };
-
-        println!("\nDom: {dom_num} Current State: {cur_state} Status: {status} {in_str}");
+        println!("\nDom: {dom_num} Current State: {cur_state}");
     }
 
     /// Print needs that can be done.
@@ -843,12 +818,38 @@ impl DomainStore {
     }
 
     pub fn display_needs(&self) {
+        assert!(self.step_num < 1000); // Remove for continuous use
+
+        // Calc current status.
+        let mut in_str = String::new();
+        let all_states = self.all_current_states();
+        let select_supersets = self.select.supersets_of_states(&all_states);
+        let mut in_pos = false;
+        let mut in_neg = false;
+        for optx in select_supersets.iter() {
+            in_str += &format!("in {} ", optx);
+            match optx.value.cmp(&0) {
+                Ordering::Less => in_neg = true,
+                Ordering::Greater => in_pos = true,
+                _ => (),
+            }
+        }
+
+        let status = if in_pos && in_neg {
+            "Conflicted, ".to_string()
+        } else if in_pos {
+            "Positive, ".to_string()
+        } else if in_neg {
+            "Negative, ".to_string()
+        } else {
+            "Neutral".to_string()
+        };
+
         println!(
-            "\nStep {} All domain states: {}",
+            "\nStep {} All domain states: {} Status: {status}{in_str}",
             self.step_num,
             SomeState::vec_ref_string(&self.all_current_states())
         );
-        assert!(self.step_num < 1000); // Remove for continuous use
 
         self.print_domain();
 
@@ -948,7 +949,7 @@ impl DomainStore {
 
         // Get non-negative regions the goal intersects.
         let mut regs_goal_in = nn_regs.intersects_of(goal_reg);
-        //println!("intersects of {}", SomeRegion::vec_ref_string(&regs_goal_in));
+
         // Home for additional regions, caused by an adjacent non-negative region.
         let mut additional_goal_regs = Vec::<SomeRegion>::new();
 
@@ -1062,12 +1063,6 @@ impl DomainStore {
         } // end while
 
         // Get intersections, if any.
-        if intersection_vec.is_some() {
-            //println!("found intersections");
-        } else {
-            //println!("no intersections found");
-            return None;
-        }
         let Some(intersections) = intersection_vec else { //println!("no intersections");
                                                             return None; };
 
