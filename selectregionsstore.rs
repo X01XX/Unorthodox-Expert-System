@@ -1,6 +1,6 @@
 //! Implement a struct of Select RegionStores.
 
-use crate::regionstore::{vec_rs_corr_split_to_subsets, RegionStore};
+use crate::regionstorecorr::{vec_rs_split_to_subsets, RegionStoreCorr};
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -14,7 +14,6 @@ use crate::statestore::StateStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
@@ -33,7 +32,7 @@ pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
     /// If the regions are all X, except for one, then it affects only one domain.
     /// Otherwise, it affects a combination of two, or more, domains.
-    pub regions: RegionStore,
+    pub regions: RegionStoreCorr,
     /// A value for being in the select state.
     /// A Positive value is, so far, given to a goal state.
     /// A negative value is, so far, given to a plan that passes through the regions,
@@ -70,8 +69,7 @@ impl SelectRegions {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-/// A struct of select RegionStores, where each RegionStore contains a list
-/// of domain select regions, in domain number order.
+/// A struct of SelectRegions.
 pub struct SelectRegionsStore {
     pub regionstores: Vec<SelectRegions>,
 }
@@ -90,7 +88,7 @@ impl SelectRegionsStore {
     }
 
     /// Add a RegionsStore.
-    pub fn push(&mut self, regions: RegionStore, value: isize) {
+    pub fn push(&mut self, regions: RegionStoreCorr, value: isize) {
         if value != 0 && !self.contains(&regions) {
             self.regionstores.push(SelectRegions { regions, value });
         }
@@ -120,7 +118,7 @@ impl SelectRegionsStore {
     pub fn number_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
         self.regionstores
             .iter()
-            .map(|regsx| usize::from(regsx.regions.is_superset_corr_states(stas)))
+            .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
             .sum()
     }
 
@@ -129,7 +127,7 @@ impl SelectRegionsStore {
         self.regionstores
             .iter()
             .map(|regsx| {
-                if regsx.regions.is_superset_corr_states(stas) {
+                if regsx.regions.is_superset_states(stas) {
                     regsx.value
                 } else {
                     0
@@ -142,27 +140,27 @@ impl SelectRegionsStore {
     pub fn negative_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| regsx.value < 0 && regsx.regions.is_superset_corr_states(stas))
+            .filter(|regsx| regsx.value < 0 && regsx.regions.is_superset_states(stas))
             .collect()
     }
 
-    /// Return a Vector of RegionStores not supersets of a given StateStore.
+    /// Return a Vector of SelectRegions not supersets of a given StateStore.
     pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| !regsx.regions.is_superset_corr_states(stas))
+            .filter(|regsx| !regsx.regions.is_superset_states(stas))
             .collect()
     }
 
-    /// Return a Vector of positive value RegionStores not supersets of a given StateStore.
+    /// Return a Vector of positive value SelectRegions not supersets of a given StateStore.
     pub fn positive_not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| !regsx.regions.is_superset_corr_states(stas) && regsx.value > 0)
+            .filter(|regsx| !regsx.regions.is_superset_states(stas) && regsx.value > 0)
             .collect()
     }
 
-    /// Return a Vector of positive value RegionStores.
+    /// Return a Vector of positive value SelectRegions.
     pub fn positive_select_regions(&self) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
@@ -170,10 +168,10 @@ impl SelectRegionsStore {
             .collect()
     }
 
-    /// Return true if any RegionStore is a superset of a StateStore.
+    /// Return true if any SelectRegion is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_corr_states(stas) {
+            if regsx.regions.is_superset_states(stas) {
                 return true;
             }
         }
@@ -184,17 +182,17 @@ impl SelectRegionsStore {
     pub fn value_supersets_of_states(&self, stas: &[&SomeState]) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_corr_states(stas) {
+            if regsx.regions.is_superset_states(stas) {
                 val += regsx.value;
             }
         }
         val
     }
 
-    /// Return true if any RegionStore is a superset of a given RegionStore.
-    pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
+    /// Return true if any SelectRegion is a superset of a given RegionStoreCorr.
+    pub fn any_supersets_of(&self, regs: &RegionStoreCorr) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_corr(regs) {
+            if regsx.regions.is_superset(regs) {
                 return true;
             }
         }
@@ -205,7 +203,7 @@ impl SelectRegionsStore {
     pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| regsx.regions.is_superset_corr_states(stas))
+            .filter(|regsx| regsx.regions.is_superset_states(stas))
             .collect()
     }
 
@@ -213,7 +211,7 @@ impl SelectRegionsStore {
     pub fn positive_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| regsx.regions.is_superset_corr_states(stas) && regsx.value > 0)
+            .filter(|regsx| regsx.regions.is_superset_states(stas) && regsx.value > 0)
             .collect()
     }
 
@@ -221,9 +219,7 @@ impl SelectRegionsStore {
     pub fn number_negative_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
         self.regionstores
             .iter()
-            .map(|regsx| {
-                usize::from(regsx.value < 0 && regsx.regions.is_superset_corr_states(stas))
-            })
+            .map(|regsx| usize::from(regsx.value < 0 && regsx.regions.is_superset_states(stas)))
             .sum()
     }
 
@@ -240,30 +236,27 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return a list of regionstores, split by intersections, until
-    /// none have a partial intersection with the original regionstores.
-    /// Some result regionstores may overlap each other.
-    /// The original regionstores minus the result regionstores should be null.
-    /// Each result regionstore will be a subset of one, or more, of the original regionstores.
+    /// Return a list of RegionStoreCorrs, split by intersections, until
+    /// none have a partial intersection with the original RegionStoreCorrs.
+    /// Some result RegionStoreCorrs may overlap each other.
+    /// Each result regionstore will be a subset of one, or more, of the original regionstores,
+    /// where the sum of the SelectRegion values is greater than zero.
     pub fn split_by_intersections(&self) -> Self {
-        let mut rs = Vec::<RegionStore>::with_capacity(self.len());
+        let mut rs = Vec::<RegionStoreCorr>::with_capacity(self.len());
         for reg_valx in &self.regionstores {
             rs.push(reg_valx.regions.clone());
         }
 
-        let mut neg_ints = Self::new(vec![]);
         let mut ret = Self::new(vec![]);
-        for reg_strx in vec_rs_corr_split_to_subsets(&rs) {
+        for reg_strx in vec_rs_split_to_subsets(&rs) {
             let mut val = 0;
             for reg_valx in &self.regionstores {
-                if reg_valx.regions.is_superset_corr(&reg_strx) {
+                if reg_valx.regions.is_superset(&reg_strx) {
                     val += reg_valx.value;
                 }
             }
-            match val.cmp(&0) {
-                Ordering::Greater => ret.push(reg_strx, val),
-                Ordering::Less => neg_ints.push(reg_strx, val),
-                _ => (),
+            if val > 0 {
+                ret.push(reg_strx, val);
             }
         }
 
@@ -271,9 +264,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if an equal RegionStore is already in the SelectRegionsStore.
-    fn contains(&self, regstr: &RegionStore) -> bool {
+    fn contains(&self, regstr: &RegionStoreCorr) -> bool {
         for regstrx in &self.regionstores {
-            if regstrx.regions.equal_corr(regstr) {
+            if regstrx.regions == *regstr {
                 return true;
             }
         }
@@ -312,7 +305,7 @@ impl SelectRegionsStore {
         for _ in 0..5 {
             for selx in sup_store.iter() {
                 // Get edges mask for a negative superset
-                let mut edges = selx.regions.edge_mask_corr();
+                let mut edges = selx.regions.edge_masks();
 
                 for (edgex, mskx) in edges.iter_mut().zip(change_mask.iter()) {
                     //println!("choose_select_exit_needs: edge {} and b10 {} and b01 {}", edges[inx], changes[inx].b01, changes[inx].b10);
@@ -488,7 +481,7 @@ mod tests {
         // Init a DomainStore.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
 
-        let mut regstr1 = RegionStore::with_capacity(1);
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
         let reg1 = dmxs[0]
             .region_from_string_pad_x("rX1XX")
             .expect("String should be formatted correctly");
@@ -498,7 +491,7 @@ mod tests {
         // Add select regionstores.
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr1 = RegionStore::with_capacity(1);
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
         let reg2 = dmxs[0]
             .region_from_string_pad_x("r1XX1")
             .expect("String should be formatted correctly");
