@@ -3,6 +3,7 @@
 use crate::region::SomeRegion;
 use crate::removeunordered;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -77,32 +78,17 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-        for regx in &self.avec {
-            if regx.is_superset_of(reg) {
-                return true;
-            }
-        }
-        false
+        tools::vec_contains(&self.avec, reg, SomeRegion::is_superset_of)
     }
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
-        for regx in &self.avec {
-            if regx.is_subset_of(reg) {
-                return true;
-            }
-        }
-        false
+        tools::vec_contains(&self.avec, reg, SomeRegion::is_subset_of)
     }
 
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
-        for regx in &self.avec {
-            if regx.intersects(reg) {
-                return true;
-            }
-        }
-        false
+        tools::vec_contains(&self.avec, reg, SomeRegion::intersects)
     }
 
     /// Return true if any region is a superset of a state.
@@ -117,40 +103,30 @@ impl RegionStore {
 
     /// Return vector of regions that are a superset of a given region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        let mut ret_vec = Vec::<&SomeRegion>::new();
-        for regx in &self.avec {
-            if regx.is_superset_of(reg) {
-                ret_vec.push(regx);
-            }
-        }
-        ret_vec
+        self.avec
+            .iter()
+            .filter(|regx| regx.is_superset_of(reg))
+            .collect()
     }
 
     /// Return vector of regions that intersect a given region.
     pub fn intersects_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        let mut ret_vec = Vec::<&SomeRegion>::new();
-        for regx in &self.avec {
-            if regx.intersects(reg) {
-                ret_vec.push(regx);
-            }
-        }
-        ret_vec
+        self.avec
+            .iter()
+            .filter(|regx| regx.intersects(reg))
+            .collect()
     }
 
     /// Return vector of regions that are a adjacent to a given region.
     pub fn adjacent_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        let mut ret_vec = Vec::<&SomeRegion>::new();
-        for regx in &self.avec {
-            if regx.is_adjacent(reg) {
-                ret_vec.push(regx);
-            }
-        }
-        ret_vec
+        self.avec
+            .iter()
+            .filter(|regx| regx.is_adjacent(reg))
+            .collect()
     }
 
     /// Return vector of regions that are closest to a given region.
     pub fn closest_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        let mut ret_vec = Vec::<&SomeRegion>::new();
         let mut min_distance = usize::MAX;
         for regx in &self.avec {
             let dist = regx.distance(reg);
@@ -158,12 +134,10 @@ impl RegionStore {
                 min_distance = dist;
             }
         }
-        for regx in &self.avec {
-            if regx.distance(reg) == min_distance {
-                ret_vec.push(regx);
-            }
-        }
-        ret_vec
+        self.avec
+            .iter()
+            .filter(|regx| regx.distance(reg) == min_distance)
+            .collect()
     }
 
     /// Return vector of regions that are a superset of a given state.
@@ -222,17 +196,6 @@ impl RegionStore {
 
         fnd
     }
-
-    // Add a region, removing subset (and equal) regions.
-    //  pub fn push_no_dup(&mut self, reg: SomeRegion) -> bool {
-    //      if self.contains(&reg) {
-    //          return false;
-    //      }
-    //
-    //      self.avec.push(reg);
-    //
-    //      true
-    //  }
 
     /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
@@ -337,23 +300,6 @@ impl RegionStore {
 
         rc_str
     }
-
-    // Return the result of intersection of two region stores
-    //  pub fn intersection(&self, other: &RegionStore) -> Self {
-    //
-    //      let mut ret_store = Self::new();
-    //
-    //      for regx in self.iter() {
-    //
-    //          for regy in other.iter() {
-    //
-    //              if regx.intersects(&regy) {
-    //                  ret_store.push_nosubs(regx.intersection(&regy));
-    //              }
-    //          }
-    //      }
-    //      ret_store
-    //  }
 
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {

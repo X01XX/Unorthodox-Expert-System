@@ -834,17 +834,7 @@ fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
             println!("\n{}", df.str2());
             cur_states[planx.dom_num] = stepx.result.state1.clone();
         } // next steps
-        print!("{}", planx.result_region());
-        let mut cur_states_ref = Vec::<&SomeState>::with_capacity(cur_states.len());
-        for stax in cur_states.iter() {
-            cur_states_ref.push(stax);
-        }
-        for sel_regx in dom_str.select.iter() {
-            if sel_regx.regions.is_superset_states(&cur_states_ref) {
-                print!(" in {:+}", sel_regx);
-            }
-        }
-        println!(" ");
+        println!("{}", planx.result_region());
     } // next planx
 }
 

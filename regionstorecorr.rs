@@ -268,7 +268,7 @@ impl RegionStoreCorr {
     }
 
     /// Return a string representing a vector of regions.
-    pub fn _vec_ref_string(avec: &[&RegionStoreCorr]) -> String {
+    pub fn vec_string(avec: &[RegionStoreCorr]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -286,7 +286,7 @@ impl RegionStoreCorr {
 
     /// Return true if a vector of RegionStoreCorrs contains a given regionstorecorr.
     #[allow(dead_code)]
-    fn vec_contains(avec: &Vec<RegionStoreCorr>, ars: &RegionStoreCorr) -> bool {
+    fn vec_contains(avec: &[RegionStoreCorr], ars: &RegionStoreCorr) -> bool {
         for rsx in avec {
             if rsx == ars {
                 return true;
@@ -336,7 +336,7 @@ impl RegionStoreCorr {
     /// Split corresponding RegionStoreCorrs by intersections, producing a result where each RSC is a subset
     /// of any intersecting original RSCs. All parts of the original RegionStores are accounted for in the
     /// result.
-    pub fn vec_split_to_subsets(rs_vec: &Vec<RegionStoreCorr>) -> Vec<RegionStoreCorr> {
+    pub fn vec_split_to_subsets(rs_vec: &[RegionStoreCorr]) -> Vec<RegionStoreCorr> {
         // Init return vector of RegionStores.
         let mut ret_vec = Vec::<RegionStoreCorr>::new();
 
@@ -441,17 +441,12 @@ mod tests {
         regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
         rs_vec.push(regstr1.clone());
 
-        println!("Initial1:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial1: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result1:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result1: {}", RegionStoreCorr::vec_string(&rs_vec));
+
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
 
@@ -462,17 +457,11 @@ mod tests {
         rs_vec.push(regstr1.clone());
         rs_vec.push(regstr1.clone());
 
-        println!("Initial2:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial2: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result2:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result2: {}", RegionStoreCorr::vec_string(&rs_vec));
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
 
@@ -486,17 +475,11 @@ mod tests {
         regstr2.push(SomeRegion::new_from_string(1, "r010x")?);
         rs_vec.push(regstr2.clone());
 
-        println!("Initial3:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial3: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result3:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result3: {}", RegionStoreCorr::vec_string(&rs_vec));
         assert!(rslt.len() == 2);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -520,17 +503,11 @@ mod tests {
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
 
-        println!("Initial4:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial4: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result4:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result4: {}", RegionStoreCorr::vec_string(&rs_vec));
         assert!(rslt.len() == 2);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -554,17 +531,11 @@ mod tests {
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
 
-        println!("Initial5:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial5: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result5:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result5: {}", RegionStoreCorr::vec_string(&rs_vec));
         assert!(rslt.len() == 5);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -607,17 +578,11 @@ mod tests {
         rs_vec.push(regstr1.clone());
         rs_vec.push(regstr3.clone());
 
-        println!("Initial6:");
-        for rsx in &rs_vec {
-            println!("  {}", rsx);
-        }
+        println!("Initial6: {}", RegionStoreCorr::vec_string(&rs_vec));
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result6:");
-        for rsx in &rslt {
-            println!("  {}", rsx);
-        }
+        println!("Result6: {}", RegionStoreCorr::vec_string(&rs_vec));
         assert!(rslt.len() == 8);
 
         assert!(

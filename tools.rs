@@ -28,10 +28,9 @@ pub fn vec_remove_dups<T>(avec: &mut Vec<T>, testfn: fn(&T, &T) -> bool) {
 }
 
 /// Return true if a vector contains a given item, given a equal function pointer.
-#[allow(dead_code)]
 pub fn vec_contains<T>(avec: &[T], item: &T, testfn: fn(&T, &T) -> bool) -> bool {
     for itemx in avec.iter() {
-        if testfn(item, itemx) {
+        if testfn(itemx, item) {
             return true;
         }
     }
