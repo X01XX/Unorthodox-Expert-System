@@ -800,12 +800,7 @@ fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result
 }
 
 fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
-    let all_states = dom_str.all_current_states();
-
-    let mut cur_states = Vec::<SomeState>::with_capacity(all_states.len());
-    for stax in all_states.iter() {
-        cur_states.push((*stax).clone());
-    }
+    let mut cur_states = dom_str.all_current_states();
 
     for planx in plan_str.iter() {
         if planx.is_empty() {
@@ -814,25 +809,21 @@ fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
 
         println!("\nDomain: {}, Plan:", planx.dom_num);
 
-        for stepx in planx.iter() {
-            let mut cur_states_ref = Vec::<&SomeState>::with_capacity(cur_states.len());
-            for stax in cur_states.iter() {
-                cur_states_ref.push(stax);
-            }
-            //println!("cur_states {}", SomeState::vec_ref_string(&cur_states_ref));
-
+        for (inx, stepx) in planx.iter().enumerate() {
             let df = stepx.initial.diff_mask(&stepx.result);
             print!(
                 "{} Action {:02} Group {} ",
                 &stepx.initial, &stepx.act_num, &stepx.group_reg
             );
-            for sel_regx in dom_str.select.iter() {
-                if sel_regx.regions.is_superset_states(&cur_states_ref) {
-                    print!(" in {:+}", sel_regx);
+            if inx > 0 {
+                for sel_regx in dom_str.select.iter() {
+                    if sel_regx.regions.is_superset_states(&cur_states) && sel_regx.value < 0 {
+                        print!(" in {:+}", sel_regx);
+                    }
                 }
             }
             println!("\n{}", df.str2());
-            cur_states[planx.dom_num] = stepx.result.state1.clone();
+            cur_states[planx.dom_num] = &stepx.result.state1;
         } // next steps
         println!("{}", planx.result_region());
     } // next planx

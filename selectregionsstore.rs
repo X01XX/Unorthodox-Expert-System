@@ -365,7 +365,7 @@ impl SelectRegionsStore {
         None
     }
 
-    /// Return the sum of all select regions values a plan goes through.
+    /// Return the sum of all negative select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
     pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, current_states: &[&'a SomeState]) -> isize {
         if aplan.len() < 2 {
