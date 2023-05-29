@@ -370,18 +370,11 @@ mod tests {
             SomeRegion::new_from_string(1, "rXXXX").unwrap(),
         ); // 7 -> D
         let planx = SomePlan::new(0, vec![step0, step1]);
-        if let Some(regx) = planx.path_region() {
-            println!("{} returned", regx);
-            let expected_region = SomeRegion::new_from_string(1, "rXXX1").unwrap();
-            if regx != expected_region {
-                return Err(format!(
-                    "Plan returns {} instead of {} for {}?",
-                    regx, expected_region, planx
-                ));
-            }
-        } else {
-            return Err(format!("Plan returns None for {}?", planx));
-        }
+        println!("plan: {planx}");
+        let Some(regx) = planx.path_region() else { panic!("Plan region is None?"); };
+        println!("Plan region: {regx}");
+        assert!(regx == SomeRegion::new_from_string(1, "rXXX1")?);
+
         Ok(())
     }
 
@@ -427,34 +420,13 @@ mod tests {
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
 
-        let Some(stp_str3) = stp_str1.link(&stp_str2) else { return Err("stp_str3 error".to_string()); };
+        let Some(stp_str3) = stp_str1.link(&stp_str2) else { return Err("Link error?".to_string()); };
         println!("stp3 {}", &stp_str3);
-        if stp_str3.len() != 4 {
-            return Err(format!("Len NE 4? {}", stp_str3).to_string());
-        }
-        let reg45 = SomeRegion::new_from_string(1, "r010x")?;
-        if stp_str3.initial_region() != &reg45 {
-            return Err(format!(
-                "initial {} NE {} ?",
-                stp_str3.initial_region(),
-                reg45
-            ));
-        }
-        if stp_str3.result_region() != &reg6 {
-            return Err(format!(
-                "initial {} NE {} ?",
-                stp_str3.result_region(),
-                reg6
-            ));
-        }
+        assert!(stp_str3.len() == 4);
 
-        // Result 101X appears twice when linked in this order, so its invalid.
-        //let Some(stp_str4) = stp_str2.link(&stp_str1) else { return Err("stp_str4 error".to_string()); };
-        //if stp_str4.is_valid() {
-        //  return Err(format!("stp4 {} valid?", &stp_str4).to_string());
-        //} else {
-        //  println!("Link not valid, as expected");
-        //}
+        assert!(*stp_str3.initial_region() == SomeRegion::new_from_string(1, "r010x")?);
+
+        assert!(*stp_str3.result_region() == reg6);
 
         Ok(())
     }
@@ -503,15 +475,11 @@ mod tests {
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
-
         println!("pln1: {}", pln1);
 
         if let Some(pln1s) = pln1.shortcuts() {
             println!("shortcut found: {}", pln1s);
             assert_eq!(pln1s.len(), 1);
-            if pln1s.len() != 1 {
-                return Err(format!("Len NE 1? {}", pln1s).to_string());
-            }
             if pln1s.initial_region() != &reg1 {
                 return Err(format!(
                     "Initial region {} NE {} ?",
@@ -526,6 +494,7 @@ mod tests {
                     reg0
                 ));
             }
+            assert!(pln1s.len() == 1);
         } else {
             return Err(format!("No shortcut found for {}?", pln1).to_string());
         }
@@ -545,11 +514,8 @@ mod tests {
         );
 
         let pln2 = SomePlan::new(0, vec![step1, step2]);
-
-        if let Some(pln2s) = pln2.shortcuts() {
-            return Err(format!("shortcut found for {} is {} ?", pln2, pln2s).to_string());
-        }
-        println!("no shortcut found for pln2");
+        println!("pln2: {pln2}");
+        assert!(pln2.shortcuts().is_none());
 
         Ok(())
     }

@@ -366,7 +366,7 @@ impl DomainStore {
             crate::tools::anyxofvec_order_matters(targets.len(), (0..targets.len()).collect());
 
         let mut selected_plan: Option<PlanStore> = None;
-        let mut max_rate: isize = -10000;
+        let mut max_rate: isize = isize::MIN;
 
         for optx in options.iter() {
             // Load targets, in the option order.
@@ -439,14 +439,12 @@ impl DomainStore {
         all_states: &[&SomeState],
     ) -> Option<SomePlan> {
         if let Some(mut plans) = self.avec[dom_num].make_plans(goal_region) {
-            let mut max_rate: isize = -1000;
+            let mut max_rate: isize = isize::MIN;
 
-            //let mut aplan: Option<&SomePlan> = None;
             for planx in plans.iter() {
                 let ratex = self.select.rate_plan(planx, all_states);
                 if ratex > max_rate {
                     max_rate = ratex;
-                    //aplan = Some(planx);
                 }
             }
 
@@ -725,9 +723,9 @@ impl DomainStore {
 
         // Load return vector.
         let mut ret_str = NeedStore::with_capacity(notsups.len());
-        for nsupx in notsups.iter() {
+        for nsupx in notsups.into_iter() {
             ret_str.push(SomeNeed::ToSelectRegion {
-                target_regions: (*nsupx).clone().clone(),
+                target_regions: nsupx.clone(),
             });
         }
         Some(ret_str)
@@ -912,7 +910,7 @@ impl DomainStore {
     }
 
     /// When the random depth-first plans all traverse a negative region, try to form a plan
-    /// by avoiding negative regions.
+    /// that avoids negative regions.
     fn avoid_negative_select_regions(
         &self,
         dom_num: usize,
@@ -926,44 +924,61 @@ impl DomainStore {
             //println!("no nn regs");
             return None;
         }
-        //println!("non-negative regions {}", nn_regs);
+
+        // Home for additional regions, caused by the start region not being in a positive region.
+        let mut additional_start_regs = Vec::<SomeRegion>::new();
 
         // Get poitive regions the start region is in.
         let mut regs_start_in = nn_regs.supersets_of(start_reg);
 
-        // Home for additional regions, caused by an adjacent non-negative region.
-        let mut additional_start_regs = Vec::<SomeRegion>::new();
-
-        let adj_regs = nn_regs.adjacent_to(start_reg);
-        for regx in adj_regs.iter() {
-            let adj_reg = start_reg.transpose_to(regx);
-            additional_start_regs.push(start_reg.union(&adj_reg));
-        }
-        for regx in additional_start_regs.iter() {
-            regs_start_in.push(regx);
-        }
+        // Start region may not be in a positive region.
         if regs_start_in.is_empty() {
-            //println!("no start regs");
-            return None;
+            // Find closest positive regions.
+            let mut min_dist = usize::MAX;
+            for regx in nn_regs.iter() {
+                let dist = start_reg.distance(regx);
+                if dist < min_dist {
+                    min_dist = dist;
+                }
+            }
+            for regx in nn_regs.iter() {
+                let dist = start_reg.distance(regx);
+                if dist == min_dist {
+                    let dif_msk = start_reg.diff_mask(regx);
+                    additional_start_regs.push(start_reg.set_to_x(&dif_msk));
+                }
+            }
+            for regx in additional_start_regs.iter() {
+                regs_start_in.push(regx);
+            }
         }
 
         // Get non-negative regions the goal intersects.
         let mut regs_goal_in = nn_regs.intersects_of(goal_reg);
 
-        // Home for additional regions, caused by an adjacent non-negative region.
+        // Home for additional regions, caused by the goal region not being in a positive region.
         let mut additional_goal_regs = Vec::<SomeRegion>::new();
 
-        let adj_regs = nn_regs.adjacent_to(goal_reg);
-        for regx in adj_regs.iter() {
-            let adj_reg = goal_reg.transpose_to(regx);
-            additional_goal_regs.push(goal_reg.union(&adj_reg));
-        }
-        for regx in additional_goal_regs.iter() {
-            regs_goal_in.push(regx);
-        }
+        // Goal region may not be in a positive region.
         if regs_goal_in.is_empty() {
-            //println!("no goal regs");
-            return None;
+            // Find closest positive regions.
+            let mut min_dist = usize::MAX;
+            for regx in nn_regs.iter() {
+                let dist = goal_reg.distance(regx);
+                if dist < min_dist {
+                    min_dist = dist;
+                }
+            }
+            for regx in nn_regs.iter() {
+                let dist = goal_reg.distance(regx);
+                if dist == min_dist {
+                    let dif_msk = goal_reg.diff_mask(regx);
+                    additional_goal_regs.push(goal_reg.set_to_x(&dif_msk));
+                }
+            }
+            for regx in additional_goal_regs.iter() {
+                regs_goal_in.push(regx);
+            }
         }
 
         // Get non-negative regions the start region and goal region are not in.
@@ -973,10 +988,6 @@ impl DomainStore {
                 continue;
             }
             other_nn_regions.push(regx);
-        }
-        if other_nn_regions.is_empty() {
-            //println!("no other nn regs");
-            return None;
         }
 
         // Init vector to build intersections on, regions the start region is in.
@@ -1242,7 +1253,6 @@ mod tests {
             assert!(planx.initial_region() == &start_region);
             assert!(planx.result_region() == &goal_region);
             assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
-            //assert!(1 == 2);
             return Ok(());
         }
         Err("No plan found?".to_string())
@@ -1512,7 +1522,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where start and goal regions are not in a non-negative region, but are adjacent to a non-negative region.
+    /// Test case where start and goal regions are not in a non-negative region.
     fn avoidance5() -> Result<(), String> {
         let sf = SomeState::new_from_string(1, "s0b1111")?;
         let s0 = SomeState::new_from_string(1, "s0b0")?;
@@ -1774,17 +1784,9 @@ mod tests {
         let all_states = dmxs.all_current_states();
         println!("all states {}", SomeState::vec_ref_string(&all_states));
 
-        if all_states.len() != 2 {
-            return Err(format!("Invalid length {}", all_states.len()));
-        }
-
-        if *all_states[0] != init_state1 {
-            return Err(format!("Invalid first state {}", all_states[0]));
-        }
-
-        if *all_states[1] != init_state2 {
-            return Err(format!("Invalid second state {}", all_states[1]));
-        }
+        assert!(all_states.len() == 2);
+        assert!(*all_states[0] == init_state1);
+        assert!(*all_states[1] == init_state2);
 
         Ok(())
     }
@@ -1844,9 +1846,7 @@ mod tests {
             .select
             .number_supersets_of_states(&vec![&state1, &state2]);
         println!("\nNumber supersets: {num_sup}",);
-        if num_sup > 0 {
-            return Err(format!("num_sup {num_sup} GT 0?"));
-        }
+        assert!(num_sup == 0);
 
         if let Some(needx) = dmxs.check_select() {
             println!("\nCheck_select returns {}", needx);
@@ -1873,25 +1873,24 @@ mod tests {
             .select
             .number_supersets_of_states(&vec![&state1, &state2]);
         println!("\nNumber supersets: {num_sup}",);
-        if num_sup != 3 {
-            return Err(format!("num_sup {num_sup} NE 3?"));
-        }
+        assert!(num_sup == 3);
 
         if let Some(needx) = dmxs.check_select() {
             return Err(format!("\nCheck_select returns need? {}", needx));
-        } else {
-            println!("\nCheck_select returns None");
         }
 
         println!(
             "\nBoredom level {} Boredom_limit {}",
             dmxs.boredom, dmxs.boredom_limit
         );
+        assert!(dmxs.boredom == 1);
+        assert!(dmxs.boredom_limit == 2);
 
         let val = dmxs
             .select
             .value_supersets_of_states(&vec![&state1, &state2]);
         println!("val = {val}");
+        assert!(val == 3);
 
         Ok(())
     }

@@ -192,18 +192,17 @@ mod tests {
         let sta2 = cng.apply_to_state(&sta);
 
         let sta3 = SomeState::new_from_string(1, "s0b1001")?;
-        if sta2 != sta3 {
-            return Err(format!("sta2 {} not {} ?", sta2, sta3));
-        }
+        println!("sta2: {sta2} sta3: {sta3}");
+        assert!(sta2 == sta3);
 
         // Test changing no bits.
         let cng = SomeChange::region_to_region(&reg0, &reg0);
 
         let sta2 = cng.apply_to_state(&sta);
 
-        if sta2 != sta {
-            return Err(format!("sta2 {} not {} ?", sta2, sta3));
-        }
+        println!("sta2: {sta2} sta: {sta}");
+        assert!(sta2 == sta);
+
         Ok(())
     }
 
@@ -242,9 +241,8 @@ mod tests {
             cng1.apply_to_state(&reg_01x1.state2),
         );
 
-        if !reg_0x1x.is_superset_of(&reg_result) {
-            return Err(format!("result {} ne {}!", reg_result, reg_1100));
-        }
+        println!("reg_0x1x: {reg_0x1x} reg_result: {reg_result}");
+        assert!(reg_0x1x.is_superset_of(&reg_result));
 
         Ok(())
     }

@@ -641,10 +641,11 @@ mod tests {
         let toreg = dm0.region_from_string("r1000")?;
 
         if let Some(aplan) = dmxs.get_plan(0, &toreg, &vec![&cur_state]) {
+            println!("plan: {}", aplan);
             assert_eq!(aplan.len(), 4);
             assert_eq!(*aplan.result_region(), toreg);
         } else {
-            return Err(String::from("no plan found to r1000?"));
+            return Err(String::from("No plan found to r1000?"));
         }
 
         Ok(())
@@ -697,8 +698,8 @@ mod tests {
         let toreg = dm0.region_from_string("r1100")?;
 
         if let Some(aplan) = &mut dmxs.get_plan(0, &toreg, &vec![&s7]) {
+            println!("plan: {}", aplan);
             assert_eq!(*aplan.result_region(), toreg);
-            println!("plan 1: {} len = {}", aplan, aplan.len());
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
         }
@@ -718,6 +719,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0]
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
+        println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
 
@@ -725,12 +727,11 @@ mod tests {
         let s1 = dm0.state_from_string("s0b1")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
-        } else {
-            return Err(String::from("Group r1 not found ??"));
-        }
-
         println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1")?)
+            .is_some());
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
@@ -743,9 +744,10 @@ mod tests {
 
         println!("\nActs: {}", &dm0.actions[0]);
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
-            return Err(String::from("Group r1  found ??"));
-        }
+        assert!(dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1")?)
+            .is_none());
 
         // Check needs for pn > 1 and not in group, and current state not in a group.
         let nds1 = dm0.get_needs();
@@ -754,7 +756,6 @@ mod tests {
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0")?));
 
-        // Err(String::from("Done"));
         Ok(())
     }
 
@@ -770,6 +771,7 @@ mod tests {
         let nds1 = dm0.actions.avec[0]
             .state_not_in_group_needs(&dm0.cur_state, &VecDeque::<SomeSample>::new());
 
+        println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
 
@@ -777,19 +779,21 @@ mod tests {
         let s1 = dm0.state_from_string("s0b1")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("r1")?) {
-        } else {
-            return Err(String::from("Group r1 not found ??"));
-        }
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("r1")?)
+            .is_some());
 
         // Expand group
         let s2 = dm0.state_from_string("s0b10")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
 
-        if let Some(_grpx) = dm0.actions[0].groups.find(&dm0.region_from_string("rXX")?) {
-        } else {
-            return Err(String::from("Group rXX not found ??"));
-        }
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0]
+            .groups
+            .find(&dm0.region_from_string("rXX")?)
+            .is_some());
 
         let nds2 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds2);
@@ -802,8 +806,7 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
 
         let nds3 = dm0.actions[0].confirm_group_needs();
-        //println!("needs {}", nds3);
-
+        println!("needs {}", nds3);
         assert_eq!(nds3.len(), 1);
         assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1")?));
 
@@ -811,7 +814,7 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
 
         let nds4 = dm0.actions[0].confirm_group_needs();
-        //println!("needs {}", nds4);
+        println!("needs {}", nds4);
 
         // Check for no more needs.
         assert!(nds4.is_empty());
@@ -850,6 +853,7 @@ mod tests {
 
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
+        println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need(
             "ContradictoryIntersection",
@@ -885,10 +889,10 @@ mod tests {
         let msk_f = dm0.mask_from_string("m0b1111")?;
 
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&msk_f) else {
-            return Err("needs1 are None".to_string());
+            return Err("No needs?".to_string());
         };
 
-        println!("needs1 are {}", nds1);
+        println!("Needs: {}", nds1);
         let mut found = false;
         for needx in nds1.iter() {
             match needx {
@@ -902,15 +906,15 @@ mod tests {
         }
         assert!(found);
 
-        let Some(grpx) = dm0.actions[0].groups.find_mut(&grp_reg) else { panic!("should work"); };
+        let Some(grpx) = dm0.actions[0].groups.find_mut(&grp_reg) else { panic!("Group not found?"); };
         grpx.set_anchor(&s04);
         println!("dm0 {}", &dm0.actions[0]);
 
         let Some(nds2) = dm0.actions[0].limit_groups_needs(&msk_f) else {
-            return Err("needs2 are None".to_string());
+            return Err("limit_groups_needs returns None?".to_string());
         };
 
-        println!("needs2 are {}", nds2);
+        println!("needs are {}", nds2);
         let s06 = dm0.state_from_string("s0b00000110")?;
         assert!(
             nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
@@ -922,7 +926,7 @@ mod tests {
 
         println!("dm0 {}", &dm0.actions[0]);
         let Some(nds3) = dm0.actions[0].limit_groups_needs(&msk_f) else {
-            return Err("needs3 are None".to_string());
+            return Err("limit_groups_needs returns None?".to_string());
         };
         println!("needs3 are {}", nds3);
 
@@ -984,32 +988,17 @@ mod tests {
 
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+            println!("\nActs: {}", &dm0.actions[0]);
 
             if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
                 dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause not-pn=2 condition
-
-                if let Some(_) = dm0.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dm0.actions[0]);
-                    //println!(" {}", dm0.actions[0].squares);
-                    return Err(String::from("failed, rx1x1 should have been deleted"));
-                } else {
-                    //println!("\nActs: {}", &dm0.actions[0]);
-                    //println!("       Sqrs: ({})", dm0.actions[0].squares);
-                    //return Ok(());
-                }
+                assert!(!dm0.actions[0].groups.find(&rx1x1).is_some());
             } else {
-                //println!("\nActs: {}", &dm0.actions[0]);
-                //println!("       Sqrs: ({})", dm0.actions[0].squares);
-                //println!("Group deleted too soon!");
-                return Err(String::from("failed, rx1x1 deleted too soon"));
+                return Err(String::from("Group rx1x1 deleted too soon?"));
             }
         } else {
-            //println!("\nActs: {}", &dm0.actions[0]);
-            return Err(String::from(
-                "failed, group rx1x1 was not formed by two squares",
-            ));
+            return Err(String::from("Group rx1x1 was not formed by two squares?"));
         }
-        // Err(String::from("Done!"))
         Ok(())
     } // end group_pn_2_union_then_invalidation
 
@@ -1027,21 +1016,13 @@ mod tests {
         dm0.add_action();
 
         let s5 = dm0.state_from_string("s0b101")?;
-
         let s4 = dm0.state_from_string("s0b100")?;
-
         let sf = dm0.state_from_string("s0b1111")?;
-
         let se = dm0.state_from_string("s0b1110")?;
-
         let s7 = dm0.state_from_string("s0b111")?;
 
         let rx1x1 = dm0.region_from_string("rx1x1")?;
 
-        //println!(
-        //    "state 5 = {} s4 {} sF {} sE {} rxx1x1 {}",
-        //    s5, s4, sf, se, rx1x1
-        //);
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s4.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, se.clone()));
@@ -1050,30 +1031,18 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s4.clone()));
 
-        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-            println!("\nActs: {}", &dm0.actions[0]);
-            dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
-            if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause pn-not-Two invalidation
-                if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                    //println!("\nActs: {}", &dm0.actions[0]);
-                    //println!(" {}", dm0.actions[0].get_squares());
-                    return Err(String::from(
-                        "Four samples for s7 failed to invalidate group xx1x1",
-                    ));
-                } else {
-                    return Ok(());
-                }
-            } else {
-                //println!("\nActs: {}", &dm0.actions[0]);
-                //println!("       Sqrs: ({})", dm0.actions[0].get_squares());
-                return Err(String::from("Group deleted too soon"));
-            }
-        } else {
-            //println!("\nActs: {}", &dm0.actions[0]);
-            return Err(String::from("group rx1x1 was not formed by two squares!"));
-        }
+        dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
+
+        dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause pn-not-Two invalidation
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0].groups.find(&rx1x1).is_none());
+
+        Ok(())
     } // end group_pn_u_union_then_invalidation
 
     // For showing something easily understandable, the groups in the program are shown
@@ -1088,19 +1057,17 @@ mod tests {
 
         let s0 = dm0.state_from_string("s0b0001010010101000")?;
         let s1 = dm0.state_from_string("s0b1111010110101011")?;
-        // Region                        XXX1010X101010XX.
+        // Region                          XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
         dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.change_bit(4)));
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.change_bit(4)));
 
-        if let Some(_grpx) = dm0.actions[0]
+        println!("\nActs: {}", &dm0.actions[0]);
+        assert!(dm0.actions[0]
             .groups
             .find(&dm0.region_from_string("rXXX1010X101010XX")?)
-        {
-        } else {
-            return Err(String::from("Group rXXX1010X101010XX not found ??"));
-        }
+            .is_some());
 
         Ok(())
     }
@@ -1129,26 +1096,18 @@ mod tests {
 
         println!("\nActs: {}", &dm0.actions[0]);
 
-        if let Some(grpx) = dm0.actions[0]
+        let Some(grpx) = dm0.actions[0]
             .groups
-            .find(&dm0.region_from_string("r00XX")?)
-        {
-            if let Some(grpy) = dm0.actions[0]
+            .find(&dm0.region_from_string("r00XX")?) else { return Err(String::from("Group r0X0X not found ??")); };
+
+        let Some(grpy) = dm0.actions[0]
                 .groups
-                .find(&dm0.region_from_string("r0XX1")?)
-            {
-                let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
-                println!("needs {}", &nds1);
-                assert!(
-                    nds1.contains_similar_need("AStateMakeGroup", &dm0.region_from_string("r100")?)
-                );
-            } else {
-                return Err(String::from("Group r0XX1 not found ??"));
-            }
-        } else {
-            return Err(String::from("Group r0X0X not found ??"));
-        }
-        // Err(String::from("Done!"))
+                .find(&dm0.region_from_string("r0XX1")?) else { return Err(String::from("Group r0XX1 not found ??")); };
+
+        let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
+        println!("needs {}", &nds1);
+        assert!(nds1.contains_similar_need("AStateMakeGroup", &dm0.region_from_string("r100")?));
+
         Ok(())
     }
 
@@ -1182,7 +1141,7 @@ mod tests {
             .contains(&dm0.region_from_string("rx1x1")?));
 
         let needs = dm0.actions[0].seek_edge_needs();
-        println!("needs1: {}", &needs);
+        println!("needs: {}", &needs);
 
         assert_eq!(needs.len(), 1);
         assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101")?));
@@ -1190,20 +1149,22 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
         let needs = dm0.actions[0].seek_edge_needs();
-        println!("needs2: {}", &needs);
+        println!("needs: {}", &needs);
         assert_eq!(needs.len(), 1);
+
+        // Process one, of two, possible needs.
         if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?) {
             // Seek even closer sample s1101
             let sd = dm0.state_from_string("s0b1101")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
-            println!("needs3: {}", &needs);
+            println!("needs: {}", &needs);
             assert_eq!(needs.len(), 1);
             assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
-            println!("needs4: {}", &needs);
+            println!("needs: {}", &needs);
             let mut found = false;
             let regexp = dm0.region_from_string("r11x1")?;
             for needx in needs.iter() {
@@ -1225,13 +1186,13 @@ mod tests {
             let s7 = dm0.state_from_string("s0b0111")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
-            println!("needs3: {}", &needs);
+            println!("needs: {}", &needs);
             assert_eq!(needs.len(), 1);
             assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111")?));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
-            println!("needs4: {}", &needs);
+            println!("needs: {}", &needs);
             let mut found = false;
             let regexp = dm0.region_from_string("rx111")?;
             for needx in needs.iter() {
@@ -1254,10 +1215,10 @@ mod tests {
         }
 
         let needs = dm0.get_needs();
-        assert!(dm0.actions[0].seek_edge.is_empty());
-
         println!("\nActs: {}", &dm0.actions);
-        println!("needs9: {}", &needs);
+        println!("needs: {}", &needs);
+
+        assert!(dm0.actions[0].seek_edge.is_empty());
 
         Ok(())
     }
@@ -1324,15 +1285,11 @@ mod tests {
 
         println!("\nActs: {}", &dm0.actions);
         assert_eq!(dm0.actions[0].groups.len(), 1);
-        if let Some(_grpx) = dm0.actions[0]
+        assert!(dm0.actions[0]
             .groups
             .find(&dm0.region_from_string("rxxxx_xxxx")?)
-        {
-        } else {
-            return Err(String::from("Group rxxxx_xxxx not found ??"));
-        }
+            .is_some());
 
-        //Err(String::from("Done!"))
         Ok(())
     }
 
@@ -1365,35 +1322,26 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(s0b.clone(), act0, s0b.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(s05.clone(), act0, s05.clone()));
 
-        // Print domain and needs, if needed for error resolution.
-        // Also get_needs checks the limited flag for each group.
-        println!("\n{}", dm0.actions[act0]);
+        // get_needs checks the limited flag for each group.
         let nds = dm0.get_needs();
-        println!("needs {}", nds);
         println!("\n{}", dm0.actions[act0]);
+        println!("needs {}", nds);
 
         // Limited flag should be true.
-        if !dm0.actions[act0].groups[0].limited {
-            return Err("1 Limited flag is false?".to_string());
-        }
+        assert!(dm0.actions[act0].groups[0].limited);
 
         // Add a way to change bit position 1, 0->1.
         let s10 = dm0.state_from_string("s0x10")?;
         let s12 = dm0.state_from_string("s0x12")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s10.clone(), act0, s12.clone()));
 
-        // Print domain and needs, if needed for error resolution.
-        // Also get_needs checks the limited flag for each group.
-        println!("\n{}", dm0.actions[act0]);
         let nds = dm0.get_needs();
-        println!("needs {}", nds);
         println!("\n{}", dm0.actions[act0]);
+        println!("needs {}", nds);
 
         // Changing bit position 1 should not affect the limited flag,
         // where the group bit position one is X.
-        if !dm0.actions[act0].groups[0].limited {
-            return Err("2 Limited flag is false?".to_string());
-        }
+        assert!(dm0.actions[act0].groups[0].limited);
 
         // Add a way to change bit position 0, 0->1.
         let s21 = dm0.state_from_string("s0x21")?;
@@ -1403,18 +1351,13 @@ mod tests {
         // Add a way to change bit position 0, 1->0.
         dm0.eval_sample_arbitrary(&SomeSample::new(s20.clone(), act0, s21.clone()));
 
-        // Print domain and needs, if needed for error resolution.
-        // Also get_needs checks the limited flag for each group.
-        println!("\n{}", dm0.actions[act0]);
         let nds = dm0.get_needs();
-        println!("needs {}", nds);
         println!("\n{}", dm0.actions[act0]);
+        println!("needs {}", nds);
 
         // Changing bit position 1 should not affect the limited flag,
         // where the group bit position one is X.
-        if dm0.actions[act0].groups[0].limited {
-            return Err("3 Limited flag is true?".to_string());
-        }
+        assert!(!dm0.actions[act0].groups[0].limited);
 
         // Check for limit need.
         for ndx in nds.iter() {

@@ -548,19 +548,11 @@ mod tests {
 
         let rule_from_string = SomeRule::new_from_string(1, "00/10/01/11")?;
 
-        if rule_from_states != rule_from_masks {
-            return Err(format!(
-                "rule_from_states {} != rule_from_masks {} ?",
-                rule_from_states, rule_from_masks
-            ));
-        }
+        println!("rule_from_states: {rule_from_states} rule_from_masks: {rule_from_masks}");
+        assert!(rule_from_states == rule_from_masks);
 
-        if rule_from_states != rule_from_string {
-            return Err(format!(
-                "rule_from_stats {} != rule_from_string {} ?",
-                rule_from_states, rule_from_string
-            ));
-        }
+        println!("rule_from_states: {rule_from_states} rule_from_string: {rule_from_string}");
+        assert!(rule_from_states == rule_from_string);
 
         Ok(())
     }
@@ -569,17 +561,16 @@ mod tests {
     fn initial_region_result_region() -> Result<(), String> {
         let sta = SomeState::new_from_string(1, "s0b1010")?;
         let st6 = SomeState::new_from_string(1, "s0b0110")?;
-        let regx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s0b1001")?);
-        let regy = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0b0101")?);
+        let rulx = SomeRule::new(&sta, &SomeState::new_from_string(1, "s0b1001")?);
+        let ruly = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0b0101")?);
 
-        if regx.initial_region() != SomeRegion::new(sta.clone(), sta.clone()) {
-            return Err(String::from("Region not r1010?"));
-        }
+        println!("rulx: {rulx}");
+        assert!(rulx.initial_region() == SomeRegion::new(sta.clone(), sta.clone()));
 
-        if let Some(regz) = regx.union(&regy) {
-            if regz.initial_region() != SomeRegion::new_from_string(1, "rXX10")? {
-                return Err(String::from("Region not rXX10?"));
-            }
+        println!("ruly: {ruly}");
+        if let Some(rulz) = rulx.union(&ruly) {
+            println!("rulz: {rulz}");
+            assert!(rulz.initial_region() == SomeRegion::new_from_string(1, "rXX10")?);
         } else {
             return Err("Regions should form a union".to_string());
         }
@@ -592,22 +583,21 @@ mod tests {
         let rul1 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
         let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
         let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let Some(rul_int) = rul1.intersection(&rul2) else { panic!("this should work!"); };
 
-        if rul1.intersection(&rul2) != Some(rul3) {
-            return Err(format!("intersection rul1 and rul2 ne rul3?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2} rul_int: {rul_int}");
+        assert!(rul_int == rul3);
 
         Ok(())
     }
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let rul2 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul3 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::new_from_string(4, "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
+        let rul2 = SomeRule::new_from_string(4, "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
 
-        if !rul3.is_subset_of(&rul2) {
-            return Err(String::from("Result 1 false?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul2.is_subset_of(&rul1));
 
         Ok(())
     }
@@ -618,13 +608,9 @@ mod tests {
         let rul2 = SomeRule::new_from_string(1, "X1")?;
         let rul3 = SomeRule::new_from_string(1, "00")?;
 
-        let Some(_int12) = rul1.intersection(&rul2) else {
-            return Err(String::from("Result 1 False?"));
-        };
-
-        if let Some(_int23) = rul2.intersection(&rul3) {
-            return Err(String::from("Result 2  True?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2} rul3: {rul3}");
+        assert!(rul1.intersection(&rul2).is_some());
+        assert!(rul2.intersection(&rul3).is_none());
 
         Ok(())
     }
@@ -633,27 +619,23 @@ mod tests {
     fn is_valid_union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string(1, "00")?;
         let rul2 = SomeRule::new_from_string(1, "01")?;
-        if rul1.union(&rul2).is_some() {
-            return Err(String::from("Result 1 True?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul1.union(&rul2).is_none());
 
         let rul1 = SomeRule::new_from_string(1, "11")?;
         let rul2 = SomeRule::new_from_string(1, "10")?;
-        if rul1.union(&rul2).is_some() {
-            return Err(String::from("Result 2 True?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul1.union(&rul2).is_none());
 
         let rul1 = SomeRule::new_from_string(1, "11")?;
         let rul2 = SomeRule::new_from_string(1, "01")?;
-        if rul1.union(&rul2).is_none() {
-            return Err(String::from("Result 3 False?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul1.union(&rul2).is_some());
 
         let rul1 = SomeRule::new_from_string(1, "x1")?;
         let rul2 = SomeRule::new_from_string(1, "00")?;
-        if rul1.union(&rul2).is_some() {
-            return Err(String::from("Result 4 True?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul1.union(&rul2).is_none());
 
         Ok(())
     }
@@ -665,27 +647,24 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "01/00")?;
         let rul2 = SomeRule::new_from_string(1, "00/01")?;
         let chg1 = SomeChange::new(SomeMask::new_from_string(1, "m0b11")?, SomeMask::new_low(1));
-        if !rul1.mutually_exclusive(&rul2, &chg1) {
-            return Err(String::from("Result 1 False?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
+        assert!(rul1.mutually_exclusive(&rul2, &chg1));
 
         // The results of rules (10, 01) intersect one of the initial regions (00, 10),
         // so one rul1 should be run before rul2.
         let rul1 = SomeRule::new_from_string(1, "01/00")?;
         let rul2 = SomeRule::new_from_string(1, "10/01")?;
         let chg1 = SomeChange::new(SomeMask::new_from_string(1, "m0b11")?, SomeMask::new_low(1));
-        if !rul1.mutually_exclusive(&rul2, &chg1) {
-            return Err(String::from("Result 2 False?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
+        assert!(rul1.mutually_exclusive(&rul2, &chg1));
 
         // The results of rules (1X, X0) intersects both of the initial regions (XX, XX),
         // so either rule can be run before the other.
         let rul1 = SomeRule::new_from_string(1, "x1/xx")?;
         let rul2 = SomeRule::new_from_string(1, "xx/x0")?;
         let chg1 = SomeChange::new(SomeMask::new_from_string(1, "m0b11")?, SomeMask::new_low(1));
-        if rul1.mutually_exclusive(&rul2, &chg1) {
-            return Err(String::from("Result 3 True?"));
-        }
+        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
+        assert!(!rul1.mutually_exclusive(&rul2, &chg1));
 
         Ok(())
     }
@@ -698,21 +677,14 @@ mod tests {
         let rul2 = SomeRule::new_from_string(1, "10/01")?;
         let rul3 = SomeRule::new_from_string(1, "xx/xx")?;
         let chg1 = SomeChange::new(SomeMask::new_from_string(1, "m0b11")?, SomeMask::new_low(1));
+        println!("rul1: {rul1} rul2: {rul2} rul3: {rul3} chg1: {chg1}");
 
         println!("1->2 {}", rul1.order_bad(&rul2, &chg1));
         println!("2->1 {}", rul2.order_bad(&rul1, &chg1));
-        if !rul1.order_bad(&rul2, &chg1) {
-            return Err(String::from("Result 1 False?"));
-        }
-        if !rul2.order_bad(&rul1, &chg1) {
-            return Err(String::from("Result 2 False?"));
-        }
-        if rul1.order_bad(&rul3, &chg1) {
-            return Err(String::from("Result 3 True?"));
-        }
-        if rul2.order_bad(&rul3, &chg1) {
-            return Err(String::from("Result 4 True?"));
-        }
+        assert!(rul1.order_bad(&rul2, &chg1));
+        assert!(rul2.order_bad(&rul1, &chg1));
+        assert!(!rul1.order_bad(&rul3, &chg1));
+        assert!(!rul2.order_bad(&rul3, &chg1));
 
         Ok(())
     }
@@ -725,15 +697,10 @@ mod tests {
             SomeMask::new_from_string(1, "m0b0010001")?,
         );
 
-        if let Some(rul2) = rul1.parse_for_changes(&chg1) {
-            println!("rul2 {}", &rul2);
+        let Some(rul2) = rul1.parse_for_changes(&chg1) else { panic!("parse should succeed"); };
+        println!("rul2 {}", &rul2);
 
-            if rul2 != SomeRule::new_from_string(1, "01/11/10/00/Xx/01/10")? {
-                return Err(String::from("rul2 not 01/11/10/00/Xx/01/10?"));
-            }
-        } else {
-            return Err("parse should succeed".to_string());
-        }
+        assert!(rul2 == SomeRule::new_from_string(1, "01/11/10/00/Xx/01/10")?);
 
         Ok(())
     }
@@ -743,10 +710,8 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "X1/X0/Xx/Xx")?;
         let rul2 = rul1.restrict_initial_region(&SomeRegion::new_from_string(1, "r10X1")?);
 
-        println!("rul2 = {}", rul2);
-        if rul2 != SomeRule::new_from_string(1, "11/00/Xx/10")? {
-            return Err(String::from("rul2 not 11/00/Xx/10?"));
-        }
+        println!("rul2: {rul2}");
+        assert!(rul2 == SomeRule::new_from_string(1, "11/00/Xx/10")?);
 
         Ok(())
     }
@@ -756,10 +721,8 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "Xx/Xx/XX/XX")?;
         let rul2 = rul1.restrict_result_region(&SomeRegion::new_from_string(1, "r1010")?);
 
-        println!("rul = {}", rul2);
-        if rul2 != SomeRule::new_from_string(1, "01/10/11/00")? {
-            return Err(String::from("rul2 not 01/10/11/00?"));
-        }
+        println!("rul2: {rul2}");
+        assert!(rul2 == SomeRule::new_from_string(1, "01/10/11/00")?);
 
         Ok(())
     }
@@ -771,11 +734,9 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "rx00110")?;
 
         let reg2 = rul1.result_from_initial_region(&reg1);
-        println!("reg2 {}", reg2);
+        println!("reg2 {reg2}");
 
-        if reg2 != SomeRegion::new_from_string(1, "rX01010")? {
-            return Err(String::from("reg2 not X01010?"));
-        }
+        assert!(reg2 == SomeRegion::new_from_string(1, "rX01010")?);
 
         Ok(())
     }
@@ -786,12 +747,9 @@ mod tests {
         let sta1 = SomeState::new_from_string(1, "s0b000110")?;
 
         let sta2 = rul1.result_from_initial_state(&sta1);
-        println!("rul1 {}", &rul1);
-        println!("sta2 {}", &sta2);
+        println!("rul1: {rul1} sta1: {sta1} sta2: {sta2}");
 
-        if sta2 != SomeState::new_from_string(1, "s0b101010")? {
-            return Err(String::from("sta2 not 001010?"));
-        }
+        assert!(sta2 == SomeState::new_from_string(1, "s0b101010")?);
 
         Ok(())
     }
@@ -801,14 +759,10 @@ mod tests {
         let rul1 = SomeRule::new_from_string(1, "00/01/00/01/xx")?;
         let rul2 = SomeRule::new_from_string(1, "00/01/10/10/11")?;
 
-        if let Some(rul3) = rul1.union(&rul2) {
-            println!("rul3 = {}", &rul3);
-            if rul3 != SomeRule::new_from_string(1, "00/01/x0/Xx/xx")? {
-                return Err(String::from("rul3 not 00/01/x0/Xx/xx?"));
-            }
-        } else {
-            return Err("Rules should form a union".to_string());
-        }
+        let Some(rul3) = rul1.union(&rul2) else { panic!("This should work!"); };
+        println!("rul3 = {}", &rul3);
+        assert!(rul3 == SomeRule::new_from_string(1, "00/01/x0/Xx/xx")?);
+
         Ok(())
     }
 
@@ -818,28 +772,22 @@ mod tests {
         let reg2 = SomeRegion::new_from_string(2, "r01x_01x_01x")?;
 
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("rul1 is {}", &rul1);
-        if !reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)) {
-            return Err(String::from("reg2 not superset rul1 initial region?"));
-        }
+        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
+        assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
 
         // Test proper subset region.
         let reg1 = SomeRegion::new_from_string(1, "r0011")?;
         let reg2 = SomeRegion::new_from_string(1, "rx01x")?;
-        let rul2 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("rul2 is {}", &rul2);
-        if rul2.result_region() != reg1 {
-            return Err(String::from("Result not r0011?"));
-        }
+        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
+        assert!(rul1.result_region() == reg1);
 
         // Test intersecting regions.
         let reg1 = SomeRegion::new_from_string(1, "r010x")?;
         let reg2 = SomeRegion::new_from_string(1, "rx1x1")?;
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("rul1 {}", &rul1);
-        if rul1.result_region() != SomeRegion::new_from_string(1, "r0101")? {
-            return Err(String::from("rul1 esult ne r0101?"));
-        }
+        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
+        assert!(rul1.result_region() == SomeRegion::new_from_string(1, "r0101")?);
 
         Ok(())
     }
@@ -850,12 +798,9 @@ mod tests {
         let sta1 = SomeState::new_from_string(1, "s0b011010")?;
 
         let rul1 = SomeRule::region_to_state(&reg1, &sta1);
-        let rul2 = SomeRule::new_from_string(1, "00/11/01/10/x1/x0")?;
-        println!("rul1 {}", &rul1);
-        println!("rul2 {}", &rul2);
-        if rul1 != rul2 {
-            return Err(String::from("rul1 != rul2?"));
-        }
+        println!("reg1: {reg1} sta1: {sta1} rul1: {rul1}");
+
+        assert!(rul1 == SomeRule::new_from_string(1, "00/11/01/10/x1/x0")?);
 
         Ok(())
     }
@@ -866,12 +811,9 @@ mod tests {
         let reg1 = SomeRegion::new_from_string(1, "r0101xx")?;
 
         let rul1 = SomeRule::state_to_region(&sta1, &reg1);
-        let rul2 = SomeRule::new_from_string(1, "00/11/10/01/11/00")?;
-        println!("rul1 {}", &rul1);
-        println!("rul2 {}", &rul2);
-        if rul1 != rul2 {
-            return Err(String::from("rul1 ne rul2?"));
-        }
+        println!("reg1: {reg1} sta1: {sta1} rul1: {rul1}");
+
+        assert!(rul1 == SomeRule::new_from_string(1, "00/11/10/01/11/00")?);
 
         Ok(())
     }
@@ -882,12 +824,9 @@ mod tests {
         let sta2 = SomeState::new_from_string(1, "s0b0101")?;
 
         let rul1 = SomeRule::state_to_state(&sta1, &sta2);
-        let rul2 = SomeRule::new_from_string(1, "00/11/10/01")?;
-        println!("rul1 {}", &rul1);
-        println!("rul2 {}", &rul2);
-        if rul1 != rul2 {
-            return Err(String::from("rul1 ne rul2?"));
-        }
+        println!("sta1: {sta1} sta2: {sta2} rul1: {rul1}");
+
+        assert!(rul1 == SomeRule::new_from_string(1, "00/11/10/01")?);
 
         Ok(())
     }

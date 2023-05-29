@@ -235,14 +235,12 @@ mod tests {
     fn eq() -> Result<(), String> {
         let msk1 = SomeMask::new_from_string(1, "m0b1010")?;
         let msk2 = SomeMask::new_from_string(1, "m0b1010")?;
-        if msk1 != msk2 {
-            return Err(format!("msk1 {} ne msk2 {}?", msk1, msk2));
-        }
+        println!("msk1: {msk1} msk2: {msk2}");
+        assert!(msk1 == msk2);
 
         let msk3 = SomeMask::new_from_string(1, "m0b1001")?;
-        if msk1 == msk3 {
-            return Err(format!("msk1 {} eq msk3 {}?", msk1, msk3));
-        }
+        println!("msk1: {msk1} msk3: {msk3}");
+        assert!(msk1 != msk3);
 
         Ok(())
     }
@@ -250,29 +248,19 @@ mod tests {
     #[test]
     fn half_mask() -> Result<(), String> {
         let test_msk = SomeMask::new_from_string(2, "m0x5aa5")?.half_mask();
-
-        if test_msk.num_one_bits() != 4 {
-            return Err(format!(
-                "SomeMask::test_half_mask num bits {} instead of 4?",
-                test_msk.num_one_bits()
-            ));
-        }
+        println!("test_msk: {test_msk}");
+        assert!(test_msk.num_one_bits() == 4);
 
         // Test an odd number of bits
         let test_msk = SomeMask::new_from_string(2, "m0x1011")?.half_mask();
         println!("test_msk: {}", test_msk);
-
-        if test_msk.num_one_bits() != 1 {
-            return Err("SomeMask::test_half_mask not one bit?".to_string());
-        }
+        assert!(test_msk.num_one_bits() == 1);
 
         // Test an odd number of bits
         let test_msk = SomeMask::new_from_string(2, "m0x3031")?.half_mask();
         println!("test_msk: {}", test_msk);
+        assert!(test_msk.num_one_bits() == 2);
 
-        if test_msk.num_one_bits() != 2 {
-            return Err("SomeMask::test_half_mask not two bits?".to_string());
-        }
         Ok(())
     }
 }

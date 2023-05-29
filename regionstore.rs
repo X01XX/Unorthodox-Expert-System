@@ -307,9 +307,8 @@ impl RegionStore {
 
         for regy in &self.avec {
             if regx.intersects(regy) {
-                let avec = regy.subtract(regx);
-                for regz in &avec {
-                    ret_str.push_nosubs(regz.clone());
+                for regz in regy.subtract(regx).into_iter() {
+                    ret_str.push_nosubs(regz);
                 }
             } else {
                 ret_str.push_nosubs(regy.clone());

@@ -1613,7 +1613,7 @@ impl SomeAction {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
-                    target_state: sta_far.clone(),
+                    target_state: sta_far,
                     for_group: grpx.region.clone(),
                     group_num,
                 });
@@ -1624,7 +1624,7 @@ impl SomeAction {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 anchor: anchor_sta.clone(),
-                target_state: sta_far.clone(),
+                target_state: sta_far,
                 for_group: grpx.region.clone(),
                 group_num,
             });
@@ -1740,8 +1740,12 @@ impl SomeAction {
         let mut nds = NeedStore::new(vec![]);
 
         // Gather the states from the regions, they may share one defining state.
-        let mut defining_stas = StateStore::new(vec![reg1.state1.clone(), reg1.state2.clone()]);
-
+        // A region may be made with a single state.
+        let mut defining_stas = StateStore::new(vec![reg1.state1.clone()]);
+        if defining_stas.contains(&reg1.state2) {
+        } else {
+            defining_stas.push(reg1.state2.clone());
+        }
         if defining_stas.contains(&reg2.state1) {
         } else {
             defining_stas.push(reg2.state1.clone());
@@ -2342,26 +2346,26 @@ mod tests {
             SomeState::new_from_string(1, "s0b0000")?,
         ));
 
-        if act0.groups.len() != 4 {
-            println!("Groups {}", act0.groups);
-            return Err(format!("Four groups not formed?"));
-        }
-        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "r0111")?) {
-        } else {
-            return Err("Region 0111 not found!".to_string());
-        }
-        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "r1xx1")?) {
-        } else {
-            return Err("Region 1XX1 not found!".to_string());
-        }
-        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "rxx01")?) {
-        } else {
-            return Err("Region XX01 not found!".to_string());
-        }
-        if let Some(_) = act0.groups.find(&SomeRegion::new_from_string(1, "rx0x1")?) {
-        } else {
-            return Err("Region X0X1 not found!".to_string());
-        }
+        println!("Groups {}", act0.groups);
+        assert!(act0.groups.len() == 4);
+
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0111")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r1xx1")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "rxx01")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "rx0x1")?)
+            .is_some());
+
         Ok(())
     }
 
@@ -2393,22 +2397,16 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_f.clone()));
         act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
 
-        // Should be OK so far.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 1 is false?".to_owned());
-        } else {
-            println!("Result 1 as expected");
-        }
+        // Should not find an incompatible square pair.
+        println!("Action: {act0}");
+        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
 
         // Set up square 1. Pn::One. LSB 1->0. Inside XXX1, outside X1X1.
         act0.eval_sample(&SomeSample::new(sta_1.clone(), 0, sta_0.clone()));
 
-        // Should be OK so far.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 2 is false?".to_owned());
-        } else {
-            println!("Result 2 as expected");
-        }
+        // Should not find.
+        println!("Action: {act0}");
+        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
 
         // Make square 5, Pn::Two. LSB 1->0 and 1->1.
         act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_4.clone()));
@@ -2418,12 +2416,9 @@ mod tests {
 
         // Squares F and 5 make a region, X1X1, a subset of XXX1.
 
-        // Should be OK so far.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 3 is false?".to_owned());
-        } else {
-            println!("Result 3 as expected");
-        }
+        // Should not find.
+        println!("Action: {act0}");
+        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
 
         // Set up square 7. Pn::One. LSB 1->1. Inside X1X1.
         act0.eval_sample(&SomeSample::new(sta_7.clone(), 0, sta_7.clone()));
@@ -2434,22 +2429,16 @@ mod tests {
         // Set up square B. Pn::One. LSB 1->0. Outside X1X1.
         act0.eval_sample(&SomeSample::new(sta_b.clone(), 0, sta_a.clone()));
 
-        // Should be OK so far.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 4 is false?".to_owned());
-        } else {
-            println!("Result 4 as expected");
-        }
+        // Should not find.
+        println!("Action: {act0}");
+        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
 
         // Try a bad square 3.  2 LSB 11->01.
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_1.clone()));
 
-        // Should fail.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            println!("Result 5 as expected");
-        } else {
-            return Err("Result 5 is true?".to_owned());
-        }
+        // Should find.
+        println!("Action: {act0}");
+        assert!(act0.any_incompatible_square_combination_in_region(&regx));
 
         // Remove square 3.
         act0.squares.remove(&sta_3);
@@ -2457,22 +2446,16 @@ mod tests {
         // Add new square 3.  LSB 1->1.
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
-        // Should be OK so far.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            return Err("Result 6 is false?".to_owned());
-        } else {
-            println!("Result 6 as expected");
-        }
+        // Should not find.
+        println!("Action: {act0}");
+        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
 
         // Square 3 to pnc, Pn::One.
         act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
 
-        // Should fail.
-        if act0.any_incompatible_square_combination_in_region(&regx) {
-            println!("Result 7 as expected");
-        } else {
-            return Err("Result 7 is true?".to_owned());
-        }
+        // Should find.
+        println!("Action: {act0}");
+        assert!(act0.any_incompatible_square_combination_in_region(&regx));
 
         Ok(())
     }
@@ -2512,12 +2495,8 @@ mod tests {
         println!("Act: {}", &act0);
         println!("needs: {}", nds);
 
-        if nds.len() != 1 {
-            return Err(String::from("Unexpected needs?"));
-        }
-        if act0.groups.len() != 1 {
-            return Err(String::from("Unexpected groups?"));
-        }
+        assert!(nds.len() == 1);
+        assert!(act0.groups.len() == 1);
 
         Ok(())
     }

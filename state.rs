@@ -214,7 +214,8 @@ mod tests {
         let sta2 = SomeState::new_from_string(2, "s0x5430")?;
 
         let dist = sta1.distance(&sta2);
-        println!("distance {}", dist);
+        println!("sta1 {sta1}");
+        println!("sta2 {sta2}");
         assert!(13 == dist);
         Ok(())
     }
@@ -223,14 +224,13 @@ mod tests {
     fn eq() -> Result<(), String> {
         let sta1 = SomeState::new_from_string(1, "s0b1010")?;
         let sta2 = SomeState::new_from_string(1, "s0b1010")?;
-        if sta1 != sta2 {
-            return Err(format!("sta1 {} ne sta2 {}?", sta1, sta2));
-        }
+        println!("sta1 {sta1}");
+        println!("sta2 {sta2}");
+        assert!(sta1 == sta2);
 
         let sta3 = SomeState::new_from_string(1, "s0b1001")?;
-        if sta1 == sta3 {
-            return Err(format!("sta1 {} eq sta3 {}?", sta1, sta3));
-        }
+        println!("sta3 {sta3}");
+        assert!(sta1 != sta3);
 
         Ok(())
     }

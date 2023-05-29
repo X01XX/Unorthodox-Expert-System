@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn test_proc_vec_pair() -> Result<(), String> {
         let x = proc_vec_pair(&vec![vec![0, 1], vec![3, 4]]);
-        println!("{:?}", x);
+        println!("x: {:?}", x);
         assert!(x == vec![vec![vec![0, 1, 3], vec![4]], vec![vec![0, 1, 4], vec![3]]]);
         Ok(())
     }
@@ -232,6 +232,7 @@ mod tests {
     #[test]
     fn test_copyvecminus() -> Result<(), String> {
         let nums = vec![0, 1, 2, 3];
+        println!("nums: {:?}", nums);
         assert_eq!(copyvecminus(&nums, 2), vec![0, 1, 3]);
         assert_eq!(copyvecminus(&nums, 0), vec![1, 2, 3]);
         assert_eq!(copyvecminus(&nums, 3), vec![0, 1, 2]);
@@ -243,13 +244,13 @@ mod tests {
     fn test_vec_remove_dups() -> Result<(), String> {
         let mut vecx: Vec<usize> = vec![1, 2, 3, 1, 4, 2, 2];
         vec_remove_dups(&mut vecx, |a, b| a == b);
+        println!("vecx: {:?}", vecx);
         assert_eq!(vecx, vec![1, 2, 3, 4]);
 
         let mut vecx: Vec<&str> = vec!["A", "B", "A", "C", "B"];
         vec_remove_dups(&mut vecx, |a, b| a == b);
+        println!("vecx: {:?}", vecx);
         assert_eq!(vecx, vec!["A", "B", "C"]);
-
-        vec_remove_dups(&mut Vec::<usize>::new(), |a, b| a == b);
 
         Ok(())
     }
@@ -257,12 +258,14 @@ mod tests {
     #[test]
     fn test_vec_contains() -> Result<(), String> {
         let vecx: Vec<usize> = vec![1, 2, 3, 4];
-        (assert_eq!(vec_contains(&vecx, &2, |a, b| a == b), true));
-        (assert_eq!(vec_contains(&vecx, &5, |a, b| a == b), false));
+        println!("vecx: {:?}", vecx);
+        assert_eq!(vec_contains(&vecx, &2, |a, b| a == b), true);
+        assert_eq!(vec_contains(&vecx, &5, |a, b| a == b), false);
 
         let vecx: Vec<&str> = vec!["A", "B", "C", "D"];
-        (assert_eq!(vec_contains(&vecx, &"B", |a, b| a == b), true));
-        (assert_eq!(vec_contains(&vecx, &"E", |a, b| a == b), false));
+        println!("vecx: {:?}", vecx);
+        assert_eq!(vec_contains(&vecx, &"B", |a, b| a == b), true);
+        assert_eq!(vec_contains(&vecx, &"E", |a, b| a == b), false);
 
         assert_eq!(vec_contains(&vec![], &"E", |a, b| a == b), false);
         Ok(())

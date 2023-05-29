@@ -521,10 +521,9 @@ mod tests {
             assert!(!reg1.is_superset_of_state(&nds[0].target()[0].region.state1));
             assert!(!reg2.is_superset_of_state(&nds[0].target()[0].region.state1));
         } else {
-            return Err(format!("Needs are None"));
+            return Err(format!("Needs are None?"));
         }
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

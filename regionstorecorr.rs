@@ -245,18 +245,18 @@ impl RegionStoreCorr {
 
                 for iny in 0..self.len() {
                     if iny == inx {
-                        new_store.push(match bitx.bitwise_and(&other[inx].state1).is_low() {
+                        match bitx.bitwise_and(&other[inx].state1).is_low() {
                             true =>
                             // process x/0
                             {
-                                self[inx].set_to_ones(bitx)
+                                new_store.push(self[inx].set_to_ones(bitx))
                             }
                             false =>
                             // process x/1
                             {
-                                self[inx].set_to_zeros(bitx)
+                                new_store.push(self[inx].set_to_zeros(bitx))
                             }
-                        });
+                        };
                     } else {
                         new_store.push(self[iny].clone());
                     }

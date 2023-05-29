@@ -375,31 +375,26 @@ mod tests {
             SomeState::new_from_string(1, "s0b1101")?,
             SomeState::new_from_string(1, "s0b1101")?,
         );
+        println!("sqr1: {sqr1}");
+        println!("sqr2: {sqr2}");
 
-        if sqr1.can_combine(&sqr2) != Some(true) {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2) == Some(true));
 
         // Create a square incompatible to sqr1 to produce M result.
         let mut sqr3 = SomeSquare::new(
             SomeState::new_from_string(1, "s0b1101")?,
             SomeState::new_from_string(1, "s0b1100")?,
         );
+        println!("sqr3: {sqr3}");
 
-        if sqr1.can_combine(&sqr3).is_some() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr3).is_none());
 
         // Add to sqr3 to make it pnc.
         sqr3.add_result(SomeState::new_from_string(1, "s0b1100")?);
+        println!("sqr3: {sqr3}");
 
-        if sqr1.can_combine(&sqr3) != Some(false) {
-            return Err(String::from("Test 3 failed?"));
-        }
-
-        if sqr3.can_combine(&sqr1) != Some(false) {
-            return Err(String::from("Test 4 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr3) == Some(false));
+        assert!(sqr3.can_combine(&sqr1) == Some(false));
 
         Ok(())
     }
@@ -427,15 +422,15 @@ mod tests {
             SomeState::new_from_string(1, "s0b0100")?,
         );
 
+        println!("sqr1: {sqr1}");
+        println!("sqr2: {sqr2}");
+        println!("sqr3: {sqr3}");
+
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2).is_none());
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr3.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        assert!(sqr3.can_combine(&sqr2).is_none());
 
         // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
         let mut sqr4 = SomeSquare::new(
@@ -444,16 +439,13 @@ mod tests {
         );
 
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101")?);
+        println!("sqr4: {sqr4}");
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr4.can_combine(&sqr2) != Some(false) {
-            return Err(String::from("Test 3 failed?"));
-        }
+        assert!(sqr4.can_combine(&sqr2) == Some(false));
 
         // Exersize other branch of code.
-        if sqr2.can_combine(&sqr4) != Some(false) {
-            return Err(String::from("Test 4 failed?"));
-        }
+        assert!(sqr2.can_combine(&sqr4) == Some(false));
 
         // Add to sqr2 to make it pnc.
         sqr2.add_result(SomeState::new_from_string(1, "s0b1101")?);
@@ -461,27 +453,18 @@ mod tests {
 
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
-        println!("can: {:?}", sqr1.can_combine(&sqr2));
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 5 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2).is_none());
 
         // Exersize other branch of code.
-        if sqr2.can_combine(&sqr1).is_some() {
-            return Err(String::from("Test 6 failed?"));
-        }
+        assert!(sqr2.can_combine(&sqr1).is_none());
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
-        if sqr2.can_combine(&sqr3) != Some(false) {
-            return Err(String::from("Test 7 failed?"));
-        }
+        assert!(sqr2.can_combine(&sqr3) == Some(false));
 
         // Exersize other branch of code.
-        if sqr3.can_combine(&sqr2) != Some(false) {
-            return Err(String::from("Test 8 failed?"));
-        }
+        assert!(sqr3.can_combine(&sqr2) == Some(false));
 
         Ok(())
     }
@@ -504,11 +487,11 @@ mod tests {
         );
 
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2).is_none());
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
         let mut sqr3 = SomeSquare::new(
@@ -517,11 +500,10 @@ mod tests {
         );
 
         sqr3.add_result(SomeState::new_from_string(1, "s0b1101")?);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
-        if sqr1.can_combine(&sqr3).is_some() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr3).is_none());
 
         // Make sqr1 pnc.
         sqr1.add_result(SomeState::new_from_string(1, "s0b1101")?);
@@ -541,15 +523,14 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101")?);
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
 
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
+
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2) != Some(true) {
-            return Err(String::from("Test 5 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2) == Some(true));
 
         // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
-        if sqr1.can_combine(&sqr3) != Some(false) {
-            return Err(String::from("Test 6 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr3) == Some(false));
 
         // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
         let mut sqr4 = SomeSquare::new(
@@ -560,11 +541,11 @@ mod tests {
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101")?);
         sqr4.add_result(SomeState::new_from_string(1, "s0b0100")?);
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr4 {}", sqr4);
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
-        if sqr1.can_combine(&sqr4) != Some(false) {
-            return Err(String::from("Test 7 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr4) == Some(false));
 
         // Create sqr5, combinable with sqr1, but results in reverse order.
         let mut sqr5 = SomeSquare::new(
@@ -575,11 +556,11 @@ mod tests {
         sqr5.add_result(SomeState::new_from_string(1, "s0b0101")?);
         sqr5.add_result(SomeState::new_from_string(1, "s0b0100")?);
         sqr5.add_result(SomeState::new_from_string(1, "s0b0101")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr5 {}", sqr5);
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
-        if sqr1.can_combine(&sqr5) != Some(true) {
-            return Err(String::from("Test 8 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr5) == Some(true));
 
         Ok(())
     }
@@ -601,24 +582,21 @@ mod tests {
             SomeState::new_from_string(1, "s0b0101")?,
             SomeState::new_from_string(1, "s0b0101")?,
         );
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
-        if sqr1.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2).is_none());
 
         // Exorsize other code branch.
-        if sqr2.can_combine(&sqr1).is_some() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        assert!(sqr2.can_combine(&sqr1).is_none());
 
         // Make sqr2 pnc == true.
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101")?);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
-        if sqr1.can_combine(&sqr2) != Some(false) {
-            return Err(String::from("Test 3 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2) == Some(false));
 
         Ok(())
     }
@@ -641,25 +619,23 @@ mod tests {
             SomeState::new_from_string(1, "s0b0101")?,
         );
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2).is_some() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2).is_none());
 
         // Exersize other code branch.
-        if sqr2.can_combine(&sqr1).is_some() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        assert!(sqr2.can_combine(&sqr1).is_none());
 
         // Make sqr2 pnc == true.
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101")?);
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
-        if sqr1.can_combine(&sqr2) != Some(false) {
-            return Err(String::from("Test 3 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2) == Some(false));
 
         Ok(())
     }
@@ -684,11 +660,11 @@ mod tests {
 
         sqr2.add_result(SomeState::new_from_string(1, "s0b0010")?);
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
+        println!("sqr1 {}", sqr1);
+        println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
-        if sqr1.can_combine(&sqr2) != Some(true) {
-            return Err(String::from("Test 1 failed?"));
-        }
+        assert!(sqr1.can_combine(&sqr2) == Some(true));
 
         Ok(())
     }

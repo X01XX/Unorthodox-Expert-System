@@ -553,6 +553,23 @@ impl SomeBits {
         }
         or_bts
     }
+
+    /// Return a string representing a vector of bits.
+    pub fn vec_string(avec: &[SomeBits]) -> String {
+        let mut rc_str = String::new();
+        rc_str.push('[');
+
+        for (inx, bitsx) in avec.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", bitsx));
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
 } // end impl SomeBits
 
 /// Define the BitsRef trait, so SomeBits, SomeMask, SomeState structs can interact at the SomeBits level.
@@ -574,15 +591,12 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let bitx = SomeBits {
+        let bitsx = SomeBits {
             ints: vec![5 as Bitint, 4 as Bitint],
         };
-        if bitx.ints[0] != 5 {
-            return Err(String::from("Test 1 failed"));
-        }
-        if bitx.ints[1] != 4 {
-            return Err(String::from("Test 2 failed"));
-        }
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.ints[0] == 5);
+        assert!(bitsx.ints[1] == 4);
         Ok(())
     }
 
@@ -617,13 +631,13 @@ mod tests {
             }
 
             // Generate bits instance.
-            let bits_inst =
-                SomeBits::new_from_string(2, &("0b".to_owned() + &first_str + &second_str))
-                    .unwrap();
+            let bitsx = SomeBits::new_from_string(2, &("0b".to_owned() + &first_str + &second_str))
+                .unwrap();
 
             // Check bits instance
-            assert!(bits_inst.ints[0] == first_num);
-            assert!(bits_inst.ints[1] == second_num);
+            println!("bitsx: {bitsx}");
+            assert!(bitsx.ints[0] == first_num);
+            assert!(bitsx.ints[1] == second_num);
 
             // Generate first hex int
             let mut first_str = String::new();
@@ -646,13 +660,13 @@ mod tests {
             }
 
             // Generate bits instance.
-            let bits_inst =
-                SomeBits::new_from_string(2, &("0x".to_owned() + &first_str + &second_str))
-                    .unwrap();
+            let bitsx = SomeBits::new_from_string(2, &("0x".to_owned() + &first_str + &second_str))
+                .unwrap();
 
             // Check bits instance
-            assert!(bits_inst.ints[0] == first_num);
-            assert!(bits_inst.ints[1] == second_num);
+            println!("bitsx: {bitsx}");
+            assert!(bitsx.ints[0] == first_num);
+            assert!(bitsx.ints[1] == second_num);
         }
 
         Ok(())
@@ -664,8 +678,8 @@ mod tests {
         let b1 = SomeBits::new_from_string(2, "0x5555")?;
         let b2 = SomeBits::new_from_string(2, "0xa675")?;
         let b3 = b1.b_eqv(&b2);
-        println!("b3 = {}", b3);
         let b4 = SomeBits::new_from_string(2, "0x0cdf")?;
+        println!("b3: {b3} b4: {b4}");
         assert_eq!(b3, b4);
         Ok(())
     }
@@ -677,34 +691,30 @@ mod tests {
         let mut bitsx = SomeBits::new_low(2);
         let mut bitsy = SomeBits::new_low(2);
         let mut bitsz = bitsx.b_and(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         // 01
         bitsx = SomeBits::new_low(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_and(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         // 11
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_and(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         // 10
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_low(2);
         bitsz = bitsx.b_and(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         Ok(())
     }
 
@@ -713,17 +723,14 @@ mod tests {
     fn b_not() -> Result<(), String> {
         let mut bitsx = SomeBits::new_low(2);
         let mut bitsz = bitsx.b_not();
-
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
         bitsx = SomeBits::new_high(2);
         bitsz = bitsx.b_not();
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         Ok(())
     }
 
@@ -734,34 +741,30 @@ mod tests {
         let mut bitsx = SomeBits::new_low(2);
         let mut bitsy = SomeBits::new_low(2);
         let mut bitsz = bitsx.b_or(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         // 01
         bitsx = SomeBits::new_low(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_or(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         // 11
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_or(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         // 10
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_low(2);
         bitsz = bitsx.b_or(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         Ok(())
     }
 
@@ -772,34 +775,30 @@ mod tests {
         let mut bitsx = SomeBits::new_low(2);
         let mut bitsy = SomeBits::new_low(2);
         let mut bitsz = bitsx.b_xor(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         // 01
         bitsx = SomeBits::new_low(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_xor(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         // 11
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_high(2);
         bitsz = bitsx.b_xor(&bitsy);
+        println!("bits: {bitsz}");
+        assert!(bitsz.is_low());
 
-        if bitsz.is_not_low() {
-            return Err(String::from("Result not low?"));
-        }
         // 10
         bitsx = SomeBits::new_high(2);
         bitsy = SomeBits::new_low(2);
         bitsz = bitsx.b_xor(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
 
-        if bitsz.is_not_high() {
-            return Err(String::from("Result not high?"));
-        }
         Ok(())
     }
 
@@ -807,56 +806,40 @@ mod tests {
     #[test]
     fn change_bits() -> Result<(), String> {
         let bx11 = SomeBits::new_from_string(1, "0x11")?;
-        let mut btest = SomeBits::new_low(1);
-        btest = btest.change_bit(0).change_bit(4);
-        if bx11 != btest {
-            return Err(format!(
-                "{} NE {} ?",
-                bx11.formatted_string('b'),
-                btest.formatted_string('b')
-            ));
-        }
+        let mut bitsx = SomeBits::new_low(1);
+        bitsx = bitsx.change_bit(0).change_bit(4);
+        println!("bx11 {bx11} bitsx: {bitsx}");
+        assert!(bx11 == bitsx);
 
         let bx10 = SomeBits::new_from_string(1, "0x10")?;
-        btest = btest.set_bit_to_0(0);
-        if bx10 != btest {
-            return Err(format!(
-                "{} NE {} ?",
-                bx10.formatted_string('b'),
-                btest.formatted_string('b')
-            ));
-        }
+        bitsx = bitsx.set_bit_to_0(0);
+        println!("bx10 {bx10} bitsx: {bitsx}");
+        assert!(bx10 == bitsx);
 
-        btest = btest.set_bit_to_1(0);
-        if bx11 != btest {
-            return Err(format!(
-                "{} NE {} ?",
-                bx11.formatted_string('b'),
-                btest.formatted_string('b')
-            ));
-        }
+        bitsx = bitsx.set_bit_to_1(0);
+        println!("bx11 {bx11} bitsx: {bitsx}");
+        assert!(bx11 == bitsx);
+
         Ok(())
     }
 
     // Test SomeBits::distance
     #[test]
     fn distance() -> Result<(), String> {
-        if 0 != SomeBits::new_from_string(2, "0x0")?.distance(&SomeBits::new_from_string(2, "0x0")?)
-        {
-            return Err(String::from("Result  1 not 0?"));
-        }
+        let dist =
+            SomeBits::new_from_string(2, "0x0")?.distance(&SomeBits::new_from_string(2, "0x0")?);
+        println!("dist: {dist}");
+        assert!(dist == 0);
 
-        if 8 != SomeBits::new_from_string(2, "0x5555")?
-            .distance(&SomeBits::new_from_string(2, "0x0")?)
-        {
-            return Err(String::from("Result 2 not 8?"));
-        }
+        let dist =
+            SomeBits::new_from_string(2, "0x5555")?.distance(&SomeBits::new_from_string(2, "0x0")?);
+        println!("dist: {dist}");
+        assert!(dist == 8);
 
-        if 7 != SomeBits::new_from_string(2, "0xaaaa")?
-            .distance(&SomeBits::new_from_string(2, "0x02")?)
-        {
-            return Err(String::from("Result 3 not 7?"));
-        }
+        let dist = SomeBits::new_from_string(2, "0xaaaa")?
+            .distance(&SomeBits::new_from_string(2, "0x02")?);
+        println!("dist: {dist}");
+        assert!(dist == 7);
 
         Ok(())
     }
@@ -864,19 +847,17 @@ mod tests {
     // Test SomeBits::high_bit_nonzero
     #[test]
     fn high_bit_nonzero() -> Result<(), String> {
-        let mut btest = SomeBits::new_from_string(1, "0x1")?;
+        let mut bitsx = SomeBits::new_from_string(1, "0x1")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.high_bit_nonzero());
 
-        if btest.high_bit_nonzero() {
-            return Err(String::from("Result 1 true?"));
-        }
-
+        // Shift to left-most position.
         for _ in 0..(NUM_BITS_PER_INT - 1) {
-            btest = btest.shift_left();
+            bitsx = bitsx.shift_left();
         }
 
-        if !btest.high_bit_nonzero() {
-            return Err(String::from("Result 2 false?"));
-        }
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.high_bit_nonzero());
 
         Ok(())
     }
@@ -884,90 +865,42 @@ mod tests {
     // Test SomeBits::is_bit_set
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let test_bits = SomeBits::new_from_string(2, "0x5aa5")?;
+        let bitsx = SomeBits::new_from_string(2, "0x5aa5")?;
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.is_bit_set(0));
+        assert!(!bitsx.is_bit_set(1));
+        assert!(bitsx.is_bit_set(2));
+        assert!(!bitsx.is_bit_set(3));
+        assert!(!bitsx.is_bit_set(4));
+        assert!(bitsx.is_bit_set(5));
+        assert!(!bitsx.is_bit_set(6));
+        assert!(bitsx.is_bit_set(7));
+        assert!(!bitsx.is_bit_set(8));
+        assert!(bitsx.is_bit_set(9));
+        assert!(!bitsx.is_bit_set(10));
+        assert!(bitsx.is_bit_set(11));
+        assert!(bitsx.is_bit_set(12));
+        assert!(!bitsx.is_bit_set(13));
+        assert!(bitsx.is_bit_set(14));
+        assert!(!bitsx.is_bit_set(15));
 
-        if !test_bits.is_bit_set(0) {
-            return Err(String::from("Test 0 failed?"));
-        }
-
-        if test_bits.is_bit_set(1) {
-            return Err(String::from("Test 1 failed?"));
-        }
-
-        if !test_bits.is_bit_set(2) {
-            return Err(String::from("Test 2 failed?"));
-        }
-
-        if test_bits.is_bit_set(3) {
-            return Err(String::from("Test 3 failed?"));
-        }
-
-        if test_bits.is_bit_set(4) {
-            return Err(String::from("Test 4 failed?"));
-        }
-
-        if !test_bits.is_bit_set(5) {
-            return Err(String::from("Test 5 failed?"));
-        }
-
-        if test_bits.is_bit_set(6) {
-            return Err(String::from("Test 6 failed?"));
-        }
-
-        if !test_bits.is_bit_set(7) {
-            return Err(String::from("Test 7 failed?"));
-        }
-
-        if test_bits.is_bit_set(8) {
-            return Err(String::from("Test 8 failed?"));
-        }
-
-        if !test_bits.is_bit_set(9) {
-            return Err(String::from("Test 9 failed?"));
-        }
-
-        if test_bits.is_bit_set(10) {
-            return Err(String::from("Test 10 failed?"));
-        }
-
-        if !test_bits.is_bit_set(11) {
-            return Err(String::from("Test 11 failed?"));
-        }
-
-        if !test_bits.is_bit_set(12) {
-            return Err(String::from("Test 12 failed?"));
-        }
-
-        if test_bits.is_bit_set(13) {
-            return Err(String::from("Test 13 failed?"));
-        }
-
-        if !test_bits.is_bit_set(14) {
-            return Err(String::from("Test 14 failed?"));
-        }
-
-        if test_bits.is_bit_set(15) {
-            return Err(String::from("Test 15 failed?"));
-        }
         Ok(())
     }
 
     // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
-        let mut btest = SomeBits::new_from_string(1, "0x1")?;
-        let bone = btest.clone();
+        let mut bitsx = SomeBits::new_from_string(1, "0x1")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.is_high());
 
-        if btest.is_high() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsy = bitsx.clone();
 
         for _ in 0..(NUM_BITS_PER_INT - 1) {
-            btest = btest.shift_left().b_or(&bone);
+            bitsx = bitsx.shift_left().b_or(&bitsy);
         }
-        if !btest.is_high() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.is_high());
 
         Ok(())
     }
@@ -975,21 +908,21 @@ mod tests {
     // Test SomeBits::is_low
     #[test]
     fn is_low() -> Result<(), String> {
-        if SomeBits::new_from_string(1, "0xa5")?.is_low() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(1, "0xa5")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.is_low());
 
-        if !SomeBits::new_low(1).is_low() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        let bitsx = SomeBits::new_low(1);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.is_low());
 
-        if SomeBits::new_from_string(2, "0x2000")?.is_low() {
-            return Err(String::from("Test 3 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x2000")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.is_low());
 
-        if !SomeBits::new_low(2).is_low() {
-            return Err(String::from("Test 4 failed?"));
-        }
+        let bitsx = SomeBits::new_low(2);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.is_low());
 
         Ok(())
     }
@@ -997,204 +930,157 @@ mod tests {
     // Test SomeBits::is_subset_of
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x0")?) {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if !SomeBits::new_low(2).is_subset_of(&SomeBits::new_from_string(2, "0x5")?) {
-            return Err(String::from("Test 2 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x5555")?
-            .is_subset_of(&SomeBits::new_from_string(2, "0x7777")?)
-        {
-            return Err(String::from("Test 3 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x5")?.is_subset_of(&SomeBits::new_from_string(2, "0x1")?)
-        {
-            return Err(String::from("Test 4 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x7777")?
-            .is_subset_of(&SomeBits::new_from_string(2, "0x5555")?)
-        {
-            return Err(String::from("Test 5 failed?"));
-        }
+        let bitsx = SomeBits::new_low(2);
+        let bitsy = SomeBits::new_from_string(2, "0x0")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_subset_of(&bitsy));
+
+        let bitsy = SomeBits::new_from_string(2, "0x5")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_subset_of(&bitsy));
+        assert!(!bitsy.is_subset_of(&bitsx));
+
+        let bitsx = SomeBits::new_from_string(2, "0x5555")?;
+        let bitsy = SomeBits::new_from_string(2, "0x7777")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_subset_of(&bitsy));
+        assert!(!bitsy.is_subset_of(&bitsx));
+
+        let bitsx = SomeBits::new_from_string(2, "0x5")?;
+        let bitsy = SomeBits::new_from_string(2, "0x1")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsy.is_subset_of(&bitsx));
+        assert!(!bitsx.is_subset_of(&bitsy));
+
         Ok(())
     }
 
     // Test SomeBits::is_superset_of
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        if !SomeBits::new_from_string(2, "0x0")?
-            .is_superset_of(&SomeBits::new_from_string(2, "0x0")?)
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x5")?
-            .is_superset_of(&SomeBits::new_from_string(2, "0x0")?)
-        {
-            return Err(String::from("Test 2 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x7777")?
-            .is_superset_of(&SomeBits::new_from_string(2, "0x5555")?)
-        {
-            return Err(format!("Test 3 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x1")?
-            .is_superset_of(&SomeBits::new_from_string(2, "0x5")?)
-        {
-            return Err(String::from("Test 4 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x5555")?
-            .is_superset_of(&SomeBits::new_from_string(2, "0x7777")?)
-        {
-            return Err(String::from("Test 5 failed?"));
-        }
-        Ok(())
-    }
+        let bitsx = SomeBits::new_from_string(2, "0x0")?;
+        let bitsy = SomeBits::new_from_string(2, "0x0")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_superset_of(&bitsy));
 
-    // Test SomeBits::just_one_bit
-    #[test]
-    fn just_one_bit() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5000")?.just_one_bit() {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x5")?;
+        let bitsy = SomeBits::new_from_string(2, "0x0")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_superset_of(&bitsy));
+        assert!(!bitsy.is_superset_of(&bitsx));
 
-        if SomeBits::new_from_string(2, "0x0300")?.just_one_bit() {
-            return Err(String::from("Test 2 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x7777")?;
+        let bitsy = SomeBits::new_from_string(2, "0x5555")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_superset_of(&bitsy));
+        assert!(!bitsy.is_superset_of(&bitsx));
 
-        if SomeBits::new_from_string(2, "0x0060")?.just_one_bit() {
-            return Err(String::from("Test 3 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x5")?;
+        let bitsy = SomeBits::new_from_string(2, "0x1")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_superset_of(&bitsy));
+        assert!(!bitsy.is_superset_of(&bitsx));
 
-        if SomeBits::new_from_string(2, "0x0007")?.just_one_bit() {
-            return Err(String::from("Test 4 failed?"));
-        }
-
-        if SomeBits::new_from_string(2, "0x0102")?.just_one_bit() {
-            return Err(String::from("Test 5 failed?"));
-        }
-
-        if SomeBits::new_from_string(2, "0x4080")?.just_one_bit() {
-            return Err(String::from("Test 6 failed?"));
-        }
-
-        if !SomeBits::new_from_string(2, "0x4000")?.just_one_bit() {
-            return Err(String::from("Test 7 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x0800")?.just_one_bit() {
-            return Err(String::from("Test 8 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x0010")?.just_one_bit() {
-            return Err(String::from("Test 9 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x0002")?.just_one_bit() {
-            return Err(String::from("Test 10 failed?"));
-        }
         Ok(())
     }
 
     #[test]
     fn half_bits() -> Result<(), String> {
-        let bts = SomeBits::new_from_string(2, "0x5555")?;
-        let hbts = bts.half_bits();
-        let num_bits = hbts.num_one_bits();
-        if num_bits != 4 {
-            return Err(format!(
-                "num bts {} num hbts {} ne 4?",
-                bts.num_one_bits(),
-                num_bits
-            ));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x5555")?;
+        let hbts = bitsx.half_bits();
+        println!("bitsx: {bitsx} hbts: {hbts}");
+        assert!(hbts.num_one_bits() == 4);
+
         Ok(())
     }
 
     // Test SomeBits::num_one_bits
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555")?.num_one_bits() != 8 {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0xaaaa")?.num_one_bits() != 8 {
-            return Err(String::from("Test 2 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x5555")?;
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.num_one_bits() == 8);
+
+        let bitsx = SomeBits::new_from_string(2, "0xaaa1")?;
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.num_one_bits() == 7);
+
         Ok(())
     }
 
     // Test SomeBits::push_1
     #[test]
     fn push_1() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x5555")?.push_1()
-            != SomeBits::new_from_string(2, "0xaaab")?
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x5555")?;
+        let bitsy = bitsx.push_1();
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsy == SomeBits::new_from_string(2, "0xaaab")?);
+
         Ok(())
     }
 
     // Test SomeBits::shift_left
     #[test]
     fn shift_left() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0xd555")?.shift_left()
-            != SomeBits::new_from_string(2, "0xaaaa")?
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0xd555")?;
+        let bitsy = bitsx.shift_left();
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsy == SomeBits::new_from_string(2, "0xaaaa")?);
+
         Ok(())
     }
 
     // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0xf505")?.shift_left4()
-            != SomeBits::new_from_string(2, "0x5050")?
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0xf505")?;
+        let bitsy = bitsx.shift_left4();
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsy == SomeBits::new_from_string(2, "0x5050")?);
+
         Ok(())
     }
 
     // Test SomeBits::split
     #[test]
     fn split() -> Result<(), String> {
+        let bitsx = SomeBits::new_from_string(2, "0x5050")?;
+        println!("bitsx: {bitsx}");
+
         let avec: Vec<SomeBits> = SomeBits::new_from_string(2, "0x5050")?.split();
-        if avec.len() != 4 {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x4000")?) {
-            return Err(String::from("Test 2 failed?"));
-        }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x1000")?) {
-            return Err(String::from("Test 3 failed?"));
-        }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x0040")?) {
-            return Err(String::from("Test 4 failed?"));
-        }
-        if !avec.contains(&SomeBits::new_from_string(2, "0x0010")?) {
-            return Err(String::from("Test 5 failed?"));
-        }
+        println!("split bits: {}", SomeBits::vec_string(&avec));
+
+        assert!(avec.len() == 4);
+        assert!(avec.contains(&SomeBits::new_from_string(2, "0x4000")?));
+        assert!(avec.contains(&SomeBits::new_from_string(2, "0x1000")?));
+        assert!(avec.contains(&SomeBits::new_from_string(2, "0x0040")?));
+        assert!(avec.contains(&SomeBits::new_from_string(2, "0x0010")?));
+
         Ok(())
     }
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        if SomeBits::new_from_string(2, "0x0")?.is_adjacent(&SomeBits::new_from_string(2, "0x11")?)
-        {
-            return Err(String::from("Test 1 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x1")?.is_adjacent(&SomeBits::new_from_string(2, "0x11")?)
-        {
-            return Err(String::from("Test 2 failed?"));
-        }
-        if SomeBits::new_from_string(2, "0x0")?
-            .is_adjacent(&SomeBits::new_from_string(2, "0x1100")?)
-        {
-            return Err(String::from("Test 3 failed?"));
-        }
-        if !SomeBits::new_from_string(2, "0x100")?
-            .is_adjacent(&SomeBits::new_from_string(2, "0x1100")?)
-        {
-            return Err(String::from("Test 4 failed?"));
-        }
+        let bitsx = SomeBits::new_from_string(2, "0x00")?;
+        let bitsy = SomeBits::new_from_string(2, "0x11")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(!bitsx.is_adjacent(&bitsy));
+
+        let bitsx = SomeBits::new_from_string(2, "0x01")?;
+        let bitsy = SomeBits::new_from_string(2, "0x11")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_adjacent(&bitsy));
+
+        let bitsx = SomeBits::new_from_string(2, "0x0000")?;
+        let bitsy = SomeBits::new_from_string(2, "0x1100")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(!bitsx.is_adjacent(&bitsy));
+
+        let bitsx = SomeBits::new_from_string(2, "0x0100")?;
+        let bitsy = SomeBits::new_from_string(2, "0x1100")?;
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsx.is_adjacent(&bitsy));
+
         Ok(())
     }
 }

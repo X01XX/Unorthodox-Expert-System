@@ -230,57 +230,49 @@ mod tests {
 
         let mut rslt_str = ResultStore::new(vec![sta1.clone()]);
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta1 {
-            return Err(format!("mrr {} NE {}?", mrr, sta1));
-        }
+        println!("mrr: {mrr} sta1: {sta1}");
+        assert!(*mrr == sta1);
 
         rslt_str.add_result(sta2.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta2 {
-            return Err(format!("mrr {} NE {}?", mrr, sta2));
-        }
+        println!("mrr: {mrr} sta2: {sta2}");
+        assert!(*mrr == sta2);
 
         rslt_str.add_result(sta3.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta3 {
-            return Err(format!("mrr {} NE {}?", mrr, sta3));
-        }
+        println!("mrr: {mrr} sta3: {sta3}");
+        assert!(*mrr == sta3);
 
         rslt_str.add_result(sta4.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta4 {
-            return Err(format!("mrr {} NE {}?", mrr, sta4));
-        }
+        println!("mrr: {mrr} sta4: {sta4}");
+        assert!(*mrr == sta4);
 
         rslt_str.add_result(sta5.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta5 {
-            return Err(format!("mrr {} NE {}?", mrr, sta5));
-        }
+        println!("mrr: {mrr} sta5: {sta5}");
+        assert!(*mrr == sta5);
 
         rslt_str.add_result(sta6.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta6 {
-            return Err(format!("mrr {} NE {}?", mrr, sta6));
-        }
+        println!("mrr: {mrr} sta6: {sta6}");
+        assert!(*mrr == sta6);
 
         rslt_str.add_result(sta7.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta7 {
-            return Err(format!("mrr {} NE {}?", mrr, sta7));
-        }
+        println!("mrr: {mrr} sta7: {sta7}");
+        assert!(*mrr == sta7);
 
         rslt_str.add_result(sta8.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta8 {
-            return Err(format!("mrr {} NE {}?", mrr, sta8));
-        }
+        println!("mrr: {mrr} sta8: {sta8}");
+        assert!(*mrr == sta8);
 
         rslt_str.add_result(sta9.clone());
         let mrr = rslt_str.most_recent_result();
-        if *mrr != sta9 {
-            return Err(format!("mrr {} NE {}?", mrr, sta9));
-        }
+        println!("mrr: {mrr} sta9: {sta9}");
+        assert!(*mrr == sta9);
+
         Ok(())
     }
 
@@ -290,21 +282,17 @@ mod tests {
         let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
 
         let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
-        if pn != Pn::One {
-            return Err(String::from("Test 1 Pn NE One?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::One);
 
         // Test additional adds.
         for _ in 0..8 {
             let pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
-            if pn != Pn::One {
-                return Err(String::from("Test 2 Pn NE One?"));
-            }
+            println!("Pn: {pn} results: {rslt_str}");
+            assert!(pn == Pn::One);
         }
 
-        if rslt_str.len() != MAX_RESULTS {
-            return Err(String::from("Test 3 len GT MAX_RESULTS?"));
-        }
+        assert!(rslt_str.len() == MAX_RESULTS);
 
         Ok(())
     }
@@ -314,37 +302,29 @@ mod tests {
     fn add_result_pn_two() -> Result<(), String> {
         let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
-
-        if pn != Pn::Two {
-            return Err(String::from("Test 1 Pn NE Two?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Two);
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
-
-        if pn != Pn::Two {
-            return Err(String::from("Test 2 Pn NE Two?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Two);
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
-
-        if pn != Pn::Two {
-            return Err(String::from("Test 3 Pn NE Two?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Two);
 
         // Test additional adds.
         for _ in 0..4 {
             pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
-
-            if pn != Pn::Two {
-                return Err(String::from("Test 4 Pn NE Two?"));
-            }
+            println!("Pn: {pn} results: {rslt_str}");
+            assert!(pn == Pn::Two);
 
             pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
-
-            if pn != Pn::Two {
-                return Err(String::from("Test 5 Pn NE Two?"));
-            }
+            println!("Pn: {pn} results: {rslt_str}");
+            assert!(pn == Pn::Two);
         }
+
+        assert!(rslt_str.len() == MAX_RESULTS);
 
         Ok(())
     }
@@ -356,29 +336,22 @@ mod tests {
         let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         let mut pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
 
-        if pn != Pn::Two {
-            return Err(String::from("Test 1 Pn NE Two?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Two);
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?); // two results, but out of order
-
-        if pn != Pn::Unpredictable {
-            return Err(String::from("Test 2 Pn NE Unpredictable?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Unpredictable);
 
         // Test three different results.
         rslt_str = ResultStore::new(vec![SomeState::new_from_string(2, "s0x505")?]);
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x504")?);
-
-        if pn != Pn::Two {
-            return Err(String::from("Test 3 Pn NE Two?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Two);
 
         pn = rslt_str.add_result(SomeState::new_from_string(2, "s0x502")?); // two results, but out of order
-
-        if pn != Pn::Unpredictable {
-            return Err(String::from("Test 4 Pn NE Unpredictable?"));
-        }
+        println!("Pn: {pn} results: {rslt_str}");
+        assert!(pn == Pn::Unpredictable);
 
         Ok(())
     }
@@ -394,17 +367,10 @@ mod tests {
         rslt_str.add_result(SomeState::new_from_string(2, "s0x505")?);
         rslt_str.add_result(SomeState::new_from_string(2, "s0x506")?);
 
-        if *rslt_str.first() != SomeState::new_from_string(2, "s0x504")? {
-            return Err(String::from("Test 1 first not s0x0504?"));
-        }
-
-        if *rslt_str.second() != SomeState::new_from_string(2, "s0x505")? {
-            return Err(String::from("Test 2 second not s0x0505?"));
-        }
-
-        if *rslt_str.most_recent_result() != SomeState::new_from_string(2, "s0x506")? {
-            return Err(String::from("Test 3 most_recent_result not s0x0506?"));
-        }
+        println!("results: {rslt_str}");
+        assert!(*rslt_str.first() == SomeState::new_from_string(2, "s0x504")?);
+        assert!(*rslt_str.second() == SomeState::new_from_string(2, "s0x505")?);
+        assert!(*rslt_str.most_recent_result() == SomeState::new_from_string(2, "s0x506")?);
 
         Ok(())
     }
