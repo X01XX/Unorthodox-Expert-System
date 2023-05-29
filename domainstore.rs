@@ -14,6 +14,7 @@ use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
 use crate::state::SomeState;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -910,7 +911,7 @@ impl DomainStore {
     }
 
     /// When the random depth-first plans all traverse a negative region, try to form a plan
-    /// that avoids negative regions.
+    /// that avoids negative regions.  Use random depth-first logic.
     fn avoid_negative_select_regions(
         &self,
         dom_num: usize,
@@ -990,173 +991,173 @@ impl DomainStore {
             other_nn_regions.push(regx);
         }
 
-        // Init vector to build intersections on, regions the start region is in.
-        let mut start_options = Vec::<Vec<&SomeRegion>>::new();
-        for regx in regs_start_in.iter() {
-            start_options.push(vec![regx]);
+        let mut plans = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| {
+                self.avoid_negative_select_regions2(
+                    dom_num,
+                    start_reg,
+                    goal_reg,
+                    &regs_start_in,
+                    &regs_goal_in,
+                    &other_nn_regions,
+                )
+            })
+            .collect::<Vec<SomePlan>>();
+
+        // Check for failure.
+        if plans.is_empty() {
+            //println!("avoid_negative_select_regions: plans is empty");
+            return None;
         }
 
-        // Init vector to build intersections on, regions the goal is in.
-        let mut goal_options = Vec::<Vec<&SomeRegion>>::new();
-        for regx in regs_goal_in.iter() {
-            goal_options.push(vec![regx]);
+        if plans.len() > 1 {
+            tools::vec_remove_dups(&mut plans, SomePlan::eq);
         }
+
+        // Return one of the plans, avoiding the need to clone.
+        Some(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
+    } // end avoid_negative_select_regions
+
+    /// When the random depth-first plans all traverse a negative region, try to form a plan
+    /// that avoids negative regions, given options calculated in avoid_negative_select_regions.
+    fn avoid_negative_select_regions2(
+        &self,
+        dom_num: usize,
+        start_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        start_in: &[&SomeRegion],
+        goal_in: &[&SomeRegion],
+        other_regions: &[&SomeRegion],
+    ) -> Option<SomePlan> {
+        //println!("avoid_negative_select_regions2: startng: dom {dom_num} start {start_reg} goal: {goal_reg}");
+        // Init start and goal paths.
+
+        let mut start_path = vec![start_in[rand::thread_rng().gen_range(0..start_in.len())]];
+        let mut goal_path = vec![goal_in[rand::thread_rng().gen_range(0..goal_in.len())]];
 
         // Successively add intersections of start/goal regions with other positive regions, until there is an intersection,
         // or no more combinations.
         // Keep all copies of each level of combinations found.
         // So assuming 1 -> D, a level 1 start vector, [00x1], could intersect a third level goal vector, [11x1, x111, 0x11], at 0011.
-        let mut intersection_vec: Option<Vec<(usize, usize, SomeRegion)>> = None;
-
-        // Use level to avoid making the same copies every cycle.
-        let mut level = 0;
 
         // Init flag to use to end the loop, if no changes and no intersection found.
         let mut changed = true;
 
         while changed {
             changed = false;
-            level += 1;
-
-            // Check for intersections.
-            intersection_vec = SomeRegion::vec_ref_intersections(&start_options, &goal_options);
-
-            // End loop if intersection is found.
-            if intersection_vec.is_some() {
-                break;
-            }
 
             // Add another layer of new connections.
             // Scan poitive regions that do not intersect the start and goal region.
-            for regx in other_nn_regions.iter() {
-                // Add another layer of new connections, to the start options.
-                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
-                for vecx in start_options.iter() {
-                    if vecx.len() < level {
-                        continue;
-                    }
-                    if vecx.contains(regx) {
-                        continue;
-                    }
-                    // Check if positive region intersects the last region in the vector.
-                    if let Some(regy) = vecx.last() {
-                        if regy.intersects(regx) {
-                            let mut tmp_vec = vecx.clone();
-                            tmp_vec.push(regx);
-                            tmp.push(tmp_vec);
-                            changed = true;
-                        }
-                    }
-                } // next vecx
-                start_options.append(&mut tmp);
+            let last_start = start_path.last()?;
+            let last_goal = goal_path.last()?;
 
-                // Add another layer of new connections, to the goal options.
-                let mut tmp = Vec::<Vec<&SomeRegion>>::new();
-                for vecx in goal_options.iter() {
-                    if vecx.len() < level {
-                        continue;
-                    }
-                    if vecx.contains(regx) {
-                        continue;
-                    }
-                    // Check if positive region intersects the last region in the vector.
-                    if let Some(regy) = vecx.last() {
-                        if regy.intersects(regx) {
-                            let mut tmp_vec = vecx.clone();
-                            tmp_vec.push(regx);
-                            tmp.push(tmp_vec);
-                            changed = true;
-                        }
-                    }
-                } // next vecx
-                goal_options.append(&mut tmp);
+            // Find possible intersections.
+            let mut start_int = Vec::<&SomeRegion>::new();
+            let mut goal_int = Vec::<&SomeRegion>::new();
+
+            for regx in other_regions.iter() {
+                if regx.intersects(last_start) && !start_path.contains(regx) {
+                    start_int.push(regx);
+                }
+                if regx.intersects(last_goal) && !goal_path.contains(regx) {
+                    goal_int.push(regx);
+                }
             } // next regx
+
+            if !start_int.is_empty() {
+                start_path.push(start_int[rand::thread_rng().gen_range(0..start_int.len())]);
+                changed = true;
+            }
+            if !goal_int.is_empty() {
+                goal_path.push(goal_int[rand::thread_rng().gen_range(0..goal_int.len())]);
+                changed = true;
+            }
+
+            // Check for intersections.
+            if changed && SomeRegion::vec_ref_intersections(&start_path, &goal_path).is_some() {
+                break;
+            }
         } // end while
 
         // Get intersections, if any.
-        let Some(intersections) = intersection_vec else { //println!("no intersections");
+        let Some(an_int) = SomeRegion::vec_ref_intersections(&start_path, &goal_path) else { //println!("avoid_negative_select_regions2: no intersections");
                                                             return None; };
 
         // Process intersection info, crating a path of intersecting non-negative regions, from start to goal.
-        'next_intersection: for an_int in intersections.iter() {
-            let tmp_start = &start_options[an_int.0];
-            let tmp_end = &goal_options[an_int.1];
 
-            // Fill tmp_start with remaining start goal regions.
-            let mut final_path = <Vec<&SomeRegion>>::new();
-            for regx in tmp_start.iter() {
-                final_path.push(regx);
-                if regx.is_superset_of(&an_int.2) {
-                    break;
-                }
+        // Fill tmp_start with remaining start goal regions.
+        let mut final_path = <Vec<&SomeRegion>>::new();
+        for regx in start_path.iter() {
+            final_path.push(regx);
+            if regx.is_superset_of(&an_int) {
+                break;
+            }
+        }
+
+        let mut tmp_end = Vec::<&SomeRegion>::new();
+        for regx in goal_path.iter() {
+            if **regx == an_int {
+                // Avoid adding a region that is already at the end of final_path.
+                break;
             }
 
-            let mut tmp_end2 = Vec::<&SomeRegion>::new();
-            for regx in tmp_end.iter() {
-                if *regx == &an_int.2 {
-                    break;
-                }
-                tmp_end2.push(regx);
-                if regx.intersects(&an_int.2) {
-                    break;
-                }
+            if regx.intersects(&an_int) {
+                tmp_end.push(regx);
+                break;
+            } else {
+                tmp_end.push(regx);
             }
+        }
 
-            for regx in tmp_end2.iter().rev() {
-                final_path.push(regx);
-            }
-            final_path.push(goal_reg);
+        for regx in tmp_end.iter().rev() {
+            final_path.push(regx);
+        }
+        final_path.push(goal_reg);
 
-            // Process final_path, turning it ino a plan.
-            let mut final_plan: Option<SomePlan> = None;
+        //println!("Final path: {}", SomeRegion::vec_ref_string(&final_path));
 
-            let mut tmp_next = SomeRegion::new(
-                self[dom_num].cur_state.clone(),
-                self[dom_num].cur_state.clone(),
-            );
+        // Process final_path, turning it ino a plan.
+        let mut final_plan: Option<SomePlan> = None;
 
-            for inx in 0..(final_path.len() - 1) {
-                let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
-                if tmp_int == tmp_next {
-                    continue;
-                }
+        let mut tmp_next = start_reg.clone();
 
-                if let Some(plans) = self[dom_num].make_plans2(&tmp_next, &tmp_int) {
-                    // Pick a plan that stays within the non-negative region.
-                    let mut inz: Option<usize> = None;
-                    for (iny, planx) in plans.iter().enumerate() {
-                        if let Some(regx) = planx.path_region() {
-                            if regx.is_subset_of(final_path[inx]) {
-                                inz = Some(iny);
-                                break;
-                            }
-                        }
+        for inx in 0..(final_path.len() - 1) {
+            let tmp_int = final_path[inx].intersection(final_path[inx + 1]).unwrap();
+
+            let Some(mut plans) = self[dom_num].make_plans2(&tmp_next, &tmp_int) else { //println!("avoid_negative_select_regions2: nothing from make_plans2"); 
+                return None; };
+
+            // Pick a plan that stays within the non-negative region.
+            let mut inz: Option<usize> = None;
+            for (iny, planx) in plans.iter().enumerate() {
+                if let Some(regx) = planx.path_region() {
+                    //println!("plan {} through {} regx {}", planx, tmp_next.union(&tmp_int), regx);
+                    if regx.is_subset_of(&tmp_next.union(&tmp_int)) {
+                        inz = Some(iny);
+                        break;
                     }
-                    if let Some(inw) = inz {
-                        tmp_next = plans[inw].result_region().clone();
-                        if let Some(planx) = final_plan {
-                            final_plan = planx.link(&plans[inw]);
-                        } else {
-                            final_plan = Some(plans[inw].clone());
-                        }
-                    } else {
-                        continue 'next_intersection;
-                    }
+                }
+            }
+
+            let Some(inw) = inz else { //println!("avoid_negative_select_regions2: No plan in {}", final_path[inx]); 
+                return None; };
+
+            if let Some(aplan) = final_plan {
+                if let Some(bplan) = aplan.link(&plans[inw]) {
+                    tmp_next = bplan.result_region().clone();
+                    final_plan = Some(bplan);
                 } else {
-                    //println!("plan {} to {} not found", tmp_next, tmp_int);
-                    continue 'next_intersection;
-                }
+                    return None;
+                };
+            } else {
+                tmp_next = plans[inx].result_region().clone();
+                final_plan = Some(plans.remove(inw));
             }
-            if let Some(planx) = final_plan {
-                debug_assert!(planx.initial_region().state1 == self[dom_num].cur_state,);
-                debug_assert!(planx.result_region().is_subset_of(goal_reg));
-                //println!("avoid_negative_select_regions found a plan");
-                return Some(planx);
-            }
-        } // next intersection
-          //println!("avoid_negative_select_regions found nothing");
-        None
-    } // end avoid_negative_select_regions
+        } // next inx
+
+        final_plan
+    } // end avoid_negative_select_regions2
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -1249,9 +1250,12 @@ mod tests {
         let goal_region = SomeRegion::new(sf.clone(), sf.clone());
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(0, &start_region, &goal_region) {
-            println!("Plan found: {}", planx);
+            println!(
+                "Plan found: {} start {start_region} goal {goal_region}",
+                planx
+            );
             assert!(planx.initial_region() == &start_region);
-            assert!(planx.result_region() == &goal_region);
+            assert!(planx.result_region().is_subset_of(&goal_region));
             assert!(dmxs.select.rate_plan(&planx, &[&state1]) == 0);
             return Ok(());
         }

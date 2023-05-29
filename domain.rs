@@ -468,12 +468,6 @@ impl SomeDomain {
             tools::vec_remove_dups(&mut plans, SomePlan::eq);
         }
 
-        // Return one of the plans, avoiding the need to clone.
-        if plans.len() == 1 {
-            //println!("make_plan returned plan");
-            return Some(vec![plans.remove(0)]);
-        }
-
         //println!("make_plan returned plan");
         Some(plans)
     } // end make plan
