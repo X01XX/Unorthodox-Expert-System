@@ -133,7 +133,7 @@ impl DomainStore {
                     .regions
                     .intersects(&self.select[iny].regions)
                 {
-                    self.select_subsets = self.select.split_by_intersections();
+                    self.select_subsets = self.select.split_to_subsets();
                     println!("\nSelect Regions positive subsets: {}", self.select_subsets);
                     return;
                 }
@@ -673,7 +673,7 @@ impl DomainStore {
                 .choose_select_exit_needs(&all_states, &self.aggregate_changes());
         }
 
-        // Check current status within an select region, or not.
+        // Check current status within a select region, or not.
         if self.select.any_supersets_of_states(&all_states) {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
@@ -699,7 +699,12 @@ impl DomainStore {
     /// Return a need for moving to an select region.
     fn select_goal_needs(&self, all_states: &[&SomeState]) -> Option<NeedStore> {
         // Get regions the current state is not in.
-        let mut notsups = self.select_subsets.not_supersets_of_states(all_states);
+        let mut notsups = self.select.not_supersets_of_states(all_states);
+
+        // If the current state is not in at least one select region, return None.
+        if notsups.is_empty() {
+            return None;
+        }
 
         // Remove negative, and zero, value regions.
         let mut inxs = Vec::<usize>::with_capacity(notsups.len());
@@ -717,16 +722,26 @@ impl DomainStore {
             }
         }
 
-        // If the current state is not in at least one select region, return None.
-        if notsups.is_empty() {
-            return None;
+        let mut notsups2 = Vec::<&SelectRegions>::new();
+        for selx in self.select_subsets.iter() {
+            let mut found = false;
+            for sely in notsups.iter() {
+                if selx.regions.is_subset_of(&sely.regions) {
+                    found = true;
+                    break;
+                }
+            }
+            if found {
+                notsups2.push(selx);
+            }
         }
 
         // Load return vector.
         let mut ret_str = NeedStore::with_capacity(notsups.len());
-        for nsupx in notsups.into_iter() {
+
+        for nsupx in notsups2.iter() {
             ret_str.push(SomeNeed::ToSelectRegion {
-                target_regions: nsupx.clone(),
+                target_regions: (*nsupx).clone(),
             });
         }
         Some(ret_str)

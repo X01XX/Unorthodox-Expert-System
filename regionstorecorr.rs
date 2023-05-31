@@ -5,8 +5,8 @@
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
-use crate::removeunordered;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -203,7 +203,7 @@ impl RegionStoreCorr {
     }
 
     /// Return a vector of masks representing X/non-x bit positions of self / other.
-    pub fn x_masks(&self, other: &RegionStoreCorr) -> Vec<SomeMask> {
+    pub fn xb_masks(&self, other: &RegionStoreCorr) -> Vec<SomeMask> {
         debug_assert!(self.len() == other.len());
 
         let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
@@ -232,7 +232,18 @@ impl RegionStoreCorr {
 
         let mut ret_str = Vec::<RegionStoreCorr>::new();
 
-        let xb_msks = self.x_masks(other);
+        // If no intersection, return self.
+        let Some(reg_int) = self.intersection(other) else {
+            ret_str.push(self.clone());
+            return ret_str;
+        };
+
+        // If other is a superset, return empty vector.
+        if reg_int == *self {
+            return ret_str;
+        }
+
+        let xb_msks = self.xb_masks(&reg_int);
 
         for inx in 0..self.len() {
             if xb_msks[inx].is_low() {
@@ -305,120 +316,59 @@ impl RegionStoreCorr {
         false
     }
 
-    /// Add a RegionStoreCorr to a corresponding RSC vector.
-    /// Skip add if there is any superset.
-    /// Otherwise, remove any subset RegionStoreCorrs.
-    pub fn vec_push_nosubs(rs_vec: &mut Vec<RegionStoreCorr>, reg_str: RegionStoreCorr) -> bool {
-        // Check for supersets, which probably is an error
-        if Self::vec_any_superset(rs_vec, &reg_str) {
-            return false;
-        }
-
-        // Identify subsets.
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, regx) in rs_vec.iter().enumerate() {
-            if regx.is_subset_of(&reg_str) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in descending index order.
-        for inx in rmvec.iter().rev() {
-            removeunordered::remove_unordered(rs_vec, *inx);
-        }
-
-        rs_vec.push(reg_str);
-
-        true
-    }
-
-    /// Split corresponding RegionStoreCorrs by intersections, producing a result where each RSC is a subset
-    /// of any intersecting original RSCs. All parts of the original RegionStores are accounted for in the
+    /// Split corresponding regions by intersections, producing a result where each region is a subset
+    /// of any intersecting original regions. All parts of the original regions should be represented in the
     /// result.
     pub fn vec_split_to_subsets(rs_vec: &[RegionStoreCorr]) -> Vec<RegionStoreCorr> {
-        // Init return vector of RegionStores.
+        assert!(!rs_vec.is_empty());
+
+        if rs_vec.len() == 1 {
+            return vec![rs_vec[0].clone()];
+        }
+
+        // Init return vector of regions, subuset of all intersecting original regions.
         let mut ret_vec = Vec::<RegionStoreCorr>::new();
 
-        // Init temp vector, for RegionStore fragments.
-        let mut tmp_vec = Vec::<RegionStoreCorr>::new();
+        let mut each_reg_set = Vec::<Vec<&SomeRegion>>::with_capacity(rs_vec.len());
 
-        // Init vector to note indices of RegionStores that are split.
-        // There may be a few duplicates, but that will not affect the use of the vector.
-        let mut int_vec = Vec::<usize>::new();
-
-        // Get initial fragments, from any two non-equal intersecting RegionStores.
-        for inx in 0..(rs_vec.len() - 1) {
-            for iny in (inx + 1)..rs_vec.len() {
-                // Skip two equal regions.  If no other intersections, one will make it into the return vector.
-                if rs_vec[inx] == rs_vec[iny] {
-                    continue;
-                }
-
-                // If there is an intersection, split the RegionStores into fragments.
-                if let Some(int) = rs_vec[inx].intersection(&rs_vec[iny]) {
-                    int_vec.push(inx);
-                    int_vec.push(iny);
-
-                    for rsz in rs_vec[inx].subtract(&int).into_iter() {
-                        Self::vec_push_nosubs(&mut tmp_vec, rsz);
-                    }
-
-                    for rsz in rs_vec[iny].subtract(&int).into_iter() {
-                        Self::vec_push_nosubs(&mut tmp_vec, rsz);
-                    }
-                    Self::vec_push_nosubs(&mut tmp_vec, int);
-                }
+        for inx in 0..rs_vec[0].len() {
+            let mut tmp_vec = Vec::<&SomeRegion>::with_capacity(rs_vec.len());
+            for rsx in rs_vec.iter() {
+                tmp_vec.push(&rsx[inx]);
             }
-        }
-        // For RegionStores with no intersections, add to the return vector.
-        for (iny, rsy) in rs_vec.iter().enumerate() {
-            if !int_vec.contains(&iny) {
-                Self::vec_push_nosubs(&mut ret_vec, rsy.clone());
-            }
+
+            each_reg_set.push(tmp_vec);
         }
 
-        // Look for additional non-subset intersections.
-        loop {
-            // Init vector for next pass.
-            let mut next_pass = Vec::<RegionStoreCorr>::new();
+        // Get subsets for each domain.
+        let mut each_set_subs = Vec::<Vec<SomeRegion>>::with_capacity(rs_vec.len());
+        for setx in each_reg_set.iter() {
+            //println!("set: {}", SomeRegion::vec_ref_string(setx));
+            each_set_subs.push(SomeRegion::vec_ref_split_to_subsets(setx));
+        }
 
-            // Check remaining fragments for additional intersections.
-            // If no intersections are found, add the fragment to the return vector,
-            // else add fragments of fragments to the next_pass vector.
-            for rsy in tmp_vec.into_iter() {
-                let mut split = false;
-
-                // Check for intersecting RegionStore from original argument.
-                for rsx in rs_vec.iter() {
-                    if let Some(int) = rsy.intersection(rsx) {
-                        // Skip if rsy if it is a subset, thats the end we are looking for.
-                        if int == rsy {
-                            continue;
-                        }
-                        // Split intersection into fragments.
-                        // Add fragments to the next_pass vector.
-                        for rsz in rsy.subtract(&int).into_iter() {
-                            Self::vec_push_nosubs(&mut next_pass, rsz);
-                        }
-                        // Add the intersection to the next_pass vector.
-                        Self::vec_push_nosubs(&mut next_pass, int);
-                        split = true;
-                    }
-                } // next rsx
-                  // If no intersectiosn, add the fragment to the return vector.
-                if !split {
-                    Self::vec_push_nosubs(&mut ret_vec, rsy);
-                }
-            } // next rsy
-
-            // If no more fragments to check, return.
-            if next_pass.is_empty() {
-                return ret_vec;
+        // Assemble refs for each domain subsets.
+        let mut refs = Vec::<Vec<&SomeRegion>>::with_capacity(rs_vec.len());
+        for setx in each_set_subs.iter() {
+            let mut refs_tmp = Vec::<&SomeRegion>::with_capacity(setx.len());
+            for regx in setx.iter() {
+                refs_tmp.push(regx);
             }
-            // Set up next fragments to check.
-            tmp_vec = next_pass;
-        } // End loop
+            refs.push(refs_tmp);
+        }
+
+        let options = tools::any_one_of_each(&refs);
+        //println!("num options returned: {}", options.len());
+
+        for opx in options.iter() {
+            let mut regs = Vec::<SomeRegion>::with_capacity(opx.len());
+            for refx in opx.iter() {
+                regs.push((*refx).clone());
+            }
+            ret_vec.push(RegionStoreCorr::new(regs));
+        }
+        //println!("num RegionStoreCorr is {}", ret_vec.len());
+        ret_vec
     }
 } // End impl RegionStoreCorr.
 
@@ -445,7 +395,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result1: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result1: {}", RegionStoreCorr::vec_string(&rslt));
 
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
@@ -461,7 +411,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result2: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result2: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
 
@@ -479,7 +429,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result3: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result3: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -507,7 +457,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result4: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result4: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -535,7 +485,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result5: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result5: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 5);
         assert!(
             rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
@@ -582,7 +532,7 @@ mod tests {
 
         let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
 
-        println!("Result6: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Result6: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 8);
 
         assert!(
@@ -632,7 +582,6 @@ mod tests {
                 1, "r1x11"
             )?]))
         );
-
         Ok(())
     }
 
@@ -682,6 +631,37 @@ mod tests {
         regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_001x")?);
         assert!(RegionStoreCorr::vec_contains(&subt, &regstr3));
 
+        // Test subtract superset.
+        let subt = regstr2.subtract(&regstr1);
+
+        println!("for {}", regstr1);
+        println!("  - {}", regstr2);
+
+        for (inx, rsx) in subt.iter().enumerate() {
+            println!("{}   {}", inx, rsx);
+        }
+        assert!(subt.len() == 0);
+
+        // Test no intersection.
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r1000")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r1110")?);
+
+        let subt = regstr1.subtract(&regstr2);
+
+        println!("for {}", regstr1);
+        println!("  - {}", regstr2);
+
+        for (inx, rsx) in subt.iter().enumerate() {
+            println!("{}   {}", inx, rsx);
+        }
+        assert!(subt.len() == 1);
+        assert!(RegionStoreCorr::vec_contains(&subt, &regstr1));
+
         Ok(())
     }
 
@@ -695,7 +675,7 @@ mod tests {
         regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
         regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
 
-        let xb_msks = regstr1.x_masks(&regstr2);
+        let xb_msks = regstr1.xb_masks(&regstr2);
 
         println!("msk0 = {}, msk1 = {}", xb_msks[0], xb_msks[1]);
 

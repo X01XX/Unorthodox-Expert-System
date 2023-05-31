@@ -241,7 +241,7 @@ impl SelectRegionsStore {
     /// Some result RegionStoreCorrs may overlap each other.
     /// Each result regionstore will be a subset of one, or more, of the original regionstores,
     /// where the sum of the SelectRegion values is greater than zero.
-    pub fn split_by_intersections(&self) -> Self {
+    pub fn split_to_subsets(&self) -> Self {
         let mut rs = Vec::<RegionStoreCorr>::with_capacity(self.len());
         for reg_valx in &self.regionstores {
             rs.push(reg_valx.regions.clone());
