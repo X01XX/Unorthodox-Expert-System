@@ -32,21 +32,21 @@ impl fmt::Display for SomeNeed {
                 for_reg,
                 far,
                 num_x,
+                priority,
             } => {
-                let pri = self.priority();
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})")
             }
             SomeNeed::ConfirmGroup {
                 dom_num,
                 act_num,
                 target_state,
                 grp_reg,
+                priority,
                 ..
             } => {
-                let pri = self.priority();
                 format!(
-                    "N(Dom {dom_num} Act {act_num} Pri {pri} Get additional sample of state {target_state} to confirm group {grp_reg})")
+                    "N(Dom {dom_num} Act {act_num} Pri {priority} Get additional sample of state {target_state} to confirm group {grp_reg})")
             }
             SomeNeed::ContradictoryIntersection {
                 dom_num,
@@ -56,10 +56,10 @@ impl fmt::Display for SomeNeed {
                 ruls1,
                 group2,
                 ruls2,
+                priority,
             } => {
-                let pri = self.priority();
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})")
             }
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
@@ -70,15 +70,15 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
+                priority,
                 ..
             } => {
-                let pri = self.priority();
                 if target_state == anchor {
                     format!(
-                        "N(Dom {dom_num} Act {act_num} Pri {pri} Sample anchor State {anchor}, to limit group {for_group})")
+                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})")
                 } else {
                     format!(
-                        "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, far from {anchor} to limit group {for_group})")
+                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {anchor} to limit group {for_group})")
                 }
             }
             SomeNeed::LimitGroupAdj {
@@ -87,11 +87,11 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_group,
                 anchor,
+                priority,
                 ..
             } => {
-                let pri = self.priority();
                 format!(
-                    "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
+                    "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
             }
             SomeNeed::RemoveGroupAnchor { group_region } => {
                 format!("N(Remove anchor for group {group_region})")
@@ -101,11 +101,11 @@ impl fmt::Display for SomeNeed {
                 act_num,
                 target_state,
                 in_group,
+                priority,
             } => {
-                let pri = self.priority();
                 format!(
                     "N(Dom {} Act {} Pri {} Sample State {}, between {} and {} to seek edge)",
-                    dom_num, act_num, pri, target_state, in_group.state1, in_group.state2
+                    dom_num, act_num, priority, target_state, in_group.state1, in_group.state2
                 )
             }
             SomeNeed::SetGroupAnchor {
@@ -122,27 +122,31 @@ impl fmt::Display for SomeNeed {
                 dom_num,
                 act_num,
                 target_region,
+                priority,
             } => {
-                let pri = self.priority();
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_region} in remainder)")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_region} in remainder)")
             }
             SomeNeed::StateNotInGroup {
                 dom_num,
                 act_num,
                 target_state,
+                priority,
             } => {
-                let pri = self.priority();
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {pri} Sample State {target_state} not in a group)")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state} not in a group)")
             }
-            SomeNeed::ToSelectRegion { target_regions } => {
-                let pri = self.priority();
-                format!("N(Pri {pri} To Select Regions {target_regions})")
+            SomeNeed::ToSelectRegion {
+                target_regions,
+                priority,
+            } => {
+                format!("N(Pri {priority} To Select Regions {target_regions})")
             }
-            SomeNeed::ExitSelectRegion { target_states } => {
-                let pri = self.priority();
-                format!("N(Pri {pri} Exit Select Regions {target_states})")
+            SomeNeed::ExitSelectRegion {
+                target_states,
+                priority,
+            } => {
+                format!("N(Pri {priority} Exit Select Regions {target_states})")
             }
         }; // end match
 
@@ -168,6 +172,7 @@ pub enum SomeNeed {
         for_reg: SomeRegion,
         far: SomeState,
         num_x: usize,
+        priority: usize,
     },
     /// Get an additional sample of a state.
     ConfirmGroup {
@@ -176,6 +181,7 @@ pub enum SomeNeed {
         target_state: SomeState,
         grp_reg: SomeRegion,
         group_num: usize,
+        priority: usize,
     },
     /// Sample a state to resolve a contradictory intersection of two groups.
     ContradictoryIntersection {
@@ -186,6 +192,7 @@ pub enum SomeNeed {
         ruls1: RuleStore,
         group2: SomeRegion,
         ruls2: RuleStore,
+        priority: usize,
     },
     /// Housekeeping, inactivate a region in the seek_edge vector.
     InactivateSeekEdge { reg: SomeRegion },
@@ -197,6 +204,7 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
         group_num: usize,
+        priority: usize,
     },
     /// Sample an adjacent state to limit a group.
     LimitGroupAdj {
@@ -206,6 +214,7 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
         group_num: usize,
+        priority: usize,
     },
     /// Housekeeping, Remove group anchor.
     RemoveGroupAnchor { group_region: SomeRegion },
@@ -215,6 +224,7 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
         in_group: SomeRegion,
+        priority: usize,
     },
     /// Housekeeping, set the anchor for a group.
     SetGroupAnchor {
@@ -232,17 +242,25 @@ pub enum SomeNeed {
         dom_num: usize,
         act_num: usize,
         target_region: SomeRegion,
+        priority: usize,
     },
     /// Sample a state that is not in a group.
     StateNotInGroup {
         dom_num: usize,
         act_num: usize,
         target_state: SomeState,
+        priority: usize,
     },
     /// Move all current domain states to the corresponding regions of an SelectRegion.
-    ToSelectRegion { target_regions: SelectRegions },
+    ToSelectRegion {
+        target_regions: SelectRegions,
+        priority: usize,
+    },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
-    ExitSelectRegion { target_states: StateStore },
+    ExitSelectRegion {
+        target_states: StateStore,
+        priority: usize,
+    },
 }
 
 impl SomeNeed {
@@ -268,24 +286,60 @@ impl SomeNeed {
         }
     }
 
-    /// Return a priority number for a need.  Lower is more important.
+    /// Set priority number for a need.  Lower is more important.
     ///  Don't use number zero!
     /// "- num_x" gives priority to larger regions.
     /// "+ group_num" gives priority to groups near the beginning of a group list.
+    pub fn calc_priority(&mut self) {
+        match self {
+            // By ascending priority number.
+            SomeNeed::SeekEdge { priority, .. } => *priority = 100,
+            SomeNeed::ContradictoryIntersection { priority, .. } => *priority = 200,
+            SomeNeed::ExitSelectRegion { priority, .. } => *priority = 250,
+            SomeNeed::AStateMakeGroup {
+                priority, num_x, ..
+            } => *priority = 399 - *num_x,
+            SomeNeed::ConfirmGroup {
+                priority,
+                group_num,
+                ..
+            } => *priority = 400 + *group_num,
+            SomeNeed::LimitGroup {
+                priority,
+                group_num,
+                ..
+            } => *priority = 400 + *group_num,
+            SomeNeed::LimitGroupAdj {
+                priority,
+                group_num,
+                ..
+            } => *priority = 400 + *group_num,
+            SomeNeed::StateNotInGroup { priority, .. } => *priority = 500,
+            SomeNeed::ToSelectRegion { priority, .. } => *priority = *priority + 600,
+            // Some needs should have a higher priority number compared to ToSelectRegion.
+            SomeNeed::StateInRemainder { priority, .. } => *priority = 10000,
+            _ => panic!(
+                "SomeNeed::priority should not be called for the {} need.",
+                self.name()
+            ),
+        } // end match ndx
+    } // end caLc_priority
+
+    /// Return a need priority.
     pub fn priority(&self) -> usize {
         match self {
             // By ascending priority number.
-            SomeNeed::SeekEdge { .. } => 100,
-            SomeNeed::ContradictoryIntersection { .. } => 200,
-            SomeNeed::ExitSelectRegion { .. } => 250,
-            SomeNeed::AStateMakeGroup { num_x, .. } => 399 - num_x,
-            SomeNeed::ConfirmGroup { group_num, .. } => 400 + group_num,
-            SomeNeed::LimitGroup { group_num, .. } => 400 + group_num,
-            SomeNeed::LimitGroupAdj { group_num, .. } => 400 + group_num,
-            SomeNeed::StateNotInGroup { .. } => 500,
-            SomeNeed::ToSelectRegion { .. } => 600,
+            SomeNeed::SeekEdge { priority, .. } => *priority,
+            SomeNeed::ContradictoryIntersection { priority, .. } => *priority,
+            SomeNeed::ExitSelectRegion { priority, .. } => *priority,
+            SomeNeed::AStateMakeGroup { priority, .. } => *priority,
+            SomeNeed::ConfirmGroup { priority, .. } => *priority,
+            SomeNeed::LimitGroup { priority, .. } => *priority,
+            SomeNeed::LimitGroupAdj { priority, .. } => *priority,
+            SomeNeed::StateNotInGroup { priority, .. } => *priority,
+            SomeNeed::ToSelectRegion { priority, .. } => *priority,
             // Some needs should have a higher priority number compared to ToSelectRegion.
-            SomeNeed::StateInRemainder { .. } => 700,
+            SomeNeed::StateInRemainder { priority, .. } => *priority,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()

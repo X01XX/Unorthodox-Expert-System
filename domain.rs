@@ -1227,54 +1227,64 @@ mod tests {
         // Sample 1
         let sdb = dm0.state_from_string("s0b1101_1011")?;
         let sd9 = dm0.state_from_string("s0b1101_1001")?;
-        let ndx = SomeNeed::StateNotInGroup {
+        let mut ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
             target_state: sdb.clone(),
+            priority: 0,
         };
+        ndx.calc_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sdb.clone(), 0, sd9.clone()));
 
         // Sample 2
         let se5 = dm0.state_from_string("s0b1110_0101")?;
         let se7 = dm0.state_from_string("s0b1110_0111")?;
-        let ndx = SomeNeed::StateNotInGroup {
+        let mut ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
             target_state: se5.clone(),
+            priority: 0,
         };
+        ndx.calc_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(se5.clone(), 0, se7.clone()));
 
         // Sample 3
         let s25 = dm0.state_from_string("s0b0010_0101")?;
         let s27 = dm0.state_from_string("s0b0010_0111")?;
-        let ndx = SomeNeed::StateNotInGroup {
+        let mut ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
             target_state: s25.clone(),
+            priority: 0,
         };
+        ndx.calc_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s25.clone(), 0, s27.clone()));
 
         // Sample 4    // Set up a limited group.
         let s2c = dm0.state_from_string("s0b0010_1100")?;
         let s2e = dm0.state_from_string("s0b0010_1110")?;
-        let ndx = SomeNeed::StateNotInGroup {
+        let mut ndx = SomeNeed::StateNotInGroup {
             dom_num: 0,
             act_num: 0,
             target_state: s2c.clone(),
+            priority: 0,
         };
+        ndx.calc_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s2c.clone(), 0, s2e.clone()));
 
         // Sample 5
         let sd3 = dm0.state_from_string("s0b1101_0011")?;
         let sd1 = dm0.state_from_string("s0b1101_0001")?;
-        let ndx = SomeNeed::AStateMakeGroup {
+        let mut ndx = SomeNeed::AStateMakeGroup {
             dom_num: 0,
             act_num: 0,
             target_state: sd3.clone(),
             for_reg: dm0.region_from_string("rxxxx_xxxx")?,
             far: dm0.state_from_string("s0b0010_1100")?,
             num_x: 8,
+            priority: 0,
         };
+        ndx.calc_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
 
         println!("\nActs: {}", &dm0.actions);

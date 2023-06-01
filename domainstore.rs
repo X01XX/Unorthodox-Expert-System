@@ -257,13 +257,15 @@ impl DomainStore {
             .any_supersets_of_states(&self.all_current_states());
 
         let select_priority = if in_select && self.boredom < self.boredom_limit {
-            SomeNeed::ToSelectRegion {
+            let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: SelectRegions {
                     regions: RegionStoreCorr::new(vec![]),
                     value: 0,
                 },
-            }
-            .priority()
+                priority: 0,
+            };
+            needx.calc_priority();
+            needx.priority()
         } else {
             usize::MAX
         };
@@ -740,9 +742,14 @@ impl DomainStore {
         let mut ret_str = NeedStore::with_capacity(notsups.len());
 
         for nsupx in notsups2.iter() {
-            ret_str.push(SomeNeed::ToSelectRegion {
+            // Calc priority addon, to weight the priority by distance and value of the region.
+            let priority = (nsupx.regions.distance_states(all_states) * 100) / nsupx.value as usize;
+            let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: (*nsupx).clone(),
-            });
+                priority,
+            };
+            needx.calc_priority();
+            ret_str.push(needx);
         }
         Some(ret_str)
     }

@@ -329,7 +329,7 @@ fn domainstore_init() -> DomainStore {
     // Add select regionstores.
     dmxs.add_select(regstr1, 3);
     dmxs.add_select(regstr2, 2);
-    dmxs.add_select(regstr3, 4);
+    dmxs.add_select(regstr3, 3);
     dmxs.add_select(regstr4, 1);
     dmxs.add_select(regstr5, -1);
     dmxs.calc_select();

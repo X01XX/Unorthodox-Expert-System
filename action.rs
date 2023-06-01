@@ -643,19 +643,25 @@ impl SomeAction {
                         self.dom_num, self.num, sqrx
                     );
                 } else {
-                    nds.push(SomeNeed::StateNotInGroup {
+                    let mut needx = SomeNeed::StateNotInGroup {
                         dom_num: self.dom_num,
                         act_num: self.num,
                         target_state: cur_state.clone(),
-                    });
+                        priority: 0,
+                    };
+                    needx.calc_priority();
+                    nds.push(needx);
                     return nds;
                 }
             } else {
-                nds.push(SomeNeed::StateNotInGroup {
+                let mut needx = SomeNeed::StateNotInGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: cur_state.clone(),
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                nds.push(needx);
                 return nds;
             }
         }
@@ -678,11 +684,14 @@ impl SomeAction {
             }
         }
         if let Some(stax) = target {
-            nds.push(SomeNeed::StateNotInGroup {
+            let mut needx = SomeNeed::StateNotInGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: stax.clone(),
-            });
+                priority: 0,
+            };
+            needx.calc_priority();
+            nds.push(needx);
             return nds;
         }
 
@@ -701,11 +710,14 @@ impl SomeAction {
         } // next stax
 
         if let Some(smpx) = target {
-            nds.push(SomeNeed::StateNotInGroup {
+            let mut needx = SomeNeed::StateNotInGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: smpx.initial.clone(),
-            });
+                priority: 0,
+            };
+            needx.calc_priority();
+            nds.push(needx);
         }
         nds
     }
@@ -920,11 +932,14 @@ impl SomeAction {
                     if self.remainder_checked {
                         if let Some(aregion) = &self.remainder_check_region {
                             //println!("dom {} act {} remainder need 2 added for {}", self.dom_num, self.num, astate);
-                            nds.push(SomeNeed::StateInRemainder {
+                            let mut needx = SomeNeed::StateInRemainder {
                                 dom_num: self.dom_num,
                                 act_num: self.num,
                                 target_region: aregion.clone(),
-                            });
+                                priority: 0,
+                            };
+                            needx.calc_priority();
+                            nds.push(needx);
                         }
                     } else {
                         self.remainder_checked = true;
@@ -941,11 +956,14 @@ impl SomeAction {
                             //    _ => ()
                             //}
                             //println!("dom {} act {} remainder need 1 added for {}", self.dom_num, self.num, astate);
-                            nds.push(SomeNeed::StateInRemainder {
+                            let mut needx = SomeNeed::StateInRemainder {
                                 dom_num: self.dom_num,
                                 act_num: self.num,
                                 target_region: aregion.clone(),
-                            });
+                                priority: 0,
+                            };
+                            needx.calc_priority();
+                            nds.push(needx);
                         }
                     }
                 } else {
@@ -1078,22 +1096,28 @@ impl SomeAction {
             // Check that squares that define the region are pnc.
             if !sqr1.pnc {
                 //print!("get more samples of square {} ", &sqr1.state);
-                ret_nds.push(SomeNeed::SeekEdge {
+                let mut needx = SomeNeed::SeekEdge {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: sqr1.state.clone(),
                     in_group: regx.clone(),
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
                 continue;
             }
             if !sqr2.pnc {
                 //print!("get more samples of square {} ", &sqr2.state);
-                ret_nds.push(SomeNeed::SeekEdge {
+                let mut needx = SomeNeed::SeekEdge {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: sqr2.state.clone(),
                     in_group: regx.clone(),
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
                 continue;
             }
 
@@ -1150,12 +1174,15 @@ impl SomeAction {
             // Generate need for squares with pnc != true, max samples.
             for sqrx in &sqrs_in2 {
                 if sqrx.len_results() == max_len {
-                    ret_nds.push(SomeNeed::SeekEdge {
+                    let mut needx = SomeNeed::SeekEdge {
                         dom_num: self.dom_num,
                         act_num: self.num,
                         target_state: sqrx.state.clone(),
                         in_group: regx.clone(),
-                    });
+                        priority: 0,
+                    };
+                    needx.calc_priority();
+                    ret_nds.push(needx);
                 }
             }
 
@@ -1199,12 +1226,15 @@ impl SomeAction {
 
         // Make need for seek_state
         //print!("get first sample of square {}", &seek_state);
-        ret_nds.push(SomeNeed::SeekEdge {
+        let mut needx = SomeNeed::SeekEdge {
             dom_num: self.dom_num,
             act_num: self.num,
             target_state: seek_state,
             in_group: regx.clone(),
-        });
+            priority: 0,
+        };
+        needx.calc_priority();
+        ret_nds.push(needx);
         //println!(" ");
 
         ret_nds
@@ -1227,13 +1257,16 @@ impl SomeAction {
                 .find(&grpx.region.state1)
                 .expect("Group region states should refer to existing squares");
             if !sqrx.pnc {
-                ret_nds.push(SomeNeed::ConfirmGroup {
+                let mut needx = SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
                     group_num,
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
             }
 
             // If this is a one-state group ..
@@ -1249,13 +1282,16 @@ impl SomeAction {
                 .find(&grpx.region.state2)
                 .expect("Group region states should refer to existing squares");
             if !sqry.pnc {
-                ret_nds.push(SomeNeed::ConfirmGroup {
+                let mut needx = SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
                     group_num,
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
             }
 
             // Group may have become pnc due to a sample from running a plan, rather than a specific
@@ -1470,14 +1506,17 @@ impl SomeAction {
                 }
 
                 // Get additional samples of the anchor
-                ret_nds.push(SomeNeed::LimitGroup {
+                let mut needx = SomeNeed::LimitGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     anchor: anchor.clone(),
                     target_state: anchor.clone(),
                     for_group: grpx.region.clone(),
                     group_num,
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
 
                 return Some(ret_nds);
             }
@@ -1497,14 +1536,17 @@ impl SomeAction {
             });
         } else {
             // Potential anchor not sampled yet.
-            ret_nds.push(SomeNeed::LimitGroup {
+            let mut needx = SomeNeed::LimitGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 anchor: cfm_max.clone(),
                 target_state: cfm_max.clone(),
                 for_group: grpx.region.clone(),
                 group_num,
-            });
+                priority: 0,
+            };
+            needx.calc_priority();
+            ret_nds.push(needx);
         }
         Some(ret_nds)
     } // end limit_group_anchor_needs
@@ -1562,25 +1604,31 @@ impl SomeAction {
                     }
                 } else {
                     // Get another sample of adjacent square.
-                    nds_grp.push(SomeNeed::LimitGroupAdj {
+                    let mut needx = SomeNeed::LimitGroupAdj {
                         dom_num: self.dom_num,
                         act_num: self.num,
                         anchor: anchor_sta.clone(),
                         target_state: adj_sta,
                         for_group: grpx.region.clone(),
                         group_num,
-                    });
+                        priority: 0,
+                    };
+                    needx.calc_priority();
+                    nds_grp.push(needx);
                 }
             } else {
                 // Get first sample of adjacent square.
-                nds_grp.push(SomeNeed::LimitGroupAdj {
+                let mut needx = SomeNeed::LimitGroupAdj {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
                     target_state: adj_sta,
                     for_group: grpx.region.clone(),
                     group_num,
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                nds_grp.push(needx);
             }
         } // next inx in cfm_max
 
@@ -1609,25 +1657,31 @@ impl SomeAction {
                 return None;
             } else {
                 // Get additional samples of the far state.
-                ret_nds.push(SomeNeed::LimitGroup {
+                let mut needx = SomeNeed::LimitGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     anchor: anchor_sta.clone(),
                     target_state: sta_far,
                     for_group: grpx.region.clone(),
                     group_num,
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                ret_nds.push(needx);
             }
         } else {
             // Get the first sample of the far state.
-            ret_nds.push(SomeNeed::LimitGroup {
+            let mut needx = SomeNeed::LimitGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 anchor: anchor_sta.clone(),
                 target_state: sta_far,
                 for_group: grpx.region.clone(),
                 group_num,
-            });
+                priority: 0,
+            };
+            needx.calc_priority();
+            ret_nds.push(needx);
         }
 
         //println!("limit_group_needs: returning {}", &ret_nds);
@@ -1810,35 +1864,44 @@ impl SomeAction {
         // Get more samples
         for pairx in &pairs {
             if !pairx.1.pnc {
-                nds.push(SomeNeed::AStateMakeGroup {
+                let mut needx = SomeNeed::AStateMakeGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: pairx.1.state.clone(),
                     for_reg: regx.clone(),
                     far: pairx.0.clone(),
                     num_x: regx.num_x(),
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                nds.push(needx);
             }
             if let Some(sqr2) = self.squares.find(&pairx.0) {
                 if !sqr2.pnc {
-                    nds.push(SomeNeed::AStateMakeGroup {
+                    let mut needx = SomeNeed::AStateMakeGroup {
                         dom_num: self.dom_num,
                         act_num: self.num,
                         target_state: pairx.0.clone(),
                         for_reg: regx.clone(),
                         far: pairx.1.state.clone(),
                         num_x: regx.num_x(),
-                    });
+                        priority: 0,
+                    };
+                    needx.calc_priority();
+                    nds.push(needx);
                 }
             } else {
-                nds.push(SomeNeed::AStateMakeGroup {
+                let mut needx = SomeNeed::AStateMakeGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
                     target_state: pairx.0.clone(),
                     for_reg: regx.clone(),
                     far: pairx.1.state.clone(),
                     num_x: regx.num_x(),
-                });
+                    priority: 0,
+                };
+                needx.calc_priority();
+                nds.push(needx);
             }
         }
 
@@ -1949,7 +2012,7 @@ impl SomeAction {
                 grpy.rules.restrict_initial_region(regx)
             };
 
-            return SomeNeed::ContradictoryIntersection {
+            let mut needx = SomeNeed::ContradictoryIntersection {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_region: regx.clone(),
@@ -1957,7 +2020,10 @@ impl SomeAction {
                 ruls1,
                 group2: grpy.region.clone(),
                 ruls2,
+                priority: 0,
             };
+            needx.calc_priority();
+            return needx;
         }
 
         // Some samples have been taken in the region
@@ -2002,7 +2068,7 @@ impl SomeAction {
             grpy.rules.restrict_initial_region(regx)
         };
 
-        SomeNeed::ContradictoryIntersection {
+        let mut needx = SomeNeed::ContradictoryIntersection {
             dom_num: self.dom_num,
             act_num: self.num,
             target_region: SomeRegion::new(stas_check[inx].clone(), stas_check[inx].clone()),
@@ -2010,7 +2076,10 @@ impl SomeAction {
             ruls1,
             group2: grpy.region.clone(),
             ruls2,
-        }
+            priority: 0,
+        };
+        needx.calc_priority();
+        needx
     } // end cont_int_region_need
 
     /// Get possible steps that can be used to make at least part of a

@@ -28,9 +28,8 @@ pub struct RegionStoreCorr {
 
 impl PartialEq for RegionStoreCorr {
     fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
+        debug_assert!(self.len() == other.len());
+
         for (regx, regy) in self.avec.iter().zip(other.iter()) {
             if regx != regy {
                 return false;
@@ -127,8 +126,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return the sum of distances between corresponding regions and states.
-    /// Used in optimal regionstore calculations.
+    /// Calculate the distance between the cuurent state anb a select region.
     pub fn distance_states(&self, stas: &[&SomeState]) -> usize {
         debug_assert!(self.len() == stas.len());
 
@@ -202,19 +200,6 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return a vector of masks representing X/non-x bit positions of self / other.
-    pub fn xb_masks(&self, other: &RegionStoreCorr) -> Vec<SomeMask> {
-        debug_assert!(self.len() == other.len());
-
-        let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
-
-        for (x, b) in self.iter().zip(other.iter()) {
-            ret_msks.push(x.x_mask().bitwise_and(&b.x_mask().bitwise_not()));
-        }
-
-        ret_msks
-    }
-
     /// Return a vector of masks representing edge bit positions.
     pub fn edge_masks(&self) -> Vec<SomeMask> {
         let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
@@ -224,58 +209,6 @@ impl RegionStoreCorr {
         }
 
         ret_msks
-    }
-
-    /// Subtract RegionStoreCorr from another.
-    pub fn subtract(&self, other: &RegionStoreCorr) -> Vec<RegionStoreCorr> {
-        debug_assert!(self.len() == other.len());
-
-        let mut ret_str = Vec::<RegionStoreCorr>::new();
-
-        // If no intersection, return self.
-        let Some(reg_int) = self.intersection(other) else {
-            ret_str.push(self.clone());
-            return ret_str;
-        };
-
-        // If other is a superset, return empty vector.
-        if reg_int == *self {
-            return ret_str;
-        }
-
-        let xb_msks = self.xb_masks(&reg_int);
-
-        for inx in 0..self.len() {
-            if xb_msks[inx].is_low() {
-                continue;
-            }
-            let single_bits = xb_msks[inx].split();
-
-            for bitx in single_bits.iter() {
-                let mut new_store = RegionStoreCorr::with_capacity(self.len());
-
-                for iny in 0..self.len() {
-                    if iny == inx {
-                        match bitx.bitwise_and(&other[inx].state1).is_low() {
-                            true =>
-                            // process x/0
-                            {
-                                new_store.push(self[inx].set_to_ones(bitx))
-                            }
-                            false =>
-                            // process x/1
-                            {
-                                new_store.push(self[inx].set_to_zeros(bitx))
-                            }
-                        };
-                    } else {
-                        new_store.push(self[iny].clone());
-                    }
-                }
-                ret_str.push(new_store);
-            }
-        }
-        ret_str
     }
 
     /// Return a string representing a vector of regions.
@@ -293,27 +226,6 @@ impl RegionStoreCorr {
         rc_str.push(']');
 
         rc_str
-    }
-
-    /// Return true if a vector of RegionStoreCorrs contains a given regionstorecorr.
-    #[allow(dead_code)]
-    fn vec_contains(avec: &[RegionStoreCorr], ars: &RegionStoreCorr) -> bool {
-        for rsx in avec {
-            if rsx == ars {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Return true if any RegionStoreCorr is a superset, or equal, to a given RSC.
-    pub fn vec_any_superset(rs_vec: &[RegionStoreCorr], reg_str: &RegionStoreCorr) -> bool {
-        for regx in rs_vec {
-            if regx.is_superset_of(reg_str) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Split corresponding regions by intersections, producing a result where each region is a subset
@@ -582,106 +494,6 @@ mod tests {
                 1, "r1x11"
             )?]))
         );
-        Ok(())
-    }
-
-    // for [r0000_x0x1, r0000_0000_0000_0x1x]
-    //   - [r0000_1001, r0000_0000_0000_0110]
-    // 0   [r0000_x011, r0000_0000_0000_0x1x]
-    // 1   [r0000_00x1, r0000_0000_0000_0x1x]
-    // 2   [r0000_x0x1, r0000_0000_0000_0x11]
-    // 3   [r0000_x0x1, r0000_0000_0000_001x]
-    #[test]
-    fn subtract() -> Result<(), String> {
-        let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
-        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
-
-        let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
-        regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
-
-        let subt = regstr1.subtract(&regstr2);
-
-        println!("for {}", regstr1);
-        println!("  - {}", regstr2);
-
-        for (inx, rsx) in subt.iter().enumerate() {
-            println!("{}   {}", inx, rsx);
-        }
-        assert!(subt.len() == 4);
-
-        let mut regstr3 = RegionStoreCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string(1, "r0000_x011")?);
-        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
-        assert!(RegionStoreCorr::vec_contains(&subt, &regstr3));
-
-        let mut regstr3 = RegionStoreCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string(1, "r0000_00x1")?);
-        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x1x")?);
-        assert!(RegionStoreCorr::vec_contains(&subt, &regstr3));
-
-        let mut regstr3 = RegionStoreCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
-        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_0x11")?);
-        assert!(RegionStoreCorr::vec_contains(&subt, &regstr3));
-
-        let mut regstr3 = RegionStoreCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string(1, "r0000_x0x1")?);
-        regstr3.push(SomeRegion::new_from_string(2, "r0000_0000_0000_001x")?);
-        assert!(RegionStoreCorr::vec_contains(&subt, &regstr3));
-
-        // Test subtract superset.
-        let subt = regstr2.subtract(&regstr1);
-
-        println!("for {}", regstr1);
-        println!("  - {}", regstr2);
-
-        for (inx, rsx) in subt.iter().enumerate() {
-            println!("{}   {}", inx, rsx);
-        }
-        assert!(subt.len() == 0);
-
-        // Test no intersection.
-        let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
-        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
-
-        let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r1000")?);
-        regstr2.push(SomeRegion::new_from_string(2, "r1110")?);
-
-        let subt = regstr1.subtract(&regstr2);
-
-        println!("for {}", regstr1);
-        println!("  - {}", regstr2);
-
-        for (inx, rsx) in subt.iter().enumerate() {
-            println!("{}   {}", inx, rsx);
-        }
-        assert!(subt.len() == 1);
-        assert!(RegionStoreCorr::vec_contains(&subt, &regstr1));
-
-        Ok(())
-    }
-
-    #[test]
-    fn x_masks() -> Result<(), String> {
-        let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string(1, "rx0x1")?);
-        regstr1.push(SomeRegion::new_from_string(2, "r0x1x")?);
-
-        let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r1001")?);
-        regstr2.push(SomeRegion::new_from_string(2, "r0110")?);
-
-        let xb_msks = regstr1.xb_masks(&regstr2);
-
-        println!("msk0 = {}, msk1 = {}", xb_msks[0], xb_msks[1]);
-
-        assert!(xb_msks[0] == SomeMask::new_from_string(1, "m0b1010")?);
-        assert!(xb_msks[1] == SomeMask::new_from_string(2, "m0b0101")?);
-
         Ok(())
     }
 }
