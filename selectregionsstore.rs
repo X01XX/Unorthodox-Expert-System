@@ -358,7 +358,7 @@ impl SelectRegionsStore {
                     target_states: StateStore::new(target_states),
                     priority: 0,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 let ret_nds = NeedStore::new(vec![needx]);
 
                 //println!("choose_select_exit_needs: returning need: {}", ret_nds[0]);

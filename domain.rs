@@ -1233,7 +1233,7 @@ mod tests {
             target_state: sdb.clone(),
             priority: 0,
         };
-        ndx.calc_priority();
+        ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sdb.clone(), 0, sd9.clone()));
 
         // Sample 2
@@ -1245,7 +1245,7 @@ mod tests {
             target_state: se5.clone(),
             priority: 0,
         };
-        ndx.calc_priority();
+        ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(se5.clone(), 0, se7.clone()));
 
         // Sample 3
@@ -1257,7 +1257,7 @@ mod tests {
             target_state: s25.clone(),
             priority: 0,
         };
-        ndx.calc_priority();
+        ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s25.clone(), 0, s27.clone()));
 
         // Sample 4    // Set up a limited group.
@@ -1269,7 +1269,7 @@ mod tests {
             target_state: s2c.clone(),
             priority: 0,
         };
-        ndx.calc_priority();
+        ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(s2c.clone(), 0, s2e.clone()));
 
         // Sample 5
@@ -1281,10 +1281,9 @@ mod tests {
             target_state: sd3.clone(),
             for_reg: dm0.region_from_string("rxxxx_xxxx")?,
             far: dm0.state_from_string("s0b0010_1100")?,
-            num_x: 8,
-            priority: 0,
+            priority: 8,
         };
-        ndx.calc_priority();
+        ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
 
         println!("\nActs: {}", &dm0.actions);

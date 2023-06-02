@@ -264,7 +264,7 @@ impl DomainStore {
                 },
                 priority: 0,
             };
-            needx.calc_priority();
+            needx.set_priority();
             needx.priority()
         } else {
             usize::MAX
@@ -748,7 +748,7 @@ impl DomainStore {
                 target_regions: (*nsupx).clone(),
                 priority,
             };
-            needx.calc_priority();
+            needx.set_priority();
             ret_str.push(needx);
         }
         Some(ret_str)

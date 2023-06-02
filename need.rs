@@ -31,11 +31,10 @@ impl fmt::Display for SomeNeed {
                 target_state,
                 for_reg,
                 far,
-                num_x,
                 priority,
             } => {
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {far}, to make group {for_reg} nx: {num_x})")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {far}, to make group {for_reg})")
             }
             SomeNeed::ConfirmGroup {
                 dom_num,
@@ -171,7 +170,6 @@ pub enum SomeNeed {
         target_state: SomeState,
         for_reg: SomeRegion,
         far: SomeState,
-        num_x: usize,
         priority: usize,
     },
     /// Get an additional sample of a state.
@@ -180,7 +178,6 @@ pub enum SomeNeed {
         act_num: usize,
         target_state: SomeState,
         grp_reg: SomeRegion,
-        group_num: usize,
         priority: usize,
     },
     /// Sample a state to resolve a contradictory intersection of two groups.
@@ -203,7 +200,6 @@ pub enum SomeNeed {
         target_state: SomeState,
         for_group: SomeRegion,
         anchor: SomeState,
-        group_num: usize,
         priority: usize,
     },
     /// Sample an adjacent state to limit a group.
@@ -213,7 +209,6 @@ pub enum SomeNeed {
         target_state: SomeState,
         for_group: SomeRegion,
         anchor: SomeState,
-        group_num: usize,
         priority: usize,
     },
     /// Housekeeping, Remove group anchor.
@@ -290,32 +285,18 @@ impl SomeNeed {
     ///  Don't use number zero!
     /// "- num_x" gives priority to larger regions.
     /// "+ group_num" gives priority to groups near the beginning of a group list.
-    pub fn calc_priority(&mut self) {
+    pub fn set_priority(&mut self) {
         match self {
             // By ascending priority number.
-            SomeNeed::SeekEdge { priority, .. } => *priority = 100,
-            SomeNeed::ContradictoryIntersection { priority, .. } => *priority = 200,
-            SomeNeed::ExitSelectRegion { priority, .. } => *priority = 250,
-            SomeNeed::AStateMakeGroup {
-                priority, num_x, ..
-            } => *priority = 399 - *num_x,
-            SomeNeed::ConfirmGroup {
-                priority,
-                group_num,
-                ..
-            } => *priority = 400 + *group_num,
-            SomeNeed::LimitGroup {
-                priority,
-                group_num,
-                ..
-            } => *priority = 400 + *group_num,
-            SomeNeed::LimitGroupAdj {
-                priority,
-                group_num,
-                ..
-            } => *priority = 400 + *group_num,
-            SomeNeed::StateNotInGroup { priority, .. } => *priority = 500,
-            SomeNeed::ToSelectRegion { priority, .. } => *priority = *priority + 600,
+            SomeNeed::SeekEdge { priority, .. } => *priority += 100,
+            SomeNeed::ContradictoryIntersection { priority, .. } => *priority += 200,
+            SomeNeed::ExitSelectRegion { priority, .. } => *priority += 250,
+            SomeNeed::AStateMakeGroup { priority, .. } => *priority = 399 - *priority,
+            SomeNeed::ConfirmGroup { priority, .. } => *priority += 400,
+            SomeNeed::LimitGroup { priority, .. } => *priority += 400,
+            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 400,
+            SomeNeed::StateNotInGroup { priority, .. } => *priority += 500,
+            SomeNeed::ToSelectRegion { priority, .. } => *priority += 600,
             // Some needs should have a higher priority number compared to ToSelectRegion.
             SomeNeed::StateInRemainder { priority, .. } => *priority = 10000,
             _ => panic!(
@@ -346,19 +327,6 @@ impl SomeNeed {
             ),
         } // end match ndx
     } // end priority
-
-    /// Return a group number, the order in the group store list.
-    pub fn group_num(&self) -> usize {
-        match self {
-            SomeNeed::ConfirmGroup { group_num, .. } => *group_num,
-            SomeNeed::LimitGroup { group_num, .. } => *group_num,
-            SomeNeed::LimitGroupAdj { group_num, .. } => *group_num,
-            _ => panic!(
-                "SomeNeed::group_num should not be called for the {} need.",
-                self.name()
-            ),
-        }
-    }
 
     /// Return true if a state satisfies a need.
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {

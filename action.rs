@@ -649,7 +649,7 @@ impl SomeAction {
                         target_state: cur_state.clone(),
                         priority: 0,
                     };
-                    needx.calc_priority();
+                    needx.set_priority();
                     nds.push(needx);
                     return nds;
                 }
@@ -660,7 +660,7 @@ impl SomeAction {
                     target_state: cur_state.clone(),
                     priority: 0,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 nds.push(needx);
                 return nds;
             }
@@ -690,7 +690,7 @@ impl SomeAction {
                 target_state: stax.clone(),
                 priority: 0,
             };
-            needx.calc_priority();
+            needx.set_priority();
             nds.push(needx);
             return nds;
         }
@@ -716,7 +716,7 @@ impl SomeAction {
                 target_state: smpx.initial.clone(),
                 priority: 0,
             };
-            needx.calc_priority();
+            needx.set_priority();
             nds.push(needx);
         }
         nds
@@ -938,7 +938,7 @@ impl SomeAction {
                                 target_region: aregion.clone(),
                                 priority: 0,
                             };
-                            needx.calc_priority();
+                            needx.set_priority();
                             nds.push(needx);
                         }
                     } else {
@@ -962,7 +962,7 @@ impl SomeAction {
                                 target_region: aregion.clone(),
                                 priority: 0,
                             };
-                            needx.calc_priority();
+                            needx.set_priority();
                             nds.push(needx);
                         }
                     }
@@ -1103,7 +1103,7 @@ impl SomeAction {
                     in_group: regx.clone(),
                     priority: 0,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
                 continue;
             }
@@ -1116,7 +1116,7 @@ impl SomeAction {
                     in_group: regx.clone(),
                     priority: 0,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
                 continue;
             }
@@ -1181,7 +1181,7 @@ impl SomeAction {
                         in_group: regx.clone(),
                         priority: 0,
                     };
-                    needx.calc_priority();
+                    needx.set_priority();
                     ret_nds.push(needx);
                 }
             }
@@ -1233,7 +1233,7 @@ impl SomeAction {
             in_group: regx.clone(),
             priority: 0,
         };
-        needx.calc_priority();
+        needx.set_priority();
         ret_nds.push(needx);
         //println!(" ");
 
@@ -1262,10 +1262,9 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
-                    group_num,
-                    priority: 0,
+                    priority: group_num,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
             }
 
@@ -1287,10 +1286,9 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
-                    group_num,
-                    priority: 0,
+                    priority: group_num,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
             }
 
@@ -1512,10 +1510,9 @@ impl SomeAction {
                     anchor: anchor.clone(),
                     target_state: anchor.clone(),
                     for_group: grpx.region.clone(),
-                    group_num,
-                    priority: 0,
+                    priority: group_num,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
 
                 return Some(ret_nds);
@@ -1542,10 +1539,9 @@ impl SomeAction {
                 anchor: cfm_max.clone(),
                 target_state: cfm_max.clone(),
                 for_group: grpx.region.clone(),
-                group_num,
-                priority: 0,
+                priority: group_num,
             };
-            needx.calc_priority();
+            needx.set_priority();
             ret_nds.push(needx);
         }
         Some(ret_nds)
@@ -1610,10 +1606,9 @@ impl SomeAction {
                         anchor: anchor_sta.clone(),
                         target_state: adj_sta,
                         for_group: grpx.region.clone(),
-                        group_num,
-                        priority: 0,
+                        priority: group_num,
                     };
-                    needx.calc_priority();
+                    needx.set_priority();
                     nds_grp.push(needx);
                 }
             } else {
@@ -1624,10 +1619,9 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: adj_sta,
                     for_group: grpx.region.clone(),
-                    group_num,
-                    priority: 0,
+                    priority: group_num,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 nds_grp.push(needx);
             }
         } // next inx in cfm_max
@@ -1663,10 +1657,9 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: sta_far,
                     for_group: grpx.region.clone(),
-                    group_num,
-                    priority: 0,
+                    priority: group_num,
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 ret_nds.push(needx);
             }
         } else {
@@ -1677,10 +1670,9 @@ impl SomeAction {
                 anchor: anchor_sta.clone(),
                 target_state: sta_far,
                 for_group: grpx.region.clone(),
-                group_num,
-                priority: 0,
+                priority: group_num,
             };
-            needx.calc_priority();
+            needx.set_priority();
             ret_nds.push(needx);
         }
 
@@ -1870,10 +1862,9 @@ impl SomeAction {
                     target_state: pairx.1.state.clone(),
                     for_reg: regx.clone(),
                     far: pairx.0.clone(),
-                    num_x: regx.num_x(),
-                    priority: 0,
+                    priority: regx.num_x(),
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 nds.push(needx);
             }
             if let Some(sqr2) = self.squares.find(&pairx.0) {
@@ -1884,10 +1875,9 @@ impl SomeAction {
                         target_state: pairx.0.clone(),
                         for_reg: regx.clone(),
                         far: pairx.1.state.clone(),
-                        num_x: regx.num_x(),
-                        priority: 0,
+                        priority: regx.num_x(),
                     };
-                    needx.calc_priority();
+                    needx.set_priority();
                     nds.push(needx);
                 }
             } else {
@@ -1897,10 +1887,9 @@ impl SomeAction {
                     target_state: pairx.0.clone(),
                     for_reg: regx.clone(),
                     far: pairx.1.state.clone(),
-                    num_x: regx.num_x(),
-                    priority: 0,
+                    priority: regx.num_x(),
                 };
-                needx.calc_priority();
+                needx.set_priority();
                 nds.push(needx);
             }
         }
@@ -2022,7 +2011,7 @@ impl SomeAction {
                 ruls2,
                 priority: 0,
             };
-            needx.calc_priority();
+            needx.set_priority();
             return needx;
         }
 
@@ -2078,7 +2067,7 @@ impl SomeAction {
             ruls2,
             priority: 0,
         };
-        needx.calc_priority();
+        needx.set_priority();
         needx
     } // end cont_int_region_need
 
