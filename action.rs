@@ -11,6 +11,7 @@
 //!
 
 use crate::actioninterface::ActionInterface;
+use crate::bits::NUM_BITS_PER_INT;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -107,6 +108,7 @@ pub struct SomeAction {
     /// When the action has no needs, check for any missed regions.
     remainder_checked: bool,
     remainder_check_region: Option<SomeRegion>,
+    num_ints: usize,
 }
 
 impl SomeAction {
@@ -125,7 +127,13 @@ impl SomeAction {
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
             remainder_check_region: None,
+            num_ints,
         }
+    }
+
+    /// Return the number of bits used by the action.
+    pub fn num_bits(&self) -> usize {
+        self.num_ints * NUM_BITS_PER_INT
     }
 
     /// Return the truth value for the combination of any two different squares,
@@ -1262,7 +1270,7 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state1.clone(),
                     grp_reg: grpx.region.clone(),
-                    priority: group_num,
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 ret_nds.push(needx);
@@ -1286,7 +1294,7 @@ impl SomeAction {
                     act_num: self.num,
                     target_state: grpx.region.state2.clone(),
                     grp_reg: grpx.region.clone(),
-                    priority: group_num,
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 ret_nds.push(needx);
@@ -1510,7 +1518,7 @@ impl SomeAction {
                     anchor: anchor.clone(),
                     target_state: anchor.clone(),
                     for_group: grpx.region.clone(),
-                    priority: group_num,
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 ret_nds.push(needx);
@@ -1539,7 +1547,7 @@ impl SomeAction {
                 anchor: cfm_max.clone(),
                 target_state: cfm_max.clone(),
                 for_group: grpx.region.clone(),
-                priority: group_num,
+                priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
             needx.set_priority();
             ret_nds.push(needx);
@@ -1606,7 +1614,7 @@ impl SomeAction {
                         anchor: anchor_sta.clone(),
                         target_state: adj_sta,
                         for_group: grpx.region.clone(),
-                        priority: group_num,
+                        priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
                     needx.set_priority();
                     nds_grp.push(needx);
@@ -1619,7 +1627,7 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: adj_sta,
                     for_group: grpx.region.clone(),
-                    priority: group_num,
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 nds_grp.push(needx);
@@ -1657,7 +1665,7 @@ impl SomeAction {
                     anchor: anchor_sta.clone(),
                     target_state: sta_far,
                     for_group: grpx.region.clone(),
-                    priority: group_num,
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 ret_nds.push(needx);
@@ -1670,7 +1678,7 @@ impl SomeAction {
                 anchor: anchor_sta.clone(),
                 target_state: sta_far,
                 for_group: grpx.region.clone(),
-                priority: group_num,
+                priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
             needx.set_priority();
             ret_nds.push(needx);
@@ -1862,7 +1870,7 @@ impl SomeAction {
                     target_state: pairx.1.state.clone(),
                     for_reg: regx.clone(),
                     far: pairx.0.clone(),
-                    priority: regx.num_x(),
+                    priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                 };
                 needx.set_priority();
                 nds.push(needx);
@@ -1875,7 +1883,7 @@ impl SomeAction {
                         target_state: pairx.0.clone(),
                         for_reg: regx.clone(),
                         far: pairx.1.state.clone(),
-                        priority: regx.num_x(),
+                        priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                     };
                     needx.set_priority();
                     nds.push(needx);
@@ -1887,7 +1895,7 @@ impl SomeAction {
                     target_state: pairx.0.clone(),
                     for_reg: regx.clone(),
                     far: pairx.1.state.clone(),
-                    priority: regx.num_x(),
+                    priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                 };
                 needx.set_priority();
                 nds.push(needx);

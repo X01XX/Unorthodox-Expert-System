@@ -282,21 +282,19 @@ impl SomeNeed {
     }
 
     /// Set priority number for a need.  Lower is more important.
-    ///  Don't use number zero!
-    /// "- num_x" gives priority to larger regions.
-    /// "+ group_num" gives priority to groups near the beginning of a group list.
+    /// Don't use number zero!
     pub fn set_priority(&mut self) {
         match self {
             // By ascending priority number.
             SomeNeed::SeekEdge { priority, .. } => *priority += 100,
             SomeNeed::ContradictoryIntersection { priority, .. } => *priority += 200,
-            SomeNeed::ExitSelectRegion { priority, .. } => *priority += 250,
-            SomeNeed::AStateMakeGroup { priority, .. } => *priority = 399 - *priority,
-            SomeNeed::ConfirmGroup { priority, .. } => *priority += 400,
-            SomeNeed::LimitGroup { priority, .. } => *priority += 400,
-            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 400,
-            SomeNeed::StateNotInGroup { priority, .. } => *priority += 500,
-            SomeNeed::ToSelectRegion { priority, .. } => *priority += 600,
+            SomeNeed::ExitSelectRegion { priority, .. } => *priority += 300,
+            SomeNeed::AStateMakeGroup { priority, .. } => *priority += 400,
+            SomeNeed::ConfirmGroup { priority, .. } => *priority += 500,
+            SomeNeed::LimitGroup { priority, .. } => *priority += 500,
+            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 500,
+            SomeNeed::StateNotInGroup { priority, .. } => *priority += 600,
+            SomeNeed::ToSelectRegion { priority, .. } => *priority += 700,
             // Some needs should have a higher priority number compared to ToSelectRegion.
             SomeNeed::StateInRemainder { priority, .. } => *priority = 10000,
             _ => panic!(

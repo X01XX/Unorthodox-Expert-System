@@ -1281,7 +1281,7 @@ mod tests {
             target_state: sd3.clone(),
             for_reg: dm0.region_from_string("rxxxx_xxxx")?,
             far: dm0.state_from_string("s0b0010_1100")?,
-            priority: 8,
+            priority: 0,
         };
         ndx.set_priority();
         dm0.actions[0].eval_need_sample(&ndx, 0, &SomeSample::new(sd3.clone(), 0, sd1.clone()));
