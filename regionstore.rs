@@ -307,7 +307,7 @@ impl RegionStore {
 
         for regy in &self.avec {
             if regx.intersects(regy) {
-                for regz in regy.subtract(regx).into_iter() {
+                for regz in regy.subtract(regx) {
                     ret_str.push_nosubs(regz);
                 }
             } else {

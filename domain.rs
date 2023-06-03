@@ -297,7 +297,7 @@ impl SomeDomain {
                 }
             }
             // Assemble possible steps
-            for inx in asym_inx.into_iter() {
+            for inx in asym_inx {
                 if steps_by_change_vov[inx].len() == min_steps {
                     for stepx in steps_by_change_vov[inx].iter() {
                         selected_steps.push(stepx);

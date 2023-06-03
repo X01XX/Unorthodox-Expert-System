@@ -78,7 +78,7 @@ pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<V
 
     // Extract first item in each pair.
     let mut newlst = Vec::<Vec<T>>::with_capacity(rlst.len());
-    for itemx in rlst.into_iter() {
+    for itemx in rlst {
         if let Some(first_item) = itemx.into_iter().next() {
             newlst.push(first_item);
         }
@@ -194,7 +194,7 @@ fn copyvecminus<T: Copy>(vecx: &Vec<T>, num: usize) -> Vec<T> {
 /// Given a vector of vectors, return all possible any-1-of.
 /// Any one of [[0], [1, 2, 3, 4], [5, 6]] is
 /// [[0, 1, 5], [0, 2, 5], [0, 3, 5], [0, 4, 5], [0, 1, 6], [0, 2, 6], [0, 3, 6], [0, 4, 6]]
-/// May also be used with references to anything.
+/// May also be used with non-mutable references to anything.
 pub fn any_one_of_each<T: Copy>(tvec: &Vec<Vec<T>>) -> Vec<Vec<T>> {
     assert!(!tvec.is_empty());
 

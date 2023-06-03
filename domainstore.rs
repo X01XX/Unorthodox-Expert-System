@@ -287,10 +287,7 @@ impl DomainStore {
                 continue;
             }
             // Process a priority slice.
-            print!(
-                "Priority {}, slice: {}..{}",
-                cur_pri, cur_pri_start, cur_pri_end,
-            );
+            print!("Priority {cur_pri}");
 
             // Test all slice needs for plans.
             let mut ndsinx_plan = (cur_pri_start..cur_pri_end)

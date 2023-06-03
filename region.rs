@@ -557,11 +557,11 @@ impl SomeRegion {
                     int_vec.push(inx);
                     int_vec.push(iny);
 
-                    for rsz in sr_vec[inx].subtract(&int).into_iter() {
+                    for rsz in sr_vec[inx].subtract(&int) {
                         SomeRegion::vec_push_nosubs(&mut tmp_str, rsz);
                     }
 
-                    for rsz in sr_vec[iny].subtract(&int).into_iter() {
+                    for rsz in sr_vec[iny].subtract(&int) {
                         SomeRegion::vec_push_nosubs(&mut tmp_str, rsz);
                     }
                     SomeRegion::vec_push_nosubs(&mut tmp_str, int);
@@ -583,7 +583,7 @@ impl SomeRegion {
             // Check remaining fragments for additional intersections.
             // If no intersections are found, add the fragment to the return vector,
             // else add fragments of fragments to the next_pass vector.
-            for rsy in tmp_str.into_iter() {
+            for rsy in tmp_str {
                 let mut split = false;
 
                 // Check for intersecting RegionStore from original argument.
@@ -595,7 +595,7 @@ impl SomeRegion {
                         }
                         // Split intersection into fragments.
                         // Add fragments to the next_pass vector.
-                        for rsz in rsy.subtract(&int).into_iter() {
+                        for rsz in rsy.subtract(&int) {
                             SomeRegion::vec_push_nosubs(&mut next_pass, rsz);
                         }
                         // Add the intersection to the next_pass vector.
