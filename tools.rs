@@ -191,18 +191,20 @@ fn copyvecminus<T: Copy>(vecx: &Vec<T>, num: usize) -> Vec<T> {
     newvec
 }
 
-/// Given a vector of vectors, return all possible any-1-of.
-/// Any one of [[0], [1, 2, 3, 4], [5, 6]] is
+/// Given a non-empty vector, of non-empty vectors, return all possible any-1-of-each combinations.
+/// Any one of [[0], [1, 2, 3, 4], [5, 6]] is 1 * 4 * 2 = 8 vectors,
 /// [[0, 1, 5], [0, 2, 5], [0, 3, 5], [0, 4, 5], [0, 1, 6], [0, 2, 6], [0, 3, 6], [0, 4, 6]]
-/// May also be used with non-mutable references to anything.
+/// May also be used with shared references to anything.
 pub fn any_one_of_each<T: Copy>(tvec: &Vec<Vec<T>>) -> Vec<Vec<T>> {
+    // Sanity checks.
     assert!(!tvec.is_empty());
+    for itemx in tvec {
+        assert!(!itemx.is_empty());
+    }
 
     // Calc number of options.
     let num_options = any_one_of_result_len(tvec);
     //println!("num options is {num_options}");
-
-    assert!(num_options > 0);
 
     // Init first vector of vectors.
     let mut options = Vec::<Vec<T>>::with_capacity(num_options);

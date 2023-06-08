@@ -136,6 +136,20 @@ impl SelectRegionsStore {
             .sum()
     }
 
+    /// Return the rate of a RegionStoreCorr.
+    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
+        self.regionstores
+            .iter()
+            .map(|regsx| {
+                if regsx.regions.is_superset_of(regs) {
+                    regsx.value
+                } else {
+                    0
+                }
+            })
+            .sum()
+    }
+
     /// Return list of negative select regions that are superset of a State vector.
     pub fn negative_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
@@ -241,26 +255,13 @@ impl SelectRegionsStore {
     /// Some result RegionStoreCorrs may overlap each other.
     /// Each result regionstore will be a subset of one, or more, of the original regionstores,
     /// where the sum of the SelectRegion values is greater than zero.
-    pub fn split_to_subsets(&self) -> Self {
+    pub fn split_to_subsets(&self) -> Vec<RegionStoreCorr> {
         let mut rs = Vec::<RegionStoreCorr>::with_capacity(self.len());
         for reg_valx in &self.regionstores {
             rs.push(reg_valx.regions.clone());
         }
 
-        let mut ret = Self::new(vec![]);
-        for reg_strx in RegionStoreCorr::vec_split_to_subsets(&rs) {
-            let mut val = 0;
-            for reg_valx in &self.regionstores {
-                if reg_valx.regions.is_superset_of(&reg_strx) {
-                    val += reg_valx.value;
-                }
-            }
-            if val > 0 {
-                ret.push(reg_strx, val);
-            }
-        }
-
-        ret
+        RegionStoreCorr::vec_split_to_subsets(&rs)
     }
 
     /// Return true if an equal RegionStore is already in the SelectRegionsStore.

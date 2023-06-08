@@ -7,8 +7,8 @@
 //! Housekeeping needs, like adding a group.
 
 use crate::region::SomeRegion;
+use crate::regionstorecorr::RegionStoreCorr;
 use crate::rulestore::RuleStore;
-use crate::selectregionsstore::SelectRegions;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::target::SomeTarget;
@@ -248,7 +248,7 @@ pub enum SomeNeed {
     },
     /// Move all current domain states to the corresponding regions of an SelectRegion.
     ToSelectRegion {
-        target_regions: SelectRegions,
+        target_regions: RegionStoreCorr,
         priority: usize,
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
@@ -475,8 +475,8 @@ impl SomeNeed {
                 SomeRegion::new(target_state.clone(), target_state.clone()),
             )]),
             SomeNeed::ToSelectRegion { target_regions, .. } => {
-                let mut targ = TargetStore::with_capacity(target_regions.regions.len());
-                for (dom_numx, targx) in target_regions.regions.iter().enumerate() {
+                let mut targ = TargetStore::with_capacity(target_regions.len());
+                for (dom_numx, targx) in target_regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
                 }
                 targ

@@ -10,7 +10,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::removeunordered;
-use crate::selectregionsstore::{SelectRegions, SelectRegionsStore};
+use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
@@ -72,7 +72,7 @@ pub struct DomainStore {
     /// To allow for intersecting Select RegionStores, store RegionStores that are a subset of
     /// one, or more, Select Regions, with a sum of the values of the superset RegionStores that is greater than zero.
     /// These become goals, after rule-building needs are satisfied.
-    pub select_subsets: SelectRegionsStore,
+    pub select_subsets: Vec<RegionStoreCorr>,
     /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
     /// Vector of InxPlans for selected needs, where a plan was calculated.
@@ -94,7 +94,7 @@ impl DomainStore {
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
-            select_subsets: SelectRegionsStore::new(vec![]),
+            select_subsets: vec![],
             select: SelectRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
@@ -126,24 +126,11 @@ impl DomainStore {
     /// Calculate parts of select regions, in case of any overlapps.
     pub fn calc_select(&mut self) {
         println!("\nSelect Regions: {}", self.select);
-        // Check for any intersection.
-        for inx in 0..(self.select.len() - 1) {
-            for iny in (inx + 1)..self.select.len() {
-                if self.select[inx]
-                    .regions
-                    .intersects(&self.select[iny].regions)
-                {
-                    self.select_subsets = self.select.split_to_subsets();
-                    println!("\nSelect Regions positive subsets: {}", self.select_subsets);
-                    return;
-                }
-            }
-        }
-        self.select_subsets =
-            SelectRegionsStore::new(Vec::<SelectRegions>::with_capacity(self.select.len()));
-        for selx in self.select.iter() {
-            self.select_subsets.push(selx.regions.clone(), selx.value);
-        }
+        self.select_subsets = self.select.split_to_subsets();
+        println!(
+            "\nSelect Regions positive subsets: {}",
+            RegionStoreCorr::vec_string(&self.select_subsets)
+        );
     }
 
     /// Add a Domain struct to the store.
@@ -258,10 +245,7 @@ impl DomainStore {
 
         let select_priority = if in_select && self.boredom < self.boredom_limit {
             let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: SelectRegions {
-                    regions: RegionStoreCorr::new(vec![]),
-                    value: 0,
-                },
+                target_regions: RegionStoreCorr::new(vec![]),
                 priority: 0,
             };
             needx.set_priority();
@@ -323,7 +307,7 @@ impl DomainStore {
                 self.cant_do = cant_do;
                 return;
             }
-            println!(" ");
+            println!(", none.");
 
             if cur_pri_end == needs_len || cur_pri > select_priority {
                 self.cant_do = (0..self.needs.len()).collect();
@@ -721,17 +705,17 @@ impl DomainStore {
             }
         }
 
-        let mut notsups2 = Vec::<&SelectRegions>::new();
-        for selx in self.select_subsets.iter() {
+        let mut notsups2 = Vec::<&RegionStoreCorr>::new();
+        for subx in self.select_subsets.iter() {
             let mut found = false;
             for sely in notsups.iter() {
-                if selx.regions.is_subset_of(&sely.regions) {
+                if subx.is_subset_of(&sely.regions) {
                     found = true;
                     break;
                 }
             }
             if found {
-                notsups2.push(selx);
+                notsups2.push(subx);
             }
         }
 
@@ -740,7 +724,8 @@ impl DomainStore {
 
         for nsupx in notsups2.iter() {
             // Calc priority addon, to weight the priority by distance and value of the region.
-            let priority = (nsupx.regions.distance_states(all_states) * 100) / nsupx.value as usize;
+            let nsupx_value = self.select.rate_regions(nsupx);
+            let priority = (nsupx.distance_states(all_states) * 100) / nsupx_value as usize;
             let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: (*nsupx).clone(),
                 priority,
