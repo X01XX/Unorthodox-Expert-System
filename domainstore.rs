@@ -125,12 +125,15 @@ impl DomainStore {
 
     /// Calculate parts of select regions, in case of any overlapps.
     pub fn calc_select(&mut self) {
-        println!("\nSelect Regions: {}", self.select);
+        println!("\nSelect Regions:");
+        for selx in self.select.iter() {
+            println!("  {}", selx);
+        }
         self.select_subsets = self.select.split_to_subsets();
-        println!(
-            "\nSelect Regions positive subsets: {}",
-            RegionStoreCorr::vec_string(&self.select_subsets)
-        );
+        //println!(
+        //    "\nSelect Regions positive subsets: {}",
+        //    RegionStoreCorr::vec_string(&self.select_subsets)
+        //);
     }
 
     /// Add a Domain struct to the store.
@@ -609,16 +612,49 @@ impl DomainStore {
         all_states
     }
 
+    /// Return true if all domain current states are subsets of a given RegionStoreCorr.
+    fn _states_subset(&self, regs: &RegionStoreCorr) -> bool {
+        for (domx, regx) in self.avec.iter().zip(regs.iter()) {
+            if !regx.is_superset_of_state(&domx.cur_state) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Update counters for times_visited.
+    pub fn update_times_visited(&mut self) {
+        // Build vector to avoid mutable/shared reference compiler problems.
+        let mut all_states = Vec::<SomeState>::with_capacity(self.len());
+        for domx in self.avec.iter() {
+            all_states.push(domx.cur_state.clone());
+        }
+        let mut all_states2 = Vec::<&SomeState>::with_capacity(self.len());
+        for stax in all_states.iter() {
+            all_states2.push(stax);
+        }
+
+        // Get the select regions the current state is in.
+        for optregs in self.select.iter_mut() {
+            if optregs.regions.is_superset_states(&all_states2) {
+                optregs.times_visited += 1;
+            }
+        }
+    }
+
     /// Set the boredom limit.
-    pub fn set_boredom_limit(&mut self) {
+    pub fn set_boredom_limit(&mut self) -> bool {
         let mut boredom_limit = 0;
         self.boredom = 0;
+        let mut ret = false;
+
         // Get the select regions the current state is in.
         for optregs in self.select.iter() {
             if optregs
                 .regions
                 .is_superset_states(&self.all_current_states())
             {
+                ret = true;
                 boredom_limit += optregs.value;
             }
         }
@@ -628,6 +664,7 @@ impl DomainStore {
             self.boredom_limit = 0;
         }
         self.boredom = 0;
+        ret
     }
 
     /// Do functions related to the wish to be in an optimum region.

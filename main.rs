@@ -466,6 +466,12 @@ fn command_loop(dmxs: &mut DomainStore) {
                     println!("{error}");
                 }
             },
+            "psr" => match do_print_select_regions(dmxs, &cmd) {
+                Ok(()) => continue,
+                Err(error) => {
+                    println!("{error}");
+                }
+            },
             "run" => {
                 if !dmxs.can_do.is_empty() {
                     run_to_end(dmxs);
@@ -513,7 +519,7 @@ fn do_any_need(dmxs: &mut DomainStore) {
 }
 
 /// Print details of a given plan
-fn do_print_plan_details(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String> {
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
             if n_num >= dmxs.can_do.len() {
@@ -599,7 +605,9 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 .target()
                 .is_superset_of_states(&dmxs.all_current_states())
             {
-                dmxs.set_boredom_limit();
+                if dmxs.set_boredom_limit() {
+                    dmxs.update_times_visited();
+                }
                 return true;
             }
         }
@@ -830,9 +838,21 @@ fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
 }
 
 /// Do print-squares command.
-fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_print_select_regions(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+    if cmd.len() != 1 {
+        return Err("No arguments needed for the psr command".to_string());
+    }
+
+    for selx in dmxs.select.iter() {
+        println!("{}", selx);
+    }
+    Ok(())
+}
+
+/// Do print-squares command.
+fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dmx = &dmxs[dom_num];
 
     if cmd.len() == 1 {
         return Err("Need to supply at least an action number".to_string());
@@ -955,9 +975,9 @@ fn do_print_squares_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(
 }
 
 /// Do adjacent-anchor command.
-fn display_group_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dmx = &dmxs[dom_num];
 
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
@@ -987,11 +1007,11 @@ fn display_group_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<
 
 /// Do print-group-defining-squares command.
 fn do_print_group_defining_squares_command(
-    dmxs: &mut DomainStore,
+    dmxs: &DomainStore,
     cmd: &Vec<&str>,
 ) -> Result<(), String> {
     let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dmx = &dmxs[dom_num];
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
@@ -1070,6 +1090,7 @@ fn usage() {
     println!(
         "    ps <act num> <region>    - Print Squares in a given action and region, of the CDD."
     );
+    println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
     println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
     println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");

@@ -16,12 +16,13 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.formatted_string();
-        str.push_str(&format!("/{:+}", self.value));
+        str.push_str(&format!(", value: {:+}", self.value));
+        str.push_str(&format!(", times visited {}", self.times_visited));
         write!(f, "{}", str)
     }
 }
@@ -38,6 +39,8 @@ pub struct SelectRegions {
     /// A negative value is, so far, given to a plan that passes through the regions,
     /// not counting the beginning and end state.
     pub value: isize,
+    /// A cond of the number of time a SelectRegion has been visited due to satisfying a need.
+    pub times_visited: usize,
 }
 
 impl Index<usize> for SelectRegions {
@@ -90,7 +93,11 @@ impl SelectRegionsStore {
     /// Add a RegionsStore.
     pub fn push(&mut self, regions: RegionStoreCorr, value: isize) {
         if value != 0 && !self.contains(&regions) {
-            self.regionstores.push(SelectRegions { regions, value });
+            self.regionstores.push(SelectRegions {
+                regions,
+                value,
+                times_visited: 0,
+            });
         }
     }
 
@@ -112,6 +119,11 @@ impl SelectRegionsStore {
     /// Return an iterator
     pub fn iter(&self) -> Iter<SelectRegions> {
         self.regionstores.iter()
+    }
+
+    /// Return an mut iterator
+    pub fn iter_mut(&mut self) -> IterMut<SelectRegions> {
+        self.regionstores.iter_mut()
     }
 
     /// Return the number of supersets of a StateStore
