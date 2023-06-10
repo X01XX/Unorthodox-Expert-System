@@ -149,17 +149,29 @@ impl SelectRegionsStore {
     }
 
     /// Return the rate of a RegionStoreCorr.
-    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
+    pub fn rate_regions(&self, regs: &RegionStoreCorr, max_visits: usize) -> isize {
+        let mut ret: isize = 0;
+        for regsx in self.regionstores.iter() {
+            if regsx.regions.is_superset_of(regs) {
+                // Kludge to insure all positive Select Regions get visited eventually.
+                let addon: isize = if regsx.value < 0 {
+                    0
+                } else {
+                    (max_visits - regsx.times_visited) as isize
+                };
+                ret = ret + regsx.value + addon;
+            }
+        }
+        ret
+    }
+
+    /// Return the maximum number of visiti for any SelectRegions.
+    pub fn max_visits(&self) -> usize {
         self.regionstores
             .iter()
-            .map(|regsx| {
-                if regsx.regions.is_superset_of(regs) {
-                    regsx.value
-                } else {
-                    0
-                }
-            })
-            .sum()
+            .map(|regsx| regsx.times_visited)
+            .max()
+            .unwrap()
     }
 
     /// Return list of negative select regions that are superset of a State vector.

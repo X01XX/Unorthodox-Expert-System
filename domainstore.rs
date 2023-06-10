@@ -761,7 +761,7 @@ impl DomainStore {
 
         for nsupx in notsups2.iter() {
             // Calc priority addon, to weight the priority by distance and value of the region.
-            let nsupx_value = self.select.rate_regions(nsupx);
+            let nsupx_value = self.select.rate_regions(nsupx, self.select.max_visits());
             let priority = (nsupx.distance_states(all_states) * 100) / nsupx_value as usize;
             let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: (*nsupx).clone(),
@@ -858,7 +858,7 @@ impl DomainStore {
     }
 
     pub fn display_needs(&self) {
-        assert!(self.step_num < 1000); // Remove for continuous use
+        assert!(self.step_num < 1100); // Remove for continuous use
 
         // Calc current status.
         let mut in_str = String::new();
