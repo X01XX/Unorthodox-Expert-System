@@ -761,11 +761,22 @@ impl DomainStore {
 
         for nsupx in notsups2.iter() {
             // Calc priority addon, to weight the priority by distance and value of the region.
-            let nsupx_value = self.select.rate_regions(nsupx, self.select.max_visits());
-            let priority = (nsupx.distance_states(all_states) * 100) / nsupx_value as usize;
+            let (value, times_visited) = self.select.rate_regions(nsupx);
+            if value < 0 {
+                continue;
+            }
+            let val2: usize = value as usize;
+
+            let mut adjust = nsupx.distance_states(all_states) + (times_visited / 2);
+            if val2 < adjust {
+                adjust -= val2;
+            } else {
+                adjust = 0;
+            };
+
             let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: (*nsupx).clone(),
-                priority,
+                priority: adjust,
             };
             needx.set_priority();
             ret_str.push(needx);
