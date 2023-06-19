@@ -403,6 +403,13 @@ impl SelectRegionsStore {
             }
             all_states[dom_num] = &stepx.initial.state1;
             let valx = self.value_supersets_of_states(&all_states);
+            // Print violations.
+            //for selx in self.regionstores.iter() {
+            //    if selx.regions.is_superset_states(&all_states) {
+            //        println!("step {} of {} violates {} at {}", stepx, aplan, selx, SomeState::vec_ref_string(&all_states));
+            //    }
+            //}
+
             if valx < 0 {
                 sum += valx;
             }
@@ -413,11 +420,7 @@ impl SelectRegionsStore {
 
     /// Return the sum of all select negative regions values a plan goes through.
     /// This ignores the select regions a plan starts, or ends, in.
-    pub fn rate_plans<'a>(
-        &self,
-        plans: &'a PlanStore,
-        current_states: &Vec<&'a SomeState>,
-    ) -> isize {
+    pub fn rate_plans<'a>(&self, plans: &'a PlanStore, current_states: &[&'a SomeState]) -> isize {
         let mut non_empty_plans = Vec::<usize>::new();
         for (iny, plnx) in plans.iter().enumerate() {
             if !plnx.is_empty() {
@@ -443,6 +446,13 @@ impl SelectRegionsStore {
         // Rate each option.
         let mut rate = 0;
         for planx in plans.iter() {
+            // Check that plan starts in the right state.
+            let start = planx.initial_region();
+            if start.state1 != *all_states[planx.dom_num]
+                || start.state2 != *all_states[planx.dom_num]
+            {
+                panic!("plans not in sync!");
+            }
             rate += self.rate_plan(planx, &all_states);
             all_states[planx.dom_num] = &planx.result_region().state1;
         }

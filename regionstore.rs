@@ -319,10 +319,10 @@ impl RegionStore {
     }
 
     /// Subtract a RegionStore from a RegionStore
-    pub fn subtract(&self, other: &RegionStore) -> RegionStore {
+    pub fn subtract(&self, subtrahend: &RegionStore) -> RegionStore {
         let mut ret_str = self.clone();
 
-        for regx in other.iter() {
+        for regx in subtrahend.iter() {
             if ret_str.any_intersection(regx) {
                 ret_str = ret_str.subtract_region(regx);
             }

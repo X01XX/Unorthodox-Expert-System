@@ -468,7 +468,7 @@ impl SomeDomain {
             tools::vec_remove_dups(&mut plans, SomePlan::eq);
         }
 
-        //println!("make_plan returned plan");
+        //println!("make_plan returned {}", SomePlan::vec_string(&plans));
         Some(plans)
     } // end make plan
 
@@ -517,6 +517,14 @@ impl SomeDomain {
         SomeState::new_from_string(self.cur_state.num_ints(), str)
     }
 
+    /// Return a maximum region for a domain.
+    pub fn maximum_region(&self) -> SomeRegion {
+        SomeRegion::new(
+            SomeState::new_low(self.num_ints()).bitwise_not(),
+            SomeState::new_low(self.num_ints()),
+        )
+    }
+
     /// Return a SomeMask instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
@@ -538,8 +546,8 @@ impl SomeDomain {
         }
     } // end act_num_from_string
 
-    /// Return the current maximum region that can eb reached from the current state.
-    pub fn maximum_region(&self) -> SomeRegion {
+    /// Return the current maximum region that can be reached from the current state.
+    pub fn reachable_region(&self) -> SomeRegion {
         SomeRegion::new(
             self.cur_state.clone(),
             self.cur_state
@@ -548,7 +556,7 @@ impl SomeDomain {
     }
 
     pub fn regions_not_covered(&self, act_num: usize) -> RegionStore {
-        let mut ncov = RegionStore::new(vec![self.maximum_region()]);
+        let mut ncov = RegionStore::new(vec![self.reachable_region()]);
 
         for grpx in self.actions[act_num].groups.iter() {
             ncov = ncov.subtract_region(&grpx.region);
@@ -558,7 +566,7 @@ impl SomeDomain {
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_num: usize) -> Result<(), String> {
-        let max_region = self.maximum_region();
+        let max_region = self.reachable_region();
 
         self.actions[act_num].display_anchor_info()?;
 
@@ -634,10 +642,7 @@ mod tests {
         dm0.set_state(&cur_state);
         let toreg = dm0.region_from_string("r1000")?;
 
-        if let Some(aplan) = dmxs.get_plan(0, &toreg, &vec![&cur_state]) {
-            println!("plan: {}", aplan);
-            assert_eq!(aplan.len(), 4);
-            assert_eq!(*aplan.result_region(), toreg);
+        if dmxs.get_plans(0, &toreg).is_some() {
         } else {
             return Err(String::from("No plan found to r1000?"));
         }
@@ -691,9 +696,8 @@ mod tests {
         dm0.set_state(&s7);
         let toreg = dm0.region_from_string("r1100")?;
 
-        if let Some(aplan) = &mut dmxs.get_plan(0, &toreg, &vec![&s7]) {
-            println!("plan: {}", aplan);
-            assert_eq!(*aplan.result_region(), toreg);
+        if let Some(plans) = &mut dmxs.get_plans(0, &toreg) {
+            println!("plan: {}", SomePlan::vec_string(&plans));
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
         }

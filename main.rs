@@ -322,7 +322,19 @@ fn domainstore_init() -> DomainStore {
     );
     regstr5.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXXxx_xxXX_XXXX")
+            .region_from_string_pad_x("rXXXXXXx1_0xXX_XXXX")
+            .expect("String should be formatted correctly"),
+    );
+
+    let mut regstr6 = RegionStoreCorr::with_capacity(2);
+    regstr6.push(
+        dmxs[0]
+            .region_from_string_pad_x("rX10X")
+            .expect("String should be formatted correctly"),
+    );
+    regstr6.push(
+        dmxs[1]
+            .region_from_string_pad_x("rXXXXXX1x_x0XX_XXXX")
             .expect("String should be formatted correctly"),
     );
 
@@ -332,6 +344,7 @@ fn domainstore_init() -> DomainStore {
     dmxs.add_select(regstr3, 3);
     dmxs.add_select(regstr4, 1);
     dmxs.add_select(regstr5, -1);
+    dmxs.add_select(regstr6, -1);
     dmxs.calc_select();
 
     dmxs
@@ -584,11 +597,11 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
     // Run the plan, allow for one failure.
     if let Some(plans) = &inx_pln.plans {
-        if !dmxs.run_plans(plans) {
+        if !dmxs.run_plan_store(plans) {
             print!("Run plan failed, ");
             if let Some(plans2) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
                 println!("try again with {}", plans2);
-                if !dmxs.run_plans(&plans2) {
+                if !dmxs.run_plan_store(&plans2) {
                     println!("Unexpected result, giving up.");
                     return false;
                 }

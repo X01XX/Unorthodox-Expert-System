@@ -34,7 +34,7 @@ impl fmt::Display for SomeNeed {
                 priority,
             } => {
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {far}, to make group {for_reg})")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state} to, with {far}, make group {for_reg})")
             }
             SomeNeed::ConfirmGroup {
                 dom_num,
@@ -77,7 +77,7 @@ impl fmt::Display for SomeNeed {
                         "N(Dom {dom_num} Act {act_num} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})")
                 } else {
                     format!(
-                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from {anchor} to limit group {for_group})")
+                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from anchor {anchor} to define group {for_group})")
                 }
             }
             SomeNeed::LimitGroupAdj {

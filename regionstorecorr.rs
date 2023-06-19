@@ -5,12 +5,13 @@
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
+use crate::removeunordered;
 use crate::state::SomeState;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 
 impl fmt::Display for RegionStoreCorr {
@@ -126,7 +127,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Calculate the distance between the cuurent state anb a select region.
+    /// Calculate the distance between a RegionStoreCorr and the current state.
     pub fn distance_states(&self, stas: &[&SomeState]) -> usize {
         debug_assert!(self.len() == stas.len());
 
@@ -135,6 +136,21 @@ impl RegionStoreCorr {
             if x.is_superset_of_state(y) {
             } else {
                 dist += x.distance_state(y);
+            }
+        }
+
+        dist
+    }
+
+    /// Calculate the distance between a RegionStoreCorr and another.
+    pub fn distance(&self, regs: &Self) -> usize {
+        debug_assert!(self.len() == regs.len());
+
+        let mut dist = 0;
+        for (x, y) in self.iter().zip(regs.iter()) {
+            if x.is_superset_of(y) {
+            } else {
+                dist += x.distance(y);
             }
         }
 
@@ -155,6 +171,48 @@ impl RegionStoreCorr {
         true
     }
 
+    /// Return a vector of difference masks for two RegionStoreCorrs.
+    pub fn diff_masks(&self, other: &RegionStoreCorr) -> Vec<SomeMask> {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret = Vec::<SomeMask>::with_capacity(self.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            ret.push(x.diff_mask(y));
+        }
+
+        ret
+    }
+
+    /// Return a RegionStoreCorr with certain bit positions set to X.
+    pub fn set_to_x(&self, other: &Vec<SomeMask>) -> Self {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            ret.push(x.set_to_x(y));
+        }
+
+        ret
+    }
+
+    // Check any two RegionStoreCorr vectors for an intersection in their items.
+    // Return intersection RegionStoreCorr.
+    pub fn vec_ref_intersections(
+        arg1: &[&RegionStoreCorr],
+        arg2: &[&RegionStoreCorr],
+    ) -> Option<RegionStoreCorr> {
+        for regsx in arg1.iter() {
+            for regsy in arg2.iter() {
+                if regsx.intersects(regsy) {
+                    return regsx.intersection(regsy);
+                }
+            }
+        }
+        None
+    }
+
     /// Return the intersection, if any, of two RegionStoreCorrs.
     pub fn intersection(&self, other: &RegionStoreCorr) -> Option<RegionStoreCorr> {
         debug_assert!(self.len() == other.len());
@@ -172,6 +230,19 @@ impl RegionStoreCorr {
         }
 
         Some(ret)
+    }
+
+    /// Return the union, of two RegionStoreCorrs.
+    pub fn union(&self, other: &RegionStoreCorr) -> RegionStoreCorr {
+        debug_assert!(self.len() == other.len());
+
+        let mut ret = RegionStoreCorr::with_capacity(self.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            ret.push(x.union(y));
+        }
+
+        ret
     }
 
     /// Return true if there is an intersection of corresponding regions, of two RegionStoreCorrs.
@@ -211,8 +282,25 @@ impl RegionStoreCorr {
         ret_msks
     }
 
-    /// Return a string representing a vector of regions.
+    /// Return a string representing a vector of RegionStoreCorrs.
     pub fn vec_string(avec: &[RegionStoreCorr]) -> String {
+        let mut rc_str = String::new();
+        rc_str.push('[');
+
+        for (inx, regx) in avec.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", regx));
+        }
+
+        rc_str.push(']');
+
+        rc_str
+    }
+
+    /// Return a string representing a vector of RegionStoreCorr references.
+    pub fn vec_ref_string(avec: &[&RegionStoreCorr]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -282,6 +370,130 @@ impl RegionStoreCorr {
         //println!("num RegionStoreCorr is {}", ret_vec.len());
         ret_vec
     }
+
+    /// Subtract a RegionStoreCorr vector from another RegionStoreCorr vec.
+    pub fn vec_subtract(
+        minuend: &Vec<RegionStoreCorr>,
+        subtrahend: &[&RegionStoreCorr],
+    ) -> Vec<RegionStoreCorr> {
+        let mut ret_str = Vec::<RegionStoreCorr>::with_capacity(minuend.len());
+        for regsx in minuend.iter() {
+            ret_str.push(regsx.clone());
+        }
+
+        for regx in subtrahend.iter() {
+            if RegionStoreCorr::vec_any_intersection(&ret_str, regx) {
+                ret_str = RegionStoreCorr::vec_subtract_regionstorecorr(&ret_str, regx);
+            }
+        }
+        ret_str
+    }
+
+    /// Return true if any region is a superset, or equal, to a region.
+    pub fn vec_any_superset_of(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
+        tools::vec_contains(avec, reg, RegionStoreCorr::is_superset_of)
+    }
+
+    /// Add a regionstorecorr, removing subset regionstorecorr.
+    pub fn vec_push_nosubs(avec: &mut Vec<RegionStoreCorr>, reg: RegionStoreCorr) -> bool {
+        // Check for supersets, which probably is an error
+        if RegionStoreCorr::vec_any_superset_of(avec, &reg) {
+            //println!("skipped adding region {}, a superset exists in {}", reg, self);
+            return false;
+        }
+
+        // Identify subsets.
+        let mut rmvec = Vec::<usize>::new();
+
+        for (inx, regx) in avec.iter().enumerate() {
+            if regx.is_subset_of(&reg) {
+                rmvec.push(inx);
+            }
+        }
+
+        // Remove identified regions, in descending index order.
+        for inx in rmvec.iter().rev() {
+            removeunordered::remove_unordered(avec, *inx);
+        }
+
+        avec.push(reg);
+
+        true
+    }
+
+    /// Return true if any regionstorecorr intersects a given regionstorcorr.
+    pub fn vec_any_intersection(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
+        tools::vec_contains(avec, reg, RegionStoreCorr::intersects)
+    }
+
+    /// Subtract a RegionStoreCorr from a RegionStoreCorr vector.
+    pub fn vec_subtract_regionstorecorr(
+        minuend: &[RegionStoreCorr],
+        subtrahend: &RegionStoreCorr,
+    ) -> Vec<RegionStoreCorr> {
+        let mut ret_str = Vec::<RegionStoreCorr>::new();
+
+        for regy in minuend.iter() {
+            if subtrahend.intersects(regy) {
+                for regz in regy.subtract(subtrahend) {
+                    RegionStoreCorr::vec_push_nosubs(&mut ret_str, regz);
+                }
+            } else {
+                RegionStoreCorr::vec_push_nosubs(&mut ret_str, regy.clone());
+            }
+        } // next regy
+
+        ret_str
+    }
+
+    /// Return self - a given RegionStoreCorr.
+    pub fn subtract(&self, subtrahend: &RegionStoreCorr) -> Vec<RegionStoreCorr> {
+        let mut ret = Vec::<RegionStoreCorr>::new();
+
+        if self.is_subset_of(subtrahend) {
+            return ret;
+        }
+
+        if !self.intersects(subtrahend) {
+            ret.push(self.clone());
+            return ret;
+        }
+
+        for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
+            let xb_msk = regx.x_mask().bitwise_and(&regy.non_x_mask());
+            if xb_msk.is_low() {
+                continue;
+            }
+            // At least one X over non-X bit found.
+
+            // Isolate each X over non-X bit.
+            let single_bits = xb_msk.split();
+
+            // Generate a new RegionStoreCorr for each isolated bit.
+            for sbitx in single_bits.iter() {
+                // Alter one X bit in self/regx to the opposite of the corresponding non-X bit in subtrahend/regy.
+                let regz = if sbitx.bitwise_and(&regy.state1).is_low() {
+                    // Other/regy bit is zero, in regy.state1 (and regy.state2, since its non-X).
+                    regx.set_to_ones(sbitx)
+                } else {
+                    regx.set_to_zeros(sbitx)
+                };
+
+                // Copy self, except for one region with one bit changed.
+                let mut one_result = RegionStoreCorr::with_capacity(self.len());
+                for (iny, regm) in self.iter().enumerate() {
+                    if iny == inx {
+                        one_result.push(regz.clone());
+                    } else {
+                        one_result.push(regm.clone());
+                    }
+                }
+                // Save fragment to return.
+                ret.push(one_result);
+            }
+        }
+        ret
+    }
 } // End impl RegionStoreCorr.
 
 impl Index<usize> for RegionStoreCorr {
@@ -291,9 +503,163 @@ impl Index<usize> for RegionStoreCorr {
     }
 }
 
+impl IndexMut<usize> for RegionStoreCorr {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.avec[i]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_subtract() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "r0000_x10x")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?);
+
+        // Test subtracting a superset.
+        let result1 = regstr1.subtract(&regstr1);
+        assert!(result1.is_empty());
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r0000_0xx1")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r0000_00x0_0000_00x1")?);
+
+        // Test subtracting an intersection.
+        let result2 = regstr1.subtract(&regstr2);
+        println!("{} minus \n{}\n", regstr1, regstr2);
+        for corrx in result2.iter() {
+            println!("{corrx}");
+        }
+        assert!(result2.len() == 4);
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_110x")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x100")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x10x")?,
+                SomeRegion::new_from_string(2, "r0000_0001_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x10x")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+            )),
+            RegionStoreCorr::eq
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_vec_subtract() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string(1, "r0000_x10x")?);
+        regstr1.push(SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?);
+
+        let mut vec1 = vec![regstr1.clone()];
+
+        // Test subtracting a superset.
+        let result1 = RegionStoreCorr::vec_subtract_regionstorecorr(&vec1, &regstr1);
+        assert!(result1.is_empty());
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string(1, "r0000_0xx1")?);
+        regstr2.push(SomeRegion::new_from_string(2, "r0000_00x0_0000_00x1")?);
+
+        // Test subtracting an intersection.
+        let result2 = RegionStoreCorr::vec_subtract_regionstorecorr(&vec1, &regstr2);
+
+        println!(
+            "{} minus \n{}\n",
+            RegionStoreCorr::vec_string(&vec1),
+            regstr2
+        );
+        for corrx in result2.iter() {
+            println!("{corrx}");
+        }
+        assert!(result2.len() == 4);
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_110x")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x100")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x10x")?,
+                SomeRegion::new_from_string(2, "r0000_0001_0000_000x")?
+            )),
+            RegionStoreCorr::eq
+        ));
+        assert!(tools::vec_contains(
+            &result2,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_x10x")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+            )),
+            RegionStoreCorr::eq
+        ));
+
+        vec1.push(RegionStoreCorr::new(vec![
+            SomeRegion::new_from_string(1, "r0000_1110")?,
+            SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?,
+        ]));
+
+        // Test subtracting an intersection, while non-intersection passes through.
+        let result3 = RegionStoreCorr::vec_subtract_regionstorecorr(&vec1, &regstr2);
+
+        println!(
+            "\n{} minus \n{}\n",
+            RegionStoreCorr::vec_string(&vec1),
+            regstr2
+        );
+        for corrx in result3.iter() {
+            println!("{corrx}");
+        }
+        assert!(result3.len() == 5);
+        assert!(tools::vec_contains(
+            &result3,
+            &RegionStoreCorr::new(vec!(
+                SomeRegion::new_from_string(1, "r0000_1110")?,
+                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+            )),
+            RegionStoreCorr::eq
+        ));
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn test_vec_split_to_subsets() -> Result<(), String> {

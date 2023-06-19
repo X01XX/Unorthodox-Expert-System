@@ -696,7 +696,7 @@ impl SomeAction {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: stax.clone(),
-                priority: 0,
+                priority: dist,
             };
             needx.set_priority();
             nds.push(needx);
@@ -722,7 +722,7 @@ impl SomeAction {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_state: smpx.initial.clone(),
-                priority: 0,
+                priority: dist,
             };
             needx.set_priority();
             nds.push(needx);

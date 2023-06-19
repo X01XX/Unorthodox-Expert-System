@@ -48,6 +48,7 @@ pub fn vec_contains<T>(avec: &[T], item: &T, testfn: fn(&T, &T) -> bool) -> bool
 /// Any 3 of 5 = 5 * 4 * 3 = 60;
 /// Any 4 of 5 = 5 * 4 * 3 * 2 = 120;
 /// Any 5 of 5 = 5 * 4 * 3 * 2 * 1 = 120;
+#[allow(dead_code)]
 pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<Vec<T>> {
     debug_assert!(num_items <= vecx.len());
 
@@ -158,6 +159,7 @@ fn anyxofvec2<T: Copy>(num_items: usize, vecy: Vec<T>, vecx: Vec<T>) -> Vec<Vec<
 
 /// Given a ref to a vector of a pair of vectors,
 /// return a vector of pairs of [(list1 + one item in list2), (list2 - item added to list1)]
+#[allow(dead_code)]
 fn proc_vec_pair<T: Copy>(pair: &[Vec<T>]) -> Vec<Vec<Vec<T>>> {
     let newvec = &pair[0];
     let sampls = &pair[1];
@@ -179,6 +181,7 @@ fn proc_vec_pair<T: Copy>(pair: &[Vec<T>]) -> Vec<Vec<Vec<T>>> {
 
 /// Return a copy of a list, with one element
 /// removed.
+#[allow(dead_code)]
 fn copyvecminus<T: Copy>(vecx: &Vec<T>, num: usize) -> Vec<T> {
     let mut newvec = Vec::<T>::with_capacity(vecx.len() - 1);
     for (inx, itemx) in vecx.iter().enumerate() {

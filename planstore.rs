@@ -1,10 +1,13 @@
 //! The PlanStore struct, a vector of SomePlan structs.
 
 use crate::plan::SomePlan;
+use crate::region::SomeRegion;
+use crate::regionstorecorr::RegionStoreCorr;
+use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::Index; // IndexMut
+use std::ops::Index; // IndexMut;
 use std::slice::Iter;
 
 impl fmt::Display for PlanStore {
@@ -61,6 +64,43 @@ impl PlanStore {
         self.avec.push(val);
     }
 
+    /// Return the result region of the last plans.
+    pub fn result_region(&self, all_states: &[&SomeState]) -> RegionStoreCorr {
+        // Init return RegionStoreCorr.
+        let mut ret = RegionStoreCorr::with_capacity(all_states.len());
+        for stax in all_states.iter() {
+            ret.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+        }
+
+        // Update return RegionStoreCorr as needed.
+        for planx in self.avec.iter() {
+            if planx.is_not_empty() {
+                ret[planx.dom_num] = planx.result_region().clone();
+            }
+        }
+        ret
+    }
+
+    /// Return the initial region of the plans.
+    pub fn initial_region(&self, all_states: &[&SomeState]) -> RegionStoreCorr {
+        // Init return RegionStoreCorr.
+        let mut ret = RegionStoreCorr::with_capacity(all_states.len());
+        for stax in all_states.iter() {
+            ret.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+        }
+
+        let mut domains_done = Vec::<usize>::with_capacity(all_states.len());
+
+        // Update return RegionStoreCorr as needed.
+        for planx in self.avec.iter() {
+            if planx.is_not_empty() && !domains_done.contains(&planx.dom_num) {
+                ret[planx.dom_num] = planx.initial_region().clone();
+                domains_done.push(planx.dom_num);
+            }
+        }
+        ret
+    }
+
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomePlan> {
         self.avec.iter()
@@ -93,6 +133,11 @@ impl PlanStore {
             ret += planx.len();
         }
         ret
+    }
+
+    /// Append a PlanStore to a PlanStore.
+    pub fn append(&mut self, other: &mut PlanStore) {
+        self.avec.append(&mut other.avec); // empties other.avec
     }
 } // end impl PlanStore
 
