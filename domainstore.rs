@@ -1032,7 +1032,7 @@ impl DomainStore {
         //    RegionStoreCorr::vec_ref_string(&other_nn_regions)
         //);
 
-        let mut plans = (0..1)
+        let mut plans = (0..5)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.avoid_negative_select_regions2(
@@ -1051,8 +1051,23 @@ impl DomainStore {
             return None;
         }
 
+        // Look for best rated plan.
+        let mut max_rate = isize::MIN;
+        let mut plan_inxs = Vec::<usize>::new();
+        let all_states = self.all_current_states();
+        for (inx, planx) in plans.iter().enumerate() {
+            let rate = self.select.rate_plans(planx, &all_states);
+            if rate > max_rate {
+                max_rate = rate;
+                plan_inxs = Vec::<usize>::new();
+            }
+            if rate == max_rate {
+                plan_inxs.push(inx);
+            }
+        }
+
         // Return one of the plans, avoiding the need to clone.
-        Some(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
+        Some(plans.remove(plan_inxs[rand::thread_rng().gen_range(0..plan_inxs.len())]))
     } // end avoid_negative_select_regions
 
     /// When the random depth-first plans all traverse a negative region, try to form a plan
