@@ -198,15 +198,15 @@ impl RegionStoreCorr {
     }
 
     // Check any two RegionStoreCorr vectors for an intersection in their items.
-    // Return intersection RegionStoreCorr.
-    pub fn vec_ref_intersections(
-        arg1: &[&RegionStoreCorr],
-        arg2: &[&RegionStoreCorr],
-    ) -> Option<RegionStoreCorr> {
+    // Return intersection RegionStoreCorr, and the RegionStoreCorrs that intersect.
+    pub fn vec_ref_intersections<'a>(
+        arg1: &'a [&'a RegionStoreCorr],
+        arg2: &'a [&'a RegionStoreCorr],
+    ) -> Option<(&'a RegionStoreCorr, RegionStoreCorr, &'a RegionStoreCorr)> {
         for regsx in arg1.iter() {
             for regsy in arg2.iter() {
                 if regsx.intersects(regsy) {
-                    return regsx.intersection(regsy);
+                    return Some((*regsx, regsx.intersection(regsy).unwrap(), *regsy));
                 }
             }
         }
@@ -280,6 +280,24 @@ impl RegionStoreCorr {
         }
 
         ret_msks
+    }
+
+    /// Return true if two ReagionStoreCorrs are adjacent.
+    pub fn is_adjacent(&self, other: &RegionStoreCorr) -> bool {
+        let mut num_dif = 0;
+        for (regx, regy) in self.iter().zip(other.iter()) {
+            num_dif += regx.diff_mask(regy).num_one_bits();
+        }
+        num_dif == 1
+    }
+
+    /// Return a RegionStoreCorr states ref vector.
+    pub fn states(&self) -> Vec<&SomeState> {
+        let mut stas = Vec::<&SomeState>::with_capacity(self.len());
+        for regx in self.iter() {
+            stas.push(&regx.state1);
+        }
+        stas
     }
 
     /// Return a string representing a vector of RegionStoreCorrs.
@@ -389,9 +407,23 @@ impl RegionStoreCorr {
         ret_str
     }
 
-    /// Return true if any region is a superset, or equal, to a region.
-    pub fn vec_any_superset_of(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
-        tools::vec_contains(avec, reg, RegionStoreCorr::is_superset_of)
+    /// Return true if any region is a superset, or equal, to a RegionStoreCorr.
+    pub fn vec_any_superset_of(avec: &[RegionStoreCorr], regcr: &RegionStoreCorr) -> bool {
+        tools::vec_contains(avec, regcr, RegionStoreCorr::is_superset_of)
+    }
+
+    /// Return supersets, of a RegionStoreCorr.
+    pub fn vec_supersets_of<'a>(
+        avec: &'a [RegionStoreCorr],
+        regcr: &'a RegionStoreCorr,
+    ) -> Vec<&'a RegionStoreCorr> {
+        let mut ret = Vec::<&RegionStoreCorr>::new();
+        for regsx in avec.iter() {
+            if regsx.is_superset_of(regcr) {
+                ret.push(regsx);
+            }
+        }
+        ret
     }
 
     /// Add a regionstorecorr, removing subset regionstorecorr.
@@ -421,9 +453,19 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return true if any regionstorecorr intersects a given regionstorcorr.
+    /// Return true if any regionstorecorr vector intersects a given regionstorcorr.
     pub fn vec_any_intersection(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
         tools::vec_contains(avec, reg, RegionStoreCorr::intersects)
+    }
+
+    /// Return true if any &regionstorecorr vector intersects a given regionstorcorr.
+    pub fn vec_ref_any_intersection(avec: &[&RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
+        for regcrx in avec.iter() {
+            if regcrx.intersects(reg) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Subtract a RegionStoreCorr from a RegionStoreCorr vector.
@@ -493,6 +535,19 @@ impl RegionStoreCorr {
             }
         }
         ret
+    }
+
+    /// Return the adjacent part of two RegionStoreCorr.
+    /// A RegionStoreCorr implied, if the RegionStoreCorrs are held to be similar in some property.
+    /// If the RegionStoreCorr can form a non-optimistic union, the result will be that union.
+    pub fn adjacent_part(&self, other: &Self) -> Self {
+        assert!(self.is_adjacent(other));
+
+        let msk = self.diff_masks(other);
+        let regs1 = self.set_to_x(&msk);
+        let regs2 = other.set_to_x(&msk);
+
+        regs1.intersection(&regs2).unwrap()
     }
 } // End impl RegionStoreCorr.
 

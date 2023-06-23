@@ -617,6 +617,24 @@ impl SomeRegion {
             tmp_str = next_pass;
         } // End loop
     }
+
+    /// Return the adjacent part of two regions.
+    /// A region implied, if the regions are held to be similar in some property.
+    /// If the regions can form a non-optimistic union, the result will be that union.
+    pub fn adjacent_part(&self, other: &Self) -> Self {
+        assert!(self.is_adjacent(other));
+
+        let msk = self.diff_mask(other);
+        let reg1 = self.set_to_x(&msk);
+        let reg2 = other.set_to_x(&msk);
+
+        reg1.intersection(&reg2).unwrap()
+    }
+
+    /// Return true if two regions have the same edge and X bit positions.
+    pub fn is_congruent(&self, other: &Self) -> bool {
+        self.x_mask() == other.x_mask()
+    }
 } // end impl SomeRegion
 
 #[cfg(test)]
@@ -624,6 +642,42 @@ mod tests {
     use super::*;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn test_is_congruent() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(1, "rx10x")?;
+        let reg2 = SomeRegion::new_from_string(1, "rx11x")?;
+        assert!(reg1.is_congruent(&reg2));
+
+        let reg1 = SomeRegion::new_from_string(1, "rx10x")?;
+        let reg2 = SomeRegion::new_from_string(1, "rx1x1")?;
+        assert!(!reg1.is_congruent(&reg2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_adjacent_part() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string(1, "rx10x")?;
+        let reg2 = SomeRegion::new_from_string(1, "rx11x")?;
+        let reg3 = reg1.adjacent_part(&reg2);
+        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
+        assert!(reg3 == SomeRegion::new_from_string(1, "rx1xx").unwrap());
+
+        let reg1 = SomeRegion::new_from_string(1, "rx10x")?;
+        let reg2 = SomeRegion::new_from_string(1, "rx110")?;
+        let reg3 = reg1.adjacent_part(&reg2);
+        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
+        assert!(reg3 == SomeRegion::new_from_string(1, "rx1x0").unwrap());
+
+        let reg1 = SomeRegion::new_from_string(1, "r000x")?;
+        let reg2 = SomeRegion::new_from_string(1, "rxx11")?;
+        let reg3 = reg1.adjacent_part(&reg2);
+        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
+        assert!(reg3 == SomeRegion::new_from_string(1, "r00x1").unwrap());
+
+        Ok(())
+    }
 
     #[test]
     fn test_vec_ref_split_to_subsets() -> Result<(), String> {

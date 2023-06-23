@@ -395,12 +395,11 @@ impl SelectRegionsStore {
 
         let dom_num = aplan.dom_num;
 
-        let mut sum: isize = 0;
+        // Store rate for each step.
+        let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
-        for (inx, stepx) in aplan.iter().enumerate() {
-            if inx == 0 {
-                continue;
-            }
+        for stepx in aplan.iter() {
+
             all_states[dom_num] = &stepx.initial.state1;
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.
@@ -410,12 +409,33 @@ impl SelectRegionsStore {
             //    }
             //}
 
-            if valx < 0 {
-                sum += valx;
+            rates.push(valx);
+        }
+
+        // Delete consecutive negative rates on end.
+        // The goal may be in a negative region.
+        while let Some(ratex) = rates.last() {
+            if *ratex < 0 {
+                rates.pop();
+            } else {
+                break;
+            }
+        }
+        // Delete consecutive negative rates at beginning.
+        // The initial region may be in a negative region.
+        rates.reverse();
+        while let Some(ratex) = rates.last() {
+            if *ratex < 0 {
+                rates.pop();
+            } else {
+                break;
             }
         }
 
-        sum
+        if rates.is_empty() {
+            return 0;
+        }
+        rates.iter().sum()
     }
 
     /// Return the sum of all select negative regions values a plan goes through.
@@ -444,7 +464,7 @@ impl SelectRegionsStore {
         }
 
         // Rate each option.
-        let mut rate = 0;
+        let mut rate: isize = 0;
         for planx in plans.iter() {
             // Check that plan starts in the right state.
             let start = planx.initial_region();
@@ -456,7 +476,6 @@ impl SelectRegionsStore {
             rate += self.rate_plan(planx, &all_states);
             all_states[planx.dom_num] = &planx.result_region().state1;
         }
-
         rate
     }
 
