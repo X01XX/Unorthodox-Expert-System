@@ -48,6 +48,14 @@ impl SomeMask {
         }
     }
 
+    /// Return a new SomeMask instance, all ones, given the number of integers to use in the SomeBits instance.
+    pub fn new_high(num_ints: usize) -> SomeMask {
+        assert!(num_ints > 0);
+        Self {
+            bts: SomeBits::new_high(num_ints),
+        }
+    }
+
     /// Return the number of integers used to represent a SomeMask instance.
     pub fn num_ints(&self) -> usize {
         self.bts.num_ints()

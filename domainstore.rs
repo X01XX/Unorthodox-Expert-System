@@ -1011,16 +1011,7 @@ impl DomainStore {
                 let dist = regsx.distance(goal_regs);
                 if dist == min_dist {
                     let dif_msk = regsx.diff_masks(goal_regs);
-                    let mut tmp_regs = RegionStoreCorr::with_capacity(goal_regs.len());
-                    for (inx, (reg_g, reg_nn)) in goal_regs.iter().zip(regsx.iter()).enumerate() {
-                        if dif_msk[inx].is_low() {
-                            tmp_regs.push(reg_nn.clone());
-                        } else {
-                            tmp_regs.push(reg_g.set_to_x(&dif_msk[inx]));
-                        }
-                    }
-                    //println!("figuring part for {goal_regs} and {regsx} = {tmp_regs}");
-                    additional_goal_regs.push(tmp_regs);
+                    additional_goal_regs.push(goal_regs.set_to_x(&dif_msk));
                 }
             }
             for regx in additional_goal_regs.iter() {

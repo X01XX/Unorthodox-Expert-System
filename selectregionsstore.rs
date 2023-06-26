@@ -399,7 +399,6 @@ impl SelectRegionsStore {
         let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
         for stepx in aplan.iter() {
-
             all_states[dom_num] = &stepx.initial.state1;
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.

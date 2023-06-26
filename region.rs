@@ -74,8 +74,24 @@ impl SomeRegion {
     /// XxXx = (1010, 0101).
     pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
         assert!(num_ints > 0);
-        let mut msk_high = SomeMask::new_low(num_ints);
+        SomeRegion::new_from_string2(num_ints, str, SomeMask::new_low(num_ints))
+    }
 
+    /// Return a Region from a string and the number of integers to use.
+    /// Left-most, consecutive, positions that are omitted will be padded with Xs.
+    pub fn new_from_string_pad_x(num_ints: usize, str: &str) -> Result<Self, String> {
+        assert!(num_ints > 0);
+        SomeRegion::new_from_string2(num_ints, str, SomeMask::new_high(num_ints))
+    }
+
+    /// Return a Region from a string and the number of integers to use.
+    /// Left-most, consecutive, positions that are omitted will be padded with zeros,
+    /// if msk_high is all zeros, Xs if msk_high is all ones.
+    fn new_from_string2(
+        num_ints: usize,
+        str: &str,
+        mut msk_high: SomeMask,
+    ) -> Result<Self, String> {
         let mut msk_low = SomeMask::new_low(num_ints);
 
         let mut num_bits = 0;
@@ -134,71 +150,6 @@ impl SomeRegion {
     pub fn num_ints(&self) -> usize {
         self.state1.num_ints()
     }
-
-    /// Return a Region from a string and the number of integers to use.
-    /// Left-most, consecutive, positions that are omitted will be padded with Xs.
-    ///
-    /// if let Ok(regx) = SomeRegion::new_from_string(1, "r01x1")) {
-    ///    println!("Region {}", &regx);
-    /// } else {
-    ///    panic!("Invalid Region");
-    /// }
-    ///
-    /// A state string can be used, like "s0b101010" or s0x34", making
-    /// a region with no X bit positions.
-    pub fn new_from_string_pad_x(num_ints: usize, str: &str) -> Result<Self, String> {
-        assert!(num_ints > 0);
-        let mut msk_high_not = SomeMask::new_low(num_ints);
-
-        let mut msk_low = SomeMask::new_low(num_ints);
-
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "r" {
-                    continue;
-                } else if chr == "s" {
-                    let state_r = SomeState::new_from_string(num_ints, str);
-                    match state_r {
-                        Ok(a_state) => {
-                            return Ok(SomeRegion::new(a_state.clone(), a_state));
-                        }
-                        Err(error) => {
-                            return Err(error);
-                        }
-                    } // end match state_r
-                } else {
-                    return Err(format!(
-                        "Did not understand the string {str}, first character?"
-                    ));
-                }
-            }
-
-            if chr == "0" {
-                msk_high_not = msk_high_not.push_1();
-                msk_low = msk_low.shift_left();
-            } else if chr == "1" {
-                msk_high_not = msk_high_not.shift_left();
-                msk_low = msk_low.push_1();
-            } else if chr == "X" {
-                msk_high_not = msk_high_not.shift_left();
-                msk_low = msk_low.shift_left();
-            } else if chr == "x" {
-                msk_high_not = msk_high_not.push_1();
-                msk_low = msk_low.push_1();
-            } else if chr == "_" {
-                continue;
-            } else {
-                return Err(format!(
-                    "Did not understand the string {str}, invalid character?"
-                ));
-            }
-        } // next (inx, chr)
-
-        Ok(SomeRegion::new(
-            msk_high_not.bitwise_not().to_state(),
-            msk_low.to_state(),
-        ))
-    } // end new_from_string_pad_x
 
     /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
