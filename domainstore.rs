@@ -676,9 +676,35 @@ impl DomainStore {
         if val < 0 {
             self.boredom = 0;
             self.boredom_limit = 0;
-            return self
-                .select
-                .choose_select_exit_needs(&all_states, &self.aggregate_changes());
+
+            // Find closest non-negative regions.
+            let mut min_dist = usize::MAX;
+            for regsx in self.select_non_negative.iter() {
+                let dist = regsx.distance_states(&all_states);
+                if dist < min_dist {
+                    min_dist = dist;
+                }
+            }
+
+            // Process closest non-negative regions.
+            let mut non_neg_inxs = Vec::<usize>::new();
+            for (inx, regsx) in self.select_non_negative.iter().enumerate() {
+                let dist = regsx.distance_states(&all_states);
+                if dist == min_dist {
+                    non_neg_inxs.push(inx);
+                }
+            }
+            // Generate needs.
+            let mut ndstr = NeedStore::with_capacity(non_neg_inxs.len());
+            for inx in non_neg_inxs.iter() {
+                let mut needx = SomeNeed::ExitSelectRegion {
+                    target_regions: self.select_non_negative[*inx].clone(),
+                    priority: 0,
+                };
+                needx.set_priority();
+                ndstr.push(needx);
+            }
+            return Some(ndstr);
         }
 
         // Check current status within a select region, or not.
@@ -1990,6 +2016,60 @@ mod tests {
             .value_supersets_of_states(&vec![&state1, &state2]);
         println!("val = {val}");
         assert!(val == 3);
+
+        Ok(())
+    }
+
+    // Test exit_select_needs with two overlapping negative select regions.
+    // from s0111 to s1000.
+    #[test]
+    fn test_exit_select_needs() -> Result<(), String> {
+        // Init a DomainStore.
+        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
+
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let neg_reg1 = dmxs[0]
+            .region_from_string_pad_x("rX1XX")
+            .expect("String should be formatted correctly");
+
+        regstr1.push(neg_reg1.clone());
+
+        // Add select regionstores.
+        dmxs.add_select(regstr1, -1);
+
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let neg_reg2 = dmxs[0]
+            .region_from_string_pad_x("r1XX1")
+            .expect("String should be formatted correctly");
+        regstr1.push(neg_reg2.clone());
+
+        // Add select regionstores.
+        dmxs.add_select(regstr1, -1);
+
+        // Set state for domain 0, using 1 integer for bits.
+        let state1 = dmxs[0].state_from_string("s0xd")?;
+        dmxs[0].set_state(&state1);
+
+        // Finish select regions setup.
+        dmxs.calc_select();
+        println!("select regs: {}", dmxs.select.formatted_string());
+        println!(
+            "non-neg:     {}",
+            RegionStoreCorr::vec_string(&dmxs.select_non_negative)
+        );
+
+        // Get exit needs.
+        if let Some(nds) = dmxs.check_select() {
+            println!("needs len {}", nds.len());
+            assert!(nds.len() == 2);
+            println!("needs: {}", nds);
+            for ndsx in nds.iter() {
+                assert!(!neg_reg1.intersects(&ndsx.target()[0].region));
+                assert!(!neg_reg2.intersects(&ndsx.target()[0].region));
+            }
+        } else {
+            return Err(format!("Needs are None?"));
+        }
 
         Ok(())
     }

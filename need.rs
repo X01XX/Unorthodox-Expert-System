@@ -10,7 +10,6 @@ use crate::region::SomeRegion;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
 use crate::target::SomeTarget;
 use crate::targetstore::TargetStore;
 
@@ -142,10 +141,10 @@ impl fmt::Display for SomeNeed {
                 format!("N(Pri {priority} To Select Regions {target_regions})")
             }
             SomeNeed::ExitSelectRegion {
-                target_states,
+                target_regions,
                 priority,
             } => {
-                format!("N(Pri {priority} Exit Select Regions {target_states})")
+                format!("N(Pri {priority} Exit Select Regions to {target_regions})")
             }
         }; // end match
 
@@ -253,7 +252,7 @@ pub enum SomeNeed {
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
     ExitSelectRegion {
-        target_states: StateStore,
+        target_regions: RegionStoreCorr,
         priority: usize,
     },
 }
@@ -481,13 +480,10 @@ impl SomeNeed {
                 }
                 targ
             }
-            SomeNeed::ExitSelectRegion { target_states, .. } => {
+            SomeNeed::ExitSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(1);
-                for (dom_numx, statex) in target_states.iter().enumerate() {
-                    targ.push(SomeTarget::new(
-                        dom_numx,
-                        SomeRegion::new(statex.clone(), statex.clone()),
-                    ));
+                for (dom_numx, regx) in target_regions.iter().enumerate() {
+                    targ.push(SomeTarget::new(dom_numx, regx.clone()));
                 }
                 targ
             }

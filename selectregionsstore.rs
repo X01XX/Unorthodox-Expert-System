@@ -2,17 +2,11 @@
 
 use crate::regionstorecorr::RegionStoreCorr;
 
-use crate::change::SomeChange;
-use crate::mask::SomeMask;
-use crate::need::SomeNeed;
-use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
 
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
@@ -285,101 +279,6 @@ impl SelectRegionsStore {
         false
     }
 
-    /// Return needs to exit negative select regions.
-    pub fn choose_select_exit_needs(
-        &self,
-        all_states: &[&SomeState],
-        changes: &[&SomeChange],
-    ) -> Option<NeedStore> {
-        let sup_store = self.negative_supersets_of_states(all_states);
-        if sup_store.is_empty() {
-            //println!("choose_select_exit_needs: Current states not in any negative regions?");
-            return None;
-        }
-
-        // Init target masks.
-        let mut target_masks = Vec::<SomeMask>::with_capacity(all_states.len());
-        for statex in all_states.iter() {
-            target_masks.push(SomeMask::new_low(statex.num_ints()));
-        }
-
-        // Make masks for what can change.
-        let mut change_mask = Vec::<SomeMask>::with_capacity(changes.len());
-        for (cngx, stax) in changes.iter().zip(all_states.iter()) {
-            change_mask.push(
-                cngx.b10
-                    .bitwise_and(*stax)
-                    .bitwise_or(&cngx.b01.bitwise_and(&stax.bitwise_not())),
-            );
-        }
-
-        // Try to find bits to change, up to 5 times.
-        for _ in 0..5 {
-            for selx in sup_store.iter() {
-                // Get edges mask for a negative superset
-                let mut edges = selx.regions.edge_masks();
-
-                for (edgex, mskx) in edges.iter_mut().zip(change_mask.iter()) {
-                    //println!("choose_select_exit_needs: edge {} and b10 {} and b01 {}", edges[inx], changes[inx].b01, changes[inx].b10);
-                    *edgex = edgex.bitwise_and(mskx);
-                }
-
-                // Identify non-zero edge masks.
-                let mut non_zero_edge_dom_ids = Vec::<usize>::new();
-                for (dom_numx, dom_edge_mask) in edges.iter().enumerate() {
-                    if dom_edge_mask.is_not_low() {
-                        non_zero_edge_dom_ids.push(dom_numx);
-                    }
-                }
-
-                // Check if stuck.
-                if non_zero_edge_dom_ids.is_empty() {
-                    //println!("choose_select_exit_needs: non zero edge masks not found?");
-                    return None;
-                }
-                //println!("choose_select_exit_needs: non zero edge masks found");
-
-                // Randomly choose a non-zero domain edge mask.
-                let dom_num = non_zero_edge_dom_ids
-                    [rand::thread_rng().gen_range(0..non_zero_edge_dom_ids.len())];
-
-                // Split the edge mask bits of the selected domain edge mask.
-                let single_bit_edge_masks = edges[dom_num].split();
-
-                // Randomly choose a mask.
-                let single_bit_edge_mask = &single_bit_edge_masks
-                    [rand::thread_rng().gen_range(0..single_bit_edge_masks.len())];
-                //println!("choose_select_exit_needs: mask {} chosen", single_bit_edge_mask);
-
-                // Do a Boolean OR with target masks, as two regions could have one edge in common, an XOR with the current state could be undone.
-                target_masks[dom_num] = target_masks[dom_num].bitwise_or(single_bit_edge_mask);
-            } // Next selx.
-
-            // Generate target states.
-            let mut target_states = Vec::<SomeState>::with_capacity(all_states.len());
-            for (statex, maskx) in all_states.iter().zip(target_masks.iter()) {
-                target_states.push(statex.bitwise_xor(maskx));
-            }
-
-            let mut all_states2 = Vec::<&SomeState>::with_capacity(all_states.len());
-            for stax in target_states.iter() {
-                all_states2.push(stax);
-            }
-            if self.negative_supersets_of_states(&all_states2).is_empty() {
-                let mut needx = SomeNeed::ExitSelectRegion {
-                    target_states: StateStore::new(target_states),
-                    priority: 0,
-                };
-                needx.set_priority();
-                let ret_nds = NeedStore::new(vec![needx]);
-
-                //println!("choose_select_exit_needs: returning need: {}", ret_nds[0]);
-                return Some(ret_nds);
-            }
-        }
-        None
-    }
-
     /// Return the sum of all negative select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
     pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, current_states: &[&'a SomeState]) -> isize {
@@ -508,65 +407,5 @@ impl Index<usize> for SelectRegionsStore {
     type Output = SelectRegions;
     fn index(&self, i: usize) -> &SelectRegions {
         &self.regionstores[i]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::SomeDomain;
-    use crate::domainstore::DomainStore;
-
-    // Test choose_select_exit_needs with two overlapping negative select regions.
-    // from s0111 to s1000.
-    #[test]
-    fn test_choose_select_exit_needs() -> Result<(), String> {
-        // Init a DomainStore.
-        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
-
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let reg1 = dmxs[0]
-            .region_from_string_pad_x("rX1XX")
-            .expect("String should be formatted correctly");
-
-        regstr1.push(reg1.clone());
-
-        // Add select regionstores.
-        dmxs.add_select(regstr1, -1);
-
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let reg2 = dmxs[0]
-            .region_from_string_pad_x("r1XX1")
-            .expect("String should be formatted correctly");
-        regstr1.push(reg2.clone());
-
-        // Add select regionstores.
-        dmxs.add_select(regstr1, -1);
-
-        // Set state for domain 0, using 1 integer for bits.
-        let state1 = dmxs[0].state_from_string("s0xd")?;
-        dmxs[0].set_state(&state1);
-
-        // Finish select regions setup.
-        dmxs.calc_select();
-
-        // Get exit needs.
-        let all_states = vec![&dmxs[0].cur_state];
-        let changex = SomeChange::new(
-            SomeMask::new_from_string(1, "m0b1111")?,
-            SomeMask::new_from_string(1, "m0b1111")?,
-        );
-        let changes = vec![&changex];
-        if let Some(nds) = dmxs.select.choose_select_exit_needs(&all_states, &changes) {
-            println!("needs len {}", nds.len());
-            assert!(nds.len() == 1);
-            println!("need: {}", nds[0]);
-            assert!(!reg1.is_superset_of_state(&nds[0].target()[0].region.state1));
-            assert!(!reg2.is_superset_of_state(&nds[0].target()[0].region.state1));
-        } else {
-            return Err(format!("Needs are None?"));
-        }
-
-        Ok(())
     }
 }

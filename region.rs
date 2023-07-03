@@ -407,7 +407,7 @@ impl SomeRegion {
         ret_vec
     }
 
-    /// Return a string representing a vector of regions.
+    /// Return a string representing a vector of references to regions.
     pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
