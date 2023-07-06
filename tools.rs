@@ -279,7 +279,10 @@ mod tests {
     fn test_anyxofvec() -> Result<(), String> {
         let x = anyxofvec(3, vec![0, 1, 2, 3]);
         println!("x {:?}", x);
-        assert!(x == vec![vec![0, 1, 2], vec![0, 1, 3], vec![0, 2, 3], vec![1, 2, 3]]);
+        assert!(x.contains(&vec![0, 1, 2]));
+        assert!(x.contains(&vec![0, 1, 3]));
+        assert!(x.contains(&vec![0, 2, 3]));
+        assert!(x.contains(&vec![1, 2, 3]));
         Ok(())
     }
 

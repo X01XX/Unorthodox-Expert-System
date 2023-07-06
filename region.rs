@@ -19,11 +19,8 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// SomeRegion struct
 pub struct SomeRegion {
-    /// First state defining a region.
-    pub state1: SomeState,
-    /// Second state defining a region.
-    /// It may be the same as the first state, for a region with no X-bit positions.
-    pub state2: SomeState,
+    /// Vector for one, or more, states.
+    pub states: Vec<SomeState>,
 }
 
 /// Implement the fmt::Display trait.
@@ -51,8 +48,21 @@ impl SomeRegion {
     /// For a region used to define a group, the states have corresponding squares that have been sampled.
     pub fn new(sta1: SomeState, sta2: SomeState) -> Self {
         Self {
-            state1: sta1,
-            state2: sta2,
+            states: vec![sta1, sta2],
+        }
+    }
+
+    /// Return a reference to the first state.
+    pub fn state1(&self) -> &SomeState {
+        &self.states[0]
+    }
+
+    /// Return a reference to the second state.
+    pub fn state2(&self) -> &SomeState {
+        if self.states.len() == 1 {
+            &self.states[0]
+        } else {
+            &self.states[1]
         }
     }
 
@@ -148,12 +158,12 @@ impl SomeRegion {
 
     /// Return the number of integers used to implement a region.
     pub fn num_ints(&self) -> usize {
-        self.state1.num_ints()
+        self.state1().num_ints()
     }
 
     /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
-        self.state1.num_bits() + 1 + (self.state1.num_bits() / 4)
+        self.state1().num_bits() + 1 + (self.state1().num_bits() / 4)
     }
 
     /// Return a String representation of a Region without any prefix.
@@ -161,14 +171,14 @@ impl SomeRegion {
         let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
 
-        let num_bits = self.state1.num_bits();
+        let num_bits = self.state1().num_bits();
 
         for (inx, valb) in (0..num_bits).rev().enumerate() {
             if inx > 0 && inx % 4 == 0 {
                 s1.push('_');
             }
-            let b0 = self.state1.is_bit_set(valb);
-            let b1 = self.state2.is_bit_set(valb);
+            let b0 = self.state1().is_bit_set(valb);
+            let b1 = self.state2().is_bit_set(valb);
 
             if b0 {
                 if b1 {
@@ -218,44 +228,44 @@ impl SomeRegion {
 
     /// Return true if a region is a superset of a state.
     pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
-        self.state1
+        self.state1()
             .bitwise_xor(a_state)
-            .bitwise_and(&self.state2.bitwise_xor(a_state))
+            .bitwise_and(&self.state2().bitwise_xor(a_state))
             .to_mask()
             .is_low()
     }
 
     /// Return a Mask of zero positions.
     pub fn zeros_mask(&self) -> SomeMask {
-        self.state1
+        self.state1()
             .bitwise_not()
-            .bitwise_and(&self.state2.bitwise_not())
+            .bitwise_and(&self.state2().bitwise_not())
             .to_mask()
     }
 
     /// Return a Mask of one positions.
     pub fn ones_mask(&self) -> SomeMask {
-        self.state1.bitwise_and(&self.state2).to_mask()
+        self.state1().bitwise_and(self.state2()).to_mask()
     }
 
     /// Return a mask of edge (non-X) bits.
     pub fn edge_mask(&self) -> SomeMask {
-        self.state1.bitwise_eqv(&self.state2)
+        self.state1().bitwise_eqv(self.state2())
     }
 
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
-        self.state1.bitwise_xor(&self.state2).to_mask()
+        self.state1().bitwise_xor(self.state2()).to_mask()
     }
 
     /// Return the number of X bits in a region.
     pub fn num_x(&self) -> usize {
-        self.state1.distance(&self.state2)
+        self.state1().distance(self.state2())
     }
 
     /// Given a state in a region, return the far state in the region.
     pub fn far_state(&self, sta: &SomeState) -> SomeState {
-        self.state1.bitwise_xor(&self.state2).bitwise_xor(sta)
+        self.state1().bitwise_xor(self.state2()).bitwise_xor(sta)
     }
 
     /// Given a region, and a proper subset region, return the
@@ -272,8 +282,8 @@ impl SomeRegion {
         let cng_bits = int_x_msk.bitwise_and(&ok_x_msk.bitwise_not());
 
         SomeRegion::new(
-            other.state1.bitwise_xor(&cng_bits),
-            other.state2.bitwise_xor(&cng_bits),
+            other.state1().bitwise_xor(&cng_bits),
+            other.state2().bitwise_xor(&cng_bits),
         )
     }
 
@@ -317,32 +327,32 @@ impl SomeRegion {
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        self.state1.bitwise_or(&self.state2)
+        self.state1().bitwise_or(self.state2())
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        self.state1.bitwise_and(&self.state2)
+        self.state1().bitwise_and(self.state2())
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
         Self::new(
-            self.state1.bitwise_and(&msk.bitwise_not()),
-            self.state2.bitwise_and(&msk.bitwise_not()),
+            self.state1().bitwise_and(&msk.bitwise_not()),
+            self.state2().bitwise_and(&msk.bitwise_not()),
         )
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-        Self::new(self.state1.bitwise_or(msk), self.state2.bitwise_or(msk))
+        Self::new(self.state1().bitwise_or(msk), self.state2().bitwise_or(msk))
     }
 
     /// Return a region with masked bit positions set to X.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
         Self::new(
-            self.state1.bitwise_or(msk),
-            self.state2.bitwise_and(&msk.bitwise_not()),
+            self.state1().bitwise_or(msk),
+            self.state2().bitwise_and(&msk.bitwise_not()),
         )
     }
 
@@ -358,22 +368,22 @@ impl SomeRegion {
 
     /// Return a mask of different bits with a given state.
     pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        self.state1
+        self.state1()
             .bitwise_xor(sta1)
-            .bitwise_and(&self.state2.bitwise_xor(sta1))
+            .bitwise_and(&self.state2().bitwise_xor(sta1))
             .to_mask()
     }
 
     /// Return a non-x mask for a region.
     pub fn non_x_mask(&self) -> SomeMask {
-        self.state1.bitwise_eqv(&self.state2)
+        self.state1().bitwise_eqv(self.state2())
     }
 
     /// Return a mask of different, non-x, bits between two regions.
     pub fn diff_mask(&self, other: &SomeRegion) -> SomeMask {
         self.non_x_mask()
             .bitwise_and(&other.non_x_mask())
-            .bitwise_and(&self.state1.bitwise_xor(&other.state1))
+            .bitwise_and(&self.state1().bitwise_xor(other.state1()))
     }
 
     /// Given a region, and a second region, return the
@@ -396,7 +406,7 @@ impl SomeRegion {
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.bitwise_and(&reg_int.state1).is_low() {
+            if mskx.bitwise_and(reg_int.state1()).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {
@@ -775,10 +785,10 @@ mod tests {
                 "s0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
             let state1 = SomeState::new_from_string(2, &state1_str)?;
             let state2 = reg_instance.far_state(&state1);
-            println!("{} should equal {state1}", reg_instance.state1);
-            assert!(reg_instance.state1 == state1);
-            println!("{} should equal {state1}", reg_instance.state2);
-            assert!(reg_instance.state2 == state2);
+            println!("{} should equal {state1}", reg_instance.state1());
+            assert!(reg_instance.state1() == &state1);
+            println!("{} should equal {state1}", reg_instance.state2());
+            assert!(reg_instance.state2() == &state2);
         }
         Ok(())
     }

@@ -144,18 +144,18 @@ impl SomeChange {
 
     /// Create a change for translating one region to another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = from.state1.bitwise_or(&from.state2).to_mask();
+        let f_ones = from.state1().bitwise_or(from.state2()).to_mask();
         let f_zeros = from
-            .state1
+            .state1()
             .bitwise_not()
-            .bitwise_or(&from.state2.bitwise_not())
+            .bitwise_or(&from.state2().bitwise_not())
             .to_mask();
 
-        let t_ones = to.state1.bitwise_or(&to.state2);
+        let t_ones = to.state1().bitwise_or(to.state2());
         let t_zeros = &to
-            .state1
+            .state1()
             .bitwise_not()
-            .bitwise_or(&to.state2.bitwise_not())
+            .bitwise_or(&to.state2().bitwise_not())
             .to_mask();
 
         let to_not_x = to.x_mask().bitwise_not();
@@ -220,8 +220,8 @@ mod tests {
         println!("change from {} to {} is {}", reg_0x1x, reg_1100, cng1);
 
         let reg_result = SomeRegion::new(
-            cng1.apply_to_state(&reg_0x1x.state1),
-            cng1.apply_to_state(&reg_0x1x.state2),
+            cng1.apply_to_state(reg_0x1x.state1()),
+            cng1.apply_to_state(reg_0x1x.state2()),
         );
 
         if reg_result != reg_1100 {
@@ -237,8 +237,8 @@ mod tests {
         println!("change from {} to {} is {}", reg_01x1, reg_0x1x, cng1);
 
         let reg_result = SomeRegion::new(
-            cng1.apply_to_state(&reg_01x1.state1),
-            cng1.apply_to_state(&reg_01x1.state2),
+            cng1.apply_to_state(reg_01x1.state1()),
+            cng1.apply_to_state(reg_01x1.state2()),
         );
 
         println!("reg_0x1x: {reg_0x1x} reg_result: {reg_result}");

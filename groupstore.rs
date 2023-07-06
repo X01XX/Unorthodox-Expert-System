@@ -311,10 +311,14 @@ impl GroupStore {
         self.remove_subsets_of(&grp.region, dom, act);
 
         // push the new group
-        if grp.region.state1 != grp.region.state2 {
+        if grp.region.state1() != grp.region.state2() {
             println!(
                 "\nDom {} Act {} Adding group {} from {} and {}",
-                &dom, &act, grp, grp.region.state1, grp.region.state2
+                &dom,
+                &act,
+                grp,
+                grp.region.state1(),
+                grp.region.state2()
             );
         } else {
             println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);

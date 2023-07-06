@@ -103,7 +103,12 @@ impl fmt::Display for SomeNeed {
             } => {
                 format!(
                     "N(Dom {} Act {} Pri {} Sample State {}, between {} and {} to seek edge)",
-                    dom_num, act_num, priority, target_state, in_group.state1, in_group.state2
+                    dom_num,
+                    act_num,
+                    priority,
+                    target_state,
+                    in_group.state1(),
+                    in_group.state2()
                 )
             }
             SomeNeed::SetGroupAnchor {

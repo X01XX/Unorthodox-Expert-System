@@ -115,7 +115,7 @@ impl DomainStore {
         }
 
         for (inx, dmx) in self.avec.iter().enumerate() {
-            if regstr[inx].state1.num_ints() != dmx.cur_state.num_ints() {
+            if regstr[inx].state1().num_ints() != dmx.cur_state.num_ints() {
                 panic!("reg {} bad number ints for domain {}", regstr[inx], inx);
             }
         }

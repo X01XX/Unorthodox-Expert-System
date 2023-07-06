@@ -295,7 +295,7 @@ impl RegionStoreCorr {
     pub fn states(&self) -> Vec<&SomeState> {
         let mut stas = Vec::<&SomeState>::with_capacity(self.len());
         for regx in self.iter() {
-            stas.push(&regx.state1);
+            stas.push(regx.state1());
         }
         stas
     }
@@ -514,7 +514,7 @@ impl RegionStoreCorr {
             // Generate a new RegionStoreCorr for each isolated bit.
             for sbitx in single_bits.iter() {
                 // Alter one X bit in self/regx to the opposite of the corresponding non-X bit in subtrahend/regy.
-                let regz = if sbitx.bitwise_and(&regy.state1).is_low() {
+                let regz = if sbitx.bitwise_and(regy.state1()).is_low() {
                     // Other/regy bit is zero, in regy.state1 (and regy.state2, since its non-X).
                     regx.set_to_ones(sbitx)
                 } else {

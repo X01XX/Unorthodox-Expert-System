@@ -198,11 +198,11 @@ impl SomeGroup {
         self.anchor_num = num;
 
         if let Some(astate) = &self.anchor {
-            if self.region.state1 == self.region.state2 {
-                if self.region.state1 != *astate {
+            if self.region.state1() == self.region.state2() {
+                if self.region.state1() != astate {
                     self.region = SomeRegion::new(astate.clone(), astate.clone());
                 }
-            } else if self.region.state1 != *astate && self.region.state2 != *astate {
+            } else if self.region.state1() != astate && self.region.state2() != astate {
                 let state2 = self.region.far_state(astate);
                 self.region = SomeRegion::new(astate.clone(), state2);
             }

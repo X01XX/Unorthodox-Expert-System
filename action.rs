@@ -311,19 +311,19 @@ impl SomeAction {
                 in_group: greg,
                 ..
             } => {
-                assert_ne!(greg.state1, greg.state2);
+                assert_ne!(greg.state1(), greg.state2());
 
-                if *sta != greg.state1 && *sta != greg.state2 {
+                if sta != greg.state1() && sta != greg.state2() {
                     let mut make_groups_from = Vec::<SomeState>::new();
 
                     // Find the squares
                     let sqr1 = self
                         .squares
-                        .find(&greg.state1)
+                        .find(greg.state1())
                         .expect("Group region states should refer to existing squares");
                     let sqr2 = self
                         .squares
-                        .find(&greg.state2)
+                        .find(greg.state2())
                         .expect("Group region states should refer to existing squares");
                     let sqr3 = self
                         .squares
@@ -375,8 +375,8 @@ impl SomeAction {
             } // end match SeekEdgeNeed
             // Check if group can be confirmed.
             SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                let Some(sqr1) = self.squares.find(&grp_reg.state1) else { return; };
-                let Some(sqr2) = self.squares.find(&grp_reg.state2) else { return; };
+                let Some(sqr1) = self.squares.find(grp_reg.state1()) else { return; };
+                let Some(sqr2) = self.squares.find(grp_reg.state2()) else { return; };
 
                 if sqr1.pnc && sqr2.pnc {
                     self.set_group_pnc(grp_reg);
@@ -403,24 +403,24 @@ impl SomeAction {
             return;
         }
 
-        let Some(sqr1) = self.squares.find(&grpx.region.state1) else { panic!(
+        let Some(sqr1) = self.squares.find(grpx.region.state1()) else { panic!(
                 "ConfirmGroup {} state1 {} square not found?",
-                grpx.region, grpx.region.state1
+                grpx.region, grpx.region.state1()
             ); };
 
         if !sqr1.pnc {
             return;
         }
 
-        if grpx.region.state1 == grpx.region.state2 {
+        if grpx.region.state1() == grpx.region.state2() {
             grpx.set_pnc();
             return;
         }
 
-        let Some(sqr2) = self.squares.find(&grpx.region.state2) else {
+        let Some(sqr2) = self.squares.find(grpx.region.state2()) else {
             panic!(
                 "ConfirmGroup {} state2 {} square not found?",
-                grpx.region, grpx.region.state2
+                grpx.region, grpx.region.state2()
             ); };
 
         if sqr2.pnc {
@@ -469,11 +469,11 @@ impl SomeAction {
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
-            if *key != regx.state1 && *key != regx.state2 {
-                let Some(sqr1) = self.squares.find(&regx.state1) else {
+            if key != regx.state1() && key != regx.state2() {
+                let Some(sqr1) = self.squares.find(regx.state1()) else {
                     panic!("Can't find group defining square?");
                 };
-                let Some(sqr2) = self.squares.find(&regx.state2) else {
+                let Some(sqr2) = self.squares.find(regx.state2()) else {
                     panic!("Can't find group defining square?");
                 };
 
@@ -599,9 +599,9 @@ impl SomeAction {
 
         let mut group_added = false;
         for regx in rsx.iter() {
-            let Some(sqrx) = self.squares.find(&regx.state1) else { panic!("Region state square not found?"); };
+            let Some(sqrx) = self.squares.find(regx.state1()) else { panic!("Region state square not found?"); };
 
-            let Some(sqry) = self.squares.find(&regx.state2) else { panic!("Region state square not found?"); };
+            let Some(sqry) = self.squares.find(regx.state2()) else { panic!("Region state square not found?"); };
 
             let ruls = if sqrx.pn == Pn::Unpredictable {
                 RuleStore::new(vec![])
@@ -814,14 +814,14 @@ impl SomeAction {
                         // Calc pnc
                         let sqrx = self
                             .squares
-                            .find(&group_region.state1)
+                            .find(group_region.state1())
                             .expect("Group region states should refer to existing squares");
-                        let pnc = if group_region.state2 == group_region.state1 {
+                        let pnc = if group_region.state2() == group_region.state1() {
                             sqrx.pnc
                         } else {
                             let sqry = self
                                 .squares
-                                .find(&group_region.state2)
+                                .find(group_region.state2())
                                 .expect("Group region states should refer to existing squares");
                             sqrx.pnc && sqry.pnc
                         };
@@ -1033,7 +1033,7 @@ impl SomeAction {
             // let mut in_groups = false;
             for grpx in self.groups.iter() {
                 if grpx.region.is_superset_of_state(keyx) {
-                    if grpx.region.state1 == *keyx || grpx.region.state2 == *keyx {
+                    if grpx.region.state1() == keyx || grpx.region.state2() == keyx {
                         continue 'next_keyx;
                     }
 
@@ -1094,11 +1094,11 @@ impl SomeAction {
             // Get the squares represented by the states that form the region
             let sqr1 = self
                 .squares
-                .find(&regx.state1)
+                .find(regx.state1())
                 .expect("Group region states should refer to existing squares");
             let sqr2 = self
                 .squares
-                .find(&regx.state2)
+                .find(regx.state2())
                 .expect("Group region states should refer to existing squares");
 
             // Check that squares that define the region are pnc.
@@ -1214,7 +1214,7 @@ impl SomeAction {
         //println!("seek_edge_needs2");
         let mut ret_nds = NeedStore::new(vec![]);
 
-        if regx.state1.is_adjacent(&regx.state2) {
+        if regx.state1().is_adjacent(regx.state2()) {
             ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
             return ret_nds;
         }
@@ -1227,9 +1227,9 @@ impl SomeAction {
 
         // Randomly choose which state to use to calculate the target state from
         let seek_state = if rand::random::<bool>() {
-            regx.state1.bitwise_xor(&dif_msk)
+            regx.state1().bitwise_xor(&dif_msk)
         } else {
-            regx.state2.bitwise_xor(&dif_msk)
+            regx.state2().bitwise_xor(&dif_msk)
         };
 
         // Make need for seek_state
@@ -1262,13 +1262,13 @@ impl SomeAction {
 
             let sqrx = self
                 .squares
-                .find(&grpx.region.state1)
+                .find(grpx.region.state1())
                 .expect("Group region states should refer to existing squares");
             if !sqrx.pnc {
                 let mut needx = SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
-                    target_state: grpx.region.state1.clone(),
+                    target_state: grpx.region.state1().clone(),
                     grp_reg: grpx.region.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1277,7 +1277,7 @@ impl SomeAction {
             }
 
             // If this is a one-state group ..
-            if grpx.region.state1 == grpx.region.state2 {
+            if grpx.region.state1() == grpx.region.state2() {
                 if sqrx.pnc {
                     grpx.set_pnc();
                 }
@@ -1286,13 +1286,13 @@ impl SomeAction {
 
             let sqry = self
                 .squares
-                .find(&grpx.region.state2)
+                .find(grpx.region.state2())
                 .expect("Group region states should refer to existing squares");
             if !sqry.pnc {
                 let mut needx = SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
                     act_num: self.num,
-                    target_state: grpx.region.state2.clone(),
+                    target_state: grpx.region.state2().clone(),
                     grp_reg: grpx.region.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1648,7 +1648,7 @@ impl SomeAction {
         // Instead of checking every adjacent square internal to the group.
 
         // Group is non-X, so no far state
-        if grpx.region.state1 == grpx.region.state2 {
+        if grpx.region.state1() == grpx.region.state2() {
             return None;
         }
 
@@ -1795,18 +1795,18 @@ impl SomeAction {
 
         // Gather the states from the regions, they may share one defining state.
         // A region may be made with a single state.
-        let mut defining_stas = StateStore::new(vec![reg1.state1.clone()]);
-        if defining_stas.contains(&reg1.state2) {
+        let mut defining_stas = StateStore::new(vec![reg1.state1().clone()]);
+        if defining_stas.contains(reg1.state2()) {
         } else {
-            defining_stas.push(reg1.state2.clone());
+            defining_stas.push(reg1.state2().clone());
         }
-        if defining_stas.contains(&reg2.state1) {
+        if defining_stas.contains(reg2.state1()) {
         } else {
-            defining_stas.push(reg2.state1.clone());
+            defining_stas.push(reg2.state1().clone());
         }
-        if defining_stas.contains(&reg2.state2) {
+        if defining_stas.contains(reg2.state2()) {
         } else {
-            defining_stas.push(reg2.state2.clone());
+            defining_stas.push(reg2.state2().clone());
         }
 
         // Gather defining squares
@@ -2226,7 +2226,7 @@ impl SomeAction {
         for regx in rsx.iter() {
             let sqry = self
                 .squares
-                .find(&regx.state2)
+                .find(regx.state2())
                 .expect("Group region states should refer to existing squares");
             if sqry.pn == Pn::Unpredictable {
                 println!(

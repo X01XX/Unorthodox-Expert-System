@@ -298,7 +298,7 @@ impl SelectRegionsStore {
         let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
         for stepx in aplan.iter() {
-            all_states[dom_num] = &stepx.initial.state1;
+            all_states[dom_num] = stepx.initial.state1();
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.
             //for selx in self.regionstores.iter() {
@@ -366,13 +366,13 @@ impl SelectRegionsStore {
         for planx in plans.iter() {
             // Check that plan starts in the right state.
             let start = planx.initial_region();
-            if start.state1 != *all_states[planx.dom_num]
-                || start.state2 != *all_states[planx.dom_num]
+            if start.state1() != all_states[planx.dom_num]
+                || start.state2() != all_states[planx.dom_num]
             {
                 panic!("plans not in sync!");
             }
             rate += self.rate_plan(planx, &all_states);
-            all_states[planx.dom_num] = &planx.result_region().state1;
+            all_states[planx.dom_num] = planx.result_region().state1();
         }
         rate
     }
