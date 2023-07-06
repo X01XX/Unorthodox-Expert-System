@@ -365,7 +365,7 @@ impl DomainStore {
             let all_states = self.all_current_states();
             let mut start_regs = RegionStoreCorr::with_capacity(self.len());
             for stax in all_states.iter() {
-                start_regs.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+                start_regs.push(SomeRegion::new(vec![(*stax).clone()]));
             }
 
             // Check if negative regions can be avoided.
@@ -376,7 +376,7 @@ impl DomainStore {
                     if let Some(regt) = self.needs[ndinx.inx].target().target_region(dom_inx) {
                         goal_regs.push(regt.clone());
                     } else {
-                        goal_regs.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+                        goal_regs.push(SomeRegion::new(vec![(*stax).clone()]));
                     }
                 }
 
@@ -1395,9 +1395,8 @@ mod tests {
 
         dmxs[0].get_needs(); // set aggregate changes
 
-        let start_region =
-            RegionStoreCorr::new(vec![SomeRegion::new(state1.clone(), state1.clone())]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(sf.clone(), sf.clone())]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sf.clone()])]);
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             println!(
@@ -1478,9 +1477,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region =
-            RegionStoreCorr::new(vec![SomeRegion::new(state1.clone(), state1.clone())]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(sd.clone(), sd.clone())]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1586,9 +1584,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region =
-            RegionStoreCorr::new(vec![SomeRegion::new(state1.clone(), state1.clone())]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(sd.clone(), sd.clone())]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1669,9 +1666,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region =
-            RegionStoreCorr::new(vec![SomeRegion::new(state1.clone(), state1.clone())]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(sd.clone(), sd.clone())]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1738,9 +1734,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region =
-            RegionStoreCorr::new(vec![SomeRegion::new(state1.clone(), state1.clone())]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(sd.clone(), sd.clone())]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1867,12 +1862,12 @@ mod tests {
         println!("Select Regions: {}\n", dmxs.select);
 
         let start_region = RegionStoreCorr::new(vec![
-            SomeRegion::new(cur0.clone(), cur0.clone()),
-            SomeRegion::new(cur1.clone(), cur1.clone()),
+            SomeRegion::new(vec![cur0.clone()]),
+            SomeRegion::new(vec![cur1.clone()]),
         ]);
         let goal_region = RegionStoreCorr::new(vec![
-            SomeRegion::new(sf.clone(), sf.clone()),
-            SomeRegion::new(sf.clone(), sf.clone()),
+            SomeRegion::new(vec![sf.clone()]),
+            SomeRegion::new(vec![sf.clone()]),
         ]);
 
         let all_states = dmxs.all_current_states();

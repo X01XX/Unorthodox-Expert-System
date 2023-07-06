@@ -69,7 +69,7 @@ impl PlanStore {
         // Init return RegionStoreCorr.
         let mut ret = RegionStoreCorr::with_capacity(all_states.len());
         for stax in all_states.iter() {
-            ret.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+            ret.push(SomeRegion::new(vec![(*stax).clone(), (*stax).clone()]));
         }
 
         // Update return RegionStoreCorr as needed.
@@ -86,7 +86,7 @@ impl PlanStore {
         // Init return RegionStoreCorr.
         let mut ret = RegionStoreCorr::with_capacity(all_states.len());
         for stax in all_states.iter() {
-            ret.push(SomeRegion::new((*stax).clone(), (*stax).clone()));
+            ret.push(SomeRegion::new(vec![(*stax).clone(), (*stax).clone()]));
         }
 
         let mut domains_done = Vec::<usize>::with_capacity(all_states.len());

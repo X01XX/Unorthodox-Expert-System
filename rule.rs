@@ -197,7 +197,11 @@ impl SomeRule {
         let st_high = self.b11.bitwise_or(&self.b10).to_state();
         let st_low = self.b00.bitwise_or(&self.b01).bitwise_not().to_state();
 
-        SomeRegion::new(st_high, st_low)
+        if st_high == st_low {
+            SomeRegion::new(vec![st_high])
+        } else {
+            SomeRegion::new(vec![st_high, st_low])
+        }
     }
 
     /// Return the result region of a rule.
@@ -205,7 +209,11 @@ impl SomeRule {
         let st_high = self.b11.bitwise_or(&self.b01).to_state();
         let st_low = self.b00.bitwise_or(&self.b10).bitwise_not().to_state();
 
-        SomeRegion::new(st_high, st_low)
+        if st_high == st_low {
+            SomeRegion::new(vec![st_high])
+        } else {
+            SomeRegion::new(vec![st_high, st_low])
+        }
     }
 
     /// Return the result region after applying an initial region to a rule.
@@ -565,7 +573,7 @@ mod tests {
         let ruly = SomeRule::new(&st6, &SomeState::new_from_string(1, "s0b0101")?);
 
         println!("rulx: {rulx}");
-        assert!(rulx.initial_region() == SomeRegion::new(sta.clone(), sta.clone()));
+        assert!(rulx.initial_region() == SomeRegion::new(vec![sta.clone()]));
 
         println!("ruly: {ruly}");
         if let Some(rulz) = rulx.union(&ruly) {

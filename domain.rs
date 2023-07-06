@@ -421,7 +421,7 @@ impl SomeDomain {
             return Some(vec![SomePlan::new(self.num, vec![])]);
         }
 
-        let cur_reg = SomeRegion::new(self.cur_state.clone(), self.cur_state.clone());
+        let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
 
         self.make_plans2(&cur_reg, goal_reg)
     }
@@ -519,10 +519,10 @@ impl SomeDomain {
 
     /// Return a maximum region for a domain.
     pub fn maximum_region(&self) -> SomeRegion {
-        SomeRegion::new(
+        SomeRegion::new(vec![
             SomeState::new_low(self.num_ints()).bitwise_not(),
             SomeState::new_low(self.num_ints()),
-        )
+        ])
     }
 
     /// Return a SomeMask instance from a string.
@@ -548,11 +548,11 @@ impl SomeDomain {
 
     /// Return the current maximum region that can be reached from the current state.
     pub fn reachable_region(&self) -> SomeRegion {
-        SomeRegion::new(
+        SomeRegion::new(vec![
             self.cur_state.clone(),
             self.cur_state
                 .bitwise_xor(&self.actions.aggregate_changes.bits_change_mask()),
-        )
+        ])
     }
 
     pub fn regions_not_covered(&self, act_num: usize) -> RegionStore {
@@ -914,9 +914,7 @@ mod tests {
 
         println!("needs are {}", nds2);
         let s06 = dm0.state_from_string("s0b00000110")?;
-        assert!(
-            nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(s06.clone(), s06.clone()))
-        );
+        assert!(nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(vec![s06.clone()])));
 
         let s02 = dm0.state_from_string("s0b00000010")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));

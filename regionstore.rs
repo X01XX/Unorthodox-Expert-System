@@ -343,10 +343,10 @@ impl RegionStore {
         assert!(self.is_not_empty());
 
         let state_low = SomeState::new_low(self[0].num_ints());
-        let max_region = RegionStore::new(vec![SomeRegion::new(
+        let max_region = RegionStore::new(vec![SomeRegion::new(vec![
             state_low,
             SomeState::new_low(self[0].num_ints()).bitwise_not(),
-        )]);
+        ])]);
 
         max_region.subtract(self)
     }

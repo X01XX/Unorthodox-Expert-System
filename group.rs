@@ -200,11 +200,11 @@ impl SomeGroup {
         if let Some(astate) = &self.anchor {
             if self.region.state1() == self.region.state2() {
                 if self.region.state1() != astate {
-                    self.region = SomeRegion::new(astate.clone(), astate.clone());
+                    self.region = SomeRegion::new(vec![astate.clone()]);
                 }
             } else if self.region.state1() != astate && self.region.state2() != astate {
                 let state2 = self.region.far_state(astate);
-                self.region = SomeRegion::new(astate.clone(), state2);
+                self.region = SomeRegion::new(vec![astate.clone(), state2]);
             }
         }
     }

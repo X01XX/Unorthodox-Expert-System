@@ -21,6 +21,9 @@ use std::fmt;
 pub struct SomeRegion {
     /// Vector for one, or more, states.
     pub states: Vec<SomeState>,
+    /// For regions defined by more that 2 squares, the state farthest in the region
+    /// from the first state.
+    far: Option<SomeState>,
 }
 
 /// Implement the fmt::Display trait.
@@ -46,9 +49,42 @@ impl SomeRegion {
     /// Create new region from two states.
     ///
     /// For a region used to define a group, the states have corresponding squares that have been sampled.
-    pub fn new(sta1: SomeState, sta2: SomeState) -> Self {
+    pub fn new(mut states: Vec<SomeState>) -> Self {
+        assert!(!states.is_empty());
+
+        let (states2, far) = match states.len() {
+            1 => (states, None),
+            2 => {
+                if states[0] == states[1] {
+                    (vec![states.pop().unwrap()], None)
+                } else {
+                    (states, None)
+                }
+            }
+            _ => {
+                if SomeState::vec_check_for_duplicates(&states) {
+                    println!("dups {:?}!", SomeState::vec_string(&states));
+                    panic!("Done");
+                }
+                if SomeState::vec_check_for_unneeded(&states) {
+                    println!("unneeded {:?}!", SomeState::vec_string(&states));
+                    panic!("Done");
+                }
+                // Calc x-mask for the region.
+                let mut x_mask = SomeMask::new_low(states[0].num_ints());
+                for stax in states.iter().skip(1) {
+                    x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&states[0]));
+                }
+                // Calc state in region, far from the first state, as if the region was made of two states.
+                let far = states[0].bitwise_xor(&x_mask);
+
+                (states, Some(far))
+            }
+        };
+
         Self {
-            states: vec![sta1, sta2],
+            states: states2,
+            far,
         }
     }
 
@@ -59,11 +95,23 @@ impl SomeRegion {
 
     /// Return a reference to the second state.
     pub fn state2(&self) -> &SomeState {
-        if self.states.len() == 1 {
-            &self.states[0]
-        } else {
-            &self.states[1]
+        match self.states.len() {
+            1 => &self.states[0],
+            2 => &self.states[1],
+            _ => {
+                if let Some(x) = &self.far {
+                    x
+                } else {
+                    panic!("should not happen");
+                }
+            }
         }
+
+        //        if self.states.len() == 1 {
+        //            &self.states[0]
+        //        } else {
+        //            &self.states[1]
+        //        }
     }
 
     /// Return a Region from a string and the number of integers to use.
@@ -114,7 +162,7 @@ impl SomeRegion {
                     let state_r = SomeState::new_from_string(num_ints, str);
                     match state_r {
                         Ok(a_state) => {
-                            return Ok(SomeRegion::new(a_state.clone(), a_state));
+                            return Ok(SomeRegion::new(vec![a_state]));
                         }
                         Err(error) => {
                             return Err(error);
@@ -153,7 +201,14 @@ impl SomeRegion {
             return Err(format!("String {str}, too long?"));
         }
 
-        Ok(SomeRegion::new(msk_high.to_state(), msk_low.to_state()))
+        if msk_high == msk_low {
+            Ok(SomeRegion::new(vec![msk_high.to_state()]))
+        } else {
+            Ok(SomeRegion::new(vec![
+                msk_high.to_state(),
+                msk_low.to_state(),
+            ]))
+        }
     } // end new_from_string
 
     /// Return the number of integers used to implement a region.
@@ -220,10 +275,14 @@ impl SomeRegion {
         if !self.intersects(other) {
             return None;
         }
-        Some(Self::new(
-            self.high_state().bitwise_and(&other.high_state()),
-            self.low_state().bitwise_or(&other.low_state()),
-        ))
+        let state1 = self.high_state().bitwise_and(&other.high_state());
+        let state2 = self.low_state().bitwise_or(&other.low_state());
+
+        if state1 == state2 {
+            Some(Self::new(vec![state1]))
+        } else {
+            Some(Self::new(vec![state1, state2]))
+        }
     }
 
     /// Return true if a region is a superset of a state.
@@ -270,7 +329,7 @@ impl SomeRegion {
 
     /// Given a region, and a proper subset region, return the
     /// far region within the superset region.
-    pub fn far_reg(&self, other: &SomeRegion) -> SomeRegion {
+    pub fn far_reg(&self, other: &Self) -> Self {
         let int_x_msk = self.x_mask();
 
         let ok_x_msk = other.x_mask();
@@ -281,10 +340,14 @@ impl SomeRegion {
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
         let cng_bits = int_x_msk.bitwise_and(&ok_x_msk.bitwise_not());
 
-        SomeRegion::new(
-            other.state1().bitwise_xor(&cng_bits),
-            other.state2().bitwise_xor(&cng_bits),
-        )
+        let state1 = other.state1().bitwise_xor(&cng_bits);
+        let state2 = other.state2().bitwise_xor(&cng_bits);
+
+        if state1 == state2 {
+            SomeRegion::new(vec![state1])
+        } else {
+            SomeRegion::new(vec![state1, state2])
+        }
     }
 
     /// Return true if a region is a subset on another region.
@@ -313,7 +376,7 @@ impl SomeRegion {
 
         let st_high = self.high_state().bitwise_or(&other.high_state());
 
-        Self::new(st_high, st_low)
+        Self::new(vec![st_high, st_low])
     }
 
     /// Return the union of a region and a state.
@@ -322,7 +385,7 @@ impl SomeRegion {
 
         let st_high = self.high_state().bitwise_or(other);
 
-        Self::new(st_high, st_low)
+        Self::new(vec![st_high, st_low])
     }
 
     /// Return the highest state in the region
@@ -337,23 +400,38 @@ impl SomeRegion {
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-        Self::new(
-            self.state1().bitwise_and(&msk.bitwise_not()),
-            self.state2().bitwise_and(&msk.bitwise_not()),
-        )
+        let state1 = self.state1().bitwise_and(&msk.bitwise_not());
+        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
+
+        if state1 == state2 {
+            Self::new(vec![state1])
+        } else {
+            Self::new(vec![state1, state2])
+        }
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-        Self::new(self.state1().bitwise_or(msk), self.state2().bitwise_or(msk))
+        let state1 = self.state1().bitwise_or(msk);
+        let state2 = self.state2().bitwise_or(msk);
+
+        if state1 == state2 {
+            Self::new(vec![state1])
+        } else {
+            Self::new(vec![state1, state2])
+        }
     }
 
     /// Return a region with masked bit positions set to X.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
-        Self::new(
-            self.state1().bitwise_or(msk),
-            self.state2().bitwise_and(&msk.bitwise_not()),
-        )
+        let state1 = self.state1().bitwise_or(msk);
+        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
+
+        if state1 == state2 {
+            Self::new(vec![state1])
+        } else {
+            Self::new(vec![state1, state2])
+        }
     }
 
     /// Return the distance from a region to a state.
@@ -453,7 +531,7 @@ impl SomeRegion {
 
     // Check any two region vectors for an intersection in their items.
     // Return intersection region.
-    pub fn vec_ref_intersections(arg1: &[&SomeRegion], arg2: &[&SomeRegion]) -> Option<SomeRegion> {
+    pub fn vec_ref_intersections(arg1: &[&Self], arg2: &[&Self]) -> Option<Self> {
         for regx in arg1.iter() {
             for regy in arg2.iter() {
                 if regx.intersects(regy) {
@@ -465,9 +543,9 @@ impl SomeRegion {
     }
 
     /// Add a region, removing subset regions.
-    pub fn vec_push_nosubs(sr_vec: &mut Vec<SomeRegion>, reg: SomeRegion) -> bool {
+    pub fn vec_push_nosubs(sr_vec: &mut Vec<Self>, reg: Self) -> bool {
         // Check for supersets, which probably is an error
-        if tools::vec_contains(sr_vec, &reg, SomeRegion::is_superset_of) {
+        if tools::vec_contains(sr_vec, &reg, Self::is_superset_of) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
             return false;
         }
@@ -494,12 +572,12 @@ impl SomeRegion {
     /// Split corresponding Regions by intersections, producing a result where each region is a subset
     /// of any intersecting original regions. All parts of the original Regions are accounted for in the
     /// result.
-    pub fn vec_ref_split_to_subsets(sr_vec: &[&SomeRegion]) -> Vec<SomeRegion> {
+    pub fn vec_ref_split_to_subsets(sr_vec: &[&Self]) -> Vec<Self> {
         // Init return vector of RegionStores.
-        let mut ret_str = Vec::<SomeRegion>::new();
+        let mut ret_str = Vec::<Self>::new();
 
         // Init temp vector, for RegionStore fragments.
-        let mut tmp_str = Vec::<SomeRegion>::new();
+        let mut tmp_str = Vec::<Self>::new();
 
         // Init vector to note indices of RegionStores that are split.
         // There may be a few duplicates, but that will not affect the use of the vector.
@@ -519,27 +597,27 @@ impl SomeRegion {
                     int_vec.push(iny);
 
                     for rsz in sr_vec[inx].subtract(&int) {
-                        SomeRegion::vec_push_nosubs(&mut tmp_str, rsz);
+                        Self::vec_push_nosubs(&mut tmp_str, rsz);
                     }
 
                     for rsz in sr_vec[iny].subtract(&int) {
-                        SomeRegion::vec_push_nosubs(&mut tmp_str, rsz);
+                        Self::vec_push_nosubs(&mut tmp_str, rsz);
                     }
-                    SomeRegion::vec_push_nosubs(&mut tmp_str, int);
+                    Self::vec_push_nosubs(&mut tmp_str, int);
                 }
             }
         }
         // For Regions with no intersections, add to the return RS.
         for (iny, rsy) in sr_vec.iter().enumerate() {
             if !int_vec.contains(&iny) {
-                SomeRegion::vec_push_nosubs(&mut ret_str, (*rsy).clone());
+                Self::vec_push_nosubs(&mut ret_str, (*rsy).clone());
             }
         }
 
         // Look for additional non-subset intersections.
         loop {
             // Init vector for next pass.
-            let mut next_pass = Vec::<SomeRegion>::new();
+            let mut next_pass = Vec::<Self>::new();
 
             // Check remaining fragments for additional intersections.
             // If no intersections are found, add the fragment to the return vector,
@@ -557,16 +635,16 @@ impl SomeRegion {
                         // Split intersection into fragments.
                         // Add fragments to the next_pass vector.
                         for rsz in rsy.subtract(&int) {
-                            SomeRegion::vec_push_nosubs(&mut next_pass, rsz);
+                            Self::vec_push_nosubs(&mut next_pass, rsz);
                         }
                         // Add the intersection to the next_pass vector.
-                        SomeRegion::vec_push_nosubs(&mut next_pass, int);
+                        Self::vec_push_nosubs(&mut next_pass, int);
                         split = true;
                     }
                 } // next rsx
                   // If no intersectiosn, add the fragment to the return vector.
                 if !split {
-                    SomeRegion::vec_push_nosubs(&mut ret_str, rsy);
+                    Self::vec_push_nosubs(&mut ret_str, rsy);
                 }
             } // next rsy
 
@@ -603,6 +681,23 @@ mod tests {
     use super::*;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn test_new() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string(1, "s0b0000")?;
+        let sta2 = SomeState::new_from_string(1, "s0b0011")?;
+        let sta3 = SomeState::new_from_string(1, "s0b0101")?;
+        
+        let reg1 = SomeRegion::new(vec![sta1, sta2, sta3]);
+        println!("reg1 is {}", reg1);
+        
+        let second = reg1.state2();
+        println!("reg1 first is {}, second is {}", reg1.state1(), reg1.state2());
+
+        assert!(second == &SomeState::new_from_string(1, "s0b0111")?);
+
+        Ok(())
+    }
 
     #[test]
     fn test_is_congruent() -> Result<(), String> {
@@ -795,14 +890,14 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let reg1 = SomeRegion::new(
+        let reg1 = SomeRegion::new(vec![
             SomeState::new_from_string(1, "s0b1010")?,
             SomeState::new_from_string(1, "s0b0101")?,
-        );
-        let reg2 = SomeRegion::new(
+        ]);
+        let reg2 = SomeRegion::new(vec![
             SomeState::new_from_string(1, "s0b0001")?,
             SomeState::new_from_string(1, "s0b1110")?,
-        );
+        ]);
         println!("{reg1} should equal {reg2}");
         assert!(reg1.eq(&reg2));
 

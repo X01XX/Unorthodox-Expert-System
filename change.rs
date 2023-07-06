@@ -219,10 +219,10 @@ mod tests {
 
         println!("change from {} to {} is {}", reg_0x1x, reg_1100, cng1);
 
-        let reg_result = SomeRegion::new(
+        let reg_result = SomeRegion::new(vec![
             cng1.apply_to_state(reg_0x1x.state1()),
             cng1.apply_to_state(reg_0x1x.state2()),
-        );
+        ]);
 
         if reg_result != reg_1100 {
             return Err(format!("result {} ne {}!", reg_result, reg_1100));
@@ -236,10 +236,10 @@ mod tests {
 
         println!("change from {} to {} is {}", reg_01x1, reg_0x1x, cng1);
 
-        let reg_result = SomeRegion::new(
+        let reg_result = SomeRegion::new(vec![
             cng1.apply_to_state(reg_01x1.state1()),
             cng1.apply_to_state(reg_01x1.state2()),
-        );
+        ]);
 
         println!("reg_0x1x: {reg_0x1x} reg_result: {reg_result}");
         assert!(reg_0x1x.is_superset_of(&reg_result));

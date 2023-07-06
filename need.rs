@@ -426,7 +426,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::ConfirmGroup {
                 dom_num,
@@ -434,7 +434,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::ContradictoryIntersection {
                 dom_num,
@@ -447,7 +447,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::LimitGroupAdj {
                 dom_num,
@@ -455,7 +455,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::SeekEdge {
                 dom_num,
@@ -463,7 +463,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::StateInRemainder {
                 dom_num,
@@ -476,7 +476,7 @@ impl SomeNeed {
                 ..
             } => TargetStore::new(vec![SomeTarget::new(
                 *dom_num,
-                SomeRegion::new(target_state.clone(), target_state.clone()),
+                SomeRegion::new(vec![target_state.clone()]),
             )]),
             SomeNeed::ToSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(target_regions.len());

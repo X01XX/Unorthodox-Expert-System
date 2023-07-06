@@ -917,12 +917,12 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
 
             if sqrx.pn > max_pn {
                 max_pn = sqrx.pn;
-                max_pn_reg = Some(SomeRegion::new(sqrx.state.clone(), sqrx.state.clone()));
+                max_pn_reg = Some(SomeRegion::new(vec![sqrx.state.clone()]));
             } else if sqrx.pn == max_pn {
                 if let Some(regx) = max_pn_reg {
                     max_pn_reg = Some(regx.union_state(&sqrx.state));
                 } else {
-                    max_pn_reg = Some(SomeRegion::new(sqrx.state.clone(), sqrx.state.clone()));
+                    max_pn_reg = Some(SomeRegion::new(vec![sqrx.state.clone()]));
                 }
             }
         }
