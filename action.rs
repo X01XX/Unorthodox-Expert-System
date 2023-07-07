@@ -395,6 +395,10 @@ impl SomeAction {
     pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
         let Some(grpx) = self.groups.find_mut(grp_reg) else { println!("ConfirmGroup {grp_reg} group not found?"); return; };
 
+        if grpx.region.states.len() > 2 {
+            return;
+        }
+
         if grpx.pnc {
             println!(
                 "ConfirmGroup {} already pnc and ConfirmGroup need?",
@@ -469,7 +473,7 @@ impl SomeAction {
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
-            if key != regx.state1() && key != regx.state2() {
+            if key != regx.state1() && key != regx.state2() && regx.states.len() == 2 {
                 let Some(sqr1) = self.squares.find(regx.state1()) else {
                     panic!("Can't find group defining square?");
                 };
@@ -605,16 +609,36 @@ impl SomeAction {
         for regx in rsx.iter() {
             let Some(sqrx) = self.squares.find(regx.state1()) else { panic!("Region state square not found?"); };
 
-            let Some(sqry) = self.squares.find(regx.state2()) else { panic!("Region state square not found?"); };
-
-            let ruls = if sqrx.pn == Pn::Unpredictable {
-                RuleStore::new(vec![])
+            let mut regx_pnc = sqrx.pnc;
+            let mut regx_ruls = sqrx.rules.clone();
+            if regx.states.len() < 3 {
+                if regx.states.len() == 2 {
+                    let Some(sqry) = self.squares.find(regx.state2()) else { panic!("Region state square not found?"); };
+                    regx_pnc &= sqry.pnc;
+                    if sqrx.pn != Pn::Unpredictable {
+                        if let Some(ruls_union) = regx_ruls.union(&sqry.rules) {
+                            regx_ruls = ruls_union;
+                        } else {
+                            panic!("Invalid union? {} and {}", regx_ruls, sqry.rules);
+                        }
+                    }
+                }
             } else {
-                sqrx.rules.union(&sqry.rules).expect("Square rules should have been found compatible in possible_regions_from_square")
-            };
+                regx_pnc = false;
+                for stay in regx.states.iter().skip(1) {
+                    let Some(sqry) = self.squares.find(stay) else { panic!("Region state square not found?"); };
+                    if sqrx.pn != Pn::Unpredictable {
+                        if let Some(ruls_union) = regx_ruls.union(&sqry.rules) {
+                            regx_ruls = ruls_union;
+                        } else {
+                            panic!("Invalid union? {} and {}", regx_ruls, sqry.rules);
+                        }
+                    }
+                }
+            }
 
             self.groups.push(
-                SomeGroup::new(regx.clone(), ruls, sqrx.pnc && sqry.pnc),
+                SomeGroup::new(regx.clone(), regx_ruls, regx_pnc),
                 self.dom_num,
                 self.num,
             );
@@ -822,12 +846,10 @@ impl SomeAction {
                             .expect("Group region states should refer to existing squares");
                         let pnc = if group_region.state2() == group_region.state1() {
                             sqrx.pnc
-                        } else {
-                            let sqry = self
-                                .squares
-                                .find(group_region.state2())
-                                .expect("Group region states should refer to existing squares");
+                        } else if let Some(sqry) = self.squares.find(group_region.state2()) {
                             sqrx.pnc && sqry.pnc
+                        } else {
+                            false
                         };
 
                         self.groups.push(
@@ -1288,27 +1310,31 @@ impl SomeAction {
                 continue;
             }
 
-            let sqry = self
-                .squares
-                .find(grpx.region.state2())
-                .expect("Group region states should refer to existing squares");
-            if !sqry.pnc {
-                let mut needx = SomeNeed::ConfirmGroup {
-                    dom_num: self.dom_num,
-                    act_num: self.num,
-                    target_state: grpx.region.state2().clone(),
-                    grp_reg: grpx.region.clone(),
-                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
-                };
-                needx.set_priority();
-                ret_nds.push(needx);
+            if let Some(sqry) = self.squares.find(grpx.region.state2()) {
+                if sqry.pnc {
+                    if sqrx.pnc {
+                        grpx.set_pnc();
+                        // Change region if made up of GT two states.
+                        if grpx.region.states.len() > 2 {
+                            grpx.set_region(SomeRegion::new(vec![
+                                grpx.region.state1().clone(),
+                                grpx.region.state2().clone(),
+                            ]));
+                        }
+                    }
+                    continue;
+                }
             }
 
-            // Group may have become pnc due to a sample from running a plan, rather than a specific
-            // need, which is handled in eval_need_sample.
-            if sqrx.pnc && sqry.pnc {
-                grpx.set_pnc();
-            }
+            let mut needx = SomeNeed::ConfirmGroup {
+                dom_num: self.dom_num,
+                act_num: self.num,
+                target_state: grpx.region.state2().clone(),
+                grp_reg: grpx.region.clone(),
+                priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+            };
+            needx.set_priority();
+            ret_nds.push(needx);
         } // next grpx
 
         ret_nds
@@ -2227,29 +2253,41 @@ impl SomeAction {
 
         // Print possible regions
         for regx in rsx.iter() {
-            let sqry = self
-                .squares
-                .find(regx.state2())
-                .expect("Group region states should refer to existing squares");
-            if sqry.pn == Pn::Unpredictable {
-                println!(
-                    "\n  Square {} [Unpredictable] can combine with\n  Square {} [Unpredictable]\n  giving {} [Unpredictable]",
-                    sqrx.state, sqry.state, regx
-                );
+            println!("Squares can be combined");
+            if sqrx.pn == Pn::Unpredictable {
+                for stay in regx.states.iter() {
+                    if let Some(sqry) = self.squares.find(stay) {
+                        if sqry.pn == Pn::Unpredictable {
+                            println!("    {}  [Unpredictable]", stay);
+                        } else {
+                            println!("    {} {} ?", stay, sqry.rules);
+                        }
+                    } else {
+                        println!("square for state {} not found?", stay);
+                    }
+                }
+                println!(" to {}", regx);
             } else {
-                println!(
-                    "\n  Square {} {} can combine with\n  Square {} {}\n  giving {} {}",
-                    sqrx.state,
-                    sqrx.rules,
-                    sqry.state,
-                    sqry.rules,
-                    regx,
-                    &sqrx.rules.union(&sqry.rules).expect(
-                        "Square rules should be compatible due to previous can_combine call"
-                    )
-                );
+                let mut regx_rules = sqrx.rules.clone();
+                for stay in regx.states.iter() {
+                    if let Some(sqry) = self.squares.find(stay) {
+                        if sqry.pn == Pn::Unpredictable {
+                            println!("    {}  [Unpredictable] ?", &sqrx);
+                        } else {
+                            println!("    {} {}", &stay, sqry.rules);
+                            if let Some(ruls) = regx_rules.union(&sqry.rules) {
+                                regx_rules = ruls;
+                            } else {
+                                println!(" {} cannot form union with {} ?", regx_rules, sqry.rules);
+                            }
+                        }
+                    } else {
+                        println!("square for state {} not found?", stay);
+                    }
+                }
+                println!(" to {} {}", regx, regx_rules);
             }
-        }
+        } // next regx
 
         //println!("regions for new groups {}", &rsx);
         rsx

@@ -687,12 +687,16 @@ mod tests {
         let sta1 = SomeState::new_from_string(1, "s0b0000")?;
         let sta2 = SomeState::new_from_string(1, "s0b0011")?;
         let sta3 = SomeState::new_from_string(1, "s0b0101")?;
-        
+
         let reg1 = SomeRegion::new(vec![sta1, sta2, sta3]);
         println!("reg1 is {}", reg1);
-        
+
         let second = reg1.state2();
-        println!("reg1 first is {}, second is {}", reg1.state1(), reg1.state2());
+        println!(
+            "reg1 first is {}, second is {}",
+            reg1.state1(),
+            reg1.state2()
+        );
 
         assert!(second == &SomeState::new_from_string(1, "s0b0111")?);
 

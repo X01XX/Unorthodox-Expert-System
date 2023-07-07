@@ -481,7 +481,7 @@ impl SomeBits {
 
     /// Calculate the expected length of a string that represents a SomeBits struct.
     pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.ints.len()) + self.ints.len()
+        (NUM_BITS_PER_INT * self.ints.len()) + (self.ints.len() * (NUM_BITS_PER_INT / 4))
     }
 
     /// Create a formatted string for the instance.
@@ -489,14 +489,22 @@ impl SomeBits {
         let mut astr = String::with_capacity(self.formatted_string_length());
         astr.push(prefix);
 
+        let nibbles_per_int = NUM_BITS_PER_INT / 4;
         let mut fil = 0;
         for intx in &self.ints {
-            if fil == 1 {
-                astr.push('_');
+            let mut inty = *intx;
+            let mut nibbles = Vec::<Bitint>::with_capacity(nibbles_per_int);
+            for _ in 0..nibbles_per_int {
+                nibbles.push(inty & 15);
+                inty >>= 4;
             }
-            astr.push_str(&format!("{intx:08b}")); // increase 08 if the integer size increases
-
-            fil = 1;
+            for nibx in nibbles.iter().rev() {
+                if fil == 1 {
+                    astr.push('_');
+                }
+                astr.push_str(&format!("{nibx:04b}"));
+                fil = 1;
+            }
         }
         astr
     }

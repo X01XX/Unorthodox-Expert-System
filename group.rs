@@ -81,6 +81,13 @@ impl SomeGroup {
         self.pnc = true;
     }
 
+    /// Set region, if the new region is EQ the current region,
+    /// but may be defined by different states.
+    pub fn set_region(&mut self, regx: SomeRegion) {
+        if self.region == regx {
+            self.region = regx;
+        }
+    }
     /// Return a string representing a group.
     pub fn formatted_string(&self) -> String {
         let mut rc_str = String::from("G(");

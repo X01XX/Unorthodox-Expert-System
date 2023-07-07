@@ -1049,24 +1049,17 @@ fn do_print_group_defining_squares_command(
     };
 
     if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
-        if let Some(sqrx) = dmx.actions[act_num].squares.find(grpx.region.state1()) {
-            println!("state1   {}", &sqrx);
-        } else {
-            return Err(format!("state1   {} not found?", grpx.region.state1()));
-        }
-
-        if grpx.region.state1() == grpx.region.state2() {
-            Ok(())
-        } else {
-            if let Some(sqrx) = dmx.actions[act_num].squares.find(grpx.region.state2()) {
-                println!("state2   {}", &sqrx);
-                return Ok(());
+        for stax in grpx.region.states.iter() {
+            if let Some(sqrx) = dmx.actions[act_num].squares.find(stax) {
+                println!(" {}", &sqrx);
+            } else {
+                return Err(format!("square for state {} not found?", stax));
             }
-            Err(format!("state2   {} not found?", &grpx.region.state1()))
         }
     } else {
-        Err(format!("\nGroup with region {} not found", &aregion))
+        return Err(format!("Region {} not found", aregion));
     }
+    Ok(())
 }
 
 /// Display usage options.
