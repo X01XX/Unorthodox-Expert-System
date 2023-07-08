@@ -29,6 +29,7 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -543,6 +544,7 @@ impl SomeAction {
         let mut stas_to_check = Vec::<SomeState>::new();
         for regx in regs_invalid.iter() {
             let stas = self.squares.stas_in_reg(regx);
+            //println!("stas to check {}", SomeState::vec_ref_string(&stas));
 
             for stax in stas.iter() {
                 if self.groups.num_groups_state_in(stax) == 0 && !stas_to_check.contains(stax) {
@@ -562,16 +564,6 @@ impl SomeAction {
 
         // Get groups the state is in
         let grps_in = self.groups.groups_state_in(key);
-
-        // Skip if in more than one group.
-        if grps_in.len() > 1 {
-            return;
-        }
-
-        // Skip if in only in one, non-single state, group.
-        if grps_in.len() == 1 && grps_in[0].num_x() > 0 {
-            return;
-        }
 
         let sqrx = self
             .squares
@@ -1220,7 +1212,7 @@ impl SomeAction {
                 }
             }
 
-            println!(" ");
+            //println!(" ");
         } // next regx
 
         // Apply new seek edge regions
@@ -2211,86 +2203,129 @@ impl SomeAction {
     fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
         //println!("possible_group_regions from sqr {}", &sqrx.state);
 
-        let mut rsx = RegionStore::new(vec![]);
+        //let mut rsx = RegionStore::new(vec![]);
+        let mut poss_regions = RegionStore::new(vec![]);
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return rsx;
+            return poss_regions;
         }
 
-        // Collect possible region, deleting subset regions
+        // Collect squares that could be combined with.
+        let mut sim_sqrs = Vec::<&SomeSquare>::new();
+        sim_sqrs.push(sqrx);
+
+        // Collect squares that cannot be combined with.
+        // None of these can be in any combination of similar squares.
+        let mut dissim_sqrs = Vec::<&SomeSquare>::new();
+
         for sqry in self.squares.ahash.values() {
             if sqry.state == sqrx.state {
                 continue;
             }
 
-            if sqrx.pn != sqry.pn {
-                continue;
+            let combine = self.can_combine(sqrx, sqry);
+
+            if combine == Some(false) {
+                dissim_sqrs.push(sqry);
+            } else if combine == Some(true) {
+                sim_sqrs.push(sqry);
             }
+        }
+        //println!("Similar squares:");
+        //for sqrz in sim_sqrs.iter() {
+        //    println!("  {}", sqrz);
+        //}
+        //println!("Disimilar squares:");
+        //for sqrz in dissim_sqrs.iter() {
+        //    println!("  {}", sqrz);
+        //}
 
-            if sqry.pn == Pn::One || sqry.pnc {
-            } else {
-                continue;
-            }
-
-            if self.can_combine(sqrx, sqry) != Some(true) {
-                continue;
-            }
-
-            // Create region, sqrx.state becomes regx.state1
-            let regx = SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]);
-
-            if self.groups.any_superset_of(&regx) {
-                continue;
-            }
-
-            if rsx.any_superset_of(&regx) {
-                continue;
-            }
-
-            rsx.push_nosubs(regx);
-        } // end for
-
-        // Print possible regions
-        for regx in rsx.iter() {
-            println!("Squares can be combined");
-            if sqrx.pn == Pn::Unpredictable {
-                for stay in regx.states.iter() {
-                    if let Some(sqry) = self.squares.find(stay) {
-                        if sqry.pn == Pn::Unpredictable {
-                            println!("    {}  [Unpredictable]", stay);
-                        } else {
-                            println!("    {} {} ?", stay, sqry.rules);
-                        }
-                    } else {
-                        println!("square for state {} not found?", stay);
-                    }
+        // Collect regions formed by pairs of similar squares that cannot be combined.
+        // e.g.
+        // Target square 0->0 + similar square 1->1 = X->X.
+        // Target square 0->0 + similar square 1->0 = X->0.
+        // But similar square 1->1 + similar square 1->0 = 1->X (disallowed).
+        // Any combination of similar squares cannot be a superset of any dissimilar region.
+        let mut dissim_regs = RegionStore::new(vec![]);
+        // Check every pair, except sqrx pairs.
+        for iny in 1..(sim_sqrs.len() - 1) {
+            for inz in (iny + 1)..sim_sqrs.len() {
+                if self.can_combine(sim_sqrs[iny], sim_sqrs[inz]) == Some(false) {
+                    dissim_regs.push_nosups(SomeRegion::new(vec![
+                        sim_sqrs[iny].state.clone(),
+                        sim_sqrs[inz].state.clone(),
+                    ]));
                 }
-                println!(" to {}", regx);
-            } else {
-                let mut regx_rules = sqrx.rules.clone();
-                for stay in regx.states.iter() {
-                    if let Some(sqry) = self.squares.find(stay) {
-                        if sqry.pn == Pn::Unpredictable {
-                            println!("    {}  [Unpredictable] ?", &sqrx);
-                        } else {
-                            println!("    {} {}", &stay, sqry.rules);
-                            if let Some(ruls) = regx_rules.union(&sqry.rules) {
-                                regx_rules = ruls;
-                            } else {
-                                println!(" {} cannot form union with {} ?", regx_rules, sqry.rules);
-                            }
-                        }
-                    } else {
-                        println!("square for state {} not found?", stay);
-                    }
-                }
-                println!(" to {} {}", regx, regx_rules);
             }
-        } // next regx
+        }
+        //println!("Disimilar regions: {dissim_regs}");
 
-        //println!("regions for new groups {}", &rsx);
-        rsx
+        // Check combinations of similar squares, largest first, until
+        // at least one valid combination is found.
+        let mut sim_regs = RegionStore::new(vec![]);
+        if sim_sqrs.len() > 1 {
+            for inx in (2..=sim_sqrs.len()).rev() {
+                // Check if any found so far.
+                if !poss_regions.is_empty() {
+                    break;
+                }
+
+                //println!("Check any {inx} squares");
+                let combinations: Vec<Vec<&SomeSquare>> = tools::anyxofvec(inx, &sim_sqrs);
+
+                'next_combx: for combx in combinations.iter() {
+                    //print!("A combo: ");
+                    //for sqrz in combx.iter() {
+                    //    print!("  {}", sqrz.state);
+                    //}
+                    let mut state_vec = Vec::<SomeState>::with_capacity(inx);
+                    for sqry in combx.iter() {
+                        state_vec.push(sqry.state.clone());
+                    }
+
+                    // Check if any square is unneeded.
+                    if SomeSquare::vec_ref_check_for_unneeded(combx) {
+                        //println!("  failed unneeded check");
+                        continue 'next_combx;
+                    }
+
+                    let regx = SomeRegion::new(state_vec);
+                    //println!(" {regx}");
+
+                    // Check if any dissimilar squares are in region.
+                    for sqrz in dissim_sqrs.iter() {
+                        if regx.is_superset_of_state(&sqrz.state) {
+                            //println!("  failed superset state check");
+                            continue 'next_combx;
+                        }
+                    }
+
+                    // Check if combx is a superset of any dissimilar region.
+                    for regz in dissim_regs.iter() {
+                        if regx.is_superset_of(regz) {
+                            //println!("  failed superset dissimilar region check");
+                            continue 'next_combx;
+                        }
+                    }
+
+                    if self.groups.any_superset_of(&regx) {
+                        //println!("  failed subset group region check");
+                        continue 'next_combx;
+                    }
+
+                    if sim_regs.any_superset_of(&regx) {
+                        //println!("  failed subset sim region check");
+                        continue 'next_combx;
+                    }
+                    // Store good combo.
+                    sim_regs.push_nosubs(regx.clone());
+                    poss_regions.push(regx);
+                } // next combx
+            } // next inx
+        }
+        //println!("Possible regions: {poss_regions}");
+        poss_regions
     } // end possible_regions_from_square
 
     /// Take an action for a need.
@@ -2604,6 +2639,110 @@ mod tests {
 
         assert!(nds.len() == 1);
         assert!(act0.groups.len() == 1);
+
+        Ok(())
+    }
+
+    // Test making a region from three samples.
+    #[test]
+    fn three_sample_region1() -> Result<(), String> {
+        // Init action.
+        let mut act0 = SomeAction::new(0, 0, 1);
+
+        // Set up square 0.
+        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+
+        // Set up square 3.
+        let s3 = SomeState::new_from_string(1, "s0b0011")?;
+        act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
+
+        // Set up square 5.
+        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+
+        println!("Act: {}", &act0);
+
+        assert!(act0.groups.len() == 1);
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0xxx")?)
+            .is_some());
+
+        Ok(())
+    }
+    // Test making a region from three samples, with one dissimilar sample.
+    #[test]
+    fn three_sample_region2() -> Result<(), String> {
+        // Init action.
+        let mut act0 = SomeAction::new(0, 0, 1);
+
+        // Set up square 0.
+        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+
+        // Set up square 3.
+        let s3 = SomeState::new_from_string(1, "s0b0011")?;
+        act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
+
+        // Set up square 4, dissimilar to s5 by third bit being 1->0.
+        let s4 = SomeState::new_from_string(1, "s0b0100")?;
+        act0.eval_sample(&SomeSample::new(s4.clone(), 0, s0.clone()));
+
+        // Set up square 5.
+        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+
+        println!("Act: {}", &act0);
+
+        assert!(act0.groups.len() == 3);
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0x00")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r00xx")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0xx1")?)
+            .is_some());
+
+        Ok(())
+    }
+
+    // Test making a region from three samples, with two similar samples that cannot be combined,
+    // due to the second bits being 1->0 and 1->1.
+    #[test]
+    fn three_sample_region3() -> Result<(), String> {
+        // Init action.
+        let mut act0 = SomeAction::new(0, 0, 1);
+
+        // Set up square 2.
+        let s2 = SomeState::new_from_string(1, "s0b0010")?;
+        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        act0.eval_sample(&SomeSample::new(s2.clone(), 0, s0.clone()));
+
+        // Set up square b.
+        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        act0.eval_sample(&SomeSample::new(sb.clone(), 0, sb.clone()));
+
+        // Set up square 5.
+        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+
+        println!("Act: {}", &act0);
+
+        assert!(act0.groups.len() == 2);
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "r0xxx")?)
+            .is_some());
+        assert!(act0
+            .groups
+            .find(&SomeRegion::new_from_string(1, "rxxx1")?)
+            .is_some());
 
         Ok(())
     }

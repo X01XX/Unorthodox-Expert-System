@@ -49,7 +49,7 @@ pub fn vec_contains<T>(avec: &[T], item: &T, testfn: fn(&T, &T) -> bool) -> bool
 /// Any 4 of 5 = 5 * 4 * 3 * 2 = 120;
 /// Any 5 of 5 = 5 * 4 * 3 * 2 * 1 = 120;
 #[allow(dead_code)]
-pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<Vec<T>> {
+pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: &Vec<T>) -> Vec<Vec<T>> {
     debug_assert!(num_items <= vecx.len());
 
     let mut limit = 1;
@@ -60,7 +60,7 @@ pub fn anyxofvec_order_matters<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<V
     }
 
     let mut rlst = Vec::<Vec<Vec<T>>>::with_capacity(limit);
-    rlst.push(vec![vec![], vecx]);
+    rlst.push(vec![vec![], vecx.to_vec()]);
 
     for _ in 0..num_items {
         // Calc number of results.
@@ -115,12 +115,12 @@ fn factorial(num: usize) -> usize {
 /// =  (a, b, c) (a, b, d) (a, c, d) (b, c, d)
 ///
 #[allow(dead_code)]
-pub fn anyxofvec<T: Copy>(num_items: usize, vecx: Vec<T>) -> Vec<Vec<T>> {
+pub fn anyxofvec<T: Copy>(num_items: usize, vecx: &Vec<T>) -> Vec<Vec<T>> {
     debug_assert!(num_items <= vecx.len());
 
     anyxofvec2(num_items, Vec::<T>::new(), vecx)
 }
-fn anyxofvec2<T: Copy>(num_items: usize, vecy: Vec<T>, vecx: Vec<T>) -> Vec<Vec<T>> {
+fn anyxofvec2<T: Copy>(num_items: usize, vecy: Vec<T>, vecx: &Vec<T>) -> Vec<Vec<T>> {
     if num_items < 1 {
         return vec![vecy];
     }
@@ -152,7 +152,7 @@ fn anyxofvec2<T: Copy>(num_items: usize, vecy: Vec<T>, vecx: Vec<T>) -> Vec<Vec<
         }
         vecz.push(vecx[inx]);
 
-        vec_rc.append(&mut anyxofvec2(num_items - 1, vecz, toright));
+        vec_rc.append(&mut anyxofvec2(num_items - 1, vecz, &toright));
     }
     vec_rc
 }
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_anyxofvec_order_matters() -> Result<(), String> {
-        let x = anyxofvec_order_matters(3, vec![0, 1, 2, 3]);
+        let x = anyxofvec_order_matters(3, &vec![0, 1, 2, 3]);
         println!("x {:?}", x);
         assert!(x.len() == 24);
         Ok(())
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_anyxofvec() -> Result<(), String> {
-        let x = anyxofvec(3, vec![0, 1, 2, 3]);
+        let x = anyxofvec(3, &vec![0, 1, 2, 3]);
         println!("x {:?}", x);
         assert!(x.contains(&vec![0, 1, 2]));
         assert!(x.contains(&vec![0, 1, 3]));

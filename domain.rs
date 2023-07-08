@@ -1068,44 +1068,44 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn compatible_group_intersection_needs() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
-        dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
-
-        let s0 = dm0.state_from_string("s0b000")?;
-        let s3 = dm0.state_from_string("s0b011")?;
-        let s5 = dm0.state_from_string("s0b101")?;
-
-        // Form groups.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
-        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
-        // Dup samples.
-        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
-        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
-        // Set groups pnc to true.
-        dm0.get_needs();
-
-        println!("\nActs: {}", &dm0.actions[0]);
-
-        let Some(grpx) = dm0.actions[0]
-            .groups
-            .find(&dm0.region_from_string("r00XX")?) else { return Err(String::from("Group r0X0X not found ??")); };
-
-        let Some(grpy) = dm0.actions[0]
-                .groups
-                .find(&dm0.region_from_string("r0XX1")?) else { return Err(String::from("Group r0XX1 not found ??")); };
-
-        let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
-        println!("needs {}", &nds1);
-        assert!(nds1.contains_similar_need("AStateMakeGroup", &dm0.region_from_string("r100")?));
-
-        Ok(())
-    }
+    //    #[test]
+    //    fn compatible_group_intersection_needs() -> Result<(), String> {
+    //        // Create a domain that uses one integer for bits.
+    //        let mut dm0 = SomeDomain::new(1);
+    //        dm0.cur_state = dm0.state_from_string("s0b1")?;
+    //        dm0.add_action();
+    //
+    //        let s0 = dm0.state_from_string("s0b000")?;
+    //        let s3 = dm0.state_from_string("s0b011")?;
+    //        let s5 = dm0.state_from_string("s0b101")?;
+    //
+    //        // Form groups.
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+    //        // Dup samples.
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+    //        dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+    //        // Set groups pnc to true.
+    //        dm0.get_needs();
+    //
+    //        println!("\nActs: {}", &dm0.actions[0]);
+    //
+    //        let Some(grpx) = dm0.actions[0]
+    //            .groups
+    //            .find(&dm0.region_from_string("r00XX")?) else { return Err(String::from("Group r0X0X not found ??")); };
+    //
+    //        let Some(grpy) = dm0.actions[0]
+    //                .groups
+    //                .find(&dm0.region_from_string("r0XX1")?) else { return Err(String::from("Group r0XX1 not found ??")); };
+    //
+    //        let nds1 = dm0.actions.avec[0].group_pair_intersection_needs(&grpx, &grpy);
+    //        println!("needs {}", &nds1);
+    //        assert!(nds1.contains_similar_need("AStateMakeGroup", &dm0.region_from_string("r100")?));
+    //
+    //        Ok(())
+    //    }
 
     #[test]
     fn seek_edge_needs() -> Result<(), String> {

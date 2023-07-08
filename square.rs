@@ -269,6 +269,31 @@ impl SomeSquare {
     pub fn distance(&self, other: &SomeSquare) -> usize {
         self.state.distance(&other.state)
     }
+
+    /// Check if any square ref states  are between another two.
+    /// So each item adds at least one X-bit position to a region formed by the states.
+    pub fn vec_ref_check_for_unneeded(avec: &Vec<&SomeSquare>) -> bool {
+        if avec.len() < 2 {
+            return false;
+        }
+        for inx in 0..(avec.len() - 1) {
+            for iny in (inx + 1)..avec.len() {
+                for inz in 0..avec.len() {
+                    if inz == inx || inz == iny {
+                        continue;
+                    }
+                    let diff = (avec[inz].state.bitwise_xor(&avec[inx].state))
+                        .to_mask()
+                        .bitwise_and(&avec[inz].state.bitwise_xor(&avec[iny].state));
+                    if diff.is_low() {
+                        return true;
+                    }
+                    //println!("{} is not between {} and {}", avec[inz].state, avec[inx].state, avec[iny].state);
+                } // next inz
+            } // next iny
+        } // next inx
+        false
+    }
 } // end impl SomeSquare
 
 #[cfg(test)]
