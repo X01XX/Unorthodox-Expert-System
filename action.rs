@@ -32,6 +32,7 @@ use crate::stepstore::StepStore;
 use crate::tools;
 
 use rand::Rng;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -2204,11 +2205,11 @@ impl SomeAction {
         //println!("possible_group_regions from sqr {}", &sqrx.state);
 
         //let mut rsx = RegionStore::new(vec![]);
-        let mut poss_regions = RegionStore::new(vec![]);
+        //let mut poss_regions = RegionStore::new(vec![]);
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return poss_regions;
+            return RegionStore::new(vec![]);
         }
 
         // Collect squares that could be combined with.
@@ -2226,7 +2227,7 @@ impl SomeAction {
 
             let combine = self.can_combine(sqrx, sqry);
 
-            if combine == Some(false) {
+            if combine == Some(false) || sqry.pn > sqrx.pn {
                 dissim_sqrs.push(sqry);
             } else if combine == Some(true) {
                 sim_sqrs.push(sqry);
@@ -2263,70 +2264,81 @@ impl SomeAction {
 
         // Check combinations of similar squares, largest first, until
         // at least one valid combination is found.
-        let mut sim_regs = RegionStore::new(vec![]);
+        //let mut sim_regs = RegionStore::new(vec![]);
         if sim_sqrs.len() > 1 {
             for inx in (2..=sim_sqrs.len()).rev() {
-                // Check if any found so far.
-                if !poss_regions.is_empty() {
-                    break;
-                }
-
                 //println!("Check any {inx} squares");
                 let combinations: Vec<Vec<&SomeSquare>> = tools::anyxofvec(inx, &sim_sqrs);
 
-                'next_combx: for combx in combinations.iter() {
-                    //print!("A combo: ");
-                    //for sqrz in combx.iter() {
-                    //    print!("  {}", sqrz.state);
-                    //}
-                    let mut state_vec = Vec::<SomeState>::with_capacity(inx);
-                    for sqry in combx.iter() {
-                        state_vec.push(sqry.state.clone());
-                    }
+                let regs = combinations
+                    .par_iter()
+                    .filter_map(|combx| self.validate_combination(combx, &dissim_sqrs, &dissim_regs))
+                    .collect::<Vec<SomeRegion>>();
 
-                    // Check if any square is unneeded.
-                    if SomeSquare::vec_ref_check_for_unneeded(combx) {
-                        //println!("  failed unneeded check");
-                        continue 'next_combx;
+                if !regs.is_empty() {
+                    let mut regs2 = RegionStore::with_capacity(regs.len());
+                    for regx in regs {
+                        regs2.push_nosubs(regx);
                     }
-
-                    let regx = SomeRegion::new(state_vec);
-                    //println!(" {regx}");
-
-                    // Check if any dissimilar squares are in region.
-                    for sqrz in dissim_sqrs.iter() {
-                        if regx.is_superset_of_state(&sqrz.state) {
-                            //println!("  failed superset state check");
-                            continue 'next_combx;
-                        }
-                    }
-
-                    // Check if combx is a superset of any dissimilar region.
-                    for regz in dissim_regs.iter() {
-                        if regx.is_superset_of(regz) {
-                            //println!("  failed superset dissimilar region check");
-                            continue 'next_combx;
-                        }
-                    }
-
-                    if self.groups.any_superset_of(&regx) {
-                        //println!("  failed subset group region check");
-                        continue 'next_combx;
-                    }
-
-                    if sim_regs.any_superset_of(&regx) {
-                        //println!("  failed subset sim region check");
-                        continue 'next_combx;
-                    }
-                    // Store good combo.
-                    sim_regs.push_nosubs(regx.clone());
-                    poss_regions.push(regx);
-                } // next combx
+                    return regs2;
+                }
             } // next inx
         }
-        //println!("Possible regions: {poss_regions}");
-        poss_regions
+        RegionStore::new(vec![])
     } // end possible_regions_from_square
+
+    /// Validate a region that can be made from a given vector of SomeSquare refs.
+    fn validate_combination(
+        &self,
+        combx: &Vec<&SomeSquare>,
+        dissim_sqrs: &[&SomeSquare],
+        dissim_regs: &RegionStore,
+    ) -> Option<SomeRegion> {
+        //print!("A combo: ");
+        //for sqrz in combx.iter() {
+        //    print!("  {}", sqrz.state);
+        //}
+
+        // Check if any square is unneeded.
+        if SomeSquare::vec_ref_check_for_unneeded(combx) {
+            //println!("  failed unneeded check");
+            return None;
+        }
+
+        let mut state_vec = Vec::<SomeState>::with_capacity(combx.len());
+        for sqry in combx.iter() {
+            state_vec.push(sqry.state.clone());
+        }
+
+        // Make a region, for checking and returning.
+        let regx = SomeRegion::new(state_vec);
+        //println!(" {regx}");
+
+        // Check if any dissimilar squares are in region.
+        for sqrz in dissim_sqrs.iter() {
+            if regx.is_superset_of_state(&sqrz.state) {
+                //println!("  failed superset state check");
+                return None;
+            }
+        }
+
+        // Check if regx is a superset of any dissimilar region.
+        for regz in dissim_regs.iter() {
+            if regx.is_superset_of(regz) {
+                //println!("  failed superset dissimilar region check");
+                return None;
+            }
+        }
+
+        // Check current groups.
+        if self.groups.any_superset_of(&regx) {
+            //println!("  failed subset group region check");
+            return None;
+        }
+
+        // Return a good region.
+        Some(regx)
+    }  // end validate_combination
 
     /// Take an action for a need.
     pub fn take_action_need(

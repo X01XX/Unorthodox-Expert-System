@@ -295,12 +295,12 @@ impl SomeNeed {
             SomeNeed::ExitSelectRegion { priority, .. } => *priority += 300,
             SomeNeed::AStateMakeGroup { priority, .. } => *priority += 400,
             SomeNeed::ConfirmGroup { priority, .. } => *priority += 500,
-            SomeNeed::LimitGroup { priority, .. } => *priority += 500,
-            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 500,
-            SomeNeed::StateNotInGroup { priority, .. } => *priority += 600,
-            SomeNeed::ToSelectRegion { priority, .. } => *priority += 700,
+            SomeNeed::LimitGroup { priority, .. } => *priority += 600,
+            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 700,
+            SomeNeed::StateNotInGroup { priority, .. } => *priority += 800,
+            SomeNeed::ToSelectRegion { priority, .. } => *priority += 900,
             // Some needs should have a higher priority number compared to ToSelectRegion.
-            SomeNeed::StateInRemainder { priority, .. } => *priority = 10000,
+            SomeNeed::StateInRemainder { priority, .. } => *priority = 1000,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
