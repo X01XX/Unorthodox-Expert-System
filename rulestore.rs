@@ -103,10 +103,12 @@ impl RuleStore {
         assert!(self.is_valid());
     }
 
-    /// Return true if one RuleStore is a subset of another.
+    /// Return true if one non-empty RuleStore is a subset of another non-empty.
     /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
     /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        assert!(!self.is_empty() && !other.is_empty());
+
         if self.len() > other.len() {
             return false;
         }
@@ -145,6 +147,8 @@ impl RuleStore {
 
     /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
+        assert!(!self.is_empty());
+
         if self.len() == 1 {
             return self[0].is_superset_of(other);
         }
@@ -189,20 +193,18 @@ impl RuleStore {
     ///     (X->0, X->X), 1->?
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", &self, &other);
-        if self.len() != other.len() {
-            return None;
-        }
+        assert!(!self.is_empty() && !other.is_empty());
 
-        if self.is_empty() {
-            //return Some(Self::new());
-            panic!("Unpredictable union not allowed");
+        if self.len() != other.len() {
+            //println!("\nrulestore union: returns None");
+            return None;
         }
 
         if self.len() == 1 {
             if let Some(rulx) = self.avec[0].union(&other.avec[0]) {
                 return Some(Self::new(vec![rulx]));
             }
-
+            //println!("\nrulestore union: returns None (2)");
             return None;
         }
 
@@ -246,10 +248,31 @@ impl RuleStore {
         panic!("unexpected RuleStore length");
     }
 
+    /// Return Truth value of a union of two RuleStores.
+    pub fn can_combine(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        if self.is_empty() {
+            return true;
+        }
+        if self.union(other).is_some() {
+            return true;
+        }
+        false
+    }
+
     /// Return Truth value of a possible union.
     pub fn can_form_union(&self, other: &Self) -> Option<bool> {
-        assert!(self.is_not_empty());
-        assert!(other.is_not_empty());
+        if self.is_empty() && other.is_empty() {
+            return Some(true);
+        }
+        if self.is_empty() {
+            return Some(false);
+        }
+        if other.is_empty() {
+            return Some(false);
+        }
 
         // Handle Pn1 vs. Pn2.
         // The Pn1 type should not have enough samples to be pnc, caller to insure.

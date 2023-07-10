@@ -180,57 +180,48 @@ impl SomeSquare {
         rc_str
     }
 
-    /// Check if two squares can be combined.
+    /// Check true if a square can be combined with some other, now.
     /// This does not check squares that may be between them.
-    pub fn can_combine(&self, sqrx: &SomeSquare) -> Option<bool> {
-        assert_ne!(self.state, sqrx.state); // Combining a square with itself is probably an error in logic.
-
-        // Predictability established for both squares.
-        if self.pnc && sqrx.pnc {
-            if self.pn != sqrx.pn {
-                return Some(false);
-            }
-            if self.pn == Pn::Unpredictable {
-                return Some(true);
-            }
-
-            return self.rules.can_form_union(&sqrx.rules);
+    pub fn can_combine_now(&self, other: &SomeSquare) -> bool {
+        //println!("running can_combine_now: {} {}", self.state, other.state);
+        assert_ne!(self.state, other.state); // Combining a square with itself is probably an error in logic.
+        if self.pn != other.pn {
+            //println!("running can_combine: returns false (1)");
+            return false;
         }
 
-        // Check for bootstrap compatible.
-        // Rules have to be formed to allow going back and resampling.
-        // The rules may have a significant failure rate.
-        if self.pn == Pn::One && sqrx.pn == Pn::One {
-            if Some(true) == self.rules.can_form_union(&sqrx.rules) {
-                return Some(true);
-            }
-            if self.pnc || sqrx.pnc {
-                return Some(false);
-            }
-            return None;
+        if self.pn == Pn::Unpredictable {
+            return true;
         }
 
-        if self.pnc {
-            // so sqrx.pnc == false
-            if sqrx.pn > self.pn {
-                return Some(false);
-            }
-            if self.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Some(false)
-            {
-                return Some(false);
-            }
-        } else if sqrx.pnc {
-            // so self.pnc == false
-            if self.pn > sqrx.pn {
-                return Some(false);
-            }
-            if sqrx.pn != Pn::Unpredictable && self.rules.can_form_union(&sqrx.rules) == Some(false)
-            {
-                return Some(false);
-            }
+        if self.rules.can_combine(&other.rules) {
+            //println!("running can_combine: returns calced {}", self.pn == Pn::One || self.pnc && other.pnc);
+            return self.pn == Pn::One || self.pnc && other.pnc;
         }
-        // Need more samples
-        None
+        //println!("running can_combine: returns false (2)");
+        false
+    }
+
+    /// Return true if two squares are similar.
+    pub fn is_similar_to(&self, other: &SomeSquare) -> bool {
+        //println!("running is_similar: {} {}", self.state, other.state);
+        if self.pnc && other.pnc && self.pn != other.pn {
+            return false;
+        }
+        if self.pn > other.pn && other.pnc {
+            return false;
+        }
+        if other.pn > self.pn && self.pnc {
+            return false;
+        }
+
+        if self.pn == Pn::Unpredictable || other.pn == Pn::Unpredictable {
+            return true;
+        }
+        if self.rules.can_form_union(&other.rules) != Some(false) {
+            return true;
+        }
+        false
     }
 
     /// Return the Pattern Number Confirmed (pnc) value.
@@ -381,7 +372,7 @@ mod tests {
             SomeState::new_from_string(1, "s0b0101").unwrap(),
         );
 
-        sqr1.can_combine(&sqr2);
+        sqr1.can_combine_now(&sqr2);
 
         ()
     }
@@ -403,7 +394,7 @@ mod tests {
         println!("sqr1: {sqr1}");
         println!("sqr2: {sqr2}");
 
-        assert!(sqr1.can_combine(&sqr2) == Some(true));
+        assert!(sqr1.can_combine_now(&sqr2));
 
         // Create a square incompatible to sqr1 to produce M result.
         let mut sqr3 = SomeSquare::new(
@@ -412,14 +403,14 @@ mod tests {
         );
         println!("sqr3: {sqr3}");
 
-        assert!(sqr1.can_combine(&sqr3).is_none());
+        assert!(!sqr1.can_combine_now(&sqr3));
 
         // Add to sqr3 to make it pnc.
         sqr3.add_result(SomeState::new_from_string(1, "s0b1100")?);
         println!("sqr3: {sqr3}");
 
-        assert!(sqr1.can_combine(&sqr3) == Some(false));
-        assert!(sqr3.can_combine(&sqr1) == Some(false));
+        assert!(!sqr1.can_combine_now(&sqr3));
+        assert!(!sqr3.can_combine_now(&sqr1));
 
         Ok(())
     }
@@ -452,10 +443,10 @@ mod tests {
         println!("sqr3: {sqr3}");
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(sqr1.can_combine(&sqr2).is_none());
+        assert!(sqr2.is_similar_to(&sqr1));
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(sqr3.can_combine(&sqr2).is_none());
+        assert!(!sqr2.can_combine_now(&sqr3));
 
         // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
         let mut sqr4 = SomeSquare::new(
@@ -465,12 +456,13 @@ mod tests {
 
         sqr4.add_result(SomeState::new_from_string(1, "s0b0101")?);
         println!("sqr4: {sqr4}");
+        println!("sqr2: {sqr2}");
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        assert!(sqr4.can_combine(&sqr2) == Some(false));
+        assert!(!sqr4.is_similar_to(&sqr2));
 
         // Exersize other branch of code.
-        assert!(sqr2.can_combine(&sqr4) == Some(false));
+        assert!(!sqr2.is_similar_to(&sqr4));
 
         // Add to sqr2 to make it pnc.
         sqr2.add_result(SomeState::new_from_string(1, "s0b1101")?);
@@ -480,16 +472,18 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        assert!(sqr1.can_combine(&sqr2).is_none());
+        assert!(sqr1.is_similar_to(&sqr2));
 
         // Exersize other branch of code.
-        assert!(sqr2.can_combine(&sqr1).is_none());
+        assert!(sqr2.is_similar_to(&sqr1));
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
-        assert!(sqr2.can_combine(&sqr3) == Some(false));
+        println!("sqr2 {}", sqr2);
+        println!("sqr3 {}", sqr3);
+        assert!(!sqr2.can_combine_now(&sqr3));
 
         // Exersize other branch of code.
-        assert!(sqr3.can_combine(&sqr2) == Some(false));
+        assert!(!sqr3.can_combine_now(&sqr2));
 
         Ok(())
     }
@@ -514,9 +508,11 @@ mod tests {
         sqr2.add_result(SomeState::new_from_string(1, "s0b0100")?);
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
+        let cmb = sqr1.is_similar_to(&sqr2);
+        println!("cmb {:?}", cmb);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(sqr1.can_combine(&sqr2).is_none());
+        assert!(cmb);
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
         let mut sqr3 = SomeSquare::new(
@@ -525,23 +521,21 @@ mod tests {
         );
 
         sqr3.add_result(SomeState::new_from_string(1, "s0b1101")?);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {}", sqr1);
+        println!("sqr3 {}", sqr3);
+        let cmb = sqr1.can_combine_now(&sqr3);
+        println!("cmb {:?}", cmb);
 
         // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
-        assert!(sqr1.can_combine(&sqr3).is_none());
+        assert!(!cmb);
 
         // Make sqr1 pnc.
         sqr1.add_result(SomeState::new_from_string(1, "s0b1101")?);
         sqr1.add_result(SomeState::new_from_string(1, "s0b1100")?);
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr1.can_combine(&sqr2).is_some() {
+        if sqr1.can_combine_now(&sqr2) {
             return Err(String::from("Test 3 failed?"));
-        }
-
-        // Exersize other branch of code.
-        if sqr2.can_combine(&sqr1).is_some() {
-            return Err(String::from("Test 4 failed?"));
         }
 
         // Add to sqr2 to make it pnc.
@@ -552,10 +546,10 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
-        assert!(sqr1.can_combine(&sqr2) == Some(true));
+        assert!(sqr1.can_combine_now(&sqr2));
 
         // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
-        assert!(sqr1.can_combine(&sqr3) == Some(false));
+        assert!(!sqr1.can_combine_now(&sqr3));
 
         // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
         let mut sqr4 = SomeSquare::new(
@@ -570,7 +564,7 @@ mod tests {
         println!("sqr4 {}", sqr4);
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
-        assert!(sqr1.can_combine(&sqr4) == Some(false));
+        assert!(!sqr1.can_combine_now(&sqr4));
 
         // Create sqr5, combinable with sqr1, but results in reverse order.
         let mut sqr5 = SomeSquare::new(
@@ -585,7 +579,7 @@ mod tests {
         println!("sqr5 {}", sqr5);
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
-        assert!(sqr1.can_combine(&sqr5) == Some(true));
+        assert!(sqr1.can_combine_now(&sqr5));
 
         Ok(())
     }
@@ -611,17 +605,14 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
-        assert!(sqr1.can_combine(&sqr2).is_none());
-
-        // Exorsize other code branch.
-        assert!(sqr2.can_combine(&sqr1).is_none());
+        assert!(!sqr1.can_combine_now(&sqr2));
 
         // Make sqr2 pnc == true.
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101")?);
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
-        assert!(sqr1.can_combine(&sqr2) == Some(false));
+        assert!(!sqr1.can_combine_now(&sqr2));
 
         Ok(())
     }
@@ -648,10 +639,9 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
-        assert!(sqr1.can_combine(&sqr2).is_none());
-
-        // Exersize other code branch.
-        assert!(sqr2.can_combine(&sqr1).is_none());
+        let cmb = sqr1.can_combine_now(&sqr2);
+        println!("cmb is {:?}", cmb);
+        assert!(!sqr1.can_combine_now(&sqr2));
 
         // Make sqr2 pnc == true.
         sqr2.add_result(SomeState::new_from_string(1, "s0b0101")?);
@@ -660,7 +650,7 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
-        assert!(sqr1.can_combine(&sqr2) == Some(false));
+        assert!(!sqr1.can_combine_now(&sqr2));
 
         Ok(())
     }
@@ -689,7 +679,7 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
-        assert!(sqr1.can_combine(&sqr2) == Some(true));
+        assert!(sqr1.can_combine_now(&sqr2));
 
         Ok(())
     }

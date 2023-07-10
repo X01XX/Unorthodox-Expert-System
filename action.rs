@@ -140,48 +140,27 @@ impl SomeAction {
 
     /// Return the truth value for the combination of any two different squares,
     /// and the squares between them.
-    fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> Option<bool> {
+    fn can_combine(&self, sqrx: &SomeSquare, sqry: &SomeSquare) -> bool {
         assert_ne!(sqrx.state, sqry.state);
         //println!("can_combine: {} and {}?", sqrx.state, sqry.state);
 
-        let cmbx = sqrx.can_combine(sqry);
-
-        if Some(false) == cmbx {
-            return cmbx;
+        if !sqrx.can_combine_now(sqry) {
+            return false;
         }
 
-        // Check if Pn::One squares cannot combine as-is, for bootstrapping.
-        if sqrx.pn == Pn::One && sqry.pn == Pn::One && cmbx.is_none() {
-            return Some(false);
-        }
-
-        if sqrx.pn == sqry.pn {
-            if self.any_incompatible_pn_square_in_region(
+        if sqrx.pn == Pn::Unpredictable {
+            return !self.any_incompatible_pn_square_in_region(
                 &SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]),
                 sqrx.pn,
-            ) {
-                return Some(false);
-            }
-            if sqrx.pn == Pn::Unpredictable {
-                return Some(true);
-            }
-
-            let Some(rules) = sqrx.rules.union(&sqry.rules) else { return Some(false); };
-
-            if !self.all_subset_rules_in_region(
-                &SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]),
-                &rules,
-            ) {
-                return Some(false);
-            }
-        } else if self.any_incompatible_square_combination_in_region(&SomeRegion::new(vec![
-            sqrx.state.clone(),
-            sqry.state.clone(),
-        ])) {
-            return Some(false);
+            );
         }
 
-        cmbx
+        let Some(rules) = sqrx.rules.union(&sqry.rules) else { return false; };
+
+        self.all_subset_rules_in_region(
+            &SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]),
+            &rules,
+        )
     }
 
     /// Add a new square from a sample.
@@ -288,7 +267,7 @@ impl SomeAction {
                     let Some(sqry) = self.squares.find(far) else { return; };
 
                     if (sqry.pn == Pn::One || sqry.pnc)
-                        && (sqrx.state == sqry.state || self.can_combine(sqrx, sqry) == Some(true))
+                        && (sqrx.state == sqry.state || self.can_combine(sqrx, sqry))
                     {
                         let regz = SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]);
 
@@ -337,7 +316,7 @@ impl SomeAction {
                     // It may be different from both state1 and state2.
                     // If it needs more samples, skip, next need will increment the number samples.
 
-                    if sqr3.can_combine(sqr1) == Some(false) && sqr1.pnc && sqr3.pnc {
+                    if !sqr3.can_combine_now(sqr1) && sqr1.pnc && sqr3.pnc {
                         if sqr1.is_adjacent(sqr3) {
                             println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr1.state, &sqr3.state, &greg);
                             self.seek_edge.remove_region(greg);
@@ -354,7 +333,7 @@ impl SomeAction {
                         }
                     }
 
-                    if sqr3.can_combine(sqr2) == Some(false) && sqr2.pnc && sqr3.pnc {
+                    if !sqr3.can_combine_now(sqr2) && sqr2.pnc && sqr3.pnc {
                         if sqr2.is_adjacent(sqr3) {
                             println!("\nDom {} Act {} new edge found between {} and {} removing seek edge {}", dom, self.num, &sqr2.state, &sqr3.state, &greg);
                             self.seek_edge.remove_region(greg);
@@ -484,8 +463,7 @@ impl SomeAction {
                 };
 
                 if sqr1.pnc && sqr2.pnc {
-                    if !sqrx.state.is_adjacent(&sqr1.state) && sqrx.can_combine(sqr1) == Some(false)
-                    {
+                    if !sqrx.state.is_adjacent(&sqr1.state) && !sqrx.can_combine_now(sqr1) {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
                             &self.dom_num, &self.num, &sqrx.state, &sqr1.state
@@ -496,8 +474,7 @@ impl SomeAction {
                         ]));
                     }
 
-                    if !sqrx.state.is_adjacent(&sqr2.state) && sqrx.can_combine(sqr2) == Some(false)
-                    {
+                    if !sqrx.state.is_adjacent(&sqr2.state) && !sqrx.can_combine_now(sqr2) {
                         println!(
                             "\nDom {} Act {} Seek edge between {} and {}",
                             &self.dom_num, &self.num, &sqrx.state, &sqr2.state
@@ -526,7 +503,7 @@ impl SomeAction {
             let Some(anchor_sqr) = self.squares.find(anchor_state) else {
                 panic!("Anchor state not found?"); };
 
-            if anchor_sqr.can_combine(sqrx) == Some(true) {
+            if anchor_sqr.can_combine_now(sqrx) {
                 grpx.set_limited_off();
             }
         }
@@ -1167,19 +1144,19 @@ impl SomeAction {
             // Look for a square with pnc == true.
             for sqrx in &sqrs_in2 {
                 if sqrx.pnc {
-                    let cnb1 = sqrx.can_combine(sqr1);
-                    let cnb2 = sqrx.can_combine(sqr2);
+                    let cnb1 = sqrx.can_combine_now(sqr1);
+                    let cnb2 = sqrx.can_combine_now(sqr2);
 
-                    if cnb1 == Some(true) && cnb2 == Some(true) {
+                    if cnb1 && cnb2 {
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     } else {
-                        if cnb1 == Some(false) {
+                        if !cnb1 {
                             new_regs.push_nosups(SomeRegion::new(vec![
                                 sqrx.state.clone(),
                                 sqr1.state.clone(),
                             ]));
                         }
-                        if cnb2 == Some(false) {
+                        if !cnb2 {
                             new_regs.push_nosups(SomeRegion::new(vec![
                                 sqrx.state.clone(),
                                 sqr2.state.clone(),
@@ -1613,7 +1590,7 @@ impl SomeAction {
                     // Create new group, if an adjacent square can combine with the anchor.
                     // Current anchor will then be in two regions,
                     // the next run of limit_group_anchor_needs will deal with it.
-                    if anchor_sqr.can_combine(adj_sqr) == Some(true) {
+                    if anchor_sqr.can_combine_now(adj_sqr) {
                         let regz = SomeRegion::new(vec![anchor_sta.clone(), adj_sta]);
 
                         let ruls = if anchor_sqr.pn == Pn::Unpredictable {
@@ -1752,26 +1729,6 @@ impl SomeAction {
 
         nds
     } // end group_pair_needs
-
-    /// Return true if there is no invalid combination of squares in a region.
-    fn any_incompatible_square_combination_in_region(&self, regx: &SomeRegion) -> bool {
-        // Get squares in the region.
-        let sqrs_in_reg = self.squares.squares_in_reg(regx);
-
-        if sqrs_in_reg.len() < 2 {
-            return false;
-        }
-
-        for inx in 0..(sqrs_in_reg.len() - 1) {
-            for iny in (inx + 1)..sqrs_in_reg.len() {
-                if sqrs_in_reg[inx].can_combine(sqrs_in_reg[iny]) == Some(false) {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
 
     /// Return true if all square rules in a region are a subset of given rules.
     fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
@@ -2225,12 +2182,12 @@ impl SomeAction {
                 continue;
             }
 
-            let combine = self.can_combine(sqrx, sqry);
-
-            if combine == Some(false) || sqry.pn > sqrx.pn {
-                dissim_sqrs.push(sqry);
-            } else if combine == Some(true) {
+            if sqrx.can_combine_now(sqry) {
                 sim_sqrs.push(sqry);
+            } else if sqrx.is_similar_to(sqry) {
+                // More samples of sqry are needed to tell if it is simmilar or dissimmilar.
+            } else {
+                dissim_sqrs.push(sqry);
             }
         }
         //println!("Similar squares:");
@@ -2242,26 +2199,6 @@ impl SomeAction {
         //    println!("  {}", sqrz);
         //}
 
-        // Collect regions formed by pairs of similar squares that cannot be combined.
-        // e.g.
-        // Target square 0->0 + similar square 1->1 = X->X.
-        // Target square 0->0 + similar square 1->0 = X->0.
-        // But similar square 1->1 + similar square 1->0 = 1->X (disallowed).
-        // Any combination of similar squares cannot be a superset of any dissimilar region.
-        let mut dissim_regs = RegionStore::new(vec![]);
-        // Check every pair, except sqrx pairs.
-        for iny in 1..(sim_sqrs.len() - 1) {
-            for inz in (iny + 1)..sim_sqrs.len() {
-                if self.can_combine(sim_sqrs[iny], sim_sqrs[inz]) == Some(false) {
-                    dissim_regs.push_nosups(SomeRegion::new(vec![
-                        sim_sqrs[iny].state.clone(),
-                        sim_sqrs[inz].state.clone(),
-                    ]));
-                }
-            }
-        }
-        //println!("Disimilar regions: {dissim_regs}");
-
         // Check combinations of similar squares, largest first, until
         // at least one valid combination is found.
         //let mut sim_regs = RegionStore::new(vec![]);
@@ -2271,8 +2208,8 @@ impl SomeAction {
                 let combinations: Vec<Vec<&SomeSquare>> = tools::anyxofvec(inx, &sim_sqrs);
 
                 let regs = combinations
-                    .par_iter()
-                    .filter_map(|combx| self.validate_combination(combx, &dissim_sqrs, &dissim_regs))
+                    .par_iter() // par_iter, ro iter for sequential diagnostic messages.
+                    .filter_map(|combx| self.validate_combination(combx, &dissim_sqrs))
                     .collect::<Vec<SomeRegion>>();
 
                 if !regs.is_empty() {
@@ -2292,7 +2229,6 @@ impl SomeAction {
         &self,
         combx: &Vec<&SomeSquare>,
         dissim_sqrs: &[&SomeSquare],
-        dissim_regs: &RegionStore,
     ) -> Option<SomeRegion> {
         //print!("A combo: ");
         //for sqrz in combx.iter() {
@@ -2306,8 +2242,14 @@ impl SomeAction {
         }
 
         let mut state_vec = Vec::<SomeState>::with_capacity(combx.len());
+        let mut rules = combx[0].rules.clone();
         for sqry in combx.iter() {
             state_vec.push(sqry.state.clone());
+            if sqry.pn != Pn::Unpredictable {
+                //println!("Combining {rules} and {}", sqry.rules);
+                let Some(rulesx) = rules.union(&sqry.rules) else { return None; };
+                rules = rulesx;
+            }
         }
 
         // Make a region, for checking and returning.
@@ -2322,11 +2264,21 @@ impl SomeAction {
             }
         }
 
-        // Check if regx is a superset of any dissimilar region.
-        for regz in dissim_regs.iter() {
-            if regx.is_superset_of(regz) {
-                //println!("  failed superset dissimilar region check");
-                return None;
+        // Check all subset squares have subset rules.
+        for sqry in self.squares.ahash.values() {
+            if regx.is_superset_of_state(&sqry.state) {
+                if rules.is_empty() {
+                    if sqry.pn != Pn::Unpredictable && sqry.pnc {
+                        return None;
+                    }
+                } else {
+                    if sqry.pn == Pn::Unpredictable {
+                        return None;
+                    }
+                    if !rules.is_superset_of(&sqry.rules) {
+                        return None;
+                    }
+                }
             }
         }
 
@@ -2338,7 +2290,7 @@ impl SomeAction {
 
         // Return a good region.
         Some(regx)
-    }  // end validate_combination
+    } // end validate_combination
 
     /// Take an action for a need.
     pub fn take_action_need(
@@ -2473,6 +2425,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn two_result_group() -> Result<(), String> {
+        // Init action
+        let mut act0 = SomeAction::new(0, 0, 1);
+
+        // Put in two incompatible one-result squares, but both subset of the
+        // later two-result squares.
+        // 0->1 and 0->1, in the fourth bit.
+        let s1 = SomeState::new_from_string(1, "s0b0001").unwrap();
+        let s9 = SomeState::new_from_string(1, "s0b1001").unwrap();
+        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s9.clone()));
+        let s5 = SomeState::new_from_string(1, "s0b0101").unwrap();
+        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+
+        // Set up first two_result square.
+        let s0 = SomeState::new_from_string(1, "s0b0000").unwrap();
+        let s8 = SomeState::new_from_string(1, "s0b1000").unwrap();
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
+
+        // Set up second two_result square.
+        let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();
+        let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
+        act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
+        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
+        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
+
+        println!("Groups {}", act0.groups);
+        assert!(act0.groups.len() == 1);
+
+        Ok(())
+    }
+
+    #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
         let mut act0 = SomeAction::new(0, 0, 1);
@@ -2519,97 +2507,6 @@ mod tests {
             .groups
             .find(&SomeRegion::new_from_string(1, "rx0x1")?)
             .is_some());
-
-        Ok(())
-    }
-
-    #[test]
-    fn any_incompatible_square_combination_in_region() -> Result<(), String> {
-        // Init states.
-        let sta_f = SomeState::new_from_string(1, "s0b1111")?;
-        let sta_e = SomeState::new_from_string(1, "s0b1110")?;
-        let sta_d = SomeState::new_from_string(1, "s0b1101")?;
-        let sta_c = SomeState::new_from_string(1, "s0b1100")?;
-        let sta_b = SomeState::new_from_string(1, "s0b1011")?;
-        let sta_a = SomeState::new_from_string(1, "s0b1010")?;
-        let sta_7 = SomeState::new_from_string(1, "s0b0111")?;
-        let sta_5 = SomeState::new_from_string(1, "s0b0101")?;
-        let sta_4 = SomeState::new_from_string(1, "s0b0100")?;
-        let sta_3 = SomeState::new_from_string(1, "s0b0011")?;
-        let sta_1 = SomeState::new_from_string(1, "s0b0001")?;
-        let sta_0 = SomeState::new_from_string(1, "s0b0000")?;
-
-        // Init action
-        let mut act0 = SomeAction::new(0, 0, 1);
-
-        // Set up region XXX1
-        let regx = SomeRegion::new(vec![sta_1.clone(), sta_f.clone()]);
-
-        // Make square F, Pn::Two. LSB 1->1 and 1->0.
-        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_f.clone()));
-        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
-        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_f.clone()));
-        act0.eval_sample(&SomeSample::new(sta_f.clone(), 0, sta_e.clone()));
-
-        // Should not find an incompatible square pair.
-        println!("Action: {act0}");
-        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Set up square 1. Pn::One. LSB 1->0. Inside XXX1, outside X1X1.
-        act0.eval_sample(&SomeSample::new(sta_1.clone(), 0, sta_0.clone()));
-
-        // Should not find.
-        println!("Action: {act0}");
-        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Make square 5, Pn::Two. LSB 1->0 and 1->1.
-        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_4.clone()));
-        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_5.clone()));
-        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_4.clone()));
-        act0.eval_sample(&SomeSample::new(sta_5.clone(), 0, sta_5.clone()));
-
-        // Squares F and 5 make a region, X1X1, a subset of XXX1.
-
-        // Should not find.
-        println!("Action: {act0}");
-        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Set up square 7. Pn::One. LSB 1->1. Inside X1X1.
-        act0.eval_sample(&SomeSample::new(sta_7.clone(), 0, sta_7.clone()));
-
-        // Set up square D. Pn::One. LSB 1->0. Inside X1X1.
-        act0.eval_sample(&SomeSample::new(sta_d.clone(), 0, sta_c.clone()));
-
-        // Set up square B. Pn::One. LSB 1->0. Outside X1X1.
-        act0.eval_sample(&SomeSample::new(sta_b.clone(), 0, sta_a.clone()));
-
-        // Should not find.
-        println!("Action: {act0}");
-        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Try a bad square 3.  2 LSB 11->01.
-        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_1.clone()));
-
-        // Should find.
-        println!("Action: {act0}");
-        assert!(act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Remove square 3.
-        act0.squares.remove(&sta_3);
-
-        // Add new square 3.  LSB 1->1.
-        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
-
-        // Should not find.
-        println!("Action: {act0}");
-        assert!(!act0.any_incompatible_square_combination_in_region(&regx));
-
-        // Square 3 to pnc, Pn::One.
-        act0.eval_sample(&SomeSample::new(sta_3.clone(), 0, sta_3.clone()));
-
-        // Should find.
-        println!("Action: {act0}");
-        assert!(act0.any_incompatible_square_combination_in_region(&regx));
 
         Ok(())
     }
