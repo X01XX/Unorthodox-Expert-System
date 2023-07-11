@@ -20,7 +20,12 @@ impl fmt::Display for SomeSquare {
             rc_str.push_str(", pnc: f");
         }
 
-        rc_str.push_str(&format!(", {}", self.rules));
+        let ruls = if let Some(ruls_str) = &self.rules {
+            format!("{}", ruls_str)
+        } else {
+            String::from("None")
+        };
+        rc_str.push_str(&format!(", {}", ruls));
 
         rc_str.push(']');
 
@@ -40,11 +45,11 @@ impl Eq for SomeSquare {}
 
 /// A state, with the most recent results on a given action.
 pub struct SomeSquare {
-    pub state: SomeState,     // State that an action was taken on.
-    pub results: ResultStore, // Circular list of most recent results.
-    pub rules: RuleStore,     // Rules, 0, 1 or 2 rules depending on pn
-    pub pn: Pn,               // Square Pattern number.
-    pub pnc: bool,            // Pattern number confirmed.
+    pub state: SomeState,         // State that an action was taken on.
+    pub results: ResultStore,     // Circular list of most recent results.
+    pub rules: Option<RuleStore>, // Rules, None, 1 or 2 rules depending on pn
+    pub pn: Pn,                   // Square Pattern number.
+    pub pnc: bool,                // Pattern number confirmed.
 }
 
 impl SomeSquare {
@@ -53,7 +58,7 @@ impl SomeSquare {
         Self {
             state: state.clone(),
             results: ResultStore::new(vec![result_state.clone()]),
-            rules: RuleStore::new(vec![SomeRule::new(&state, &result_state)]),
+            rules: Some(RuleStore::new(vec![SomeRule::new(&state, &result_state)])),
             pn: Pn::One,
             pnc: false,
         }
@@ -102,23 +107,19 @@ impl SomeSquare {
 
             match self.pn {
                 Pn::One => {
-                    if self.rules.len() != 1 {
-                        self.rules =
-                            RuleStore::new(vec![SomeRule::new(&self.state, self.results.first())]);
-                    }
+                    self.rules = Some(RuleStore::new(vec![SomeRule::new(
+                        &self.state,
+                        self.results.first(),
+                    )]));
                 }
                 Pn::Two => {
-                    if self.rules.len() != 2 {
-                        self.rules = RuleStore::new(vec![
-                            SomeRule::new(&self.state, self.results.first()),
-                            SomeRule::new(&self.state, self.results.second()),
-                        ]);
-                    }
+                    self.rules = Some(RuleStore::new(vec![
+                        SomeRule::new(&self.state, self.results.first()),
+                        SomeRule::new(&self.state, self.results.second()),
+                    ]));
                 }
                 Pn::Unpredictable => {
-                    if self.rules.is_not_empty() {
-                        self.rules = RuleStore::new(vec![]);
-                    }
+                    self.rules = None;
                 }
             }
         }
@@ -174,7 +175,12 @@ impl SomeSquare {
         rc_str.push_str(&format!("{}", &self.state));
         rc_str.push_str(&format!(", pn: {}", &self.pn));
         rc_str.push_str(&format!(", pnc: {}", &self.pnc));
-        rc_str.push_str(&format!(", {}", self.rules));
+        let ruls_str = if let Some(rules) = &self.rules {
+            format!("{}", rules)
+        } else {
+            String::from("None")
+        };
+        rc_str.push_str(&format!(", {}", ruls_str));
 
         rc_str.push(']');
         rc_str
@@ -194,7 +200,12 @@ impl SomeSquare {
             return true;
         }
 
-        if self.rules.can_combine(&other.rules) {
+        if self
+            .rules
+            .as_ref()
+            .expect("SNH")
+            .can_combine(other.rules.as_ref().expect("SNH"))
+        {
             //println!("running can_combine: returns calced {}", self.pn == Pn::One || self.pnc && other.pnc);
             return self.pn == Pn::One || self.pnc && other.pnc;
         }
@@ -218,7 +229,13 @@ impl SomeSquare {
         if self.pn == Pn::Unpredictable || other.pn == Pn::Unpredictable {
             return true;
         }
-        if self.rules.can_form_union(&other.rules) != Some(false) {
+        if self
+            .rules
+            .as_ref()
+            .expect("SNH")
+            .can_form_union(other.rules.as_ref().expect("SNH"))
+            != Some(false)
+        {
             return true;
         }
         false

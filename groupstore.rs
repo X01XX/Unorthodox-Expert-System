@@ -3,6 +3,7 @@
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::mask::SomeMask;
+use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::removeunordered;
@@ -65,7 +66,13 @@ impl GroupStore {
         let mut new_chgs = SomeChange::new_low(self.aggregate_changes.num_ints());
 
         for grpx in &self.avec {
-            for rulx in grpx.rules.iter() {
+            //if grpx.pn == Pn::Unpredictable {
+            //    continue;
+            //}
+            if grpx.pn == Pn::Unpredictable {
+                continue;
+            }
+            for rulx in grpx.rules.as_ref().expect("SNH").iter() {
                 new_chgs = new_chgs.bitwise_or_rule(rulx);
             }
         }
@@ -99,9 +106,17 @@ impl GroupStore {
                         dom,
                         act,
                         sqrx.state,
-                        sqrx.rules.formatted_string(),
+                        if let Some(rules) = &sqrx.rules {
+                            rules.formatted_string()
+                        } else {
+                            String::from("None")
+                        },
                         &grpx.region,
-                        grpx.rules.formatted_string()
+                        if let Some(rules) = &grpx.rules {
+                            rules.formatted_string()
+                        } else {
+                            String::from("None")
+                        },
                     );
                 }
 

@@ -22,7 +22,13 @@ impl fmt::Display for SomeNeed {
             SomeNeed::AddGroup {
                 group_region,
                 rules,
-            } => format!("N(Create group from {group_region} {rules})"),
+            } => {
+                if let Some(xrules) = rules {
+                    format!("N(Create group from {group_region} {xrules})")
+                } else {
+                    format!("N(Create group from {group_region} None)")
+                }
+            }
             SomeNeed::AddSeekEdge { reg: regx } => format!("N(Add SeekEdge region: {})", &regx),
             SomeNeed::AStateMakeGroup {
                 dom_num,
@@ -56,8 +62,18 @@ impl fmt::Display for SomeNeed {
                 ruls2,
                 priority,
             } => {
+                let ruls1_str = if let Some(rules) = ruls1 {
+                    format!("{rules}")
+                } else {
+                    String::from("None")
+                };
+                let ruls2_str = if let Some(rules) = ruls2 {
+                    format!("{rules}")
+                } else {
+                    String::from("None")
+                };
                 format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample Region {target_region} intersection of {group1} {ruls1} and {group2} {ruls2})")
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample Region {target_region} intersection of {group1} {ruls1_str} and {group2} {ruls2_str})")
             }
             SomeNeed::InactivateSeekEdge { reg: regx } => {
                 format!("N(Inactivate SeekEdge region: {})", &regx)
@@ -163,7 +179,7 @@ pub enum SomeNeed {
     /// Housekeeping, add a group.
     AddGroup {
         group_region: SomeRegion,
-        rules: RuleStore,
+        rules: Option<RuleStore>,
     },
     /// Housekeeping, add a region to the seek_edge vector.
     AddSeekEdge { reg: SomeRegion },
@@ -190,9 +206,9 @@ pub enum SomeNeed {
         act_num: usize,
         target_region: SomeRegion,
         group1: SomeRegion,
-        ruls1: RuleStore,
+        ruls1: Option<RuleStore>,
         group2: SomeRegion,
-        ruls2: RuleStore,
+        ruls2: Option<RuleStore>,
         priority: usize,
     },
     /// Housekeeping, inactivate a region in the seek_edge vector.

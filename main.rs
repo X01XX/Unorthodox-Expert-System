@@ -934,14 +934,14 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
             if sqrx.pn == max_pn {
                 if max_pn < Pn::Unpredictable {
                     if let Some(ruls) = rules {
-                        if let Some(ruls2) = ruls.union(&sqrx.rules) {
+                        if let Some(ruls2) = ruls.union(sqrx.rules.as_ref().expect("SNH")) {
                             rules = Some(ruls2);
                         } else {
                             rules = None;
                             break;
                         }
                     } else {
-                        rules = Some(sqrx.rules.clone());
+                        rules = Some(sqrx.rules.clone().expect("SNH"));
                     }
                 }
             } else if let Some(ref regx) = max_pn_reg {
@@ -967,7 +967,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
                 let sqrx = dmx.actions[act_num].squares.find(stax).expect(
                     "States in the non_pn_stas StateStore should all reference existing squares",
                 );
-                if !sqrx.rules.is_subset_of(&ruls) {
+                if !sqrx.rules.as_ref().expect("SNH").is_subset_of(&ruls) {
                     form_group = false;
                 }
             }

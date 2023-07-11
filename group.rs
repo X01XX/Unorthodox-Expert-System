@@ -35,8 +35,8 @@ pub struct SomeGroup {
     pub pn: Pn,
     /// Pnc indicator, the boolean And of the two squares pnc values.
     pub pnc: bool,
-    /// Rules formed by two squares.  Will be an empty RuleStore for Pn::Unpredictable.
-    pub rules: RuleStore,
+    /// Rules formed by two squares.  Will be None for Pn::Unpredictable.
+    pub rules: Option<RuleStore>,
     /// Set to true when a state only in the group has all adjacent states outside
     /// of the group region checked.
     /// When some external adjacent states are checked, but some are unreachable, hard to reach,
@@ -51,18 +51,19 @@ pub struct SomeGroup {
 impl SomeGroup {
     /// Return a new group, given a region, RuleStore, pnc values.
     /// The RuleStore will be empty for Pn::Unpredictable squares.
-    pub fn new(regionx: SomeRegion, ruls: RuleStore, pnc: bool) -> Self {
+    pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>, pnc: bool) -> Self {
         //println!(
         //  "adding group {}",
         //  SomeRegion::newif additions.is_not_low() {
         //);
-        assert!(ruls.len() < 3);
-
         let mut pnx = Pn::One;
-        if ruls.is_empty() {
+        if ruls.is_none() {
             pnx = Pn::Unpredictable;
-        } else if ruls.len() == 2 {
-            pnx = Pn::Two;
+        } else if let Some(xruls) = ruls.as_ref() {
+            assert!(!xruls.is_empty() && xruls.len() < 3);
+            if xruls.len() == 2 {
+                pnx = Pn::Two;
+            }
         }
 
         Self {
@@ -99,10 +100,10 @@ impl SomeGroup {
 
         match self.pn {
             Pn::One => {
-                rc_str.push_str(&self.rules.formatted_string());
+                rc_str.push_str(&self.rules.as_ref().expect("SNH").formatted_string());
             }
             Pn::Two => {
-                rc_str.push_str(&self.rules.formatted_string());
+                rc_str.push_str(&self.rules.as_ref().expect("SNH").formatted_string());
             }
             Pn::Unpredictable => {
                 rc_str.push_str("R[Unpredictable]");
@@ -148,7 +149,10 @@ impl SomeGroup {
             return true;
         }
 
-        self.rules.is_superset_of(&sqrx.rules)
+        self.rules
+            .as_ref()
+            .expect("SNH")
+            .is_superset_of(sqrx.rules.as_ref().expect("SNH"))
     }
 
     /// Return true if a non-subset square is compatible with a group.
@@ -163,7 +167,10 @@ impl SomeGroup {
             return Some(false);
         }
 
-        self.rules.can_form_union(&sqrx.rules)
+        self.rules
+            .as_ref()
+            .expect("SNH")
+            .can_form_union(sqrx.rules.as_ref().expect("SNH"))
     }
 
     /// Return true if a sample is compatible with a group.
@@ -173,8 +180,16 @@ impl SomeGroup {
         let tmp_rul = smpl.rule();
 
         match self.pn {
-            Pn::One => self.rules.is_superset_of_rule(&tmp_rul),
-            Pn::Two => self.rules.is_superset_of_rule(&tmp_rul),
+            Pn::One => self
+                .rules
+                .as_ref()
+                .expect("SNH")
+                .is_superset_of_rule(&tmp_rul),
+            Pn::Two => self
+                .rules
+                .as_ref()
+                .expect("SNH")
+                .is_superset_of_rule(&tmp_rul),
             Pn::Unpredictable => true,
         }
     }
@@ -259,7 +274,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true);
+        let grpx = SomeGroup::new(regx, Some(rules), true);
 
         let initial = SomeState::new_from_string(1, "s0b1100")?;
         let result = SomeState::new_from_string(1, "s0b0100")?;
@@ -277,7 +292,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b1100")?,
@@ -297,7 +312,7 @@ mod tests {
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b1100")?,
@@ -310,7 +325,7 @@ mod tests {
         }
 
         // Test if self.pn == Pn::Unpredictable
-        let rules = RuleStore::new(vec![]);
+        let rules = None;
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
@@ -330,7 +345,7 @@ mod tests {
 
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true);
+        let grpx = SomeGroup::new(regx, Some(rules), true);
 
         let sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b1100")?,
@@ -358,7 +373,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b0100")?,
@@ -377,7 +392,7 @@ mod tests {
         ]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b0100")?,
@@ -393,7 +408,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::One, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b0100")?,
@@ -418,7 +433,7 @@ mod tests {
             SomeRule::new_from_string(1, "10/x1/x0/01")?,
         ]);
         let regx = SomeRegion::new_from_string(1, "r1xx0")?;
-        let grpx = SomeGroup::new(regx, rules, true); // Pn::Two, pnc == true.
+        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let sqrx = SomeSquare::new(
             SomeState::new_from_string(1, "s0b0100")?,
