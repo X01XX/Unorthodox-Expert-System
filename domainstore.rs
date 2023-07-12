@@ -115,7 +115,7 @@ impl DomainStore {
         }
 
         for (inx, dmx) in self.avec.iter().enumerate() {
-            if regstr[inx].state1().num_ints() != dmx.cur_state.num_ints() {
+            if regstr[inx].state1().num_bits() != dmx.cur_state.num_bits() {
                 panic!("reg {} bad number ints for domain {}", regstr[inx], inx);
             }
         }
@@ -1331,37 +1331,37 @@ mod tests {
     /// Test case where positive regions the start and goal are in, intersect.
     /// Avoidance 0 is randomly finding paths, and choosing the one with least intersections of negative regions.
     fn avoidance1() -> Result<(), String> {
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
-
         // Init a domain, using one integer.
         let mut domx = SomeDomain::new(1);
 
+        let sf = domx.state_from_string("s0b1111")?;
+        let s0 = domx.state_from_string("s0b0")?;
+
         // Set up action to change the first bit.
         domx.add_action();
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = domx.state_from_string("s0b1")?;
+        let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = domx.state_from_string("s0b10")?;
+        let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = domx.state_from_string("s0b100")?;
+        let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = domx.state_from_string("s0b1000")?;
+        let s7 = domx.state_from_string("s0b0111")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
@@ -1415,37 +1415,37 @@ mod tests {
     /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// but another region intersects both.
     fn avoidance2() -> Result<(), String> {
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
-
         // Init a domain, using one integer.
         let mut domx = SomeDomain::new(1);
 
+        let sf = domx.state_from_string("s0b1111")?;
+        let s0 = domx.state_from_string("s0b0")?;
+
         // Set up action to change the first bit.
         domx.add_action();
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = domx.state_from_string("s0b1")?;
+        let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = domx.state_from_string("s0b10")?;
+        let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = domx.state_from_string("s0b100")?;
+        let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = domx.state_from_string("s0b1000")?;
+        let s7 = domx.state_from_string("s0b0111")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
@@ -1498,37 +1498,37 @@ mod tests {
     /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// and another region does not intersect both.
     fn avoidance3() -> Result<(), String> {
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
-
         // Init a domain, using one integer.
         let mut domx = SomeDomain::new(1);
 
+        let sf = domx.state_from_string("s0b1111")?;
+        let s0 = domx.state_from_string("s0b0")?;
+
         // Set up action to change the first bit.
         domx.add_action();
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = domx.state_from_string("s0b1")?;
+        let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = domx.state_from_string("s0b10")?;
+        let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = domx.state_from_string("s0b100")?;
+        let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = domx.state_from_string("s0b1000")?;
+        let s7 = domx.state_from_string("s0b0111")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
@@ -1605,37 +1605,37 @@ mod tests {
     /// Test case where non-negative regions the start and goal are in, do not intersect,
     /// and there is no path that does not cross a negative select region.
     fn avoidance4() -> Result<(), String> {
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
-
         // Init a domain, using one integer.
         let mut domx = SomeDomain::new(1);
 
+        let sf = domx.state_from_string("s0b1111")?;
+        let s0 = domx.state_from_string("s0b0")?;
+
         // Set up action to change the first bit.
         domx.add_action();
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = domx.state_from_string("s0b1")?;
+        let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = domx.state_from_string("s0b10")?;
+        let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = domx.state_from_string("s0b100")?;
+        let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = domx.state_from_string("s0b1000")?;
+        let s7 = domx.state_from_string("s0b0111")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
@@ -1680,37 +1680,37 @@ mod tests {
     #[test]
     /// Test case where start and goal regions are not in a non-negative region.
     fn avoidance5() -> Result<(), String> {
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
-
         // Init a domain, using one integer.
         let mut domx = SomeDomain::new(1);
 
+        let sf = domx.state_from_string("s0b1111")?;
+        let s0 = domx.state_from_string("s0b0")?;
+
         // Set up action to change the first bit.
         domx.add_action();
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = domx.state_from_string("s0b1")?;
+        let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = domx.state_from_string("s0b10")?;
+        let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = domx.state_from_string("s0b100")?;
+        let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = domx.state_from_string("s0b1000")?;
+        let s7 = domx.state_from_string("s0b0111")?;
         domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
@@ -1764,54 +1764,54 @@ mod tests {
         dmxs[1].add_action();
         dmxs[1].add_action();
 
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let s0 = SomeState::new_from_string(1, "s0b0")?;
+        let sf = dmxs[0].state_from_string("s0b1111")?;
+        let s0 = dmxs[0].state_from_string("s0b0")?;
 
         // Set up action to change the first bit.
-        let s1 = SomeState::new_from_string(1, "s0b1")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = dmxs[0].state_from_string("s0b1")?;
+        let se = dmxs[0].state_from_string("s0b1110")?;
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up action to change the second bit.
-        let s2 = SomeState::new_from_string(1, "s0b10")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = dmxs[0].state_from_string("s0b10")?;
+        let sd = dmxs[0].state_from_string("s0b1101")?;
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
 
         // Set up action to change the third bit.
-        let s4 = SomeState::new_from_string(1, "s0b100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = dmxs[0].state_from_string("s0b100")?;
+        let sb = dmxs[0].state_from_string("s0b1011")?;
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
 
         // Set up action to change the fourth bit.
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = dmxs[0].state_from_string("s0b1000")?;
+        let s7 = dmxs[0].state_from_string("s0b0111")?;
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
         dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
 
         // Set up action to change the fourth bit.
-        let s8 = SomeState::new_from_string(1, "s0b1000")?;
-        let s7 = SomeState::new_from_string(1, "s0b0111")?;
+        let s8 = dmxs[1].state_from_string("s0b1000")?;
+        let s7 = dmxs[1].state_from_string("s0b0111")?;
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s7.clone()));
 
         // Set up action to change the first bit.
-        let s1 = SomeState::new_from_string(1, "s0b0001")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let s1 = dmxs[1].state_from_string("s0b0001")?;
+        let se = dmxs[1].state_from_string("s0b1110")?;
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s1.clone()));
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, se.clone()));
 
         // Set up action to change the second bit.
-        let s2 = SomeState::new_from_string(1, "s0b0010")?;
-        let sd = SomeState::new_from_string(1, "s0b1101")?;
+        let s2 = dmxs[1].state_from_string("s0b0010")?;
+        let sd = dmxs[1].state_from_string("s0b1101")?;
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s2.clone()));
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sd.clone()));
 
         // Set up action to change the third bit.
-        let s4 = SomeState::new_from_string(1, "s0b0100")?;
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let s4 = dmxs[1].state_from_string("s0b0100")?;
+        let sb = dmxs[1].state_from_string("s0b1011")?;
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s4.clone()));
         dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sb.clone()));
 

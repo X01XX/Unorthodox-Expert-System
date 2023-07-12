@@ -39,7 +39,6 @@ impl fmt::Display for SomeState {
 impl SomeState {
     /// Return a new SomeState instance, given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
-        assert!(bts.num_ints() > 0);
         Self { bts }
     }
 
@@ -52,8 +51,7 @@ impl SomeState {
     ///    panic!("Invalid State");
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
-    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        assert!(num_ints > 0);
+    pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
@@ -69,33 +67,32 @@ impl SomeState {
             rest.push_str(chr);
         }
 
-        match SomeBits::new_from_string(num_ints, &rest) {
+        match self.bts.new_from_string(&rest) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }
     } // end new_from_string
 
     /// Return a random state value.
-    pub fn new_random(num_ints: usize) -> SomeState {
-        assert!(num_ints > 0);
+    pub fn new_random(&self) -> SomeState {
         SomeState {
-            bts: SomeBits::new_random(num_ints),
+            bts: self.bts.new_random(),
         }
     }
 
     /// Return a new state, all zeros.
-    pub fn new_low(num_ints: usize) -> Self {
-        Self::new(SomeBits::new_low(num_ints))
+    pub fn new_low(&self) -> Self {
+        Self::new(self.bts.new_low())
+    }
+
+    /// Return a new state, all ones.
+    pub fn new_high(&self) -> Self {
+        Self::new(self.bts.new_high())
     }
 
     /// Return true if a given bit in a state is set to one.
     pub fn is_bit_set(&self, b: usize) -> bool {
         self.bts.is_bit_set(b)
-    }
-
-    /// Return the number of integers used to represent a state.
-    pub fn num_ints(&self) -> usize {
-        self.bts.num_ints()
     }
 
     /// Return the number of bits used to represent a state.
@@ -214,7 +211,7 @@ impl SomeState {
     pub fn vec_x_mask(avec: &Vec<SomeState>) -> SomeMask {
         assert!(!avec.is_empty());
 
-        let mut x_mask = SomeMask::new_low(avec[0].num_ints());
+        let mut x_mask = SomeMask::new(avec[0].bts.new_low());
         for stax in avec.iter().skip(1) {
             x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&avec[0]));
         }
@@ -275,8 +272,10 @@ mod tests {
 
     #[test]
     fn distance() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(2, "s0xabc4")?;
-        let sta2 = SomeState::new_from_string(2, "s0x5430")?;
+        let tmp_sta = SomeState::new(SomeBits::new(2));
+
+        let sta1 = tmp_sta.new_from_string("s0xabc4")?;
+        let sta2 = tmp_sta.new_from_string("s0x5430")?;
 
         let dist = sta1.distance(&sta2);
         println!("sta1 {sta1}");
@@ -287,13 +286,15 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string(1, "s0b1010")?;
-        let sta2 = SomeState::new_from_string(1, "s0b1010")?;
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+
+        let sta1 = tmp_sta.new_from_string("s0b1010")?;
+        let sta2 = tmp_sta.new_from_string("s0b1010")?;
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
         assert!(sta1 == sta2);
 
-        let sta3 = SomeState::new_from_string(1, "s0b1001")?;
+        let sta3 = tmp_sta.new_from_string("s0b1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
 

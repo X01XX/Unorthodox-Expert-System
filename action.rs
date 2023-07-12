@@ -11,7 +11,6 @@
 //!
 
 use crate::actioninterface::ActionInterface;
-use crate::bits::NUM_BITS_PER_INT;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -110,32 +109,27 @@ pub struct SomeAction {
     /// When the action has no needs, check for any missed regions.
     remainder_checked: bool,
     remainder_check_region: Option<SomeRegion>,
-    num_ints: usize,
 }
 
 impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(dom_num: usize, act_num: usize, num_ints: usize) -> Self {
-        debug_assert!(num_ints > 0);
+    pub fn new(dom_num: usize, act_num: usize, init_mask: SomeMask) -> Self {
         SomeAction {
             num: act_num,
             dom_num,
-            groups: GroupStore::new(num_ints, vec![]),
+            groups: GroupStore::new(
+                vec![],
+                SomeChange::new(init_mask.new_low(), init_mask.new_low()),
+            ),
             squares: SquareStore::new(HashMap::new()),
             seek_edge: RegionStore::new(vec![]),
             do_something: ActionInterface::new(),
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
             remainder_check_region: None,
-            num_ints,
         }
-    }
-
-    /// Return the number of bits used by the action.
-    pub fn num_bits(&self) -> usize {
-        self.num_ints * NUM_BITS_PER_INT
     }
 
     /// Return the truth value for the combination of any two different squares,
@@ -1859,7 +1853,7 @@ impl SomeAction {
                     target_state: pairx.1.state.clone(),
                     for_reg: regx.clone(),
                     far: pairx.0.clone(),
-                    priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
+                    priority: pairx.1.state.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                 };
                 needx.set_priority();
                 nds.push(needx);
@@ -1872,7 +1866,7 @@ impl SomeAction {
                         target_state: pairx.0.clone(),
                         for_reg: regx.clone(),
                         far: pairx.1.state.clone(),
-                        priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
+                        priority: pairx.1.state.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                     };
                     needx.set_priority();
                     nds.push(needx);
@@ -1884,7 +1878,7 @@ impl SomeAction {
                     target_state: pairx.0.clone(),
                     for_reg: regx.clone(),
                     far: pairx.1.state.clone(),
-                    priority: self.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
+                    priority: pairx.1.state.num_bits() - regx.num_x(), // Adjust priority to service larger possible groups first.
                 };
                 needx.set_priority();
                 nds.push(needx);
@@ -2203,9 +2197,6 @@ impl SomeAction {
     fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
         //println!("possible_group_regions from sqr {}", &sqrx.state);
 
-        //let mut rsx = RegionStore::new(vec![]);
-        //let mut poss_regions = RegionStore::new(vec![]);
-
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
             return RegionStore::new(vec![]);
@@ -2478,32 +2469,35 @@ impl SomeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
 
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::new(0, 0, 1);
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
         // 0->1 and 0->1, in the fourth bit.
-        let s1 = SomeState::new_from_string(1, "s0b0001").unwrap();
-        let s9 = SomeState::new_from_string(1, "s0b1001").unwrap();
+        let s1 = tmp_sta.new_from_string("s0b0001").unwrap();
+        let s9 = tmp_sta.new_from_string("s0b1001").unwrap();
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s9.clone()));
-        let s5 = SomeState::new_from_string(1, "s0b0101").unwrap();
+        let s5 = tmp_sta.new_from_string("s0b0101").unwrap();
         act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         // Set up first two_result square.
-        let s0 = SomeState::new_from_string(1, "s0b0000").unwrap();
-        let s8 = SomeState::new_from_string(1, "s0b1000").unwrap();
+        let s0 = tmp_sta.new_from_string("s0b0000").unwrap();
+        let s8 = tmp_sta.new_from_string("s0b1000").unwrap();
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
 
         // Set up second two_result square.
-        let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();
-        let sf = SomeState::new_from_string(1, "s0b1111").unwrap();
+        let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
+        let sf = tmp_sta.new_from_string("s0b1111").unwrap();
         act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
         act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
         act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
@@ -2518,29 +2512,32 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::new(0, 0, 1);
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Eval sample that other samples will be incompatible with.
-        let s7 = SomeState::new_from_string(1, "s0b0111").unwrap();
+        let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
         act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
         // Process three similar samples.
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b1011")?,
+            tmp_sta.new_from_string("s0b1011")?,
             0,
-            SomeState::new_from_string(1, "s0b1010")?,
+            tmp_sta.new_from_string("s0b1010")?,
         ));
 
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b1101")?,
+            tmp_sta.new_from_string("s0b1101")?,
             0,
-            SomeState::new_from_string(1, "s0b1100")?,
+            tmp_sta.new_from_string("s0b1100")?,
         ));
 
         act0.eval_sample(&SomeSample::new(
-            SomeState::new_from_string(1, "s0b0001")?,
+            tmp_sta.new_from_string("s0b0001")?,
             0,
-            SomeState::new_from_string(1, "s0b0000")?,
+            tmp_sta.new_from_string("s0b0000")?,
         ));
 
         println!("Groups {}", act0.groups);
@@ -2548,19 +2545,19 @@ mod tests {
 
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r0111")?)
+            .find(&tmp_reg.new_from_string("r0111")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r1xx1")?)
+            .find(&tmp_reg.new_from_string("r1xx1")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "rxx01")?)
+            .find(&tmp_reg.new_from_string("rxx01")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "rx0x1")?)
+            .find(&tmp_reg.new_from_string("rx0x1")?)
             .is_some());
 
         Ok(())
@@ -2569,11 +2566,13 @@ mod tests {
     // Test making a group from two Pn::Two squares.
     #[test]
     fn possible_region() -> Result<(), String> {
-        // Set up 2-result square sf.
-        let sf = SomeState::new_from_string(1, "s0b1111")?;
-        let se = SomeState::new_from_string(1, "s0b1110")?;
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
 
-        let mut act0 = SomeAction::new(0, 0, 1);
+        // Set up 2-result square sf.
+        let sf = tmp_sta.new_from_string("s0b1111")?;
+        let se = tmp_sta.new_from_string("s0b1110")?;
 
         act0.eval_sample(&SomeSample::new(sf.clone(), 0, sf.clone()));
         act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
@@ -2581,8 +2580,8 @@ mod tests {
         act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up 2-result square s1.
-        let s1 = SomeState::new_from_string(1, "s0b0001")?;
-        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        let s1 = tmp_sta.new_from_string("s0b0001")?;
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
         act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
@@ -2594,8 +2593,8 @@ mod tests {
             0,
             &memory,
             &SomeChange::new(
-                SomeMask::new_from_string(1, "m0b1111")?,
-                SomeMask::new_from_string(1, "m0b1111")?,
+                tmp_sta.to_mask().new_from_string("m0b1111")?,
+                tmp_sta.to_mask().new_from_string("m0b1111")?,
             ),
         );
         println!("Act: {}", &act0);
@@ -2611,18 +2610,21 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, 1);
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Set up square 0.
-        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
 
         // Set up square 3.
-        let s3 = SomeState::new_from_string(1, "s0b0011")?;
+        let s3 = tmp_sta.new_from_string("s0b0011")?;
         act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        let s5 = tmp_sta.new_from_string("s0b0101")?;
         act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
@@ -2630,7 +2632,7 @@ mod tests {
         assert!(act0.groups.len() == 1);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r0xxx")?)
+            .find(&tmp_reg.new_from_string("r0xxx")?)
             .is_some());
 
         Ok(())
@@ -2639,22 +2641,25 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, 1);
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Set up square 0.
-        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
         act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
 
         // Set up square 3.
-        let s3 = SomeState::new_from_string(1, "s0b0011")?;
+        let s3 = tmp_sta.new_from_string("s0b0011")?;
         act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
-        let s4 = SomeState::new_from_string(1, "s0b0100")?;
+        let s4 = tmp_sta.new_from_string("s0b0100")?;
         act0.eval_sample(&SomeSample::new(s4.clone(), 0, s0.clone()));
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        let s5 = tmp_sta.new_from_string("s0b0101")?;
         act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
@@ -2662,15 +2667,15 @@ mod tests {
         assert!(act0.groups.len() == 3);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r0x00")?)
+            .find(&tmp_reg.new_from_string("r0x00")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r00xx")?)
+            .find(&tmp_reg.new_from_string("r00xx")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r0xx1")?)
+            .find(&tmp_reg.new_from_string("r0xx1")?)
             .is_some());
 
         Ok(())
@@ -2681,19 +2686,22 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, 1);
+        let tmp_bts = SomeBits::new(1);
+        let mut act0 = SomeAction::new(0, 0, SomeMask::new(tmp_bts.clone()));
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Set up square 2.
-        let s2 = SomeState::new_from_string(1, "s0b0010")?;
-        let s0 = SomeState::new_from_string(1, "s0b0000")?;
+        let s2 = tmp_sta.new_from_string("s0b0010")?;
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
         act0.eval_sample(&SomeSample::new(s2.clone(), 0, s0.clone()));
 
         // Set up square b.
-        let sb = SomeState::new_from_string(1, "s0b1011")?;
+        let sb = tmp_sta.new_from_string("s0b1011")?;
         act0.eval_sample(&SomeSample::new(sb.clone(), 0, sb.clone()));
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string(1, "s0b0101")?;
+        let s5 = tmp_sta.new_from_string("s0b0101")?;
         act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
@@ -2701,11 +2709,11 @@ mod tests {
         assert!(act0.groups.len() == 2);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "r0xxx")?)
+            .find(&tmp_reg.new_from_string("r0xxx")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string(1, "rxxx1")?)
+            .find(&tmp_reg.new_from_string("rxxx1")?)
             .is_some());
 
         Ok(())

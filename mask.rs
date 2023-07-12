@@ -36,29 +36,21 @@ impl fmt::Display for SomeMask {
 impl SomeMask {
     /// Return a new mask given a SomeBits instance.
     pub fn new(bts: SomeBits) -> Self {
-        assert!(bts.num_ints() > 0);
         Self { bts }
     }
 
     /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
-    pub fn new_low(num_ints: usize) -> SomeMask {
-        assert!(num_ints > 0);
+    pub fn new_low(&self) -> SomeMask {
         Self {
-            bts: SomeBits::new_low(num_ints),
+            bts: self.bts.new_low(),
         }
     }
 
     /// Return a new SomeMask instance, all ones, given the number of integers to use in the SomeBits instance.
-    pub fn new_high(num_ints: usize) -> SomeMask {
-        assert!(num_ints > 0);
+    pub fn new_high(&self) -> SomeMask {
         Self {
-            bts: SomeBits::new_high(num_ints),
+            bts: self.bts.new_high(),
         }
-    }
-
-    /// Return the number of integers used to represent a SomeMask instance.
-    pub fn num_ints(&self) -> usize {
-        self.bts.num_ints()
     }
 
     /// Return a Mask from a string.
@@ -70,9 +62,7 @@ impl SomeMask {
     ///    panic!("Invalid Mask");
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn new_from_string(num_ints: usize, str: &str) -> Result<Self, String> {
-        assert!(num_ints > 0);
-
+    pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
@@ -86,7 +76,7 @@ impl SomeMask {
             rest.push_str(chr);
         }
 
-        match SomeBits::new_from_string(num_ints, &rest) {
+        match self.bts.new_from_string(&rest) {
             Ok(bts) => Ok(SomeMask { bts }),
             Err(error) => Err(error),
         }
@@ -241,12 +231,14 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let msk1 = SomeMask::new_from_string(1, "m0b1010")?;
-        let msk2 = SomeMask::new_from_string(1, "m0b1010")?;
+        let tmp_msk = SomeMask::new(SomeBits::new(1));
+
+        let msk1 = tmp_msk.new_from_string("m0b1010")?;
+        let msk2 = tmp_msk.new_from_string("m0b1010")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = SomeMask::new_from_string(1, "m0b1001")?;
+        let msk3 = tmp_msk.new_from_string("m0b1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 
@@ -255,17 +247,19 @@ mod tests {
 
     #[test]
     fn half_mask() -> Result<(), String> {
-        let test_msk = SomeMask::new_from_string(2, "m0x5aa5")?.half_mask();
+        let tmp_msk = SomeMask::new(SomeBits::new(2));
+
+        let test_msk = tmp_msk.new_from_string("m0x5aa5")?.half_mask();
         println!("test_msk: {test_msk}");
         assert!(test_msk.num_one_bits() == 4);
 
         // Test an odd number of bits
-        let test_msk = SomeMask::new_from_string(2, "m0x1011")?.half_mask();
+        let test_msk = tmp_msk.new_from_string("m0x1011")?.half_mask();
         println!("test_msk: {}", test_msk);
         assert!(test_msk.num_one_bits() == 1);
 
         // Test an odd number of bits
-        let test_msk = SomeMask::new_from_string(2, "m0x3031")?.half_mask();
+        let test_msk = tmp_msk.new_from_string("m0x3031")?.half_mask();
         println!("test_msk: {}", test_msk);
         assert!(test_msk.num_one_bits() == 2);
 

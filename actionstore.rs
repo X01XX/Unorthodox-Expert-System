@@ -44,11 +44,10 @@ pub struct ActionStore {
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new(num_ints: usize, avec: Vec<SomeAction>) -> Self {
-        assert!(num_ints > 0);
+    pub fn new(avec: Vec<SomeAction>, aggregate_changes: SomeChange) -> Self {
         ActionStore {
             avec,
-            aggregate_changes: SomeChange::new_low(num_ints),
+            aggregate_changes,
         }
     }
 
@@ -57,19 +56,13 @@ impl ActionStore {
         self.avec.len()
     }
 
-    /// Return the number of integers needed for a SomeBits instance.
-    pub fn num_ints(&self) -> usize {
-        self.aggregate_changes.num_ints()
-    }
-
     /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_num: usize, num_ints: usize) {
-        assert!(num_ints > 0);
+    pub fn add_action(&mut self, dom_num: usize, init_mask: SomeMask) {
         self.avec
-            .push(SomeAction::new(dom_num, self.avec.len(), num_ints));
+            .push(SomeAction::new(dom_num, self.avec.len(), init_mask));
     }
 
-    /// Check limited flage due to new changes.
+    /// Check limited flag due to new changes.
     pub fn check_limited(&mut self, change_mask: &SomeMask) {
         for actx in self.avec.iter_mut() {
             actx.check_limited(change_mask);
@@ -136,7 +129,7 @@ impl ActionStore {
         }
 
         // Recalc ActionStore aggregate_changes.
-        let mut new_chgs = SomeChange::new_low(self.num_ints());
+        let mut new_chgs = self.aggregate_changes.new_low();
 
         for actx in &self.avec {
             new_chgs = new_chgs.bitwise_or(actx.aggregate_changes());

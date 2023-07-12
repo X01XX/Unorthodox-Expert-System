@@ -14,6 +14,7 @@
 //! The boredom value is greater if the the current state is in multiple optimal regions (intersection).
 
 use crate::actionstore::ActionStore;
+use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
@@ -64,6 +65,8 @@ pub struct SomeDomain {
     /// A counter to indicate the number of steps the current state is in the same optimal region
     /// before getting bored.
     pub memory: VecDeque<SomeSample>,
+    /// Region used for propagation.
+    tmp_reg: SomeRegion,
 }
 
 impl SomeDomain {
@@ -72,23 +75,24 @@ impl SomeDomain {
     pub fn new(num_ints: usize) -> Self {
         debug_assert_ne!(num_ints, 0);
         // Set up a domain instance with the correct value for num_ints
-        let cur_state = initialize_state(num_ints);
+        let tmp_sta = SomeState::new(SomeBits::new(num_ints));
+        let cur_state = tmp_sta.new_random();
+        let tmp_reg = SomeRegion::new(vec![cur_state.clone()]);
         SomeDomain {
             num: 0, // May be changed later
-            actions: ActionStore::new(num_ints, vec![]),
+            actions: ActionStore::new(
+                vec![],
+                SomeChange::new(tmp_sta.to_mask().new_low(), tmp_sta.to_mask().new_low()),
+            ),
             cur_state,
             memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
+            tmp_reg,
         }
     }
 
     /// Set the domain number.
     pub fn set_domain_num(&mut self, dom_num: usize) {
         self.num = dom_num;
-    }
-
-    /// Return the number of integers used in a SomeBits instance.
-    pub fn num_ints(&self) -> usize {
-        self.cur_state.num_ints()
     }
 
     /// Return a reference to the current, internal, state.
@@ -98,7 +102,7 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        self.actions.add_action(self.num, self.num_ints());
+        self.actions.add_action(self.num, self.cur_state.to_mask());
     }
 
     /// Return needs gathered from all actions.
@@ -502,33 +506,30 @@ impl SomeDomain {
     /// Return a Region from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
-        SomeRegion::new_from_string(self.cur_state.num_ints(), str)
+        self.tmp_reg.new_from_string(str)
     } // end region_from_string
 
     /// Return a SomeRegion instance from a string.
     /// Left-most, consecutive, ommitted zeros are assumed tobe X.
     pub fn region_from_string_pad_x(&self, str: &str) -> Result<SomeRegion, String> {
-        SomeRegion::new_from_string_pad_x(self.cur_state.num_ints(), str)
+        self.tmp_reg.new_from_string_pad_x(str)
     }
 
     /// Return a SomeState instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-        SomeState::new_from_string(self.cur_state.num_ints(), str)
+        self.cur_state.new_from_string(str)
     }
 
     /// Return a maximum region for a domain.
     pub fn maximum_region(&self) -> SomeRegion {
-        SomeRegion::new(vec![
-            SomeState::new_low(self.num_ints()).bitwise_not(),
-            SomeState::new_low(self.num_ints()),
-        ])
+        SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
     }
 
     /// Return a SomeMask instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     pub fn mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
-        SomeMask::new_from_string(self.cur_state.num_ints(), str)
+        self.cur_state.to_mask().new_from_string(str)
     }
 
     /// Return a Action number from a string with a format that the parse method can understand.
@@ -592,12 +593,6 @@ impl SomeDomain {
         &self.actions.aggregate_changes
     }
 } // end impl SomeDomain
-
-/// Return the first state value.
-pub fn initialize_state(num_ints: usize) -> SomeState {
-    assert!(num_ints > 0);
-    SomeState::new_random(num_ints)
-}
 
 #[cfg(test)]
 mod tests {

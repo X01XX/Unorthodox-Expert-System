@@ -267,17 +267,22 @@ impl SomeGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
+        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true);
 
-        let initial = SomeState::new_from_string(1, "s0b1100")?;
-        let result = SomeState::new_from_string(1, "s0b0100")?;
+        let initial = tmp_sta.new_from_string("s0b1100")?;
+        let result = tmp_sta.new_from_string("s0b0100")?;
 
         if !grpx.check_subset_sample(&SomeSample::new(initial, 0, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
@@ -288,17 +293,21 @@ mod tests {
 
     #[test]
     fn check_subset_square() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
         // Test if sqrx.pn > self.pn
-        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b1100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b1100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
-        sqrx.add_result(SomeState::new_from_string(1, "s0b0101")?); // Pn::Two, pnc == false.
+        sqrx.add_result(tmp_sta.new_from_string("s0b0101")?); // Pn::Two, pnc == false.
 
         if grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 1 failed!"));
@@ -306,19 +315,19 @@ mod tests {
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
         let rules = RuleStore::new(vec![
-            SomeRule::new_from_string(1, "10/x1/x0/00")?,
-            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+            tmp_rul.new_from_string("10/x1/x0/00")?,
+            tmp_rul.new_from_string("10/x1/x0/01")?,
         ]);
 
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b1100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b1100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
-        sqrx.add_result(SomeState::new_from_string(1, "s0b0100")?); // pn = Pn::One, pnc = true.
+        sqrx.add_result(tmp_sta.new_from_string("s0b0100")?); // pn = Pn::One, pnc = true.
 
         if grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
@@ -327,13 +336,13 @@ mod tests {
         // Test if self.pn == Pn::Unpredictable
         let rules = None;
 
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, rules, true);
 
         let sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b1100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b1100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
 
         if !grpx.check_subset_square(&sqrx) {
@@ -341,15 +350,15 @@ mod tests {
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
+        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
 
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true);
 
         let sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b1100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b1100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
 
         if !grpx.check_subset_square(&sqrx) {
@@ -357,8 +366,8 @@ mod tests {
         }
 
         let sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b1100")?,
-            SomeState::new_from_string(1, "s0b0101")?,
+            tmp_sta.new_from_string("s0b1100")?,
+            tmp_sta.new_from_string("s0b0101")?,
         );
 
         if grpx.check_subset_square(&sqrx) {
@@ -369,17 +378,21 @@ mod tests {
 
     #[test]
     fn check_union_square() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
         // Test if sqrx.pn > self.pn {
-        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
-        sqrx.add_result(SomeState::new_from_string(1, "s0b0101")?); // Pn::Two, pnc == false.
+        sqrx.add_result(tmp_sta.new_from_string("s0b0101")?); // Pn::Two, pnc == false.
 
         if grpx.check_union_square(&sqrx) != Some(false) {
             return Err(format!("check_union_square: test 1 failed!"));
@@ -387,32 +400,32 @@ mod tests {
 
         // Test if sqrx.pn < self.pn && sqrx.pnc
         let rules = RuleStore::new(vec![
-            SomeRule::new_from_string(1, "10/x1/x0/00")?,
-            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+            tmp_rul.new_from_string("10/x1/x0/00")?,
+            tmp_rul.new_from_string("10/x1/x0/01")?,
         ]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
-        sqrx.add_result(SomeState::new_from_string(1, "s0b0100")?); // Pn::One, pnc == true.
+        sqrx.add_result(tmp_sta.new_from_string("s0b0100")?); // Pn::One, pnc == true.
 
         if grpx.check_union_square(&sqrx) != Some(false) {
             return Err(format!("check_union_square: test 2 failed!"));
         }
 
         // Test self.rules.can_form_union(&sqrx.rules)
-        let rules = RuleStore::new(vec![SomeRule::new_from_string(1, "10/x1/x0/00")?]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
+        let regx = tmp_reg.new_from_string("r1xx0")?;
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0100")?,
         );
 
         if grpx.check_union_square(&sqrx) != Some(true) {
@@ -420,8 +433,8 @@ mod tests {
         }
 
         let sqry = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0101")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0101")?,
         );
 
         if grpx.check_union_square(&sqry) != Some(false) {
@@ -429,15 +442,15 @@ mod tests {
         }
 
         let rules = RuleStore::new(vec![
-            SomeRule::new_from_string(1, "10/x1/x0/00")?,
-            SomeRule::new_from_string(1, "10/x1/x0/01")?,
+            tmp_rul.new_from_string("10/x1/x0/00")?,
+            tmp_rul.new_from_string("10/x1/x0/01")?,
         ]);
-        let regx = SomeRegion::new_from_string(1, "r1xx0")?;
+        let regx = tmp_reg.new_from_string("r1xx0")?;
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let sqrx = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0101")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0101")?,
         );
 
         if grpx.check_union_square(&sqrx) != None {
@@ -445,8 +458,8 @@ mod tests {
         }
 
         let sqry = SomeSquare::new(
-            SomeState::new_from_string(1, "s0b0100")?,
-            SomeState::new_from_string(1, "s0b0111")?,
+            tmp_sta.new_from_string("s0b0100")?,
+            tmp_sta.new_from_string("s0b0111")?,
         );
 
         if grpx.check_union_square(&sqry) != Some(false) {

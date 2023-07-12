@@ -365,10 +365,17 @@ impl Index<usize> for SomePlan {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
+    use crate::state::SomeState;
 
     #[test]
     fn path_region() -> Result<(), String> {
+        let tmp_bts = SomeBits::new(1);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
         let planx = SomePlan::new(0, vec![]);
         if let Some(regx) = planx.path_region() {
             return Err(format!("Empty plan returns a region {}?", regx));
@@ -376,21 +383,21 @@ mod tests {
 
         let step0 = SomeStep::new(
             0,
-            SomeRule::new_from_string(1, "00/01/01/11").unwrap(),
+            tmp_rul.new_from_string("00/01/01/11").unwrap(),
             false,
-            SomeRegion::new_from_string(1, "rXXXX").unwrap(),
+            tmp_reg.new_from_string("rXXXX").unwrap(),
         ); // 1 -> 7
         let step1 = SomeStep::new(
             0,
-            SomeRule::new_from_string(1, "01/11/10/11").unwrap(),
+            tmp_rul.new_from_string("01/11/10/11").unwrap(),
             false,
-            SomeRegion::new_from_string(1, "rXXXX").unwrap(),
+            tmp_reg.new_from_string("rXXXX").unwrap(),
         ); // 7 -> D
         let planx = SomePlan::new(0, vec![step0, step1]);
         println!("plan: {planx}");
         let Some(regx) = planx.path_region() else { panic!("Plan region is None?"); };
         println!("Plan region: {regx}");
-        assert!(regx == SomeRegion::new_from_string(1, "rXXX1")?);
+        assert!(regx == tmp_reg.new_from_string("rXXX1")?);
 
         Ok(())
     }
@@ -399,12 +406,16 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string(1, "r0x0x")?;
-        let reg2 = SomeRegion::new_from_string(1, "r0x1x")?;
-        let reg3 = SomeRegion::new_from_string(1, "r1x1x")?;
-        let reg4 = SomeRegion::new_from_string(1, "r111x")?;
-        let reg5 = SomeRegion::new_from_string(1, "r101x")?;
-        let reg6 = SomeRegion::new_from_string(1, "r000x")?;
+        let tmp_bts = SomeBits::new(1);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let reg1 = tmp_reg.new_from_string("r0x0x")?;
+        let reg2 = tmp_reg.new_from_string("r0x1x")?;
+        let reg3 = tmp_reg.new_from_string("r1x1x")?;
+        let reg4 = tmp_reg.new_from_string("r111x")?;
+        let reg5 = tmp_reg.new_from_string("r101x")?;
+        let reg6 = tmp_reg.new_from_string("r000x")?;
 
         let step1 = SomeStep::new(
             0,
@@ -441,7 +452,7 @@ mod tests {
         println!("stp3 {}", &stp_str3);
         assert!(stp_str3.len() == 4);
 
-        assert!(*stp_str3.initial_region() == SomeRegion::new_from_string(1, "r010x")?);
+        assert!(*stp_str3.initial_region() == tmp_reg.new_from_string("r010x")?);
 
         assert!(*stp_str3.result_region() == reg6);
 
@@ -450,11 +461,15 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string(1, "r0000")?;
-        let reg1 = SomeRegion::new_from_string(1, "r0001")?;
-        let reg3 = SomeRegion::new_from_string(1, "r0011")?;
-        let reg5 = SomeRegion::new_from_string(1, "r0101")?;
-        let reg7 = SomeRegion::new_from_string(1, "r0111")?;
+        let tmp_bts = SomeBits::new(1);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let reg0 = tmp_reg.new_from_string("r0000")?;
+        let reg1 = tmp_reg.new_from_string("r0001")?;
+        let reg3 = tmp_reg.new_from_string("r0011")?;
+        let reg5 = tmp_reg.new_from_string("r0101")?;
+        let reg7 = tmp_reg.new_from_string("r0111")?;
 
         let step1 = SomeStep::new(
             0,

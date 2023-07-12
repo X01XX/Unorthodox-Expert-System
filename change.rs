@@ -30,18 +30,11 @@ impl SomeChange {
     }
 
     /// Return a new change, with no bits set yet.
-    pub fn new_low(num_ints: usize) -> Self {
-        assert!(num_ints > 0);
+    pub fn new_low(&self) -> Self {
         Self {
-            b01: SomeMask::new_low(num_ints),
-            b10: SomeMask::new_low(num_ints),
+            b01: self.b01.new_low(),
+            b10: self.b10.new_low(),
         }
-    }
-
-    /// Return the number of integers used to represent a SomeBits instance, for creating a
-    /// new instance.
-    pub fn num_ints(&self) -> usize {
-        self.b01.num_ints()
     }
 
     /// Apply a change to a state.
@@ -178,20 +171,25 @@ impl SomeChange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
     use crate::SomeDomain;
 
     #[test]
     fn apply_to_state() -> Result<(), String> {
+        let tmp_bts = SomeBits::new(1);
+        let tmp_sta = SomeState::new(tmp_bts);
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
         // Test changing two bits.
-        let reg0 = SomeRegion::new_from_string(1, "r0101")?;
-        let reg1 = SomeRegion::new_from_string(1, "r1001")?;
+        let reg0 = tmp_reg.new_from_string("r0101")?;
+        let reg1 = tmp_reg.new_from_string("r1001")?;
 
         let cng = SomeChange::region_to_region(&reg0, &reg1);
-        let sta = SomeState::new_from_string(1, "s0b0101")?;
+        let sta = tmp_sta.new_from_string("s0b0101")?;
 
         let sta2 = cng.apply_to_state(&sta);
 
-        let sta3 = SomeState::new_from_string(1, "s0b1001")?;
+        let sta3 = tmp_sta.new_from_string("s0b1001")?;
         println!("sta2: {sta2} sta3: {sta3}");
         assert!(sta2 == sta3);
 

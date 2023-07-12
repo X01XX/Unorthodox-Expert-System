@@ -46,11 +46,10 @@ pub struct GroupStore {
 
 impl GroupStore {
     /// Return a new, empty, GroupStore.
-    pub fn new(num_ints: usize, avec: Vec<SomeGroup>) -> Self {
-        debug_assert!(num_ints > 0);
+    pub fn new(avec: Vec<SomeGroup>, aggregate_changes: SomeChange) -> Self {
         Self {
             avec,
-            aggregate_changes: SomeChange::new_low(num_ints),
+            aggregate_changes,
             agg_chgs_updated: false,
         }
     }
@@ -63,12 +62,9 @@ impl GroupStore {
 
     /// Calculate and set the aggregate changes and updated flag.
     fn calc_aggregate_changes(&mut self) {
-        let mut new_chgs = SomeChange::new_low(self.aggregate_changes.num_ints());
+        let mut new_chgs = self.aggregate_changes.new_low();
 
         for grpx in &self.avec {
-            //if grpx.pn == Pn::Unpredictable {
-            //    continue;
-            //}
             if grpx.pn == Pn::Unpredictable {
                 continue;
             }

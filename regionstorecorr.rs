@@ -567,20 +567,27 @@ impl IndexMut<usize> for RegionStoreCorr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
 
     #[test]
     fn test_subtract() -> Result<(), String> {
+        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
+
+        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
+
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string(1, "r0000_x10x")?);
-        regstr1.push(SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?);
+        regstr1.push(tmp_reg1.new_from_string("r0000_x10x")?);
+        regstr1.push(tmp_reg2.new_from_string("r0000_000x_0000_000x")?);
 
         // Test subtracting a superset.
         let result1 = regstr1.subtract(&regstr1);
         assert!(result1.is_empty());
 
         let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r0000_0xx1")?);
-        regstr2.push(SomeRegion::new_from_string(2, "r0000_00x0_0000_00x1")?);
+        regstr2.push(tmp_reg1.new_from_string("r0000_0xx1")?);
+        regstr2.push(tmp_reg2.new_from_string("r0000_00x0_0000_00x1")?);
 
         // Test subtracting an intersection.
         let result2 = regstr1.subtract(&regstr2);
@@ -592,32 +599,32 @@ mod tests {
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_110x")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+                tmp_reg1.new_from_string("r0000_110x")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x100")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+                tmp_reg1.new_from_string("r0000_x100")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x10x")?,
-                SomeRegion::new_from_string(2, "r0000_0001_0000_000x")?
+                tmp_reg1.new_from_string("r0000_x10x")?,
+                tmp_reg2.new_from_string("r0000_0001_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x10x")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+                tmp_reg1.new_from_string("r0000_x10x")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
             RegionStoreCorr::eq
         ));
@@ -627,9 +634,15 @@ mod tests {
 
     #[test]
     fn test_vec_subtract() -> Result<(), String> {
+        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
+
+        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
+
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string(1, "r0000_x10x")?);
-        regstr1.push(SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?);
+        regstr1.push(tmp_reg1.new_from_string("r0000_x10x")?);
+        regstr1.push(tmp_reg2.new_from_string("r0000_000x_0000_000x")?);
 
         let mut vec1 = vec![regstr1.clone()];
 
@@ -638,8 +651,8 @@ mod tests {
         assert!(result1.is_empty());
 
         let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string(1, "r0000_0xx1")?);
-        regstr2.push(SomeRegion::new_from_string(2, "r0000_00x0_0000_00x1")?);
+        regstr2.push(tmp_reg1.new_from_string("r0000_0xx1")?);
+        regstr2.push(tmp_reg2.new_from_string("r0000_00x0_0000_00x1")?);
 
         // Test subtracting an intersection.
         let result2 = RegionStoreCorr::vec_subtract_regionstorecorr(&vec1, &regstr2);
@@ -656,39 +669,39 @@ mod tests {
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_110x")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+                tmp_reg1.new_from_string("r0000_110x")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x100")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_000x")?
+                tmp_reg1.new_from_string("r0000_x100")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x10x")?,
-                SomeRegion::new_from_string(2, "r0000_0001_0000_000x")?
+                tmp_reg1.new_from_string("r0000_x10x")?,
+                tmp_reg2.new_from_string("r0000_0001_0000_000x")?
             )),
             RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_x10x")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+                tmp_reg1.new_from_string("r0000_x10x")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
             RegionStoreCorr::eq
         ));
 
         vec1.push(RegionStoreCorr::new(vec![
-            SomeRegion::new_from_string(1, "r0000_1110")?,
-            SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?,
+            tmp_reg1.new_from_string("r0000_1110")?,
+            tmp_reg2.new_from_string("r0000_000x_0000_0000")?,
         ]));
 
         // Test subtracting an intersection, while non-intersection passes through.
@@ -706,8 +719,8 @@ mod tests {
         assert!(tools::vec_contains(
             &result3,
             &RegionStoreCorr::new(vec!(
-                SomeRegion::new_from_string(1, "r0000_1110")?,
-                SomeRegion::new_from_string(2, "r0000_000x_0000_0000")?
+                tmp_reg1.new_from_string("r0000_1110")?,
+                tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
             RegionStoreCorr::eq
         ));
@@ -718,10 +731,13 @@ mod tests {
 
     #[test]
     fn test_vec_split_to_subsets() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(1);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
         rs_vec.push(regstr1.clone());
 
         println!("Initial1: {}", RegionStoreCorr::vec_string(&rs_vec));
@@ -736,7 +752,7 @@ mod tests {
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
         rs_vec.push(regstr1.clone());
         rs_vec.push(regstr1.clone());
 
@@ -751,11 +767,11 @@ mod tests {
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
         rs_vec.push(regstr1.clone());
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string(1, "r010x")?);
+        regstr2.push(tmp_reg.new_from_string("r010x")?);
         rs_vec.push(regstr2.clone());
 
         println!("Initial3: {}", RegionStoreCorr::vec_string(&rs_vec));
@@ -764,24 +780,20 @@ mod tests {
 
         println!("Result3: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r110x"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r010x"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r110x")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r010x")?
+        ])));
 
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string(1, "r010x")?);
+        regstr2.push(tmp_reg.new_from_string("r010x")?);
 
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
@@ -792,24 +804,20 @@ mod tests {
 
         println!("Result4: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r110x"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r010x"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r110x")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r010x")?
+        ])));
 
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string(1, "r1xx1")?);
+        regstr2.push(tmp_reg.new_from_string("r1xx1")?);
 
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
@@ -820,42 +828,32 @@ mod tests {
 
         println!("Result5: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 5);
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "rx100"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r010x"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r1101"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r10x1"
-            )?]))
-        );
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r1101"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("rx100")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r010x")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r1101")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r10x1")?
+        ])));
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r1101")?
+        ])));
 
         let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string(1, "rx10x")?);
+        regstr1.push(tmp_reg.new_from_string("rx10x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string(1, "r01xx")?);
+        regstr2.push(tmp_reg.new_from_string("r01xx")?);
 
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
-        regstr3.push(SomeRegion::new_from_string(1, "rxxx1")?);
+        regstr3.push(tmp_reg.new_from_string("rxxx1")?);
 
         rs_vec.push(regstr2.clone());
         rs_vec.push(regstr1.clone());
@@ -868,53 +866,37 @@ mod tests {
         println!("Result6: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 8);
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "rx0x1"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("rx0x1")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r1100"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r1100")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r1101"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r1101")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r0110"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r0110")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r0111"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r0111")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r0100"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r0100")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r0101"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r0101")?
+        ])));
 
-        assert!(
-            rslt.contains(&RegionStoreCorr::new(vec![SomeRegion::new_from_string(
-                1, "r1x11"
-            )?]))
-        );
+        assert!(rslt.contains(&RegionStoreCorr::new(vec![
+            tmp_reg.new_from_string("r1x11")?
+        ])));
         Ok(())
     }
 }
