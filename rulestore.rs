@@ -201,11 +201,8 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            if let Some(rulx) = self.avec[0].union(&other.avec[0]) {
-                return Some(Self::new(vec![rulx]));
-            }
-            //println!("\nrulestore union: returns None (2)");
-            return None;
+            let rulx = self.avec[0].union(&other.avec[0])?;
+            return Some(Self::new(vec![rulx]));
         }
 
         if self.len() == 2 {
@@ -314,7 +311,7 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let Some(int1) = self[0].intersection(&other[0]) else { return None; };
+            let int1 = self[0].intersection(&other[0])?;
 
             return Some(Self::new(vec![int1]));
         }

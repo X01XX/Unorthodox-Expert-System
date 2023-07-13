@@ -77,12 +77,12 @@ impl SomeDomain {
         // Set up a domain instance with the correct value for num_ints
         let tmp_sta = SomeState::new(SomeBits::new(num_ints));
         let cur_state = tmp_sta.new_random();
-        let tmp_reg = SomeRegion::new(vec![cur_state.clone()]);
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         SomeDomain {
             num: 0, // May be changed later
             actions: ActionStore::new(
                 vec![],
-                SomeChange::new(tmp_sta.to_mask().new_low(), tmp_sta.to_mask().new_low()),
+                SomeChange::new(tmp_sta.to_mask(), tmp_sta.to_mask()),
             ),
             cur_state,
             memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
@@ -106,6 +106,7 @@ impl SomeDomain {
     }
 
     /// Return needs gathered from all actions.
+    /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
         // Get all needs.
         self.actions
@@ -327,8 +328,7 @@ impl SomeDomain {
             //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
-            let Some(plan_to_goal) =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1) else { return None; };
+            let plan_to_goal = self.plan_steps_between(&stepy.result, goal_reg, depth - 1)?;
 
             return SomePlan::new(self.num, vec![stepy]).link(&plan_to_goal);
         }
@@ -338,7 +338,7 @@ impl SomeDomain {
             //println!("backward step");
             let stepy = stepx.restrict_result_region(goal_reg);
 
-            let Some(plan_to_step) = self.plan_steps_between(from_reg, &stepy.initial, depth - 1) else { return None; };
+            let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
 
             return plan_to_step.link(&SomePlan::new(self.num, vec![stepy]));
         }
@@ -356,13 +356,9 @@ impl SomeDomain {
     ) -> Option<SomePlan> {
         let required_change = SomeChange::region_to_region(from_reg, to_reg);
 
-        let Some(steps_str) = self.get_steps(&required_change) else {
-            return None;
-        };
+        let steps_str = self.get_steps(&required_change)?;
 
-        let Some(steps_by_change_vov) = steps_str.get_steps_by_bit_change(&required_change) else {
-            return None;
-        };
+        let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
 
         self.random_depth_first_search2(from_reg, to_reg, &steps_str, &steps_by_change_vov, depth)
     }
@@ -387,23 +383,23 @@ impl SomeDomain {
         depth: usize,
     ) -> Option<SomePlan> {
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
-            let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepx.initial, depth) else { return None; };
+            let to_step_plan = self.plan_steps_between(from_reg, &stepx.initial, depth)?;
 
             // Restrict the step initial region, in case it is different from the to_step_plan result region,
             // possibly changing the step result region.
             let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
-            let Some(from_step_plan) = self.plan_steps_between(&stepy.result, goal_reg, depth) else { return None; };
+            let from_step_plan = self.plan_steps_between(&stepy.result, goal_reg, depth)?;
 
             (to_step_plan, stepy, from_step_plan)
         } else {
-            let Some(from_step_plan) = self.plan_steps_between(&stepx.result, goal_reg, depth) else { return None; };
+            let from_step_plan = self.plan_steps_between(&stepx.result, goal_reg, depth)?;
 
             // Restrict the step result region, in case it is different from the from_step_plan initial region,
             // possibly changing the step initial region.
             let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
-            let Some(to_step_plan) = self.plan_steps_between(from_reg, &stepy.initial, depth) else { return None; };
+            let to_step_plan = self.plan_steps_between(from_reg, &stepy.initial, depth)?;
 
             (to_step_plan, stepy, from_step_plan)
         };
@@ -443,10 +439,10 @@ impl SomeDomain {
         let num_depth = 3 * required_change.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let Some(steps_str) = self.get_steps(&required_change) else { return None; };
+        let steps_str = self.get_steps(&required_change)?;
 
         // Get vector of steps for each bit change.
-        let Some(steps_by_change_vov) = steps_str.get_steps_by_bit_change(&required_change) else { return None; };
+        let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
 
         // Calculated steps_str, and steps_by_change_vov, ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
@@ -492,7 +488,7 @@ impl SomeDomain {
         let steps_str: StepStore = self.actions.get_steps(required_change);
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        let Some(can_change) = steps_str.aggregate_changes() else { return None; };
+        let can_change = steps_str.aggregate_changes()?;
 
         if required_change.is_subset_of(&can_change) {
         } else {

@@ -417,23 +417,11 @@ impl DomainStore {
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(targets.len()));
 
-        if targets.len() == 1 {
-            if let Some(mut plans) = self.get_plans(targets[0].dom_num, &targets[0].region) {
-                plans_per_target.push(plans.remove(self.choose_a_plan(&plans)));
-                return Some(plans_per_target);
-            } else {
-                return None;
-            }
-        }
-
-        // Handle GT 1 targets.
+        // Find a plan for each target.
         for targx in targets.iter() {
             // Try making plans.
-            if let Some(mut plans) = self.get_plans(targx.dom_num, &targx.region) {
-                plans_per_target.push(plans.remove(self.choose_a_plan(&plans)));
-            } else {
-                return None;
-            }
+            let mut plans = self.get_plans(targx.dom_num, &targx.region)?;
+            plans_per_target.push(plans.remove(self.choose_a_plan(&plans)));
         } // next optx
 
         Some(plans_per_target)
@@ -598,16 +586,6 @@ impl DomainStore {
         }
 
         all_states
-    }
-
-    /// Return true if all domain current states are subsets of a given RegionStoreCorr.
-    fn _states_subset(&self, regs: &RegionStoreCorr) -> bool {
-        for (domx, regx) in self.avec.iter().zip(regs.iter()) {
-            if !regx.is_superset_of_state(&domx.cur_state) {
-                return false;
-            }
-        }
-        true
     }
 
     /// Update counters for times_visited.
@@ -1063,7 +1041,7 @@ impl DomainStore {
         //    RegionStoreCorr::vec_ref_string(&other_nn_regions)
         //);
 
-        let mut plans = (0..1)
+        let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.avoid_negative_select_regions2(
@@ -1278,8 +1256,7 @@ impl DomainStore {
                     //    "dom: {}, seek path from cur reg: {}, to: {}, through {}.",
                     //    domx, cur_regs[domx], regx, path[inx][domx]
                     //);
-                    let Some(mut step_plans) = self.avec[domx].make_plans2(&cur_regs[domx], regx) else { println!("avoid_negative_select_regions2: nothing from make_plans2"); 
-                                return None; };
+                    let mut step_plans = self.avec[domx].make_plans2(&cur_regs[domx], regx)?;
 
                     //println!("plans: {}", SomePlan::vec_string(&step_plans));
                     // Find plans that stay in the non-negative region.

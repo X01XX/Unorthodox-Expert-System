@@ -11,7 +11,7 @@ debug = true
 [dependencies]
 rand = "0.8.5"
 rayon = "1.7.0"
-serde = { version = "1.0.164", features = ["derive"] }
-serde_yaml = "0.9.21"
-readonly = "0.2.8"
+serde = { version = "1.0.171", features = ["derive"] }
+serde_yaml = "0.9.22"
+readonly = "0.2.10"
 unicode-segmentation = "1.10.1"

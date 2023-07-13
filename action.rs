@@ -143,10 +143,10 @@ impl SomeAction {
         }
 
         if sqrx.pn == Pn::Unpredictable {
-            return !self.any_incompatible_pn_square_in_region(
-                &SomeRegion::new(vec![sqrx.state.clone(), sqry.state.clone()]),
-                sqrx.pn,
-            );
+            return !self.any_incompatible_pn_square_in_region(&SomeRegion::new(vec![
+                sqrx.state.clone(),
+                sqry.state.clone(),
+            ]));
         }
 
         let Some(rules) = sqrx.rules.as_ref().expect("SNH").union(sqry.rules.as_ref().expect("SNH")) else { return false; };
@@ -514,6 +514,7 @@ impl SomeAction {
 
         // Check squares from invalidated groups that may not be in any group.
         let mut stas_to_check = Vec::<SomeState>::new();
+
         for regx in regs_invalid.iter() {
             let stas = self.squares.stas_in_reg(regx);
             //println!("stas to check {}", SomeState::vec_ref_string(&stas));
@@ -571,7 +572,7 @@ impl SomeAction {
 
         let mut group_added = false;
         for regx in rsx.iter() {
-            let Some(sqrx) = self.squares.find(regx.state1()) else { panic!("Region state square not found?"); };
+            let sqrx = self.squares.find(regx.state1()).expect("SNH");
 
             let mut regx_pnc = sqrx.pnc;
 
@@ -580,7 +581,7 @@ impl SomeAction {
                 regx_ruls = Some(srules.clone());
                 if regx.states.len() < 3 {
                     if regx.states.len() == 2 {
-                        let Some(sqry) = self.squares.find(regx.state2()) else { panic!("Region state square not found?"); };
+                        let sqry = self.squares.find(regx.state2()).expect("SNH");
                         regx_pnc &= sqry.pnc;
                         if sqrx.pn != Pn::Unpredictable {
                             if let Some(ruls_union) = regx_ruls
@@ -595,7 +596,7 @@ impl SomeAction {
                 } else {
                     regx_pnc = false;
                     for stay in regx.states.iter().skip(1) {
-                        let Some(sqry) = self.squares.find(stay) else { panic!("Region state square not found?"); };
+                        let sqry = self.squares.find(stay).expect("SNH");
                         if sqrx.pn != Pn::Unpredictable {
                             let ruls_union = regx_ruls
                                 .as_ref()
@@ -1737,8 +1738,6 @@ impl SomeAction {
 
     /// Return true if all square rules in a region are a subset of given rules.
     fn all_subset_rules_in_region(&self, regx: &SomeRegion, rules: &RuleStore) -> bool {
-        assert!(rules.is_not_empty());
-
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
@@ -1754,13 +1753,13 @@ impl SomeAction {
         true
     }
 
-    /// Return true if there is no square with an incompatible Pn value.
-    fn any_incompatible_pn_square_in_region(&self, regx: &SomeRegion, pnx: Pn) -> bool {
+    /// Return true if there is no square with an incompatible Pn/pnc value with Pn::Unpredictable.
+    fn any_incompatible_pn_square_in_region(&self, regx: &SomeRegion) -> bool {
         // Get squares in the region.
         let sqrs_in_reg = self.squares.squares_in_reg(regx);
 
         for sqrx in &sqrs_in_reg {
-            if sqrx.pn != pnx && (sqrx.pnc || sqrx.pn > pnx) {
+            if sqrx.pn != Pn::Unpredictable && sqrx.pnc {
                 return true;
             }
         }
@@ -1768,6 +1767,7 @@ impl SomeAction {
     }
 
     /// Return needs to define a group region, from the combination of two smaller group regions, if possible.
+    /// Assumes the combined region has been checked for validity.
     fn region_combine_needs(
         &self,
         regx: &SomeRegion,
@@ -1779,11 +1779,8 @@ impl SomeAction {
         let mut nds = NeedStore::new(vec![]);
 
         // Gather the states from the regions, they may share one defining state.
-        // A region may be made with a single state.
-        let mut defining_stas = StateStore::new(vec![]);
-        for stax in reg1.states.iter() {
-            defining_stas.push(stax.clone());
-        }
+        let mut defining_stas = reg1.states.clone();
+
         for stax in reg2.states.iter() {
             if defining_stas.contains(stax) {
             } else {
@@ -1899,7 +1896,7 @@ impl SomeAction {
         let reg_both = grpx.region.union(&grpy.region);
 
         if grpx.pn == Pn::Unpredictable {
-            if self.any_incompatible_pn_square_in_region(&reg_both, Pn::Unpredictable) {
+            if self.any_incompatible_pn_square_in_region(&reg_both) {
                 return nds;
             }
             return self.region_combine_needs(&reg_both, &grpx.region, &grpy.region);
@@ -1945,6 +1942,7 @@ impl SomeAction {
             .as_ref()
             .expect("SNH")
             .restrict_initial_region(&reg_int);
+
         let rulsy = grpy
             .rules
             .as_ref()
@@ -2246,11 +2244,7 @@ impl SomeAction {
                     .collect::<Vec<SomeRegion>>();
 
                 if !regs.is_empty() {
-                    let mut regs2 = RegionStore::with_capacity(regs.len());
-                    for regx in regs {
-                        regs2.push_nosubs(regx);
-                    }
-                    return regs2;
+                    return RegionStore::new(regs);
                 }
             } // next inx
         }
@@ -2282,11 +2276,7 @@ impl SomeAction {
             let mut crules = combrules.clone();
             for sqry in combx.iter() {
                 //println!("Combining {rules} and {}", sqry.rules);
-                if let Some(c2rules) = crules.union(sqry.rules.as_ref().expect("SNH")) {
-                    crules = c2rules;
-                } else {
-                    return None;
-                }
+                crules = crules.union(sqry.rules.as_ref()?)?;
             }
             Some(crules)
         } else {

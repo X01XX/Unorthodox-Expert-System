@@ -136,11 +136,11 @@ impl SomePlan {
         }
 
         // Restrict the StepStores, forward and backward.
-        let Some(regx) = self.result_region().intersection(other.initial_region()) else { return None; };
+        let regx = self.result_region().intersection(other.initial_region())?;
 
-        let Some(mut steps1) = self.restrict_result_region(&regx) else { return None; };
+        let mut steps1 = self.restrict_result_region(&regx)?;
 
-        let Some(mut steps2) = other.restrict_initial_region(&regx) else { return None; };
+        let mut steps2 = other.restrict_initial_region(&regx)?;
 
         steps1.append(&mut steps2);
 
