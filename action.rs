@@ -2233,8 +2233,9 @@ impl SomeAction {
         // Check combinations of similar squares, largest first, until
         // at least one valid combination is found.
         //let mut sim_regs = RegionStore::new(vec![]);
+        let mut ret_regs = RegionStore::new(vec![]);
         if sim_sqrs.len() > 1 {
-            for inx in (2..=sim_sqrs.len()).rev() {
+            for inx in 2..=sim_sqrs.len() {
                 //println!("Check any {inx} squares");
                 let combinations: Vec<Vec<&SomeSquare>> = tools::anyxofvec(inx, &sim_sqrs);
 
@@ -2243,12 +2244,15 @@ impl SomeAction {
                     .filter_map(|combx| self.validate_combination(combx, &dissim_sqrs))
                     .collect::<Vec<SomeRegion>>();
 
-                if !regs.is_empty() {
-                    return RegionStore::new(regs);
+                for regx in regs {
+                    if ret_regs.any_superset_of(&regx) {
+                        continue;
+                    }
+                    ret_regs.push_larger(regx);
                 }
             } // next inx
         }
-        RegionStore::new(vec![])
+        ret_regs
     } // end possible_regions_from_square
 
     /// Validate a region that can be made from a given vector of SomeSquare refs.
@@ -2297,24 +2301,12 @@ impl SomeAction {
 
         // Check all subset squares have subset rules.
         if crules.is_none() {
-            for sqry in self.squares.ahash.values() {
-                if regx.is_superset_of_state(&sqry.state)
-                    && sqry.pn != Pn::Unpredictable
-                    && sqry.pnc
-                {
-                    return None;
-                }
+            if self.any_incompatible_pn_square_in_region(&regx) {
+                return None;
             }
         } else if let Some(xrules) = crules {
-            for sqry in self.squares.ahash.values() {
-                if regx.is_superset_of_state(&sqry.state) {
-                    if sqry.pn == Pn::Unpredictable {
-                        return None;
-                    }
-                    if !xrules.is_superset_of(sqry.rules.as_ref().expect("SNH")) {
-                        return None;
-                    }
-                }
+            if !self.all_subset_rules_in_region(&regx, &xrules) {
+                return None;
             }
         }
 
@@ -2549,7 +2541,6 @@ mod tests {
             .groups
             .find(&tmp_reg.new_from_string("rx0x1")?)
             .is_some());
-
         Ok(())
     }
 

@@ -101,6 +101,17 @@ impl RegionStore {
         false
     }
 
+    /// Return true if any region has more X bits.
+    pub fn any_gt_x(&self, reg: &SomeRegion) -> bool {
+        let rx = reg.num_x();
+        for regx in &self.avec {
+            if regx.num_x() > rx {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return vector of regions that are a superset of a given region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
         self.avec
@@ -199,7 +210,7 @@ impl RegionStore {
 
     /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
-        // Check for supersets, which probably is an error
+        // Check for supersets.
         if self.any_superset_of(&reg) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
             return false;
@@ -224,9 +235,40 @@ impl RegionStore {
         true
     }
 
+    /// Add a region, if none are EQ and none have more X bits, removing regions with fewer X bits.
+    pub fn push_larger(&mut self, reg: SomeRegion) -> bool {
+        // Check for regions with GE x.
+        if tools::vec_contains(&self.avec, &reg, SomeRegion::eq) {
+            return false;
+        }
+        if self.any_gt_x(&reg) {
+            //println!("skipped adding region {}, a larger or equal x exists in {}", reg, self);
+            return false;
+        }
+
+        // Identify subsets.
+        let mut rmvec = Vec::<usize>::new();
+        let rx = reg.num_x();
+
+        for (inx, regx) in self.avec.iter().enumerate() {
+            if regx.num_x() < rx {
+                rmvec.push(inx);
+            }
+        }
+
+        // Remove identified regions, in descending index order.
+        for inx in rmvec.iter().rev() {
+            removeunordered::remove_unordered(&mut self.avec, *inx);
+        }
+
+        self.avec.push(reg);
+
+        true
+    }
+
     /// Add a region, removing superset (and equal) regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
-        // Check for subsets, which probably is an error
+        // Check for subsets.
         if self.any_subset_of(&reg) {
             // println!("skipped adding region {}, a superset exists", reg.str());
             return false;
