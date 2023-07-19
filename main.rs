@@ -1053,7 +1053,7 @@ fn do_print_group_defining_squares_command(
             if let Some(sqrx) = dmx.actions[act_num].squares.find(stax) {
                 println!(" {}", &sqrx);
             } else {
-                return Err(format!("square for state {} not found?", stax));
+                println!("far state {} not found", stax);
             }
         }
     } else {

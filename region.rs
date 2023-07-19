@@ -21,9 +21,6 @@ use std::fmt;
 pub struct SomeRegion {
     /// Vector for one, or more, states.
     pub states: Vec<SomeState>,
-    /// For regions defined by more that 2 squares, the state farthest in the region
-    /// from the first state.
-    far: Option<SomeState>,
 }
 
 /// Implement the fmt::Display trait.
@@ -52,40 +49,17 @@ impl SomeRegion {
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
 
-        let (states2, far) = match states.len() {
-            1 => (states, None),
-            2 => {
-                if states[0] == states[1] {
-                    (vec![states.pop().unwrap()], None)
-                } else {
-                    (states, None)
-                }
+        if states.len() > 2 {
+            // Calc x-mask for the region.
+            let mut x_mask = SomeMask::new(states[0].bts.new_low());
+            for stax in states.iter().skip(1) {
+                x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&states[0]));
             }
-            _ => {
-                if SomeState::vec_check_for_duplicates(&states) {
-                    println!("dups {:?}!", SomeState::vec_string(&states));
-                    panic!("Done");
-                }
-                if SomeState::vec_check_for_unneeded(&states) {
-                    println!("unneeded {:?}!", SomeState::vec_string(&states));
-                    panic!("Done");
-                }
-                // Calc x-mask for the region.
-                let mut x_mask = SomeMask::new(states[0].bts.new_low());
-                for stax in states.iter().skip(1) {
-                    x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&states[0]));
-                }
-                // Calc state in region, far from the first state, as if the region was made of two states.
-                let far = states[0].bitwise_xor(&x_mask);
-
-                (states, Some(far))
-            }
-        };
-
-        Self {
-            states: states2,
-            far,
+            // Calc state in region, far from the first state, as if the region was made of two states.
+            states.push(states[0].bitwise_xor(&x_mask));
         }
+
+        Self { states }
     }
 
     /// Return a reference to the first state.
@@ -95,23 +69,7 @@ impl SomeRegion {
 
     /// Return a reference to the second state.
     pub fn state2(&self) -> &SomeState {
-        match self.states.len() {
-            1 => &self.states[0],
-            2 => &self.states[1],
-            _ => {
-                if let Some(x) = &self.far {
-                    x
-                } else {
-                    panic!("should not happen");
-                }
-            }
-        }
-
-        //        if self.states.len() == 1 {
-        //            &self.states[0]
-        //        } else {
-        //            &self.states[1]
-        //        }
+        self.states.last().unwrap()
     }
 
     /// Return a Region from a string and the number of integers to use.

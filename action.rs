@@ -578,35 +578,27 @@ impl SomeAction {
 
             let mut regx_ruls: Option<RuleStore> = None;
             if let Some(srules) = &sqrx.rules {
-                regx_ruls = Some(srules.clone());
-                if regx.states.len() < 3 {
-                    if regx.states.len() == 2 {
-                        let sqry = self.squares.find(regx.state2()).expect("SNH");
-                        regx_pnc &= sqry.pnc;
-                        if sqrx.pn != Pn::Unpredictable {
-                            if let Some(ruls_union) = regx_ruls
-                                .as_ref()
-                                .expect("SNH")
-                                .union(sqry.rules.as_ref().expect("SNH"))
-                            {
-                                regx_ruls = Some(ruls_union);
+                let mut ruls_union = srules.clone();
+                regx_pnc = false;
+                for stay in regx.states.iter().skip(1) {
+                    if let Some(sqry) = self.squares.find(stay) {
+                        // May fail on last state.
+                        let yrules = sqry.rules.as_ref().expect("SNH");
+                        if sqry.pn == sqrx.pn {
+                            // Last state may exist as a square, but need more samples.
+                            if let Some(uruls) = ruls_union.union(yrules) {
+                                ruls_union = uruls;
+                            } else {
+                                println!("regx {regx} {ruls_union} failed union with {sqry} ?");
+                                panic!("Done");
                             }
+                        } else {
+                            assert!(ruls_union.is_superset_of(yrules));
                         }
                     }
-                } else {
-                    regx_pnc = false;
-                    for stay in regx.states.iter().skip(1) {
-                        let sqry = self.squares.find(stay).expect("SNH");
-                        if sqrx.pn != Pn::Unpredictable {
-                            let ruls_union = regx_ruls
-                                .as_ref()
-                                .expect("SNH")
-                                .union(sqry.rules.as_ref().expect("SNH"))
-                                .expect("SNH");
-                            regx_ruls = Some(ruls_union);
-                        }
-                    }
-                }
+                } // next stay
+                assert!(ruls_union.initial_region() == *regx);
+                regx_ruls = Some(ruls_union);
             }
 
             self.groups.push(
@@ -1791,11 +1783,10 @@ impl SomeAction {
         // Gather defining squares
         let mut defining_sqrs = Vec::<&SomeSquare>::with_capacity(defining_stas.len());
         for stax in defining_stas.iter() {
-            defining_sqrs.push(
-                self.squares
-                    .find(stax)
-                    .expect("Group region states should refer to existing squares"),
-            );
+            if let Some(sqrx) = self.squares.find(stax) {
+                // Last square may not be found.
+                defining_sqrs.push(sqrx);
+            }
         }
 
         // Check the far states from possible defining squares, form pairs.
