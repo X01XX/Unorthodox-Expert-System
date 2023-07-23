@@ -360,6 +360,23 @@ impl RegionStore {
         ret_str
     }
 
+    /// Subtract a state from a RegionStore.
+    pub fn subtract_state(&self, stax: &SomeState) -> Self {
+        let mut ret_str = RegionStore::new(vec![]);
+
+        for regy in &self.avec {
+            if regy.is_superset_of_state(stax) {
+                for regz in regy.subtract_state(stax) {
+                    ret_str.push_nosubs(regz);
+                }
+            } else {
+                ret_str.push_nosubs(regy.clone());
+            }
+        } // next regy
+
+        ret_str
+    }
+
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, subtrahend: &RegionStore) -> RegionStore {
         let mut ret_str = self.clone();

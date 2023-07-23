@@ -28,7 +28,6 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -448,36 +447,41 @@ impl SomeAction {
 
         // Save regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
-            if key != regx.state1() && key != regx.state2() && regx.states.len() == 2 {
+            if key != regx.state1() && key != regx.state2() && regx.states.len() > 1 {
                 let Some(sqr1) = self.squares.find(regx.state1()) else {
                     panic!("Can't find group defining square?");
                 };
+                if !sqr1.pnc {
+                    continue;
+                }
                 let Some(sqr2) = self.squares.find(regx.state2()) else {
-                    panic!("Can't find group defining square?");
+                    continue;
                 };
 
-                if sqr1.pnc && sqr2.pnc {
-                    if !sqrx.state.is_adjacent(&sqr1.state) && !sqrx.can_combine_now(sqr1) {
-                        println!(
-                            "\nDom {} Act {} Seek edge between {} and {}",
-                            &self.dom_num, &self.num, &sqrx.state, &sqr1.state
-                        );
-                        self.seek_edge.push_nosubs(SomeRegion::new(vec![
-                            sqrx.state.clone(),
-                            sqr1.state.clone(),
-                        ]));
-                    }
+                if !sqr2.pnc {
+                    continue;
+                }
 
-                    if !sqrx.state.is_adjacent(&sqr2.state) && !sqrx.can_combine_now(sqr2) {
-                        println!(
-                            "\nDom {} Act {} Seek edge between {} and {}",
-                            &self.dom_num, &self.num, &sqrx.state, &sqr2.state
-                        );
-                        self.seek_edge.push_nosubs(SomeRegion::new(vec![
-                            sqrx.state.clone(),
-                            sqr2.state.clone(),
-                        ]));
-                    }
+                if !sqrx.state.is_adjacent(&sqr1.state) && !sqrx.can_combine_now(sqr1) {
+                    println!(
+                        "\nDom {} Act {} Seek edge between {} and {}",
+                        &self.dom_num, &self.num, &sqrx.state, &sqr1.state
+                    );
+                    self.seek_edge.push_nosubs(SomeRegion::new(vec![
+                        sqrx.state.clone(),
+                        sqr1.state.clone(),
+                    ]));
+                }
+
+                if !sqrx.state.is_adjacent(&sqr2.state) && !sqrx.can_combine_now(sqr2) {
+                    println!(
+                        "\nDom {} Act {} Seek edge between {} and {}",
+                        &self.dom_num, &self.num, &sqrx.state, &sqr2.state
+                    );
+                    self.seek_edge.push_nosubs(SomeRegion::new(vec![
+                        sqrx.state.clone(),
+                        sqr2.state.clone(),
+                    ]));
                 }
             }
         }
@@ -568,45 +572,14 @@ impl SomeAction {
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
         // Get possible regions, sqrx.state will be <region>.state1
-        let rsx: RegionStore = self.possible_regions_from_square(sqrx);
+        let grps: Vec<SomeGroup> = self.possible_groups_from_square(sqrx);
 
         let mut group_added = false;
-        for regx in rsx.iter() {
-            let sqrx = self.squares.find(regx.state1()).expect("SNH");
-
-            let mut regx_pnc = sqrx.pnc;
-
-            let mut regx_ruls: Option<RuleStore> = None;
-            if let Some(srules) = &sqrx.rules {
-                let mut ruls_union = srules.clone();
-                regx_pnc = false;
-                for stay in regx.states.iter().skip(1) {
-                    if let Some(sqry) = self.squares.find(stay) {
-                        // May fail on last state.
-                        let yrules = sqry.rules.as_ref().expect("SNH");
-                        if sqry.pn == sqrx.pn {
-                            // Last state may exist as a square, but need more samples.
-                            if let Some(uruls) = ruls_union.union(yrules) {
-                                ruls_union = uruls;
-                            } else {
-                                println!("regx {regx} {ruls_union} failed union with {sqry} ?");
-                                panic!("Done");
-                            }
-                        } else {
-                            assert!(ruls_union.is_superset_of(yrules));
-                        }
-                    }
-                } // next stay
-                assert!(ruls_union.initial_region() == *regx);
-                regx_ruls = Some(ruls_union);
+        for grpx in grps {
+            if !self.groups.any_superset_of(&grpx.region) {
+                group_added = true;
+                self.groups.push(grpx, self.dom_num, self.num);
             }
-
-            self.groups.push(
-                SomeGroup::new(regx.clone(), regx_ruls, regx_pnc),
-                self.dom_num,
-                self.num,
-            );
-            group_added = true;
         } // next regx
 
         if group_added {
@@ -2179,21 +2152,19 @@ impl SomeAction {
         stps
     } // end get_steps
 
-    /// Find squares whose rules can be combined with a given squares rules.
-    /// Check if any included squares invalidate a combination.
-    /// Remove subset combinations.
-    /// Return the regions resulting from successful combinations.
-    fn possible_regions_from_square(&self, sqrx: &SomeSquare) -> RegionStore {
-        //println!("possible_group_regions from sqr {}", &sqrx.state);
+    /// Find groups that can be formed by a given square, that is not currently in a group.
+    fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> Vec<SomeGroup> {
+        //println!("possible_groups_from_square {}", &sqrx.state);
+
+        let mut ret_grps = Vec::<SomeGroup>::new();
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return RegionStore::new(vec![]);
+            return ret_grps;
         }
 
         // Collect squares that could be combined with.
         let mut sim_sqrs = Vec::<&SomeSquare>::new();
-        sim_sqrs.push(sqrx);
 
         // Collect squares that cannot be combined with.
         // None of these can be in any combination of similar squares.
@@ -2206,14 +2177,32 @@ impl SomeAction {
 
             if sqrx.can_combine_now(sqry) {
                 sim_sqrs.push(sqry);
-            } else if sqrx.is_similar_to(sqry) {
+            } else if sqry.pn < sqrx.pn && sqrx.is_similar_to(sqry) {
                 // More samples of sqry are needed to tell if it is simmilar or dissimmilar.
             } else {
                 dissim_sqrs.push(sqry);
             }
         }
+
+        // Collect similar squares that have no dissimilar squares between
+        // them and the target square.
+        let mut sim_sqrs2 = Vec::<&SomeSquare>::with_capacity(sim_sqrs.len());
+        for sqry in sim_sqrs {
+            let mut skip = false;
+            for sqrz in &dissim_sqrs {
+                if sqrz.is_between(sqrx, sqry) {
+                    skip = true;
+                    break;
+                }
+            }
+            if skip {
+                continue;
+            }
+            sim_sqrs2.push(sqry);
+        }
+
         //println!("Similar squares:");
-        //for sqrz in sim_sqrs.iter() {
+        //for sqrz in sim_sqrs2.iter() {
         //    println!("  {}", sqrz);
         //}
         //println!("Disimilar squares:");
@@ -2221,94 +2210,141 @@ impl SomeAction {
         //    println!("  {}", sqrz);
         //}
 
-        // Check combinations of similar squares, largest first, until
-        // at least one valid combination is found.
-        //let mut sim_regs = RegionStore::new(vec![]);
-        let mut ret_regs = RegionStore::new(vec![]);
-        if sim_sqrs.len() > 1 {
-            for inx in 2..=sim_sqrs.len() {
-                //println!("Check any {inx} squares");
-                let combinations: Vec<Vec<&SomeSquare>> = tools::anyxofvec(inx, &sim_sqrs);
-
-                let regs = combinations
-                    .par_iter() // par_iter, ro iter for sequential diagnostic messages.
-                    .filter_map(|combx| self.validate_combination(combx, &dissim_sqrs))
-                    .collect::<Vec<SomeRegion>>();
-
-                for regx in regs {
-                    if ret_regs.any_superset_of(&regx) {
-                        continue;
-                    }
-                    ret_regs.push_larger(regx);
-                }
-            } // next inx
+        // Calc the region formed by the union of all similar squares and the target square.
+        let mut sim_reg = SomeRegion::new(vec![sqrx.state.clone()]);
+        for sqry in sim_sqrs2.iter() {
+            if sim_reg.is_superset_of_state(&sqry.state) {
+                continue;
+            }
+            sim_reg = sim_reg.union_state(&sqry.state);
         }
-        ret_regs
+        //println!("sim reg: {sim_reg}");
+
+        // Calc possible regions.
+        let mut poss_regs = RegionStore::new(vec![sim_reg]);
+        for sqrz in &dissim_sqrs {
+            if poss_regs.any_superset_of_state(&sqrz.state) {
+                poss_regs = poss_regs.subtract_state(&sqrz.state);
+            }
+        }
+
+        // Calc excluded regions.
+        if sim_sqrs2.len() > 1 {
+            let mut excluded_regs = RegionStore::new(vec![]);
+            for iny in 0..(sim_sqrs2.len() - 1) {
+                for inz in (iny + 1)..sim_sqrs2.len() {
+                    if !sim_sqrs2[iny].can_combine_now(sim_sqrs2[inz]) {
+                        excluded_regs.push_nosubs(SomeRegion::new(vec![
+                            sim_sqrs2[iny].state.clone(),
+                            sim_sqrs2[inz].state.clone(),
+                        ]));
+                    }
+                }
+            }
+            //println!("excluded regions {excluded_regs}");
+            // Subtract excluded regions.
+            for regy in excluded_regs.iter() {
+                if poss_regs.any_superset_of(regy) {
+                    let mut tmp_regs = RegionStore::new(vec![]);
+                    for regx in &poss_regs.avec {
+                        if regx.is_superset_of(regy) {
+                            let subregs1 = regx.subtract_state(regy.state1());
+                            for sreg in subregs1 {
+                                tmp_regs.push_nosubs(sreg);
+                            }
+                            let subregs2 = regx.subtract_state(regy.state2());
+                            for sreg in subregs2 {
+                                tmp_regs.push_nosubs(sreg);
+                            }
+                        } else {
+                            tmp_regs.push_nosubs(regx.clone());
+                        }
+                    }
+                    poss_regs = tmp_regs;
+                }
+            }
+        }
+
+        //println!("poss regions: {poss_regs}");
+
+        // Validate possible regions.
+        if !sim_sqrs2.is_empty() {
+            ret_grps = poss_regs
+                .avec
+                .par_iter() // par_iter, or iter for sequential diagnostic messages.
+                .filter_map(|regx| self.validate_possible_group(sqrx, regx, &sim_sqrs2))
+                .collect::<Vec<SomeGroup>>();
+        }
+
+        ret_grps
     } // end possible_regions_from_square
 
-    /// Validate a region that can be made from a given vector of SomeSquare refs.
-    fn validate_combination(
+    /// Validate a region that may be made from a given square, in combination with similar squares.
+    fn validate_possible_group(
         &self,
-        combx: &Vec<&SomeSquare>,
-        dissim_sqrs: &[&SomeSquare],
-    ) -> Option<SomeRegion> {
-        //print!("A combo: ");
-        //for sqrz in combx.iter() {
-        //    print!("  {}", sqrz.state);
-        //}
-
-        // Check if any square is unneeded.
-        if SomeSquare::vec_ref_check_for_unneeded(combx) {
-            //println!("  failed unneeded check");
+        sqrx: &SomeSquare,
+        regx: &SomeRegion,
+        sim_sqrs: &[&SomeSquare],
+    ) -> Option<SomeGroup> {
+        // Sanity check.
+        if !regx.is_superset_of_state(&sqrx.state) {
             return None;
         }
 
-        let mut state_vec = Vec::<SomeState>::with_capacity(combx.len());
-        for sqry in combx.iter() {
-            state_vec.push(sqry.state.clone());
-        }
-        let crules = if let Some(combrules) = combx[0].rules.as_ref() {
-            let mut crules = combrules.clone();
-            for sqry in combx.iter() {
-                //println!("Combining {rules} and {}", sqry.rules);
-                crules = crules.union(sqry.rules.as_ref()?)?;
-            }
-            Some(crules)
-        } else {
-            None
-        };
-
-        // Make a region, for checking and returning.
-        let regx = SomeRegion::new(state_vec);
-        //println!(" {regx}");
-
-        // Check if any dissimilar squares are in region.
-        for sqrz in dissim_sqrs.iter() {
-            if regx.is_superset_of_state(&sqrz.state) {
-                //println!("  failed superset state check");
-                return None;
+        // Find squares in the given region.
+        let mut sqrs_in = Vec::<&SomeSquare>::new();
+        sqrs_in.push(sqrx);
+        for sqry in sim_sqrs.iter() {
+            if regx.is_superset_of_state(&sqry.state) {
+                sqrs_in.push(sqry);
             }
         }
 
-        // Check all subset squares have subset rules.
-        if crules.is_none() {
-            if self.any_incompatible_pn_square_in_region(&regx) {
-                return None;
-            }
-        } else if let Some(xrules) = crules {
-            if !self.all_subset_rules_in_region(&regx, &xrules) {
-                return None;
+        // Calc the region formed be the squares.
+        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]);
+        for sqry in sqrs_in.iter().skip(1) {
+            if !regy.is_superset_of_state(&sqry.state) {
+                regy = regy.union_state(&sqry.state);
             }
         }
 
-        // Check current groups.
-        if self.groups.any_superset_of(&regx) {
-            //println!("  failed subset group region check");
+        // Return if the region does not have at least one similar square.
+        if regy.x_mask().is_low() {
             return None;
         }
 
-        // Return a good region.
-        Some(regx)
+        let mut rules: Option<RuleStore> = None;
+        if let Some(rulesx) = &sqrx.rules {
+            // Check all squares rules can form a union.
+            let mut rulesz = rulesx.clone();
+            for sqry in sqrs_in.iter().skip(1) {
+                if let Some(rulesy) = &sqry.rules {
+                    if let Some(rules_new) = rulesz.union(rulesy) {
+                        rulesz = rules_new;
+                    } else {
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            }
+            rules = Some(rulesz);
+        }
+
+        // Calc pnc.
+        let mut pnc = false;
+        if sqrx.pnc {
+            let sta_far = regy.far_state(&sqrx.state);
+            for sqrx in &sqrs_in {
+                if sqrx.state == sta_far {
+                    pnc = sqrx.pnc;
+                }
+            }
+        }
+
+        // Return a group.
+        let regz = SomeRegion::new(vec![sqrx.state.clone(), regy.far_state(&sqrx.state)]);
+        Some(SomeGroup::new(regz, rules, pnc))
     } // end validate_combination
 
     /// Take an action for a need.

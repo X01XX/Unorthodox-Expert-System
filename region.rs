@@ -442,6 +442,36 @@ impl SomeRegion {
         ret_vec
     }
 
+    /// Return the result of region minus state.
+    pub fn subtract_state(&self, stax: &SomeState) -> Vec<Self> {
+        let mut ret_vec = Vec::<Self>::new();
+
+        // If region is not a superset of the state, return self.
+        if !self.is_superset_of_state(stax) {
+            ret_vec.push(self.clone());
+            return ret_vec;
+        };
+
+        // If region minus state is null, return empty vector.
+        if self.states.len() == 1 {
+            return ret_vec;
+        }
+
+        // Split by X over 0 or 1.
+        let x_over_not_xs: Vec<SomeMask> = self.x_mask().split();
+
+        for mskx in x_over_not_xs.iter() {
+            if mskx.bitwise_and(stax).is_low() {
+                // reg_int has a 0 bit in that position
+                ret_vec.push(self.set_to_ones(mskx));
+            } else {
+                // reg_int has a 1 in that bit position
+                ret_vec.push(self.set_to_zeros(mskx));
+            }
+        }
+        ret_vec
+    }
+
     /// Return a string representing a vector of references to regions.
     pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
         let mut rc_str = String::new();
