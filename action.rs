@@ -2250,11 +2250,15 @@ impl SomeAction {
                         if regx.is_superset_of(regy) {
                             let subregs1 = regx.subtract_state(regy.state1());
                             for sreg in subregs1 {
-                                tmp_regs.push_nosubs(sreg);
+                                if sreg.is_superset_of_state(&sqrx.state) {
+                                    tmp_regs.push_nosubs(sreg);
+                                }
                             }
                             let subregs2 = regx.subtract_state(regy.state2());
                             for sreg in subregs2 {
-                                tmp_regs.push_nosubs(sreg);
+                                if sreg.is_superset_of_state(&sqrx.state) {
+                                    tmp_regs.push_nosubs(sreg);
+                                }
                             }
                         } else {
                             tmp_regs.push_nosubs(regx.clone());
