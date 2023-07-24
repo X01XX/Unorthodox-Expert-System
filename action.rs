@@ -2228,7 +2228,19 @@ impl SomeAction {
             }
         }
 
-        // Calc excluded regions.
+        // Limit regions to supersets of target square.
+        let mut poss_regs2 = RegionStore::new(vec![]);
+        for regx in poss_regs.iter() {
+            if regx.is_superset_of_state(&sqrx.state) {
+                poss_regs2.push(regx.clone());
+            }
+        }
+
+        // Calc excluded regions formed by pairs of similar squares
+        // that cannot be combined.  If the target square has a 1->0 bit,
+        // it may combine with a square having a corresponding 0->1, forming X->x,
+        // and one with 0->0, forming X->0,
+        // but 0->0 and 0->1 cannot combine.
         if sim_sqrs2.len() > 1 {
             let mut excluded_regs = RegionStore::new(vec![]);
             for iny in 0..(sim_sqrs2.len() - 1) {
@@ -2242,11 +2254,13 @@ impl SomeAction {
                 }
             }
             //println!("excluded regions {excluded_regs}");
-            // Subtract excluded regions.
+
+            // Subtract excluded region states.
+            // So regions can contain any one state, but not both.
             for regy in excluded_regs.iter() {
-                if poss_regs.any_superset_of(regy) {
+                if poss_regs2.any_superset_of(regy) {
                     let mut tmp_regs = RegionStore::new(vec![]);
-                    for regx in &poss_regs.avec {
+                    for regx in &poss_regs2.avec {
                         if regx.is_superset_of(regy) {
                             let subregs1 = regx.subtract_state(regy.state1());
                             for sreg in subregs1 {
@@ -2264,18 +2278,18 @@ impl SomeAction {
                             tmp_regs.push_nosubs(regx.clone());
                         }
                     }
-                    poss_regs = tmp_regs;
+                    poss_regs2 = tmp_regs;
                 }
             }
         }
 
-        //println!("poss regions: {poss_regs}");
+        //println!("poss regions: {poss_regs2}");
 
         // Validate possible regions.
         if !sim_sqrs2.is_empty() {
-            ret_grps = poss_regs
+            ret_grps = poss_regs2
                 .avec
-                .par_iter() // par_iter, or iter for sequential diagnostic messages.
+                .par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
                 .filter_map(|regx| self.validate_possible_group(sqrx, regx, &sim_sqrs2))
                 .collect::<Vec<SomeGroup>>();
         }

@@ -223,7 +223,7 @@ impl SomeDomain {
             goal_reg,
             steps_str,
             steps_by_change_vov,
-            depth,
+            depth - 1,
         ) {
             if let Some(plan2) = plan1.shortcuts() {
                 return Some(plan2);
@@ -354,13 +354,23 @@ impl SomeDomain {
         to_reg: &SomeRegion,
         depth: usize,
     ) -> Option<SomePlan> {
+        if depth == 0 {
+            return None;
+        }
+
         let required_change = SomeChange::region_to_region(from_reg, to_reg);
 
         let steps_str = self.get_steps(&required_change)?;
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
 
-        self.random_depth_first_search2(from_reg, to_reg, &steps_str, &steps_by_change_vov, depth)
+        self.random_depth_first_search2(
+            from_reg,
+            to_reg,
+            &steps_str,
+            &steps_by_change_vov,
+            depth - 1,
+        )
     }
 
     /// Do asymmetric chaining for a given step.
@@ -382,24 +392,28 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
+        if depth == 0 {
+            return None;
+        }
+
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
-            let to_step_plan = self.plan_steps_between(from_reg, &stepx.initial, depth)?;
+            let to_step_plan = self.plan_steps_between(from_reg, &stepx.initial, depth - 1)?;
 
             // Restrict the step initial region, in case it is different from the to_step_plan result region,
             // possibly changing the step result region.
             let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
-            let from_step_plan = self.plan_steps_between(&stepy.result, goal_reg, depth)?;
+            let from_step_plan = self.plan_steps_between(&stepy.result, goal_reg, depth - 1)?;
 
             (to_step_plan, stepy, from_step_plan)
         } else {
-            let from_step_plan = self.plan_steps_between(&stepx.result, goal_reg, depth)?;
+            let from_step_plan = self.plan_steps_between(&stepx.result, goal_reg, depth - 1)?;
 
             // Restrict the step result region, in case it is different from the from_step_plan initial region,
             // possibly changing the step initial region.
             let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
-            let to_step_plan = self.plan_steps_between(from_reg, &stepy.initial, depth)?;
+            let to_step_plan = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
 
             (to_step_plan, stepy, from_step_plan)
         };
