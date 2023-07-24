@@ -257,6 +257,21 @@ impl SomeState {
         } // next inx
         false
     }
+
+    /// Return true if a state is between two given states, exclusive.
+    pub fn is_between(&self, sta1: &SomeState, sta2: &SomeState) -> bool {
+        if self == sta1 {
+            return false;
+        }
+        if self == sta2 {
+            return false;
+        }
+
+        self.bitwise_xor(sta1)
+            .bitwise_and(&self.bitwise_xor(sta2))
+            .to_mask()
+            .is_low()
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.
@@ -269,6 +284,16 @@ impl BitsRef for SomeState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_is_between() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let sta2 = tmp_sta.new_from_string("s0b0010")?;
+        let sta3 = tmp_sta.new_from_string("s0b0011")?;
+        let sta5 = tmp_sta.new_from_string("s0b0101")?;
+        assert!(sta3.is_between(&sta2, &sta5));
+        Ok(())
+    }
 
     #[test]
     fn distance() -> Result<(), String> {

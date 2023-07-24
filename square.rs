@@ -259,18 +259,7 @@ impl SomeSquare {
 
     /// Return true if a square is between two given squares, exclusive.
     pub fn is_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
-        if self.state == sqr1.state {
-            return false;
-        }
-        if self.state == sqr2.state {
-            return false;
-        }
-
-        self.state
-            .bitwise_or(&sqr1.state)
-            .bitwise_and(&self.state.bitwise_or(&sqr2.state))
-            .to_mask()
-            .is_low()
+        self.state.is_between(&sqr1.state, &sqr2.state)
     }
 
     /// Return the distance (number of bits different) between two squares.
