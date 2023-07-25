@@ -157,8 +157,8 @@ impl DomainStore {
                 if self.select_non_negative[inx].intersects(&self.select_non_negative[iny]) {
                     num_int += 1;
                     //println!("{} intersects {}", self.select_non_negative[inx], self.select_non_negative[iny]);
-                }
-                if self.select_non_negative[inx].is_adjacent(&self.select_non_negative[iny]) {
+                } else if self.select_non_negative[inx].is_adjacent(&self.select_non_negative[iny])
+                {
                     //println!("{} adjacent {}", self.select_non_negative[inx], self.select_non_negative[iny]);
                     num_adjacent += 1;
                 }
@@ -421,7 +421,10 @@ impl DomainStore {
         for targx in targets.iter() {
             // Try making plans.
             let mut plans = self.get_plans(targx.dom_num, &targx.region)?;
-            plans_per_target.push(plans.remove(self.choose_a_plan(&plans)));
+            let inx = self.choose_a_plan(&plans);
+            if !plans[inx].is_empty() {
+                plans_per_target.push(plans.remove(inx));
+            }
         } // next optx
 
         Some(plans_per_target)
@@ -1150,8 +1153,8 @@ impl DomainStore {
                         // Generate new between path.
                         let mut tmp_btw = Vec::<&RegionStoreCorr>::with_capacity(btw_x.len() + 1);
                         tmp_btw.push(regcr_y);
-                        for regcr_x in btw_x.iter() {
-                            tmp_btw.push(regcr_x);
+                        for regcradj_x in btw_x.iter() {
+                            tmp_btw.push(regcradj_x);
                         }
                         // Save new between path for next pass.
                         next_between_vecs.push(tmp_btw);
@@ -1202,7 +1205,7 @@ impl DomainStore {
         let mut adj_parts = Vec::<RegionStoreCorr>::new();
         for inx in 0..(path1.len() - 1) {
             if path1[inx].is_adjacent(path1[inx + 1]) {
-                // Get adjacent part to connct the two.
+                // Get adjacent part to connect the two.
                 let apx = path1[inx].adjacent_part(path1[inx + 1]);
                 // Alter the bridge.
                 adj_parts.push(apx);

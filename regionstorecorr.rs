@@ -282,13 +282,19 @@ impl RegionStoreCorr {
         ret_msks
     }
 
-    /// Return true if two ReagionStoreCorrs are adjacent.
+    /// Return true if at least one corresponding pair in two ReagionStoreCorrs is adjacent,
+    /// while other corresponding pairs are adjacent or intersect.
     pub fn is_adjacent(&self, other: &RegionStoreCorr) -> bool {
         let mut num_dif = 0;
         for (regx, regy) in self.iter().zip(other.iter()) {
-            num_dif += regx.diff_mask(regy).num_one_bits();
+            let dif = regx.diff_mask(regy).num_one_bits();
+
+            if dif > 1 {
+                return false;
+            }
+            num_dif += dif;
         }
-        num_dif == 1
+        num_dif > 0
     }
 
     /// Return a RegionStoreCorr states ref vector.
@@ -538,16 +544,24 @@ impl RegionStoreCorr {
     }
 
     /// Return the adjacent part of two RegionStoreCorr.
-    /// A RegionStoreCorr implied, if the RegionStoreCorrs are held to be similar in some property.
-    /// If the RegionStoreCorr can form a non-optimistic union, the result will be that union.
+    /// Presumably, at least one pair of corresponding regions will be adjacent, calc the adjacent part.
+    /// If a pair of corresponding regions intersect, calc the intersection.
     pub fn adjacent_part(&self, other: &Self) -> Self {
         assert!(self.is_adjacent(other));
 
-        let msk = self.diff_masks(other);
-        let regs1 = self.set_to_x(&msk);
-        let regs2 = other.set_to_x(&msk);
+        let mut ret_corr = RegionStoreCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
 
-        regs1.intersection(&regs2).unwrap()
+        for (reg_s, reg_o) in self.iter().zip(other.iter()) {
+            if reg_s.is_adjacent(reg_o) {
+                ret_corr.push(reg_s.adjacent_part(reg_o));
+            } else if let Some(reg_int) = reg_s.intersection(reg_o) {
+                ret_corr.push(reg_int);
+            } else {
+                panic!("SNH");
+            }
+        }
+
+        ret_corr
     }
 } // End impl RegionStoreCorr.
 
@@ -568,6 +582,55 @@ impl IndexMut<usize> for RegionStoreCorr {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn is_adjacent() -> Result<(), String> {
+        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
+
+        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
+
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(tmp_reg1.new_from_string("r0000_x10x")?);
+        regstr1.push(tmp_reg2.new_from_string("r0000_000x_0000_000x")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(tmp_reg1.new_from_string("r0000_x11x")?);
+        regstr2.push(tmp_reg2.new_from_string("r0000_0000_0000_000x")?);
+
+        assert!(regstr1.is_adjacent(&regstr2));
+        assert!(!regstr1.is_adjacent(&regstr1));
+
+        Ok(())
+    }
+
+    #[test]
+    fn intersects() -> Result<(), String> {
+        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
+
+        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
+
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(tmp_reg1.new_from_string("r0000_x10x")?);
+        regstr1.push(tmp_reg2.new_from_string("r0000_000x_0000_000x")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(tmp_reg1.new_from_string("r0000_1x01")?);
+        regstr2.push(tmp_reg2.new_from_string("r0000_0000_0000_00x1")?);
+
+        assert!(regstr1.intersects(&regstr2));
+
+        let mut regstr3 = RegionStoreCorr::with_capacity(2);
+        regstr3.push(tmp_reg1.new_from_string("r0000_x11x")?);
+        regstr3.push(tmp_reg2.new_from_string("r0000_0000_0000_000x")?);
+
+        assert!(!regstr1.intersects(&regstr3));
+
+        Ok(())
+    }
 
     #[test]
     fn test_subtract() -> Result<(), String> {
