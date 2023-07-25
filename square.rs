@@ -213,22 +213,19 @@ impl SomeSquare {
         false
     }
 
-    /// Return true if two squares are similar.
-    pub fn is_similar_to(&self, other: &SomeSquare) -> bool {
-        //println!("running is_similar: {} {}", self.state, other.state);
-        if self.pnc && other.pnc && self.pn != other.pn {
-            return false;
-        }
-        if self.pn > other.pn && other.pnc {
-            return false;
-        }
-        if other.pn > self.pn && self.pnc {
+    /// Return true if a square and another, after failing the can_combine_now test,
+    /// may combine after the other has more samples.
+    /// This assumes no substantial future change to the method-initiating square.
+    pub fn may_combine_later_to(&self, other: &SomeSquare) -> bool {
+        //println!("running may_combine_later_to: {} {}", self.state, other.state);
+        if other.pn > self.pn || other.pnc {
             return false;
         }
 
-        if self.pn == Pn::Unpredictable || other.pn == Pn::Unpredictable {
+        if self.pn == Pn::Unpredictable {
             return true;
         }
+
         if self
             .rules
             .as_ref()
@@ -458,7 +455,7 @@ mod tests {
         println!("sqr3: {sqr3}");
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(sqr2.is_similar_to(&sqr1));
+        assert!(sqr2.may_combine_later_to(&sqr1));
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
         assert!(!sqr2.can_combine_now(&sqr3));
@@ -474,10 +471,10 @@ mod tests {
         println!("sqr2: {sqr2}");
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        assert!(!sqr4.is_similar_to(&sqr2));
+        assert!(!sqr4.may_combine_later_to(&sqr2));
 
         // Exersize other branch of code.
-        assert!(!sqr2.is_similar_to(&sqr4));
+        assert!(!sqr2.may_combine_later_to(&sqr4));
 
         // Add to sqr2 to make it pnc.
         sqr2.add_result(tmp_sta.new_from_string("s0b1101")?);
@@ -487,10 +484,7 @@ mod tests {
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        assert!(sqr1.is_similar_to(&sqr2));
-
-        // Exersize other branch of code.
-        assert!(sqr2.is_similar_to(&sqr1));
+        assert!(sqr2.may_combine_later_to(&sqr1));
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
         println!("sqr2 {}", sqr2);
@@ -525,7 +519,7 @@ mod tests {
         sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
-        let cmb = sqr1.is_similar_to(&sqr2);
+        let cmb = sqr1.may_combine_later_to(&sqr2);
         println!("cmb {:?}", cmb);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.

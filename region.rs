@@ -270,13 +270,15 @@ impl SomeRegion {
     }
 
     /// Given a state in a region, return the far state in the region.
-    pub fn far_state(&self, sta: &SomeState) -> SomeState {
+    pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
+        assert!(self.is_superset_of_state(sta));
         self.state1().bitwise_xor(self.state2()).bitwise_xor(sta)
     }
 
     /// Given a region, and a proper subset region, return the
     /// far region within the superset region.
     pub fn far_reg(&self, other: &Self) -> Self {
+        assert!(self.is_superset_of(other));
         let int_x_msk = self.x_mask();
 
         let ok_x_msk = other.x_mask();
@@ -876,7 +878,7 @@ mod tests {
             let state1_str =
                 "s0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
             let state1 = tmp_sta.new_from_string(&state1_str)?;
-            let state2 = reg_instance.far_state(&state1);
+            let state2 = reg_instance.state_far_from(&state1);
             println!("{} should equal {state1}", reg_instance.state1());
             assert!(reg_instance.state1() == &state1);
             println!("{} should equal {state1}", reg_instance.state2());
@@ -1050,7 +1052,7 @@ mod tests {
 
         let reg0 = tmp_reg.new_from_string("r0000XXX1")?;
         let state0 = tmp_sta.new_from_string("s0b00001011")?;
-        let far_state = reg0.far_state(&state0);
+        let far_state = reg0.state_far_from(&state0);
         println!("far state is {far_state}");
         assert!(far_state == tmp_sta.new_from_string("s0b101")?);
         Ok(())

@@ -292,6 +292,7 @@ mod tests {
         let sta3 = tmp_sta.new_from_string("s0b0011")?;
         let sta5 = tmp_sta.new_from_string("s0b0101")?;
         assert!(sta3.is_between(&sta2, &sta5));
+        assert!(!sta5.is_between(&sta2, &sta3));
         Ok(())
     }
 

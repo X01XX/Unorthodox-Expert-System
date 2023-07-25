@@ -225,7 +225,7 @@ impl SomeGroup {
                     self.region = SomeRegion::new(vec![astate.clone()]);
                 }
             } else if self.region.state1() != astate && self.region.state2() != astate {
-                let state2 = self.region.far_state(astate);
+                let state2 = self.region.state_far_from(astate);
                 self.region = SomeRegion::new(vec![astate.clone(), state2]);
             }
         }
