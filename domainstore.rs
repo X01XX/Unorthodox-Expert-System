@@ -150,6 +150,8 @@ impl DomainStore {
             println!("  {}", regsx);
         }
 
+        let mut adj_regs = Vec::<RegionStoreCorr>::new();
+
         let mut num_int = 0;
         let mut num_adjacent = 0;
         for inx in 0..(self.select_non_negative.len()) {
@@ -159,11 +161,19 @@ impl DomainStore {
                     //println!("{} intersects {}", self.select_non_negative[inx], self.select_non_negative[iny]);
                 } else if self.select_non_negative[inx].is_adjacent(&self.select_non_negative[iny])
                 {
-                    //println!("{} adjacent {}", self.select_non_negative[inx], self.select_non_negative[iny]);
+                    let adjx =
+                        self.select_non_negative[inx].adjacent_part(&self.select_non_negative[iny]);
+                    println!(
+                        "{} adjacent {} part {}",
+                        self.select_non_negative[inx], self.select_non_negative[iny], adjx
+                    );
+                    adj_regs.push(adjx);
                     num_adjacent += 1;
                 }
             }
         }
+        self.select_non_negative.append(&mut adj_regs);
+
         println!("  {num_int} intersections, {num_adjacent} adjacent");
     }
 
@@ -943,14 +953,14 @@ impl DomainStore {
         }
 
         if self.select_non_negative.is_empty() {
-            //println!("no nn regs");
+            println!("no nn regs");
             return None;
         }
 
         // Check if one nn region is superset start_reg and intersects goal_reg.
         for regsx in self.select_non_negative.iter() {
             if regsx.is_superset_of(start_regs) && regsx.intersects(goal_regs) {
-                //println!("one nn region found");
+                println!("one nn region found");
                 return None; // Standard path search should have worked.
             }
         }
@@ -1127,11 +1137,11 @@ impl DomainStore {
                 let left = btw_x.first().unwrap();
 
                 for regcr_x in start_in.iter() {
-                    if regcr_x.intersects(left) || regcr_x.is_adjacent(left) {
+                    if regcr_x.intersects(left) {
                         // Get item that may intersect, or be adjacent to, an item that the goal_reg is in.
                         let right = btw_x.last().unwrap();
                         for regcr_y in goal_in.iter() {
-                            if right.intersects(regcr_y) || right.is_adjacent(regcr_y) {
+                            if right.intersects(regcr_y) {
                                 bridge = (*regcr_x, btw_x.clone(), *regcr_y);
                                 break 'find_bridge;
                             }
@@ -1149,7 +1159,7 @@ impl DomainStore {
                         continue;
                     }
                     let left = btw_x.first().unwrap();
-                    if left.intersects(regcr_y) || left.is_adjacent(regcr_y) {
+                    if left.intersects(regcr_y) {
                         // Generate new between path.
                         let mut tmp_btw = Vec::<&RegionStoreCorr>::with_capacity(btw_x.len() + 1);
                         tmp_btw.push(regcr_y);
@@ -1161,7 +1171,7 @@ impl DomainStore {
                     }
 
                     let right = btw_x.last().unwrap();
-                    if right.intersects(regcr_y) || right.is_adjacent(regcr_y) {
+                    if right.intersects(regcr_y) {
                         // Generate new between path.
                         let mut tmp_btw = Vec::<&RegionStoreCorr>::with_capacity(btw_x.len() + 1);
                         for regcr_x in btw_x.iter() {
@@ -1194,46 +1204,11 @@ impl DomainStore {
 
         // Build path to goal.
         let mut cur_regs = start_reg.clone();
-        let mut path1 = Vec::<&RegionStoreCorr>::with_capacity(bridge_regcr_vec.len() + 2);
-        path1.push(start_regcr);
-        path1.append(&mut bridge_regcr_vec);
-        path1.push(goal_regcr);
-        path1.push(goal_reg);
-
-        // Check for adjacent parts.
-        // Storage for adjacent parts used to cross two adjacent non-negative regions.
-        let mut adj_parts = Vec::<RegionStoreCorr>::new();
-        for inx in 0..(path1.len() - 1) {
-            if path1[inx].is_adjacent(path1[inx + 1]) {
-                // Get adjacent part to connect the two.
-                let apx = path1[inx].adjacent_part(path1[inx + 1]);
-                // Alter the bridge.
-                adj_parts.push(apx);
-            }
-        }
-        // Assign the final path.
-        let path = if adj_parts.is_empty() {
-            path1
-        } else {
-            let mut path_tmp =
-                Vec::<&RegionStoreCorr>::with_capacity(path1.len() + adj_parts.len());
-            //println!("{} adjacent found", adj_parts.len());
-            // Insert adjacent parts into the path.
-            let mut cntr = 0;
-
-            for inx in 0..(path1.len() - 1) {
-                if path1[inx].is_adjacent(path1[inx + 1]) {
-                    // Alter the bridge.
-                    path_tmp.push(path1[inx]);
-                    path_tmp.push(&adj_parts[cntr]);
-                    cntr += 1;
-                } else {
-                    path_tmp.push(path1[inx]);
-                }
-            }
-            path_tmp.push(path1.last().unwrap());
-            path_tmp
-        };
+        let mut path = Vec::<&RegionStoreCorr>::with_capacity(bridge_regcr_vec.len() + 2);
+        path.push(start_regcr);
+        path.append(&mut bridge_regcr_vec);
+        path.push(goal_regcr);
+        path.push(goal_reg);
 
         //println!("cur_regs: {}", cur_regs);
         //println!(
@@ -1730,7 +1705,7 @@ mod tests {
     }
 
     #[test]
-    /// Test case where ..
+    /// Test case where there are multiple domains.
     fn avoidance6() -> Result<(), String> {
         // Init domainstore and two domains.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(1)]);
@@ -1888,6 +1863,93 @@ mod tests {
         assert!(*all_states[0] == init_state1);
         assert!(*all_states[1] == init_state2);
 
+        Ok(())
+    }
+
+    #[test]
+    /// Test case using adjacent non-negative regions.
+    fn avoidance7() -> Result<(), String> {
+        // Init domainstore and two domains.
+        let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+        dmxs[0].add_action();
+
+        let sf = dmxs[0].state_from_string("s0b1111")?;
+        let s0 = dmxs[0].state_from_string("s0b0")?;
+
+        // Set up action to change the first bit.
+        let s1 = dmxs[0].state_from_string("s0b0001")?;
+        let se = dmxs[0].state_from_string("s0b1110")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+
+        // Set up action to change the second bit.
+        let s2 = dmxs[0].state_from_string("s0b0010")?;
+        let sd = dmxs[0].state_from_string("s0b1101")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+
+        // Set up action to change the third bit.
+        let s4 = dmxs[0].state_from_string("s0b0100")?;
+        let sb = dmxs[0].state_from_string("s0b1011")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+
+        // Set up action to change the fourth bit.
+        let s8 = dmxs[0].state_from_string("s0b1000")?;
+        let s7 = dmxs[0].state_from_string("s0b0111")?;
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
+        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+
+        // Init aggregate needs.
+        dmxs.get_needs();
+
+        // Set select regions.
+
+        // Set up dom 0 00XX dependent on dom 1 01XX.
+        let mut regstr0 = RegionStoreCorr::with_capacity(1);
+        regstr0.push(
+            dmxs[0]
+                .region_from_string_pad_x("r1100")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr0, -1);
+
+        // Set up dom 0 00XX dependent on dom 1 10XX.
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        regstr1.push(
+            dmxs[0]
+                .region_from_string_pad_x("r1011")
+                .expect("String should be formatted correctly"),
+        );
+        dmxs.add_select(regstr1, -1);
+        dmxs.calc_select();
+
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
+        dmxs[0].set_state(&s0);
+
+        let sd = dmxs[0].state_from_string("s0b1101")?;
+
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![s0.clone()])]);
+        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+
+        let all_states = dmxs.all_current_states();
+
+        // Try making plans.
+        if let Some(plans) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
+            print!("Plans {}", plans);
+            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            print!(", rate {}", rate);
+            println!(" ");
+            assert!(rate == 0);
+            assert!(plans.len() == 3);
+            assert!(plans[0].result_region() == &dmxs[0].region_from_string("r0110").expect("SNH"));
+            assert!(plans[1].result_region() == &dmxs[0].region_from_string("r0111").expect("SNH"));
+        } else {
+            return Err(format!("No plan found?"));
+        }
         Ok(())
     }
 
