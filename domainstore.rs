@@ -953,14 +953,14 @@ impl DomainStore {
         }
 
         if self.select_non_negative.is_empty() {
-            println!("no nn regs");
+            //println!("no nn regs");
             return None;
         }
 
         // Check if one nn region is superset start_reg and intersects goal_reg.
         for regsx in self.select_non_negative.iter() {
             if regsx.is_superset_of(start_regs) && regsx.intersects(goal_regs) {
-                println!("one nn region found");
+                //println!("one nn region found");
                 return None; // Standard path search should have worked.
             }
         }
