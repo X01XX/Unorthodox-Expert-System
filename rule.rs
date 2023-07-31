@@ -190,11 +190,7 @@ impl SomeRule {
         let st_high = self.b11.bitwise_or(&self.b10).to_state();
         let st_low = self.b00.bitwise_or(&self.b01).bitwise_not().to_state();
 
-        if st_high == st_low {
-            SomeRegion::new(vec![st_high])
-        } else {
-            SomeRegion::new(vec![st_high, st_low])
-        }
+        SomeRegion::new(vec![st_high, st_low])
     }
 
     /// Return the result region of a rule.
@@ -202,11 +198,7 @@ impl SomeRule {
         let st_high = self.b11.bitwise_or(&self.b01).to_state();
         let st_low = self.b00.bitwise_or(&self.b10).bitwise_not().to_state();
 
-        if st_high == st_low {
-            SomeRegion::new(vec![st_high])
-        } else {
-            SomeRegion::new(vec![st_high, st_low])
-        }
+        SomeRegion::new(vec![st_high, st_low])
     }
 
     /// Return the result region after applying an initial region to a rule.

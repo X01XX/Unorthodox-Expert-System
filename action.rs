@@ -1254,13 +1254,6 @@ impl SomeAction {
                 if sqry.pnc {
                     if sqrx.pnc {
                         grpx.set_pnc();
-                        // Change region if made up of GT two states.
-                        if grpx.region.states.len() > 2 {
-                            grpx.set_region(SomeRegion::new(vec![
-                                grpx.region.state1().clone(),
-                                grpx.region.state2().clone(),
-                            ]));
-                        }
                     }
                     continue;
                 }

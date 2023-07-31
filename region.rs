@@ -48,15 +48,10 @@ impl SomeRegion {
     /// For a region used to define a group, the states have corresponding squares that have been sampled.
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
+        assert!(states.len() < 3);
 
-        if states.len() > 2 {
-            // Calc x-mask for the region.
-            let mut x_mask = SomeMask::new(states[0].bts.new_low());
-            for stax in states.iter().skip(1) {
-                x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&states[0]));
-            }
-            // Calc state in region, far from the first state, as if the region was made of two states.
-            states.push(states[0].bitwise_xor(&x_mask));
+        if states.len() == 2 && states[0] == states[1] {
+            states.pop();
         }
 
         Self { states }
@@ -153,14 +148,10 @@ impl SomeRegion {
             return Err(format!("String {str}, too long?"));
         }
 
-        if msk_high == msk_low {
-            Ok(SomeRegion::new(vec![msk_high.to_state()]))
-        } else {
-            Ok(SomeRegion::new(vec![
-                msk_high.to_state(),
-                msk_low.to_state(),
-            ]))
-        }
+        Ok(SomeRegion::new(vec![
+            msk_high.to_state(),
+            msk_low.to_state(),
+        ]))
     } // end new_from_string
 
     /// Return the expected length of a string representing a region, for string alloaction.
@@ -225,11 +216,7 @@ impl SomeRegion {
         let state1 = self.high_state().bitwise_and(&other.high_state());
         let state2 = self.low_state().bitwise_or(&other.low_state());
 
-        if state1 == state2 {
-            Some(Self::new(vec![state1]))
-        } else {
-            Some(Self::new(vec![state1, state2]))
-        }
+        Some(Self::new(vec![state1, state2]))
     }
 
     /// Return true if a region is a superset of a state.
@@ -292,11 +279,7 @@ impl SomeRegion {
         let state1 = other.state1().bitwise_xor(&cng_bits);
         let state2 = other.state2().bitwise_xor(&cng_bits);
 
-        if state1 == state2 {
-            SomeRegion::new(vec![state1])
-        } else {
-            SomeRegion::new(vec![state1, state2])
-        }
+        SomeRegion::new(vec![state1, state2])
     }
 
     /// Return true if a region is a subset on another region.
@@ -352,11 +335,7 @@ impl SomeRegion {
         let state1 = self.state1().bitwise_and(&msk.bitwise_not());
         let state2 = self.state2().bitwise_and(&msk.bitwise_not());
 
-        if state1 == state2 {
-            Self::new(vec![state1])
-        } else {
-            Self::new(vec![state1, state2])
-        }
+        Self::new(vec![state1, state2])
     }
 
     /// Return a region with masked X-bits set to ones.
@@ -364,11 +343,7 @@ impl SomeRegion {
         let state1 = self.state1().bitwise_or(msk);
         let state2 = self.state2().bitwise_or(msk);
 
-        if state1 == state2 {
-            Self::new(vec![state1])
-        } else {
-            Self::new(vec![state1, state2])
-        }
+        Self::new(vec![state1, state2])
     }
 
     /// Return a region with masked bit positions set to X.
@@ -376,11 +351,7 @@ impl SomeRegion {
         let state1 = self.state1().bitwise_or(msk);
         let state2 = self.state2().bitwise_and(&msk.bitwise_not());
 
-        if state1 == state2 {
-            Self::new(vec![state1])
-        } else {
-            Self::new(vec![state1, state2])
-        }
+        Self::new(vec![state1, state2])
     }
 
     /// Return the distance from a region to a state.
@@ -667,20 +638,11 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(1));
 
         let sta1 = tmp_sta.new_from_string("s0b0000")?;
-        let sta2 = tmp_sta.new_from_string("s0b0011")?;
-        let sta3 = tmp_sta.new_from_string("s0b0101")?;
 
-        let reg1 = SomeRegion::new(vec![sta1, sta2, sta3]);
+        let reg1 = SomeRegion::new(vec![sta1.clone(), sta1]);
         println!("reg1 is {}", reg1);
 
-        let second = reg1.state2();
-        println!(
-            "reg1 first is {}, second is {}",
-            reg1.state1(),
-            reg1.state2()
-        );
-
-        assert!(second == &tmp_sta.new_from_string("s0b0111")?);
+        assert!(reg1.states.len() == 1);
 
         Ok(())
     }
