@@ -151,17 +151,6 @@ impl RegionStore {
             .collect()
     }
 
-    /// Return vector of regions that are a superset of a given state.
-    pub fn supersets_of_state(&self, sta: &SomeState) -> Vec<&SomeRegion> {
-        let mut ret_vec = Vec::<&SomeRegion>::new();
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-                ret_vec.push(regx);
-            }
-        }
-        ret_vec
-    }
-
     /// Return the number of supersets of a state.
     pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
         self.avec
@@ -353,6 +342,19 @@ impl RegionStore {
                     ret_str.push_nosubs(regz);
                 }
             } else {
+                ret_str.push_nosubs(regy.clone());
+            }
+        } // next regy
+
+        ret_str
+    }
+
+    /// Return a RegionStore of regions that are superset of a state.
+    pub fn supersets_of_state(&self, stax: &SomeState) -> Self {
+        let mut ret_str = RegionStore::new(vec![]);
+
+        for regy in &self.avec {
+            if regy.is_superset_of_state(stax) {
                 ret_str.push_nosubs(regy.clone());
             }
         } // next regy

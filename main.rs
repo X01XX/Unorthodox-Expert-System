@@ -180,14 +180,12 @@ fn run_to_end(dmxs: &mut DomainStore) {
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
 fn run_number_times(num_runs: usize) -> usize {
     let mut runs_left = num_runs;
-    let mut runs = 0;
     let mut failures = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(runs_left);
     let mut steps_vec = Vec::<usize>::with_capacity(runs_left);
 
     while runs_left > 0 {
         runs_left -= 1;
-        runs += 1;
 
         let start = Instant::now();
         match do_one_session() {
@@ -225,7 +223,7 @@ fn run_number_times(num_runs: usize) -> usize {
     let mut steps_high = 0;
     let mut steps_low = usize::MAX;
     for stepsx in steps_vec.iter() {
-        steps_total += stepsx;
+        steps_total += *stepsx;
         if *stepsx > steps_high {
             steps_high = *stepsx;
         }
@@ -233,9 +231,10 @@ fn run_number_times(num_runs: usize) -> usize {
             steps_low = *stepsx;
         }
     }
-    let average = duration_total / runs as u32;
+    let average_time = duration_total / duration_vec.len() as u32;
+    let average_steps = steps_total / steps_vec.len();
     println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.3?}, high: {:.3?}, low: {:.3?} Number with unsatisfied needs {}",
-         runs, steps_total / runs, steps_high, steps_low, average, duration_high, duration_low, failures);
+         num_runs, average_steps, steps_high, steps_low, average_time, duration_high, duration_low, failures);
     failures
 }
 
