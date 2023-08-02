@@ -365,6 +365,8 @@ fn do_one_session() -> Result<usize, String> {
             if dmxs.cant_do.is_empty() {
                 return Ok(dmxs.step_num);
             } else {
+                // do_session(&mut dmxs);
+                // process::exit(0);
                 return Err("There are needs that cannot be done".to_string());
             }
         }

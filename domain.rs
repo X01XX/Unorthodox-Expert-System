@@ -249,7 +249,7 @@ impl SomeDomain {
         steps_by_change_vov: &Vec<Vec<&SomeStep>>,
         depth: usize,
     ) -> Option<SomePlan> {
-        //println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
+        // println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
 
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
@@ -428,7 +428,7 @@ impl SomeDomain {
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
     pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
-        //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
+        // println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
@@ -450,7 +450,7 @@ impl SomeDomain {
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
-        let num_depth = 3 * required_change.number_changes();
+        let num_depth = 4 * required_change.number_changes();
 
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&required_change)?;
