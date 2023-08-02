@@ -379,6 +379,24 @@ impl RegionStore {
         ret_str
     }
 
+    /// Subtract a state from a RegionStore, with results being supersets of a second state.
+    /// Assumes all regions are supersets of the second state before doing the subtraction.
+    pub fn subtract_state_to_supersets_of(&self, substa: &SomeState, supsta: &SomeState) -> Self {
+        let mut ret_str = RegionStore::new(vec![]);
+
+        for regy in &self.avec {
+            if regy.is_superset_of_state(substa) {
+                for regz in regy.subtract_state_to_supersets_of(substa, supsta) {
+                    ret_str.push_nosubs(regz);
+                }
+            } else {
+                ret_str.push_nosubs(regy.clone());
+            }
+        } // next regy
+
+        ret_str
+    }
+
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, subtrahend: &RegionStore) -> RegionStore {
         let mut ret_str = self.clone();

@@ -356,7 +356,6 @@ fn domainstore_init() -> DomainStore {
 /// there are needs than cannot be done.
 fn do_one_session() -> Result<usize, String> {
     let mut dmxs = domainstore_init();
-
     loop {
         // Generate needs, get can_do and cant_do need vectors.
         dmxs.generate_and_display_needs();
@@ -365,8 +364,9 @@ fn do_one_session() -> Result<usize, String> {
         if dmxs.can_do.is_empty() {
             if dmxs.cant_do.is_empty() {
                 return Ok(dmxs.step_num);
+            } else {
+                return Err("There are needs that cannot be done".to_string());
             }
-            return Err("There are needs that cannot be done".to_string());
         }
 
         do_any_need(&mut dmxs);

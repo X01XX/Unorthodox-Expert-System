@@ -2176,9 +2176,7 @@ impl SomeAction {
                 } else if sqrx.may_combine_later_to(sqry) {
                     // More samples of sqry are needed to tell if it is simmilar or dissimmilar.
                 } else {
-                    poss_regs = poss_regs
-                        .subtract_state(&sqry.state)
-                        .supersets_of_state(&sqrx.state);
+                    poss_regs = poss_regs.subtract_state_to_supersets_of(&sqry.state, &sqrx.state);
                 }
             }
         }
@@ -2236,17 +2234,15 @@ impl SomeAction {
                     let mut tmp_regs = RegionStore::new(vec![]);
                     for regx in &poss_regs.avec {
                         if regx.is_superset_of(regy) {
-                            let subregs1 = regx.subtract_state(regy.state1());
+                            let subregs1 =
+                                regx.subtract_state_to_supersets_of(regy.state1(), &sqrx.state);
                             for sreg in subregs1 {
-                                if sreg.is_superset_of_state(&sqrx.state) {
-                                    tmp_regs.push_nosubs(sreg);
-                                }
+                                tmp_regs.push_nosubs(sreg);
                             }
-                            let subregs2 = regx.subtract_state(regy.state2());
+                            let subregs2 =
+                                regx.subtract_state_to_supersets_of(regy.state2(), &sqrx.state);
                             for sreg in subregs2 {
-                                if sreg.is_superset_of_state(&sqrx.state) {
-                                    tmp_regs.push_nosubs(sreg);
-                                }
+                                tmp_regs.push_nosubs(sreg);
                             }
                         } else {
                             tmp_regs.push_nosubs(regx.clone());

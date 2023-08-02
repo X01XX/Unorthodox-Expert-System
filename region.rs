@@ -445,6 +445,43 @@ impl SomeRegion {
         ret_vec
     }
 
+    /// Return the result of region minus state, supersets of a second state.
+    pub fn subtract_state_to_supersets_of(
+        &self,
+        substa: &SomeState,
+        supsta: &SomeState,
+    ) -> Vec<Self> {
+        let mut ret_vec = Vec::<Self>::new();
+
+        // If region is not a superset of the state, return self.
+        if !self.is_superset_of_state(substa) {
+            ret_vec.push(self.clone());
+            return ret_vec;
+        };
+
+        // If region minus state is null, return empty vector.
+        if self.states.len() == 1 {
+            return ret_vec;
+        }
+
+        // Split by X over 0 or 1, where the result will be a superset of the second argument state.
+        let x_over_not_xs: Vec<SomeMask> = self
+            .x_mask()
+            .bitwise_and(&substa.bitwise_xor(supsta))
+            .split();
+
+        for mskx in x_over_not_xs.iter() {
+            if mskx.bitwise_and(substa).is_low() {
+                // reg_int has a 0 bit in that position
+                ret_vec.push(self.set_to_ones(mskx));
+            } else {
+                // reg_int has a 1 in that bit position
+                ret_vec.push(self.set_to_zeros(mskx));
+            }
+        }
+        ret_vec
+    }
+
     /// Return a string representing a vector of references to regions.
     pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
         let mut rc_str = String::new();
@@ -632,6 +669,32 @@ mod tests {
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn subtract_state_to_supersets_of() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(1));
+
+        let sta0 = tmp_sta.new_from_string("s0b0000")?;
+        let staf = tmp_sta.new_from_string("s0b1111")?;
+
+        let reg1 = SomeRegion::new(vec![sta0, staf]);
+
+        let sta5 = tmp_sta.new_from_string("s0b0101")?;
+        let sta6 = tmp_sta.new_from_string("s0b0110")?;
+        let regs = reg1.subtract_state_to_supersets_of(&sta6, &sta5);
+
+        println!("reg1 {reg1} minus {sta6}, to supersets of {sta5}");
+        print!("regs ");
+        assert!(regs.len() == 2);
+
+        for regx in regs.iter() {
+            print!("{regx} ");
+            assert!(regx.is_superset_of_state(&sta5));
+        }
+        println!(" ");
+
+        Ok(())
+    }
 
     #[test]
     fn test_new() -> Result<(), String> {
