@@ -16,7 +16,6 @@
 use crate::actionstore::ActionStore;
 use crate::bits::SomeBits;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -536,12 +535,6 @@ impl SomeDomain {
         SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
     }
 
-    /// Return a SomeMask instance from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    pub fn mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
-        self.cur_state.to_mask().new_from_string(str)
-    }
-
     /// Return a Action number from a string with a format that the parse method can understand.
     /// Left-most, consecutive, zeros can be omitted.
     /// Returns an error if the string is bad or no action exists of that number.
@@ -889,7 +882,7 @@ mod tests {
         dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", &dm0.actions[0]);
 
-        let msk_f = dm0.mask_from_string("m0b1111")?;
+        let msk_f = dm0.cur_state.new_from_string("s0b1111")?.to_mask();
 
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&msk_f) else {
             return Err("No needs?".to_string());

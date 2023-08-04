@@ -101,53 +101,11 @@ impl RegionStore {
         false
     }
 
-    /// Return true if any region has more X bits.
-    pub fn any_gt_x(&self, reg: &SomeRegion) -> bool {
-        let rx = reg.num_x();
-        for regx in &self.avec {
-            if regx.num_x() > rx {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Return vector of regions that are a superset of a given region.
     pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
         self.avec
             .iter()
             .filter(|regx| regx.is_superset_of(reg))
-            .collect()
-    }
-
-    /// Return vector of regions that intersect a given region.
-    pub fn intersects_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        self.avec
-            .iter()
-            .filter(|regx| regx.intersects(reg))
-            .collect()
-    }
-
-    /// Return vector of regions that are a adjacent to a given region.
-    pub fn adjacent_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        self.avec
-            .iter()
-            .filter(|regx| regx.is_adjacent(reg))
-            .collect()
-    }
-
-    /// Return vector of regions that are closest to a given region.
-    pub fn closest_to(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
-        let mut min_distance = usize::MAX;
-        for regx in &self.avec {
-            let dist = regx.distance(reg);
-            if dist < min_distance {
-                min_distance = dist;
-            }
-        }
-        self.avec
-            .iter()
-            .filter(|regx| regx.distance(reg) == min_distance)
             .collect()
     }
 
@@ -164,15 +122,6 @@ impl RegionStore {
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
         self.avec.contains(reg)
-    }
-
-    /// Return true if a given state is only in one region.
-    pub fn state_in_1_region(&self, sta: &SomeState) -> bool {
-        self.avec
-            .iter()
-            .map(|regx| usize::from(regx.is_superset_of_state(sta)))
-            .sum::<usize>()
-            == 1
     }
 
     /// Find and remove a given region.
@@ -210,37 +159,6 @@ impl RegionStore {
 
         for (inx, regx) in self.avec.iter().enumerate() {
             if regx.is_subset_of(&reg) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in descending index order.
-        for inx in rmvec.iter().rev() {
-            removeunordered::remove_unordered(&mut self.avec, *inx);
-        }
-
-        self.avec.push(reg);
-
-        true
-    }
-
-    /// Add a region, if none are EQ and none have more X bits, removing regions with fewer X bits.
-    pub fn push_larger(&mut self, reg: SomeRegion) -> bool {
-        // Check for regions with GE x.
-        if tools::vec_contains(&self.avec, &reg, SomeRegion::eq) {
-            return false;
-        }
-        if self.any_gt_x(&reg) {
-            //println!("skipped adding region {}, a larger or equal x exists in {}", reg, self);
-            return false;
-        }
-
-        // Identify subsets.
-        let mut rmvec = Vec::<usize>::new();
-        let rx = reg.num_x();
-
-        for (inx, regx) in self.avec.iter().enumerate() {
-            if regx.num_x() < rx {
                 rmvec.push(inx);
             }
         }
@@ -408,26 +326,6 @@ impl RegionStore {
         }
         ret_str
     }
-
-    /// Return a simplified set of regions, from a non-empty RegionStore.
-    pub fn simplify(&self) -> Self {
-        assert!(self.is_not_empty());
-        if self.len() == 1 {
-            return self.clone();
-        }
-        self.complement().complement()
-    }
-    /// Return the complement of a non-empty RegionStore.
-    pub fn complement(&self) -> Self {
-        assert!(self.is_not_empty());
-
-        let max_region = RegionStore::new(vec![SomeRegion::new(vec![
-            self[0].state1().new_low(),
-            self[0].state1().new_high(),
-        ])]);
-
-        max_region.subtract(self)
-    }
 } // End impl RegionStore.
 
 impl Index<usize> for RegionStore {
@@ -441,28 +339,6 @@ impl Index<usize> for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-
-    #[test]
-    fn test_simplify() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
-
-        let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(tmp_reg.new_from_string("r001x")?);
-        regstr1.push(tmp_reg.new_from_string("r0x10")?);
-        regstr1.push(tmp_reg.new_from_string("rx111")?);
-        regstr1.push(tmp_reg.new_from_string("r11x1")?);
-        regstr1.push(tmp_reg.new_from_string("r10x1")?);
-
-        let simp = regstr1.simplify();
-        println!("simp {}", simp);
-        assert!(simp.len() == 3);
-
-        assert!(simp.contains(&tmp_reg.new_from_string("rxx11")?));
-        assert!(simp.contains(&tmp_reg.new_from_string("r1xx1")?));
-        assert!(simp.contains(&tmp_reg.new_from_string("r0x1x")?));
-
-        Ok(())
-    }
 
     #[test]
     fn remove_region() -> Result<(), String> {
@@ -580,25 +456,6 @@ mod tests {
         assert!(regstr.contains(&tmp_reg.new_from_string("r0x0x")?));
         assert!(regstr.contains(&tmp_reg.new_from_string("r1110")?));
         assert!(regstr.contains(&tmp_reg.new_from_string("rxxx1")?));
-        Ok(())
-    }
-
-    #[test]
-    fn state_in_1_region() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        let mut regstr = RegionStore::with_capacity(4);
-
-        regstr.push(tmp_reg.new_from_string("r0x0x")?);
-        regstr.push(tmp_reg.new_from_string("r0xx1")?);
-        regstr.push(tmp_reg.new_from_string("rx1x1")?);
-        regstr.push(tmp_reg.new_from_string("r1110")?);
-        // Intersections, 0x01, 01x1.
-        // Intersections of intersections, 0101.
-
-        assert!(regstr.state_in_1_region(&tmp_sta.new_from_string("s0b0100")?));
-        assert!(!regstr.state_in_1_region(&tmp_sta.new_from_string("s0b0111")?));
         Ok(())
     }
 

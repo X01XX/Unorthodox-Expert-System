@@ -355,11 +355,6 @@ impl SomeBits {
         true
     }
 
-    /// Return true if a Bits struct has all bits set to one.
-    pub fn is_not_high(&self) -> bool {
-        !self.is_high()
-    }
-
     /// Return true if a Bits struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         *self == self.b_and(other)

@@ -656,11 +656,6 @@ impl SomeRegion {
 
         reg1.intersection(&reg2).unwrap()
     }
-
-    /// Return true if two regions have the same edge and X bit positions.
-    pub fn is_congruent(&self, other: &Self) -> bool {
-        self.x_mask() == other.x_mask()
-    }
 } // end impl SomeRegion
 
 #[cfg(test)]
@@ -706,21 +701,6 @@ mod tests {
         println!("reg1 is {}", reg1);
 
         assert!(reg1.states.len() == 1);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_is_congruent() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("rx11x")?;
-        assert!(reg1.is_congruent(&reg2));
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("rx1x1")?;
-        assert!(!reg1.is_congruent(&reg2));
 
         Ok(())
     }

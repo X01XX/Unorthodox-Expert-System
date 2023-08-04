@@ -271,17 +271,6 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return a vector of masks representing edge bit positions.
-    pub fn edge_masks(&self) -> Vec<SomeMask> {
-        let mut ret_msks = Vec::<SomeMask>::with_capacity(self.len());
-
-        for regx in self.iter() {
-            ret_msks.push(regx.edge_mask());
-        }
-
-        ret_msks
-    }
-
     /// Return true if at least one corresponding pair in two ReagionStoreCorrs is adjacent,
     /// while other corresponding pairs are adjacent or intersect.
     pub fn is_adjacent(&self, other: &RegionStoreCorr) -> bool {
@@ -418,20 +407,6 @@ impl RegionStoreCorr {
         tools::vec_contains(avec, regcr, RegionStoreCorr::is_superset_of)
     }
 
-    /// Return supersets, of a RegionStoreCorr.
-    pub fn vec_supersets_of<'a>(
-        avec: &'a [RegionStoreCorr],
-        regcr: &'a RegionStoreCorr,
-    ) -> Vec<&'a RegionStoreCorr> {
-        let mut ret = Vec::<&RegionStoreCorr>::new();
-        for regsx in avec.iter() {
-            if regsx.is_superset_of(regcr) {
-                ret.push(regsx);
-            }
-        }
-        ret
-    }
-
     /// Add a regionstorecorr, removing subset regionstorecorr.
     pub fn vec_push_nosubs(avec: &mut Vec<RegionStoreCorr>, reg: RegionStoreCorr) -> bool {
         // Check for supersets, which probably is an error
@@ -462,16 +437,6 @@ impl RegionStoreCorr {
     /// Return true if any regionstorecorr vector intersects a given regionstorcorr.
     pub fn vec_any_intersection(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
         tools::vec_contains(avec, reg, RegionStoreCorr::intersects)
-    }
-
-    /// Return true if any &regionstorecorr vector intersects a given regionstorcorr.
-    pub fn vec_ref_any_intersection(avec: &[&RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
-        for regcrx in avec.iter() {
-            if regcrx.intersects(reg) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Subtract a RegionStoreCorr from a RegionStoreCorr vector.

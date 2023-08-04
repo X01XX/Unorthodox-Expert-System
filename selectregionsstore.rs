@@ -128,20 +128,6 @@ impl SelectRegionsStore {
             .sum()
     }
 
-    /// Return the rate of a vector of states, the result/goal of a number of domain plans.
-    pub fn rate_states(&self, stas: &[&SomeState]) -> isize {
-        self.regionstores
-            .iter()
-            .map(|regsx| {
-                if regsx.regions.is_superset_states(stas) {
-                    regsx.value
-                } else {
-                    0
-                }
-            })
-            .sum()
-    }
-
     /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStoreCorr.
     pub fn rate_regions(&self, regs: &RegionStoreCorr) -> (isize, usize) {
         let mut times_visited: usize = 0;
@@ -155,35 +141,11 @@ impl SelectRegionsStore {
         (value, times_visited)
     }
 
-    /// Return list of negative select regions that are superset of a State vector.
-    pub fn negative_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
-        self.regionstores
-            .iter()
-            .filter(|regsx| regsx.value < 0 && regsx.regions.is_superset_states(stas))
-            .collect()
-    }
-
     /// Return a Vector of SelectRegions not supersets of a given StateStore.
     pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
             .filter(|regsx| !regsx.regions.is_superset_states(stas))
-            .collect()
-    }
-
-    /// Return a Vector of positive value SelectRegions not supersets of a given StateStore.
-    pub fn positive_not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
-        self.regionstores
-            .iter()
-            .filter(|regsx| !regsx.regions.is_superset_states(stas) && regsx.value > 0)
-            .collect()
-    }
-
-    /// Return a Vector of positive value SelectRegions.
-    pub fn positive_select_regions(&self) -> Vec<&SelectRegions> {
-        self.regionstores
-            .iter()
-            .filter(|regsx| regsx.value > 0)
             .collect()
     }
 
@@ -224,22 +186,6 @@ impl SelectRegionsStore {
             .iter()
             .filter(|regsx| regsx.regions.is_superset_states(stas))
             .collect()
-    }
-
-    /// Return list of positive value select regions that are superset of a State vector.
-    pub fn positive_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
-        self.regionstores
-            .iter()
-            .filter(|regsx| regsx.regions.is_superset_states(stas) && regsx.value > 0)
-            .collect()
-    }
-
-    /// Return list of negative select regions that are superset of a State vector.
-    pub fn number_negative_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
-        self.regionstores
-            .iter()
-            .map(|regsx| usize::from(regsx.value < 0 && regsx.regions.is_superset_states(stas)))
-            .sum()
     }
 
     /// Return a string represeting an SelectRegionsStore.
@@ -375,31 +321,6 @@ impl SelectRegionsStore {
             all_states[planx.dom_num] = planx.result_region().state1();
         }
         rate
-    }
-
-    /// Return the number of negative select regions a plan passes though, restricted to the domain number
-    /// part of select regions.
-    ///
-    /// This ignores the first step initial region, and the last step result reigon.
-    ///
-    /// If running multiple domain plans, and at least one plan never passes through a
-    /// negative domain-restricted region (result = 0), the the plans can be run in parallel.
-    pub fn number_negative_regions(&self, aplan: &SomePlan) -> usize {
-        if aplan.len() < 2 {
-            return 0;
-        }
-        let mut ret: usize = 0;
-        for inx in 1..aplan.len() {
-            for regsx in self.regionstores.iter() {
-                if regsx.value >= 0 {
-                    continue;
-                }
-                if regsx[aplan.dom_num].is_superset_of(&aplan[inx].initial) {
-                    ret += 1;
-                }
-            }
-        }
-        ret
     }
 } // End impl SelectRegionsStore
 

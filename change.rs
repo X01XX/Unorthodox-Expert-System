@@ -3,7 +3,6 @@
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -35,15 +34,6 @@ impl SomeChange {
             b01: self.b01.new_low(),
             b10: self.b10.new_low(),
         }
-    }
-
-    /// Apply a change to a state.
-    pub fn apply_to_state(&self, astate: &SomeState) -> SomeState {
-        let b01 = self.b01.bitwise_and(&astate.bitwise_not());
-        let b10 = self.b10.bitwise_and(astate);
-        let to_change = b01.bitwise_or(&b10);
-
-        astate.bitwise_xor(&to_change)
     }
 
     /// Return the logical bitwise and of two changes
@@ -171,38 +161,7 @@ impl SomeChange {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
-    use crate::SomeDomain;
-
-    #[test]
-    fn apply_to_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
-        let tmp_sta = SomeState::new(tmp_bts);
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        // Test changing two bits.
-        let reg0 = tmp_reg.new_from_string("r0101")?;
-        let reg1 = tmp_reg.new_from_string("r1001")?;
-
-        let cng = SomeChange::region_to_region(&reg0, &reg1);
-        let sta = tmp_sta.new_from_string("s0b0101")?;
-
-        let sta2 = cng.apply_to_state(&sta);
-
-        let sta3 = tmp_sta.new_from_string("s0b1001")?;
-        println!("sta2: {sta2} sta3: {sta3}");
-        assert!(sta2 == sta3);
-
-        // Test changing no bits.
-        let cng = SomeChange::region_to_region(&reg0, &reg0);
-
-        let sta2 = cng.apply_to_state(&sta);
-
-        println!("sta2: {sta2} sta: {sta}");
-        assert!(sta2 == sta);
-
-        Ok(())
-    }
+    use crate::domain::SomeDomain;
 
     #[test]
     fn region_to_region() -> Result<(), String> {
@@ -217,30 +176,25 @@ mod tests {
 
         println!("change from {} to {} is {}", reg_0x1x, reg_1100, cng1);
 
-        let reg_result = SomeRegion::new(vec![
-            cng1.apply_to_state(reg_0x1x.state1()),
-            cng1.apply_to_state(reg_0x1x.state2()),
-        ]);
-
-        if reg_result != reg_1100 {
-            return Err(format!("result {} ne {}!", reg_result, reg_1100));
+        if cng1.b01 != cng1.b01.new_from_string("m0b1100")?
+            || cng1.b10 != cng1.b10.new_from_string("m0b0011")?
+        {
+            return Err(format!("change {} to {} = {} ?", reg_0x1x, &reg_1100, cng1));
         }
 
-        let reg_0x1x = dm0.region_from_string("r0X1X")?;
-
         let reg_01x1 = dm0.region_from_string("r01X1")?;
+
+        let reg_0x1x = dm0.region_from_string("r0X1X")?;
 
         let cng1 = SomeChange::region_to_region(&reg_01x1, &reg_0x1x);
 
         println!("change from {} to {} is {}", reg_01x1, reg_0x1x, cng1);
 
-        let reg_result = SomeRegion::new(vec![
-            cng1.apply_to_state(reg_01x1.state1()),
-            cng1.apply_to_state(reg_01x1.state2()),
-        ]);
-
-        println!("reg_0x1x: {reg_0x1x} reg_result: {reg_result}");
-        assert!(reg_0x1x.is_superset_of(&reg_result));
+        if cng1.b01 != cng1.b01.new_from_string("m0b0010")?
+            || cng1.b10 != cng1.b10.new_from_string("m0b0000")?
+        {
+            return Err(format!("change {} to {} = {} ?", reg_0x1x, &reg_1100, cng1));
+        }
 
         Ok(())
     }

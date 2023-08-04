@@ -207,57 +207,6 @@ impl SomeState {
         ret_str
     }
 
-    /// Return an X mask for a non-empty vector of states.
-    pub fn vec_x_mask(avec: &Vec<SomeState>) -> SomeMask {
-        assert!(!avec.is_empty());
-
-        let mut x_mask = SomeMask::new(avec[0].bts.new_low());
-        for stax in avec.iter().skip(1) {
-            x_mask = x_mask.bitwise_or(&stax.bitwise_xor(&avec[0]));
-        }
-        x_mask
-    }
-
-    /// Check for duplicate states in a vector of states.
-    /// Panic if any found.
-    pub fn vec_check_for_duplicates(avec: &Vec<SomeState>) -> bool {
-        if avec.len() < 2 {
-            return false;
-        }
-        for inx in 0..(avec.len() - 1) {
-            for iny in (inx + 1)..avec.len() {
-                if avec[inx] == avec[iny] {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    /// Check if any items are between another two.
-    /// So each item adds at least one X-bit position to a region formed by the states.
-    pub fn vec_check_for_unneeded(avec: &Vec<SomeState>) -> bool {
-        if avec.len() < 2 {
-            return false;
-        }
-        for inx in 0..(avec.len() - 1) {
-            for iny in (inx + 1)..avec.len() {
-                for inz in 0..avec.len() {
-                    if inz == inx || inz == iny {
-                        continue;
-                    }
-                    let diff = (avec[inz].bitwise_xor(&avec[inx]))
-                        .to_mask()
-                        .bitwise_and(&avec[inz].bitwise_xor(&avec[iny]));
-                    if diff.is_low() {
-                        return true;
-                    }
-                } // next inz
-            } // next iny
-        } // next inx
-        false
-    }
-
     /// Return true if a state is between two given states, exclusive.
     pub fn is_between(&self, sta1: &SomeState, sta2: &SomeState) -> bool {
         if self == sta1 {

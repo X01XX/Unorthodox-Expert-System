@@ -201,16 +201,6 @@ impl SomeRule {
         SomeRegion::new(vec![st_high, st_low])
     }
 
-    /// Return the result region after applying an initial region to a rule.
-    /// This could be called "forward chaining".
-    pub fn result_from_initial_region(&self, reg: &SomeRegion) -> SomeRegion {
-        if !reg.intersects(&self.initial_region()) {
-            panic!("result_from_initial: given region does not intersect the ruls initial region");
-        }
-
-        self.restrict_initial_region(reg).result_region()
-    }
-
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
@@ -473,52 +463,6 @@ impl SomeRule {
             b10: from_1.bitwise_and(&to_0),
         }
     }
-
-    /// Return a rule for translating from region to state.
-    pub fn region_to_state(from: &SomeRegion, to: &SomeState) -> SomeRule {
-        let from_x = from.x_mask();
-        let from_1 = from.ones_mask().bitwise_or(&from_x);
-        let from_0 = from.zeros_mask().bitwise_or(&from_x);
-
-        let to_0 = to.bitwise_not();
-
-        Self {
-            b00: from_0.bitwise_and(&to_0),
-            b01: from_0.bitwise_and(to),
-            b11: from_1.bitwise_and(to),
-            b10: from_1.bitwise_and(&to_0),
-        }
-    }
-
-    /// Return a rule for translating from state to region.
-    pub fn state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
-        let from_0 = from.bitwise_not();
-
-        let to_x = to.x_mask();
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
-
-        Self {
-            b00: to_0.bitwise_or(&to_x).bitwise_and(&from_0),
-            b01: to_1.bitwise_and(&from_0),
-            b11: to_1.bitwise_or(&to_x).bitwise_and(from),
-            b10: to_0.bitwise_and(from),
-        }
-    }
-
-    /// Return a rule for translating from state to state.
-    pub fn state_to_state(from: &SomeState, to: &SomeState) -> SomeRule {
-        let from_0 = from.to_mask().bitwise_not();
-
-        let to_0 = to.to_mask().bitwise_not();
-
-        Self {
-            b00: from_0.bitwise_and(&to_0),
-            b01: from_0.bitwise_and(to),
-            b11: from.bitwise_and(to).to_mask(),
-            b10: to_0.bitwise_and(from),
-        }
-    }
 } // end impl SomeRule
 
 #[cfg(test)]
@@ -765,25 +709,6 @@ mod tests {
         Ok(())
     }
 
-    // Also tests result_region
-    #[test]
-    fn result_from_initial_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
-
-        let rul1 = tmp_rul.new_from_string("Xx/XX/x1/x0/xx/xx")?;
-        let reg1 = tmp_reg.new_from_string("rx00110")?;
-
-        let reg2 = rul1.result_from_initial_region(&reg1);
-        println!("reg2 {reg2}");
-
-        assert!(reg2 == tmp_reg.new_from_string("rX01010")?);
-
-        Ok(())
-    }
-
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
         let tmp_bts = SomeBits::new(1);
@@ -828,7 +753,7 @@ mod tests {
 
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        assert!(reg2.is_superset_of(&rul1.result_from_initial_region(&reg1)));
+        assert!(reg2.is_superset_of(&rul1.result_region()));
 
         // Test proper subset region.
         let reg1 = tmp_reg.new_from_string("r0011")?;
@@ -843,59 +768,6 @@ mod tests {
         let rul1 = SomeRule::region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         assert!(rul1.result_region() == tmp_reg.new_from_string("r0101")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn region_to_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
-
-        let reg1 = tmp_reg.new_from_string("r0101xx")?;
-        let sta1 = tmp_sta.new_from_string("s0b011010")?;
-
-        let rul1 = SomeRule::region_to_state(&reg1, &sta1);
-        println!("reg1: {reg1} sta1: {sta1} rul1: {rul1}");
-
-        assert!(rul1 == tmp_rul.new_from_string("00/11/01/10/x1/x0")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn state_to_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
-
-        let sta1 = tmp_sta.new_from_string("s0b011010")?;
-        let reg1 = tmp_reg.new_from_string("r0101xx")?;
-
-        let rul1 = SomeRule::state_to_region(&sta1, &reg1);
-        println!("reg1: {reg1} sta1: {sta1} rul1: {rul1}");
-
-        assert!(rul1 == tmp_rul.new_from_string("00/11/10/01/11/00")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn state_to_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
-
-        let sta1 = tmp_sta.new_from_string("s0b0110")?;
-        let sta2 = tmp_sta.new_from_string("s0b0101")?;
-
-        let rul1 = SomeRule::state_to_state(&sta1, &sta2);
-        println!("sta1: {sta1} sta2: {sta2} rul1: {rul1}");
-
-        assert!(rul1 == tmp_rul.new_from_string("00/11/10/01")?);
 
         Ok(())
     }

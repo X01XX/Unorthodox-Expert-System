@@ -70,18 +70,6 @@ impl SquareStore {
             .collect()
     }
 
-    /// Return a list of squares between two given squares.
-    pub fn squares_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> Vec<&SomeSquare> {
-        let mut ret = Vec::<&SomeSquare>::new();
-
-        for sqrx in self.ahash.values() {
-            if sqrx.is_between(sqr1, sqr2) {
-                ret.push(sqrx);
-            }
-        }
-        ret
-    }
-
     /// Return an Option mutable reference for a square given a state,
     /// or None if not found.
     pub fn find_mut(&mut self, val: &SomeState) -> Option<&mut SomeSquare> {
