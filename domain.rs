@@ -26,7 +26,6 @@ use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -274,9 +273,11 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for single-bit vectors where no rules have an initial-region that
+        // Check for single-bit step-vectors where no steps have an initial-region that
         // is a superset of the from-region, and the result-region does not intersect the
         // goal-region.
+        // Choose a step with the least options to avoid, first.
+        // So run initial -(plan 1)> least-options-to-avoid-step -(plan 2)> goal.
         let mut asym_inx = Vec::<usize>::new();
 
         'next_vecx: for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
@@ -288,13 +289,13 @@ impl SomeDomain {
             asym_inx.push(inx);
         } // next vecx
 
-        // Init selected steps
-        let mut selected_steps = Vec::<&SomeStep>::new();
-
-        // If any asymmetrical single-bit changes found
+        // If any forced asymmetrical single-bit changes found
         if !asym_inx.is_empty() {
+            // Init selected steps
+            let mut selected_steps = Vec::<&SomeStep>::new();
+
             // find min number of steps for the selected bit-changes
-            let mut min_steps = 99;
+            let mut min_steps = usize::MAX;
             for inx in &asym_inx {
                 if steps_by_change_vov[*inx].len() < min_steps {
                     min_steps = steps_by_change_vov[*inx].len();
@@ -303,9 +304,7 @@ impl SomeDomain {
             // Assemble possible steps
             for inx in asym_inx {
                 if steps_by_change_vov[inx].len() == min_steps {
-                    for stepx in steps_by_change_vov[inx].iter() {
-                        selected_steps.push(stepx);
-                    }
+                    selected_steps.extend(&steps_by_change_vov[inx]);
                 }
             }
 
@@ -429,6 +428,7 @@ impl SomeDomain {
     pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
         // println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
+        // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of_state(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
             return Some(vec![SomePlan::new(self.num, vec![])]);
@@ -459,7 +459,7 @@ impl SomeDomain {
 
         // Calculated steps_str, and steps_by_change_vov, ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
-        let mut plans = (0..6)
+        let plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
                 self.random_depth_first_search(
@@ -475,10 +475,6 @@ impl SomeDomain {
         // Check for failure.
         if plans.is_empty() {
             return None;
-        }
-
-        if plans.len() > 1 {
-            tools::vec_remove_dups(&mut plans, SomePlan::eq);
         }
 
         //println!("make_plan returned {}", SomePlan::vec_string(&plans));

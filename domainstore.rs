@@ -430,11 +430,9 @@ impl DomainStore {
         // Find a plan for each target.
         for targx in targets.iter() {
             // Try making plans.
-            let mut plans = self.get_plans(targx.dom_num, &targx.region)?;
+            let mut plans = self.get_plans(targx.dom_num, &targx.region)?; // return None if any target cannot be reached.
             let inx = self.choose_a_plan(&plans);
-            if !plans[inx].is_empty() {
-                plans_per_target.push(plans.remove(inx));
-            }
+            plans_per_target.push(plans.remove(inx));
         } // next optx
 
         Some(plans_per_target)

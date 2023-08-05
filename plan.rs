@@ -171,10 +171,10 @@ impl SomePlan {
             return None;
         }
 
-        // Check for repeating Action needs: Noneinitial region
-        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
+        // Check for repeating Action needs initial region
+        let mut reg_inx = Vec::<(&SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
-            let initx = self.steps[inx].initial.clone();
+            let initx = &self.steps[inx].initial;
             let mut found = false;
             for reg_inx_tup in reg_inx.iter_mut() {
                 if reg_inx_tup.0 == initx {
@@ -212,9 +212,9 @@ impl SomePlan {
         }
 
         // Check for repeating result
-        let mut reg_inx = Vec::<(SomeRegion, Vec<usize>)>::new();
+        let mut reg_inx = Vec::<(&SomeRegion, Vec<usize>)>::new();
         for inx in 0..self.len() {
-            let rsltx = self[inx].result.clone();
+            let rsltx = &self[inx].result;
             let mut found = false;
             for reg_inx_tup in reg_inx.iter_mut() {
                 if reg_inx_tup.0 == rsltx {
