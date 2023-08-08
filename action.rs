@@ -572,17 +572,16 @@ impl SomeAction {
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
         // Get possible regions, sqrx.state will be <region>.state1
+        // Duplicate group regions are possible, but at least one should be
+        // a valid new group.
         let grps: Vec<SomeGroup> = self.possible_groups_from_square(sqrx);
 
-        let mut group_added = false;
-        for grpx in grps {
-            if !self.groups.any_superset_of(&grpx.region) {
-                group_added = true;
-                self.groups.push(grpx, self.dom_num, self.num);
-            }
-        } // next regx
-
-        if group_added {
+        if !grps.is_empty() {
+            for grpx in grps {
+                if !self.groups.any_superset_of(&grpx.region) {
+                    self.groups.push(grpx, self.dom_num, self.num);
+                }
+            } // next regx
             return;
         }
 
@@ -2160,6 +2159,8 @@ impl SomeAction {
         let mut sim_sqrs = Vec::<&SomeSquare>::new();
 
         // Collect possible regions.
+
+        // Init a list containing the maximum region.
         let mut poss_regs = RegionStore::new(vec![SomeRegion::new(vec![
             sqrx.state.new_high(),
             sqrx.state.new_low(),
@@ -2170,6 +2171,7 @@ impl SomeAction {
                 continue;
             }
 
+            // Previous subtractions may put some squares out of reach.
             if poss_regs.any_superset_of_state(&sqry.state) {
                 if sqrx.can_combine_now(sqry) {
                     sim_sqrs.push(sqry);
@@ -2186,6 +2188,7 @@ impl SomeAction {
         }
 
         // Collect similar squares that have a superset in possible regions.
+        // Subtractions after finding a similar square may have put it out of reach.
         let mut sim_sqrs2 = Vec::<&SomeSquare>::with_capacity(sim_sqrs.len());
 
         for sqry in sim_sqrs {
@@ -2208,7 +2211,8 @@ impl SomeAction {
         //}
 
         // Calc excluded regions formed by pairs of similar squares
-        // that cannot be combined.  If the target square has a 1->0 bit,
+        // that cannot be combined.
+        // If the target square has a 1->0 bit,
         // it may combine with a square having a corresponding 0->1, forming X->x,
         // and one with 0->0, forming X->0,
         // but 0->0 and 0->1 cannot combine.
@@ -2227,7 +2231,7 @@ impl SomeAction {
             }
             //println!("excluded regions {excluded_regs}");
 
-            // Subtract excluded region states.
+            // Subtract excluded region state pairs.
             // So regions can contain any one state, but not both.
             for regy in excluded_regs.iter() {
                 if poss_regs.any_superset_of(regy) {
@@ -2292,6 +2296,7 @@ impl SomeAction {
             return None;
         }
 
+        // Don't make a single-state region.
         if sqrs_in.is_empty() {
             return None;
         }
@@ -2302,23 +2307,13 @@ impl SomeAction {
             let mut rulesz = rulesx.clone();
             for sqry in sqrs_in.iter() {
                 if let Some(rulesy) = &sqry.rules {
-                    if let Some(rules_new) = rulesz.union(rulesy) {
-                        rulesz = rules_new;
-                    } else {
-                        return None;
-                    }
+                    let rules_new = rulesz.union(rulesy)?;
+                    rulesz = rules_new;
                 } else {
                     return None;
                 }
             }
             rules = Some(rulesz);
-        }
-
-        // Final check, due to possible squares with subset rules.
-        if let Some(rulesx) = &rules {
-            if !self.all_subset_rules_in_region(&regy, rulesx) {
-                return None;
-            }
         }
 
         // Calc pnc.

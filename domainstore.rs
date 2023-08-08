@@ -826,7 +826,7 @@ impl DomainStore {
             for (inx, ndplnx) in self.can_do.iter().enumerate() {
                 if ndplnx.rate != 0 {
                     println!(
-                        "{:2} {} {}/{}",
+                        "{:2} {} {}/{:+}",
                         inx,
                         &self.needs[ndplnx.inx],
                         ndplnx.plans.as_ref().unwrap().str_terse(),
