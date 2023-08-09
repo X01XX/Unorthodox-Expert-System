@@ -1001,6 +1001,9 @@ impl SomeAction {
                             continue 'next_keyx;
                         }
                     }
+                    if grpx.region.states.len() > 2 && grpx.region.state2() == keyx {
+                        continue 'next_keyx;
+                    }
 
                     if let Some(stay) = &grpx.anchor {
                         if stay == keyx {
@@ -2201,12 +2204,8 @@ impl SomeAction {
             return ret_grps;
         }
 
-        //println!("Similar squares:");
-        //for sqrz in sim_sqrs2.iter() {
-        //    println!("  {}", sqrz);
-        //}
-        //println!("Disimilar squares:");
-        //for sqrz in dissim_sqrs.iter() {
+        // println!("Similar squares:");
+        // for sqrz in sim_sqrs2.iter() {
         //    println!("  {}", sqrz);
         //}
 
@@ -2276,6 +2275,7 @@ impl SomeAction {
         regx: &SomeRegion,
         sim_sqrs: &[&SomeSquare],
     ) -> Option<SomeGroup> {
+        //println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, sim_sqrs.len(), regx);
         // Basic checks.
         if !regx.is_superset_of_state(&sqrx.state) {
             return None;
@@ -2302,6 +2302,11 @@ impl SomeAction {
         }
 
         let mut rules: Option<RuleStore> = None;
+        let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
+        stas_in.push(sqrx.state.clone());
+        for sqry in sqrs_in.iter() {
+            stas_in.push(sqry.state.clone());
+        }
         if let Some(rulesx) = &sqrx.rules {
             // Check all squares rules can form a union.
             let mut rulesz = rulesx.clone();
@@ -2328,7 +2333,8 @@ impl SomeAction {
         }
 
         // Return a group, keep sqrx.state as first state in group.region.
-        let regz = SomeRegion::new(vec![sqrx.state.clone(), sta_far]);
+        //let regz = SomeRegion::new(vec![sqrx.state.clone(), sta_far]);
+        let regz = SomeRegion::new(stas_in);
         Some(SomeGroup::new(regz, rules, pnc))
     } // end validate_combination
 

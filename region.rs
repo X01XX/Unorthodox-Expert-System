@@ -21,6 +21,9 @@ use std::fmt;
 pub struct SomeRegion {
     /// Vector for one, or more, states.
     pub states: Vec<SomeState>,
+    /// If the number of states is GT 2, this will hold a state calculated to
+    /// be the farthest in the region from the first state.
+    far_state: Option<SomeState>,
 }
 
 /// Implement the fmt::Display trait.
@@ -45,16 +48,39 @@ impl Eq for SomeRegion {}
 impl SomeRegion {
     /// Create new region from two states.
     ///
-    /// For a region used to define a group, the states have corresponding squares that have been sampled.
+    /// For a group region, the states have corresponding squares that have been sampled.
+    /// A group region may have more than two states, so the far_state is calculated.
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
-        assert!(states.len() < 3);
 
-        if states.len() == 2 && states[0] == states[1] {
-            states.pop();
+        if states.len() == 1 {
+            return Self {
+                states,
+                far_state: None,
+            };
         }
 
-        Self { states }
+        // Check for two duplicate states.
+        // Could be the result of intersecting something like 000X and 00X1 = 0001.
+        if states.len() == 2 {
+            if states[0] == states[1] {
+                states.pop();
+            }
+            return Self {
+                states,
+                far_state: None,
+            };
+        }
+
+        // Calculate a state far from the first state.
+        let mut dif = states[0].new_low().to_mask();
+        for stax in states.iter().skip(1) {
+            dif = dif.bitwise_or(&stax.bitwise_xor(&states[0]));
+        }
+
+        let far_state = Some(states[0].bitwise_xor(&dif));
+
+        Self { states, far_state }
     }
 
     /// Return a reference to the first state.
@@ -64,7 +90,11 @@ impl SomeRegion {
 
     /// Return a reference to the second state.
     pub fn state2(&self) -> &SomeState {
-        self.states.last().unwrap()
+        if let Some(far) = &self.far_state {
+            far
+        } else {
+            self.states.last().unwrap()
+        }
     }
 
     /// Return a Region from a string and the number of integers to use.
@@ -156,7 +186,7 @@ impl SomeRegion {
 
     /// Return the expected length of a string representing a region, for string alloaction.
     pub fn formatted_string_length(&self) -> usize {
-        self.state1().num_bits() + 1 + (self.state1().num_bits() / 4)
+        self.state1().num_bits() + 2 + (self.state1().num_bits() / 4)
     }
 
     /// Return a String representation of a Region without any prefix.
@@ -185,6 +215,9 @@ impl SomeRegion {
                 s1.push('0');
             }
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
+        }
+        if self.states.len() > 2 {
+            s1.push('+');
         }
         s1
     }
@@ -695,12 +728,28 @@ mod tests {
     fn test_new() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(1));
 
-        let sta1 = tmp_sta.new_from_string("s0b0000")?;
+        let sta1 = tmp_sta.new_from_string("s0b0001")?;
 
-        let reg1 = SomeRegion::new(vec![sta1.clone(), sta1]);
+        let reg1 = SomeRegion::new(vec![sta1.clone(), sta1.clone()]);
         println!("reg1 is {}", reg1);
-
         assert!(reg1.states.len() == 1);
+        assert!(reg1.state2() == &sta1);
+
+        let sta7 = tmp_sta.new_from_string("s0b0111")?;
+
+        let reg2 = SomeRegion::new(vec![sta1.clone(), sta7.clone()]);
+        println!("reg2 is {}", reg2);
+        assert!(reg2.states.len() == 2);
+        assert!(reg2.state2() == &sta7);
+
+        let sta2 = tmp_sta.new_from_string("s0b0010")?;
+        let reg3 = SomeRegion::new(vec![sta1.clone(), sta7.clone(), sta2.clone()]);
+        println!("reg3 is {}", reg3);
+        assert!(reg3.states.len() == 3);
+
+        let sta6 = tmp_sta.new_from_string("s0b0110")?;
+        println!("reg3 state2 = {}", reg3.state2());
+        assert!(reg3.state2() == &sta6);
 
         Ok(())
     }

@@ -1110,6 +1110,7 @@ fn usage() {
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
     println!("\n    A state starts with an 's0b' or 's0x', followed by zero, or more, digits.");
     println!("\n    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
+    println!("    A trailing \"+\" indicates the region is formed by more than two states.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");

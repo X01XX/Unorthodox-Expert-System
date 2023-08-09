@@ -1021,15 +1021,17 @@ mod tests {
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
         dm0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s4.clone()));
 
-        println!("\nActs: {}", &dm0.actions[0]);
+        println!("\n1 Acts: {}", &dm0.actions[0]);
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
-        println!("\nActs: {}", &dm0.actions[0]);
+        println!("\n2 Acts: {}", &dm0.actions[0]);
+
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause pn-not-Two invalidation
-        println!("\nActs: {}", &dm0.actions[0]);
+        println!("\n3 Acts: {}", &dm0.actions[0]);
+
         assert!(dm0.actions[0].groups.find(&rx1x1).is_none());
 
         Ok(())

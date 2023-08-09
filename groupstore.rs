@@ -322,14 +322,13 @@ impl GroupStore {
         self.remove_subsets_of(&grp.region, dom, act);
 
         // push the new group
-        if grp.region.state1() != grp.region.state2() {
+        if grp.region.states.len() > 1 {
             println!(
-                "\nDom {} Act {} Adding group {} from {} and {}",
+                "\nDom {} Act {} Adding group {} from {}",
                 &dom,
                 &act,
                 grp,
-                grp.region.state1(),
-                grp.region.state2()
+                SomeState::vec_string(&grp.region.states),
             );
         } else {
             println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);

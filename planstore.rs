@@ -40,6 +40,11 @@ pub struct PlanStore {
 
 impl PlanStore {
     /// Return a new PlanStore instance.
+    /// If more than one plan, plans will be run in order.
+    /// If more than one plan, plans are in domain order, but that is not enforced.
+    /// Since they will be run in order, there is the possiblity of splitting plans
+    /// into one, or more, steps, and running them in any desired order,
+    /// as long as the sequence of steps for any domain is preserved.
     pub fn new(avec: Vec<SomePlan>) -> Self {
         Self { avec }
     }
