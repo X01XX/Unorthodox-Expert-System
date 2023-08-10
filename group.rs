@@ -80,6 +80,11 @@ impl SomeGroup {
     /// Accessor set the pnc field to true.
     /// Reform region, if needed.
     pub fn set_pnc(&mut self) {
+        if self.pnc {
+            println!("Group {} pnc already true", self.region);
+            return;
+        }
+
         self.pnc = true;
         if self.region.states.len() > 2 {
             self.region = SomeRegion::new(vec![
@@ -87,6 +92,7 @@ impl SomeGroup {
                 self.region.state2().clone(),
             ]);
         }
+        println!("  Setting group {} pnc to true", self.region);
     }
 
     /// Return a string representing a group.

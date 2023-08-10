@@ -365,45 +365,11 @@ impl SomeAction {
         } // end match ndx
     } // end eval_need_sample
 
-    /// Check a group for pnc, set it if needed
+    /// Find a group by region, set group pnc.
     pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
         let Some(grpx) = self.groups.find_mut(grp_reg) else { println!("ConfirmGroup {grp_reg} group not found?"); return; };
 
-        if grpx.region.states.len() > 2 {
-            return;
-        }
-
-        if grpx.pnc {
-            println!(
-                "ConfirmGroup {} already pnc and ConfirmGroup need?",
-                grpx.region
-            );
-            return;
-        }
-
-        let Some(sqr1) = self.squares.find(grpx.region.state1()) else { panic!(
-                "ConfirmGroup {} state1 {} square not found?",
-                grpx.region, grpx.region.state1()
-            ); };
-
-        if !sqr1.pnc {
-            return;
-        }
-
-        if grpx.region.state1() == grpx.region.state2() {
-            grpx.set_pnc();
-            return;
-        }
-
-        let Some(sqr2) = self.squares.find(grpx.region.state2()) else {
-            panic!(
-                "ConfirmGroup {} state2 {} square not found?",
-                grpx.region, grpx.region.state2()
-            ); };
-
-        if sqr2.pnc {
-            grpx.set_pnc();
-        }
+        grpx.set_pnc();
     }
 
     /// Evaluate the sample taken for a step in a plan.

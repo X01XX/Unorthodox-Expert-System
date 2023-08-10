@@ -726,6 +726,7 @@ mod tests {
 
     #[test]
     fn test_new() -> Result<(), String> {
+        // Single state region.
         let tmp_sta = SomeState::new(SomeBits::new(1));
 
         let sta1 = tmp_sta.new_from_string("s0b0001")?;
@@ -735,6 +736,7 @@ mod tests {
         assert!(reg1.states.len() == 1);
         assert!(reg1.state2() == &sta1);
 
+        // Two state region.
         let sta7 = tmp_sta.new_from_string("s0b0111")?;
 
         let reg2 = SomeRegion::new(vec![sta1.clone(), sta7.clone()]);
@@ -742,6 +744,7 @@ mod tests {
         assert!(reg2.states.len() == 2);
         assert!(reg2.state2() == &sta7);
 
+        // Three state region.
         let sta2 = tmp_sta.new_from_string("s0b0010")?;
         let reg3 = SomeRegion::new(vec![sta1.clone(), sta7.clone(), sta2.clone()]);
         println!("reg3 is {}", reg3);
