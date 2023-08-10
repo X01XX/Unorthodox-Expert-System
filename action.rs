@@ -2276,13 +2276,10 @@ impl SomeAction {
         sim_sqrs: &[&SomeSquare],
     ) -> Option<SomeGroup> {
         //println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, sim_sqrs.len(), regx);
-        // Basic checks.
-        if !regx.is_superset_of_state(&sqrx.state) {
-            return None;
-        }
+        debug_assert!(regx.is_superset_of_state(&sqrx.state));
 
         // Find squares in the given region, and calc region built from simmilar squares.
-        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]);
+        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
         let mut sqrs_in = Vec::<&SomeSquare>::new();
         for sqry in sim_sqrs.iter() {
             if regx.is_superset_of_state(&sqry.state) {
@@ -2301,41 +2298,47 @@ impl SomeAction {
             return None;
         }
 
-        let mut rules: Option<RuleStore> = None;
         let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
+
         stas_in.push(sqrx.state.clone());
+
+        // Check for far square, to make two state region.
+        let sta_far = regy.state_far_from(&sqrx.state);
+        let mut far_pnc = false;
         for sqry in sqrs_in.iter() {
-            stas_in.push(sqry.state.clone());
+            if sqry.state == sta_far {
+                stas_in.push(sta_far);
+                far_pnc = sqry.pnc;
+                break;
+            }
         }
+
+        // If no far state found, shlep in all the states.
+        if stas_in.len() == 1 {
+            for sqry in sqrs_in.iter() {
+                stas_in.push(sqry.state.clone());
+            }
+        }
+
+        // If sqrx is not Pn::Unpredictable, aggregate the rules.
+        let mut rules: Option<RuleStore> = None;
         if let Some(rulesx) = &sqrx.rules {
             // Check all squares rules can form a union.
             let mut rulesz = rulesx.clone();
             for sqry in sqrs_in.iter() {
-                if let Some(rulesy) = &sqry.rules {
-                    let rules_new = rulesz.union(rulesy)?;
-                    rulesz = rules_new;
-                } else {
-                    return None;
-                }
+                let rulesy = sqry.rules.as_ref()?;
+                let rules_new = rulesz.union(rulesy)?;
+                rulesz = rules_new;
             }
             rules = Some(rulesz);
         }
 
-        // Calc pnc.
-        let mut pnc = false;
-        let sta_far = regy.state_far_from(&sqrx.state);
-        if sqrx.pnc {
-            for sqrx in &sqrs_in {
-                if sqrx.state == sta_far {
-                    pnc = sqrx.pnc;
-                }
-            }
-        }
-
-        // Return a group, keep sqrx.state as first state in group.region.
-        //let regz = SomeRegion::new(vec![sqrx.state.clone(), sta_far]);
-        let regz = SomeRegion::new(stas_in);
-        Some(SomeGroup::new(regz, rules, pnc))
+        // Return a group, keeping sqrx.state as first state in the group region.
+        Some(SomeGroup::new(
+            SomeRegion::new(stas_in),
+            rules,
+            sqrx.pnc && far_pnc,
+        ))
     } // end validate_combination
 
     /// Take an action for a need.
