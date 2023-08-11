@@ -89,14 +89,8 @@ impl SomeRegion {
 
         // Remove unneeded states, if any.
         remv = Vec::<usize>::new();
-        for (inx, stax) in states.iter().enumerate() {
-            if inx == 0 {
-                continue;
-            }
-            for (iny, stay) in states.iter().enumerate() {
-                if iny == 0 {
-                    continue;
-                }
+        for (inx, stax) in states.iter().enumerate().skip(1) {
+            for (iny, stay) in states.iter().enumerate().skip(1) {
                 if iny == inx {
                     continue;
                 }
@@ -127,22 +121,12 @@ impl SomeRegion {
             dif = dif.bitwise_or(&stax.bitwise_xor(&states[0]));
         }
 
-        let far_state = states[0].bitwise_xor(&dif);
-
-        // Check if far state is already in states vector.
-        for stax in states.iter().skip(1) {
-            if *stax == far_state {
-                return Self {
-                    states: vec![states.remove(0), far_state],
-                    far_state: None,
-                };
-            }
-        }
+        let far_state = Some(states[0].bitwise_xor(&dif));
 
         // Return region with more than two states.
         Self {
             states,
-            far_state: Some(far_state),
+            far_state,
         }
     }
 
