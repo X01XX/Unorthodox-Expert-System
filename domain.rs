@@ -247,7 +247,7 @@ impl SomeDomain {
         steps_by_change_vov: &Vec<Vec<&SomeStep>>,
         depth: usize,
     ) -> Option<SomePlan> {
-        // println!("random_depth_first_search2: from {} to {}", from_reg, goal_reg);
+        // println!("random_depth_first_search2: from {} to {} depth {}", from_reg, goal_reg, depth);
 
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
@@ -352,6 +352,7 @@ impl SomeDomain {
         to_reg: &SomeRegion,
         depth: usize,
     ) -> Option<SomePlan> {
+        // println!("plan_steps_between: from {} to {} depth {}", from_reg, to_reg, depth);
         if depth == 0 {
             return None;
         }
@@ -390,6 +391,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
+        // println!("asymmetric_chaining: from {} to {} depth {}", from_reg, goal_reg, depth);
         if depth == 0 {
             return None;
         }

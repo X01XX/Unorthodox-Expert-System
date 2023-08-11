@@ -50,9 +50,11 @@ impl SomeRegion {
     ///
     /// For a group region, the states have corresponding squares that have been sampled.
     /// A group region may have more than two states, so the far_state is calculated.
+    /// For reasons outside of this module, the first state in the vector is not deleted or moved.
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
 
+        // Check for single-state region.
         if states.len() == 1 {
             return Self {
                 states,
@@ -60,12 +62,59 @@ impl SomeRegion {
             };
         }
 
-        // Check for two duplicate states.
+        // Remove duplicate states, if any.
         // Could be the result of intersecting something like 000X and 00X1 = 0001.
-        if states.len() == 2 {
-            if states[0] == states[1] {
-                states.pop();
+        let mut remv = Vec::<usize>::new();
+        for (inx, stax) in states.iter().enumerate() {
+            for (iny, stay) in states.iter().enumerate().skip(inx + 1) {
+                if stax == stay && !remv.contains(&iny) {
+                    remv.push(iny);
+                }
             }
+        }
+        if !remv.is_empty() {
+            // Sort idicies higher to lower.
+            remv.sort_by(|a, b| b.cmp(a));
+            for inx in remv.iter() {
+                removeunordered::remove_unordered(&mut states, *inx);
+            }
+        }
+
+        if states.len() < 3 {
+            return Self {
+                states,
+                far_state: None,
+            };
+        }
+
+        // Remove unneeded states, if any.
+        remv = Vec::<usize>::new();
+        for (inx, stax) in states.iter().enumerate() {
+            if inx == 0 {
+                continue;
+            }
+            for (iny, stay) in states.iter().enumerate() {
+                if iny == 0 {
+                    continue;
+                }
+                if iny == inx {
+                    continue;
+                }
+                if stay.is_between(&states[0], stax) && !remv.contains(&iny) {
+                    remv.push(iny);
+                }
+            }
+        }
+        if !remv.is_empty() {
+            // Sort idicies higher to lower.
+            remv.sort_by(|a, b| b.cmp(a));
+            for inx in remv.iter() {
+                removeunordered::remove_unordered(&mut states, *inx);
+            }
+        }
+
+        // Check for easy result.
+        if states.len() < 3 {
             return Self {
                 states,
                 far_state: None,
@@ -78,9 +127,23 @@ impl SomeRegion {
             dif = dif.bitwise_or(&stax.bitwise_xor(&states[0]));
         }
 
-        let far_state = Some(states[0].bitwise_xor(&dif));
+        let far_state = states[0].bitwise_xor(&dif);
 
-        Self { states, far_state }
+        // Check if far state is already in states vector.
+        for stax in states.iter().skip(1) {
+            if *stax == far_state {
+                return Self {
+                    states: vec![states.remove(0), far_state],
+                    far_state: None,
+                };
+            }
+        }
+
+        // Return region with more than two states.
+        Self {
+            states,
+            far_state: Some(far_state),
+        }
     }
 
     /// Return a reference to the first state.
@@ -750,9 +813,60 @@ mod tests {
         println!("reg3 is {}", reg3);
         assert!(reg3.states.len() == 3);
 
+        println!("reg3 state1 = {}", reg3.state1());
+        assert!(reg3.state1() == &sta1);
+
         let sta6 = tmp_sta.new_from_string("s0b0110")?;
         println!("reg3 state2 = {}", reg3.state2());
         assert!(reg3.state2() == &sta6);
+
+        // Three states, only two needed due to far state being in the list.
+        let sta2 = tmp_sta.new_from_string("s0b0010")?;
+        let reg4 = SomeRegion::new(vec![sta1.clone(), sta6.clone(), sta2.clone()]);
+        println!("reg4 is {}", reg4);
+        assert!(reg4.states.len() == 2);
+
+        println!("reg4 state1 = {}", reg4.state1());
+        assert!(reg4.state1() == &sta1);
+
+        println!("reg4 state2 = {}", reg4.state2());
+        assert!(reg4.state2() == &sta6);
+
+        // Three state region, five states given.
+        // State 1, between 0 and 5, will be deleted.
+        // State 2, between 6 and 0, will be deleted.
+        let sta0 = tmp_sta.new_from_string("s0b0000")?;
+        let sta5 = tmp_sta.new_from_string("s0b0101")?;
+        let reg5 = SomeRegion::new(vec![
+            sta0.clone(),
+            sta1.clone(),
+            sta2.clone(),
+            sta5.clone(),
+            sta6.clone(),
+        ]);
+
+        println!("reg5 is {}", reg5);
+        assert!(reg5.states.len() == 3);
+
+        println!("reg5 state2 = {}", reg5.state2());
+        assert!(reg5.state2() == &sta7);
+
+        // Three state region, with duplicates.
+        let reg6 = SomeRegion::new(vec![
+            sta1.clone(),
+            sta1.clone(),
+            sta7.clone(),
+            sta2.clone(),
+            sta7.clone(),
+        ]);
+        println!("reg6 is {}", reg6);
+        assert!(reg6.states.len() == 3);
+
+        println!("reg6 state1 = {}", reg6.state1());
+        assert!(reg6.state1() == &sta1);
+
+        println!("reg6 state2 = {}", reg6.state2());
+        assert!(reg6.state2() == &sta6);
 
         Ok(())
     }

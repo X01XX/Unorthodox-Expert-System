@@ -2268,43 +2268,33 @@ impl SomeAction {
 
         stas_in.push(sqrx.state.clone());
 
-        // Check for far square, to make two state region.
-        let sta_far = regy.state_far_from(&sqrx.state);
-        let mut far_pnc = false;
         for sqry in sqrs_in.iter() {
-            if sqry.state == sta_far {
-                stas_in.push(sta_far);
-                far_pnc = sqry.pnc;
-                break;
-            }
+            stas_in.push(sqry.state.clone());
         }
 
-        // If no far state found, shlep in all the states.
-        if stas_in.len() == 1 {
-            for sqry in sqrs_in.iter() {
-                stas_in.push(sqry.state.clone());
-            }
-        }
+        // Create region, cleanup squares between, etc.
+        let grp_reg = SomeRegion::new(stas_in);
+
+        let far_state = grp_reg.state2();
+        let mut far_pnc = false;
 
         // If sqrx is not Pn::Unpredictable, aggregate the rules.
         let mut rules: Option<RuleStore> = None;
         if let Some(rulesx) = &sqrx.rules {
-            // Check all squares rules can form a union.
             let mut rulesz = rulesx.clone();
-            for sqry in sqrs_in.iter() {
-                let rulesy = sqry.rules.as_ref()?;
-                let rules_new = rulesz.union(rulesy)?;
-                rulesz = rules_new;
+
+            for stay in grp_reg.states.iter().skip(1) {
+                let sqry = sqrs_in.iter().find(|&sqry| &sqry.state == stay)?;
+                rulesz = rulesz.union(sqry.rules.as_ref()?)?;
+                if stay == far_state {
+                    far_pnc = sqry.pnc;
+                }
             }
             rules = Some(rulesz);
         }
 
         // Return a group, keeping sqrx.state as first state in the group region.
-        Some(SomeGroup::new(
-            SomeRegion::new(stas_in),
-            rules,
-            sqrx.pnc && far_pnc,
-        ))
+        Some(SomeGroup::new(grp_reg, rules, sqrx.pnc && far_pnc))
     } // end validate_combination
 
     /// Take an action for a need.
