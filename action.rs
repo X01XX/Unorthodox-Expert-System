@@ -2197,7 +2197,11 @@ impl SomeAction {
             //println!("excluded regions {excluded_regs}");
 
             // Subtract excluded region state pairs.
-            // So regions can contain any one state, but not both.
+            // So regions can contain either state, but not both.
+            //
+            // There is a tendency to produce contradictory intersections.
+            // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
+            // Within 010X, 5 is contradictory.
             for regy in excluded_regs.iter() {
                 if poss_regs.any_superset_of(regy) {
                     let mut tmp_regs = RegionStore::new(vec![]);
