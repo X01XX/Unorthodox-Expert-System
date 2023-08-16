@@ -15,7 +15,6 @@ impl fmt::Display for RegionStore {
         write!(f, "{}", self.formatted_string())
     }
 }
-
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RegionStore {
@@ -39,7 +38,7 @@ impl PartialEq for RegionStore {
 impl Eq for RegionStore {}
 
 impl RegionStore {
-    /// Return a new, empty, RegionStore.
+    /// Return a new, RegionStore.
     pub fn new(avec: Vec<SomeRegion>) -> Self {
         Self { avec }
     }
@@ -78,27 +77,22 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-        tools::vec_contains(&self.avec, reg, SomeRegion::is_superset_of)
+        tools::vec_contains(&self.avec, SomeRegion::is_superset_of, reg)
     }
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
-        tools::vec_contains(&self.avec, reg, SomeRegion::is_subset_of)
+        tools::vec_contains(&self.avec, SomeRegion::is_subset_of, reg)
     }
 
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
-        tools::vec_contains(&self.avec, reg, SomeRegion::intersects)
+        tools::vec_contains(&self.avec, SomeRegion::intersects, reg)
     }
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
-        for regx in &self.avec {
-            if regx.is_superset_of_state(sta) {
-                return true;
-            }
-        }
-        false
+        tools::vec_contains(&self.avec, SomeRegion::is_superset_of_state, sta)
     }
 
     /// Return vector of regions that are a superset of a given region.
@@ -122,6 +116,11 @@ impl RegionStore {
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
         self.avec.contains(reg)
+    }
+
+    /// Implement swap-remove function for RegionStore.
+    pub fn swap_remove(&mut self, inx: usize) -> SomeRegion {
+        self.avec.swap_remove(inx)
     }
 
     /// Find and remove a given region.

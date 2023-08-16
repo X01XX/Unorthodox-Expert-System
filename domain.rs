@@ -237,7 +237,7 @@ impl SomeDomain {
     ///
     /// If any needed bit changes are only possible through Asymmetric Chaining, randomly choose a step and recurse.
     ///
-    /// Otherwise, randomly choose a step and do Forward Chaining, Backward Chaining, or Asymmetric Chaining, as needed.
+    /// Otherwise, randomly choose a step and do Forward Chaining, Backward Chaining, or Asymmetric Chaining.
     ///
     fn random_depth_first_search2(
         &self,
@@ -428,7 +428,7 @@ impl SomeDomain {
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
     pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
-        // println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
+        //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
 
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of_state(&self.cur_state) {
@@ -447,6 +447,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
     ) -> Option<Vec<SomePlan>> {
+        //println!("dom {} make_plans: from {from_reg} goal {goal_reg}", self.num);
         // Figure the required change.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
 

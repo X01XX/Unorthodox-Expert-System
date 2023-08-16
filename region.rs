@@ -124,10 +124,7 @@ impl SomeRegion {
         let far_state = Some(states[0].bitwise_xor(&dif));
 
         // Return region with more than two states.
-        Self {
-            states,
-            far_state,
-        }
+        Self { states, far_state }
     }
 
     /// Return a reference to the first state.
@@ -612,7 +609,7 @@ impl SomeRegion {
     /// Add a region, removing subset regions.
     pub fn vec_push_nosubs(sr_vec: &mut Vec<Self>, reg: Self) -> bool {
         // Check for supersets, which probably is an error
-        if tools::vec_contains(sr_vec, &reg, Self::is_superset_of) {
+        if tools::vec_contains(sr_vec, Self::is_superset_of, &reg) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
             return false;
         }

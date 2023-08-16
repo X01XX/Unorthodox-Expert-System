@@ -404,7 +404,7 @@ impl RegionStoreCorr {
 
     /// Return true if any region is a superset, or equal, to a RegionStoreCorr.
     pub fn vec_any_superset_of(avec: &[RegionStoreCorr], regcr: &RegionStoreCorr) -> bool {
-        tools::vec_contains(avec, regcr, RegionStoreCorr::is_superset_of)
+        tools::vec_contains(avec, RegionStoreCorr::is_superset_of, regcr)
     }
 
     /// Add a regionstorecorr, removing subset regionstorecorr.
@@ -436,7 +436,7 @@ impl RegionStoreCorr {
 
     /// Return true if any regionstorecorr vector intersects a given regionstorcorr.
     pub fn vec_any_intersection(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
-        tools::vec_contains(avec, reg, RegionStoreCorr::intersects)
+        tools::vec_contains(avec, RegionStoreCorr::intersects, reg)
     }
 
     /// Subtract a RegionStoreCorr from a RegionStoreCorr vector.
@@ -626,35 +626,35 @@ mod tests {
         assert!(result2.len() == 4);
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_110x")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x100")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x10x")?,
                 tmp_reg2.new_from_string("r0000_0001_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x10x")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
-            RegionStoreCorr::eq
         ));
 
         Ok(())
@@ -696,35 +696,35 @@ mod tests {
         assert!(result2.len() == 4);
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_110x")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x100")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x10x")?,
                 tmp_reg2.new_from_string("r0000_0001_0000_000x")?
             )),
-            RegionStoreCorr::eq
         ));
         assert!(tools::vec_contains(
             &result2,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_x10x")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
-            RegionStoreCorr::eq
         ));
 
         vec1.push(RegionStoreCorr::new(vec![
@@ -746,11 +746,11 @@ mod tests {
         assert!(result3.len() == 5);
         assert!(tools::vec_contains(
             &result3,
+            RegionStoreCorr::eq,
             &RegionStoreCorr::new(vec!(
                 tmp_reg1.new_from_string("r0000_1110")?,
                 tmp_reg2.new_from_string("r0000_000x_0000_0000")?
             )),
-            RegionStoreCorr::eq
         ));
 
         //assert!(1 == 2);

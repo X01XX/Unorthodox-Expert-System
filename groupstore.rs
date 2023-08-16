@@ -10,6 +10,7 @@ use crate::removeunordered;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -232,12 +233,7 @@ impl GroupStore {
 
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
-        for grpx in &self.avec {
-            if grpx.region.is_superset_of_state(stax) {
-                return true;
-            }
-        }
-        false
+        tools::vec_contains(&self.avec, SomeGroup::is_superset_of_state, stax)
     }
 
     /// Return regions of any group is a superset, or equal, to a region.

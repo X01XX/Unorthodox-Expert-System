@@ -139,11 +139,6 @@ impl SomeRule {
         *other == tmprul
     }
 
-    /// Return true if a rule is valid
-    pub fn is_valid(&self) -> bool {
-        self.is_valid_union() && self.is_valid_intersection()
-    }
-
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
         self.b00.bitwise_and(&self.b01).is_low() && self.b11.bitwise_and(&self.b10).is_low()

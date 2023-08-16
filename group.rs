@@ -246,6 +246,16 @@ impl SomeGroup {
             //println!("resetting limit flag!");
         }
     }
+
+    // Return true if a group region is a superset of a given state.
+    pub fn is_superset_of_state(&self, stax: &SomeState) -> bool {
+        self.region.is_superset_of_state(stax)
+    }
+
+    // Return true if a group region is a superset of a given region.
+    pub fn is_superset_of(&self, regx: &SomeRegion) -> bool {
+        self.region.is_superset_of(regx)
+    }
 } // end impl SomeGroup
 
 #[cfg(test)]

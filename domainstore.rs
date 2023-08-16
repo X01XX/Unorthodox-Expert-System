@@ -423,6 +423,7 @@ impl DomainStore {
     /// Return an Option PlanStore, to go from the current state to the region of each target.
     /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
+        //println!("domainstore: make_plans: {}", targets);
         debug_assert!(targets.is_not_empty());
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(targets.len()));
@@ -432,7 +433,7 @@ impl DomainStore {
             // Try making plans.
             let mut plans = self.get_plans(targx.dom_num, &targx.region)?; // return None if any target cannot be reached.
             let inx = self.choose_a_plan(&plans);
-            plans_per_target.push(plans.remove(inx));
+            plans_per_target.push(plans.swap_remove(inx));
         } // next optx
 
         Some(plans_per_target)
@@ -445,6 +446,7 @@ impl DomainStore {
 
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plans(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<Vec<SomePlan>> {
+        //println!("domainstore: get_plans: dom {dom_num} goal {goal_region}");
         self.avec[dom_num].make_plans(goal_region)
     }
 
@@ -1087,7 +1089,7 @@ impl DomainStore {
         }
 
         // Return one of the plans, avoiding the need to clone.
-        Some(plans.remove(plan_inxs[rand::thread_rng().gen_range(0..plan_inxs.len())]))
+        Some(plans.swap_remove(plan_inxs[rand::thread_rng().gen_range(0..plan_inxs.len())]))
     } // end avoid_negative_select_regions
 
     /// When the random depth-first plans all traverse a negative region, try to form a plan
@@ -1247,7 +1249,7 @@ impl DomainStore {
                     }
                     let inz = plan_inzs[rand::thread_rng().gen_range(0..plan_inzs.len())];
                     //println!("Plan is: {}", step_plans[inz]);
-                    let aplan = step_plans.remove(inz);
+                    let aplan = step_plans.swap_remove(inz);
                     cur_regs[domx] = aplan.result_region().clone();
                     all_plans.push(aplan);
                 }

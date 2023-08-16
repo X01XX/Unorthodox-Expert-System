@@ -1,5 +1,5 @@
-/// Return true if a vector contains a given item, given a equal function pointer.
-pub fn vec_contains<T>(avec: &[T], item: &T, testfn: fn(&T, &T) -> bool) -> bool {
+/// Return true if a vector contains an item, that passes a test as the first argument of a given function, and a second given item.
+pub fn vec_contains<T, U>(avec: &[T], testfn: fn(&T, &U) -> bool, item: &U) -> bool {
     for itemx in avec.iter() {
         if testfn(itemx, item) {
             return true;
@@ -85,15 +85,18 @@ mod tests {
     fn test_vec_contains() -> Result<(), String> {
         let vecx: Vec<usize> = vec![1, 2, 3, 4];
         println!("vecx: {:?}", vecx);
-        assert_eq!(vec_contains(&vecx, &2, |a, b| a == b), true);
-        assert_eq!(vec_contains(&vecx, &5, |a, b| a == b), false);
+        assert_eq!(vec_contains(&vecx, |a, b| a == b, &2), true);
+        assert_eq!(vec_contains(&vecx, |a, b| a == b, &5), false);
 
         let vecx: Vec<&str> = vec!["A", "B", "C", "D"];
         println!("vecx: {:?}", vecx);
-        assert_eq!(vec_contains(&vecx, &"B", |a, b| a == b), true);
-        assert_eq!(vec_contains(&vecx, &"E", |a, b| a == b), false);
+        assert_eq!(vec_contains(&vecx, |a, b| a == b, &"B"), true);
+        assert_eq!(vec_contains(&vecx, |a, b| a == b, &"E"), false);
 
-        assert_eq!(vec_contains(&vec![], &"E", |a, b| a == b), false);
+        assert_eq!(
+            vec_contains(&Vec::<&str>::new(), |a, b| a == b, &"E"),
+            false
+        );
         Ok(())
     }
 }

@@ -48,17 +48,15 @@ impl Eq for RuleStore {}
 impl RuleStore {
     /// Return a new, empty, RuleStore.
     pub fn new(avec: Vec<SomeRule>) -> Self {
-        Self { avec }
+        let ret = Self { avec };
+        assert!(ret.is_valid());
+        ret
     }
 
     /// Return if a square result rulestore is valid
     pub fn is_valid(&self) -> bool {
-        if self.is_empty() {
+        if self.len() < 2 {
             return true;
-        }
-
-        if self.len() == 1 {
-            return self.avec[0].is_valid();
         } // single rule is valid, or not
 
         if self.len() > 2 {
@@ -66,9 +64,7 @@ impl RuleStore {
         }
 
         // Length must be 2.  The two rules are different and the initial regions are the same.
-        self.avec[0].is_valid()
-            && self.avec[1].is_valid()
-            && self.avec[0] != self.avec[1]
+        self.avec[0] != self.avec[1]
             && self.avec[0].initial_region() == self.avec[1].initial_region()
     }
 

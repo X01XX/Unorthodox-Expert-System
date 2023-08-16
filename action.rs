@@ -411,19 +411,20 @@ impl SomeAction {
         //let regs_invalid = self.validate_groups_new_sample(&key);
         let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_num, self.num);
 
-        // Save regions invalidated to seek new edges.
+        // Save pnc regions invalidated to seek new edges.
         for regx in regs_invalid.iter() {
             if key != regx.state1() && key != regx.state2() && regx.states.len() > 1 {
+                // Check if both defining squares are pnc.
                 let Some(sqr1) = self.squares.find(regx.state1()) else {
                     panic!("Can't find group defining square?");
                 };
                 if !sqr1.pnc {
                     continue;
                 }
+
                 let Some(sqr2) = self.squares.find(regx.state2()) else {
                     continue;
                 };
-
                 if !sqr2.pnc {
                     continue;
                 }
@@ -754,9 +755,8 @@ impl SomeAction {
                             false
                         };
 
-                        let ruls = rules.as_mut().map(|ruls| ruls.clone());
                         self.groups.push(
-                            SomeGroup::new(group_region.clone(), ruls, pnc),
+                            SomeGroup::new(group_region.clone(), rules.clone(), pnc),
                             dom,
                             self.num,
                         );
@@ -812,12 +812,6 @@ impl SomeAction {
                     SomeNeed::AddSeekEdge { reg: regx } => {
                         if self.seek_edge.push_nosups(regx.clone()) {
                             try_again = true;
-                        } else {
-                            println!(
-                                "Dom {} Act {} need {} failed to add to\n{}",
-                                dom, self.num, &ndx, &self.seek_edge
-                            );
-                            panic!("done");
                         }
                     }
                     _ => (),
@@ -917,7 +911,7 @@ impl SomeAction {
 
     /// Check for needs in a region not covered by current groups.
     fn remainder_check_region(&self, max_region: SomeRegion) -> Option<SomeRegion> {
-        let mut remainder_regs = RegionStore::new(vec![max_region.clone()]);
+        let mut remainder_regs = RegionStore::new(vec![max_region]);
 
         for grpx in self.groups.iter() {
             remainder_regs = remainder_regs.subtract_region(&grpx.region);
@@ -925,8 +919,8 @@ impl SomeAction {
 
         if remainder_regs.is_not_empty() {
             println!(
-                "dom {} act {} max_region {} remainder is {}",
-                self.dom_num, self.num, max_region, remainder_regs
+                "dom {} act {} remainder is {}",
+                self.dom_num, self.num, remainder_regs
             );
         }
 
@@ -936,7 +930,7 @@ impl SomeAction {
             if remainder_regs.len() > 1 {
                 inx = rand::thread_rng().gen_range(0..remainder_regs.len());
             }
-            return Some(remainder_regs[inx].clone());
+            return Some(remainder_regs.swap_remove(inx));
         }
 
         //println!("Checking null check state, returning None");
@@ -1021,7 +1015,7 @@ impl SomeAction {
         //println!("seek_edge_needs");
         let mut ret_nds = NeedStore::new(vec![]);
 
-        let mut new_regs = RegionStore::new(vec![]);
+        let mut new_regs = Vec::<SomeRegion>::new();
 
         'next_regx: for regx in self.seek_edge.iter() {
             //print!("seek_edge_needs: checking reg {} ", &regx);
@@ -1089,13 +1083,13 @@ impl SomeAction {
                         ret_nds.push(SomeNeed::InactivateSeekEdge { reg: regx.clone() });
                     } else {
                         if !cnb1 {
-                            new_regs.push_nosups(SomeRegion::new(vec![
+                            new_regs.push(SomeRegion::new(vec![
                                 sqrx.state.clone(),
                                 sqr1.state.clone(),
                             ]));
                         }
                         if !cnb2 {
-                            new_regs.push_nosups(SomeRegion::new(vec![
+                            new_regs.push(SomeRegion::new(vec![
                                 sqrx.state.clone(),
                                 sqr2.state.clone(),
                             ]));
@@ -1133,10 +1127,10 @@ impl SomeAction {
 
         // Apply new seek edge regions
         // After get_needs does the housekeeping, it will run this again
-        if new_regs.is_not_empty() {
+        if !new_regs.is_empty() {
             ret_nds = NeedStore::with_capacity(new_regs.len());
-            for regx in new_regs.iter() {
-                ret_nds.push(SomeNeed::AddSeekEdge { reg: regx.clone() });
+            for regx in new_regs {
+                ret_nds.push(SomeNeed::AddSeekEdge { reg: regx });
             }
         }
 
