@@ -2194,8 +2194,8 @@ impl SomeAction {
             // There is a tendency to produce contradictory intersections.
             // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
             // Within 010X, 5 is contradictory.
-            if !excluded_regs.is_empty() {
-                for ex_regx in excluded_regs.iter() {
+            for ex_regx in excluded_regs.iter() {
+                if poss_regs.any_superset_of(ex_regx) {
                     let not_state1 = RegionStore::new(
                         max_reg.subtract_state_to_supersets_of(ex_regx.state1(), &sqrx.state),
                     );

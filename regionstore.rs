@@ -580,11 +580,12 @@ mod tests {
 
         let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
 
-        assert!(rslt.len() == 7);
-
         println!("result regions {}", rslt);
 
-        // Test all possible 4-bit regions, with more than one X bit position.
+        assert!(rslt.len() == 7);
+
+        // Test all possible 4-bit regions, with at least one X bit position.
+        // 3^4 - 2^4 = 65 regions.
         for x in 0..16 {
             for y in 0..16 {
                 if y == x {
