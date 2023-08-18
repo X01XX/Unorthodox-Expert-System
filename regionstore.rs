@@ -325,6 +325,28 @@ impl RegionStore {
         }
         ret_str
     }
+
+    // Return the union of two RegionStores.
+    pub fn union(&self, other: &RegionStore) -> Self {
+        let mut ret = self.clone();
+        for regx in other.avec.iter() {
+            ret.push_nosubs(regx.clone());
+        }
+        ret
+    }
+
+    // Return the intersection of two RegionStores.
+    pub fn intersection(&self, other: &RegionStore) -> Self {
+        let mut ret = Self::new(vec![]);
+        for regx in self.avec.iter() {
+            for regy in other.iter() {
+                if regx.intersects(regy) {
+                    ret.push_nosubs(regx.intersection(regy).unwrap());
+                }
+            }
+        }
+        ret
+    }
 } // End impl RegionStore.
 
 impl Index<usize> for RegionStore {
@@ -528,6 +550,68 @@ mod tests {
 
         assert!(regstr.any_superset_of(&tmp_reg.new_from_string("r01x1")?));
         assert!(!regstr.any_superset_of(&tmp_reg.new_from_string("r1xx1")?));
+        Ok(())
+    }
+
+    // Test calculation of two dissimilar pairs of states effect on possible regions.
+    #[test]
+    fn two_dissimilar_pairs() -> Result<(), String> {
+        let tmp_state = SomeState::new(SomeBits::new(1));
+
+        let max_reg = SomeRegion::new(vec![
+            tmp_state.new_from_string("s0b1111")?,
+            tmp_state.new_from_string("s0b0000")?,
+        ]);
+
+        let rslt = RegionStore::new(vec![max_reg.clone()]);
+
+        let state_6 = tmp_state.new_from_string("s0b0110")?;
+        let state_a = tmp_state.new_from_string("s0b1010")?;
+
+        let not_state_6 = RegionStore::new(max_reg.subtract_state(&state_6));
+        let not_state_a = RegionStore::new(max_reg.subtract_state(&state_a));
+        let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
+
+        let state_4 = tmp_state.new_from_string("s0b0100")?;
+        let state_d = tmp_state.new_from_string("s0b1101")?;
+
+        let not_state_4 = RegionStore::new(max_reg.subtract_state(&state_4));
+        let not_state_d = RegionStore::new(max_reg.subtract_state(&state_d));
+
+        let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
+
+        assert!(rslt.len() == 7);
+
+        println!("result regions {}", rslt);
+
+        // Test all possible 4-bit regions, with more than one X bit position.
+        for x in 0..16 {
+            for y in 0..16 {
+                if y == x {
+                    continue;
+                }
+
+                let regx = SomeRegion::new(vec![
+                    SomeState::new(SomeBits { ints: vec![x] }),
+                    SomeState::new(SomeBits { ints: vec![y] }),
+                ]);
+
+                if (regx.is_superset_of_state(&state_6) && regx.is_superset_of_state(&state_a))
+                    || (regx.is_superset_of_state(&state_4) && regx.is_superset_of_state(&state_d))
+                {
+                    // Check there is no superset region in the result.
+                    if rslt.any_superset_of(&regx) {
+                        return Err(format!("Superset of {} found in {}", regx, rslt));
+                    }
+                } else {
+                    // Check there is a superset in the result.
+                    if !rslt.any_superset_of(&regx) {
+                        return Err(format!("Superset of {} NOT found in {}", regx, rslt));
+                    }
+                }
+            } // next y
+        } // next x
+
         Ok(())
     }
 }

@@ -40,7 +40,6 @@ impl fmt::Display for SomeBits {
     }
 }
 
-#[readonly::make] // DeRef trait has a problem with this.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 
 /// SomeBits struct, just an unsigned integer vector.

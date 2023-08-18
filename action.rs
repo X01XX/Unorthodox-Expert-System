@@ -2124,10 +2124,8 @@ impl SomeAction {
         // Collect possible regions.
 
         // Init a list containing the maximum region.
-        let mut poss_regs = RegionStore::new(vec![SomeRegion::new(vec![
-            sqrx.state.new_high(),
-            sqrx.state.new_low(),
-        ])]);
+        let max_reg = SomeRegion::new(vec![sqrx.state.new_high(), sqrx.state.new_low()]);
+        let mut poss_regs = RegionStore::new(vec![max_reg.clone()]);
 
         for sqry in self.squares.ahash.values() {
             if sqry.state == sqrx.state {
@@ -2181,7 +2179,7 @@ impl SomeAction {
             for iny in 0..(sim_sqrs2.len() - 1) {
                 for inz in (iny + 1)..sim_sqrs2.len() {
                     if !sim_sqrs2[iny].can_combine_now(sim_sqrs2[inz]) {
-                        excluded_regs.push(SomeRegion::new(vec![
+                        excluded_regs.push_nosups(SomeRegion::new(vec![
                             sim_sqrs2[iny].state.clone(),
                             sim_sqrs2[inz].state.clone(),
                         ]));
@@ -2196,28 +2194,19 @@ impl SomeAction {
             // There is a tendency to produce contradictory intersections.
             // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
             // Within 010X, 5 is contradictory.
-            for regy in excluded_regs.iter() {
-                if poss_regs.any_superset_of(regy) {
-                    let mut tmp_regs = RegionStore::new(vec![]);
-                    for regx in &poss_regs.avec {
-                        if regx.is_superset_of(regy) {
-                            let subregs1 =
-                                regx.subtract_state_to_supersets_of(regy.state1(), &sqrx.state);
-                            for sreg in subregs1 {
-                                tmp_regs.push_nosubs(sreg);
-                            }
-                            let subregs2 =
-                                regx.subtract_state_to_supersets_of(regy.state2(), &sqrx.state);
-                            for sreg in subregs2 {
-                                tmp_regs.push_nosubs(sreg);
-                            }
-                        } else {
-                            tmp_regs.push_nosubs(regx.clone());
-                        }
-                    } // next regx
-                    poss_regs = tmp_regs;
+            if !excluded_regs.is_empty() {
+                for ex_regx in excluded_regs.iter() {
+                    let not_state1 = RegionStore::new(
+                        max_reg.subtract_state_to_supersets_of(ex_regx.state1(), &sqrx.state),
+                    );
+                    let not_state2 = RegionStore::new(
+                        max_reg.subtract_state_to_supersets_of(ex_regx.state2(), &sqrx.state),
+                    );
+                    let not_states = not_state1.union(&not_state2);
+                    poss_regs = poss_regs.intersection(&not_states);
+                    // println!("sqrx {} bad reg {}", sqrx.state, ex_regx);
                 }
-            } // next regy
+            }
         }
 
         //println!("poss regions: {poss_regs}");
@@ -2466,6 +2455,7 @@ mod tests {
         Ok(())
     }
 
+    // Test making groups from a few single-sample states.
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
@@ -2562,7 +2552,7 @@ mod tests {
         Ok(())
     }
 
-    // Test making a region from three samples.
+    // Test making a region from three similar-change samples.
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
@@ -2593,6 +2583,7 @@ mod tests {
 
         Ok(())
     }
+
     // Test making a region from three samples, with one dissimilar sample.
     #[test]
     fn three_sample_region2() -> Result<(), String> {
