@@ -7,7 +7,6 @@
 use crate::mask::SomeMask;
 use crate::removeunordered;
 use crate::state::SomeState;
-use crate::tools;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -139,6 +138,11 @@ impl SomeRegion {
         } else {
             self.states.last().unwrap()
         }
+    }
+
+    /// Return the number ef states used to define a region.
+    pub fn number_states(&self) -> usize {
+        self.states.len()
     }
 
     /// Return a Region from a string and the number of integers to use.
@@ -576,151 +580,6 @@ impl SomeRegion {
         rc_str
     }
 
-    /// Return a string representing a vector of regions.
-    pub fn vec_string(avec: &[SomeRegion]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &regx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
-
-    // Check any two region vectors for an intersection in their items.
-    // Return intersection region.
-    pub fn vec_ref_intersections(arg1: &[&Self], arg2: &[&Self]) -> Option<Self> {
-        for regx in arg1.iter() {
-            for regy in arg2.iter() {
-                if regx.intersects(regy) {
-                    return regx.intersection(regy);
-                }
-            }
-        }
-        None
-    }
-
-    /// Add a region, removing subset regions.
-    pub fn vec_push_nosubs(sr_vec: &mut Vec<Self>, reg: Self) -> bool {
-        // Check for supersets, which probably is an error
-        if tools::vec_contains(sr_vec, Self::is_superset_of, &reg) {
-            //println!("skipped adding region {}, a superset exists in {}", reg, self);
-            return false;
-        }
-
-        // Identify subsets.
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, regx) in sr_vec.iter().enumerate() {
-            if regx.is_subset_of(&reg) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in descending index order.
-        for inx in rmvec.iter().rev() {
-            removeunordered::remove_unordered(sr_vec, *inx);
-        }
-
-        sr_vec.push(reg);
-
-        true
-    }
-
-    /// Split corresponding Regions by intersections, producing a result where each region is a subset
-    /// of any intersecting original regions. All parts of the original Regions are accounted for in the
-    /// result.
-    pub fn vec_ref_split_to_subsets(sr_vec: &[&Self]) -> Vec<Self> {
-        // Init return vector of RegionStores.
-        let mut ret_str = Vec::<Self>::new();
-
-        // Init temp vector, for RegionStore fragments.
-        let mut tmp_str = Vec::<Self>::new();
-
-        // Init vector to note indices of RegionStores that are split.
-        // There may be a few duplicates, but that will not affect the use of the vector.
-        let mut int_vec = Vec::<usize>::new();
-
-        // Get initial fragments, from any two non-equal intersecting RegionStores.
-        for inx in 0..(sr_vec.len() - 1) {
-            for iny in (inx + 1)..sr_vec.len() {
-                // Skip two equal regions.  If no other intersections, one will make it into the return vector.
-                if sr_vec[inx] == sr_vec[iny] {
-                    continue;
-                }
-
-                // If there is an intersection, split the RegionStores into fragments.
-                if let Some(int) = sr_vec[inx].intersection(sr_vec[iny]) {
-                    int_vec.push(inx);
-                    int_vec.push(iny);
-
-                    for rsz in sr_vec[inx].subtract(&int) {
-                        Self::vec_push_nosubs(&mut tmp_str, rsz);
-                    }
-
-                    for rsz in sr_vec[iny].subtract(&int) {
-                        Self::vec_push_nosubs(&mut tmp_str, rsz);
-                    }
-                    Self::vec_push_nosubs(&mut tmp_str, int);
-                }
-            }
-        }
-        // For Regions with no intersections, add to the return RS.
-        for (iny, rsy) in sr_vec.iter().enumerate() {
-            if !int_vec.contains(&iny) {
-                Self::vec_push_nosubs(&mut ret_str, (*rsy).clone());
-            }
-        }
-
-        // Look for additional non-subset intersections.
-        loop {
-            // Init vector for next pass.
-            let mut next_pass = Vec::<Self>::new();
-
-            // Check remaining fragments for additional intersections.
-            // If no intersections are found, add the fragment to the return vector,
-            // else add fragments of fragments to the next_pass vector.
-            for rsy in tmp_str {
-                let mut split = false;
-
-                // Check for intersecting RegionStore from original argument.
-                for rsx in sr_vec.iter() {
-                    if let Some(int) = rsy.intersection(rsx) {
-                        // Skip rsy if it is a subset, thats the end we are looking for.
-                        if int == rsy {
-                            continue;
-                        }
-                        // Split intersection into fragments.
-                        // Add fragments to the next_pass vector.
-                        for rsz in rsy.subtract(&int) {
-                            Self::vec_push_nosubs(&mut next_pass, rsz);
-                        }
-                        // Add the intersection to the next_pass vector.
-                        Self::vec_push_nosubs(&mut next_pass, int);
-                        split = true;
-                    }
-                } // next rsx
-                  // If no intersectiosn, add the fragment to the return vector.
-                if !split {
-                    Self::vec_push_nosubs(&mut ret_str, rsy);
-                }
-            } // next rsy
-
-            // If no more fragments to check, return.
-            if next_pass.is_empty() {
-                return ret_str;
-            }
-            // Set up next fragments to check.
-            tmp_str = next_pass;
-        } // End loop
-    }
-
     /// Return the adjacent part of two regions.
     /// A region implied, if the regions are held to be similar in some property.
     /// If the regions can form a non-optimistic union, the result will be that union.
@@ -873,120 +732,6 @@ mod tests {
         let reg3 = reg1.adjacent_part(&reg2);
         println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
         assert!(reg3 == tmp_reg.new_from_string("r00x1").unwrap());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_vec_ref_split_to_subsets() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(1);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        rs_str.push(&reg1);
-
-        println!("Initial1: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result1: {}", SomeRegion::vec_string(&rslt));
-
-        assert!(rslt.len() == 1);
-        assert!(rslt.contains(&reg1));
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(2);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        rs_str.push(&reg1);
-        rs_str.push(&reg1);
-
-        println!("Initial2: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result2: {}", SomeRegion::vec_string(&rslt));
-        assert!(rslt.len() == 1);
-        assert!(rslt.contains(&reg1));
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(2);
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        rs_str.push(&reg1);
-
-        let reg2 = tmp_reg.new_from_string("r010x")?;
-        rs_str.push(&reg2);
-
-        println!("Initial3: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result3: {}", SomeRegion::vec_string(&rslt));
-        assert!(rslt.len() == 2);
-        assert!(rslt.contains(&tmp_reg.new_from_string("r110x")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(2);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("r010x")?;
-
-        rs_str.push(&reg2);
-        rs_str.push(&reg1);
-
-        println!("Initial4: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result4: {}", SomeRegion::vec_string(&rslt));
-        assert!(rslt.len() == 2);
-        assert!(rslt.contains(&tmp_reg.new_from_string("r110x")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(2);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("r1xx1")?;
-
-        rs_str.push(&reg2);
-        rs_str.push(&reg1);
-
-        println!("Initial5: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result5: {}", SomeRegion::vec_string(&rslt));
-        assert!(rslt.len() == 5);
-        assert!(rslt.contains(&tmp_reg.new_from_string("rx100")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r10x1")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
-
-        let mut rs_str = Vec::<&SomeRegion>::with_capacity(2);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("r01xx")?;
-        let reg3 = tmp_reg.new_from_string("rxxx1")?;
-
-        rs_str.push(&reg2);
-        rs_str.push(&reg1);
-        rs_str.push(&reg3);
-
-        println!("Initial6: {}", SomeRegion::vec_ref_string(&rs_str));
-
-        let rslt = SomeRegion::vec_ref_split_to_subsets(&rs_str);
-
-        println!("Result6: {}", SomeRegion::vec_string(&rslt));
-        assert!(rslt.len() == 8);
-
-        assert!(rslt.contains(&tmp_reg.new_from_string("rx0x1")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r1100")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r0110")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r0111")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r0100")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r0101")?));
-        assert!(rslt.contains(&tmp_reg.new_from_string("r1x11")?));
 
         Ok(())
     }

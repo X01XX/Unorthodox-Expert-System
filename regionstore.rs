@@ -347,6 +347,94 @@ impl RegionStore {
         }
         ret
     }
+
+    /// Split Regions by intersections, producing a result where each region is a subset
+    /// of any intersecting original regions. All parts of the original Regions are accounted for in the
+    /// result.
+    pub fn split_to_subsets(&self) -> Self {
+        // Init return vector of RegionStores.
+        let mut ret_str = Self::new(vec![]);
+
+        // Init temp vector, for RegionStore fragments.
+        let mut tmp_str = Self::new(vec![]);
+
+        // Init vector to note indices of RegionStores that are split.
+        // There may be a few duplicates, but that will not affect the use of the vector.
+        let mut int_vec = Vec::<usize>::new();
+
+        // Get initial fragments, from any two non-equal intersecting RegionStores.
+        for inx in 0..(self.len() - 1) {
+            for iny in (inx + 1)..self.len() {
+                // Skip two equal regions.  If no other intersections, one will make it into the return vector.
+                if self[inx] == self[iny] {
+                    continue;
+                }
+
+                // If there is an intersection, split the RegionStores into fragments.
+                if let Some(int) = self[inx].intersection(&self[iny]) {
+                    int_vec.push(inx);
+                    int_vec.push(iny);
+
+                    for rsz in self[inx].subtract(&int) {
+                        tmp_str.push_nosubs(rsz);
+                    }
+
+                    for rsz in self[iny].subtract(&int) {
+                        tmp_str.push_nosubs(rsz);
+                    }
+                    tmp_str.push_nosubs(int);
+                }
+            }
+        }
+        // For Regions with no intersections, add to the return RS.
+        for (iny, rsy) in self.iter().enumerate() {
+            if !int_vec.contains(&iny) {
+                ret_str.push_nosubs((*rsy).clone());
+            }
+        }
+
+        // Look for additional non-subset intersections.
+        loop {
+            // Init vector for next pass.
+            let mut next_pass = Self::new(vec![]);
+
+            // Check remaining fragments for additional intersections.
+            // If no intersections are found, add the fragment to the return vector,
+            // else add fragments of fragments to the next_pass vector.
+            for rsy in tmp_str.avec {
+                let mut split = false;
+
+                // Check for intersecting RegionStore from original argument.
+                for rsx in self.iter() {
+                    if let Some(int) = rsy.intersection(rsx) {
+                        // Skip rsy if it is a subset, thats the end we are looking for.
+                        if rsy == int {
+                            continue;
+                        }
+                        // Split intersection into fragments.
+                        // Add fragments to the next_pass vector.
+                        for rsz in rsy.subtract(&int) {
+                            next_pass.push_nosubs(rsz);
+                        }
+                        // Add the intersection to the next_pass vector.
+                        next_pass.push_nosubs(int);
+                        split = true;
+                    }
+                } // next rsx
+                  // If no intersectiosn, add the fragment to the return vector.
+                if !split {
+                    ret_str.push_nosubs(rsy);
+                }
+            } // next rsy
+
+            // If no more fragments to check, return.
+            if next_pass.is_empty() {
+                return ret_str;
+            }
+            // Set up next fragments to check.
+            tmp_str = next_pass;
+        } // End loop
+    }
 } // End impl RegionStore.
 
 impl Index<usize> for RegionStore {
@@ -360,6 +448,99 @@ impl Index<usize> for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn test_vec_ref_split_to_subsets() -> Result<(), String> {
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let rs_str = RegionStore::new(vec![reg1.clone()]);
+
+        println!("Initial1: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result1: {}", rslt);
+
+        assert!(rslt.len() == 1);
+        assert!(rslt.contains(&reg1));
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let rs_str = RegionStore::new(vec![reg1.clone(), reg1.clone()]);
+
+        println!("Initial2: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result2: {}", rslt);
+        assert!(rslt.len() == 1);
+        assert!(rslt.contains(&reg1));
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let reg2 = tmp_reg.new_from_string("r010x")?;
+        let rs_str = RegionStore::new(vec![reg1.clone(), reg2.clone()]);
+
+        println!("Initial3: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result3: {}", rslt);
+        assert!(rslt.len() == 2);
+        assert!(rslt.contains(&tmp_reg.new_from_string("r110x")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let reg2 = tmp_reg.new_from_string("r010x")?;
+        let rs_str = RegionStore::new(vec![reg2.clone(), reg1.clone()]);
+
+        println!("Initial4: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result4: {}", rslt);
+        assert!(rslt.len() == 2);
+        assert!(rslt.contains(&tmp_reg.new_from_string("r110x")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let reg2 = tmp_reg.new_from_string("r1xx1")?;
+        let rs_str = RegionStore::new(vec![reg1.clone(), reg2.clone()]);
+
+        println!("Initial5: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result5: {}", rslt);
+        assert!(rslt.len() == 5);
+        assert!(rslt.contains(&tmp_reg.new_from_string("rx100")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r010x")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r10x1")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
+
+        let reg1 = tmp_reg.new_from_string("rx10x")?;
+        let reg2 = tmp_reg.new_from_string("r01xx")?;
+        let reg3 = tmp_reg.new_from_string("rxxx1")?;
+        let rs_str = RegionStore::new(vec![reg2.clone(), reg1.clone(), reg3.clone()]);
+
+        println!("Initial6: {}", rs_str);
+
+        let rslt = rs_str.split_to_subsets();
+
+        println!("Result6: {}", rslt);
+        assert!(rslt.len() == 8);
+
+        assert!(rslt.contains(&tmp_reg.new_from_string("rx0x1")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r1100")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r1101")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r0110")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r0111")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r0100")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r0101")?));
+        assert!(rslt.contains(&tmp_reg.new_from_string("r1x11")?));
+
+        Ok(())
+    }
 
     #[test]
     fn remove_region() -> Result<(), String> {

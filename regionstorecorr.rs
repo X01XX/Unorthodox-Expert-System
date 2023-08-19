@@ -5,6 +5,7 @@
 
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
 use crate::removeunordered;
 use crate::state::SomeState;
 use crate::tools;
@@ -342,22 +343,22 @@ impl RegionStoreCorr {
         // Init return vector of regions, subuset of all intersecting original regions.
         let mut ret_vec = Vec::<RegionStoreCorr>::new();
 
-        let mut each_reg_set = Vec::<Vec<&SomeRegion>>::with_capacity(rs_vec.len());
+        let mut each_reg_set = Vec::<RegionStore>::with_capacity(rs_vec.len());
 
         for inx in 0..rs_vec[0].len() {
-            let mut tmp_vec = Vec::<&SomeRegion>::with_capacity(rs_vec.len());
+            let mut tmp_vec = RegionStore::with_capacity(rs_vec.len());
             for rsx in rs_vec.iter() {
-                tmp_vec.push(&rsx[inx]);
+                tmp_vec.push(rsx[inx].clone());
             }
 
             each_reg_set.push(tmp_vec);
         }
 
         // Get subsets for each domain.
-        let mut each_set_subs = Vec::<Vec<SomeRegion>>::with_capacity(rs_vec.len());
+        let mut each_set_subs = Vec::<RegionStore>::with_capacity(rs_vec.len());
         for setx in each_reg_set.iter() {
             //println!("set: {}", SomeRegion::vec_ref_string(setx));
-            each_set_subs.push(SomeRegion::vec_ref_split_to_subsets(setx));
+            each_set_subs.push(setx.split_to_subsets());
         }
 
         // Assemble refs for each domain subsets.

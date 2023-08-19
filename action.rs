@@ -475,7 +475,7 @@ impl SomeAction {
 
         // Create a group for square if needed
         let grps_in = self.groups.groups_state_in(key);
-        if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].x_mask().is_low())) {
+        if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].number_states() == 1)) {
             self.create_groups_from_square(key);
         }
 
