@@ -103,14 +103,6 @@ impl RegionStore {
             .collect()
     }
 
-    /// Return the number of supersets of a state.
-    pub fn number_supersets_of_state(&self, sta: &SomeState) -> usize {
-        self.avec
-            .iter()
-            .map(|regx| usize::from(regx.is_superset_of_state(sta)))
-            .sum()
-    }
-
     /// Return true if a RegionStore contains a region.
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
@@ -450,7 +442,7 @@ mod tests {
     use crate::bits::SomeBits;
 
     #[test]
-    fn test_vec_ref_split_to_subsets() -> Result<(), String> {
+    fn test_split_to_subsets() -> Result<(), String> {
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
 
         let reg1 = tmp_reg.new_from_string("rx10x")?;

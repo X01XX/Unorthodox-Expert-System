@@ -198,22 +198,6 @@ impl RegionStoreCorr {
         ret
     }
 
-    // Check any two RegionStoreCorr vectors for an intersection in their items.
-    // Return intersection RegionStoreCorr, and the RegionStoreCorrs that intersect.
-    pub fn vec_ref_intersections<'a>(
-        arg1: &'a [&'a RegionStoreCorr],
-        arg2: &'a [&'a RegionStoreCorr],
-    ) -> Option<(&'a RegionStoreCorr, RegionStoreCorr, &'a RegionStoreCorr)> {
-        for regsx in arg1.iter() {
-            for regsy in arg2.iter() {
-                if regsx.intersects(regsy) {
-                    return Some((*regsx, regsx.intersection(regsy).unwrap(), *regsy));
-                }
-            }
-        }
-        None
-    }
-
     /// Return the intersection, if any, of two RegionStoreCorrs.
     pub fn intersection(&self, other: &RegionStoreCorr) -> Option<RegionStoreCorr> {
         debug_assert!(self.len() == other.len());
@@ -275,6 +259,8 @@ impl RegionStoreCorr {
     /// Return true if at least one corresponding pair in two ReagionStoreCorrs is adjacent,
     /// while other corresponding pairs are adjacent or intersect.
     pub fn is_adjacent(&self, other: &RegionStoreCorr) -> bool {
+        debug_assert!(self.len() == other.len());
+
         let mut num_dif = 0;
         for (regx, regy) in self.iter().zip(other.iter()) {
             let dif = regx.diff_mask(regy).num_one_bits();
@@ -333,7 +319,7 @@ impl RegionStoreCorr {
     /// Split corresponding regions by intersections, producing a result where each region is a subset
     /// of any intersecting original regions. All parts of the original regions should be represented in the
     /// result.
-    pub fn vec_split_to_subsets(rs_vec: &[RegionStoreCorr]) -> Vec<RegionStoreCorr> {
+    pub fn vec_ref_split_to_subsets(rs_vec: &[&RegionStoreCorr]) -> Vec<RegionStoreCorr> {
         assert!(!rs_vec.is_empty());
 
         if rs_vec.len() == 1 {
@@ -763,49 +749,49 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(1));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(1);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(1);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
-        rs_vec.push(regstr1.clone());
+        rs_vec.push(&regstr1);
 
-        println!("Initial1: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial1: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result1: {}", RegionStoreCorr::vec_string(&rslt));
 
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
-        rs_vec.push(regstr1.clone());
-        rs_vec.push(regstr1.clone());
+        rs_vec.push(&regstr1);
+        rs_vec.push(&regstr1);
 
-        println!("Initial2: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial2: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result2: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 1);
         assert!(rslt.contains(&regstr1));
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
-        rs_vec.push(regstr1.clone());
+        rs_vec.push(&regstr1);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(tmp_reg.new_from_string("r010x")?);
-        rs_vec.push(regstr2.clone());
+        rs_vec.push(&regstr2);
 
-        println!("Initial3: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial3: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result3: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
@@ -816,7 +802,7 @@ mod tests {
             tmp_reg.new_from_string("r010x")?
         ])));
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
@@ -824,12 +810,12 @@ mod tests {
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(tmp_reg.new_from_string("r010x")?);
 
-        rs_vec.push(regstr2.clone());
-        rs_vec.push(regstr1.clone());
+        rs_vec.push(&regstr2);
+        rs_vec.push(&regstr1);
 
-        println!("Initial4: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial4: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result4: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 2);
@@ -840,7 +826,7 @@ mod tests {
             tmp_reg.new_from_string("r010x")?
         ])));
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
@@ -848,12 +834,12 @@ mod tests {
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(tmp_reg.new_from_string("r1xx1")?);
 
-        rs_vec.push(regstr2.clone());
-        rs_vec.push(regstr1.clone());
+        rs_vec.push(&regstr2);
+        rs_vec.push(&regstr1);
 
-        println!("Initial5: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial5: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result5: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 5);
@@ -873,7 +859,7 @@ mod tests {
             tmp_reg.new_from_string("r1101")?
         ])));
 
-        let mut rs_vec = Vec::<RegionStoreCorr>::with_capacity(2);
+        let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(2);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(tmp_reg.new_from_string("rx10x")?);
@@ -884,13 +870,13 @@ mod tests {
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
         regstr3.push(tmp_reg.new_from_string("rxxx1")?);
 
-        rs_vec.push(regstr2.clone());
-        rs_vec.push(regstr1.clone());
-        rs_vec.push(regstr3.clone());
+        rs_vec.push(&regstr2);
+        rs_vec.push(&regstr1);
+        rs_vec.push(&regstr3);
 
-        println!("Initial6: {}", RegionStoreCorr::vec_string(&rs_vec));
+        println!("Initial6: {}", RegionStoreCorr::vec_ref_string(&rs_vec));
 
-        let rslt = RegionStoreCorr::vec_split_to_subsets(&rs_vec);
+        let rslt = RegionStoreCorr::vec_ref_split_to_subsets(&rs_vec);
 
         println!("Result6: {}", RegionStoreCorr::vec_string(&rslt));
         assert!(rslt.len() == 8);

@@ -601,6 +601,21 @@ mod tests {
     use super::*;
     use crate::domainstore::DomainStore;
 
+    /// Return true if a need with a given type and target is in a NeedStore.
+    /// Used in tests.rs, so far.
+    pub fn contains_similar_need(nds: &NeedStore, name: &str, target: &SomeRegion) -> bool {
+        for nedx in nds.iter() {
+            if nedx.name() == name {
+                for targx in nedx.target().iter() {
+                    if targx.region == *target {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     // Test a simple four-step plan to change the domain current state
     // from s0111 to s1000.
     #[test]
@@ -716,7 +731,11 @@ mod tests {
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
+        assert!(contains_similar_need(
+            &nds1,
+            "StateNotInGroup",
+            &dm0.region_from_string("r1")?
+        ));
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s0b1")?;
@@ -749,7 +768,11 @@ mod tests {
         println!("needs: {}", nds1);
 
         assert_eq!(nds1.len(), 1);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r0")?));
+        assert!(contains_similar_need(
+            &nds1,
+            "StateNotInGroup",
+            &dm0.region_from_string("r0")?
+        ));
 
         Ok(())
     }
@@ -768,7 +791,11 @@ mod tests {
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(nds1.contains_similar_need("StateNotInGroup", &dm0.region_from_string("r1")?));
+        assert!(contains_similar_need(
+            &nds1,
+            "StateNotInGroup",
+            &dm0.region_from_string("r1")?
+        ));
 
         // Create group for one sample
         let s1 = dm0.state_from_string("s0b1")?;
@@ -794,8 +821,16 @@ mod tests {
         println!("needs {}", nds2);
 
         assert_eq!(nds2.len(), 2);
-        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1")?));
-        assert!(nds2.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r10")?));
+        assert!(contains_similar_need(
+            &nds2,
+            "ConfirmGroup",
+            &dm0.region_from_string("r1")?
+        ));
+        assert!(contains_similar_need(
+            &nds2,
+            "ConfirmGroup",
+            &dm0.region_from_string("r10")?
+        ));
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s2.clone()));
@@ -803,7 +838,11 @@ mod tests {
         let nds3 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds3);
         assert_eq!(nds3.len(), 1);
-        assert!(nds3.contains_similar_need("ConfirmGroup", &dm0.region_from_string("r1")?));
+        assert!(contains_similar_need(
+            &nds3,
+            "ConfirmGroup",
+            &dm0.region_from_string("r1")?
+        ));
 
         // Satisfy second need.
         dm0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
@@ -850,7 +889,8 @@ mod tests {
         let nds1 = dm0.actions.avec[0].group_pair_needs();
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(nds1.contains_similar_need(
+        assert!(contains_similar_need(
+            &nds1,
             "ContradictoryIntersection",
             &dm0.region_from_string("rX100")?
         ));
@@ -911,7 +951,11 @@ mod tests {
 
         println!("needs are {}", nds2);
         let s06 = dm0.state_from_string("s0b00000110")?;
-        assert!(nds2.contains_similar_need("LimitGroupAdj", &SomeRegion::new(vec![s06.clone()])));
+        assert!(contains_similar_need(
+            &nds2,
+            "LimitGroupAdj",
+            &SomeRegion::new(vec![s06.clone()])
+        ));
 
         let s02 = dm0.state_from_string("s0b00000010")?;
         dm0.eval_sample_arbitrary(&SomeSample::new(s06.clone(), 0, s02.clone()));
@@ -1100,7 +1144,11 @@ mod tests {
         println!("needs: {}", &needs);
 
         assert_eq!(needs.len(), 1);
-        assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0101")?));
+        assert!(contains_similar_need(
+            &needs,
+            "SeekEdge",
+            &dm0.region_from_string("r0101")?
+        ));
 
         dm0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s0.clone()));
 
@@ -1109,14 +1157,18 @@ mod tests {
         assert_eq!(needs.len(), 1);
 
         // Process one, of two, possible needs.
-        if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?) {
+        if contains_similar_need(&needs, "SeekEdge", &dm0.region_from_string("r1101")?) {
             // Seek even closer sample s1101
             let sd = dm0.state_from_string("s0b1101")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs: {}", &needs);
             assert_eq!(needs.len(), 1);
-            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r1101")?));
+            assert!(contains_similar_need(
+                &needs,
+                "SeekEdge",
+                &dm0.region_from_string("r1101")?
+            ));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
@@ -1137,14 +1189,18 @@ mod tests {
 
             // At the next run of get_needs, r11x1 will replace the superset region rx1x1, then
             // r11x1 will be deleted because its defining squares are adjacent.
-        } else if needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111")?) {
+        } else if contains_similar_need(&needs, "SeekEdge", &dm0.region_from_string("r0111")?) {
             // Seek even closer sample s0111
             let s7 = dm0.state_from_string("s0b0111")?;
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();
             println!("needs: {}", &needs);
             assert_eq!(needs.len(), 1);
-            assert!(needs.contains_similar_need("SeekEdge", &dm0.region_from_string("r0111")?));
+            assert!(contains_similar_need(
+                &needs,
+                "SeekEdge",
+                &dm0.region_from_string("r0111")?
+            ));
 
             dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s0.clone()));
             let needs = dm0.actions[0].seek_edge_needs();

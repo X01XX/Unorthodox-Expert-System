@@ -1,7 +1,6 @@
 //! The NeedStore struct, a vector of SomeNeed structs.
 
 use crate::need::SomeNeed;
-use crate::region::SomeRegion;
 use crate::removeunordered;
 
 use serde::{Deserialize, Serialize};
@@ -63,22 +62,6 @@ impl NeedStore {
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
         !self.avec.is_empty()
-    }
-
-    /// Return true if a need with a given type and target is in a NeedStore.
-    /// Used in tests.rs, so far.
-    pub fn contains_similar_need(&self, name: &str, target: &SomeRegion) -> bool {
-        for nedx in &self.avec {
-            if nedx.name() == name {
-                for targx in nedx.target().iter() {
-                    if targx.region == *target {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        false
     }
 
     /// Add a need to the vector.

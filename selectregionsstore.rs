@@ -120,14 +120,6 @@ impl SelectRegionsStore {
         self.regionstores.iter_mut()
     }
 
-    /// Return the number of supersets of a StateStore
-    pub fn number_supersets_of_states(&self, stas: &[&SomeState]) -> usize {
-        self.regionstores
-            .iter()
-            .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
-            .sum()
-    }
-
     /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStoreCorr.
     pub fn rate_regions(&self, regs: &RegionStoreCorr) -> (isize, usize) {
         let mut times_visited: usize = 0;
@@ -207,12 +199,12 @@ impl SelectRegionsStore {
     /// Each result regionstore will be a subset of one, or more, of the original regionstores,
     /// where the sum of the SelectRegion values is greater than zero.
     pub fn split_to_subsets(&self) -> Vec<RegionStoreCorr> {
-        let mut rs = Vec::<RegionStoreCorr>::with_capacity(self.len());
+        let mut rs = Vec::<&RegionStoreCorr>::with_capacity(self.len());
         for reg_valx in &self.regionstores {
-            rs.push(reg_valx.regions.clone());
+            rs.push(&reg_valx.regions);
         }
 
-        RegionStoreCorr::vec_split_to_subsets(&rs)
+        RegionStoreCorr::vec_ref_split_to_subsets(&rs)
     }
 
     /// Return true if an equal RegionStore is already in the SelectRegionsStore.

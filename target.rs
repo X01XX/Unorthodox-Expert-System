@@ -31,21 +31,4 @@ impl SomeTarget {
     pub fn is_superset_of_state(&self, stax: &SomeState) -> bool {
         self.region.is_superset_of_state(stax)
     }
-
-    /// Return a string representing a vector of SomeTarget references.
-    pub fn vec_ref_string(avec: &[&SomeTarget]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, targx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", targx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
 }

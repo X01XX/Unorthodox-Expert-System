@@ -39,11 +39,6 @@ impl SquareStore {
         Self { ahash }
     }
 
-    /// Remove a square
-    pub fn remove(&mut self, stax: &SomeState) {
-        self.ahash.remove(stax);
-    }
-
     pub fn del_squares(&mut self, sqrs: &StateStore) {
         for sqrx in sqrs.iter() {
             self.ahash.remove(sqrx);

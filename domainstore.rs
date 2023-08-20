@@ -1282,6 +1282,15 @@ mod tests {
     use super::*;
     use crate::sample::SomeSample;
 
+    /// Return the number of supersets of a StateStore
+    pub fn number_supersets_of_states(select: &SelectRegionsStore, stas: &[&SomeState]) -> usize {
+        select
+            .regionstores
+            .iter()
+            .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
+            .sum()
+    }
+
     #[test]
     /// Test case where positive regions the start and goal are in, intersect.
     /// Avoidance 0 is randomly finding paths, and choosing the one with least intersections of negative regions.
@@ -2004,9 +2013,7 @@ mod tests {
         dmxs.boredom = 0;
         dmxs.boredom_limit = 0;
 
-        let num_sup = dmxs
-            .select
-            .number_supersets_of_states(&vec![&state1, &state2]);
+        let num_sup = number_supersets_of_states(&dmxs.select, &vec![&state1, &state2]);
         println!("\nNumber supersets: {num_sup}",);
         assert!(num_sup == 0);
 
@@ -2031,9 +2038,7 @@ mod tests {
             dmxs.boredom, dmxs.boredom_limit
         );
 
-        let num_sup = dmxs
-            .select
-            .number_supersets_of_states(&vec![&state1, &state2]);
+        let num_sup = number_supersets_of_states(&dmxs.select, &vec![&state1, &state2]);
         println!("\nNumber supersets: {num_sup}",);
         assert!(num_sup == 3);
 
