@@ -537,10 +537,10 @@ mod tests {
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
 
-        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![0, 0]));
         let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
@@ -559,10 +559,10 @@ mod tests {
 
     #[test]
     fn intersects() -> Result<(), String> {
-        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
 
-        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![0, 0]));
         let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
@@ -586,10 +586,10 @@ mod tests {
 
     #[test]
     fn test_subtract() -> Result<(), String> {
-        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
 
-        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![0, 0]));
         let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
@@ -649,10 +649,10 @@ mod tests {
 
     #[test]
     fn test_vec_subtract() -> Result<(), String> {
-        let tmp_sta1 = SomeState::new(SomeBits::new(1));
+        let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
 
-        let tmp_sta2 = SomeState::new(SomeBits::new(2));
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![0, 0]));
         let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
@@ -746,7 +746,7 @@ mod tests {
 
     #[test]
     fn test_vec_split_to_subsets() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         let mut rs_vec = Vec::<&RegionStoreCorr>::with_capacity(1);

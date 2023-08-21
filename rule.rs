@@ -467,8 +467,8 @@ mod tests {
 
     #[test]
     fn new_all() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
-        let tmp_msk = SomeMask::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_msk = SomeMask::new(SomeBits::new(vec![0]));
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
         let rule_from_states = SomeRule::new(
@@ -477,7 +477,7 @@ mod tests {
         );
 
         let rule_from_masks = SomeRule {
-            b00: tmp_msk.new_from_string("m0xf8")?,
+            b00: tmp_msk.new_from_string("m0x7")?.bitwise_not(),
             b01: tmp_msk.new_from_string("m0b0010")?,
             b11: tmp_msk.new_from_string("m0b0001")?,
             b10: tmp_msk.new_from_string("m0b0100")?,
@@ -496,7 +496,7 @@ mod tests {
 
     #[test]
     fn initial_region_result_region() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         let sta = tmp_sta.new_from_string("s0b1010")?;
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(4));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0, 0, 0]));
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
         let rul1 = tmp_rul.new_from_string("01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(4));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0, 0, 0]));
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
         let rul1 = tmp_rul.new_from_string("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
@@ -550,7 +550,7 @@ mod tests {
 
     #[test]
     fn is_valid_intersection() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
         let rul1 = tmp_rul.new_from_string("XX")?;
@@ -566,7 +566,7 @@ mod tests {
 
     #[test]
     fn is_valid_union() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
         let rul1 = tmp_rul.new_from_string("00")?;
@@ -594,7 +594,7 @@ mod tests {
 
     #[test]
     fn mutually_exclusive() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -628,7 +628,7 @@ mod tests {
 
     #[test]
     fn order_bad() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -653,7 +653,7 @@ mod tests {
 
     #[test]
     fn parse_for_changes() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -690,7 +690,7 @@ mod tests {
 
     #[test]
     fn restrict_result_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -706,7 +706,7 @@ mod tests {
 
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
@@ -723,7 +723,7 @@ mod tests {
 
     #[test]
     fn union() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
@@ -739,7 +739,7 @@ mod tests {
 
     #[test]
     fn region_to_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(2);
+        let tmp_bts = SomeBits::new(vec![0, 0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 

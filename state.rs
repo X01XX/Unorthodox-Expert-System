@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_is_between() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let sta2 = tmp_sta.new_from_string("s0b0010")?;
         let sta3 = tmp_sta.new_from_string("s0b0011")?;
         let sta5 = tmp_sta.new_from_string("s0b0101")?;
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn distance() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(2));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
 
         let sta1 = tmp_sta.new_from_string("s0xabc4")?;
         let sta2 = tmp_sta.new_from_string("s0x5430")?;
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         let sta1 = tmp_sta.new_from_string("s0b1010")?;
         let sta2 = tmp_sta.new_from_string("s0b1010")?;

@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(1));
+        let tmp_msk = SomeMask::new(SomeBits::new(vec![0]));
 
         let msk1 = tmp_msk.new_from_string("m0b1010")?;
         let msk2 = tmp_msk.new_from_string("m0b1010")?;
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn half_mask() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(2));
+        let tmp_msk = SomeMask::new(SomeBits::new(vec![0, 0]));
 
         let test_msk = tmp_msk.new_from_string("m0x5aa5")?.half_mask();
         println!("test_msk: {test_msk}");

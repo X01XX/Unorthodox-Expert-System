@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn path_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -406,7 +406,7 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 

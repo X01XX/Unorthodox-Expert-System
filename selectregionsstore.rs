@@ -21,7 +21,7 @@ impl fmt::Display for SelectRegions {
     }
 }
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
@@ -51,6 +51,7 @@ impl fmt::Display for SelectRegionsStore {
 }
 
 impl SelectRegions {
+    /// Return a string representation for a vector of SelectRegions references.
     pub fn vec_ref_string(avec: &[&SelectRegions]) -> String {
         let mut ret_str = String::from("[");
         for (inx, orx) in avec.iter().enumerate() {
@@ -61,6 +62,10 @@ impl SelectRegions {
         }
         ret_str.push(']');
         ret_str
+    }
+    /// Increment times visited.
+    pub fn inc_times_visited(&mut self) {
+        self.times_visited += 1;
     }
 }
 

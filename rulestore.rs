@@ -410,7 +410,7 @@ mod tests {
     // Test restrict_initial_region and initial_region
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
@@ -444,7 +444,7 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
@@ -553,7 +553,7 @@ mod tests {
 
     #[test]
     fn is_superset_of_rule() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn union() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(1);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
 

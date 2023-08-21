@@ -73,7 +73,7 @@ impl SomeDomain {
     pub fn new(num_ints: usize) -> Self {
         debug_assert_ne!(num_ints, 0);
         // Set up a domain instance with the correct value for num_ints
-        let tmp_sta = SomeState::new(SomeBits::new(num_ints));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0; num_ints]));
         let cur_state = tmp_sta.new_random();
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         SomeDomain {

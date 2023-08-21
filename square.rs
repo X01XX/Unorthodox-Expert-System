@@ -251,7 +251,7 @@ mod tests {
     // Test multiple additions to a square, cycle through all pn and pnc values.
     #[test]
     fn cycle_through_pn_pnc_values() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         let mut sqrx = SomeSquare::new(
             tmp_sta.new_from_string("s0b0101")?,
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "left != right")]
     fn can_combine_not_same() {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         let sqr1 = SomeSquare::new(
             tmp_sta.new_from_string("s0b0101").unwrap(),
@@ -341,7 +341,7 @@ mod tests {
     // Test can_combine Pn == One
     #[test]
     fn can_combine_pn_one_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Test two squares with only one sample each.
         // Allow a true result for bootstrapping.
@@ -381,7 +381,7 @@ mod tests {
     // Test can_combine Pn == One and Pn == two
     #[test]
     fn can_combine_pn_one_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn 1 pnc f.
         let sqr1 = SomeSquare::new(
@@ -453,7 +453,7 @@ mod tests {
     // Test can_combine Pn == two
     #[test]
     fn can_combine_pn_two_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn 2 pnc f.
         let mut sqr1 = SomeSquare::new(
@@ -551,7 +551,7 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == 1
     #[test]
     fn can_combine_pn_u_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(
@@ -586,7 +586,7 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == 2
     #[test]
     fn can_combine_pn_u_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(
@@ -626,7 +626,7 @@ mod tests {
     // Test can_combine Pn == Unpredictable, Pn == Unpredictable
     #[test]
     fn can_combine_pn_u_u() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(

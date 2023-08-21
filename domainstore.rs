@@ -616,7 +616,7 @@ impl DomainStore {
         // Get the select regions the current state is in.
         for optregs in self.select.iter_mut() {
             if optregs.regions.is_superset_states(&all_states2) {
-                optregs.times_visited += 1;
+                optregs.inc_times_visited();
             }
         }
     }

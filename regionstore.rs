@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_split_to_subsets() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let reg1 = tmp_reg.new_from_string("rx10x")?;
         let rs_str = RegionStore::new(vec![reg1.clone()]);
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn remove_region() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(3);
 
@@ -556,7 +556,7 @@ mod tests {
 
     #[test]
     fn subtract_region() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
         regstr.push(tmp_reg.new_from_string("r0x0x")?);
@@ -581,7 +581,7 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
         regstr.push(tmp_reg.new_from_string("r0x0x")?);
@@ -609,7 +609,7 @@ mod tests {
 
     #[test]
     fn push_nosups() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
 
@@ -632,7 +632,7 @@ mod tests {
 
     #[test]
     fn push_nosubs() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
 
@@ -655,7 +655,7 @@ mod tests {
 
     #[test]
     fn any_superset_of_state() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(1));
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         let mut regstr = RegionStore::with_capacity(4);
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     fn any_intersection() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
 
@@ -692,7 +692,7 @@ mod tests {
 
     #[test]
     fn any_subset_of() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
 
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn any_superset_of() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(1))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let mut regstr = RegionStore::with_capacity(4);
 
@@ -729,7 +729,7 @@ mod tests {
     // Test calculation of two dissimilar pairs of states effect on possible regions.
     #[test]
     fn two_dissimilar_pairs() -> Result<(), String> {
-        let tmp_state = SomeState::new(SomeBits::new(1));
+        let tmp_state = SomeState::new(SomeBits::new(vec![0]));
 
         let max_reg = SomeRegion::new(vec![
             tmp_state.new_from_string("s0b1111")?,
@@ -766,8 +766,8 @@ mod tests {
                 }
 
                 let regx = SomeRegion::new(vec![
-                    SomeState::new(SomeBits { ints: vec![x] }),
-                    SomeState::new(SomeBits { ints: vec![y] }),
+                    SomeState::new(SomeBits::new(vec![x])),
+                    SomeState::new(SomeBits::new(vec![y])),
                 ]);
 
                 if (regx.is_superset_of_state(&state_6) && regx.is_superset_of_state(&state_a))

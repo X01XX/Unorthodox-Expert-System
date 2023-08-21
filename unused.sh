@@ -4,7 +4,7 @@
 
 # Move the files to a work directory, removing the test modules and comments.
 
-# Get a list of fuction names.
+# Get a list of function names.
 
 # Search the files for each function name.
 
@@ -13,51 +13,56 @@
 
 # A function may be in a trait, and used implicitly, so should be kept.
 
-# A function may be unsed only in test modules, so may be moved there.
+# A function may be used only in test modules, so may be moved there.
 
-# Othewise the function may be deleted.
+# Otherwise the function may be deleted.
+
+# Set source file dir.
+srcdir=~/rust/ues/src
+
+# Set work directory
+wrkdir=~/rust/ues/work
 
 # Clear/create work directory.
-if [ -d ~/rust/ues/work ]
+if [ -d $wrkdir ]
 then
-	rm -R ~/rust/ues/work
+	rm -R $wrkdir
 fi
-mkdir ~/rust/ues/work
+mkdir $wrkdir
 
 # Put each Rust file into work directory, without test code, or comments.
-for f in ~/rust/ues/src/*.rs
+for f in $srcdir/*.rs
 do
 	# echo $f
-	# diff /media/$USER/UDISK/rust/$UES/src/$(basename -- $f) $f
 	count=`grep -c "mod\stests" $f`
 	if [ $count -lt 1 ]
 	then
 	       	# echo $f no
 		file=`(basename -- $f)`
-		cat $f | sed -e 's/\/\/.*//' > ~/rust/ues/work/$file
+		cat $f | sed -e 's/\/\/.*//' > $wrkdir/$file
 	else
 		linenum=`grep -n "mod tests" $f | sed -e 's/:.*//g'`
 	       	# echo $f yes $linenum
 		file=`(basename -- $f)`
-		head -$linenum $f | sed 's/\/\/.*//' > ~/rust/ues/work/$file
+		head -$linenum $f | sed 's/\/\/.*//' > $wrkdir/$file
 	fi
 
 done
 
-# Combine the work files.
-cat ~/rust/ues/work/*.rs >  ~/rust/ues/work/tmp.txt
-
 # Parse out function names.
-functions=`grep "\sfn\s" ~/rust/ues/work/*.rs | sed -e 's/.*fn\s//' | sed -e 's/<.*//' | sed -e 's/(.*//' | sort -u`
+functions=`grep "\sfn\s" $wrkdir/*.rs | sed -e 's/.*fn\s//' | sed -e 's/<.*//' | sed -e 's/(.*//' | sort -u`
+
+# Combine the work files.
+cat $wrkdir/*.rs >  $wrkdir/tmp.txt
 
 # Check the number of references for each function name.
 for line in $functions
 do
 	line2=`echo $line | tr -d '\n'`
-	count=`grep -c $line ~/rust/ues/work/tmp.txt`
+	count=`grep -c $line $wrkdir/tmp.txt`
 	if [ $count -lt 2 ]
        	then
-	    fileat=`grep -l $line2 ~/rust/ues/work/*.rs`
+	    fileat=`grep -l $line2 $wrkdir/*.rs`
 	    fileat2=`(basename -- $fileat)`
 	    echo "-> $count " $line2 " " $fileat2
 
