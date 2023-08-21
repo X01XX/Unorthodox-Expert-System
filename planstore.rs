@@ -139,11 +139,6 @@ impl PlanStore {
         }
         ret
     }
-
-    /// Append a PlanStore to a PlanStore.
-    pub fn append(&mut self, other: &mut PlanStore) {
-        self.avec.append(&mut other.avec); // empties other.avec
-    }
 } // end impl PlanStore
 
 impl Index<usize> for PlanStore {

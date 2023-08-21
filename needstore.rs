@@ -29,7 +29,7 @@ impl fmt::Display for NeedStore {
     }
 }
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NeedStore {
     /// A vector of SomeNeed instances.
@@ -70,7 +70,7 @@ impl NeedStore {
     }
 
     /// Append a Needstore.
-    pub fn append(&mut self, other: &mut NeedStore) {
+    pub fn append(&mut self, mut other: Self) {
         self.avec.append(&mut other.avec); // empties other.avec
     }
 
@@ -87,6 +87,11 @@ impl NeedStore {
     /// Remove a need from a NeedStore
     pub fn remove_unordered(&mut self, inx: usize) {
         removeunordered::remove_unordered(&mut self.avec, inx);
+    }
+
+    /// Sort needs by priority.
+    pub fn sort_by_priority(&mut self) {
+        self.avec.sort_by_key(|ndx| ndx.priority());
     }
 } // end impl NeedStore
 

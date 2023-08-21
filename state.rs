@@ -22,7 +22,7 @@ use std::hash::Hash;
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
 /// A State, a set of bits.  It could be thought of as a square on a Karnaugh Map.
 pub struct SomeState {

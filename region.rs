@@ -162,13 +162,13 @@ impl SomeRegion {
     /// x = (0, 1).
     /// XxXx = (1010, 0101).
     pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
-        self.new_from_string2(str, SomeMask::new(self.state1().bts.new_low()))
+        self.new_from_string2(str, self.state1().to_mask().new_low())
     }
 
     /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, positions that are omitted will be padded with Xs.
     pub fn new_from_string_pad_x(&self, str: &str) -> Result<Self, String> {
-        self.new_from_string2(str, SomeMask::new(self.state1().bts.new_high()))
+        self.new_from_string2(str, self.state1().new_high().to_mask())
     }
 
     /// Return a Region from a string and the number of integers to use.
@@ -184,7 +184,7 @@ impl SomeRegion {
                 if chr == "r" {
                     continue;
                 } else if chr == "s" {
-                    let state_r = SomeState::new(msk_low.bts.new_low()).new_from_string(str);
+                    let state_r = msk_low.to_state().new_from_string(str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(SomeRegion::new(vec![a_state]));

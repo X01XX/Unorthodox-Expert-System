@@ -11,6 +11,8 @@
 # For function names that have only one reference, that is the function definition,
 # and will be displayed.
 
+# A non-uniquely named function, like two structs supporting append, will be missed.
+
 # A function may be in a trait, and used implicitly, so should be kept.
 
 # A function may be used only in test modules, so may be moved there.

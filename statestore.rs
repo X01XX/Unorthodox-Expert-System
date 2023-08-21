@@ -14,6 +14,7 @@ impl fmt::Display for StateStore {
     }
 }
 
+#[readonly::make]
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct StateStore {
     /// A vector of states.

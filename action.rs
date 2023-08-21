@@ -82,7 +82,7 @@ impl fmt::Display for SomeAction {
     }
 }
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeAction struct, aggregate the best current guess at what an action
 /// will do for any state.
@@ -681,19 +681,19 @@ impl SomeAction {
             cnt += 1;
 
             // Look for needs to find a new edge in an invalidated group
-            nds.append(&mut self.seek_edge_needs());
+            nds.append(self.seek_edge_needs());
 
             // Check for additional samples for group states needs
-            nds.append(&mut self.confirm_group_needs());
+            nds.append(self.confirm_group_needs());
 
             // Check any two groups for:
             // Overlapping regions that may be combined.
             // Overlapping groups that form a contradictory intersection.
-            nds.append(&mut self.group_pair_needs());
+            nds.append(self.group_pair_needs());
 
             // Check for squares in-one-group needs
-            if let Some(mut ndx) = self.limit_groups_needs(&agg_changes.bits_change_mask()) {
-                nds.append(&mut ndx);
+            if let Some(ndx) = self.limit_groups_needs(&agg_changes.bits_change_mask()) {
+                nds.append(ndx);
             }
 
             // Check for repeating housekeeping needs loop
@@ -856,7 +856,7 @@ impl SomeAction {
                 // Checks that will not return housekeeping needs
 
                 // Look for needs for states not in groups
-                nds.append(&mut self.state_not_in_group_needs(cur_state, memory));
+                nds.append(self.state_not_in_group_needs(cur_state, memory));
 
                 if nds.is_empty() {
                     // Do remainder check.
@@ -1062,7 +1062,7 @@ impl SomeAction {
 
             // No squares between
             if sqrs_in.len() == 2 {
-                ret_nds.append(&mut self.seek_edge_needs2(regx));
+                ret_nds.append(self.seek_edge_needs2(regx));
                 continue;
             }
 
@@ -1270,8 +1270,8 @@ impl SomeAction {
                 continue;
             }
 
-            if let Some(mut ndx) = self.limit_group_anchor_needs(grpx, group_num) {
-                ret_nds.append(&mut ndx);
+            if let Some(ndx) = self.limit_group_anchor_needs(grpx, group_num) {
+                ret_nds.append(ndx);
             } else if let Some(anchor) = &grpx.anchor {
                 if !grpx.limited {
                     // Get masks of edge bits to use to limit group.
@@ -1279,10 +1279,10 @@ impl SomeAction {
                     let change_bits = grpx.region.edge_mask().bitwise_and(change_mask);
                     let edge_msks: Vec<SomeMask> = change_bits.split();
 
-                    if let Some(mut ndx) =
+                    if let Some(ndx) =
                         self.limit_group_adj_needs(grpx, anchor, &edge_msks, group_num)
                     {
-                        ret_nds.append(&mut ndx);
+                        ret_nds.append(ndx);
                     } else {
                         ret_nds.push(SomeNeed::SetGroupLimited {
                             group_region: grpx.region.clone(),
@@ -1646,9 +1646,9 @@ impl SomeAction {
                 }
 
                 if grpx.region.intersects(&grpy.region) {
-                    nds.append(&mut self.group_pair_intersection_needs(grpx, grpy));
+                    nds.append(self.group_pair_intersection_needs(grpx, grpy));
                 } else if grpx.region.is_adjacent(&grpy.region) && grpx.pn == grpy.pn {
-                    nds.append(&mut self.group_pair_combine_needs(grpx, grpy));
+                    nds.append(self.group_pair_combine_needs(grpx, grpy));
                 }
             } // next iny
         } // next inx
@@ -2405,9 +2405,14 @@ impl SomeAction {
         }
         Ok(())
     }
-
+    /// Check group limited setting.
     pub fn check_limited(&mut self, change_mask: &SomeMask) {
         self.groups.check_limited(change_mask);
+    }
+    /// Set a group anchor.
+    pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
+        let Some(grpx) = self.groups.find_mut(grp_reg) else { panic!("Group not found?"); };
+        grpx.set_anchor(anchor);
     }
 } // end impl SomeAction
 

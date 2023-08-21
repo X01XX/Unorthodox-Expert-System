@@ -29,8 +29,8 @@ impl fmt::Display for TargetStore {
     }
 }
 
-#[derive(Debug, Default)]
 #[readonly::make]
+#[derive(Debug, Default)]
 pub struct TargetStore {
     /// A vector of SomeTarget instances.
     avec: Vec<SomeTarget>,

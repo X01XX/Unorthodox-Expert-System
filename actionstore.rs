@@ -81,30 +81,38 @@ impl ActionStore {
 
         self.calc_aggregate_changes();
 
-        let vecx: Vec<SomeNeed> = self
+        let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| {
-                actx.get_needs(cur, dom, memory, &self.aggregate_changes)
-                    .avec
-            })
-            .flatten()
-            .collect::<Vec<SomeNeed>>();
+            .map(|actx| actx.get_needs(cur, dom, memory, &self.aggregate_changes))
+            .collect::<Vec<NeedStore>>();
 
-        NeedStore::new(vecx)
+        // Consolidate need into one NeedStore.
+        let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
+        let mut needs = NeedStore::new(Vec::<SomeNeed>::with_capacity(num_items));
+        for needx in vecx {
+            needs.append(needx);
+        }
+        needs
     }
 
     /// Return steps that make at least one needed bit change.
     pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
         // Run a thread for each action
-        let stps: Vec<SomeStep> = self
+        let stps: Vec<StepStore> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_steps(achange).avec)
-            .flatten()
-            .collect::<Vec<SomeStep>>();
+            .map(|actx| actx.get_steps(achange))
+            .collect::<Vec<StepStore>>();
 
-        StepStore::new(stps)
+        // Consolidate steps into one StepStore.
+        let num_items = stps.iter().map(|stpx| stpx.len()).sum();
+        let mut stps2 = StepStore::new(Vec::<SomeStep>::with_capacity(num_items));
+        for stpx in stps {
+            stps2.append(stpx);
+        }
+
+        stps2
     }
 
     /// Return an iterator

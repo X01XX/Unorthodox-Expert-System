@@ -16,7 +16,7 @@ impl fmt::Display for StepStore {
     }
 }
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct StepStore {
     /// A vector for steps.
@@ -57,7 +57,7 @@ impl StepStore {
     }
 
     /// Append a StepStore to a StepStore.
-    pub fn append(&mut self, other: &mut StepStore) {
+    pub fn append(&mut self, mut other: Self) {
         self.avec.append(&mut other.avec); // empties other.avec
     }
 

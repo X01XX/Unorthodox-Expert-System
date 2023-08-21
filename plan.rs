@@ -116,8 +116,8 @@ impl SomePlan {
     }
 
     /// Append a plan to another plan.
-    pub fn append(&mut self, val: &mut SomePlan) {
-        self.steps.append(&mut val.steps); // empties val.avec
+    pub fn append(&mut self, val: Self) {
+        self.steps.append(val.steps); // empties val.avec
     }
 
     /// Add a step to a SomePlan.
@@ -140,9 +140,9 @@ impl SomePlan {
 
         let mut steps1 = self.restrict_result_region(&regx)?;
 
-        let mut steps2 = other.restrict_initial_region(&regx)?;
+        let steps2 = other.restrict_initial_region(&regx)?;
 
-        steps1.append(&mut steps2);
+        steps1.append(steps2);
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
         Some(steps1)

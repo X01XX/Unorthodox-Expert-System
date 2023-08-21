@@ -201,21 +201,27 @@ impl DomainStore {
         self.step_num += 1;
 
         // Get all needs.
-        let mut vecx: Vec<SomeNeed> = self
+        let mut vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|domx| domx.get_needs().avec)
-            .flatten()
-            .collect::<Vec<SomeNeed>>();
+            .map(|domx| domx.get_needs())
+            .collect::<Vec<NeedStore>>();
 
         // Get select region needs.
-        if let Some(mut needs) = self.check_select() {
-            vecx.append(&mut needs.avec);
+        if let Some(needs) = self.check_select() {
+            vecx.push(needs);
+        }
+
+        // Consolidate needs into one NeedStore.
+        let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
+        let mut needs = NeedStore::new(Vec::<SomeNeed>::with_capacity(num_items));
+        for needsx in vecx {
+            needs.append(needsx);
         }
 
         // Sort needs by ascending priority, and store.
-        vecx.sort_by_key(|ndx| ndx.priority());
-        self.needs = NeedStore::new(vecx);
+        needs.sort_by_priority();
+        self.needs = needs;
 
         self.evaluate_needs();
     }

@@ -16,6 +16,7 @@ use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
 
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuleStore {
     avec: Vec<SomeRule>,
