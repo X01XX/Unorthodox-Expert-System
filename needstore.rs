@@ -69,9 +69,9 @@ impl NeedStore {
         self.avec.push(val);
     }
 
-    /// Append a Needstore.
+    /// Extend a NeedStore by emptying another NeedStore..
     pub fn append(&mut self, mut other: Self) {
-        self.avec.append(&mut other.avec); // empties other.avec
+        self.avec.append(&mut other.avec);
     }
 
     /// Return a mutable iterator.

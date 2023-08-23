@@ -56,9 +56,9 @@ impl StepStore {
         self.avec.push(val);
     }
 
-    /// Append a StepStore to a StepStore.
+    /// Extend a StepStore by emtying another StepStore.
     pub fn append(&mut self, mut other: Self) {
-        self.avec.append(&mut other.avec); // empties other.avec
+        self.avec.append(&mut other.avec);
     }
 
     /// Return an immutable iterator for a StepStore.
