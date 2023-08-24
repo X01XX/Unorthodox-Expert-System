@@ -1,11 +1,18 @@
+<!DOCTYPE html>
+<html lang=en>
 <head>
-  <style type="text/css">
-    body {
+<title>"Unorthodox Expert System"</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="description" content="A radically different approach to an Expert System">
+  <meta name="keywords" content="Karnaugh Map,Automated Learning,Combinatorial Explosion,Grey Code,Expert System">
+  <meta name="author" content="Earl Dukerschein">
+<style>
+  body {
   font-family: Verdana, Geneva, Arial, sans-serif;
   font-family: times;
   line-height: 1.5em;
       font-size: 17px;
-}
+  }
 h1 {
   line-height: 1.5em;
 }
@@ -102,14 +109,10 @@ p {
 .fcr2 {
   color: red
     }   
-  </style>
+</style>
 </head>
-  <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
-  <meta name="description" content="A radically different approach to an Expert System" />
-  <meta name="keywords" content="Karnaugh Map,Automated Learning,Combinatorial Explosion,Grey Code,Expert System" />
-  <meta name="author" content="Earl Dukerschein" />
 <body>
-  <h1><a name="KM"></a>Some thoughts on Karnaugh Maps, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a> and the <a href="#CE">Combinatorial Explosion</a></h1>
+  <h1><a id="KM"></a>Some thoughts on Karnaugh Maps, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a> and the <a href="#CE">Combinatorial Explosion</a></h1>
   <h2>Background</h2>
   <div id="intro">
   <p>
@@ -401,7 +404,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     2) Another possible representation of a region is maximum 1-bits (high state) and maximum 0-bits (low state).
     </p>
     <p class="indent1">
-    Given two states, or the first type of region, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 & 0110 = 0010.
+    Given two states, or the first type of region, like 1010 and 0110, high is 1010 + 0110 = 1110.  Low is 1010 &amp; 0110 = 0010.
     </p>
         <p class="indent1">Interpretation of region bits:</p>
       <table class="indent2">
@@ -443,7 +446,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    When calculating intersections and unions of the first type of region, the needed sampled states will often not be available, so I will use this representation.
    </p>
     <h4>An analogy to a crystal:</h4>
-    </p>
     <p class="indent1">
     Every non-X bit position of a region is one side of an "edge".  Each edge has a zero side and a one side.
     </p>
@@ -689,7 +691,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Given 0xX1 = (0011, 0101) and 1Xx1 = (1101, 1011).
   </p>
    <p class="indent2">
- The Union = (0011 + 0101 + 1101 + 1011, 0011 & 0101 & 1101 & 1011) = (1111, 0001) = XXX1.
+ The Union = (0011 + 0101 + 1101 + 1011, 0011 &amp; 0101 &amp; 1101 &amp; 1011) = (1111, 0001) = XXX1.
    </p>
    <h3>Testing if a region is subset to another region</h3>
   <p>
@@ -748,7 +750,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	<p>X110 = (1110, 0110)</p>
 	<p></p>
 	<p>
-	AND the high states: 1101 & 1110 = 1100
+	AND the high states: 1101 &amp; 1110 = 1100
 	</p>
 	<p>
 	OR the low states:   1000 + 0110 = 1110
@@ -756,7 +758,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 	<p>
 	Now make a region from the results, (1110, 1100) = 11X0 (E, C).
 	</p>
-<a name="SKM"></a><h2>Sparse Karnaugh Maps <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
+	<a id="SKM"></a><h2>Sparse Karnaugh Maps <span style="font-size: 60%">(<a href="#KM">Top</a>, You are here, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>, <a href="#ADD">Addendums</a>)</span></h2>
     <p>
      In class we learn how to use K-Maps starting with all the squares filled in.
  It occurred to me that a K-Map without all squares filled in might be interesting.
@@ -822,7 +824,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-  </p>
    <p>
  Current personal computers handle data 64 bits at a time.
  With a K-Map of 64 bits, with 2<sup>64</sup> possible squares, it is impractical to sample every square.
@@ -934,7 +935,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
  So keep all valid regions, unless they are a subset of another valid region.
     </p>
-    </ul>
     <p class="indent1">
  In the K-Map, below, assuming square 5 is in only one region, 0X0X:
     </p>
@@ -1233,8 +1233,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
 
   </div>
  <div id="learning">
- <a name="AL"></a>
-    <h2>Automated Learning and Experimentation <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
+ <a id="AL"></a>
+    <h2>Automated Learning and Experimentation <span style="font-size: 60%">(<a href="#KM">Top</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, You are here, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>, <a href="#ADD">Addendums</a>)</span></h2>
     <p>
  There have been a few times, even before I knew anything about computers, when it seemed like I could sense what was changing in my mind when
  solving a problem.  This could be called "connecting the dots" or "changing the bits".  These
@@ -1356,8 +1356,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      </p>
    </div>
    <div id="rules">
-    <a name="SCR"></a>
-    <h2>State-Change Rules <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>)</span></h2>
+    <a id="SCR"></a>
+    <h2>State-Change Rules <span style="font-size: 60%">(<a href="#KM">Top</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, You are here, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>, <a href="#ADD">Addendums</a>)</span></h2>
       <p>
        Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in this section will relate to/extend ideas in the previous sections.
       </p>
@@ -1444,9 +1444,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The State-Change rules of State 0010 and 0101 can also be combined:
  </p>
  <p class="indent1">
- (0&#8594;0, 0&#8594;1, 1&#8594;0, 0&#8594;0)<br />
- (0&#8594;0, 1&#8594;0, 0&#8594;0, 1&#8594;1)<br />
- ------------------------------------<br />
+ (0&#8594;0, 0&#8594;1, 1&#8594;0, 0&#8594;0)<br>
+ (0&#8594;0, 1&#8594;0, 0&#8594;0, 1&#8594;1)<br>
+ ------------------------------------<br>
  (0&#8594;0, X&#8594;x, X&#8594;0, X&#8594;X)
     </p>
     <p>
@@ -1795,7 +1795,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  We will use the calculation from the addendum Calculating possible regions using dissimilar pairs of squares.
  </p>
  <p>
- Starting with the list (XXXX) we see that the region formed by squares 9 and 7, XXX1, in within XXXX.
+ Starting with the list (XXXX) we see that the region formed by squares 9 and 7, XXX1, is within an item in the list.
  </p>
  <p>
  We calculate the complement of 7, containing 0, (X0XX, XX0X, XXX0).
@@ -1979,9 +1979,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p>
  Notice that XX0X intersects 0XXX at 0X0X.
  </p>
- </table>
-     </td>
-	 <td>
    <table>
     <tr>
   <th></th>
@@ -2019,10 +2016,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-     </td>
-
-     </tr>
- </table>
  <p>
  The squares in 0X0X (0, 1, 4, 5) that have a rightmost 1 bit are (1, 5). 
  We do not know if 0X01 changes like 9 or 7.
@@ -2031,9 +2024,6 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p>
  Notice that X0XX intersects 0XXX at 00XX.
  </p>
- </table>
-     </td>
-	 <td>
    <table>
     <tr>
   <th></th>
@@ -2071,17 +2061,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td class="bgg2">A</td>
     </tr>
  </table>
-     </td>
-
-     </tr>
- </table>
  <p>
  The squares in 00XX (0, 1, 2, 3) that have a rightmost 1 bit are (1, 3). 
  We do not know if 00X1 changes like 9 or 7.
  So 00X1, is a contradictory intersection.
  </p>
  <p>
- If there was another dissimilar pair, like (C, 8) we would look at the result list, note that they are both in XX0X and XXX0, and use the above logic to split those regions.
+ If there was another dissimilar pair, like (C, 8), we would look at the result list, note that they are both in at least one item in the list, that is (XX0X, XXX0), and use the above logic, (union (complement C, superset 0) (complement 8, superset 0)) intersection (X0XX, XX0X, XXX0, 0XXX).
  </p>
     <h3>Generating a rule-path, to translate a from-region to a goal-region.</h3>
     <p class="indent1">
@@ -2156,8 +2142,8 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
   </div>
   <div id="combex">
-    <a name="CE"></a>
-    <h2>The Combinatorial Explosion, defeated! <span style="font-size: 60%">(<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CL">Conclusion</a>)</span></h2>
+    <a id="CE"></a>
+    <h2>The Combinatorial Explosion, defeated! <span style="font-size: 60%">(<a href="#KM">Top</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, You are here, <a href="#CL">Conclusion</a>, <a href="#ADD">Addendums</a>)</span></h2>
     <p>
  Expert systems sometimes churn through millions of possible rule combinations
  to predict what rules can be used, and in what order, to reach a goal.
@@ -2253,10 +2239,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  </ul>
  </div>
   <div id="conclude">
-    	<a name="CL"></a>
+    	<a id="CL"></a>
 	<h2>Conclusion
 <span style="font-size: 60%">
-    (<a href="#KM">Karnaugh Maps</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>)
+    (<a href="#KM">Top</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, You are here, <a href="#ADD">Addendums</a>)
 </span></h2>
  <p>
  It should be possible to write a program that creates rules through experience, improves rules by experimentation, uses rules to attain goals, and avoids the Combinatorial Explosion.
@@ -2299,10 +2285,15 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 08/23/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 08/24/2023</p>
   </div>
 <div id="addendum">
-	<h3>Addendums:</h3>
+	<a id="ADD"></a>
+	<h2>Addendums
+<span style="font-size: 60%">
+    (<a href="#KM">Top</a>, <a href="#SKM">Sparse Karnaugh Maps</a>, <a href="#AL">Automated Learning and Experimentation</a>, <a href="#SCR">State-Change Rules</a>, <a href="#CE">Combinatorial Explosion</a>, <a href="#CL">Conclusion</a>, You are here)
+ 
+</span></h2>
 
 	<h3>False Geometry</h3>
 
@@ -2355,15 +2346,15 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
      A <i>Split-Bits</i> algorithm, to isolate each bit in a bit mask, e.g. producing (0100, 0010) from 0110 (adapted from the  <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>):
   </p>
   <p class="indent1">
-      // Initialize a list of bit objects.<br />
-      while (val > 0)<br />
+      // Initialize a list of bit objects.<br>
+      while (val > 0)<br>
       {
   </p>
   <p class="indent2">
-          minus1 = val - 1; <br />              
-          valLess1 = val &amp; minus1 &nbsp;&nbsp;&nbsp; // remove one bit from val, put into valLess1 <br />
-          oneBit = val ^ valLess1; &nbsp;&nbsp;&nbsp; // isolate the removed bit <br />
-   // Store oneBit into a new Bits object, add the Bits object to the list.<br />
+          minus1 = val - 1; <br>              
+          valLess1 = val &amp; minus1 &nbsp;&nbsp;&nbsp; // remove one bit from val, put into valLess1 <br>
+          oneBit = val ^ valLess1; &nbsp;&nbsp;&nbsp; // isolate the removed bit <br>
+   // Store oneBit into a new Bits object, add the Bits object to the list.<br>
           val = valLess1;
   </p>
   <p class="indent1">
@@ -2393,20 +2384,20 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
    Isolate each bit from the X/Non-X bit mask, using the Split-Bits algorithm, then:
   </p>
  <p class="indent2">
-  The subtrahend high and low bit for the bit position will be both one or both zero.<br />
-  The minuend high-bit value for the bit position will be one and the low bit value will be zero.<br />
+  The subtrahend high and low bit for the bit position will be both one or both zero.<br>
+  The minuend high-bit value for the bit position will be one and the low bit value will be zero.<br>
  </p>
  <p class="indent2">
   Calculate the isolated-bit &amp; the subtrahend.high-bits (or you can use subtrahend.low-bits).
  </p>
  <p class="indent2">
   If the result is non-zero, the bit value of the subtrahend is one, calculate a new
-        region (r2) using the minuend, with that bit set to zero:<br />
+        region (r2) using the minuend, with that bit set to zero:<br>
   r2.high-bits = minuend.high-bits ^ isolated-bit, r2.low-bits = minuend.low-bits.
  </p>
  <p class="indent2">
  If the result is zero, the bit value of the subtrahend is zero, calculate a new
-        region (r2) using the minuend, with that bit set to one:<br />
+        region (r2) using the minuend, with that bit set to one:<br>
  r2.high-bits = minuend.high-bits, r2.low-bits = minuend.low-bits ^ isolated-bit.
  </p>
 
@@ -2451,14 +2442,14 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         <i>Given two dissimilar squares (s1, s2), Possible Regions &#8838; ~s1 + ~s2</i>
         </p>
         <p class="indent1">
-        For 4 and E within XXXX, ~4 = (1XXX, X0XX, XX1X, XXX1),  ~E = (0XXX, X0XX, XX0X, XXX1).<br />
+        For 4 and E within XXXX, ~4 = (1XXX, X0XX, XX1X, XXX1),  ~E = (0XXX, X0XX, XX0X, XXX1).<br>
         ~4 + ~E = (0XXX, XX0X, 1XXX, XX1X, XXX1, X0XX), 6 regions, no squares are only in one region.
         </p>
         <p>
         Finding adjacent, dissimilar, squares decreases the number of possible regions produced by the calculation, and increases the number of squares that are only in one region.
         </p>
         <p class="indent1">
-        For C and E within XXXX, ~C = (0XXX, X0XX, XX1X, XXX1),  ~E = (0XXX, X0XX, XX0X, XXX1).<br />
+        For C and E within XXXX, ~C = (0XXX, X0XX, XX1X, XXX1),  ~E = (0XXX, X0XX, XX0X, XXX1).<br>
         ~C + ~E = (XX1X, XXX1, 0XXX, X0XX, XX0X), 5 regions, E only in XX1X, C only in XX0X.
         </p>
         <p>
@@ -2577,7 +2568,7 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         Use a mask for ones and a mask for zeros.
         </p>
     <p class="indent1">
-    Given two states, like 1010 and 0110, the ones mask is 1010 + 0110 = 1110.  The zeros mask is ~(1010 & 0110) = 1101.
+    Given two states, like 1010 and 0110, the ones mask is 1010 + 0110 = 1110.  The zeros mask is ~(1010 &amp; 0110) = 1101.
     </p>
         <p class="indent1">Interpretation of region bits:</p>
       <table class="indent2">
@@ -2617,10 +2608,10 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
    Two regions are equal if the two bit patterns forming them are equal.
    </p>
     <p class="indent1">
-   Region x-mask = mask-1 & mask-0.
+   Region x-mask = mask-1 &amp; mask-0.
    </p>
     <p class="indent1">
-   Intersection of two regions: mask-1 = r1.mask-1 & r2.mask-1. mask-0 = r1.mask-0 & r2.mask-0.
+   Intersection of two regions: mask-1 = r1.mask-1 &amp; r2.mask-1. mask-0 = r1.mask-0 &amp; r2.mask-0.
    </p>
     <p class="indent1">
    Union of two regions: mask-1 = r1.mask-1 + r2.mask-1. mask-0 = r1.mask-0 + r2.mask-0.
@@ -2634,7 +2625,7 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
 	I decided to position zero as the second number.
         </p>
         <p class="indent1">
-	The key is to start with 1-bit-number=> 0 <=1-bit-number, and 2-bit-number=> 7 <=2-bit-number.  Thats 6 numbers, a 1-bit and a 2-bit number are remaining.
+	The key is to start with 1-bit-number=> 0 &lt;=1-bit-number, and 2-bit-number=> 7 &lt;=2-bit-number.  Thats 6 numbers, a 1-bit and a 2-bit number are remaining.
         </p>
         <p class="indent1">
 	1-0-2 / 3-7-6 / 4 5
@@ -2656,3 +2647,4 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         </p>
 </div>
 </body>
+</html>
