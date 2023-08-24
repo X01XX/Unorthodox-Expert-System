@@ -594,6 +594,15 @@ impl SomeDomain {
     pub fn aggregate_changes(&self) -> &SomeChange {
         &self.actions.aggregate_changes
     }
+
+    /// Return the total number of groups in all the actions.
+    pub fn number_groups(&self) -> usize {
+        let mut tot = 0;
+        for actx in self.actions.iter() {
+            tot += actx.number_groups();
+        }
+        tot
+    }
 } // end impl SomeDomain
 
 #[cfg(test)]

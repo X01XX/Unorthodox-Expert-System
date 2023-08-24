@@ -395,7 +395,9 @@ mod tests {
         ); // 7 -> D
         let planx = SomePlan::new(0, vec![step0, step1]);
         println!("plan: {planx}");
-        let Some(regx) = planx.path_region() else { panic!("Plan region is None?"); };
+        let Some(regx) = planx.path_region() else {
+            panic!("Plan region is None?");
+        };
         println!("Plan region: {regx}");
         assert!(regx == tmp_reg.new_from_string("rXXX1")?);
 
@@ -448,7 +450,9 @@ mod tests {
         println!("stp1 {}", &stp_str1);
         println!("stp2 {}", &stp_str2);
 
-        let Some(stp_str3) = stp_str1.link(&stp_str2) else { return Err("Link error?".to_string()); };
+        let Some(stp_str3) = stp_str1.link(&stp_str2) else {
+            return Err("Link error?".to_string());
+        };
         println!("stp3 {}", &stp_str3);
         assert!(stp_str3.len() == 4);
 

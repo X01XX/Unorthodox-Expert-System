@@ -154,9 +154,13 @@ impl SomeAction {
     /// A square implied by the sample, in a group, may have a higher anchor rating
     /// than the current group anchor.
     fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
-        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else { return };
+        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else {
+            return;
+        };
 
-        let Some(anchor) = &grpx.anchor else { return; };
+        let Some(anchor) = &grpx.anchor else {
+            return;
+        };
 
         if anchor == &smpl.initial {
             return;
@@ -174,7 +178,9 @@ impl SomeAction {
         let grp_reg = grpx.region.clone();
 
         // Get a mutable reference.
-        let Some(grpx) = self.groups.find_mut(&grp_reg) else { panic!("Should work") };
+        let Some(grpx) = self.groups.find_mut(&grp_reg) else {
+            panic!("Should work")
+        };
 
         println!(
             "Changing group {} anchor from {} {:?} to {} {:?}",
@@ -206,8 +212,12 @@ impl SomeAction {
         match ndx {
             // Check if group can be confirmed.
             SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                let Some(sqr1) = self.squares.find(grp_reg.state1()) else { return; };
-                let Some(sqr2) = self.squares.find(grp_reg.state2()) else { return; };
+                let Some(sqr1) = self.squares.find(grp_reg.state1()) else {
+                    return;
+                };
+                let Some(sqr2) = self.squares.find(grp_reg.state2()) else {
+                    return;
+                };
 
                 if sqr1.pnc && sqr2.pnc {
                     self.set_group_pnc(grp_reg);
@@ -224,7 +234,10 @@ impl SomeAction {
 
     /// Find a group by region, set group pnc.
     pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
-        let Some(grpx) = self.groups.find_mut(grp_reg) else { println!("ConfirmGroup {grp_reg} group not found?"); return; };
+        let Some(grpx) = self.groups.find_mut(grp_reg) else {
+            println!("ConfirmGroup {grp_reg} group not found?");
+            return;
+        };
 
         grpx.set_pnc();
     }
@@ -274,14 +287,17 @@ impl SomeAction {
                 continue;
             }
 
-            let Some(anchor_state) = &grpx.anchor else { continue; };
+            let Some(anchor_state) = &grpx.anchor else {
+                continue;
+            };
 
             if !anchor_state.is_adjacent(&sqrx.state) {
                 continue;
             };
 
             let Some(anchor_sqr) = self.squares.find(anchor_state) else {
-                panic!("Anchor state not found?"); };
+                panic!("Anchor state not found?");
+            };
 
             if anchor_sqr.can_combine_now(sqrx) {
                 grpx.set_limited_off();
@@ -593,7 +609,9 @@ impl SomeAction {
                         group_region: greg,
                         anchor: sta1,
                     } => {
-                        let Some(grpx) = self.groups.find_mut(greg) else { continue; };
+                        let Some(grpx) = self.groups.find_mut(greg) else {
+                            continue;
+                        };
 
                         if let Some(anchor) = &grpx.anchor {
                             println!(
@@ -611,7 +629,9 @@ impl SomeAction {
                         break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
                     }
                     SomeNeed::RemoveGroupAnchor { group_region: greg } => {
-                        let Some(grpx) = self.groups.find_mut(greg) else { continue; };
+                        let Some(grpx) = self.groups.find_mut(greg) else {
+                            continue;
+                        };
 
                         println!(
                             "\nDom {} Act {} Group {} remove anchor",
@@ -877,7 +897,9 @@ impl SomeAction {
 
         // Check groups current anchors are still in only one region,
         for grpx in self.groups.iter() {
-            let Some(stax) = &grpx.anchor else { continue; };
+            let Some(stax) = &grpx.anchor else {
+                continue;
+            };
 
             if self.groups.num_groups_state_in(stax) != 1 {
                 ret_nds.push(SomeNeed::RemoveGroupAnchor {
@@ -1290,7 +1312,9 @@ impl SomeAction {
 
         let mut nds = NeedStore::new(vec![]);
 
-        let Some(reg_int) = grpx.region.intersection(&grpy.region) else { return nds; };
+        let Some(reg_int) = grpx.region.intersection(&grpy.region) else {
+            return nds;
+        };
 
         if grpx.pn != grpy.pn {
             return NeedStore::new(vec![self.cont_int_region_need(&reg_int, grpx, grpy)]);
@@ -1497,7 +1521,9 @@ impl SomeAction {
                 // Get restricted region for needed changes.
                 let mut parsed_region: Option<SomeRegion> = None;
                 for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
+                    let Some(rulx) = ruly.parse_for_changes(achange) else {
+                        continue;
+                    };
                     parsed_region = Some(rulx.initial_region());
                 }
                 // Check if any rule has no changes, so a state could be sampled once, or twice, to get the desired change.
@@ -1513,7 +1539,9 @@ impl SomeAction {
                 }
 
                 for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.parse_for_changes(achange) else { continue; };
+                    let Some(rulx) = ruly.parse_for_changes(achange) else {
+                        continue;
+                    };
 
                     // See if an existing square is ready to produce the desired result
                     let i_reg = rulx.initial_region();
@@ -1850,8 +1878,15 @@ impl SomeAction {
     }
     /// Set a group anchor.
     pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-        let Some(grpx) = self.groups.find_mut(grp_reg) else { panic!("Group not found?"); };
+        let Some(grpx) = self.groups.find_mut(grp_reg) else {
+            panic!("Group not found?");
+        };
         grpx.set_anchor(anchor);
+    }
+
+    /// Return the total number of groups in the action.
+    pub fn number_groups(&self) -> usize {
+        self.groups.len()
     }
 } // end impl SomeAction
 

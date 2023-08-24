@@ -937,7 +937,9 @@ impl DomainStore {
             return true;
         }
 
-        let Some(plans) = self.get_plans(dom_num, goal_region) else { return false; };
+        let Some(plans) = self.get_plans(dom_num, goal_region) else {
+            return false;
+        };
 
         // Do a plan
         self.run_plan(&plans[rand::thread_rng().gen_range(0..plans.len())])
@@ -1268,6 +1270,15 @@ impl DomainStore {
 
         Some(all_plans)
     } // end avoid_negative_select_regions2
+
+    /// Return the total number of groups in all the domains.
+    pub fn number_groups(&self) -> usize {
+        let mut tot = 0;
+        for domx in self.avec.iter() {
+            tot += domx.number_groups();
+        }
+        tot
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {

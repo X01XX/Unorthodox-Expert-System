@@ -430,7 +430,9 @@ mod tests {
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
-        let Some(rul_str3) = rul_str1.union(&rul_str2) else { panic!("This should work!"); };
+        let Some(rul_str3) = rul_str1.union(&rul_str2) else {
+            panic!("This should work!");
+        };
         println!("rul_str3: {rul_str3}");
 
         let regx = tmp_reg.new_from_string("r101")?;
@@ -455,7 +457,9 @@ mod tests {
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
-        let Some(rul_str3) = rul_str1.intersection(&rul_str2) else { panic!("This should work!"); };
+        let Some(rul_str3) = rul_str1.intersection(&rul_str2) else {
+            panic!("This should work!");
+        };
         println!("rul_str3: {rul_str3}");
 
         let rul_str4 = RuleStore::new(vec![tmp_rul.new_from_string("00/11/11/10/00")?]);
@@ -482,7 +486,9 @@ mod tests {
             tmp_rul.new_from_string("X0/11/11/10/00")?,
         ]);
 
-        let Some(rul_str3) = rul_str1.intersection(&rul_str2) else { panic!("This should work!"); };
+        let Some(rul_str3) = rul_str1.intersection(&rul_str2) else {
+            panic!("This should work!");
+        };
         println!("rul_str3: {rul_str3}");
 
         let rulx = tmp_rul.new_from_string("00/11/11/10/00")?;

@@ -141,8 +141,8 @@ impl SomeBits {
                 }
 
                 let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
-                    return Err(format!(
-                        "String {str}, invalid character?"))  };
+                    return Err(format!("String {str}, invalid character?"));
+                };
 
                 bts = bts.shift_left4();
 

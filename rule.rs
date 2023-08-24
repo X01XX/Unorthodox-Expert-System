@@ -128,14 +128,18 @@ impl SomeRule {
 
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        let Some(tmprul) = self.intersection(other) else { return false; };
+        let Some(tmprul) = self.intersection(other) else {
+            return false;
+        };
 
         *self == tmprul
     }
 
     /// Return true if a rule is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        let Some(tmprul) = self.intersection(other) else { return false; };
+        let Some(tmprul) = self.intersection(other) else {
+            return false;
+        };
         *other == tmprul
     }
 
@@ -218,8 +222,7 @@ impl SomeRule {
         let init_reg = self.initial_region();
 
         let Some(reg_int) = regx.intersection(&init_reg) else {
-            panic!(
-                "{regx} does not intersect rule initial region {init_reg}");
+            panic!("{regx} does not intersect rule initial region {init_reg}");
         };
 
         let zeros = reg_int.low_state().bitwise_not().to_mask();
@@ -242,8 +245,7 @@ impl SomeRule {
         let rslt_reg = self.result_region();
 
         let Some(reg_int) = regx.intersection(&rslt_reg) else {
-            panic!(
-                "{regx} does not intersect rule result region {rslt_reg}");
+            panic!("{regx} does not intersect rule result region {rslt_reg}");
         };
 
         let zeros = reg_int.low_state().bitwise_not().to_mask();
@@ -526,7 +528,9 @@ mod tests {
         let rul1 = tmp_rul.new_from_string("01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
         let rul2 = tmp_rul.new_from_string("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
         let rul3 = tmp_rul.new_from_string("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
-        let Some(rul_int) = rul1.intersection(&rul2) else { panic!("this should work!"); };
+        let Some(rul_int) = rul1.intersection(&rul2) else {
+            panic!("this should work!");
+        };
 
         println!("rul1: {rul1} rul2: {rul2} rul_int: {rul_int}");
         assert!(rul_int == rul3);
@@ -664,7 +668,9 @@ mod tests {
             tmp_msk.new_from_string("m0b0010001")?,
         );
 
-        let Some(rul2) = rul1.parse_for_changes(&chg1) else { panic!("parse should succeed"); };
+        let Some(rul2) = rul1.parse_for_changes(&chg1) else {
+            panic!("parse should succeed");
+        };
         println!("rul2 {}", &rul2);
 
         assert!(rul2 == tmp_rul.new_from_string("01/11/10/00/Xx/01/10")?);
@@ -730,7 +736,9 @@ mod tests {
         let rul1 = tmp_rul.new_from_string("00/01/00/01/xx")?;
         let rul2 = tmp_rul.new_from_string("00/01/10/10/11")?;
 
-        let Some(rul3) = rul1.union(&rul2) else { panic!("This should work!"); };
+        let Some(rul3) = rul1.union(&rul2) else {
+            panic!("This should work!");
+        };
         println!("rul3 = {}", &rul3);
         assert!(rul3 == tmp_rul.new_from_string("00/01/x0/Xx/xx")?);
 
