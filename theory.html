@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang=en>
 <head>
-<title>"Unorthodox Expert System"</title>
+<title>Unorthodox Expert System</title>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="description" content="A radically different approach to an Expert System">
   <meta name="keywords" content="Karnaugh Map,Automated Learning,Combinatorial Explosion,Grey Code,Expert System">
@@ -2067,6 +2067,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  So 00X1, is a contradictory intersection.
  </p>
  <p>
+ Cortradictory intersections are very nice targets, that allow improving the ability to predict responses to sampling.
+ </p>
+ <p>
  If there was another dissimilar pair, like (C, 8), we would look at the result list, note that they are both in at least one item in the list, that is (XX0X, XXX0), and use the above logic, (union (complement C, superset 0) (complement 8, superset 0)) intersection (X0XX, XX0X, XXX0, 0XXX).
  </p>
     <h3>Generating a rule-path, to translate a from-region to a goal-region.</h3>
@@ -2536,22 +2539,22 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
        Calculate a rule to change r000_111_XXX to r01X_01X_01X.
        </p>
        <p class="indent1">
-       From a rule that does not change r000_111_XXX at all, all changes are 0#8594;0 and 1#8594;1, four modifications are needed:
+       From a rule that does not change r000_111_XXX at all, all changes are 0&#8594;0 and 1&#8594;1, four modifications are needed:
        </p>
        <p class="indent2">
-       For 0#8594;1, a 0#8594;0 change is replaced by 0#8594;1.
+       For 0&#8594;1, a 0&#8594;0 change is replaced by 0&#8594;1.
        </p>
        <p class="indent2">
-       For 1#8594;0, a 1#8594;1 change is replaced by 1#8594;0.
+       For 1&#8594;0, a 1&#8594;1 change is replaced by 1&#8594;0.
        </p>
        <p class="indent2">
-       For X#8594;1, a 0#8594;0 change is replaced by 0#8594;1.
+       For X&#8594;1, a 0&#8594;0 change is replaced by 0&#8594;1.
        </p>
        <p class="indent2">
-       For X#8594;0, a 1#8594;1 change is replaced by 1#8594;0.
+       For X&#8594;0, a 1&#8594;1 change is replaced by 1&#8594;0.
        </p>
        <p class="indent1">
-       For 0#8594;X or 1#8594;X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
+       For 0&#8594;X or 1&#8594;X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
        </p>
    <h3>Number of squares in a set of regions</h3>
        <p class="indent1">
