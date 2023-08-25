@@ -1876,13 +1876,6 @@ impl SomeAction {
     pub fn check_limited(&mut self, change_mask: &SomeMask) {
         self.groups.check_limited(change_mask);
     }
-    /// Set a group anchor.
-    pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-        let Some(grpx) = self.groups.find_mut(grp_reg) else {
-            panic!("Group not found?");
-        };
-        grpx.set_anchor(anchor);
-    }
 
     /// Return the total number of groups in the action.
     pub fn number_groups(&self) -> usize {
@@ -1895,6 +1888,17 @@ impl SomeAction {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    impl SomeAction {
+        /// Set a group anchor, given a group region and anchor state.
+        /// Used in domain tests.
+        pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
+            let Some(grpx) = self.groups.find_mut(grp_reg) else {
+                panic!("Group not found?");
+            };
+            grpx.set_anchor(anchor);
+        }
+    }
 
     #[test]
     fn two_result_group() -> Result<(), String> {

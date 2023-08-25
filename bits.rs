@@ -24,7 +24,6 @@ const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
 /// Mask for the highest nibble in an integer.
 const INT_HIGH_NIBBLE: Bitint = 15 << (NUM_BITS_PER_INT - 4);
 
-use crate::randompick;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -534,25 +533,6 @@ impl SomeBits {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
 
-    /// Given a mask of more than one bit set to one, return a SomeBits instance
-    /// that is a random selection of roughly half the bits.
-    pub fn half_bits(&self) -> Self {
-        let one_bits: Vec<SomeBits> = self.split();
-
-        if one_bits.len() < 2 {
-            panic!("Less than two bits {}?", self);
-        }
-
-        let indices: Vec<usize> = randompick::random_x_of_n(one_bits.len() / 2, one_bits.len());
-
-        let mut or_bts = self.new_low();
-
-        for inx in indices {
-            or_bts = or_bts.b_or(&one_bits[inx]);
-        }
-        or_bts
-    }
-
     /// Return a string representing a vector of bits.
     pub fn vec_string(avec: &[SomeBits]) -> String {
         let mut rc_str = String::new();
@@ -995,16 +975,6 @@ mod tests {
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_superset_of(&bitsy));
         assert!(!bitsy.is_superset_of(&bitsx));
-
-        Ok(())
-    }
-
-    #[test]
-    fn half_bits() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x5555")?;
-        let hbts = bitsx.half_bits();
-        println!("bitsx: {bitsx} hbts: {hbts}");
-        assert!(hbts.num_one_bits() == 4);
 
         Ok(())
     }

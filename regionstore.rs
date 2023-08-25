@@ -115,28 +115,6 @@ impl RegionStore {
         self.avec.swap_remove(inx)
     }
 
-    /// Find and remove a given region.
-    pub fn remove_region(&mut self, reg: &SomeRegion) -> bool {
-        // Find a matching region
-        let mut fnd = false;
-        let mut inx = 0;
-
-        for regx in &self.avec {
-            if regx == reg {
-                fnd = true;
-                break;
-            }
-            inx += 1;
-        }
-
-        // Remove the region
-        if fnd {
-            removeunordered::remove_unordered(&mut self.avec, inx);
-        }
-
-        fnd
-    }
-
     /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
         // Check for supersets.
@@ -531,26 +509,6 @@ mod tests {
         assert!(rslt.contains(&tmp_reg.new_from_string("r0101")?));
         assert!(rslt.contains(&tmp_reg.new_from_string("r1x11")?));
 
-        Ok(())
-    }
-
-    #[test]
-    fn remove_region() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-
-        let mut regstr = RegionStore::with_capacity(3);
-
-        let reg1 = tmp_reg.new_from_string("r0x0x")?;
-        let reg2 = tmp_reg.new_from_string("r0xx1")?;
-        let reg3 = tmp_reg.new_from_string("rx1x1")?;
-
-        regstr.push(reg1.clone());
-        regstr.push(reg2.clone());
-
-        assert!(!regstr.remove_region(&reg3));
-        assert!(regstr.remove_region(&reg2));
-        assert!(regstr.len() == 1);
-        assert!(regstr.contains(&reg1));
         Ok(())
     }
 

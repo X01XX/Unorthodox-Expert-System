@@ -53,30 +53,6 @@ impl RandomPick {
     }
 } // End RandomPick
 
-/// Get a random choice of a number of unique numbers in a range.
-/// e.g. random_x_of_n(2, 5) -> [0, 3]
-pub fn random_x_of_n(x: usize, n: usize) -> Vec<usize> {
-    if x < 1 || x >= n {
-        panic!(
-            "random_x_of_n: Number results {} is not right for length {}",
-            &x, &n
-        );
-    }
-
-    let mut x_vec = Vec::<usize>::with_capacity(x);
-
-    let mut rp1 = RandomPick::new(n);
-
-    for _ in 0..x {
-        x_vec.push(
-            rp1.pick()
-                .expect("rp1.pick() should work until all number are exhausted"),
-        );
-    }
-
-    x_vec
-} // end random_x_of_n
-
 #[cfg(test)]
 mod tests {
     use super::*;

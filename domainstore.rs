@@ -266,7 +266,6 @@ impl DomainStore {
         self.cant_do = Vec::<usize>::new();
 
         if self.needs.is_empty() {
-            println!("\nNumber needs: 0");
             return;
         }
 
@@ -812,6 +811,37 @@ impl DomainStore {
 
     /// Print a domain.
     pub fn print_domain(&self) {
+        // Calc current status.
+        let mut in_str = String::new();
+        let all_states = self.all_current_states();
+        let select_supersets = self.select.supersets_of_states(&all_states);
+        let mut in_pos = false;
+        let mut in_neg = false;
+        for optx in select_supersets.iter() {
+            in_str += &format!("in {} ", optx);
+            match optx.value.cmp(&0) {
+                Ordering::Less => in_neg = true,
+                Ordering::Greater => in_pos = true,
+                _ => (),
+            }
+        }
+
+        let status = if in_pos && in_neg {
+            "Conflicted, ".to_string()
+        } else if in_pos {
+            "Positive, ".to_string()
+        } else if in_neg {
+            "Negative, ".to_string()
+        } else {
+            "Neutral".to_string()
+        };
+
+        println!(
+            "\nStep {} All domain states: {} Status: {status}{in_str}",
+            self.step_num,
+            SomeState::vec_ref_string(&self.all_current_states())
+        );
+
         let dom_num = self.current_domain;
 
         print!("\nCurrent Domain: {} of {}", dom_num, self.len(),);
@@ -826,7 +856,9 @@ impl DomainStore {
     /// Print needs that can be done.
     pub fn print_can_do(&self) {
         if self.can_do.is_empty() {
-            println!("\nNeeds that can be done: None");
+            if !self.needs.is_empty() {
+                println!("\nNeeds that can be done: None");
+            }
             self.print_select();
         } else {
             println!("\nNeeds that can be done:");
@@ -875,6 +907,7 @@ impl DomainStore {
     /// Generate and display domain and needs.
     pub fn generate_and_display_needs(&mut self) {
         // Get the needs of all Domains / Actions
+        self.print_domain();
         self.get_needs();
         self.display_needs();
     }
@@ -882,50 +915,20 @@ impl DomainStore {
     pub fn display_needs(&self) {
         assert!(self.step_num < 1100); // Remove for continuous use
 
-        // Calc current status.
-        let mut in_str = String::new();
-        let all_states = self.all_current_states();
-        let select_supersets = self.select.supersets_of_states(&all_states);
-        let mut in_pos = false;
-        let mut in_neg = false;
-        for optx in select_supersets.iter() {
-            in_str += &format!("in {} ", optx);
-            match optx.value.cmp(&0) {
-                Ordering::Less => in_neg = true,
-                Ordering::Greater => in_pos = true,
-                _ => (),
+        // Print needs.
+        if self.needs.is_empty() {
+            println!("\nNumber needs: 0");
+        } else {
+            // Print needs that cannot be done.
+            if self.cant_do.is_empty() {
+                // println!("\nNeeds that cannot be done: None");
+            } else {
+                println!("\nNeeds that cannot be done:");
+                for ndplnx in self.cant_do.iter() {
+                    println!("   {}", self.needs[*ndplnx]);
+                }
             }
         }
-
-        let status = if in_pos && in_neg {
-            "Conflicted, ".to_string()
-        } else if in_pos {
-            "Positive, ".to_string()
-        } else if in_neg {
-            "Negative, ".to_string()
-        } else {
-            "Neutral".to_string()
-        };
-
-        println!(
-            "\nStep {} All domain states: {} Status: {status}{in_str}",
-            self.step_num,
-            SomeState::vec_ref_string(&self.all_current_states())
-        );
-
-        self.print_domain();
-
-        // Print needs that cannot be done.
-        if self.cant_do.is_empty() {
-            println!("\nNeeds that cannot be done: None");
-        } else {
-            println!("\nNeeds that cannot be done:");
-
-            for ndplnx in self.cant_do.iter() {
-                println!("   {}", self.needs[*ndplnx]);
-            }
-        }
-
         // Print needs that can be done.
         self.print_can_do();
     }
@@ -1300,7 +1303,7 @@ mod tests {
     use crate::sample::SomeSample;
 
     /// Return the number of supersets of a StateStore
-    pub fn number_supersets_of_states(select: &SelectRegionsStore, stas: &[&SomeState]) -> usize {
+    fn number_supersets_of_states(select: &SelectRegionsStore, stas: &[&SomeState]) -> usize {
         select
             .regionstores
             .iter()

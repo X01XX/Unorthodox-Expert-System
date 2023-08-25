@@ -149,14 +149,6 @@ impl SomeMask {
         self.bts.str2()
     }
 
-    /// Given a mask of more than one bit, return a mask that is a random selection of
-    /// roughly half the bits.
-    pub fn half_mask(&self) -> Self {
-        SomeMask {
-            bts: self.bts.half_bits(),
-        }
-    }
-
     /// Return the mask after shifting left one position, and adding one.
     pub fn push_1(&self) -> Self {
         Self {
@@ -241,27 +233,6 @@ mod tests {
         let msk3 = tmp_msk.new_from_string("m0b1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
-
-        Ok(())
-    }
-
-    #[test]
-    fn half_mask() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(vec![0, 0]));
-
-        let test_msk = tmp_msk.new_from_string("m0x5aa5")?.half_mask();
-        println!("test_msk: {test_msk}");
-        assert!(test_msk.num_one_bits() == 4);
-
-        // Test an odd number of bits
-        let test_msk = tmp_msk.new_from_string("m0x1011")?.half_mask();
-        println!("test_msk: {}", test_msk);
-        assert!(test_msk.num_one_bits() == 1);
-
-        // Test an odd number of bits
-        let test_msk = tmp_msk.new_from_string("m0x3031")?.half_mask();
-        println!("test_msk: {}", test_msk);
-        assert!(test_msk.num_one_bits() == 2);
 
         Ok(())
     }

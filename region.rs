@@ -332,11 +332,6 @@ impl SomeRegion {
         self.state1().bitwise_xor(self.state2()).to_mask()
     }
 
-    /// Return the number of X bits in a region.
-    pub fn num_x(&self) -> usize {
-        self.state1().distance(self.state2())
-    }
-
     /// Given a state in a region, return the far state in the region.
     pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
         assert!(self.is_superset_of_state(sta));
@@ -1176,19 +1171,6 @@ mod tests {
         println!("{reg0} subtract {reg3} = {regs}");
         assert!(regs.len() == 1);
         assert!(regs.contains(&reg0));
-
-        Ok(())
-    }
-
-    // Test num_x.
-    #[test]
-    fn num_x() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-
-        let reg0 = tmp_reg.new_from_string("rXX0101")?;
-        let numx = reg0.num_x();
-        println!("Num_x {reg0} is {numx}");
-        assert!(numx == 2);
 
         Ok(())
     }

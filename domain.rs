@@ -611,8 +611,7 @@ mod tests {
     use crate::domainstore::DomainStore;
 
     /// Return true if a need with a given type and target is in a NeedStore.
-    /// Used in tests.rs, so far.
-    pub fn contains_similar_need(nds: &NeedStore, name: &str, target: &SomeRegion) -> bool {
+    fn contains_similar_need(nds: &NeedStore, name: &str, target: &SomeRegion) -> bool {
         for nedx in nds.iter() {
             if nedx.name() == name {
                 for targx in nedx.target().iter() {
