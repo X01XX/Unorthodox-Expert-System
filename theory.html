@@ -1691,7 +1691,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     The initial region of the resulting rule is the part of the original intersection that is valid.  Seek a sample in the intersection that is not in the valid part.
     </p>
     <p>
-    Its unlikley, but sampling a contradictory region could invalidate both regions.
+    Its unlikely, but sampling a contradictory region could invalidate both regions.
     </p>
     <h3>Limiting an Optimistic Union</h3>
     <p class="indent1">
@@ -1723,7 +1723,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     A region that is predictable, can conceivably be invalidated, and split into subregions, by a single sample.
     </p>
     <p class="indent1">
-    A region that is unpredictable cannot be invalidated by a single sample.  It is also useless, or even obstrucitve, in calculating plans.
+    A region that is unpredictable cannot be invalidated by a single sample.  It is also useless, or even obstructive, in calculating plans.
     </p>
     <p class="indent1">
     By not taking part in executing plans, an unpredictable region is unlikely to be sampled, after the samples needed to establish an anchor and far square.
@@ -1807,7 +1807,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  We form the union of the two complements, (X0XX, XX0X, XXX0, 0XXX).
  </p>
  <p>
- We intersect the union with the region we are splitting, XXXX, which will be the same as the union.
+ We intersect the union with the list, (XXXX), which will be the same as the union.
  </p>
  <table>
 	 <tr>
@@ -2067,7 +2067,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  So 00X1, is a contradictory intersection.
  </p>
  <p>
- Cortradictory intersections are very nice targets, that allow improving the ability to predict responses to sampling.
+ Contradictory intersections are very nice targets, that allow improving the ability to predict responses to sampling.
  </p>
  <p>
  If there was another dissimilar pair, like (C, 8), we would look at the result list, note that they are both in at least one item in the list, that is (XX0X, XXX0), and use the above logic, (union (complement C, superset 0) (complement 8, superset 0)) intersection (X0XX, XX0X, XXX0, 0XXX).
@@ -2288,7 +2288,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 08/24/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 08/26/2023</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
