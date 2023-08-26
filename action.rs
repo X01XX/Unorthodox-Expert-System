@@ -1270,11 +1270,12 @@ impl SomeAction {
         //println!("group_pair_needs");
         let mut nds = NeedStore::new(vec![]);
 
+        // Check for no pairs.
         if self.groups.len() < 2 {
             return nds;
         }
 
-        // Check every pair of groups
+        // Check every pair of one sample, or confirmed, groups.
         for inx in 0..(self.groups.len() - 1) {
             // Skip the last group, as there is no subsequent group.
 
@@ -1293,7 +1294,7 @@ impl SomeAction {
                 }
 
                 if grpx.region.intersects(&grpy.region) {
-                    nds.append(self.group_pair_intersection_needs(grpx, grpy));
+                    nds.append(self.group_pair_intersection_needs(grpx, grpy, inx));
                 }
             } // next iny
         } // next inx
@@ -1304,7 +1305,12 @@ impl SomeAction {
     /// Check two intersecting groups for needs.
     /// Possibly combining two groups.
     /// Possibly checking for a contradictatory intersection.
-    pub fn group_pair_intersection_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
+    pub fn group_pair_intersection_needs(
+        &self,
+        grpx: &SomeGroup,
+        grpy: &SomeGroup,
+        group_num: usize,
+    ) -> NeedStore {
         //println!(
         //  "groups_pair_intersection_needs {} {} and {} {}",
         //  &grpx.region, &grpx.pn, &grpy.region, grpy.pn
@@ -1312,31 +1318,50 @@ impl SomeAction {
 
         let mut nds = NeedStore::new(vec![]);
 
-        let Some(reg_int) = grpx.region.intersection(&grpy.region) else {
+        // Check if Pn indicates the whole intersection region is OK.
+        if grpx.pn == Pn::Unpredictable && grpy.pn == Pn::Unpredictable {
             return nds;
-        };
+        }
 
+        // Get group intersection region.
+        let reg_int = grpx.region.intersection(&grpy.region).unwrap();
+
+        // Check if the whole intersection region is a contradiction.
         if grpx.pn != grpy.pn {
-            return NeedStore::new(vec![self.cont_int_region_need(&reg_int, grpx, grpy)]);
+            // Get grpx rules in the intersection region.
+            let rulsx = grpx
+                .rules
+                .as_ref()
+                .map(|rulsx| rulsx.restrict_initial_region(&reg_int));
+
+            // Get grpy rules in the intersection region.
+            let rulsy = grpy
+                .rules
+                .as_ref()
+                .map(|rulsy| rulsy.restrict_initial_region(&reg_int));
+
+            return NeedStore::new(vec![
+                self.cont_int_region_need(&reg_int, grpx, grpy, group_num, rulsx, rulsy)
+            ]);
         }
 
-        if grpx.pn == Pn::Unpredictable {
-            return nds;
-        }
+        // At this point, Pn values are both Pn::One, or both Pn::Two.
 
+        // Get grpx rules within the intersection region.
         let rulsx = grpx
             .rules
             .as_ref()
-            .expect("SNH")
+            .unwrap()
             .restrict_initial_region(&reg_int);
 
+        // Get grpy rules within the intersection region.
         let rulsy = grpy
             .rules
             .as_ref()
-            .expect("SNH")
+            .unwrap()
             .restrict_initial_region(&reg_int);
 
-        // If rules are the same, check if a combination could be made.
+        // If the rules are the same, done.
         if rulsx == rulsy {
             return nds;
         }
@@ -1348,15 +1373,33 @@ impl SomeAction {
             // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
             let ok_reg = rulsxy.initial_region();
 
-            // to avoid subtraction, use the far sub-region
-            let regy = reg_int.far_reg(&ok_reg);
+            // To avoid subtraction, and maybe having a number of regions, use the far sub-region
+            let far_reg = reg_int.far_reg(&ok_reg);
+
+            // Calc rules for far region.
+            let rulsx = rulsx.restrict_initial_region(&far_reg);
+            let rulsy = rulsy.restrict_initial_region(&far_reg);
 
             //println!("pn2 intersection is {} far reg is {}", rulsxy.formatted_string(), &regy);
 
-            nds.push(self.cont_int_region_need(&regy, grpx, grpy));
+            nds.push(self.cont_int_region_need(
+                &far_reg,
+                grpx,
+                grpy,
+                group_num,
+                Some(rulsx),
+                Some(rulsy),
+            ));
         } else {
             //println!("pn2 whole intersection is bad");
-            nds.push(self.cont_int_region_need(&reg_int, grpx, grpy));
+            nds.push(self.cont_int_region_need(
+                &reg_int,
+                grpx,
+                grpy,
+                group_num,
+                Some(rulsx),
+                Some(rulsy),
+            ));
         }
 
         nds
@@ -1371,43 +1414,24 @@ impl SomeAction {
         regx: &SomeRegion,
         grpx: &SomeGroup,
         grpy: &SomeGroup,
+        group_num: usize,
+        rulsx: Option<RuleStore>,
+        rulsy: Option<RuleStore>,
     ) -> SomeNeed {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", &regx, &grpx.region, &grpx.rules, &grpy.region, &grpy.rules);
         // Check for any squares in the region
         let sqrs_in = self.squares.squares_in_reg(regx);
 
         if sqrs_in.is_empty() {
-            let ruls1 = if grpx.rules.is_none() {
-                None
-            } else {
-                Some(
-                    grpx.rules
-                        .clone()
-                        .expect("SNH")
-                        .restrict_initial_region(regx),
-                )
-            };
-
-            let ruls2 = if grpy.rules.is_none() {
-                None
-            } else {
-                Some(
-                    grpy.rules
-                        .clone()
-                        .expect("SNH")
-                        .restrict_initial_region(regx),
-                )
-            };
-
             let mut needx = SomeNeed::ContradictoryIntersection {
                 dom_num: self.dom_num,
                 act_num: self.num,
                 target_region: regx.clone(),
                 group1: grpx.region.clone(),
-                ruls1,
+                ruls1: rulsx,
                 group2: grpy.region.clone(),
-                ruls2,
-                priority: 0,
+                ruls2: rulsy,
+                priority: group_num,
             };
             needx.set_priority();
             return needx;
@@ -1438,42 +1462,21 @@ impl SomeAction {
             }
         }
 
+        // Pick a square.
         let mut inx = 0;
         if stas_check.len() > 1 {
             inx = rand::thread_rng().gen_range(0..stas_check.len());
         }
-
-        let ruls1 = if grpx.rules.is_none() {
-            None
-        } else {
-            Some(
-                grpx.rules
-                    .clone()
-                    .expect("SNH")
-                    .restrict_initial_region(regx),
-            )
-        };
-
-        let ruls2 = if grpy.rules.is_none() {
-            None
-        } else {
-            Some(
-                grpy.rules
-                    .clone()
-                    .expect("SNH")
-                    .restrict_initial_region(regx),
-            )
-        };
 
         let mut needx = SomeNeed::ContradictoryIntersection {
             dom_num: self.dom_num,
             act_num: self.num,
             target_region: SomeRegion::new(vec![stas_check[inx].clone()]),
             group1: grpx.region.clone(),
-            ruls1,
+            ruls1: rulsx,
             group2: grpy.region.clone(),
-            ruls2,
-            priority: 0,
+            ruls2: rulsy,
+            priority: group_num,
         };
         needx.set_priority();
         needx
