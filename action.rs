@@ -124,7 +124,7 @@ impl SomeAction {
 
     /// Add a new square from a sample.
     /// Check the consequenses of adding the square.
-    pub fn add_new_square(&mut self, smpl: &SomeSample) {
+    pub fn add_new_square(&mut self, smpl: &SomeSample) -> &SomeSquare {
         if self.cleanup_trigger > 0 {
             self.cleanup_trigger -= 1;
         }
@@ -133,81 +133,133 @@ impl SomeAction {
             self.dom_num,
             self.num,
         );
-        self.check_square_new_sample(&smpl.initial);
-        self.eval_sample_check_anchor(smpl);
+        self.squares.find(&smpl.initial).expect("SNH")
     }
-
-    /// Store and evaluate a sample if it forms a new square,
-    /// or causes a change to an existing square (change in pn or pnc).
-    pub fn eval_sample(&mut self, smpl: &SomeSample) {
-        // Check if sample is for an existing square.
+    /// Do basic functions for any new sample.
+    /// Return true if a matching square exists.
+    pub fn eval_sample(&mut self, smpl: &SomeSample) -> bool {
+        // println!("eval_sample: {}", smpl);
+        // Check if a square already exists.
         if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
             if sqrx.add_result(smpl.result.clone()) {
-                self.check_square_new_sample(&smpl.initial);
+                // If the square changed, check if it invalidates any groups.
+                let regs_invalid: RegionStore =
+                    self.groups.check_square(sqrx, self.dom_num, self.num);
+                if !regs_invalid.is_empty() {
+                    self.process_invalid_regions(&regs_invalid);
+                }
+                if !self.groups.any_superset_of_state(&smpl.initial) {
+                    self.create_groups_from_square(&smpl.initial);
+                }
             }
-        } else {
+            return true;
+        }
+
+        // Check if the sample invalidates any groups.
+        if self.groups.any_groups_invalidated(smpl) {
+            // Add new square.
+            self.add_new_square(smpl);
+            if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
+                // Gather invalidated group regions.
+                let regs_invalid: RegionStore =
+                    self.groups.check_square(sqrx, self.dom_num, self.num);
+                if !regs_invalid.is_empty() {
+                    self.process_invalid_regions(&regs_invalid);
+                }
+            }
+            return true;
+        }
+
+        // Create group from square.
+        if !self.groups.any_superset_of_state(&smpl.initial) {
+            self.add_new_square(smpl);
+            self.create_groups_from_square(&smpl.initial);
+            return true;
+        }
+        false
+    }
+
+    /// Evaluate an arbitrary sample, creating a square if needed.
+    pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
+        if !self.eval_sample(smpl) {
             self.add_new_square(smpl);
         }
     }
 
-    /// Check for anchor change due to a new sample.
-    /// A square implied by the sample, in a group, may have a higher anchor rating
-    /// than the current group anchor.
-    fn eval_sample_check_anchor(&mut self, smpl: &SomeSample) {
-        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else {
-            return;
-        };
-
-        let Some(anchor) = &grpx.anchor else {
-            return;
-        };
-
-        if anchor == &smpl.initial {
-            return;
+    /// Check invalid regions for orphaneh squares, create new regions.
+    fn process_invalid_regions(&mut self, invalid_regs: &RegionStore) {
+        // Load states from squares in the invalidated regions.
+        let mut stas_in_regs = Vec::<&SomeState>::new();
+        for regx in invalid_regs.iter() {
+            let stas_in = self.squares.stas_in_reg(regx);
+            for stax in stas_in {
+                if !stas_in_regs.contains(&stax) {
+                    // Skip duplicates caused by overlapping regions.
+                    stas_in_regs.push(stax);
+                }
+            }
         }
-
-        // The current anchor rate may have changed, so recalculate it.
-        let anchor_rate = self.group_anchor_rate(grpx, anchor);
-
-        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
-
-        if sqr_rate <= anchor_rate {
-            return;
+        // Store states not in any groups.
+        let mut orphaned_stas = Vec::<SomeState>::new();
+        for stax in stas_in_regs {
+            if !self.groups.any_superset_of_state(stax) {
+                orphaned_stas.push((*stax).clone());
+            }
         }
-
-        let grp_reg = grpx.region.clone();
-
-        // Get a mutable reference.
-        let Some(grpx) = self.groups.find_mut(&grp_reg) else {
-            panic!("Should work")
-        };
-
-        println!(
-            "Changing group {} anchor from {} {:?} to {} {:?}",
-            grpx.region,
-            grpx.anchor.as_ref().unwrap(),
-            anchor_rate,
-            smpl.initial,
-            sqr_rate
-        );
-
-        // Create a new square, if none exists already.
-        if self.squares.find(&smpl.initial).is_none() {
-            self.squares.insert(
-                SomeSquare::new(smpl.initial.clone(), smpl.result.clone()),
-                self.dom_num,
-                self.num,
-            );
+        // Try creating groups from each square.
+        for stax in orphaned_stas {
+            if !self.groups.any_superset_of_state(&stax) {
+                // Previously processed orphans may have created new groups.
+                self.create_groups_from_square(&stax);
+            }
         }
+    }
 
-        grpx.set_anchor(&smpl.initial);
-    } // end eval_sample_check_anchors
+    // Check for anchor effects due to a new sample.
+    // A square implied by the sample being adjacent to a group, may have a higher anchor rating
+    // than the current group anchor.
+    // Return true if the sample affects any groups anchor.
+    //   fn groups_check_anchor(&mut self, smpl: &SomeSample) {
+    //    }
+    //        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else {
+    //            return;
+    //        };
+
+    //        let Some(anchor) = &grpx.anchor else {
+    //            return;
+    //        };
+
+    //        if anchor == &smpl.initial {
+    //            return;
+    //        }
+
+    // The current anchor rate may have changed, so recalculate it.
+    //        let anchor_rate = self.group_anchor_rate(grpx, anchor);
+
+    //        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
+
+    //        if sqr_rate <= anchor_rate {
+    //            return;
+    //        }
+
+    //        let grp_reg = grpx.region.clone();
+
+    //        // Get a mutable reference.
+    //        let Some(grpx) = self.groups.find_mut(&grp_reg) else {
+    //            panic!("Should work")
+    //        };
+
+    //        println!(
+    //            "Changing group {} anchor from {} {:?} to {} {:?}",
+    //            grpx.region,
+    //            grpx.anchor.as_ref().unwrap(),
+    //            anchor_rate,
+    //            smpl.initial,
+    //            sqr_rate
+    //        );
 
     /// Evaluate a sample taken to satisfy a need.
-    pub fn eval_need_sample(&mut self, ndx: &SomeNeed, smpl: &SomeSample) {
-        // Processing for all samples that will be stored.
-        self.eval_sample(smpl);
-
+    pub fn eval_need_sample(&mut self, ndx: &SomeNeed) {
         // Additional processing for selected kinds of need
         match ndx {
             // Check if group can be confirmed.
@@ -241,96 +293,6 @@ impl SomeAction {
 
         grpx.set_pnc();
     }
-
-    /// Evaluate the sample taken for a step in a plan.
-    /// If a square is currently stored for the sample, update the square.
-    /// If the square invalidates any group, store a new square.
-    /// In most cases, if the sample is as expected, no new square will be stored.
-    fn eval_step_sample(&mut self, smpl: &SomeSample) {
-        // If a square exists, update it.
-        if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
-            // println!("about to add result to sqr {}", cur.str());
-            if sqrx.add_result(smpl.result.clone()) {
-                self.check_square_new_sample(&smpl.initial);
-            }
-            return;
-        }
-
-        // Check if any groups are invalidated
-        if self.groups.any_groups_invalidated(smpl) {
-            self.eval_sample(smpl);
-        } else {
-            self.eval_sample_check_anchor(smpl);
-        }
-    } // end eval_step_sample
-
-    /// Check a square, referenced by state, against valid groups.
-    /// The square may invalidate some groups.
-    /// Add a group for the square if the square is in no valid group.
-    /// If any groups were invalidated, check for any other squares
-    /// that are in no groups.
-    fn check_square_new_sample(&mut self, key: &SomeState) {
-        //println!("check_square_new_sample for {}", key);
-
-        let sqrx = self
-            .squares
-            .find(key)
-            .expect("key should always refer to an existing square");
-
-        // Get groups invalidated, which may orphan some squares.
-        //let regs_invalid = self.validate_groups_new_sample(&key);
-        let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_num, self.num);
-
-        // Check for any effects on group limited setting
-        for grpx in self.groups.iter_mut() {
-            if !grpx.limited {
-                continue;
-            }
-
-            let Some(anchor_state) = &grpx.anchor else {
-                continue;
-            };
-
-            if !anchor_state.is_adjacent(&sqrx.state) {
-                continue;
-            };
-
-            let Some(anchor_sqr) = self.squares.find(anchor_state) else {
-                panic!("Anchor state not found?");
-            };
-
-            if anchor_sqr.can_combine_now(sqrx) {
-                grpx.set_limited_off();
-            }
-        }
-
-        // Create a group for square if needed
-        let grps_in = self.groups.groups_state_in(key);
-        if grps_in.is_empty() || (grps_in.len() == 1 && (grps_in[0].number_states() == 1)) {
-            self.create_groups_from_square(key);
-        }
-
-        if regs_invalid.is_empty() {
-            return;
-        }
-
-        // Check squares from invalidated groups that may not be in any group.
-        let mut stas_to_check = Vec::<SomeState>::new();
-
-        for regx in regs_invalid.iter() {
-            let stas = self.squares.stas_in_reg(regx);
-            //println!("stas to check {}", SomeState::vec_ref_string(&stas));
-
-            for stax in stas.iter() {
-                if self.groups.num_groups_state_in(stax) == 0 && !stas_to_check.contains(stax) {
-                    stas_to_check.push((*stax).clone());
-                }
-            }
-        }
-        for stax in stas_to_check.iter() {
-            self.create_groups_from_square(stax);
-        }
-    } // end check_square_new_sample
 
     /// Check groups due to a new, or updated, square.
     /// Create a group with the square, if needed.
@@ -901,7 +863,7 @@ impl SomeAction {
                 continue;
             };
 
-            if self.groups.num_groups_state_in(stax) != 1 {
+            if !self.groups.state_in_1_group(stax) {
                 ret_nds.push(SomeNeed::RemoveGroupAnchor {
                     group_region: grpx.region.clone(),
                 });
@@ -955,7 +917,7 @@ impl SomeAction {
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
         //assert_eq!(self.groups.num_groups_state_in(stax), 1);
-        if self.groups.num_groups_state_in(stax) != 1 {
+        if !self.groups.state_in_1_group(stax) {
             return (0, 0, 0);
         }
 
@@ -1044,7 +1006,7 @@ impl SomeAction {
 
         for stax in &stas_in {
             // Potential new anchor must be in only one group.
-            if self.groups.num_groups_state_in(stax) != 1 {
+            if !self.groups.state_in_1_group(stax) {
                 continue;
             }
 
@@ -1766,7 +1728,10 @@ impl SomeAction {
             .take_action(cur_state, self.dom_num, self.num);
 
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
-        self.eval_need_sample(ndx, &asample);
+        if !self.eval_sample(&asample) {
+            self.add_new_square(&asample);
+        }
+        self.eval_need_sample(ndx);
         asample
     }
 
@@ -1777,7 +1742,7 @@ impl SomeAction {
             .take_action(cur_state, self.dom_num, self.num);
 
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
-        self.eval_step_sample(&asample);
+        self.eval_sample(&asample);
         asample
     }
 
@@ -1790,6 +1755,9 @@ impl SomeAction {
 
         let asample = SomeSample::new(cur_state.clone(), self.num, astate);
 
+        if self.squares.find(cur_state).is_none() {
+            self.add_new_square(&asample);
+        }
         self.eval_sample(&asample);
 
         asample
@@ -1915,25 +1883,25 @@ mod tests {
         // 0->1 and 0->1, in the fourth bit.
         let s1 = tmp_sta.new_from_string("s0b0001").unwrap();
         let s9 = tmp_sta.new_from_string("s0b1001").unwrap();
-        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s9.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s9.clone()));
         let s5 = tmp_sta.new_from_string("s0b0101").unwrap();
-        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         // Set up first two_result square.
         let s0 = tmp_sta.new_from_string("s0b0000").unwrap();
         let s8 = tmp_sta.new_from_string("s0b1000").unwrap();
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
 
         // Set up second two_result square.
         let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
         let sf = tmp_sta.new_from_string("s0b1111").unwrap();
-        act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
-        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
-        act0.eval_sample(&SomeSample::new(s7.clone(), 0, sf.clone()));
-        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 1);
@@ -1952,22 +1920,22 @@ mod tests {
 
         // Eval sample that other samples will be incompatible with.
         let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
-        act0.eval_sample(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
 
         // Process three similar samples.
-        act0.eval_sample(&SomeSample::new(
+        act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b1011")?,
             0,
             tmp_sta.new_from_string("s0b1010")?,
         ));
 
-        act0.eval_sample(&SomeSample::new(
+        act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             0,
             tmp_sta.new_from_string("s0b1100")?,
         ));
 
-        act0.eval_sample(&SomeSample::new(
+        act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b0001")?,
             0,
             tmp_sta.new_from_string("s0b0000")?,
@@ -2006,18 +1974,18 @@ mod tests {
         let sf = tmp_sta.new_from_string("s0b1111")?;
         let se = tmp_sta.new_from_string("s0b1110")?;
 
-        act0.eval_sample(&SomeSample::new(sf.clone(), 0, sf.clone()));
-        act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
-        act0.eval_sample(&SomeSample::new(sf.clone(), 0, sf.clone()));
-        act0.eval_sample(&SomeSample::new(sf.clone(), 0, se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
 
         // Set up 2-result square s1.
         let s1 = tmp_sta.new_from_string("s0b0001")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
-        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
-        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s1.clone()));
-        act0.eval_sample(&SomeSample::new(s1.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s0.clone()));
 
         let memory = VecDeque::<SomeSample>::new();
         let nds = act0.get_needs(
@@ -2049,15 +2017,15 @@ mod tests {
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
 
@@ -2081,19 +2049,19 @@ mod tests {
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
         let s4 = tmp_sta.new_from_string("s0b0100")?;
-        act0.eval_sample(&SomeSample::new(s4.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), 0, s0.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
 
@@ -2127,15 +2095,15 @@ mod tests {
         // Set up square 2.
         let s2 = tmp_sta.new_from_string("s0b0010")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample(&SomeSample::new(s2.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s0.clone()));
 
         // Set up square b.
         let sb = tmp_sta.new_from_string("s0b1011")?;
-        act0.eval_sample(&SomeSample::new(sb.clone(), 0, sb.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), 0, sb.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
 
         println!("Act: {}", &act0);
 

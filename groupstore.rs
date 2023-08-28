@@ -135,6 +135,28 @@ impl GroupStore {
             self.calc_aggregate_changes();
         }
 
+        // Check limited status of groups.
+        for grpx in self.avec.iter_mut() {
+            if !grpx.limited || !grpx.region.is_adjacent_state(&sqrx.state) {
+                continue;
+            }
+            if let Some(anchor) = &grpx.anchor {
+                if anchor.is_adjacent(&sqrx.state) {
+                    if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
+                        grpx.set_limited_off();
+                    } else if grpx.pn == sqrx.pn {
+                        if let Some(grpx_ruls) = &grpx.rules {
+                            if let Some(sqr_ruls) = &sqrx.rules {
+                                if grpx_ruls.union(sqr_ruls).is_some() {
+                                    grpx.set_limited_off();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } // next grpx
+
         //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
         regs_invalid
     }
@@ -151,21 +173,19 @@ impl GroupStore {
         num_grps
     }
 
-    /// Return group reference if a state is in, if any.
-    pub fn state_in_1_group(&self, stax: &SomeState) -> Option<&SomeGroup> {
+    /// Return true if a state is in exactly one group.
+    pub fn state_in_1_group(&self, stax: &SomeState) -> bool {
         let mut num_grps = 0;
-        let mut ret: Option<&SomeGroup> = None;
 
         for grpx in &self.avec {
             if grpx.region.is_superset_of_state(stax) {
                 if num_grps > 0 {
-                    return None;
+                    return false;
                 }
                 num_grps += 1;
-                ret = Some(grpx);
             }
         }
-        ret
+        num_grps == 1
     }
 
     /// Return the groups regions a state is in.

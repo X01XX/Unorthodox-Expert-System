@@ -140,11 +140,6 @@ impl SomeRegion {
         }
     }
 
-    /// Return the number ef states used to define a region.
-    pub fn number_states(&self) -> usize {
-        self.states.len()
-    }
-
     /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, positions that are omitted will be padded with zeros.
     ///

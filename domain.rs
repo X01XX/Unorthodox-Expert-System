@@ -117,7 +117,7 @@ impl SomeDomain {
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
-        self.actions[smpl.act_num].eval_sample(smpl);
+        self.actions[smpl.act_num].eval_sample_arbitrary(smpl);
         self.set_state_memory(smpl.clone());
     }
 
@@ -1036,7 +1036,7 @@ mod tests {
             println!("\nActs: {}", &dm0.actions[0]);
 
             if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // cause not-pn=2 condition
+                dm0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone())); // pn=1, pnc condition
                 assert!(!dm0.actions[0].groups.find(&rx1x1).is_some());
             } else {
                 return Err(String::from("Group rx1x1 deleted too soon?"));

@@ -142,6 +142,13 @@ impl SomeGroup {
         //  &self.region, &sqrx.state
         //);
 
+        if self.pn == Pn::Unpredictable {
+            if sqrx.pn == self.pn || !sqrx.pnc {
+                return true;
+            }
+            return false;
+        }
+
         // Check if square is compatible with group.
         if sqrx.pn > self.pn {
             return false;
@@ -149,10 +156,6 @@ impl SomeGroup {
 
         if sqrx.pn != self.pn && sqrx.pnc {
             return false;
-        }
-
-        if self.pn == Pn::Unpredictable {
-            return true;
         }
 
         self.rules
@@ -165,21 +168,16 @@ impl SomeGroup {
     pub fn check_subset_sample(&self, smpl: &SomeSample) -> bool {
         assert!(self.region.is_superset_of_state(&smpl.initial));
 
+        if self.pn == Pn::Unpredictable {
+            return true;
+        }
+
         let tmp_rul = smpl.rule();
 
-        match self.pn {
-            Pn::One => self
-                .rules
-                .as_ref()
-                .expect("SNH")
-                .is_superset_of_rule(&tmp_rul),
-            Pn::Two => self
-                .rules
-                .as_ref()
-                .expect("SNH")
-                .is_superset_of_rule(&tmp_rul),
-            Pn::Unpredictable => true,
-        }
+        self.rules
+            .as_ref()
+            .expect("SNH")
+            .is_superset_of_rule(&tmp_rul)
     }
 
     /// Clear the anchor, it is no longer only in one group,

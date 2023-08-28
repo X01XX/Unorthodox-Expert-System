@@ -793,6 +793,10 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 
     if cmd.len() == 4 {
         // Take arbitrary sample with <action num> <initial-state> <result-state>, don't update current state
+        // This tends to break things for an action, unless all samples are arbitrary.
+        // Useful for testing a wholly different series of samples/results.
+        // Using the command: ss  action-number  initial-state  result-state
+        // e.g. ss  0  s0b1010  s0b1111
 
         // Get i-state from string
         let i_state = match dmx.state_from_string(cmd[2]) {
