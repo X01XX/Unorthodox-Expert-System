@@ -1,6 +1,8 @@
 # Unorthodox-Expert-System
 An expert of its own state. Rules can be developed, revised, and used without human intervention. The rules are low-level, probably not what you expect.
 
+Rule characteristics allow it to be known that some rules apply to a desired change, and others do not.  Some rule pairs can be known to need to be used in a given order, or even be mutually exclusive.  A single available rule that makes part of a desired change, means the problem must be split into going from the current state to a state where the rule can be applied, then from the result of the rule to the goal state.
+
 Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, and there is a fix, see the top of the file theory.html. Also, squares that are only in one region have a special significance.
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory.
