@@ -28,13 +28,7 @@ use std::fmt;
 /// Implement the fmt::Display trait for a Pn.
 impl fmt::Display for Pn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = match self {
-            Pn::One => "1",
-            Pn::Two => "2",
-            Pn::Unpredictable => "U",
-        };
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -72,7 +66,16 @@ pub enum Pn {
     Unpredictable,
 }
 
-impl Pn {}
+impl Pn {
+    /// Return a String representation of a Pn.
+    pub fn formatted_string(&self) -> String {
+        match self {
+            Pn::One => String::from("1"),
+            Pn::Two => String::from("2"),
+            Pn::Unpredictable => String::from("U"),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

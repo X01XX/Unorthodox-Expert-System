@@ -12,18 +12,7 @@ use std::fmt;
 
 impl fmt::Display for SquareStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::new();
-
-        for sqrx in self.ahash.values() {
-            if flg == 1 {
-                rc_str.push_str(",\n");
-            }
-            rc_str.push_str(&format!("{sqrx}"));
-            flg = 1;
-        }
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -110,5 +99,21 @@ impl SquareStore {
             .keys()
             .filter(|keyx| regx.is_adjacent_state(keyx))
             .collect()
+    }
+
+    /// Return a String representation of a SquareStore.
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::new();
+
+        for sqrx in self.ahash.values() {
+            if flg == 1 {
+                rc_str.push_str(",\n");
+            }
+            rc_str.push_str(&format!("{sqrx}"));
+            flg = 1;
+        }
+
+        rc_str
     }
 } // end impl SquareStore

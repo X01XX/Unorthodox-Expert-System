@@ -203,7 +203,7 @@ impl RegionStore {
     }
 
     /// Return a string representing a vector of regions.
-    pub fn vec_ref_string(avec: &[&RegionStore]) -> String {
+    pub fn vec_ref_string(avec: &[&Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -221,7 +221,7 @@ impl RegionStore {
 
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
-        let mut ret_str = RegionStore::new(vec![]);
+        let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
             if regx.intersects(regy) {
@@ -238,7 +238,7 @@ impl RegionStore {
 
     /// Return a RegionStore of regions that are superset of a state.
     pub fn supersets_of_state(&self, stax: &SomeState) -> Self {
-        let mut ret_str = RegionStore::new(vec![]);
+        let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
             if regy.is_superset_of_state(stax) {
@@ -251,7 +251,7 @@ impl RegionStore {
 
     /// Subtract a state from a RegionStore.
     pub fn subtract_state(&self, stax: &SomeState) -> Self {
-        let mut ret_str = RegionStore::new(vec![]);
+        let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
             if regy.is_superset_of_state(stax) {
@@ -269,7 +269,7 @@ impl RegionStore {
     /// Subtract a state from a RegionStore, with results being supersets of a second state.
     /// Assumes all regions are supersets of the second state before doing the subtraction.
     pub fn subtract_state_to_supersets_of(&self, substa: &SomeState, supsta: &SomeState) -> Self {
-        let mut ret_str = RegionStore::new(vec![]);
+        let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
             if regy.is_superset_of_state(substa) {
@@ -285,7 +285,7 @@ impl RegionStore {
     }
 
     /// Subtract a RegionStore from a RegionStore
-    pub fn subtract(&self, subtrahend: &RegionStore) -> RegionStore {
+    pub fn subtract(&self, subtrahend: &Self) -> Self {
         let mut ret_str = self.clone();
 
         for regx in subtrahend.iter() {
@@ -297,7 +297,7 @@ impl RegionStore {
     }
 
     // Return the union of two RegionStores.
-    pub fn union(&self, other: &RegionStore) -> Self {
+    pub fn union(&self, other: &Self) -> Self {
         let mut ret = self.clone();
         for regx in other.avec.iter() {
             ret.push_nosubs(regx.clone());
@@ -306,7 +306,7 @@ impl RegionStore {
     }
 
     // Return the intersection of two RegionStores.
-    pub fn intersection(&self, other: &RegionStore) -> Self {
+    pub fn intersection(&self, other: &Self) -> Self {
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
             for regy in other.iter() {

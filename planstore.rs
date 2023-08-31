@@ -12,22 +12,7 @@ use std::slice::Iter;
 
 impl fmt::Display for PlanStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-
-        let mut rc_str = String::new();
-
-        rc_str.push_str("\n(");
-
-        for planx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(",\n ");
-            }
-            rc_str.push_str(&format!("{}", &planx));
-            flg = 1;
-        }
-        rc_str.push(')');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -138,6 +123,26 @@ impl PlanStore {
             ret += planx.len();
         }
         ret
+    }
+
+    /// Return a String representation of a PlanStore.
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+
+        let mut rc_str = String::new();
+
+        rc_str.push_str("\n(");
+
+        for planx in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(",\n ");
+            }
+            rc_str.push_str(&format!("{}", &planx));
+            flg = 1;
+        }
+        rc_str.push(')');
+
+        rc_str
     }
 } // end impl PlanStore
 

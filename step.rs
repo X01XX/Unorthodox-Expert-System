@@ -90,7 +90,7 @@ impl SomeStep {
 
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
-    pub fn mutually_exclusive(&self, other: &SomeStep, wanted: &SomeChange) -> bool {
+    pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 } // end impl SomeStep

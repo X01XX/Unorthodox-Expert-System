@@ -41,40 +41,7 @@ const CLEANUP: usize = 5;
 
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::from("A(ID: ");
-
-        rc_str += &self.num.to_string();
-
-        rc_str += ", number squares: ";
-        rc_str += &self.squares.len().to_string();
-
-        if let Some(aregion) = &self.remainder_check_region {
-            rc_str.push_str(&format!(", remainder: {}", aregion));
-        }
-
-        let mut fil = ",\n       Grps: ";
-        for grpx in self.groups.iter() {
-            let stas_in = self.squares.stas_in_reg(&grpx.region);
-
-            let cnt: usize = stas_in
-                .iter()
-                .map(|stax| usize::from(self.groups.num_state_in(stax) == 1))
-                .sum();
-
-            rc_str.push_str(&format!(
-                "{}{} num Sqrs: {} in1: {})",
-                &fil,
-                &grpx.formatted_string(),
-                &stas_in.len(),
-                &cnt,
-            ));
-
-            fil = ",\n             ";
-        }
-
-        rc_str.push(')');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -208,55 +175,9 @@ impl SomeAction {
         }
         // Try creating groups from each square.
         for stax in orphaned_stas {
-            if !self.groups.any_superset_of_state(&stax) {
-                // Previously processed orphans may have created new groups.
-                self.create_groups_from_square(&stax);
-            }
+            self.create_groups_from_square(&stax);
         }
     }
-
-    // Check for anchor effects due to a new sample.
-    // A square implied by the sample being adjacent to a group, may have a higher anchor rating
-    // than the current group anchor.
-    // Return true if the sample affects any groups anchor.
-    //   fn groups_check_anchor(&mut self, smpl: &SomeSample) {
-    //    }
-    //        let Some(grpx) = self.groups.state_in_1_group(&smpl.initial) else {
-    //            return;
-    //        };
-
-    //        let Some(anchor) = &grpx.anchor else {
-    //            return;
-    //        };
-
-    //        if anchor == &smpl.initial {
-    //            return;
-    //        }
-
-    // The current anchor rate may have changed, so recalculate it.
-    //        let anchor_rate = self.group_anchor_rate(grpx, anchor);
-
-    //        let sqr_rate = self.group_anchor_rate(grpx, &smpl.initial);
-
-    //        if sqr_rate <= anchor_rate {
-    //            return;
-    //        }
-
-    //        let grp_reg = grpx.region.clone();
-
-    //        // Get a mutable reference.
-    //        let Some(grpx) = self.groups.find_mut(&grp_reg) else {
-    //            panic!("Should work")
-    //        };
-
-    //        println!(
-    //            "Changing group {} anchor from {} {:?} to {} {:?}",
-    //            grpx.region,
-    //            grpx.anchor.as_ref().unwrap(),
-    //            anchor_rate,
-    //            smpl.initial,
-    //            sqr_rate
-    //        );
 
     /// Evaluate a sample taken to satisfy a need.
     pub fn eval_need_sample(&mut self, ndx: &SomeNeed) {
@@ -324,7 +245,7 @@ impl SomeAction {
             "\nDom {} Act {} Square {} in {} group{}",
             self.dom_num,
             self.num,
-            sqrx.str_terse(),
+            sqrx.state,
             grps_in.len(),
             plural,
         );
@@ -1851,6 +1772,43 @@ impl SomeAction {
     /// Return the total number of groups in the action.
     pub fn number_groups(&self) -> usize {
         self.groups.len()
+    }
+
+    /// Return a String representation of SomeAction.
+    pub fn formatted_string(&self) -> String {
+        let mut rc_str = String::from("A(ID: ");
+
+        rc_str += &self.num.to_string();
+
+        rc_str += ", number squares: ";
+        rc_str += &self.squares.len().to_string();
+
+        if let Some(aregion) = &self.remainder_check_region {
+            rc_str.push_str(&format!(", remainder: {}", aregion));
+        }
+
+        let mut fil = ",\n       Grps: ";
+        for grpx in self.groups.iter() {
+            let stas_in = self.squares.stas_in_reg(&grpx.region);
+
+            let cnt: usize = stas_in
+                .iter()
+                .map(|stax| usize::from(self.groups.num_state_in(stax) == 1))
+                .sum();
+
+            rc_str.push_str(&format!(
+                "{}{} num Sqrs: {} in1: {})",
+                &fil,
+                &grpx.formatted_string(),
+                &stas_in.len(),
+                &cnt,
+            ));
+
+            fil = ",\n             ";
+        }
+
+        rc_str.push(')');
+        rc_str
     }
 } // end impl SomeAction
 

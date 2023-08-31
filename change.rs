@@ -37,7 +37,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise and of two changes
-    pub fn bitwise_and(&self, other: &SomeChange) -> SomeChange {
+    pub fn bitwise_and(&self, other: &Self) -> Self {
         Self {
             b01: self.b01.bitwise_and(&other.b01),
             b10: self.b10.bitwise_and(&other.b10),
@@ -45,7 +45,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise and of a change and a rule.
-    pub fn bitwise_and_rule(&self, other: &SomeRule) -> SomeChange {
+    pub fn bitwise_and_rule(&self, other: &SomeRule) -> Self {
         Self {
             b01: self.b01.bitwise_and(&other.b01),
             b10: self.b10.bitwise_and(&other.b10),
@@ -53,7 +53,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize or of two changes
-    pub fn bitwise_or(&self, other: &SomeChange) -> SomeChange {
+    pub fn bitwise_or(&self, other: &Self) -> Self {
         Self {
             b01: self.b01.bitwise_or(&other.b01),
             b10: self.b10.bitwise_or(&other.b10),
@@ -61,7 +61,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize or of a change and a rule.
-    pub fn bitwise_or_rule(&self, other: &SomeRule) -> SomeChange {
+    pub fn bitwise_or_rule(&self, other: &SomeRule) -> Self {
         Self {
             b01: self.b01.bitwise_or(&other.b01),
             b10: self.b10.bitwise_or(&other.b10),
@@ -74,7 +74,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwize not of a change
-    pub fn bitwise_not(&self) -> SomeChange {
+    pub fn bitwise_not(&self) -> Self {
         Self {
             b01: self.b01.bitwise_not(),
             b10: self.b10.bitwise_not(),
@@ -100,7 +100,7 @@ impl SomeChange {
     }
 
     /// Return true if a SomeChange struct is a ones-subset of another.
-    pub fn is_subset_of(&self, other: &SomeChange) -> bool {
+    pub fn is_subset_of(&self, other: &Self) -> bool {
         if self.b01.is_subset_of(&other.b01) && self.b10.is_subset_of(&other.b10) {
             return true;
         }
@@ -143,15 +143,15 @@ impl SomeChange {
 
         let to_not_x = to.x_mask().bitwise_not();
 
-        SomeChange {
+        Self {
             b01: f_zeros.bitwise_and(&t_ones.bitwise_and(&to_not_x)),
             b10: f_ones.bitwise_and(&t_zeros.bitwise_and(&to_not_x)),
         }
     }
 
     /// For a given change, subtract an other change.
-    pub fn minus(&self, other: &SomeChange) -> Self {
-        SomeChange {
+    pub fn minus(&self, other: &Self) -> Self {
+        Self {
             b01: self.b01.bitwise_xor(&self.b01.bitwise_and(&other.b01)),
             b10: self.b10.bitwise_xor(&self.b10.bitwise_and(&other.b10)),
         }

@@ -375,12 +375,12 @@ impl SomeBits {
 
     /// Return the number of bits that are different.
     /// This can be interpreted as how "far away" two bit patterns are.
-    pub fn distance(&self, other: &SomeBits) -> usize {
+    pub fn distance(&self, other: &Self) -> usize {
         self.b_xor(other).num_one_bits()
     }
 
     /// Return true if two bits instances are adjacent.
-    pub fn is_adjacent(&self, other: &SomeBits) -> bool {
+    pub fn is_adjacent(&self, other: &Self) -> bool {
         self.b_xor(other).just_one_bit()
     }
 
@@ -534,7 +534,7 @@ impl SomeBits {
     }
 
     /// Return a string representing a vector of bits.
-    pub fn vec_string(avec: &[SomeBits]) -> String {
+    pub fn vec_string(avec: &[Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 

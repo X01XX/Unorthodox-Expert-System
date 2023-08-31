@@ -123,7 +123,7 @@ impl SomeRule {
             return Err(format!("Did not understand token {}", &token));
         }
 
-        Ok(SomeRule { b00, b01, b11, b10 })
+        Ok(Self { b00, b01, b11, b10 })
     }
 
     /// Return true if a rule is a subset of another.
@@ -373,7 +373,7 @@ impl SomeRule {
 
     /// Return true if two rules are mutually exclusive.
     /// Both rules lose wanted changes, running them in any order.
-    pub fn mutually_exclusive(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
+    pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         if self.order_bad(other, wanted) && other.order_bad(self, wanted) {
             return true;
         }
@@ -385,7 +385,7 @@ impl SomeRule {
     ///    A change can be lost by:
     ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///        A wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
-    pub fn order_bad(&self, other: &SomeRule, wanted: &SomeChange) -> bool {
+    pub fn order_bad(&self, other: &Self, wanted: &SomeChange) -> bool {
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
         // Calc aggregate rule.
@@ -406,18 +406,17 @@ impl SomeRule {
 
     /// Combine two rules in sequence.
     /// The result region of the first rule may not intersect the initial region of the second rule.
-    pub fn then_to(&self, other: &SomeRule) -> Self {
+    pub fn then_to(&self, other: &Self) -> Self {
         if self.result_region().intersects(&other.initial_region()) {
             return self.then_to2(other);
         }
-        let rul_between =
-            SomeRule::region_to_region(&self.result_region(), &other.initial_region());
+        let rul_between = Self::region_to_region(&self.result_region(), &other.initial_region());
         self.then_to2(&rul_between).then_to2(other)
     }
 
     /// Combine two rules in sequence.
     /// The result region of the first rule must intersect the initial region of the second rule.
-    fn then_to2(&self, other: &SomeRule) -> Self {
+    fn then_to2(&self, other: &Self) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
@@ -444,7 +443,7 @@ impl SomeRule {
     /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
     /// 0->0 instead of 0->X), the second region.
     /// The minimum changes are sought, so X->x and x->X become X->X.
-    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
         let from_x = from.x_mask();
         let from_1 = from.ones_mask().bitwise_or(&from_x);
         let from_0 = from.zeros_mask().bitwise_or(&from_x);

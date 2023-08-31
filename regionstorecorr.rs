@@ -159,7 +159,7 @@ impl RegionStoreCorr {
     }
 
     /// Return True if a RegionStoreCorr is a superset of another RSC.
-    pub fn is_superset_of(&self, other: &RegionStoreCorr) -> bool {
+    pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
@@ -173,7 +173,7 @@ impl RegionStoreCorr {
     }
 
     /// Return a vector of difference masks for two RegionStoreCorrs.
-    pub fn diff_masks(&self, other: &RegionStoreCorr) -> Vec<SomeMask> {
+    pub fn diff_masks(&self, other: &Self) -> Vec<SomeMask> {
         debug_assert!(self.len() == other.len());
 
         let mut ret = Vec::<SomeMask>::with_capacity(self.len());
@@ -199,10 +199,10 @@ impl RegionStoreCorr {
     }
 
     /// Return the intersection, if any, of two RegionStoreCorrs.
-    pub fn intersection(&self, other: &RegionStoreCorr) -> Option<RegionStoreCorr> {
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
 
-        let mut ret = RegionStoreCorr::with_capacity(self.len());
+        let mut ret = Self::with_capacity(self.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.intersects(y) {
@@ -218,10 +218,10 @@ impl RegionStoreCorr {
     }
 
     /// Return the union, of two RegionStoreCorrs.
-    pub fn union(&self, other: &RegionStoreCorr) -> RegionStoreCorr {
+    pub fn union(&self, other: &Self) -> Self {
         debug_assert!(self.len() == other.len());
 
-        let mut ret = RegionStoreCorr::with_capacity(self.len());
+        let mut ret = Self::with_capacity(self.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
             ret.push(x.union(y));
@@ -231,7 +231,7 @@ impl RegionStoreCorr {
     }
 
     /// Return true if there is an intersection of corresponding regions, of two RegionStoreCorrs.
-    pub fn intersects(&self, other: &RegionStoreCorr) -> bool {
+    pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
@@ -244,7 +244,7 @@ impl RegionStoreCorr {
 
     /// Return true if RegionStoreCorr is a subset of another RegionStoreCorr.
     /// Used in optimal regionstore calculations.
-    pub fn is_subset_of(&self, other: &RegionStoreCorr) -> bool {
+    pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
@@ -258,7 +258,7 @@ impl RegionStoreCorr {
 
     /// Return true if at least one corresponding pair in two ReagionStoreCorrs is adjacent,
     /// while other corresponding pairs are adjacent or intersect.
-    pub fn is_adjacent(&self, other: &RegionStoreCorr) -> bool {
+    pub fn is_adjacent(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         let mut num_dif = 0;
@@ -283,7 +283,7 @@ impl RegionStoreCorr {
     }
 
     /// Return a string representing a vector of RegionStoreCorrs.
-    pub fn vec_string(avec: &[RegionStoreCorr]) -> String {
+    pub fn vec_string(avec: &[Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -300,7 +300,7 @@ impl RegionStoreCorr {
     }
 
     /// Return a string representing a vector of RegionStoreCorr references.
-    pub fn vec_ref_string(avec: &[&RegionStoreCorr]) -> String {
+    pub fn vec_ref_string(avec: &[&Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -319,7 +319,7 @@ impl RegionStoreCorr {
     /// Split corresponding regions by intersections, producing a result where each region is a subset
     /// of any intersecting original regions. All parts of the original regions should be represented in the
     /// result.
-    pub fn vec_ref_split_to_subsets(rs_vec: &[&RegionStoreCorr]) -> Vec<RegionStoreCorr> {
+    pub fn vec_ref_split_to_subsets(rs_vec: &[&Self]) -> Vec<Self> {
         assert!(!rs_vec.is_empty());
 
         if rs_vec.len() == 1 {
@@ -327,7 +327,7 @@ impl RegionStoreCorr {
         }
 
         // Init return vector of regions, subuset of all intersecting original regions.
-        let mut ret_vec = Vec::<RegionStoreCorr>::new();
+        let mut ret_vec = Vec::<Self>::new();
 
         let mut each_reg_set = Vec::<RegionStore>::with_capacity(rs_vec.len());
 
@@ -365,39 +365,36 @@ impl RegionStoreCorr {
             for refx in opx.iter() {
                 regs.push((*refx).clone());
             }
-            ret_vec.push(RegionStoreCorr::new(regs));
+            ret_vec.push(Self::new(regs));
         }
         //println!("num RegionStoreCorr is {}", ret_vec.len());
         ret_vec
     }
 
     /// Subtract a RegionStoreCorr vector from another RegionStoreCorr vec.
-    pub fn vec_subtract(
-        minuend: &Vec<RegionStoreCorr>,
-        subtrahend: &[&RegionStoreCorr],
-    ) -> Vec<RegionStoreCorr> {
-        let mut ret_str = Vec::<RegionStoreCorr>::with_capacity(minuend.len());
+    pub fn vec_subtract(minuend: &Vec<Self>, subtrahend: &[&Self]) -> Vec<Self> {
+        let mut ret_str = Vec::<Self>::with_capacity(minuend.len());
         for regsx in minuend.iter() {
             ret_str.push(regsx.clone());
         }
 
         for regx in subtrahend.iter() {
-            if RegionStoreCorr::vec_any_intersection(&ret_str, regx) {
-                ret_str = RegionStoreCorr::vec_subtract_regionstorecorr(&ret_str, regx);
+            if Self::vec_any_intersection(&ret_str, regx) {
+                ret_str = Self::vec_subtract_regionstorecorr(&ret_str, regx);
             }
         }
         ret_str
     }
 
     /// Return true if any region is a superset, or equal, to a RegionStoreCorr.
-    pub fn vec_any_superset_of(avec: &[RegionStoreCorr], regcr: &RegionStoreCorr) -> bool {
-        tools::vec_contains(avec, RegionStoreCorr::is_superset_of, regcr)
+    pub fn vec_any_superset_of(avec: &[Self], regcr: &Self) -> bool {
+        tools::vec_contains(avec, Self::is_superset_of, regcr)
     }
 
     /// Add a regionstorecorr, removing subset regionstorecorr.
-    pub fn vec_push_nosubs(avec: &mut Vec<RegionStoreCorr>, reg: RegionStoreCorr) -> bool {
+    pub fn vec_push_nosubs(avec: &mut Vec<Self>, reg: Self) -> bool {
         // Check for supersets, which probably is an error
-        if RegionStoreCorr::vec_any_superset_of(avec, &reg) {
+        if Self::vec_any_superset_of(avec, &reg) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
             return false;
         }
@@ -422,24 +419,21 @@ impl RegionStoreCorr {
     }
 
     /// Return true if any regionstorecorr vector intersects a given regionstorcorr.
-    pub fn vec_any_intersection(avec: &[RegionStoreCorr], reg: &RegionStoreCorr) -> bool {
-        tools::vec_contains(avec, RegionStoreCorr::intersects, reg)
+    pub fn vec_any_intersection(avec: &[Self], reg: &Self) -> bool {
+        tools::vec_contains(avec, Self::intersects, reg)
     }
 
     /// Subtract a RegionStoreCorr from a RegionStoreCorr vector.
-    pub fn vec_subtract_regionstorecorr(
-        minuend: &[RegionStoreCorr],
-        subtrahend: &RegionStoreCorr,
-    ) -> Vec<RegionStoreCorr> {
-        let mut ret_str = Vec::<RegionStoreCorr>::new();
+    pub fn vec_subtract_regionstorecorr(minuend: &[Self], subtrahend: &Self) -> Vec<Self> {
+        let mut ret_str = Vec::<Self>::new();
 
         for regy in minuend.iter() {
             if subtrahend.intersects(regy) {
                 for regz in regy.subtract(subtrahend) {
-                    RegionStoreCorr::vec_push_nosubs(&mut ret_str, regz);
+                    Self::vec_push_nosubs(&mut ret_str, regz);
                 }
             } else {
-                RegionStoreCorr::vec_push_nosubs(&mut ret_str, regy.clone());
+                Self::vec_push_nosubs(&mut ret_str, regy.clone());
             }
         } // next regy
 
@@ -447,8 +441,8 @@ impl RegionStoreCorr {
     }
 
     /// Return self - a given RegionStoreCorr.
-    pub fn subtract(&self, subtrahend: &RegionStoreCorr) -> Vec<RegionStoreCorr> {
-        let mut ret = Vec::<RegionStoreCorr>::new();
+    pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
+        let mut ret = Vec::<Self>::new();
 
         if self.is_subset_of(subtrahend) {
             return ret;
@@ -480,7 +474,7 @@ impl RegionStoreCorr {
                 };
 
                 // Copy self, except for one region with one bit changed.
-                let mut one_result = RegionStoreCorr::with_capacity(self.len());
+                let mut one_result = Self::with_capacity(self.len());
                 for (iny, regm) in self.iter().enumerate() {
                     if iny == inx {
                         one_result.push(regz.clone());
@@ -501,7 +495,7 @@ impl RegionStoreCorr {
     pub fn adjacent_part(&self, other: &Self) -> Self {
         assert!(self.is_adjacent(other));
 
-        let mut ret_corr = RegionStoreCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
+        let mut ret_corr = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
 
         for (reg_s, reg_o) in self.iter().zip(other.iter()) {
             if reg_s.is_adjacent(reg_o) {

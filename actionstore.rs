@@ -24,13 +24,7 @@ use rayon::prelude::*;
 
 impl fmt::Display for ActionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::new();
-
-        for actx in &self.avec {
-            rc_str.push_str(&format!("\n  {}", &actx));
-        }
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -162,6 +156,17 @@ impl ActionStore {
                     .bitwise_or(&additions.b01.bitwise_or(&additions.b10)),
             );
         }
+    }
+
+    /// Return a String representation of an ActionStore.
+    pub fn formatted_string(&self) -> String {
+        let mut rc_str = String::new();
+
+        for actx in &self.avec {
+            rc_str.push_str(&format!("\n  {}", &actx));
+        }
+
+        rc_str
     }
 } // end impl ActionStore
 

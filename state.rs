@@ -74,8 +74,8 @@ impl SomeState {
     } // end new_from_string
 
     /// Return a random state value.
-    pub fn new_random(&self) -> SomeState {
-        SomeState {
+    pub fn new_random(&self) -> Self {
+        Self {
             bts: self.bts.new_random(),
         }
     }
@@ -101,12 +101,12 @@ impl SomeState {
     }
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
-    pub fn is_adjacent(&self, other: &SomeState) -> bool {
+    pub fn is_adjacent(&self, other: &Self) -> bool {
         self.bts.is_adjacent(&other.bts)
     }
 
     /// Return the number of one bits that are different between two states.
-    pub fn distance(&self, other: &SomeState) -> usize {
+    pub fn distance(&self, other: &Self) -> usize {
         self.bts.distance(&other.bts)
     }
 
@@ -122,42 +122,42 @@ impl SomeState {
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise Or of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeState instance, representing a bitwise XOr of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.b_xor(other.bitsref()),
         }
     }
 
     /// Return a copy of an instance, with a bit position changed.
     pub fn change_bit(&self, num: usize) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.change_bit(num),
         }
     }
 
     /// Return a copy of an instance, with a bit position set to 1.
     pub fn set_bit_to_1(&self, num: usize) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.set_bit_to_1(num),
         }
     }
 
     /// Return a copy of an instance, with a bit position set to 0.
     pub fn set_bit_to_0(&self, num: usize) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.set_bit_to_0(num),
         }
     }
@@ -169,7 +169,7 @@ impl SomeState {
 
     /// Return the bitwise Not of a SomeState instance.
     pub fn bitwise_not(&self) -> Self {
-        SomeState {
+        Self {
             bts: self.bts.b_not(),
         }
     }
@@ -180,7 +180,7 @@ impl SomeState {
     }
 
     /// Return a string to display a vector of SomeStates.
-    pub fn vec_string(avec: &[SomeState]) -> String {
+    pub fn vec_string(avec: &[Self]) -> String {
         let mut ret_str = String::from("[");
 
         for (inx, stax) in avec.iter().enumerate() {
@@ -194,7 +194,7 @@ impl SomeState {
     }
 
     /// Return a string to display a vector of SomeState references.
-    pub fn vec_ref_string(avec: &[&SomeState]) -> String {
+    pub fn vec_ref_string(avec: &[&Self]) -> String {
         let mut ret_str = String::from("[");
 
         for (inx, stax) in avec.iter().enumerate() {
@@ -208,7 +208,7 @@ impl SomeState {
     }
 
     /// Return true if a state is between two given states, exclusive.
-    pub fn is_between(&self, sta1: &SomeState, sta2: &SomeState) -> bool {
+    pub fn is_between(&self, sta1: &Self, sta2: &Self) -> bool {
         if self == sta1 {
             return false;
         }

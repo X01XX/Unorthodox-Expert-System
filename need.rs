@@ -18,126 +18,7 @@ use std::fmt;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rc_str = match self {
-            SomeNeed::AddGroup {
-                group_region,
-                rules,
-            } => {
-                if let Some(xrules) = rules {
-                    format!("N(Create group from {group_region} {xrules})")
-                } else {
-                    format!("N(Create group from {group_region} None)")
-                }
-            }
-            SomeNeed::ConfirmGroup {
-                dom_num,
-                act_num,
-                target_state,
-                grp_reg,
-                priority,
-                ..
-            } => {
-                format!(
-                    "N(Dom {dom_num} Act {act_num} Pri {priority} Get additional sample of state {target_state} to confirm group {grp_reg})")
-            }
-            SomeNeed::ContradictoryIntersection {
-                dom_num,
-                act_num,
-                target_region,
-                group1,
-                ruls1,
-                group2,
-                ruls2,
-                priority,
-            } => {
-                let ruls1_str = if let Some(rules) = ruls1 {
-                    format!("{rules}")
-                } else {
-                    String::from("None")
-                };
-                let ruls2_str = if let Some(rules) = ruls2 {
-                    format!("{rules}")
-                } else {
-                    String::from("None")
-                };
-                format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample Region {target_region} intersection of {group1} {ruls1_str} and {group2} {ruls2_str})")
-            }
-            SomeNeed::LimitGroup {
-                dom_num,
-                act_num,
-                target_state,
-                for_group,
-                anchor,
-                priority,
-                ..
-            } => {
-                if target_state == anchor {
-                    format!(
-                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})")
-                } else {
-                    format!(
-                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from anchor {anchor} to define group {for_group})")
-                }
-            }
-            SomeNeed::LimitGroupAdj {
-                dom_num,
-                act_num,
-                target_state,
-                for_group,
-                anchor,
-                priority,
-                ..
-            } => {
-                format!(
-                    "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
-            }
-            SomeNeed::RemoveGroupAnchor { group_region } => {
-                format!("N(Remove anchor for group {group_region})")
-            }
-            SomeNeed::SetGroupAnchor {
-                group_region,
-                anchor,
-            } => format!("N(set group {group_region} anchor {anchor})"),
-            SomeNeed::SetGroupLimited {
-                group_region,
-                num_adj,
-            } => {
-                format!("N(set group {group_region} limited, num adj {num_adj})")
-            }
-            SomeNeed::StateInRemainder {
-                dom_num,
-                act_num,
-                target_region,
-                priority,
-            } => {
-                format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_region} in remainder)")
-            }
-            SomeNeed::StateNotInGroup {
-                dom_num,
-                act_num,
-                target_state,
-                priority,
-            } => {
-                format!(
-                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state} not in a group)")
-            }
-            SomeNeed::ToSelectRegion {
-                target_regions,
-                priority,
-            } => {
-                format!("N(Pri {priority} To Select Regions {target_regions})")
-            }
-            SomeNeed::ExitSelectRegion {
-                target_regions,
-                priority,
-            } => {
-                format!("N(Pri {priority} Exit Select Regions to {target_regions})")
-            }
-        }; // end match
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -229,18 +110,18 @@ impl SomeNeed {
     /// Return a need name string.
     pub fn name(&self) -> &str {
         match self {
-            SomeNeed::AddGroup { .. } => "AddGroup",
-            SomeNeed::ConfirmGroup { .. } => "ConfirmGroup",
-            SomeNeed::ContradictoryIntersection { .. } => "ContradictoryIntersection",
-            SomeNeed::LimitGroup { .. } => "LimitGroup",
-            SomeNeed::LimitGroupAdj { .. } => "LimitGroupAdj",
-            SomeNeed::RemoveGroupAnchor { .. } => "RemoveGroupAnchor",
-            SomeNeed::SetGroupAnchor { .. } => "SetGroupAnchor",
-            SomeNeed::SetGroupLimited { .. } => "SetGroupLimited",
-            SomeNeed::StateInRemainder { .. } => "StateInRemainder",
-            SomeNeed::StateNotInGroup { .. } => "StateNotInGroup",
-            SomeNeed::ToSelectRegion { .. } => "ToSelectRegion",
-            SomeNeed::ExitSelectRegion { .. } => "ExitSelectRegion",
+            Self::AddGroup { .. } => "AddGroup",
+            Self::ConfirmGroup { .. } => "ConfirmGroup",
+            Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
+            Self::LimitGroup { .. } => "LimitGroup",
+            Self::LimitGroupAdj { .. } => "LimitGroupAdj",
+            Self::RemoveGroupAnchor { .. } => "RemoveGroupAnchor",
+            Self::SetGroupAnchor { .. } => "SetGroupAnchor",
+            Self::SetGroupLimited { .. } => "SetGroupLimited",
+            Self::StateInRemainder { .. } => "StateInRemainder",
+            Self::StateNotInGroup { .. } => "StateNotInGroup",
+            Self::ToSelectRegion { .. } => "ToSelectRegion",
+            Self::ExitSelectRegion { .. } => "ExitSelectRegion",
         }
     }
 
@@ -249,15 +130,15 @@ impl SomeNeed {
     pub fn set_priority(&mut self) {
         match self {
             // By ascending priority number.
-            SomeNeed::ContradictoryIntersection { priority, .. } => *priority += 200,
-            SomeNeed::ExitSelectRegion { priority, .. } => *priority += 300,
-            SomeNeed::ConfirmGroup { priority, .. } => *priority += 500,
-            SomeNeed::LimitGroup { priority, .. } => *priority += 600,
-            SomeNeed::LimitGroupAdj { priority, .. } => *priority += 700,
-            SomeNeed::StateNotInGroup { priority, .. } => *priority += 800,
-            SomeNeed::ToSelectRegion { priority, .. } => *priority += 900,
+            Self::ContradictoryIntersection { priority, .. } => *priority += 200,
+            Self::ExitSelectRegion { priority, .. } => *priority += 300,
+            Self::ConfirmGroup { priority, .. } => *priority += 500,
+            Self::LimitGroup { priority, .. } => *priority += 600,
+            Self::LimitGroupAdj { priority, .. } => *priority += 700,
+            Self::StateNotInGroup { priority, .. } => *priority += 800,
+            Self::ToSelectRegion { priority, .. } => *priority += 900,
             // Some needs should have a higher priority number compared to ToSelectRegion.
-            SomeNeed::StateInRemainder { priority, .. } => *priority = 1000,
+            Self::StateInRemainder { priority, .. } => *priority = 1000,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -269,15 +150,15 @@ impl SomeNeed {
     pub fn priority(&self) -> usize {
         match self {
             // By ascending priority number.
-            SomeNeed::ContradictoryIntersection { priority, .. } => *priority,
-            SomeNeed::ExitSelectRegion { priority, .. } => *priority,
-            SomeNeed::ConfirmGroup { priority, .. } => *priority,
-            SomeNeed::LimitGroup { priority, .. } => *priority,
-            SomeNeed::LimitGroupAdj { priority, .. } => *priority,
-            SomeNeed::StateNotInGroup { priority, .. } => *priority,
-            SomeNeed::ToSelectRegion { priority, .. } => *priority,
+            Self::ContradictoryIntersection { priority, .. } => *priority,
+            Self::ExitSelectRegion { priority, .. } => *priority,
+            Self::ConfirmGroup { priority, .. } => *priority,
+            Self::LimitGroup { priority, .. } => *priority,
+            Self::LimitGroupAdj { priority, .. } => *priority,
+            Self::StateNotInGroup { priority, .. } => *priority,
+            Self::ToSelectRegion { priority, .. } => *priority,
             // Some needs should have a higher priority number compared to ToSelectRegion.
-            SomeNeed::StateInRemainder { priority, .. } => *priority,
+            Self::StateInRemainder { priority, .. } => *priority,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -288,32 +169,32 @@ impl SomeNeed {
     /// Return true if a state satisfies a need.
     pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
         match self {
-            SomeNeed::ConfirmGroup { target_state, .. } => {
+            Self::ConfirmGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
                 }
             }
-            SomeNeed::ContradictoryIntersection { target_region, .. } => {
+            Self::ContradictoryIntersection { target_region, .. } => {
                 if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
-            SomeNeed::LimitGroup { target_state, .. } => {
+            Self::LimitGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
                 }
             }
-            SomeNeed::LimitGroupAdj { target_state, .. } => {
+            Self::LimitGroupAdj { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
                 }
             }
-            SomeNeed::StateInRemainder { target_region, .. } => {
+            Self::StateInRemainder { target_region, .. } => {
                 if target_region.is_superset_of_state(cur_state) {
                     return true;
                 }
             }
-            SomeNeed::StateNotInGroup { target_state, .. } => {
+            Self::StateNotInGroup { target_state, .. } => {
                 if cur_state == target_state {
                     return true;
                 }
@@ -329,12 +210,12 @@ impl SomeNeed {
     /// Return need action number.
     pub fn act_num(&self) -> usize {
         match self {
-            SomeNeed::ConfirmGroup { act_num, .. } => *act_num,
-            SomeNeed::ContradictoryIntersection { act_num, .. } => *act_num,
-            SomeNeed::LimitGroup { act_num, .. } => *act_num,
-            SomeNeed::LimitGroupAdj { act_num, .. } => *act_num,
-            SomeNeed::StateNotInGroup { act_num, .. } => *act_num,
-            SomeNeed::StateInRemainder { act_num, .. } => *act_num,
+            Self::ConfirmGroup { act_num, .. } => *act_num,
+            Self::ContradictoryIntersection { act_num, .. } => *act_num,
+            Self::LimitGroup { act_num, .. } => *act_num,
+            Self::LimitGroupAdj { act_num, .. } => *act_num,
+            Self::StateNotInGroup { act_num, .. } => *act_num,
+            Self::StateInRemainder { act_num, .. } => *act_num,
             _ => panic!(
                 "SomeNeed::act_num should not be called for the {} need.",
                 self.name()
@@ -345,12 +226,12 @@ impl SomeNeed {
     /// Return need domain number.
     pub fn dom_num(&self) -> usize {
         match self {
-            SomeNeed::ConfirmGroup { dom_num, .. } => *dom_num,
-            SomeNeed::ContradictoryIntersection { dom_num, .. } => *dom_num,
-            SomeNeed::LimitGroup { dom_num, .. } => *dom_num,
-            SomeNeed::LimitGroupAdj { dom_num, .. } => *dom_num,
-            SomeNeed::StateInRemainder { dom_num, .. } => *dom_num,
-            SomeNeed::StateNotInGroup { dom_num, .. } => *dom_num,
+            Self::ConfirmGroup { dom_num, .. } => *dom_num,
+            Self::ContradictoryIntersection { dom_num, .. } => *dom_num,
+            Self::LimitGroup { dom_num, .. } => *dom_num,
+            Self::LimitGroupAdj { dom_num, .. } => *dom_num,
+            Self::StateInRemainder { dom_num, .. } => *dom_num,
+            Self::StateNotInGroup { dom_num, .. } => *dom_num,
             _ => panic!(
                 "SomeNeed::dom_num should not be called for the {} need.",
                 self.name()
@@ -361,7 +242,7 @@ impl SomeNeed {
     /// Return a region for a need target.
     pub fn target(&self) -> TargetStore {
         match self {
-            SomeNeed::ConfirmGroup {
+            Self::ConfirmGroup {
                 dom_num,
                 target_state,
                 ..
@@ -369,12 +250,12 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
-            SomeNeed::ContradictoryIntersection {
+            Self::ContradictoryIntersection {
                 dom_num,
                 target_region,
                 ..
             } => TargetStore::new(vec![SomeTarget::new(*dom_num, target_region.clone())]),
-            SomeNeed::LimitGroup {
+            Self::LimitGroup {
                 dom_num,
                 target_state,
                 ..
@@ -382,7 +263,7 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
-            SomeNeed::LimitGroupAdj {
+            Self::LimitGroupAdj {
                 dom_num,
                 target_state,
                 ..
@@ -390,12 +271,12 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
-            SomeNeed::StateInRemainder {
+            Self::StateInRemainder {
                 dom_num,
                 target_region,
                 ..
             } => TargetStore::new(vec![SomeTarget::new(*dom_num, target_region.clone())]),
-            SomeNeed::StateNotInGroup {
+            Self::StateNotInGroup {
                 dom_num,
                 target_state,
                 ..
@@ -403,14 +284,14 @@ impl SomeNeed {
                 *dom_num,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
-            SomeNeed::ToSelectRegion { target_regions, .. } => {
+            Self::ToSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(target_regions.len());
                 for (dom_numx, targx) in target_regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, targx.clone()));
                 }
                 targ
             }
-            SomeNeed::ExitSelectRegion { target_regions, .. } => {
+            Self::ExitSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(1);
                 for (dom_numx, regx) in target_regions.iter().enumerate() {
                     targ.push(SomeTarget::new(dom_numx, regx.clone()));
@@ -423,4 +304,126 @@ impl SomeNeed {
             ),
         }
     } // end target
-}
+
+    /// Return a String representation of SomeNeed.
+    pub fn formatted_string(&self) -> String {
+        match self {
+            Self::AddGroup {
+                group_region,
+                rules,
+            } => {
+                if let Some(xrules) = rules {
+                    format!("N(Create group from {group_region} {xrules})")
+                } else {
+                    format!("N(Create group from {group_region} None)")
+                }
+            }
+            Self::ConfirmGroup {
+                dom_num,
+                act_num,
+                target_state,
+                grp_reg,
+                priority,
+                ..
+            } => {
+                format!(
+                    "N(Dom {dom_num} Act {act_num} Pri {priority} Get additional sample of state {target_state} to confirm group {grp_reg})")
+            }
+            Self::ContradictoryIntersection {
+                dom_num,
+                act_num,
+                target_region,
+                group1,
+                ruls1,
+                group2,
+                ruls2,
+                priority,
+            } => {
+                let ruls1_str = if let Some(rules) = ruls1 {
+                    format!("{rules}")
+                } else {
+                    String::from("None")
+                };
+                let ruls2_str = if let Some(rules) = ruls2 {
+                    format!("{rules}")
+                } else {
+                    String::from("None")
+                };
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample Region {target_region} intersection of {group1} {ruls1_str} and {group2} {ruls2_str})")
+            }
+            Self::LimitGroup {
+                dom_num,
+                act_num,
+                target_state,
+                for_group,
+                anchor,
+                priority,
+                ..
+            } => {
+                if target_state == anchor {
+                    format!(
+                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})")
+                } else {
+                    format!(
+                        "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, far from anchor {anchor} to define group {for_group})")
+                }
+            }
+            Self::LimitGroupAdj {
+                dom_num,
+                act_num,
+                target_state,
+                for_group,
+                anchor,
+                priority,
+                ..
+            } => {
+                format!(
+                    "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
+            }
+            Self::RemoveGroupAnchor { group_region } => {
+                format!("N(Remove anchor for group {group_region})")
+            }
+            Self::SetGroupAnchor {
+                group_region,
+                anchor,
+            } => format!("N(set group {group_region} anchor {anchor})"),
+            Self::SetGroupLimited {
+                group_region,
+                num_adj,
+            } => {
+                format!("N(set group {group_region} limited, num adj {num_adj})")
+            }
+            Self::StateInRemainder {
+                dom_num,
+                act_num,
+                target_region,
+                priority,
+            } => {
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_region} in remainder)")
+            }
+            Self::StateNotInGroup {
+                dom_num,
+                act_num,
+                target_state,
+                priority,
+            } => {
+                format!(
+                "N(Dom {dom_num} Act {act_num} Pri {priority} Sample State {target_state} not in a group)")
+            }
+            Self::ToSelectRegion {
+                target_regions,
+                priority,
+            } => {
+                format!("N(Pri {priority} To Select Regions {target_regions})")
+            }
+            Self::ExitSelectRegion {
+                target_regions,
+                priority,
+            } => {
+                format!("N(Pri {priority} Exit Select Regions to {target_regions})")
+            }
+        } // end match
+    }
+} // End impl SomeNeed

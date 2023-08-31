@@ -10,22 +10,7 @@ use std::slice::Iter;
 
 impl fmt::Display for TargetStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-
-        let mut rc_str = String::new();
-
-        rc_str.push_str("\n[");
-
-        for targx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(",\n ");
-            }
-            rc_str.push_str(&format!("{}", &targx));
-            flg = 1;
-        }
-        rc_str.push(']');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -97,6 +82,25 @@ impl TargetStore {
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
         !self.avec.is_empty()
+    }
+
+    /// Return a String representation of a TargetStore.
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+
+        let mut rc_str = String::new();
+
+        rc_str.push_str("\n[");
+
+        for targx in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(",\n ");
+            }
+            rc_str.push_str(&format!("{}", &targx));
+            flg = 1;
+        }
+        rc_str.push(']');
+        rc_str
     }
 } // end impl TargetStore
 

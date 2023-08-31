@@ -19,18 +19,7 @@ use std::slice::{Iter, IterMut};
 
 impl fmt::Display for GroupStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-        let mut rc_str = String::new();
-
-        for grpx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(",\n              ");
-            }
-            rc_str.push_str(&grpx.formatted_string());
-            flg = 1;
-        }
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -404,6 +393,22 @@ impl GroupStore {
                 grpx.check_limited(change_mask);
             }
         }
+    }
+
+    /// Return a String representation of a GroupStore.
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+        let mut rc_str = String::new();
+
+        for grpx in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(",\n              ");
+            }
+            rc_str.push_str(&grpx.formatted_string());
+            flg = 1;
+        }
+
+        rc_str
     }
 } // end impl GroupStore
 

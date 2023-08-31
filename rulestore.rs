@@ -138,7 +138,7 @@ impl RuleStore {
     }
 
     /// Return true if a RuleStore is a superset of another.
-    pub fn is_superset_of(&self, other: &RuleStore) -> bool {
+    pub fn is_superset_of(&self, other: &Self) -> bool {
         other.is_subset_of(self)
     }
 

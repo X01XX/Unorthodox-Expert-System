@@ -10,22 +10,7 @@ use std::slice::{Iter, IterMut};
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut flg = 0;
-
-        let mut rc_str = String::new();
-
-        rc_str.push_str("\n[");
-
-        for needx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(",\n ");
-            }
-            rc_str.push_str(&format!("{}", &needx));
-            flg = 1;
-        }
-        rc_str.push(']');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -92,6 +77,25 @@ impl NeedStore {
     /// Sort needs by priority.
     pub fn sort_by_priority(&mut self) {
         self.avec.sort_by_key(|ndx| ndx.priority());
+    }
+
+    /// Return a String representation of a NeedStore.
+    pub fn formatted_string(&self) -> String {
+        let mut flg = 0;
+
+        let mut rc_str = String::new();
+
+        rc_str.push_str("\n[");
+
+        for needx in &self.avec {
+            if flg == 1 {
+                rc_str.push_str(",\n ");
+            }
+            rc_str.push_str(&format!("{}", &needx));
+            flg = 1;
+        }
+        rc_str.push(']');
+        rc_str
     }
 } // end impl NeedStore
 

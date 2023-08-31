@@ -11,25 +11,7 @@ use std::fmt;
 
 impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::from("S[");
-        rc_str.push_str(&format!("{}", &self.state));
-        rc_str.push_str(&format!(", pn: {}", &self.pn));
-        if self.pnc {
-            rc_str.push_str(", pnc: t");
-        } else {
-            rc_str.push_str(", pnc: f");
-        }
-
-        let ruls = if let Some(ruls_str) = &self.rules {
-            format!("{}", ruls_str)
-        } else {
-            String::from("None")
-        };
-        rc_str.push_str(&format!(", {}", ruls));
-
-        rc_str.push(']');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -79,18 +61,13 @@ impl SomeSquare {
         }
     }
 
-    /// Return a string representing a square.
-    pub fn str_terse(&self) -> String {
-        self.state.formatted_string()
-    }
-
     /// Add a result to a square (4-item circular buffer).
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.
     pub fn add_result(&mut self, st: SomeState) -> bool {
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result {} {}",
-            self.str_terse(),
+            self.state,
             self.results.num_results() + 1,
             &st
         ));
@@ -155,7 +132,7 @@ impl SomeSquare {
     }
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
-    pub fn is_adjacent(&self, other: &SomeSquare) -> bool {
+    pub fn is_adjacent(&self, other: &Self) -> bool {
         self.state.is_adjacent(&other.state)
     }
 
@@ -166,7 +143,7 @@ impl SomeSquare {
 
     /// Check true if a square can be combined with some other, now.
     /// This does not check squares that may be between them.
-    pub fn can_combine_now(&self, other: &SomeSquare) -> bool {
+    pub fn can_combine_now(&self, other: &Self) -> bool {
         //println!("running can_combine_now: {} {}", self.state, other.state);
         assert_ne!(self.state, other.state); // Combining a square with itself is probably an error in logic.
         if self.pn != other.pn {
@@ -194,7 +171,7 @@ impl SomeSquare {
     /// Return true if a square and another, after failing the can_combine_now test,
     /// may combine after the other has more samples.
     /// This assumes no substantial future change to the method-initiating square.
-    pub fn may_combine_later_to(&self, other: &SomeSquare) -> bool {
+    pub fn may_combine_later_to(&self, other: &Self) -> bool {
         //println!("running may_combine_later_to: {} {}", self.state, other.state);
         if other.pn > self.pn || other.pnc {
             return false;
@@ -233,13 +210,30 @@ impl SomeSquare {
     }
 
     /// Return true if a square is between two given squares, exclusive.
-    pub fn is_between(&self, sqr1: &SomeSquare, sqr2: &SomeSquare) -> bool {
+    pub fn is_between(&self, sqr1: &Self, sqr2: &Self) -> bool {
         self.state.is_between(&sqr1.state, &sqr2.state)
     }
 
-    /// Return the distance (number of bits different) between two squares.
-    pub fn distance(&self, other: &SomeSquare) -> usize {
-        self.state.distance(&other.state)
+    /// Return a String representation of a square.
+    pub fn formatted_string(&self) -> String {
+        let mut rc_str = String::from("S[");
+        rc_str.push_str(&format!("{}", &self.state));
+        rc_str.push_str(&format!(", pn: {}", &self.pn));
+        if self.pnc {
+            rc_str.push_str(", pnc: t");
+        } else {
+            rc_str.push_str(", pnc: f");
+        }
+
+        let ruls = if let Some(ruls_str) = &self.rules {
+            format!("{}", ruls_str)
+        } else {
+            String::from("None")
+        };
+        rc_str.push_str(&format!(", {}", ruls));
+
+        rc_str.push(']');
+        rc_str
     }
 } // end impl SomeSquare
 

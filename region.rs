@@ -182,7 +182,7 @@ impl SomeRegion {
                     let state_r = msk_low.to_state().new_from_string(str);
                     match state_r {
                         Ok(a_state) => {
-                            return Ok(SomeRegion::new(vec![a_state]));
+                            return Ok(Self::new(vec![a_state]));
                         }
                         Err(error) => {
                             return Err(error);
@@ -221,10 +221,7 @@ impl SomeRegion {
             return Err(format!("String {str}, too long?"));
         }
 
-        Ok(SomeRegion::new(vec![
-            msk_high.to_state(),
-            msk_low.to_state(),
-        ]))
+        Ok(Self::new(vec![msk_high.to_state(), msk_low.to_state()]))
     } // end new_from_string
 
     /// Return the expected length of a string representing a region, for string alloaction.
@@ -232,7 +229,7 @@ impl SomeRegion {
         self.state1().num_bits() + 2 + (self.state1().num_bits() / 4)
     }
 
-    /// Return a String representation of a Region without any prefix.
+    /// Return a String representation of a Region.
     pub fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.formatted_string_length());
         s1.push('r');
@@ -350,7 +347,7 @@ impl SomeRegion {
         let state1 = other.state1().bitwise_xor(&cng_bits);
         let state2 = other.state2().bitwise_xor(&cng_bits);
 
-        SomeRegion::new(vec![state1, state2])
+        Self::new(vec![state1, state2])
     }
 
     /// Return true if a region is a subset on another region.
@@ -431,7 +428,7 @@ impl SomeRegion {
     }
 
     /// Return the distance from a region to another.
-    pub fn distance(&self, regx: &SomeRegion) -> usize {
+    pub fn distance(&self, regx: &Self) -> usize {
         self.diff_mask(regx).num_one_bits()
     }
 
@@ -449,7 +446,7 @@ impl SomeRegion {
     }
 
     /// Return a mask of different, non-x, bits between two regions.
-    pub fn diff_mask(&self, other: &SomeRegion) -> SomeMask {
+    pub fn diff_mask(&self, other: &Self) -> SomeMask {
         self.non_x_mask()
             .bitwise_and(&other.non_x_mask())
             .bitwise_and(&self.state1().bitwise_xor(other.state1()))
@@ -457,7 +454,7 @@ impl SomeRegion {
 
     /// Given a region, and a second region, return the
     /// first region - the second
-    pub fn subtract(&self, other: &SomeRegion) -> Vec<Self> {
+    pub fn subtract(&self, other: &Self) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
         // If no intersection, return self.
@@ -554,7 +551,7 @@ impl SomeRegion {
     }
 
     /// Return a string representing a vector of references to regions.
-    pub fn vec_ref_string(avec: &[&SomeRegion]) -> String {
+    pub fn vec_ref_string(avec: &[&Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 

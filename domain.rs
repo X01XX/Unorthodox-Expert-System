@@ -36,15 +36,7 @@ use std::str::FromStr;
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::from("D(ID: ");
-
-        rc_str.push_str(&self.num.to_string());
-
-        rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
-
-        rc_str.push(')');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -76,7 +68,7 @@ impl SomeDomain {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0; num_ints]));
         let cur_state = tmp_sta.new_random();
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        SomeDomain {
+        Self {
             num: 0, // May be changed later
             actions: ActionStore::new(
                 vec![],
@@ -602,6 +594,19 @@ impl SomeDomain {
             tot += actx.number_groups();
         }
         tot
+    }
+
+    /// Return a String representation of SomeDomain.
+    pub fn formatted_string(&self) -> String {
+        let mut rc_str = String::from("D(ID: ");
+
+        rc_str.push_str(&self.num.to_string());
+
+        rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
+
+        rc_str.push(')');
+
+        rc_str
     }
 } // end impl SomeDomain
 

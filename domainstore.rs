@@ -23,17 +23,7 @@ use rayon::prelude::*;
 
 impl fmt::Display for DomainStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut rc_str = String::from("[");
-
-        for (inx, mskx) in self.avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &mskx));
-        }
-        rc_str.push(']');
-
-        write!(f, "{rc_str}")
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -1281,6 +1271,21 @@ impl DomainStore {
             tot += domx.number_groups();
         }
         tot
+    }
+
+    /// Return a String representation of a DomainStore.
+    pub fn formatted_string(&self) -> String {
+        let mut rc_str = String::from("[");
+
+        for (inx, mskx) in self.avec.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", &mskx));
+        }
+        rc_str.push(']');
+
+        rc_str
     }
 } // end impl DomainStore
 

@@ -27,11 +27,7 @@ use std::fmt;
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            &self.steps.formatted_string(&format!("P:{}", &self.dom_num))
-        )
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -193,7 +189,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = SomePlan::new(self.dom_num, vec![]);
+                    let mut steps2 = Self::new(self.dom_num, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
@@ -233,7 +229,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = SomePlan::new(self.dom_num, vec![]);
+                    let mut steps2 = Self::new(self.dom_num, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {
@@ -303,7 +299,7 @@ impl SomePlan {
     }
 
     /// Return true if two plans are equal.
-    pub fn eq(&self, other: &SomePlan) -> bool {
+    pub fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -338,7 +334,7 @@ impl SomePlan {
     }
 
     /// Return a string representing a vector of SomePlan.
-    pub fn vec_string(avec: &[SomePlan]) -> String {
+    pub fn vec_string(avec: &[Self]) -> String {
         let mut rc_str = String::new();
         rc_str.push('[');
 
@@ -352,6 +348,11 @@ impl SomePlan {
         rc_str.push(']');
 
         rc_str
+    }
+
+    /// Return a String representation of SomePlan.
+    pub fn formatted_string(&self) -> String {
+        self.steps.formatted_string(&format!("P:{}", &self.dom_num))
     }
 } // end impl SomePlan
 

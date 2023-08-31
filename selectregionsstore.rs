@@ -52,7 +52,7 @@ impl fmt::Display for SelectRegionsStore {
 
 impl SelectRegions {
     /// Return a string representation for a vector of SelectRegions references.
-    pub fn vec_ref_string(avec: &[&SelectRegions]) -> String {
+    pub fn vec_ref_string(avec: &[&Self]) -> String {
         let mut ret_str = String::from("[");
         for (inx, orx) in avec.iter().enumerate() {
             if inx > 0 {

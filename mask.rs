@@ -40,14 +40,14 @@ impl SomeMask {
     }
 
     /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
-    pub fn new_low(&self) -> SomeMask {
+    pub fn new_low(&self) -> Self {
         Self {
             bts: self.bts.new_low(),
         }
     }
 
     /// Return a new SomeMask instance, all ones, given the number of integers to use in the SomeBits instance.
-    pub fn new_high(&self) -> SomeMask {
+    pub fn new_high(&self) -> Self {
         Self {
             bts: self.bts.new_high(),
         }
@@ -77,7 +77,7 @@ impl SomeMask {
         }
 
         match self.bts.new_from_string(&rest) {
-            Ok(bts) => Ok(SomeMask { bts }),
+            Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }
     } // end new_from_string
@@ -129,7 +129,7 @@ impl SomeMask {
 
         bitsx
             .iter()
-            .map(|bitx| SomeMask { bts: bitx.clone() })
+            .map(|bitx| Self { bts: bitx.clone() })
             .collect()
     }
 
@@ -165,21 +165,21 @@ impl SomeMask {
 
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
-        SomeMask {
+        Self {
             bts: self.bts.b_and(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
-        SomeMask {
+        Self {
             bts: self.bts.b_or(other.bitsref()),
         }
     }
 
     /// Return a SomeMask instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
-        SomeMask {
+        Self {
             bts: self.bts.b_xor(other.bitsref()),
         }
     }
@@ -193,7 +193,7 @@ impl SomeMask {
 
     /// Return the bitwise Not of a SomeMask instane.
     pub fn bitwise_not(&self) -> Self {
-        SomeMask {
+        Self {
             bts: self.bts.b_not(),
         }
     }
@@ -206,7 +206,7 @@ impl SomeMask {
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {
-        SomeMask::new(self.bts.shift_left())
+        Self::new(self.bts.shift_left())
     }
 } // end impl SomeMask
 
