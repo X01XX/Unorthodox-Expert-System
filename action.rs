@@ -116,7 +116,7 @@ impl SomeAction {
                     self.process_invalid_regions(&regs_invalid);
                 }
                 if !self.groups.any_superset_of_state(&smpl.initial) {
-                    self.create_groups_from_square(&smpl.initial);
+                    self.create_groups_from_squares(&[smpl.initial.clone()]);
                 }
             }
             return true;
@@ -140,7 +140,7 @@ impl SomeAction {
         // Create group from square.
         if !self.groups.any_superset_of_state(&smpl.initial) {
             self.add_new_square(smpl);
-            self.create_groups_from_square(&smpl.initial);
+            self.create_groups_from_squares(&[smpl.initial.clone()]);
             return true;
         }
         false
@@ -174,8 +174,8 @@ impl SomeAction {
             }
         }
         // Try creating groups from each square.
-        for stax in orphaned_stas {
-            self.create_groups_from_square(&stax);
+        if !orphaned_stas.is_empty() {
+            self.create_groups_from_squares(&orphaned_stas);
         }
     }
 
@@ -215,14 +215,37 @@ impl SomeAction {
         grpx.set_pnc();
     }
 
+    /// Create possible groups from one, or more, states.
+    fn create_groups_from_squares(&mut self, keys: &[SomeState]) {
+        assert!(!keys.is_empty());
+
+        // Collect possible groups.
+        let groups: Vec<SomeGroup> = if keys.len() == 1 {
+            self.create_groups_from_squares2(&keys[0])
+        } else {
+            keys.par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
+                .map(|keyx| self.create_groups_from_squares2(keyx))
+                .flatten()
+                .collect::<Vec<SomeGroup>>()
+        };
+
+        // Store possible groups.
+        for grpx in groups {
+            if !self.groups.any_superset_of(&grpx.region) {
+                self.groups.push(grpx, self.dom_num, self.num);
+            }
+        }
+    }
+
     /// Check groups due to a new, or updated, square.
     /// Create a group with the square, if needed.
-    fn create_groups_from_square(&mut self, key: &SomeState) {
-        //println!("create_groups_from_square {}", &key);
+    fn create_groups_from_squares2(&self, key: &SomeState) -> Vec<SomeGroup> {
+        //println!("create_groups_from_squares2 {}", key);
+        debug_assert!(!self.groups.any_superset_of_state(key));
 
-        // Get groups the state is in
-        let grps_in = self.groups.groups_state_in(key);
+        let mut ret = Vec::<SomeGroup>::new();
 
+        // Lookup square.
         let sqrx = self
             .squares
             .find(key)
@@ -233,22 +256,8 @@ impl SomeAction {
         // for group bootstrapping.
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return;
+            return ret;
         }
-
-        let groups_in = grps_in.len();
-        let mut plural = "";
-        if groups_in != 1 {
-            plural = "s";
-        }
-        println!(
-            "\nDom {} Act {} Square {} in {} group{}",
-            self.dom_num,
-            self.num,
-            sqrx.state,
-            grps_in.len(),
-            plural,
-        );
 
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
@@ -259,23 +268,17 @@ impl SomeAction {
 
         if !grps.is_empty() {
             for grpx in grps {
-                if !self.groups.any_superset_of(&grpx.region) {
-                    self.groups.push(grpx, self.dom_num, self.num);
-                }
+                ret.push(grpx);
             } // next regx
-            return;
+            return ret;
         }
 
         // Make a single-square group
-        if groups_in == 0 {
-            let regz = SomeRegion::new(vec![sqrx.state.clone()]);
-            self.groups.push(
-                SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc),
-                self.dom_num,
-                self.num,
-            );
-        }
-    } // end create_groups_from_square
+        let regz = SomeRegion::new(vec![sqrx.state.clone()]);
+        ret.push(SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc));
+
+        ret
+    } // end create_groups_from_squares2
 
     /// Return needs for states that are not in a group.
     /// The Domain current state for which there are no samples.
