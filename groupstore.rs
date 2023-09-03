@@ -317,7 +317,7 @@ impl GroupStore {
                 &dom,
                 &act,
                 &grp.region,
-                SomeRegion::vec_ref_string(&regs)
+                tools::vec_ref_string(&regs)
             );
             return false;
         }
@@ -332,7 +332,7 @@ impl GroupStore {
                 &dom,
                 &act,
                 grp,
-                SomeState::vec_string(&grp.region.states),
+                tools::vec_string(&grp.region.states),
             );
         } else {
             println!("\nDom {} Act {} Adding group {}", &dom, &act, grp);

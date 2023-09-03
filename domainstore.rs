@@ -830,7 +830,7 @@ impl DomainStore {
         println!(
             "\nStep {} All domain states: {} Status: {status}{in_str}",
             self.step_num,
-            SomeState::vec_ref_string(&self.all_current_states())
+            tools::vec_ref_string(&self.all_current_states())
         );
 
         let dom_num = self.current_domain;
@@ -1264,7 +1264,7 @@ impl DomainStore {
         }
         //println!("all plans: {all_plans}");
 
-        assert!(goal_reg.is_superset_of_corr(&all_plans.result_region(&start_reg.states_corr())));
+        assert!(goal_reg.is_superset_of_corr(&all_plans.result_region(&self.all_current_states())));
 
         Some(all_plans)
     } // end avoid_negative_select_regions2
@@ -1364,19 +1364,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r01X1")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("r01X1").expect("SNH"));
         dmxs.add_select(regstr1, -1);
 
         let mut regstr2 = RegionStore::with_capacity(1);
-        regstr2.push(
-            dmxs[0]
-                .region_from_string_pad_x("rX101")
-                .expect("String should be formatted correctly"),
-        );
+        regstr2.push(dmxs[0].region_from_string_pad_x("rX101").expect("SNH"));
         dmxs.add_select(regstr2, -2);
         dmxs.calc_select();
 
@@ -1450,19 +1442,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r0101")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("r0101").expect("SNH"));
         dmxs.add_select(regstr1, -1);
 
         let mut regstr2 = RegionStore::with_capacity(1);
-        regstr2.push(
-            dmxs[0]
-                .region_from_string_pad_x("r1001")
-                .expect("String should be formatted correctly"),
-        );
+        regstr2.push(dmxs[0].region_from_string_pad_x("r1001").expect("SNH"));
         dmxs.add_select(regstr2, -1);
         dmxs.calc_select();
 
@@ -1533,43 +1517,23 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r0x00")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("r0x00").expect("SNH"));
         dmxs.add_select(regstr1, -1);
 
         let mut regstr2 = RegionStore::with_capacity(1);
-        regstr2.push(
-            dmxs[0]
-                .region_from_string_pad_x("rx100")
-                .expect("String should be formatted correctly"),
-        );
+        regstr2.push(dmxs[0].region_from_string_pad_x("rx100").expect("SNH"));
         dmxs.add_select(regstr2, -1);
 
         let mut regstr3 = RegionStore::with_capacity(1);
-        regstr3.push(
-            dmxs[0]
-                .region_from_string_pad_x("r01x1")
-                .expect("String should be formatted correctly"),
-        );
+        regstr3.push(dmxs[0].region_from_string_pad_x("r01x1").expect("SNH"));
         dmxs.add_select(regstr3, -1);
 
         let mut regstr4 = RegionStore::with_capacity(1);
-        regstr4.push(
-            dmxs[0]
-                .region_from_string_pad_x("r10x1")
-                .expect("String should be formatted correctly"),
-        );
+        regstr4.push(dmxs[0].region_from_string_pad_x("r10x1").expect("SNH"));
         dmxs.add_select(regstr4, -1);
 
         let mut regstr5 = RegionStore::with_capacity(1);
-        regstr5.push(
-            dmxs[0]
-                .region_from_string_pad_x("r101x")
-                .expect("String should be formatted correctly"),
-        );
+        regstr5.push(dmxs[0].region_from_string_pad_x("r101x").expect("SNH"));
         dmxs.add_select(regstr5, -1);
         dmxs.calc_select();
 
@@ -1640,19 +1604,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r01xx")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("r01xx").expect("SNH"));
         dmxs.add_select(regstr1, -1);
 
         let mut regstr2 = RegionStore::with_capacity(1);
-        regstr2.push(
-            dmxs[0]
-                .region_from_string_pad_x("r10xx")
-                .expect("String should be formatted correctly"),
-        );
+        regstr2.push(dmxs[0].region_from_string_pad_x("r10xx").expect("SNH"));
         dmxs.add_select(regstr2, -1);
 
         // Set state for domain 0.
@@ -1715,11 +1671,7 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("rxx0x")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("rxx0x").expect("SNH"));
         dmxs.add_select(regstr1, -1);
         dmxs.calc_select();
 
@@ -1818,30 +1770,14 @@ mod tests {
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
         let mut regstr0 = RegionStore::with_capacity(1);
-        regstr0.push(
-            dmxs[0]
-                .region_from_string_pad_x("r11xx")
-                .expect("String should be formatted correctly"),
-        );
-        regstr0.push(
-            dmxs[1]
-                .region_from_string_pad_x("r01xx")
-                .expect("String should be formatted correctly"),
-        );
+        regstr0.push(dmxs[0].region_from_string_pad_x("r11xx").expect("SNH"));
+        regstr0.push(dmxs[1].region_from_string_pad_x("r01xx").expect("SNH"));
         dmxs.add_select(regstr0, -1);
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
         let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r11xx")
-                .expect("String should be formatted correctly"),
-        );
-        regstr1.push(
-            dmxs[1]
-                .region_from_string_pad_x("r1xx1")
-                .expect("String should be formatted correctly"),
-        );
+        regstr1.push(dmxs[0].region_from_string_pad_x("r11xx").expect("SNH"));
+        regstr1.push(dmxs[1].region_from_string_pad_x("r1xx1").expect("SNH"));
         dmxs.add_select(regstr1, -1);
         dmxs.calc_select();
 
@@ -1898,7 +1834,7 @@ mod tests {
         dmxs[1].set_state(&init_state2);
 
         let all_states = dmxs.all_current_states();
-        println!("all states {}", SomeState::vec_ref_string(&all_states));
+        println!("all states {}", tools::vec_ref_string(&all_states));
 
         assert!(all_states.len() == 2);
         assert!(*all_states[0] == init_state1);
@@ -2094,9 +2030,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
 
         let mut regstr1 = RegionStore::with_capacity(1);
-        let neg_reg1 = dmxs[0]
-            .region_from_string_pad_x("rX1XX")
-            .expect("String should be formatted correctly");
+        let neg_reg1 = dmxs[0].region_from_string_pad_x("rX1XX").expect("SNH");
 
         regstr1.push(neg_reg1.clone());
 
@@ -2104,9 +2038,7 @@ mod tests {
         dmxs.add_select(regstr1, -1);
 
         let mut regstr1 = RegionStore::with_capacity(1);
-        let neg_reg2 = dmxs[0]
-            .region_from_string_pad_x("r1XX1")
-            .expect("String should be formatted correctly");
+        let neg_reg2 = dmxs[0].region_from_string_pad_x("r1XX1").expect("SNH");
         regstr1.push(neg_reg2.clone());
 
         // Add select regionstores.

@@ -50,18 +50,6 @@ impl SelectRegions {
         }
     }
 
-    /// Return a string representation for a vector of SelectRegions references.
-    pub fn vec_ref_string(avec: &[&Self]) -> String {
-        let mut ret_str = String::from("[");
-        for (inx, orx) in avec.iter().enumerate() {
-            if inx > 0 {
-                ret_str.push_str(", ");
-            }
-            ret_str.push_str(&format!("{}", orx));
-        }
-        ret_str.push(']');
-        ret_str
-    }
     /// Increment times visited.
     pub fn inc_times_visited(&mut self) {
         self.times_visited += 1;
@@ -71,29 +59,15 @@ impl SelectRegions {
     pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
-        for (x, y) in self.regions.iter().zip(other.regions.iter()) {
-            if !x.intersects(y) {
-                return false;
-            }
-        }
-        true
+        self.regions.intersects_corr(&other.regions)
     }
 
-    /// Return true if at least one corresponding pair in two SelectReagions is adjacent,
+    /// Return true if at least one corresponding pair in two SelectRegions is adjacent,
     /// while other corresponding pairs are adjacent or intersect.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
-        let mut num_dif = 0;
-        for (regx, regy) in self.regions.iter().zip(other.regions.iter()) {
-            let dif = regx.diff_mask(regy).num_one_bits();
-
-            if dif > 1 {
-                return false;
-            }
-            num_dif += dif;
-        }
-        num_dif > 0
+        self.regions.is_adjacent_corr(&other.regions)
     }
 
     /// Return the adjacent part of two SelectRegions.
@@ -102,22 +76,7 @@ impl SelectRegions {
     pub fn adjacent_part(&self, other: &Self) -> Self {
         assert!(self.is_adjacent(other));
 
-        let mut ret_select = Self::new(
-            RegionStore::new(Vec::<SomeRegion>::with_capacity(self.len())),
-            0,
-        );
-
-        for (reg_s, reg_o) in self.regions.iter().zip(other.regions.iter()) {
-            if reg_s.is_adjacent(reg_o) {
-                ret_select.regions.push(reg_s.adjacent_part(reg_o));
-            } else if let Some(reg_int) = reg_s.intersection(reg_o) {
-                ret_select.regions.push(reg_int);
-            } else {
-                panic!("SNH");
-            }
-        }
-
-        ret_select
+        Self::new(self.regions.adjacent_part_corr(&other.regions), 0)
     }
 
     /// Calculate the distance between a SelectRegions and the current state.

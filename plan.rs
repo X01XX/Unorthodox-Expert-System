@@ -333,23 +333,6 @@ impl SomePlan {
         Some(ret_reg)
     }
 
-    /// Return a string representing a vector of SomePlan.
-    pub fn vec_string(avec: &[Self]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, planx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", planx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
-
     /// Return a String representation of SomePlan.
     pub fn formatted_string(&self) -> String {
         self.steps.formatted_string(&format!("P:{}", &self.dom_num))

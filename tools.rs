@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// Return true if a vector contains an item, that passes a test as the first argument of a given function, and a second given item.
 pub fn vec_contains<T, U>(avec: &[T], testfn: fn(&T, &U) -> bool, item: &U) -> bool {
     for itemx in avec.iter() {
@@ -74,6 +76,40 @@ impl RandomPick {
         Some(anumber)
     }
 } // End RandomPick
+
+/// Return a string representing a vector of items.
+pub fn vec_string<T: fmt::Display>(avec: &[T]) -> String {
+    let mut rc_str = String::new();
+    rc_str.push('[');
+
+    for (inx, itmx) in avec.iter().enumerate() {
+        if inx > 0 {
+            rc_str.push_str(", ");
+        }
+        rc_str.push_str(&format!("{}", itmx));
+    }
+
+    rc_str.push(']');
+
+    rc_str
+}
+
+/// Return a string representing a vector of references to items.
+pub fn vec_ref_string<T: fmt::Display>(avec: &[&T]) -> String {
+    let mut rc_str = String::new();
+    rc_str.push('[');
+
+    for (inx, itmx) in avec.iter().enumerate() {
+        if inx > 0 {
+            rc_str.push_str(", ");
+        }
+        rc_str.push_str(&format!("{}", itmx));
+    }
+
+    rc_str.push(']');
+
+    rc_str
+}
 
 #[cfg(test)]
 mod tests {

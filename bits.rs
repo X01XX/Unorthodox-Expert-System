@@ -532,23 +532,6 @@ impl SomeBits {
     pub fn push_0(&self) -> Self {
         self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
-
-    /// Return a string representing a vector of bits.
-    pub fn vec_string(avec: &[Self]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, bitsx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", bitsx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
 } // end impl SomeBits
 
 /// Define the BitsRef trait, so SomeBits, SomeMask, SomeState structs can interact at the SomeBits level.
@@ -566,6 +549,7 @@ impl BitsRef for SomeBits {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tools;
     use rand::Rng;
 
     #[test]
@@ -1033,7 +1017,7 @@ mod tests {
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.new_from_string("0x5050")?.split();
-        println!("split bits: {}", SomeBits::vec_string(&avec));
+        println!("split bits: {}", tools::vec_string(&avec));
 
         assert!(avec.len() == 4);
         assert!(avec.contains(&bitsx.new_from_string("0x4000")?));

@@ -279,75 +279,51 @@ fn domainstore_init() -> DomainStore {
 
     // Load optimal regions
     let mut regstr1 = RegionStore::with_capacity(2);
-    regstr1.push(
-        dmxs[0]
-            .region_from_string_pad_x("r0x0x")
-            .expect("String should be formatted correctly"),
-    );
+    regstr1.push(dmxs[0].region_from_string_pad_x("r0x0x").expect("SNH"));
     regstr1.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     let mut regstr2 = RegionStore::with_capacity(2);
-    regstr2.push(
-        dmxs[0]
-            .region_from_string_pad_x("r0xx1")
-            .expect("String should be formatted correctly"),
-    );
+    regstr2.push(dmxs[0].region_from_string_pad_x("r0xx1").expect("SNH"));
     regstr2.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     let mut regstr3 = RegionStore::with_capacity(2);
-    regstr3.push(
-        dmxs[0]
-            .region_from_string_pad_x("rx1x1")
-            .expect("String should be formatted correctly"),
-    );
+    regstr3.push(dmxs[0].region_from_string_pad_x("rx1x1").expect("SNH"));
     regstr3.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     let mut regstr4 = RegionStore::with_capacity(2);
-    regstr4.push(
-        dmxs[0]
-            .region_from_string_pad_x("r1110")
-            .expect("String should be formatted correctly"),
-    );
+    regstr4.push(dmxs[0].region_from_string_pad_x("r1110").expect("SNH"));
     regstr4.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     let mut regstr5 = RegionStore::with_capacity(2);
-    regstr5.push(
-        dmxs[0]
-            .region_from_string_pad_x("rXX00")
-            .expect("String should be formatted correctly"),
-    );
+    regstr5.push(dmxs[0].region_from_string_pad_x("rXX00").expect("SNH"));
     regstr5.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXXx1_0xXX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     let mut regstr6 = RegionStore::with_capacity(2);
-    regstr6.push(
-        dmxs[0]
-            .region_from_string_pad_x("rX10X")
-            .expect("String should be formatted correctly"),
-    );
+    regstr6.push(dmxs[0].region_from_string_pad_x("rX10X").expect("SNH"));
     regstr6.push(
         dmxs[1]
             .region_from_string_pad_x("rXXXXXX1x_x0XX_XXXX")
-            .expect("String should be formatted correctly"),
+            .expect("SNH"),
     );
 
     // Add select regionstores.
@@ -606,7 +582,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 // Show "before" state before running need.
                 println!(
                     "\nAll domain states: {}",
-                    SomeState::vec_ref_string(&dmxs.all_current_states())
+                    tools::vec_ref_string(&dmxs.all_current_states())
                 );
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();

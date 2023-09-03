@@ -722,7 +722,7 @@ mod tests {
         let toreg = dm0.region_from_string("r1100")?;
 
         if let Some(plans) = &mut dmxs.get_plans(0, &toreg) {
-            println!("plan: {}", SomePlan::vec_string(&plans));
+            println!("plan: {}", tools::vec_string(&plans));
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
         }

@@ -28,6 +28,7 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -451,9 +452,7 @@ impl SomeAction {
                                     dom,
                                     self.num,
                                     &group_region,
-                                    SomeRegion::vec_ref_string(
-                                        &self.groups.supersets_of(group_region)
-                                    )
+                                    tools::vec_ref_string(&self.groups.supersets_of(group_region))
                                 );
                             }
                             continue;
@@ -1757,10 +1756,7 @@ impl SomeAction {
                             return Err(format!("group {} not found?", grps[0]));
                         }
                     } else {
-                        println!(
-                            "adj    {sqrx} in groups {}",
-                            SomeRegion::vec_ref_string(&grps)
-                        );
+                        println!("adj    {sqrx} in groups {}", tools::vec_ref_string(&grps));
                     }
                 }
             } // next stax

@@ -202,23 +202,6 @@ impl RegionStore {
         rc_str
     }
 
-    /// Return a string representing a vector of regions.
-    pub fn vec_ref_string(avec: &[&Self]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", regx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
-
     /// Subtract a region from a RegionStore
     pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
         let mut ret_str = Self::new(vec![]);
@@ -524,15 +507,6 @@ impl RegionStore {
         Some(ret)
     }
 
-    /// Return a RegionStore states ref vector.
-    pub fn states_corr(&self) -> Vec<&SomeState> {
-        let mut stas = Vec::<&SomeState>::with_capacity(self.len());
-        for regx in self.iter() {
-            stas.push(regx.state1());
-        }
-        stas
-    }
-
     /// Calculate the distance between a RegionStore and the current state.
     pub fn distance_states_corr(&self, stas: &[&SomeState]) -> usize {
         debug_assert!(self.len() == stas.len());
@@ -609,6 +583,44 @@ impl RegionStore {
         }
         true
     }
+
+    /// Return true if at least one corresponding pair in two RegionStore is adjacent,
+    /// while other corresponding pairs are adjacent or intersect.
+    pub fn is_adjacent_corr(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
+        let mut num_dif = 0;
+        for (regx, regy) in self.iter().zip(other.iter()) {
+            let dif = regx.diff_mask(regy).num_one_bits();
+
+            if dif > 1 {
+                return false;
+            }
+            num_dif += dif;
+        }
+        num_dif > 0
+    }
+
+    /// Return the adjacent part of two RegionStores.
+    /// Presumably, at least one pair of corresponding regions will be adjacent, calc the adjacent part.
+    /// If a pair of corresponding regions intersect, calc the intersection.
+    pub fn adjacent_part_corr(&self, other: &Self) -> Self {
+        debug_assert!(self.is_adjacent_corr(other));
+
+        let mut ret_select = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
+
+        for (reg_s, reg_o) in self.iter().zip(other.iter()) {
+            if reg_s.is_adjacent(reg_o) {
+                ret_select.push(reg_s.adjacent_part(reg_o));
+            } else if let Some(reg_int) = reg_s.intersection(reg_o) {
+                ret_select.push(reg_int);
+            } else {
+                panic!("SNH");
+            }
+        }
+
+        ret_select
+    }
 } // End impl RegionStore.
 
 impl Index<usize> for RegionStore {
@@ -629,21 +641,203 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
 
-    /// Return a string representing a vector of regions.
-    pub fn vec_string(avec: &[RegionStore]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
+    #[test]
+    fn test_is_superset_states_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
 
-        for (inx, regx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", regx));
-        }
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
 
-        rc_str.push(']');
+        let sta1 = SomeState::new(SomeBits::new(vec![1]));
+        let sta8 = SomeState::new(SomeBits::new(vec![8]));
+        let stas = vec![&sta1, &sta8];
 
-        rc_str
+        println!("regstr1 {}", regstr1);
+        println!("stas    {}", tools::vec_ref_string(&stas));
+
+        assert!(!regstr1.is_superset_states_corr(&stas));
+
+        let sta4 = SomeState::new(SomeBits::new(vec![4]));
+        let sta10 = SomeState::new(SomeBits::new(vec![10]));
+        let stas2 = vec![&sta4, &sta10];
+
+        println!("regstr1 {}", regstr1);
+        println!("stas2   {}", tools::vec_ref_string(&stas2));
+
+        assert!(regstr1.is_superset_states_corr(&stas2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_distance_states_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
+
+        let sta1 = SomeState::new(SomeBits::new(vec![1]));
+        let sta8 = SomeState::new(SomeBits::new(vec![8]));
+        let stas = vec![&sta1, &sta8];
+
+        let dist = regstr1.distance_states_corr(&stas);
+        println!("Distance = {dist}");
+
+        assert!(dist == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn test_diff_masks_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg0.new_from_string("r0101").expect("SNH"));
+        regstr2.push(tmp_reg0.new_from_string("r1x01").expect("SNH"));
+
+        let diffs = regstr1.diff_masks_corr(&regstr2);
+
+        println!("regstr1 {}", regstr1);
+        println!("regstr2 {}", regstr2);
+        println!("diff masks {}", tools::vec_string(&diffs));
+        assert!(diffs.len() == 2);
+        assert!(tools::vec_contains(
+            &diffs,
+            SomeMask::eq,
+            &tmp_sta0.to_mask().new_from_string("m0b0001").expect("SNH")
+        ));
+        assert!(tools::vec_contains(
+            &diffs,
+            SomeMask::eq,
+            &tmp_sta0.to_mask().new_from_string("m0b0010").expect("SNH")
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_distance_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg0.new_from_string("r0101").expect("SNH"));
+        regstr2.push(tmp_reg0.new_from_string("r1x01").expect("SNH"));
+
+        let dist = regstr1.distance_corr(&regstr2);
+
+        println!("regstr1 {}", regstr1);
+        println!("regstr2 {}", regstr2);
+        println!("distance {dist}");
+
+        assert!(dist == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_superset_subset_of_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x0x").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x0x").expect("SNH"));
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg0.new_from_string("r0101").expect("SNH"));
+        regstr2.push(tmp_reg0.new_from_string("r1x01").expect("SNH"));
+
+        println!("regstr1 {}", regstr1);
+        println!("regstr2 {}", regstr2);
+
+        assert!(regstr1.is_superset_of_corr(&regstr2));
+        assert!(!regstr2.is_superset_of_corr(&regstr1));
+
+        assert!(!regstr1.is_subset_of_corr(&regstr2));
+        assert!(regstr2.is_subset_of_corr(&regstr1));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_intersection_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x0x").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x0x").expect("SNH"));
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg0.new_from_string("rx1x1").expect("SNH"));
+        regstr2.push(tmp_reg0.new_from_string("r1xx1").expect("SNH"));
+
+        let intreg = regstr1.intersection_corr(&regstr2).expect("SNH");
+        println!("int part {}", intreg);
+
+        assert!(intreg.eq_corr(&RegionStore::new(vec![
+            tmp_reg0.new_from_string("r0101").expect("SNH"),
+            tmp_reg0.new_from_string("r1x01").expect("SNH")
+        ])));
+        Ok(())
+    }
+
+    #[test]
+    fn test_adjacent_part_corr() -> Result<(), String> {
+        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg0.new_from_string("r0x0x").expect("SNH"));
+        regstr1.push(tmp_reg0.new_from_string("r1x0x").expect("SNH"));
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg0.new_from_string("rx11x").expect("SNH"));
+        regstr2.push(tmp_reg0.new_from_string("r1xx1").expect("SNH"));
+
+        let adjreg = regstr1.adjacent_part_corr(&regstr2);
+        println!("adj part {}", adjreg);
+
+        assert!(adjreg.eq_corr(&RegionStore::new(vec![
+            tmp_reg0.new_from_string("r01xx").expect("SNH"),
+            tmp_reg0.new_from_string("r1x01").expect("SNH")
+        ])));
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_adjacent_corr() -> Result<(), String> {
+        let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
+
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_reg2 = SomeRegion::new(vec![tmp_sta2.clone()]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(tmp_reg1.new_from_string("r0000_x10x")?);
+        regstr1.push(tmp_reg2.new_from_string("r0000_000x_0000_000x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(tmp_reg1.new_from_string("r0000_x11x")?);
+        regstr2.push(tmp_reg2.new_from_string("r0000_0000_0000_000x")?);
+
+        assert!(regstr1.is_adjacent_corr(&regstr2));
+        assert!(!regstr1.is_adjacent_corr(&regstr1));
+
+        Ok(())
     }
 
     #[test]
@@ -660,18 +854,57 @@ mod tests {
         regstr2.push(tmp_reg0.new_from_string("rXx10").expect("SNH"));
 
         let subs: Vec<RegionStore> = regstr1.subtract_corr(&regstr2);
-        println!("subs: {}", vec_string(&subs));
+        println!("subs: {}", tools::vec_string(&subs));
         assert!(subs.len() == 3);
+        assert!(tools::vec_contains(
+            &subs,
+            RegionStore::eq_corr,
+            &RegionStore::new(vec![
+                tmp_reg0.new_from_string("r110x").expect("SNH"),
+                tmp_reg0.new_from_string("rX1xx").expect("SNH")
+            ])
+        ));
+        assert!(tools::vec_contains(
+            &subs,
+            RegionStore::eq_corr,
+            &RegionStore::new(vec![
+                tmp_reg0.new_from_string("rX10x").expect("SNH"),
+                tmp_reg0.new_from_string("rX1x1").expect("SNH")
+            ])
+        ));
+        assert!(tools::vec_contains(
+            &subs,
+            RegionStore::eq_corr,
+            &RegionStore::new(vec![
+                tmp_reg0.new_from_string("rX10x").expect("SNH"),
+                tmp_reg0.new_from_string("rx10x").expect("SNH")
+            ])
+        ));
 
         let subs: Vec<RegionStore> = regstr2.subtract_corr(&regstr1);
-        println!("subs: {}", vec_string(&subs));
+        println!("subs: {}", tools::vec_string(&subs));
         assert!(subs.len() == 2);
-
+        assert!(tools::vec_contains(
+            &subs,
+            RegionStore::eq_corr,
+            &RegionStore::new(vec![
+                tmp_reg0.new_from_string("r011x").expect("SNH"),
+                tmp_reg0.new_from_string("rXx10").expect("SNH")
+            ])
+        ));
+        assert!(tools::vec_contains(
+            &subs,
+            RegionStore::eq_corr,
+            &RegionStore::new(vec![
+                tmp_reg0.new_from_string("r01xx").expect("SNH"),
+                tmp_reg0.new_from_string("rX010").expect("SNH")
+            ])
+        ));
         Ok(())
     }
 
     #[test]
-    fn intersects_corr() -> Result<(), String> {
+    fn test_intersects_corr() -> Result<(), String> {
         let tmp_sta1 = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg1 = SomeRegion::new(vec![tmp_sta1.clone()]);
 

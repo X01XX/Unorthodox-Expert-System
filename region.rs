@@ -550,23 +550,6 @@ impl SomeRegion {
         ret_vec
     }
 
-    /// Return a string representing a vector of references to regions.
-    pub fn vec_ref_string(avec: &[&Self]) -> String {
-        let mut rc_str = String::new();
-        rc_str.push('[');
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &regx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
-    }
-
     /// Return the adjacent part of two regions.
     /// A region implied, if the regions are held to be similar in some property.
     /// If the regions can form a non-optimistic union, the result will be that union.

@@ -179,34 +179,6 @@ impl SomeState {
         SomeMask::new(self.bts.clone())
     }
 
-    /// Return a string to display a vector of SomeStates.
-    pub fn vec_string(avec: &[Self]) -> String {
-        let mut ret_str = String::from("[");
-
-        for (inx, stax) in avec.iter().enumerate() {
-            if inx > 0 {
-                ret_str.push_str(", ");
-            }
-            ret_str.push_str(&format!("{stax}"));
-        }
-        ret_str.push(']');
-        ret_str
-    }
-
-    /// Return a string to display a vector of SomeState references.
-    pub fn vec_ref_string(avec: &[&Self]) -> String {
-        let mut ret_str = String::from("[");
-
-        for (inx, stax) in avec.iter().enumerate() {
-            if inx > 0 {
-                ret_str.push_str(", ");
-            }
-            ret_str.push_str(&format!("{stax}"));
-        }
-        ret_str.push(']');
-        ret_str
-    }
-
     /// Return true if a state is between two given states, exclusive.
     pub fn is_between(&self, sta1: &Self, sta2: &Self) -> bool {
         if self == sta1 {
