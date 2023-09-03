@@ -64,14 +64,12 @@ use domainstore::{DomainStore, InxPlan};
 mod actioninterface;
 mod planstore;
 use planstore::PlanStore;
-mod randompick;
-mod regionstorecorr;
-mod removeunordered;
+mod selectregions;
 mod selectregionsstore;
 mod target;
 mod targetstore;
 use crate::bits::SomeBits;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionstore::RegionStore;
 
 use std::io;
 use std::io::{Read, Write};
@@ -280,7 +278,7 @@ fn domainstore_init() -> DomainStore {
     dmxs[1].add_action();
 
     // Load optimal regions
-    let mut regstr1 = RegionStoreCorr::with_capacity(2);
+    let mut regstr1 = RegionStore::with_capacity(2);
     regstr1.push(
         dmxs[0]
             .region_from_string_pad_x("r0x0x")
@@ -292,7 +290,7 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    let mut regstr2 = RegionStoreCorr::with_capacity(2);
+    let mut regstr2 = RegionStore::with_capacity(2);
     regstr2.push(
         dmxs[0]
             .region_from_string_pad_x("r0xx1")
@@ -304,7 +302,7 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    let mut regstr3 = RegionStoreCorr::with_capacity(2);
+    let mut regstr3 = RegionStore::with_capacity(2);
     regstr3.push(
         dmxs[0]
             .region_from_string_pad_x("rx1x1")
@@ -316,7 +314,7 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    let mut regstr4 = RegionStoreCorr::with_capacity(2);
+    let mut regstr4 = RegionStore::with_capacity(2);
     regstr4.push(
         dmxs[0]
             .region_from_string_pad_x("r1110")
@@ -328,7 +326,7 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    let mut regstr5 = RegionStoreCorr::with_capacity(2);
+    let mut regstr5 = RegionStore::with_capacity(2);
     regstr5.push(
         dmxs[0]
             .region_from_string_pad_x("rXX00")
@@ -340,7 +338,7 @@ fn domainstore_init() -> DomainStore {
             .expect("String should be formatted correctly"),
     );
 
-    let mut regstr6 = RegionStoreCorr::with_capacity(2);
+    let mut regstr6 = RegionStore::with_capacity(2);
     regstr6.push(
         dmxs[0]
             .region_from_string_pad_x("rX10X")
@@ -864,7 +862,7 @@ fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
             );
             if inx > 0 {
                 for sel_regx in dom_str.select.iter() {
-                    if sel_regx.regions.is_superset_states(&cur_states) && sel_regx.value < 0 {
+                    if sel_regx.regions.is_superset_states_corr(&cur_states) && sel_regx.value < 0 {
                         print!(" in {:+}", sel_regx);
                     }
                 }

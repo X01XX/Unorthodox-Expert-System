@@ -232,7 +232,7 @@ impl SomeAction {
         // Store possible groups.
         for grpx in groups {
             if !self.groups.any_superset_of(&grpx.region) {
-                self.groups.push(grpx, self.dom_num, self.num);
+                self.groups.push_nosubs(grpx, self.dom_num, self.num);
             }
         }
     }
@@ -472,7 +472,7 @@ impl SomeAction {
                             false
                         };
 
-                        self.groups.push(
+                        self.groups.push_nosubs(
                             SomeGroup::new(group_region.clone(), rules.clone(), pnc),
                             dom,
                             self.num,
@@ -1555,6 +1555,8 @@ impl SomeAction {
             // There is a tendency to produce contradictory intersections.
             // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
             // Within 010X, 5 is contradictory.
+            //
+            // Maximum region minus state = complement of state.
             for ex_regx in excluded_regs.iter() {
                 if poss_regs.any_superset_of(ex_regx) {
                     let not_state1 = RegionStore::new(

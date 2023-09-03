@@ -2,7 +2,7 @@
 
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -55,14 +55,14 @@ impl PlanStore {
     }
 
     /// Return the result region of the last plans.
-    pub fn result_region(&self, all_states: &[&SomeState]) -> RegionStoreCorr {
-        // Init return RegionStoreCorr.
-        let mut ret = RegionStoreCorr::with_capacity(all_states.len());
+    pub fn result_region(&self, all_states: &[&SomeState]) -> RegionStore {
+        // Init return RegionStore.
+        let mut ret = RegionStore::with_capacity(all_states.len());
         for stax in all_states.iter() {
             ret.push(SomeRegion::new(vec![(*stax).clone()]));
         }
 
-        // Update return RegionStoreCorr as needed.
+        // Update return RegionStore as needed.
         for planx in self.avec.iter() {
             if planx.is_not_empty() {
                 ret[planx.dom_num] = planx.result_region().clone();
@@ -72,16 +72,16 @@ impl PlanStore {
     }
 
     /// Return the initial region of the plans.
-    pub fn initial_region(&self, all_states: &[&SomeState]) -> RegionStoreCorr {
-        // Init return RegionStoreCorr.
-        let mut ret = RegionStoreCorr::with_capacity(all_states.len());
+    pub fn initial_region(&self, all_states: &[&SomeState]) -> RegionStore {
+        // Init return RegionStore.
+        let mut ret = RegionStore::with_capacity(all_states.len());
         for stax in all_states.iter() {
             ret.push(SomeRegion::new(vec![(*stax).clone()]));
         }
 
         let mut domains_done = Vec::<usize>::with_capacity(all_states.len());
 
-        // Update return RegionStoreCorr as needed.
+        // Update return RegionStore as needed.
         for planx in self.avec.iter() {
             if planx.is_not_empty() && !domains_done.contains(&planx.dom_num) {
                 ret[planx.dom_num] = planx.initial_region().clone();

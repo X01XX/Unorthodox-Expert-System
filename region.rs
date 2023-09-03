@@ -5,8 +5,8 @@
 //! The two states used to make the region, can be keys to two squares.
 
 use crate::mask::SomeMask;
-use crate::removeunordered;
 use crate::state::SomeState;
+use crate::tools;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -75,7 +75,7 @@ impl SomeRegion {
             // Sort idicies higher to lower.
             remv.sort_by(|a, b| b.cmp(a));
             for inx in remv.iter() {
-                removeunordered::remove_unordered(&mut states, *inx);
+                tools::remove_unordered(&mut states, *inx);
             }
         }
 
@@ -102,7 +102,7 @@ impl SomeRegion {
             // Sort idicies higher to lower.
             remv.sort_by(|a, b| b.cmp(a));
             for inx in remv.iter() {
-                removeunordered::remove_unordered(&mut states, *inx);
+                tools::remove_unordered(&mut states, *inx);
             }
         }
 

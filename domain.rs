@@ -19,13 +19,13 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
-use crate::randompick::RandomPick;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -243,7 +243,7 @@ impl SomeDomain {
 
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
-        let mut rand_inx = RandomPick::new(steps_str.len());
+        let mut rand_inx = tools::RandomPick::new(steps_str.len());
         while let Some(inx) = rand_inx.pick() {
             if steps_str[inx].initial.intersects(from_reg)
                 && steps_str[inx].result.intersects(goal_reg)

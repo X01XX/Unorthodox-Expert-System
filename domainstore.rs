@@ -7,11 +7,12 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
-use crate::regionstorecorr::RegionStoreCorr;
-use crate::removeunordered;
+use crate::regionstore::RegionStore;
+use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::targetstore::TargetStore;
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -59,9 +60,9 @@ pub struct DomainStore {
     /// To allow for intersecting Select RegionStores, store RegionStores that are a subset of
     /// one, or more, Select Regions, with a sum of the values of the superset RegionStores that is greater than zero.
     /// These become goals, after rule-building needs are satisfied.
-    pub select_subsets: Vec<RegionStoreCorr>,
+    pub select_subsets: SelectRegionsStore,
     /// Non-negative Select Regions.
-    pub select_non_negative: Vec<RegionStoreCorr>,
+    pub select_non_negative: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
     /// Vector of InxPlans for selected needs, where a plan was calculated.
@@ -83,9 +84,9 @@ impl DomainStore {
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
-            select_subsets: vec![],
+            select_subsets: SelectRegionsStore::new(vec![]),
             select: SelectRegionsStore::new(vec![]),
-            select_non_negative: vec![],
+            select_non_negative: SelectRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
             cant_do: Vec::<usize>::new(),
@@ -96,7 +97,7 @@ impl DomainStore {
     /// Add an select region.
     /// One region for each domain.
     /// The logical "and" of each domain region given.
-    pub fn add_select(&mut self, regstr: RegionStoreCorr, value: isize) {
+    pub fn add_select(&mut self, regstr: RegionStore, value: isize) {
         debug_assert!(regstr.len() == self.avec.len());
 
         if self.select.any_supersets_of(&regstr) {
@@ -110,7 +111,7 @@ impl DomainStore {
             }
         }
 
-        self.select.push(regstr, value);
+        self.select.push_nosubs(SelectRegions::new(regstr, value));
     }
 
     /// Calculate parts of select regions, in case of any overlapps.
@@ -122,16 +123,16 @@ impl DomainStore {
         self.select_subsets = self.select.split_to_subsets();
         //println!(
         //    "\nSelect Regions positive subsets: {}",
-        //    RegionStoreCorr::vec_string(&self.select_subsets)
+        //    RegionStore::vec_string(&self.select_subsets)
         //);
-        let mut max = RegionStoreCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
+        let mut max = RegionStore::with_capacity(self.len());
         for domx in self.avec.iter() {
             max.push(domx.maximum_region());
         }
-        let mut nnvec = vec![max];
+        let mut nnvec = SelectRegionsStore::new(vec![SelectRegions::new(max, 0)]);
         for selx in self.select.iter() {
             if selx.value < 0 {
-                nnvec = RegionStoreCorr::vec_subtract_regionstorecorr(&nnvec, &selx.regions);
+                nnvec = nnvec.subtract(selx);
             }
         }
         self.select_non_negative = nnvec;
@@ -140,7 +141,7 @@ impl DomainStore {
             println!("  {}", regsx);
         }
 
-        let mut adj_regs = Vec::<RegionStoreCorr>::new();
+        let mut adj_regs = SelectRegionsStore::new(vec![]);
 
         let mut num_int = 0;
         let mut num_adjacent = 0;
@@ -162,7 +163,7 @@ impl DomainStore {
                 }
             }
         }
-        self.select_non_negative.append(&mut adj_regs);
+        self.select_non_negative.append(adj_regs);
 
         println!("  {num_int} intersections, {num_adjacent} adjacent");
     }
@@ -279,7 +280,7 @@ impl DomainStore {
 
         let select_priority = if in_select && self.boredom < self.boredom_limit {
             let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: RegionStoreCorr::new(vec![]),
+                target_regions: RegionStore::new(vec![]),
                 priority: 0,
             };
             needx.set_priority();
@@ -368,7 +369,7 @@ impl DomainStore {
 
             // Form start region corresponding.
             let all_states = self.all_current_states();
-            let mut start_regs = RegionStoreCorr::with_capacity(self.len());
+            let mut start_regs = RegionStore::with_capacity(self.len());
             for stax in all_states.iter() {
                 start_regs.push(SomeRegion::new(vec![(*stax).clone()]));
             }
@@ -376,7 +377,7 @@ impl DomainStore {
             // Check if negative regions can be avoided.
             for ndinx in self.can_do.iter() {
                 // Form goal region corresponding
-                let mut goal_regs = RegionStoreCorr::with_capacity(self.len());
+                let mut goal_regs = RegionStore::with_capacity(self.len());
                 for (dom_inx, stax) in all_states.iter().enumerate() {
                     if let Some(regt) = self.needs[ndinx.inx].target().target_region(dom_inx) {
                         goal_regs.push(regt.clone());
@@ -610,7 +611,7 @@ impl DomainStore {
 
         // Get the select regions the current state is in.
         for optregs in self.select.iter_mut() {
-            if optregs.regions.is_superset_states(&all_states2) {
+            if optregs.regions.is_superset_states_corr(&all_states2) {
                 optregs.inc_times_visited();
             }
         }
@@ -626,7 +627,7 @@ impl DomainStore {
         for optregs in self.select.iter() {
             if optregs
                 .regions
-                .is_superset_states(&self.all_current_states())
+                .is_superset_states_corr(&self.all_current_states())
             {
                 ret = true;
                 boredom_limit += optregs.value;
@@ -684,7 +685,7 @@ impl DomainStore {
             let mut ndstr = NeedStore::with_capacity(non_neg_inxs.len());
             for inx in non_neg_inxs.iter() {
                 let mut needx = SomeNeed::ExitSelectRegion {
-                    target_regions: self.select_non_negative[*inx].clone(),
+                    target_regions: self.select_non_negative[*inx].regions.clone(),
                     priority: 0,
                 };
                 needx.set_priority();
@@ -738,21 +739,21 @@ impl DomainStore {
         }
         if !inxs.is_empty() {
             for iny in inxs.iter() {
-                removeunordered::remove_unordered(&mut notsups, *iny);
+                tools::remove_unordered(&mut notsups, *iny);
             }
         }
 
-        let mut notsups2 = Vec::<&RegionStoreCorr>::new();
+        let mut notsups2 = SelectRegionsStore::new(vec![]);
         for subx in self.select_subsets.iter() {
             let mut found = false;
             for sely in notsups.iter() {
-                if subx.is_subset_of(&sely.regions) {
+                if subx.regions.is_subset_of_corr(&sely.regions) {
                     found = true;
                     break;
                 }
             }
             if found {
-                notsups2.push(subx);
+                notsups2.push(subx.clone());
             }
         }
 
@@ -761,7 +762,7 @@ impl DomainStore {
 
         for nsupx in notsups2.iter() {
             // Calc priority addon, to weight the priority by distance and value of the region.
-            let (value, times_visited) = self.select.rate_regions(nsupx);
+            let (value, times_visited) = self.select.rate_regions(&nsupx.regions);
             if value < 0 {
                 continue;
             }
@@ -775,7 +776,7 @@ impl DomainStore {
             };
 
             let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: (*nsupx).clone(),
+                target_regions: (nsupx.regions.clone()),
                 priority: adjust,
             };
             needx.set_priority();
@@ -942,14 +943,14 @@ impl DomainStore {
     /// that avoids negative regions.  Use random depth-first logic.
     fn avoid_negative_select_regions(
         &self,
-        start_regs: &RegionStoreCorr,
-        goal_regs: &RegionStoreCorr,
+        start_regs: &RegionStore,
+        goal_regs: &RegionStore,
     ) -> Option<PlanStore> {
         //println!("avoid_negative_select_region: starting: start {start_regs} goal: {goal_regs}");
         // Get (max region - negative regions), so potitive/non-negative regions.
 
         // Check if no plans are needed.
-        if start_regs.is_subset_of(goal_regs) {
+        if start_regs.is_subset_of_corr(goal_regs) {
             return Some(PlanStore::new(vec![]));
         }
 
@@ -960,37 +961,39 @@ impl DomainStore {
 
         // Check if one nn region is superset start_reg and intersects goal_reg.
         for regsx in self.select_non_negative.iter() {
-            if regsx.is_superset_of(start_regs) && regsx.intersects(goal_regs) {
+            if regsx.regions.is_superset_of_corr(start_regs)
+                && regsx.regions.intersects_corr(goal_regs)
+            {
                 //println!("one nn region found");
                 return None; // Standard path search should have worked.
             }
         }
 
         // Get non-negative regions the start region is in.
-        let mut regs_start_in = Vec::<&RegionStoreCorr>::new();
+        let mut regs_start_in = Vec::<&RegionStore>::new();
         for regsx in self.select_non_negative.iter() {
-            if regsx.is_superset_of(start_regs) {
-                regs_start_in.push(regsx);
+            if regsx.regions.is_superset_of_corr(start_regs) {
+                regs_start_in.push(&regsx.regions);
             }
         }
 
         // Start region may not be in a non-negative region.
-        let mut additional_start_regs = Vec::<RegionStoreCorr>::new();
+        let mut additional_start_regs = Vec::<RegionStore>::new();
         if regs_start_in.is_empty() {
             // Find closest non-negative regions.
             let mut min_dist = usize::MAX;
             for regsx in self.select_non_negative.iter() {
-                let dist = regsx.distance(start_regs);
+                let dist = regsx.regions.distance_corr(start_regs);
                 if dist < min_dist {
                     min_dist = dist;
                 }
             }
 
             for regsx in self.select_non_negative.iter() {
-                let dist = regsx.distance(start_regs);
+                let dist = regsx.regions.distance_corr(start_regs);
                 if dist == min_dist {
-                    let dif_msk = regsx.diff_masks(start_regs);
-                    additional_start_regs.push(start_regs.set_to_x(&dif_msk));
+                    let dif_msk = regsx.regions.diff_masks_corr(start_regs);
+                    additional_start_regs.push(start_regs.set_to_x_corr(&dif_msk));
                 }
             }
             for regx in additional_start_regs.iter() {
@@ -1000,36 +1003,36 @@ impl DomainStore {
         }
         //println!(
         //    "start nn regs: {}",
-        //    RegionStoreCorr::vec_ref_string(&regs_start_in)
+        //    RegionStore::vec_ref_string(&regs_start_in)
         //);
 
         // Get non-negative regions the goal intersects.
-        let mut regs_goal_in = Vec::<&RegionStoreCorr>::new();
+        let mut regs_goal_in = Vec::<&RegionStore>::new();
         for regsx in self.select_non_negative.iter() {
-            if regsx.intersects(goal_regs) {
-                regs_goal_in.push(regsx);
+            if regsx.regions.intersects_corr(goal_regs) {
+                regs_goal_in.push(&regsx.regions);
             }
         }
 
         // Home for additional regions, caused by the goal region not being in a positive region.
-        let mut additional_goal_regs = Vec::<RegionStoreCorr>::new();
+        let mut additional_goal_regs = Vec::<RegionStore>::new();
 
         // Goal region may not intersect a non-negative region.
         if regs_goal_in.is_empty() {
             // Find closest positive regions.
             let mut min_dist = usize::MAX;
             for regsx in self.select_non_negative.iter() {
-                let dist = regsx.distance(goal_regs);
+                let dist = regsx.regions.distance_corr(goal_regs);
                 if dist < min_dist {
                     min_dist = dist;
                 }
             }
 
             for regsx in self.select_non_negative.iter() {
-                let dist = regsx.distance(goal_regs);
+                let dist = regsx.regions.distance_corr(goal_regs);
                 if dist == min_dist {
-                    let dif_msk = regsx.diff_masks(goal_regs);
-                    additional_goal_regs.push(goal_regs.set_to_x(&dif_msk));
+                    let dif_msk = regsx.regions.diff_masks_corr(goal_regs);
+                    additional_goal_regs.push(goal_regs.set_to_x_corr(&dif_msk));
                 }
             }
             for regx in additional_goal_regs.iter() {
@@ -1039,20 +1042,22 @@ impl DomainStore {
         }
         //println!(
         //    "goal nn regs: {}",
-        //    RegionStoreCorr::vec_ref_string(&regs_goal_in)
+        //    RegionStore::vec_ref_string(&regs_goal_in)
         //);
 
         // Get non-negative regions the start region and goal region are not in.
-        let mut other_nn_regions = Vec::<&RegionStoreCorr>::new();
+        let mut other_nn_regions = Vec::<&RegionStore>::new();
         for regsx in self.select_non_negative.iter() {
-            if regsx.is_superset_of(start_regs) || regsx.intersects(goal_regs) {
+            if regsx.regions.is_superset_of_corr(start_regs)
+                || regsx.regions.intersects_corr(goal_regs)
+            {
                 continue;
             }
-            other_nn_regions.push(regsx);
+            other_nn_regions.push(&regsx.regions);
         }
         //println!(
         //    "other nn regs: {}",
-        //    RegionStoreCorr::vec_ref_string(&other_nn_regions)
+        //    RegionStore::vec_ref_string(&other_nn_regions)
         //);
 
         let mut plans = (0..6)
@@ -1100,49 +1105,49 @@ impl DomainStore {
     /// Second step, if any needed, for each domain, ...
     fn avoid_negative_select_regions2(
         &self,
-        start_reg: &RegionStoreCorr,
-        goal_reg: &RegionStoreCorr,
-        start_in: &[&RegionStoreCorr],
-        goal_in: &[&RegionStoreCorr],
-        other_regions: &[&RegionStoreCorr],
+        start_reg: &RegionStore,
+        goal_reg: &RegionStore,
+        start_in: &[&RegionStore],
+        goal_in: &[&RegionStore],
+        other_regions: &[&RegionStore],
     ) -> Option<PlanStore> {
         //println!("avoid_negative_select_regions2: starting: start reg    {start_reg}");
         //println!(
         //    "avoid_negative_select_regions2: starting: start regs: {}",
-        //    RegionStoreCorr::vec_ref_string(start_in),
+        //    RegionStore::vec_ref_string(start_in),
         //);
         //println!("avoid_negative_select_regions2: starting: goal reg     {goal_reg}");
         //println!(
         //    "avoid_negative_select_regions2: starting: goal regs:  {}",
-        //    RegionStoreCorr::vec_ref_string(goal_in)
+        //    RegionStore::vec_ref_string(goal_in)
         //);
         //println!(
         //    "avoid_negative_select_regions2: starting: other regs: {}",
-        //    RegionStoreCorr::vec_ref_string(other_regions)
+        //    RegionStore::vec_ref_string(other_regions)
         //);
 
-        // Init vector for vectors of RegionStoreCorr(s) between the start and goal.
-        let mut between_vecs = Vec::<Vec<&RegionStoreCorr>>::new();
+        // Init vector for vectors of RegionStore(s) between the start and goal.
+        let mut between_vecs = Vec::<Vec<&RegionStore>>::new();
         for regcrx in other_regions.iter() {
             between_vecs.push(vec![regcrx]);
         }
 
-        let bridge: (&RegionStoreCorr, Vec<&RegionStoreCorr>, &RegionStoreCorr);
+        let bridge: (&RegionStore, Vec<&RegionStore>, &RegionStore);
 
         'find_bridge: loop {
             // Check if between_vecs contains a vector that can connect between
-            // a start RegionStoreCorr and a goal RegionStoreCorr.
+            // a start RegionStore and a goal RegionStore.
             for btw_x in between_vecs.iter() {
                 // Get item that may intersect, or be adjacent to, an item that the start_reg is in.
                 // If btw_x only contains a single item, then first() and last() will be the same item.
                 let left = btw_x.first().unwrap();
 
                 for regcr_x in start_in.iter() {
-                    if regcr_x.intersects(left) {
+                    if regcr_x.intersects_corr(left) {
                         // Get item that may intersect, or be adjacent to, an item that the goal_reg is in.
                         let right = btw_x.last().unwrap();
                         for regcr_y in goal_in.iter() {
-                            if right.intersects(regcr_y) {
+                            if right.intersects_corr(regcr_y) {
                                 bridge = (*regcr_x, btw_x.clone(), *regcr_y);
                                 break 'find_bridge;
                             }
@@ -1151,7 +1156,7 @@ impl DomainStore {
                 } // next regcr_x
             } // next btw_x
 
-            let mut next_between_vecs = Vec::<Vec<&RegionStoreCorr>>::new();
+            let mut next_between_vecs = Vec::<Vec<&RegionStore>>::new();
 
             // Generate next level of bridge vectors.
             for btw_x in between_vecs.iter() {
@@ -1160,9 +1165,9 @@ impl DomainStore {
                         continue;
                     }
                     let left = btw_x.first().unwrap();
-                    if left.intersects(regcr_y) {
+                    if left.intersects_corr(regcr_y) {
                         // Generate new between path.
-                        let mut tmp_btw = Vec::<&RegionStoreCorr>::with_capacity(btw_x.len() + 1);
+                        let mut tmp_btw = Vec::<&RegionStore>::with_capacity(btw_x.len() + 1);
                         tmp_btw.push(regcr_y);
                         for regcradj_x in btw_x.iter() {
                             tmp_btw.push(regcradj_x);
@@ -1172,9 +1177,9 @@ impl DomainStore {
                     }
 
                     let right = btw_x.last().unwrap();
-                    if right.intersects(regcr_y) {
+                    if right.intersects_corr(regcr_y) {
                         // Generate new between path.
-                        let mut tmp_btw = Vec::<&RegionStoreCorr>::with_capacity(btw_x.len() + 1);
+                        let mut tmp_btw = Vec::<&RegionStore>::with_capacity(btw_x.len() + 1);
                         for regcr_x in btw_x.iter() {
                             tmp_btw.push(regcr_x);
                         }
@@ -1198,14 +1203,14 @@ impl DomainStore {
         //    "Bridge found start {} from {} to bridge {} to {} to goal {}, ",
         //    start_reg,
         //    start_regcr,
-        //    RegionStoreCorr::vec_ref_string(&bridge_regcr_vec),
+        //    RegionStore::vec_ref_string(&bridge_regcr_vec),
         //    goal_regcr,
         //   goal_reg
         //);
 
         // Build path to goal.
         let mut cur_regs = start_reg.clone();
-        let mut path = Vec::<&RegionStoreCorr>::with_capacity(bridge_regcr_vec.len() + 2);
+        let mut path = Vec::<&RegionStore>::with_capacity(bridge_regcr_vec.len() + 2);
         path.push(start_regcr);
         path.append(&mut bridge_regcr_vec);
         path.push(goal_regcr);
@@ -1214,7 +1219,7 @@ impl DomainStore {
         //println!("cur_regs: {}", cur_regs);
         //println!(
         //    "path to proccess: {}",
-        //    RegionStoreCorr::vec_ref_string(&path)
+        //    RegionStore::vec_ref_string(&path)
         //);
         //println!("goal: {}", goal_reg);
         let mut all_plans = PlanStore::new(vec![]);
@@ -1222,7 +1227,7 @@ impl DomainStore {
         for inx in 0..(path.len() - 1) {
             let iny = inx + 1;
 
-            let intxy = path[inx].intersection(path[iny]).unwrap();
+            let intxy = path[inx].intersection_corr(path[iny]).unwrap();
             //println!("process {} and {} int at: {}", path[inx], path[iny], intxy);
             for (domx, regx) in intxy.iter().enumerate() {
                 if cur_regs[domx].is_subset_of(regx) {
@@ -1259,7 +1264,7 @@ impl DomainStore {
         }
         //println!("all plans: {all_plans}");
 
-        assert!(goal_reg.is_superset_of(&all_plans.result_region(&start_reg.states())));
+        assert!(goal_reg.is_superset_of_corr(&all_plans.result_region(&start_reg.states_corr())));
 
         Some(all_plans)
     } // end avoid_negative_select_regions2
@@ -1312,7 +1317,7 @@ mod tests {
         select
             .regionstores
             .iter()
-            .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
+            .map(|regsx| usize::from(regsx.regions.is_superset_states_corr(stas)))
             .sum()
     }
 
@@ -1358,7 +1363,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![domx]);
 
         // Set select regions.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("r01X1")
@@ -1366,7 +1371,7 @@ mod tests {
         );
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr2 = RegionStoreCorr::with_capacity(1);
+        let mut regstr2 = RegionStore::with_capacity(1);
         regstr2.push(
             dmxs[0]
                 .region_from_string_pad_x("rX101")
@@ -1384,8 +1389,8 @@ mod tests {
 
         dmxs[0].get_needs(); // set aggregate changes
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sf.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sf.clone()])]);
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             println!(
@@ -1393,7 +1398,9 @@ mod tests {
                 planx
             );
             assert!(planx.initial_region(&[&state1]) == start_region);
-            assert!(planx.result_region(&[&state1]).is_subset_of(&goal_region));
+            assert!(planx
+                .result_region(&[&state1])
+                .is_subset_of_corr(&goal_region));
             assert!(dmxs.select.rate_plans(&planx, &[&state1]) == 0);
             return Ok(());
         }
@@ -1442,7 +1449,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![domx]);
 
         // Set select regions.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("r0101")
@@ -1450,7 +1457,7 @@ mod tests {
         );
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr2 = RegionStoreCorr::with_capacity(1);
+        let mut regstr2 = RegionStore::with_capacity(1);
         regstr2.push(
             dmxs[0]
                 .region_from_string_pad_x("r1001")
@@ -1466,8 +1473,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1525,7 +1532,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![domx]);
 
         // Set select regions.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("r0x00")
@@ -1533,7 +1540,7 @@ mod tests {
         );
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr2 = RegionStoreCorr::with_capacity(1);
+        let mut regstr2 = RegionStore::with_capacity(1);
         regstr2.push(
             dmxs[0]
                 .region_from_string_pad_x("rx100")
@@ -1541,7 +1548,7 @@ mod tests {
         );
         dmxs.add_select(regstr2, -1);
 
-        let mut regstr3 = RegionStoreCorr::with_capacity(1);
+        let mut regstr3 = RegionStore::with_capacity(1);
         regstr3.push(
             dmxs[0]
                 .region_from_string_pad_x("r01x1")
@@ -1549,7 +1556,7 @@ mod tests {
         );
         dmxs.add_select(regstr3, -1);
 
-        let mut regstr4 = RegionStoreCorr::with_capacity(1);
+        let mut regstr4 = RegionStore::with_capacity(1);
         regstr4.push(
             dmxs[0]
                 .region_from_string_pad_x("r10x1")
@@ -1557,7 +1564,7 @@ mod tests {
         );
         dmxs.add_select(regstr4, -1);
 
-        let mut regstr5 = RegionStoreCorr::with_capacity(1);
+        let mut regstr5 = RegionStore::with_capacity(1);
         regstr5.push(
             dmxs[0]
                 .region_from_string_pad_x("r101x")
@@ -1573,8 +1580,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1632,7 +1639,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![domx]);
 
         // Set select regions.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("r01xx")
@@ -1640,7 +1647,7 @@ mod tests {
         );
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr2 = RegionStoreCorr::with_capacity(1);
+        let mut regstr2 = RegionStore::with_capacity(1);
         regstr2.push(
             dmxs[0]
                 .region_from_string_pad_x("r10xx")
@@ -1655,8 +1662,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1707,7 +1714,7 @@ mod tests {
         let mut dmxs = DomainStore::new(vec![domx]);
 
         // Set select regions.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("rxx0x")
@@ -1723,8 +1730,8 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1810,7 +1817,7 @@ mod tests {
         // Set select regions.
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
-        let mut regstr0 = RegionStoreCorr::with_capacity(1);
+        let mut regstr0 = RegionStore::with_capacity(1);
         regstr0.push(
             dmxs[0]
                 .region_from_string_pad_x("r11xx")
@@ -1824,7 +1831,7 @@ mod tests {
         dmxs.add_select(regstr0, -1);
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(
             dmxs[0]
                 .region_from_string_pad_x("r11xx")
@@ -1850,11 +1857,11 @@ mod tests {
         println!("\nDom 1 Actions {}\n", dmxs[1].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![
+        let start_region = RegionStore::new(vec![
             SomeRegion::new(vec![cur0.clone()]),
             SomeRegion::new(vec![cur1.clone()]),
         ]);
-        let goal_region = RegionStoreCorr::new(vec![
+        let goal_region = RegionStore::new(vec![
             SomeRegion::new(vec![sf.clone()]),
             SomeRegion::new(vec![sf.clone()]),
         ]);
@@ -1943,31 +1950,23 @@ mod tests {
         // Set select regions.
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
-        let mut regstr0 = RegionStoreCorr::with_capacity(1);
-        regstr0.push(
-            dmxs[0]
-                .region_from_string_pad_x("r1100")
-                .expect("String should be formatted correctly"),
-        );
+        let mut regstr0 = RegionStore::with_capacity(1);
+        regstr0.push(dmxs[0].region_from_string_pad_x("r1100").expect("SNH"));
         dmxs.add_select(regstr0, -1);
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(
-            dmxs[0]
-                .region_from_string_pad_x("r1011")
-                .expect("String should be formatted correctly"),
-        );
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(dmxs[0].region_from_string_pad_x("r1011").expect("SNH"));
         dmxs.add_select(regstr1, -1);
         dmxs.calc_select();
 
-        let s0 = dmxs[0].state_from_string("s0b0000")?;
+        let s0 = dmxs[0].state_from_string("s0b0000").expect("SNH");
         dmxs[0].set_state(&s0);
 
         let sd = dmxs[0].state_from_string("s0b1101")?;
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![s0.clone()])]);
-        let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
+        let start_region = RegionStore::new(vec![SomeRegion::new(vec![s0.clone()])]);
+        let goal_region = RegionStore::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         let all_states = dmxs.all_current_states();
 
@@ -1999,19 +1998,19 @@ mod tests {
         dmxs[1].add_action();
 
         // Load select regions
-        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        let mut regstr1 = RegionStore::with_capacity(2);
         regstr1.push(dmxs[0].region_from_string("r0x0x")?);
         regstr1.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
-        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        let mut regstr2 = RegionStore::with_capacity(2);
         regstr2.push(dmxs[0].region_from_string("r0xx1")?);
         regstr2.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
-        let mut regstr3 = RegionStoreCorr::with_capacity(2);
+        let mut regstr3 = RegionStore::with_capacity(2);
         regstr3.push(dmxs[0].region_from_string("rx1x1")?);
         regstr3.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
-        let mut regstr4 = RegionStoreCorr::with_capacity(2);
+        let mut regstr4 = RegionStore::with_capacity(2);
         regstr4.push(dmxs[0].region_from_string("r1110")?);
         regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
@@ -2094,7 +2093,7 @@ mod tests {
         // Init a DomainStore.
         let mut dmxs = DomainStore::new(vec![SomeDomain::new(1)]);
 
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         let neg_reg1 = dmxs[0]
             .region_from_string_pad_x("rX1XX")
             .expect("String should be formatted correctly");
@@ -2104,7 +2103,7 @@ mod tests {
         // Add select regionstores.
         dmxs.add_select(regstr1, -1);
 
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr1 = RegionStore::with_capacity(1);
         let neg_reg2 = dmxs[0]
             .region_from_string_pad_x("r1XX1")
             .expect("String should be formatted correctly");
@@ -2122,7 +2121,7 @@ mod tests {
         println!("select regs: {}", dmxs.select.formatted_string());
         println!(
             "non-neg:     {}",
-            RegionStoreCorr::vec_string(&dmxs.select_non_negative)
+            &dmxs.select_non_negative.formatted_string()
         );
 
         // Get exit needs.

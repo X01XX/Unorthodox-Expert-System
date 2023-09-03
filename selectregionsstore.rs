@@ -1,71 +1,20 @@
-//! Implement a struct of Select RegionStores.
-
-use crate::regionstorecorr::RegionStoreCorr;
+//! Implement a struct of SelectRegionStore.
 
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
-use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
+use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
 
-impl fmt::Display for SelectRegions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut str = self.regions.formatted_string();
-        str.push_str(&format!(", value: {:+}", self.value));
-        str.push_str(&format!(", times visited {}", self.times_visited));
-        write!(f, "{}", str)
-    }
-}
-
-#[readonly::make]
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub struct SelectRegions {
-    /// Regions, in domain order, describing the requirements for an select state.
-    /// If the regions are all X, except for one, then it affects only one domain.
-    /// Otherwise, it affects a combination of two, or more, domains.
-    pub regions: RegionStoreCorr,
-    /// A value for being in the select state.
-    /// A Positive value is, so far, given to a goal state.
-    /// A negative value is, so far, given to a plan that passes through the regions,
-    /// not counting the beginning and end state.
-    pub value: isize,
-    /// A cond of the number of time a SelectRegion has been visited due to satisfying a need.
-    pub times_visited: usize,
-}
-
-impl Index<usize> for SelectRegions {
-    type Output = SomeRegion;
-    fn index(&self, i: usize) -> &SomeRegion {
-        &self.regions[i]
-    }
-}
-
 impl fmt::Display for SelectRegionsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
-    }
-}
-
-impl SelectRegions {
-    /// Return a string representation for a vector of SelectRegions references.
-    pub fn vec_ref_string(avec: &[&Self]) -> String {
-        let mut ret_str = String::from("[");
-        for (inx, orx) in avec.iter().enumerate() {
-            if inx > 0 {
-                ret_str.push_str(", ");
-            }
-            ret_str.push_str(&format!("{}", orx));
-        }
-        ret_str.push(']');
-        ret_str
-    }
-    /// Increment times visited.
-    pub fn inc_times_visited(&mut self) {
-        self.times_visited += 1;
     }
 }
 
@@ -89,15 +38,32 @@ impl SelectRegionsStore {
         }
     }
 
-    /// Add a RegionsStore.
-    pub fn push(&mut self, regions: RegionStoreCorr, value: isize) {
-        if value != 0 && !self.contains(&regions) {
-            self.regionstores.push(SelectRegions {
-                regions,
-                value,
-                times_visited: 0,
-            });
+    /// Add a SelectRegionsStore.
+    pub fn push(&mut self, select: SelectRegions) {
+        if !self.contains(&select.regions) {
+            self.regionstores.push(select);
         }
+    }
+
+    /// Add a SelectRegionsStore, deleting subsets.
+    pub fn push_nosubs(&mut self, select: SelectRegions) {
+        // Don't add a subset.
+        if self.any_supersets_of(&select.regions) {
+            return;
+        }
+        // Identify subsets.
+        let mut del = Vec::<usize>::new();
+        for (inx, regstx) in self.regionstores.iter().enumerate() {
+            if regstx.regions.is_subset_of_corr(&select.regions) {
+                del.push(inx);
+            }
+        }
+        // Remove subsets, highest indicies first.
+        for inx in del.iter().rev() {
+            tools::remove_unordered(&mut self.regionstores, *inx);
+        }
+        // Add new select instance.
+        self.regionstores.push(select);
     }
 
     /// Return the length of an instance.
@@ -125,12 +91,12 @@ impl SelectRegionsStore {
         self.regionstores.iter_mut()
     }
 
-    /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStoreCorr.
-    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> (isize, usize) {
+    /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStore.
+    pub fn rate_regions(&self, regs: &RegionStore) -> (isize, usize) {
         let mut times_visited: usize = 0;
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
-            if regsx.regions.is_superset_of(regs) {
+            if regsx.regions.is_superset_of_corr(regs) {
                 value += regsx.value;
                 times_visited += regsx.times_visited;
             }
@@ -142,14 +108,14 @@ impl SelectRegionsStore {
     pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| !regsx.regions.is_superset_states(stas))
+            .filter(|regsx| !regsx.regions.is_superset_states_corr(stas))
             .collect()
     }
 
     /// Return true if any SelectRegion is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states(stas) {
+            if regsx.regions.is_superset_states_corr(stas) {
                 return true;
             }
         }
@@ -160,17 +126,17 @@ impl SelectRegionsStore {
     pub fn value_supersets_of_states(&self, stas: &[&SomeState]) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states(stas) {
+            if regsx.regions.is_superset_states_corr(stas) {
                 val += regsx.value;
             }
         }
         val
     }
 
-    /// Return true if any SelectRegion is a superset of a given RegionStoreCorr.
-    pub fn any_supersets_of(&self, regs: &RegionStoreCorr) -> bool {
+    /// Return true if any SelectRegion is a superset of a given RegionStore.
+    pub fn any_supersets_of(&self, regs: &RegionStore) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_of(regs) {
+            if regsx.regions.is_superset_of_corr(regs) {
                 return true;
             }
         }
@@ -181,7 +147,7 @@ impl SelectRegionsStore {
     pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| regsx.regions.is_superset_states(stas))
+            .filter(|regsx| regsx.regions.is_superset_states_corr(stas))
             .collect()
     }
 
@@ -198,24 +164,27 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return a list of RegionStoreCorrs, split by intersections, until
-    /// none have a partial intersection with the original RegionStoreCorrs.
-    /// Some result RegionStoreCorrs may overlap each other.
+    /// Return a list of RegionStores, split by intersections, until
+    /// none have a partial intersection with the original RegionStores.
+    /// Some result RegionStores may overlap each other.
     /// Each result regionstore will be a subset of one, or more, of the original regionstores,
     /// where the sum of the SelectRegion values is greater than zero.
-    pub fn split_to_subsets(&self) -> Vec<RegionStoreCorr> {
-        let mut rs = Vec::<&RegionStoreCorr>::with_capacity(self.len());
+    pub fn split_to_subsets(&self) -> Self {
+        //println!("selectregionsstore: split_to_subsets");
+        let mut rs = Self::with_capacity(self.len());
         for reg_valx in &self.regionstores {
-            rs.push(&reg_valx.regions);
+            if !rs.any_supersets_of(&reg_valx.regions) {
+                rs.push(reg_valx.clone());
+            }
         }
 
-        RegionStoreCorr::vec_ref_split_to_subsets(&rs)
+        rs
     }
 
     /// Return true if an equal RegionStore is already in the SelectRegionsStore.
-    fn contains(&self, regstr: &RegionStoreCorr) -> bool {
+    fn contains(&self, regstr: &RegionStore) -> bool {
         for regstrx in &self.regionstores {
-            if regstrx.regions == *regstr {
+            if regstrx.regions.eq_corr(regstr) {
                 return true;
             }
         }
@@ -318,6 +287,28 @@ impl SelectRegionsStore {
             all_states[planx.dom_num] = planx.result_region().state1();
         }
         rate
+    }
+
+    /// Subtract a SelectRegions.
+    pub fn subtract(&self, subtrahend: &SelectRegions) -> Self {
+        let mut ret_str = Self::new(vec![]);
+
+        for regy in self.iter() {
+            if subtrahend.intersects(regy) {
+                for regz in regy.regions.subtract_corr(&subtrahend.regions) {
+                    ret_str.push_nosubs(SelectRegions::new(regz, 0));
+                }
+            } else {
+                ret_str.push_nosubs(regy.clone());
+            }
+        } // next regy
+
+        ret_str
+    }
+
+    /// Append from another store.
+    pub fn append(&mut self, mut val: Self) {
+        self.regionstores.append(&mut val.regionstores);
     }
 } // End impl SelectRegionsStore
 

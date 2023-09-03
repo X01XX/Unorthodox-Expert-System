@@ -1,7 +1,7 @@
 //! The NeedStore struct, a vector of SomeNeed structs.
 
 use crate::need::SomeNeed;
-use crate::removeunordered;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -71,7 +71,7 @@ impl NeedStore {
 
     /// Remove a need from a NeedStore
     pub fn remove_unordered(&mut self, inx: usize) {
-        removeunordered::remove_unordered(&mut self.avec, inx);
+        tools::remove_unordered(&mut self.avec, inx);
     }
 
     /// Sort needs by priority.

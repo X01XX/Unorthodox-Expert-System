@@ -2,8 +2,8 @@
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
-use crate::removeunordered;
 use crate::step::SomeStep;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -201,7 +201,7 @@ impl StepStore {
                 return None;
             }
             for inx in inxs.iter() {
-                removeunordered::remove_unordered(&mut steps_by_change_vov, *inx);
+                tools::remove_unordered(&mut steps_by_change_vov, *inx);
             }
         }
 

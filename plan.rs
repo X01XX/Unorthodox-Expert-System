@@ -111,7 +111,7 @@ impl SomePlan {
         })
     }
 
-    /// Extend a plan by emptying another plan.
+    /// Append a plan from another plan.
     pub fn append(&mut self, val: Self) {
         self.steps.append(val.steps);
     }

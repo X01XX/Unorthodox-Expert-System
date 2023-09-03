@@ -7,7 +7,7 @@
 //! Housekeeping needs, like adding a group.
 
 use crate::region::SomeRegion;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::target::SomeTarget;
@@ -96,12 +96,12 @@ pub enum SomeNeed {
     },
     /// Move all current domain states to the corresponding regions of an SelectRegion.
     ToSelectRegion {
-        target_regions: RegionStoreCorr,
+        target_regions: RegionStore,
         priority: usize,
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
     ExitSelectRegion {
-        target_regions: RegionStoreCorr,
+        target_regions: RegionStore,
         priority: usize,
     },
 }

@@ -6,7 +6,6 @@ use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::removeunordered;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
@@ -117,7 +116,7 @@ impl GroupStore {
                 "\nDom {} Act {} Group {} deleted",
                 dom, act, self.avec[*inx].region
             );
-            removeunordered::remove_unordered(&mut self.avec, *inx);
+            tools::remove_unordered(&mut self.avec, *inx);
         }
 
         if !rmvec.is_empty() {
@@ -300,7 +299,7 @@ impl GroupStore {
                 "\nDom {} Act {} Group {} deleted",
                 dom, act, self.avec[*inx].region
             );
-            removeunordered::remove_unordered(&mut self.avec, *inx);
+            tools::remove_unordered(&mut self.avec, *inx);
         }
 
         !rmvec.is_empty()
@@ -309,7 +308,7 @@ impl GroupStore {
     /// Add a group to the end of the list.
     /// So older, more likely groups are first in the list.
     /// The push command in LISP puts an item at the beginning of the list.
-    pub fn push(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
+    pub fn push_nosubs(&mut self, grp: SomeGroup, dom: usize, act: usize) -> bool {
         // Check for supersets, which probably is an error
         if self.any_superset_of(&grp.region) {
             let regs = self.supersets_of(&grp.region);
