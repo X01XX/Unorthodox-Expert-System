@@ -7,12 +7,9 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
-use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-
-use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -64,12 +61,7 @@ impl ActionStore {
     }
 
     /// Get needs for all actions in the store.
-    pub fn get_needs(
-        &mut self,
-        cur: &SomeState,
-        dom: usize,
-        memory: &VecDeque<SomeSample>,
-    ) -> NeedStore {
+    pub fn get_needs(&mut self, cur: &SomeState, dom: usize) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
@@ -78,7 +70,7 @@ impl ActionStore {
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, memory, &self.aggregate_changes))
+            .map(|actx| actx.get_needs(cur, dom, &self.aggregate_changes))
             .collect::<Vec<NeedStore>>();
 
         // Consolidate need into one NeedStore.

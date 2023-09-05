@@ -46,6 +46,8 @@ impl fmt::Display for SomeAction {
     }
 }
 
+const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
+
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
 /// The SomeAction struct, aggregate the best current guess at what an action
@@ -68,6 +70,8 @@ pub struct SomeAction {
     /// When the action has no needs, check for any missed regions.
     remainder_checked: bool,
     remainder_check_region: Option<SomeRegion>,
+    /// Memory for past samples that were not stored in a square, oldest first.
+    pub memory: VecDeque<SomeSample>,
 }
 
 impl SomeAction {
@@ -87,6 +91,7 @@ impl SomeAction {
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
             remainder_check_region: None,
+            memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
         }
     }
 
@@ -103,6 +108,7 @@ impl SomeAction {
         );
         self.squares.find(&smpl.initial).expect("SNH")
     }
+
     /// Do basic functions for any new sample.
     /// Return true if a matching square exists.
     pub fn eval_sample(&mut self, smpl: &SomeSample) -> bool {
@@ -284,11 +290,7 @@ impl SomeAction {
     /// Return needs for states that are not in a group.
     /// The Domain current state for which there are no samples.
     /// A pn > 1 state that needs more samples.
-    pub fn state_not_in_group_needs(
-        &self,
-        cur_state: &SomeState,
-        memory: &VecDeque<SomeSample>,
-    ) -> NeedStore {
+    pub fn state_not_in_group_needs(&self, cur_state: &SomeState) -> NeedStore {
         let mut nds = NeedStore::new(vec![]);
 
         // Check if current state is in any groups
@@ -325,9 +327,6 @@ impl SomeAction {
 
         // Look for a pn > 1, pnc == false, not in group squares
         // Extra samples are needed to gain pnc, then the first group.
-        let mut target: Option<&SomeState> = None;
-        let mut dist = usize::MAX;
-
         let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
 
         for stax in sqrs_pngt1.iter() {
@@ -335,50 +334,18 @@ impl SomeAction {
                 continue;
             }
 
-            if cur_state.distance(stax) < dist {
-                target = Some(stax);
-                dist = cur_state.distance(stax);
-            }
-        }
-        if let Some(stax) = target {
             let mut needx = SomeNeed::StateNotInGroup {
                 dom_num: self.dom_num,
                 act_num: self.num,
-                target_state: stax.clone(),
-                priority: dist,
+                target_state: (*stax).clone(),
+                priority: cur_state.distance(stax),
             };
             needx.set_priority();
             nds.push(needx);
-            return nds;
-        }
-
-        // Check memory
-        let mut target: Option<&SomeSample> = None;
-        let mut dist = usize::MAX;
-
-        for smpx in memory.iter() {
-            if &smpx.initial == cur_state || self.groups.any_superset_of_state(&smpx.initial) {
-                continue;
-            }
-            if cur_state.distance(&smpx.initial) < dist {
-                target = Some(smpx);
-                dist = cur_state.distance(&smpx.initial);
-            }
         } // next stax
 
-        if let Some(smpx) = target {
-            let mut needx = SomeNeed::StateNotInGroup {
-                dom_num: self.dom_num,
-                act_num: self.num,
-                target_state: smpx.initial.clone(),
-                priority: dist,
-            };
-            needx.set_priority();
-            nds.push(needx);
-        }
         nds
     }
-
     /// Get needs for an Action, to improve understanding of the result pattern(s).
     /// When most needs are satisfied, needs for group limitation are generated.
     /// If housekeeping needs are generated, they are processed and needs
@@ -387,7 +354,49 @@ impl SomeAction {
         &mut self,
         cur_state: &SomeState,
         dom: usize,
-        memory: &VecDeque<SomeSample>,
+        agg_changes: &SomeChange,
+    ) -> NeedStore {
+        let mut ret = NeedStore::new(vec![]);
+
+        let mut found = true;
+        while found {
+            found = false;
+
+            ret = self.get_needs2(cur_state, dom, agg_changes);
+
+            // Check memory.
+            let mut inx: Option<usize> = None;
+
+            // For each need
+            for ndx in ret.iter() {
+                // For each memory item, oldest first.
+                // If more than one sample is needed, and exists, sequence will be preserved.
+                for (iny, smpl) in self.memory.iter().enumerate() {
+                    let targx = ndx.target();
+                    if targx.is_superset_of_state(&smpl.initial) {
+                        println!("Memory sample {} found for need {}", smpl, ndx);
+                        inx = Some(iny);
+                        found = true;
+                        break;
+                    }
+                } // next smpl
+
+                // If a sample is found, use it and delete it.
+                if let Some(iny) = inx {
+                    self.eval_sample_arbitrary(&self.memory[iny].clone());
+                    self.memory.remove(iny);
+                    // Clear the inx variable for the next pass.
+                    inx = None;
+                }
+            } // next ndx
+        }
+        ret
+    }
+
+    pub fn get_needs2(
+        &mut self,
+        cur_state: &SomeState,
+        dom: usize,
         agg_changes: &SomeChange,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
@@ -564,7 +573,7 @@ impl SomeAction {
                 // Checks that will not return housekeeping needs
 
                 // Look for needs for states not in groups
-                nds.append(self.state_not_in_group_needs(cur_state, memory));
+                nds.append(self.state_not_in_group_needs(cur_state));
 
                 if nds.is_empty() {
                     // Do remainder check.
@@ -722,6 +731,7 @@ impl SomeAction {
                 .squares
                 .find(grpx.region.state1())
                 .expect("Group region states should refer to existing squares");
+
             if !sqrx.pnc {
                 let mut needx = SomeNeed::ConfirmGroup {
                     dom_num: self.dom_num,
@@ -1652,7 +1662,7 @@ impl SomeAction {
             .do_something
             .take_action(cur_state, self.dom_num, self.num);
 
-        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
+        let asample = SomeSample::new(cur_state.clone(), astate);
         if !self.eval_sample(&asample) {
             self.add_new_square(&asample);
         }
@@ -1661,13 +1671,16 @@ impl SomeAction {
     }
 
     /// Take an action with the current state.
+    /// Return true if a square for the generated sample exists.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_num, self.num);
 
-        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
-        self.eval_sample(&asample);
+        let asample = SomeSample::new(cur_state.clone(), astate);
+        if !self.eval_sample(&asample) {
+            self.add_sample_to_memory(asample.clone());
+        }
         asample
     }
 
@@ -1678,13 +1691,15 @@ impl SomeAction {
             .do_something
             .take_action(cur_state, self.dom_num, self.num);
 
-        let asample = SomeSample::new(cur_state.clone(), self.num, astate);
+        let asample = SomeSample::new(cur_state.clone(), astate);
 
         if self.squares.find(cur_state).is_none() {
             self.add_new_square(&asample);
         }
-        self.eval_sample(&asample);
 
+        if !self.eval_sample(&asample) {
+            self.add_new_square(&asample);
+        }
         asample
     }
 
@@ -1811,6 +1826,14 @@ impl SomeAction {
         rc_str.push(')');
         rc_str
     }
+
+    /// Save a new sample to memory, oldest first.
+    pub fn add_sample_to_memory(&mut self, asample: SomeSample) {
+        if self.memory.len() >= MAX_MEMORY {
+            self.memory.pop_front();
+        }
+        self.memory.push_back(asample);
+    }
 } // end impl SomeAction
 
 // Some action tests are made from the domain level.
@@ -1842,25 +1865,25 @@ mod tests {
         // 0->1 and 0->1, in the fourth bit.
         let s1 = tmp_sta.new_from_string("s0b0001").unwrap();
         let s9 = tmp_sta.new_from_string("s0b1001").unwrap();
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s9.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s9.clone()));
         let s5 = tmp_sta.new_from_string("s0b0101").unwrap();
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
 
         // Set up first two_result square.
         let s0 = tmp_sta.new_from_string("s0b0000").unwrap();
         let s8 = tmp_sta.new_from_string("s0b1000").unwrap();
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
 
         // Set up second two_result square.
         let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
         let sf = tmp_sta.new_from_string("s0b1111").unwrap();
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 1);
@@ -1879,24 +1902,21 @@ mod tests {
 
         // Eval sample that other samples will be incompatible with.
         let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), 0, s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
 
         // Process three similar samples.
         act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b1011")?,
-            0,
             tmp_sta.new_from_string("s0b1010")?,
         ));
 
         act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
-            0,
             tmp_sta.new_from_string("s0b1100")?,
         ));
 
         act0.eval_sample_arbitrary(&SomeSample::new(
             tmp_sta.new_from_string("s0b0001")?,
-            0,
             tmp_sta.new_from_string("s0b0000")?,
         ));
 
@@ -1933,24 +1953,22 @@ mod tests {
         let sf = tmp_sta.new_from_string("s0b1111")?;
         let se = tmp_sta.new_from_string("s0b1110")?;
 
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()));
 
         // Set up 2-result square s1.
         let s1 = tmp_sta.new_from_string("s0b0001")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s1.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()));
 
-        let memory = VecDeque::<SomeSample>::new();
         let nds = act0.get_needs(
             &s1,
             0,
-            &memory,
             &SomeChange::new(
                 tmp_sta.to_mask().new_from_string("m0b1111")?,
                 tmp_sta.to_mask().new_from_string("m0b1111")?,
@@ -1976,15 +1994,15 @@ mod tests {
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
 
         println!("Act: {}", &act0);
 
@@ -2008,19 +2026,19 @@ mod tests {
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), 0, s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()));
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
         let s4 = tmp_sta.new_from_string("s0b0100")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s0.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
 
         println!("Act: {}", &act0);
 
@@ -2054,15 +2072,15 @@ mod tests {
         // Set up square 2.
         let s2 = tmp_sta.new_from_string("s0b0010")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), 0, s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), s0.clone()));
 
         // Set up square b.
         let sb = tmp_sta.new_from_string("s0b1011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), 0, sb.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), sb.clone()));
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), 0, s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
 
         println!("Act: {}", &act0);
 

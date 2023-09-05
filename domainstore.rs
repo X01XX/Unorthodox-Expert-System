@@ -1335,29 +1335,29 @@ mod tests {
         domx.add_action();
         let s1 = domx.state_from_string("s0b1")?;
         let se = domx.state_from_string("s0b1110")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
         let s2 = domx.state_from_string("s0b10")?;
         let sd = domx.state_from_string("s0b1101")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s4 = domx.state_from_string("s0b100")?;
         let sb = domx.state_from_string("s0b1011")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init DomainStore.
         let mut dmxs = DomainStore::new(vec![domx]);
@@ -1413,29 +1413,29 @@ mod tests {
         domx.add_action();
         let s1 = domx.state_from_string("s0b1")?;
         let se = domx.state_from_string("s0b1110")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
         let s2 = domx.state_from_string("s0b10")?;
         let sd = domx.state_from_string("s0b1101")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s4 = domx.state_from_string("s0b100")?;
         let sb = domx.state_from_string("s0b1011")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init DomainStore.
         let mut dmxs = DomainStore::new(vec![domx]);
@@ -1488,29 +1488,29 @@ mod tests {
         domx.add_action();
         let s1 = domx.state_from_string("s0b1")?;
         let se = domx.state_from_string("s0b1110")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
         let s2 = domx.state_from_string("s0b10")?;
         let sd = domx.state_from_string("s0b1101")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s4 = domx.state_from_string("s0b100")?;
         let sb = domx.state_from_string("s0b1011")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init DomainStore.
         let mut dmxs = DomainStore::new(vec![domx]);
@@ -1575,29 +1575,29 @@ mod tests {
         domx.add_action();
         let s1 = domx.state_from_string("s0b1")?;
         let se = domx.state_from_string("s0b1110")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
         let s2 = domx.state_from_string("s0b10")?;
         let sd = domx.state_from_string("s0b1101")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s4 = domx.state_from_string("s0b100")?;
         let sb = domx.state_from_string("s0b1011")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init DomainStore.
         let mut dmxs = DomainStore::new(vec![domx]);
@@ -1642,29 +1642,29 @@ mod tests {
         domx.add_action();
         let s1 = domx.state_from_string("s0b1")?;
         let se = domx.state_from_string("s0b1110")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action();
         let s2 = domx.state_from_string("s0b10")?;
         let sd = domx.state_from_string("s0b1101")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s4 = domx.state_from_string("s0b100")?;
         let sb = domx.state_from_string("s0b1011")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the third bit.
         domx.add_action();
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
-        domx.eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        domx.eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        domx.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init DomainStore.
         let mut dmxs = DomainStore::new(vec![domx]);
@@ -1718,50 +1718,50 @@ mod tests {
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b1")?;
         let se = dmxs[0].state_from_string("s0b1110")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         let s2 = dmxs[0].state_from_string("s0b10")?;
         let sd = dmxs[0].state_from_string("s0b1101")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         let s4 = dmxs[0].state_from_string("s0b100")?;
         let sb = dmxs[0].state_from_string("s0b1011")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the fourth bit.
         let s8 = dmxs[0].state_from_string("s0b1000")?;
         let s7 = dmxs[0].state_from_string("s0b0111")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Set up action to change the fourth bit.
         let s8 = dmxs[1].state_from_string("s0b1000")?;
         let s7 = dmxs[1].state_from_string("s0b0111")?;
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s8.clone()));
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, s7.clone()));
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s8.clone()));
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Set up action to change the first bit.
         let s1 = dmxs[1].state_from_string("s0b0001")?;
         let se = dmxs[1].state_from_string("s0b1110")?;
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s1.clone()));
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, se.clone()));
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s1.clone()));
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         let s2 = dmxs[1].state_from_string("s0b0010")?;
         let sd = dmxs[1].state_from_string("s0b1101")?;
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s2.clone()));
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sd.clone()));
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s2.clone()));
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         let s4 = dmxs[1].state_from_string("s0b0100")?;
         let sb = dmxs[1].state_from_string("s0b1011")?;
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s4.clone()));
-        dmxs[1].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, sb.clone()));
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s4.clone()));
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Init aggregate needs.
         dmxs.get_needs();
@@ -1859,26 +1859,26 @@ mod tests {
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b0001")?;
         let se = dmxs[0].state_from_string("s0b1110")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 0, s1.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 0, se.clone()));
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         let s2 = dmxs[0].state_from_string("s0b0010")?;
         let sd = dmxs[0].state_from_string("s0b1101")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 1, s2.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 1, sd.clone()));
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         let s4 = dmxs[0].state_from_string("s0b0100")?;
         let sb = dmxs[0].state_from_string("s0b1011")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 2, s4.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 2, sb.clone()));
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
         // Set up action to change the fourth bit.
         let s8 = dmxs[0].state_from_string("s0b1000")?;
         let s7 = dmxs[0].state_from_string("s0b0111")?;
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(s0.clone(), 3, s8.clone()));
-        dmxs[0].eval_sample_arbitrary(&SomeSample::new(sf.clone(), 3, s7.clone()));
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8.clone()));
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Init aggregate needs.
         dmxs.get_needs();

@@ -92,7 +92,7 @@ impl SomeGroup {
                 self.region.state2().clone(),
             ]);
         }
-        println!("  Setting group {} pnc to true", self.region);
+        println!("  Group  {} confirmed.", self.region);
     }
 
     /// Return a string representing a group.
@@ -276,7 +276,7 @@ mod tests {
         let initial = tmp_sta.new_from_string("s0b1100")?;
         let result = tmp_sta.new_from_string("s0b0100")?;
 
-        if !grpx.check_subset_sample(&SomeSample::new(initial, 0, result)) {
+        if !grpx.check_subset_sample(&SomeSample::new(initial, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
         }
 

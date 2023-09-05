@@ -789,8 +789,8 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         };
 
         println!("Act {act_num} take sample {i_state} -> {r_state}");
-        let smpl = SomeSample::new(i_state, act_num, r_state);
-        dmx.eval_sample_arbitrary(&smpl);
+        let smpl = SomeSample::new(i_state, r_state);
+        dmx.eval_sample_arbitrary(act_num, &smpl);
         return Ok(());
     } // end command ss 4
 
