@@ -48,16 +48,6 @@ impl RandomPick {
         }
     }
 
-    //    /// Return the current length of the vector.
-    //    pub fn len(&self) -> usize {
-    //        self.items.len()
-    //    }
-
-    //    /// Return true if the store is empty.
-    //    pub fn is_empty(&self) -> bool {
-    //        self.items.is_empty()
-    //    }
-
     /// Pick a random item from a RandomPick vector.
     /// If the item chosen is not at the end, the values will be swapped.
     /// Return the last item.
@@ -78,8 +68,16 @@ impl RandomPick {
 } // End RandomPick
 
 /// Return a string representing a vector of items.
-pub fn vec_string<T: fmt::Display>(avec: &[T]) -> String {
-    let mut rc_str = String::new();
+pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
+    let mut len = 2; // Length of brackets.
+    if !avec.is_empty() {
+        // Length of items may be different, as in corresponding region, or state, vectors.
+        for itmx in avec.iter() {
+            len += itmx.strlen(); // Length of item.
+        }
+        len += (avec.len() - 1) * 2; // Length of separators.
+    }
+    let mut rc_str = String::with_capacity(len);
     rc_str.push('[');
 
     for (inx, itmx) in avec.iter().enumerate() {
@@ -90,13 +88,24 @@ pub fn vec_string<T: fmt::Display>(avec: &[T]) -> String {
     }
 
     rc_str.push(']');
-
+    //    if rc_str.len() != len {
+    //        println!("{}", rc_str);
+    //        panic!("len {} ne calc len {len}", rc_str.len());
+    //    }
     rc_str
 }
 
 /// Return a string representing a vector of references to items.
-pub fn vec_ref_string<T: fmt::Display>(avec: &[&T]) -> String {
-    let mut rc_str = String::new();
+pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
+    let mut len = 2; // Length of brackets.
+    if !avec.is_empty() {
+        // Length of items may be different, as in corresponding region, or state, vectors.
+        for itmx in avec.iter() {
+            len += itmx.strlen(); // Length of item.
+        }
+        len += (avec.len() - 1) * 2; // Length of separators.
+    }
+    let mut rc_str = String::with_capacity(len);
     rc_str.push('[');
 
     for (inx, itmx) in avec.iter().enumerate() {
@@ -107,8 +116,16 @@ pub fn vec_ref_string<T: fmt::Display>(avec: &[&T]) -> String {
     }
 
     rc_str.push(']');
-
+    //    if rc_str.len() != len {
+    //        println!("{}", rc_str);
+    //        panic!("ref len {} ne calc len {len}", rc_str.len());
+    //    }
     rc_str
+}
+
+/// Define the StrLen trait, so structs can return their expected string length for display.
+pub trait StrLen {
+    fn strlen(&self) -> usize;
 }
 
 #[cfg(test)]

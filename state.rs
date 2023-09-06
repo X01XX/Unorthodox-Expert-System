@@ -14,6 +14,7 @@
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::mask::SomeMask;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -110,11 +111,6 @@ impl SomeState {
         self.bts.distance(&other.bts)
     }
 
-    /// Return the expected length of a string used to represent a state.
-    pub fn formatted_string_length(&self) -> usize {
-        self.bts.formatted_string_length()
-    }
-
     /// Return a string used to represent a state.
     pub fn formatted_string(&self) -> String {
         self.bts.formatted_string('s')
@@ -202,9 +198,35 @@ impl BitsRef for SomeState {
     }
 }
 
+/// Implement the trait StrLen for SomeState.
+impl StrLen for SomeState {
+    fn strlen(&self) -> usize {
+        self.bts.strlen()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let strrep = format!("{tmp_sta}");
+        let len = strrep.len();
+        let calc_len = tmp_sta.strlen();
+        println!("str {tmp_sta} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let strrep = format!("{tmp_sta}");
+        let len = strrep.len();
+        let calc_len = tmp_sta.strlen();
+        println!("str {tmp_sta} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn test_is_between() -> Result<(), String> {

@@ -381,10 +381,13 @@ impl SomeAction {
                     }
                 } // next smpl
 
-                // If a sample is found, use it and delete it.
+                // If a sample is found, remove it, use it.
                 if let Some(iny) = inx {
-                    self.eval_sample_arbitrary(&self.memory[iny].clone());
-                    self.memory.remove(iny);
+                    if let Some(smpl) = self.memory.remove(iny) {
+                        self.eval_sample_arbitrary(&smpl);
+                    } else {
+                        panic!("SNH");
+                    }
                     // Clear the inx variable for the next pass.
                     inx = None;
                 }
@@ -658,13 +661,14 @@ impl SomeAction {
     fn cleanup(&mut self, needs: &NeedStore) {
         // Store for keys of squares to delete.
         let mut to_del = StateStore::new(vec![]);
+        let mut smpls = Vec::<SomeSample>::new();
 
-        'next_keyx: for keyx in self.squares.ahash.keys() {
+        'next_sqr: for (keyx, sqrx) in &self.squares.ahash {
             // Check needs
             for ndx in needs.iter() {
                 for targx in ndx.target().iter() {
                     if targx.is_superset_of_state(keyx) {
-                        continue 'next_keyx;
+                        continue 'next_sqr;
                     }
                 }
             }
@@ -675,24 +679,24 @@ impl SomeAction {
                 if grpx.region.is_superset_of_state(keyx) {
                     for stax in grpx.region.states.iter() {
                         if stax == keyx {
-                            continue 'next_keyx;
+                            continue 'next_sqr;
                         }
                     }
                     if grpx.region.states.len() > 2 && grpx.region.state2() == keyx {
-                        continue 'next_keyx;
+                        continue 'next_sqr;
                     }
 
                     if let Some(stay) = &grpx.anchor {
                         if stay == keyx {
-                            continue 'next_keyx;
+                            continue 'next_sqr;
                         }
                         if *keyx == grpx.region.state_far_from(stay) {
-                            continue 'next_keyx;
+                            continue 'next_sqr;
                         }
                     }
                 } else if let Some(stay) = &grpx.anchor {
                     if keyx.is_adjacent(stay) {
-                        continue 'next_keyx;
+                        continue 'next_sqr;
                     }
                 }
             }
@@ -702,10 +706,22 @@ impl SomeAction {
             if self.groups.num_groups_state_in(keyx) == 0 {
                 continue;
             }
-
+            // Save sample from square, if Pn::One.
+            if sqrx.pn == Pn::One {
+                smpls.push(SomeSample::new(keyx.clone(), sqrx.first_result().clone()));
+                if sqrx.pnc {
+                    smpls.push(SomeSample::new(keyx.clone(), sqrx.first_result().clone()));
+                }
+            }
+            // Add square key to delete vector.
             to_del.push(keyx.clone());
         }
 
+        // Add samples to memory.
+        for smplx in smpls {
+            self.add_sample_to_memory(smplx);
+        }
+        // Delete squares.
         if !to_del.is_empty() {
             println!(
                 "\nDom {} Act {} deleted unneeded squares: {}",

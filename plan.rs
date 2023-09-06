@@ -19,6 +19,8 @@
 use crate::region::SomeRegion;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools::StrLen;
+
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
@@ -346,12 +348,48 @@ impl Index<usize> for SomePlan {
     }
 }
 
+/// Implement the trait StrLen for SomePlan.
+impl StrLen for SomePlan {
+    fn strlen(&self) -> usize {
+        if self.dom_num > 9 {
+            4 + self.steps.strlen()
+        } else {
+            3 + self.steps.strlen()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::rule::SomeRule;
     use crate::state::SomeState;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+
+        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
+
+        let strrep = format!("{tmp_pln}");
+        let len = strrep.len();
+        let calc_len = tmp_pln.strlen();
+        println!("str {tmp_pln} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp]);
+        let strrep = format!("{tmp_pln}");
+        let len = strrep.len();
+        let calc_len = tmp_pln.strlen();
+        println!("str {tmp_pln} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn path_region() -> Result<(), String> {

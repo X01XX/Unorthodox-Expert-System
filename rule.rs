@@ -15,6 +15,7 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
+use crate::tools::StrLen;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -259,14 +260,9 @@ impl SomeRule {
         }
     }
 
-    /// Return the expected length of a string representation of SomeRule.
-    pub fn formatted_string_length(&self) -> usize {
-        (self.b00.num_bits() * 3) - 1
-    }
-
     /// Return a string representation of SomeRule.
     pub fn formatted_string(&self) -> String {
-        let mut strrc = String::with_capacity(self.formatted_string_length());
+        let mut strrc = String::with_capacity(self.strlen());
 
         let num_bits = self.b00.num_bits();
 
@@ -461,10 +457,40 @@ impl SomeRule {
     }
 } // end impl SomeRule
 
+/// Implement the trait StrLen for SomeRule.
+impl StrLen for SomeRule {
+    fn strlen(&self) -> usize {
+        (self.b00.num_bits() * 2) + (self.b00.num_bits() - 1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
+        let strrep = format!("{tmp_rul}");
+        let len = strrep.len();
+        let calc_len = tmp_rul.strlen();
+        println!("str {tmp_rul} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+
+        let strrep = format!("{tmp_rul}");
+        let len = strrep.len();
+        let calc_len = tmp_rul.strlen();
+        println!("str {tmp_rul} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn new_all() -> Result<(), String> {

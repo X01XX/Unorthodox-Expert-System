@@ -7,6 +7,7 @@
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::tools;
+use crate::tools::StrLen;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -224,14 +225,9 @@ impl SomeRegion {
         Ok(Self::new(vec![msk_high.to_state(), msk_low.to_state()]))
     } // end new_from_string
 
-    /// Return the expected length of a string representing a region, for string alloaction.
-    pub fn formatted_string_length(&self) -> usize {
-        self.state1().num_bits() + 2 + (self.state1().num_bits() / 4)
-    }
-
     /// Return a String representation of a Region.
     pub fn formatted_string(&self) -> String {
-        let mut s1 = String::with_capacity(self.formatted_string_length());
+        let mut s1 = String::with_capacity(self.strlen());
         s1.push('r');
 
         let num_bits = self.state1().num_bits();
@@ -564,12 +560,41 @@ impl SomeRegion {
     }
 } // end impl SomeRegion
 
+/// Implement the trait StrLen for SomeRegion.
+impl StrLen for SomeRegion {
+    fn strlen(&self) -> usize {
+        self.state1().strlen()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let strrep = format!("{tmp_reg}");
+        let len = strrep.len();
+        let calc_len = tmp_reg.strlen();
+        println!("str {tmp_reg} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_reg = SomeRegion::new(vec![
+            SomeState::new(SomeBits::new(vec![0])),
+            SomeState::new(SomeBits::new(vec![0])),
+        ]);
+        let strrep = format!("{tmp_reg}");
+        let len = strrep.len();
+        let calc_len = tmp_reg.strlen();
+        println!("str {tmp_reg} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn subtract_state_to_supersets_of() -> Result<(), String> {

@@ -10,6 +10,7 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -367,7 +368,7 @@ impl RuleStore {
         let mut rc_len = 3;
 
         if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            rc_len += self.avec.len() * self.avec[0].strlen();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
             }

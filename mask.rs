@@ -13,6 +13,7 @@
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::state::SomeState;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -217,9 +218,35 @@ impl BitsRef for SomeMask {
     }
 }
 
+/// Implement the trait StrLen for SomeMask.
+impl StrLen for SomeMask {
+    fn strlen(&self) -> usize {
+        self.bts.strlen()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_msk = SomeMask::new(SomeBits::new(vec![0]));
+        let strrep = format!("{tmp_msk}");
+        let len = strrep.len();
+        let calc_len = tmp_msk.strlen();
+        println!("str {tmp_msk} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_msk = SomeMask::new(SomeBits::new(vec![0, 0]));
+        let strrep = format!("{tmp_msk}");
+        let len = strrep.len();
+        let calc_len = tmp_msk.strlen();
+        println!("str {tmp_msk} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn eq() -> Result<(), String> {

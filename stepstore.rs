@@ -4,6 +4,7 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::step::SomeStep;
 use crate::tools;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -71,23 +72,9 @@ impl StepStore {
         self.avec.reverse();
     }
 
-    /// Return the expected length of a string representing a StepStore.
-    pub fn formatted_string_length(&self) -> usize {
-        let mut rc_len = 2;
-
-        if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
-            if self.avec.len() > 1 {
-                rc_len += (self.avec.len() - 1) * 2;
-            }
-        }
-
-        rc_len
-    }
-
     /// Return a string representing a StepStore.
     pub fn formatted_string(&self, prefix: &str) -> String {
-        let mut rc_str = String::with_capacity(prefix.len() + self.formatted_string_length());
+        let mut rc_str = String::with_capacity(prefix.len() + self.strlen());
         rc_str.push_str(prefix);
         rc_str.push('[');
 
@@ -300,5 +287,54 @@ impl Index<usize> for StepStore {
     type Output = SomeStep;
     fn index(&self, i: usize) -> &SomeStep {
         &self.avec[i]
+    }
+}
+
+/// Implement the trait StrLen for StepStore.
+impl StrLen for StepStore {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.is_not_empty() {
+            rc_len += self.avec.len() * self.avec[0].strlen();
+            rc_len += (self.avec.len() - 1) * 2;
+        }
+
+        rc_len
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bits::SomeBits;
+    use crate::region::SomeRegion;
+    use crate::rule::SomeRule;
+    use crate::state::SomeState;
+    use crate::step::SomeStep;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+
+        let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);
+
+        let strrep = format!("{tmp_stpst}");
+        let len = strrep.len();
+        let calc_len = tmp_stpst.strlen();
+        println!("str {tmp_stpst} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        tmp_stpst.push(tmp_stp);
+        let strrep = format!("{tmp_stpst}");
+        let len = strrep.len();
+        let calc_len = tmp_stpst.strlen();
+        println!("str {tmp_stpst} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
     }
 }

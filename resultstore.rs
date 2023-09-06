@@ -85,6 +85,7 @@ const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twi
                               // Some assumptions for one-result squares would need to be changed in other code.
                               // Better not to go there unless there is a really good reason.
 
+use crate::tools::StrLen;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -180,21 +181,9 @@ impl ResultStore {
         Pn::Two
     }
 
-    /// Return the expected length of a string to represent a ResultStore.
-    pub fn formatted_string_length(&self) -> usize {
-        let mut rc_len = 2;
-
-        rc_len += self.astore.len() * self.astore[0].formatted_string_length();
-        if self.astore.len() > 1 {
-            rc_len += (self.astore.len() - 1) * 2;
-        }
-
-        rc_len
-    }
-
     /// Return a string to represent a ResultStore.
     pub fn formatted_string(&self) -> String {
-        let mut rc_str = String::with_capacity(self.formatted_string_length());
+        let mut rc_str = String::with_capacity(self.strlen());
         rc_str.push('[');
 
         for (inx, rsltx) in self.astore.iter().enumerate() {
@@ -213,10 +202,42 @@ impl ResultStore {
     }
 } // end impl ResultStore
 
+/// Implement the trait StrLen for SomeBits.
+impl StrLen for ResultStore {
+    fn strlen(&self) -> usize {
+        // Length of two brackets.
+        let mut rc_len = 2;
+        // Length of each item.
+        rc_len += self.astore.len() * self.astore[0].strlen();
+        // Length of seperators.
+        rc_len += (self.astore.len() - 1) * 2;
+        rc_len
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let mut tmp_rst = ResultStore::new(vec![SomeState::new(SomeBits::new(vec![0, 0]))]);
+        let strrep = format!("{tmp_rst}");
+        let len = strrep.len();
+        let calc_len = tmp_rst.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        tmp_rst.add_result(SomeState::new(SomeBits::new(vec![0, 0])));
+        let strrep = format!("{tmp_rst}");
+        let len = strrep.len();
+        let calc_len = tmp_rst.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
 
     #[test]
     fn test_most_recent_result() -> Result<(), String> {

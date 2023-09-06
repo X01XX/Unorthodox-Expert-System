@@ -3,6 +3,7 @@
 use crate::change::SomeChange;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -72,14 +73,9 @@ impl SomeStep {
         }
     }
 
-    /// Return the expected length of a string representing a step.
-    pub fn formatted_string_length(&self) -> usize {
-        8 + (2 * self.initial.formatted_string_length())
-    }
-
     /// Return a string representing a step.
     pub fn formatted_string(&self) -> String {
-        let mut rcstr = String::with_capacity(self.formatted_string_length());
+        let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
         rcstr.push_str(&format!("{}", self.initial));
         rcstr.push_str(&format!(" -{:02}> ", self.act_num));
@@ -94,3 +90,36 @@ impl SomeStep {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 } // end impl SomeStep
+
+/// Implement the trait StrLen for SomeStep.
+impl StrLen for SomeStep {
+    fn strlen(&self) -> usize {
+        8 + (2 * self.initial.strlen())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bits::SomeBits;
+    use crate::region::SomeRegion;
+    use crate::rule::SomeRule;
+    use crate::state::SomeState;
+    use crate::step::SomeStep;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+
+        let strrep = format!("{tmp_stp}");
+        let len = strrep.len();
+        let calc_len = tmp_stp.strlen();
+        println!("str {tmp_stp} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        Ok(())
+    }
+}

@@ -1,6 +1,7 @@
 //! The StateStore struct. A vector of SomeState structs.
 
 use crate::state::SomeState;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -69,7 +70,7 @@ impl StateStore {
         let mut rc_len = 2;
 
         if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].formatted_string_length();
+            rc_len += self.avec.len() * self.avec[0].strlen();
             if self.avec.len() > 1 {
                 rc_len += (self.avec.len() - 1) * 2;
             }

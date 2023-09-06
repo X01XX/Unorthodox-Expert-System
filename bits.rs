@@ -30,6 +30,7 @@ use std::fmt;
 use std::hash::Hash;
 
 extern crate unicode_segmentation;
+use crate::tools::StrLen;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Display trait for SomeBits
@@ -469,14 +470,9 @@ impl SomeBits {
         self.ints[0] & INT_HIGH_NIBBLE > 0
     }
 
-    /// Calculate the expected length of a string that represents a SomeBits struct.
-    pub fn formatted_string_length(&self) -> usize {
-        (NUM_BITS_PER_INT * self.ints.len()) + (self.ints.len() * (NUM_BITS_PER_INT / 4))
-    }
-
     /// Create a formatted string for the instance.
     pub fn formatted_string(&self, prefix: char) -> String {
-        let mut astr = String::with_capacity(self.formatted_string_length());
+        let mut astr = String::with_capacity(self.strlen());
         astr.push(prefix);
 
         let nibbles_per_int = NUM_BITS_PER_INT / 4;
@@ -502,7 +498,7 @@ impl SomeBits {
     /// Create a formatted string to display under an instance,
     /// to indicate specific bits positions.
     pub fn str2(&self) -> String {
-        let mut astr = String::with_capacity(self.formatted_string_length());
+        let mut astr = String::with_capacity(self.strlen());
 
         for intx in &self.ints {
             astr.push(' ');
@@ -546,11 +542,36 @@ impl BitsRef for SomeBits {
     }
 }
 
+/// Implement the trait StrLen for SomeBits.
+impl StrLen for SomeBits {
+    fn strlen(&self) -> usize {
+        (NUM_BITS_PER_INT * self.ints.len()) + (self.ints.len() * (NUM_BITS_PER_INT / 4))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tools;
     use rand::Rng;
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_bts = SomeBits::new(vec![0]);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+        Ok(())
+    }
 
     #[test]
     fn new() -> Result<(), String> {
