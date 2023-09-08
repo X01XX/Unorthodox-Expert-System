@@ -6,7 +6,7 @@ use std::fmt;
 
 impl fmt::Display for SomeTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "T:{}{}", &self.dom_num, &self.region)
     }
 }
 
@@ -30,10 +30,5 @@ impl SomeTarget {
 
     pub fn is_superset_of_state(&self, stax: &SomeState) -> bool {
         self.region.is_superset_of_state(stax)
-    }
-
-    /// Return a String representation of SomeTarget.
-    pub fn formatted_string(&self) -> String {
-        format!("T:{}{}", &self.dom_num, &self.region)
     }
 }

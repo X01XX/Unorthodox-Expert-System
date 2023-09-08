@@ -261,7 +261,7 @@ impl SomeRule {
     }
 
     /// Return a string representation of SomeRule.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.strlen());
 
         let num_bits = self.b00.num_bits();

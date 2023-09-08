@@ -10,7 +10,7 @@
 
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::tools::StrLen;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -25,7 +25,7 @@ pub struct RuleStore {
 
 impl fmt::Display for RuleStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", tools::vec_string(&self.avec))
     }
 }
 
@@ -361,38 +361,6 @@ impl RuleStore {
     /// Return the initial region of the first rule in the store.
     pub fn initial_region(&self) -> SomeRegion {
         self.avec[0].initial_region()
-    }
-
-    /// Return the expected length of a string representing the store.
-    pub fn formatted_string_length(&self) -> usize {
-        let mut rc_len = 3;
-
-        if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].strlen();
-            if self.avec.len() > 1 {
-                rc_len += (self.avec.len() - 1) * 2;
-            }
-        }
-
-        rc_len
-    }
-
-    /// Return a string representing the store.
-    pub fn formatted_string(&self) -> String {
-        let mut flg = 0;
-        let mut rc_str = String::with_capacity(self.formatted_string_length());
-
-        rc_str.push_str("R[");
-        for strx in &self.avec {
-            if flg == 1 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &strx));
-            flg = 1;
-        }
-        rc_str.push(']');
-
-        rc_str
     }
 } // end impl RuleStore
 

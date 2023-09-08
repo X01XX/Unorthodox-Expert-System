@@ -576,7 +576,7 @@ impl SomeDomain {
     }
 
     /// Return a String representation of SomeDomain.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rc_str = String::from("D(ID: ");
 
         rc_str.push_str(&self.num.to_string());

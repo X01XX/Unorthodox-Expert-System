@@ -30,11 +30,11 @@ impl SomeSample {
     }
 
     /// Return a string to represent a SomeSample instance.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         format!(
             "{} -> {}",
-            self.initial.formatted_string(),
-            self.result.formatted_string()
+            self.initial,
+            self.result
         )
     }
 }

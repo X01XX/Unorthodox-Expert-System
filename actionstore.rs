@@ -151,7 +151,7 @@ impl ActionStore {
     }
 
     /// Return a String representation of an ActionStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rc_str = String::new();
 
         for actx in &self.avec {

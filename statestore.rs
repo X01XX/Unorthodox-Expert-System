@@ -1,7 +1,7 @@
 //! The StateStore struct. A vector of SomeState structs.
 
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -11,7 +11,7 @@ use std::fmt;
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", tools::vec_string(&self.avec))
     }
 }
 
@@ -63,37 +63,6 @@ impl StateStore {
     /// Return true if a StateStore contains a given state.
     pub fn contains(&self, stax: &SomeState) -> bool {
         self.avec.contains(stax)
-    }
-
-    /// Return the expected length of a string representing a StateStore.
-    pub fn formatted_string_length(&self) -> usize {
-        let mut rc_len = 2;
-
-        if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].strlen();
-            if self.avec.len() > 1 {
-                rc_len += (self.avec.len() - 1) * 2;
-            }
-        }
-
-        rc_len
-    }
-
-    /// Return a string representing a StateStore.
-    pub fn formatted_string(&self) -> String {
-        let mut rc_str = String::with_capacity(self.formatted_string_length());
-        rc_str.push('[');
-
-        for (inx, stax) in self.avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &stax));
-        }
-
-        rc_str.push(']');
-
-        rc_str
     }
 } // end impl StateStore
 

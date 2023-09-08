@@ -336,8 +336,8 @@ impl SomePlan {
     }
 
     /// Return a String representation of SomePlan.
-    pub fn formatted_string(&self) -> String {
-        self.steps.formatted_string(&format!("P:{}", &self.dom_num))
+    fn formatted_string(&self) -> String {
+        format!("{} P:{}", self.steps, self.dom_num)
     }
 } // end impl SomePlan
 
@@ -351,11 +351,7 @@ impl Index<usize> for SomePlan {
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
-        if self.dom_num > 9 {
-            4 + self.steps.strlen()
-        } else {
-            3 + self.steps.strlen()
-        }
+        4 + self.steps.strlen()
     }
 }
 

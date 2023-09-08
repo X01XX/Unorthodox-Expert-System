@@ -6,8 +6,7 @@
 
 use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -226,7 +225,7 @@ impl SomeRegion {
     } // end new_from_string
 
     /// Return a String representation of a Region.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.strlen());
         s1.push('r');
 

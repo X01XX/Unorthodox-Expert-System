@@ -3,8 +3,7 @@
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::step::SomeStep;
-use crate::tools;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -73,7 +72,7 @@ impl StepStore {
     }
 
     /// Return a string representing a StepStore.
-    pub fn formatted_string(&self, prefix: &str) -> String {
+    fn formatted_string(&self, prefix: &str) -> String {
         let mut rc_str = String::with_capacity(prefix.len() + self.strlen());
         rc_str.push_str(prefix);
         rc_str.push('[');
@@ -82,7 +81,7 @@ impl StepStore {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &stpx));
+            rc_str.push_str(&stpx.to_string());
         }
         rc_str.push(']');
 

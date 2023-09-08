@@ -108,7 +108,7 @@ impl SomeChange {
     }
 
     /// Return a string to represent a SomeChange instance.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(10);
 
         if self.b01.is_not_low() {

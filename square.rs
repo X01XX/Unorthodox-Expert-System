@@ -4,6 +4,7 @@ use crate::pn::Pn;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
+use crate::sample::SomeSample;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -35,12 +36,15 @@ pub struct SomeSquare {
 }
 
 impl SomeSquare {
-    /// Return a new Square instance.
-    pub fn new(state: SomeState, result_state: SomeState) -> Self {
+    /// Return a SomeSquare instance, from a sample.
+    pub fn new(asample: &SomeSample) -> Self {
         Self {
-            state: state.clone(),
-            results: ResultStore::new(vec![result_state.clone()]),
-            rules: Some(RuleStore::new(vec![SomeRule::new(&state, &result_state)])),
+            state: asample.initial.clone(),
+            results: ResultStore::new(vec![asample.result.clone()]),
+            rules: Some(RuleStore::new(vec![SomeRule::new(
+                &asample.initial,
+                &asample.result,
+            )])),
             pn: Pn::One,
             pnc: false,
         }
@@ -61,21 +65,23 @@ impl SomeSquare {
         }
     }
 
-    /// Add a result to a square (4-item circular buffer).
+    /// Add a new sample to a square (4-item circular buffer).
     /// Return true if the addition changed the square, either the
     /// pn or pnc changed.  If there is a change, update the rules.
-    pub fn add_result(&mut self, st: SomeState) -> bool {
+    pub fn add_sample(&mut self, asample: &SomeSample) -> bool {
+        assert!(self.state == asample.initial);
+
         let mut str_info = String::from(&format!(
             "\n  Square {} adding result {} {}",
             self.state,
             self.results.num_results() + 1,
-            &st
+            &asample.result
         ));
 
         let sav_pn = self.pn;
         let sav_pnc = self.pnc;
 
-        self.pn = self.results.add_result(st);
+        self.pn = self.results.add_result(asample.result.clone());
         self.pnc = self.calc_pnc();
 
         let mut changed = false;
@@ -215,9 +221,9 @@ impl SomeSquare {
     }
 
     /// Return a String representation of a square.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rc_str = String::from("S[");
-        rc_str.push_str(&format!("{}", &self.state));
+        rc_str.push_str(&self.state.to_string());
         rc_str.push_str(&format!(", pn: {}", &self.pn));
         if self.pnc {
             rc_str.push_str(", pnc: t");
@@ -225,12 +231,10 @@ impl SomeSquare {
             rc_str.push_str(", pnc: f");
         }
 
-        let ruls = if let Some(ruls_str) = &self.rules {
-            format!("{}", ruls_str)
-        } else {
-            String::from("None")
-        };
-        rc_str.push_str(&format!(", {}", ruls));
+        if let Some(ruls_str) = &self.rules {
+            rc_str.push(' ');
+            rc_str.push_str(&ruls_str.to_string());
+        }
 
         rc_str.push(']');
         rc_str
@@ -247,63 +251,90 @@ mod tests {
     fn cycle_through_pn_pnc_values() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
-        let mut sqrx = SomeSquare::new(
+        let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
         assert_eq!(sqrx.pn, Pn::One);
         assert!(!sqrx.pnc);
 
         // Second result, same as the first.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
 
         // Third result, same as the first two.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
 
         // Fourth result, different from the first three, square becomes Unpredictable.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0100")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Fifth result, same as the first, square remains Unpredictable.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Sixth result, same as the second most recent, square becomes Pn::Two.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0100")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Two);
         assert!(sqrx.pnc);
 
         // Seventh result, same as the second most recent, square stays Pn::Two.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Two);
         assert!(sqrx.pnc);
 
         // Eighth result, same as the most recent, square becomes Pn::Unpredictable.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Nineth result, same as the most recent, square remains Pn::Unpredictable.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Tenth result, same as the most recent, square becomes Pn::One.
-        let changed = sqrx.add_result(tmp_sta.new_from_string("s0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
@@ -317,15 +348,15 @@ mod tests {
     fn can_combine_not_same() {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
-        let sqr1 = SomeSquare::new(
+        let sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101").unwrap(),
             tmp_sta.new_from_string("s0b0101").unwrap(),
-        );
+        ));
 
-        let sqr2 = SomeSquare::new(
+        let sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101").unwrap(),
             tmp_sta.new_from_string("s0b0101").unwrap(),
-        );
+        ));
 
         sqr1.can_combine_now(&sqr2);
 
@@ -339,31 +370,34 @@ mod tests {
 
         // Test two squares with only one sample each.
         // Allow a true result for bootstrapping.
-        let sqr1 = SomeSquare::new(
+        let sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
-        let sqr2 = SomeSquare::new(
+        let sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
         println!("sqr1: {sqr1}");
         println!("sqr2: {sqr2}");
 
         assert!(sqr1.can_combine_now(&sqr2));
 
         // Create a square incompatible to sqr1 to produce M result.
-        let mut sqr3 = SomeSquare::new(
+        let mut sqr3 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1100")?,
-        );
+        ));
         println!("sqr3: {sqr3}");
 
         assert!(!sqr1.can_combine_now(&sqr3));
 
         // Add to sqr3 to make it pnc.
-        sqr3.add_result(tmp_sta.new_from_string("s0b1100")?);
+        sqr3.add_sample(&SomeSample::new(
+            sqr3.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
         println!("sqr3: {sqr3}");
 
         assert!(!sqr1.can_combine_now(&sqr3));
@@ -378,24 +412,27 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn 1 pnc f.
-        let sqr1 = SomeSquare::new(
+        let sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
         // Create sqr2 pn 2 pnc f, one result compatible to sqr1.
-        let mut sqr2 = SomeSquare::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
 
-        sqr2.add_result(tmp_sta.new_from_string("s0b1100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
 
         // Create sqr3 pn 1 pnc f, incompatible to any result in sqr2.
-        let sqr3 = SomeSquare::new(
+        let sqr3 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
+        ));
 
         println!("sqr1: {sqr1}");
         println!("sqr2: {sqr2}");
@@ -408,12 +445,15 @@ mod tests {
         assert!(!sqr2.can_combine_now(&sqr3));
 
         // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
-        let mut sqr4 = SomeSquare::new(
+        let mut sqr4 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
-        sqr4.add_result(tmp_sta.new_from_string("s0b0101")?);
+        sqr4.add_sample(&SomeSample::new(
+            sqr4.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         println!("sqr4: {sqr4}");
         println!("sqr2: {sqr2}");
 
@@ -424,8 +464,14 @@ mod tests {
         assert!(!sqr2.may_combine_later_to(&sqr4));
 
         // Add to sqr2 to make it pnc.
-        sqr2.add_result(tmp_sta.new_from_string("s0b1101")?);
-        sqr2.add_result(tmp_sta.new_from_string("s0b1100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
 
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
@@ -450,20 +496,26 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn 2 pnc f.
-        let mut sqr1 = SomeSquare::new(
+        let mut sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
 
-        sqr1.add_result(tmp_sta.new_from_string("s0b1100")?);
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
 
         // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
-        sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
         let cmb = sqr1.may_combine_later_to(&sqr2);
@@ -473,12 +525,15 @@ mod tests {
         assert!(cmb);
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
-        let mut sqr3 = SomeSquare::new(
+        let mut sqr3 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
-        sqr3.add_result(tmp_sta.new_from_string("s0b1101")?);
+        sqr3.add_sample(&SomeSample::new(
+            sqr3.state.clone(),
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr3 {}", sqr3);
         let cmb = sqr1.can_combine_now(&sqr3);
@@ -488,8 +543,14 @@ mod tests {
         assert!(!cmb);
 
         // Make sqr1 pnc.
-        sqr1.add_result(tmp_sta.new_from_string("s0b1101")?);
-        sqr1.add_result(tmp_sta.new_from_string("s0b1100")?);
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
         if sqr1.can_combine_now(&sqr2) {
@@ -497,8 +558,14 @@ mod tests {
         }
 
         // Add to sqr2 to make it pnc.
-        sqr2.add_result(tmp_sta.new_from_string("s0b0101")?);
-        sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
 
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
@@ -510,14 +577,23 @@ mod tests {
         assert!(!sqr1.can_combine_now(&sqr3));
 
         // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
-        let mut sqr4 = SomeSquare::new(
+        let mut sqr4 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
+        ));
 
-        sqr4.add_result(tmp_sta.new_from_string("s0b0101")?);
-        sqr4.add_result(tmp_sta.new_from_string("s0b0100")?);
-        sqr4.add_result(tmp_sta.new_from_string("s0b0101")?);
+        sqr4.add_sample(&SomeSample::new(
+            sqr4.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
+        sqr4.add_sample(&SomeSample::new(
+            sqr4.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
+        sqr4.add_sample(&SomeSample::new(
+            sqr4.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr4 {}", sqr4);
 
@@ -525,14 +601,23 @@ mod tests {
         assert!(!sqr1.can_combine_now(&sqr4));
 
         // Create sqr5, combinable with sqr1, but results in reverse order.
-        let mut sqr5 = SomeSquare::new(
+        let mut sqr5 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
+        ));
 
-        sqr5.add_result(tmp_sta.new_from_string("s0b0101")?);
-        sqr5.add_result(tmp_sta.new_from_string("s0b0100")?);
-        sqr5.add_result(tmp_sta.new_from_string("s0b0101")?);
+        sqr5.add_sample(&SomeSample::new(
+            sqr5.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
+        sqr5.add_sample(&SomeSample::new(
+            sqr5.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
+        sqr5.add_sample(&SomeSample::new(
+            sqr5.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr5 {}", sqr5);
 
@@ -548,19 +633,25 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(
+        let mut sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
 
-        sqr1.add_result(tmp_sta.new_from_string("s0b1100")?);
-        sqr1.add_result(tmp_sta.new_from_string("s0b1000")?);
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1000")?,
+        ));
 
         // Create sqr2 pn 1 pnc f.
-        let mut sqr2 = SomeSquare::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
 
@@ -568,7 +659,10 @@ mod tests {
         assert!(!sqr1.can_combine_now(&sqr2));
 
         // Make sqr2 pnc == true.
-        sqr2.add_result(tmp_sta.new_from_string("s0b0101")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
         println!("sqr2 {}", sqr2);
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
@@ -583,20 +677,29 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(
+        let mut sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
 
-        sqr1.add_result(tmp_sta.new_from_string("s0b1100")?);
-        sqr1.add_result(tmp_sta.new_from_string("s0b1000")?);
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1000")?,
+        ));
 
         // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
-        sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
+        ));
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
 
@@ -606,8 +709,14 @@ mod tests {
         assert!(!sqr1.can_combine_now(&sqr2));
 
         // Make sqr2 pnc == true.
-        sqr2.add_result(tmp_sta.new_from_string("s0b0101")?);
-        sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        ));
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
 
@@ -623,22 +732,34 @@ mod tests {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(
+        let mut sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
-        );
+        ));
 
-        sqr1.add_result(tmp_sta.new_from_string("s0b1100")?);
-        sqr1.add_result(tmp_sta.new_from_string("s0b1000")?);
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1000")?,
+        ));
 
         // Create sqr2 pn U pnc T.
-        let mut sqr2 = SomeSquare::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0001")?,
             tmp_sta.new_from_string("s0b0001")?,
-        );
+        ));
 
-        sqr2.add_result(tmp_sta.new_from_string("s0b0010")?);
-        sqr2.add_result(tmp_sta.new_from_string("s0b0100")?);
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0010")?,
+        ));
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        ));
         println!("sqr1 {}", sqr1);
         println!("sqr2 {}", sqr2);
 

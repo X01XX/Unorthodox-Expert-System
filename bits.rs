@@ -36,7 +36,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Display trait for SomeBits
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string('b'))
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -471,9 +471,8 @@ impl SomeBits {
     }
 
     /// Create a formatted string for the instance.
-    pub fn formatted_string(&self, prefix: char) -> String {
+    fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
-        astr.push(prefix);
 
         let nibbles_per_int = NUM_BITS_PER_INT / 4;
         let mut fil = 0;
@@ -545,7 +544,9 @@ impl BitsRef for SomeBits {
 /// Implement the trait StrLen for SomeBits.
 impl StrLen for SomeBits {
     fn strlen(&self) -> usize {
-        (NUM_BITS_PER_INT * self.ints.len()) + (self.ints.len() * (NUM_BITS_PER_INT / 4))
+        let items_len = NUM_BITS_PER_INT * self.ints.len();
+        let sep_len = self.ints.len() * (NUM_BITS_PER_INT / 4) - 1;
+        items_len + sep_len
     }
 }
 

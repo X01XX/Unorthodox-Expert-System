@@ -306,7 +306,7 @@ impl SomeNeed {
     } // end target
 
     /// Return a String representation of SomeNeed.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         match self {
             Self::AddGroup {
                 group_region,

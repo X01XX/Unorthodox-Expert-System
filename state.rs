@@ -33,7 +33,7 @@ pub struct SomeState {
 /// Implement the fmt::Display Trait for a SomeState instance.
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "s{}", self.formatted_string())
     }
 }
 
@@ -112,8 +112,8 @@ impl SomeState {
     }
 
     /// Return a string used to represent a state.
-    pub fn formatted_string(&self) -> String {
-        self.bts.formatted_string('s')
+    fn formatted_string(&self) -> String {
+        self.bts.to_string()
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
@@ -201,7 +201,7 @@ impl BitsRef for SomeState {
 /// Implement the trait StrLen for SomeState.
 impl StrLen for SomeState {
     fn strlen(&self) -> usize {
-        self.bts.strlen()
+        self.bts.strlen() + 1
     }
 }
 

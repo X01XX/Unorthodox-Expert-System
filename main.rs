@@ -962,7 +962,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
                 }
             }
         } else if let Some(ruls) = rules {
-            rules_str = ruls.formatted_string();
+            rules_str = ruls.to_string();
             for stax in non_pn_stas.iter() {
                 let sqrx = dmx.actions[act_num].squares.find(stax).expect(
                     "States in the non_pn_stas StateStore should all reference existing squares",

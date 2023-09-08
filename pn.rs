@@ -68,7 +68,7 @@ pub enum Pn {
 
 impl Pn {
     /// Return a String representation of a Pn.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         match self {
             Pn::One => String::from("1"),
             Pn::Two => String::from("2"),

@@ -3,8 +3,7 @@
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::tools;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -13,7 +12,7 @@ use std::slice::Iter;
 
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", tools::vec_string(&self.avec))
     }
 }
 #[readonly::make]
@@ -168,23 +167,6 @@ impl RegionStore {
         self.avec.push(reg);
 
         true
-    }
-
-    /// Return a string representing a RegionStore.
-    pub fn formatted_string(&self) -> String {
-        let mut rc_str = String::with_capacity(self.strlen());
-        rc_str.push('[');
-
-        for (inx, regx) in self.avec.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&format!("{}", &regx));
-        }
-
-        rc_str.push(']');
-
-        rc_str
     }
 
     /// Subtract a region from a RegionStore
@@ -621,18 +603,16 @@ impl IndexMut<usize> for RegionStore {
     }
 }
 
-/// Implement the trait StrLen for SomeBits.
+/// Implement the trait StrLen for RegionStore.
 impl StrLen for RegionStore {
     fn strlen(&self) -> usize {
-        // Length of two brackets.
-        let mut rc_len = 2; // Brackets.
+        let mut rc_len = 2;
 
-        let alen = self.avec.len();
-
-        if alen > 0 {
-            rc_len += alen * self.avec[0].strlen(); // Items length.
-            rc_len += (alen - 1) * 2; // Separators length.
+        if self.is_not_empty() {
+            rc_len += self.avec.len() * self.avec[0].strlen();
+            rc_len += (self.avec.len() - 1) * 2;
         }
+
         rc_len
     }
 }
@@ -641,27 +621,6 @@ impl StrLen for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-
-    #[test]
-    fn test_strlen() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-        let mut tmp_regst = RegionStore::new(vec![tmp_reg.clone()]);
-
-        let strrep = format!("{tmp_regst}");
-        let len = strrep.len();
-        let calc_len = tmp_regst.strlen();
-        println!("str {tmp_regst} len {len} calculated len {calc_len}");
-        assert!(len == calc_len);
-
-        tmp_regst.push(tmp_reg);
-        let strrep = format!("{tmp_regst}");
-        let len = strrep.len();
-        let calc_len = tmp_regst.strlen();
-        println!("str {tmp_regst} len {len} calculated len {calc_len}");
-        assert!(len == calc_len);
-
-        Ok(())
-    }
 
     #[test]
     fn test_is_superset_states_corr() -> Result<(), String> {

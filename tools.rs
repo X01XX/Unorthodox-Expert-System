@@ -84,7 +84,7 @@ pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
         if inx > 0 {
             rc_str.push_str(", ");
         }
-        rc_str.push_str(&format!("{}", itmx));
+        rc_str.push_str(&itmx.to_string());
     }
 
     rc_str.push(']');
@@ -112,7 +112,7 @@ pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
         if inx > 0 {
             rc_str.push_str(", ");
         }
-        rc_str.push_str(&format!("{}", itmx));
+        rc_str.push_str(&itmx.to_string());
     }
 
     rc_str.push(']');

@@ -102,7 +102,7 @@ impl SquareStore {
     }
 
     /// Return a String representation of a SquareStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::new();
 

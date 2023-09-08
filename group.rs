@@ -96,9 +96,9 @@ impl SomeGroup {
     }
 
     /// Return a string representing a group.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rc_str = String::from("G(");
-        rc_str.push_str(&self.region.formatted_string());
+        rc_str.push_str(&self.region.to_string());
 
         rc_str.push_str(&format!(", pn: {}", self.pn));
 
@@ -106,10 +106,10 @@ impl SomeGroup {
 
         match self.pn {
             Pn::One => {
-                rc_str.push_str(&self.rules.as_ref().expect("SNH").formatted_string());
+                rc_str.push_str(&self.rules.as_ref().expect("SNH").to_string());
             }
             Pn::Two => {
-                rc_str.push_str(&self.rules.as_ref().expect("SNH").formatted_string());
+                rc_str.push_str(&self.rules.as_ref().expect("SNH").to_string());
             }
             Pn::Unpredictable => {
                 rc_str.push_str("R[Unpredictable]");
@@ -295,11 +295,14 @@ mod tests {
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
-        let mut sqrx = SomeSquare::new(
+        let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
-        sqrx.add_result(tmp_sta.new_from_string("s0b0101")?); // Pn::Two, pnc == false.
+        ));
+        sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0101")?,
+        )); // Pn::Two, pnc == false.
 
         if grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 1 failed!"));
@@ -315,11 +318,14 @@ mod tests {
 
         let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
-        let mut sqrx = SomeSquare::new(
+        let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
-        sqrx.add_result(tmp_sta.new_from_string("s0b0100")?); // pn = Pn::One, pnc = true.
+        ));
+        sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            tmp_sta.new_from_string("s0b0100")?,
+        )); // pn = Pn::One, pnc = true.
 
         if grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
@@ -332,10 +338,10 @@ mod tests {
 
         let grpx = SomeGroup::new(regx, rules, true);
 
-        let sqrx = SomeSquare::new(
+        let sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
+        ));
 
         if !grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 3 failed!"));
@@ -348,19 +354,19 @@ mod tests {
 
         let grpx = SomeGroup::new(regx, Some(rules), true);
 
-        let sqrx = SomeSquare::new(
+        let sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
-        );
+        ));
 
         if !grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 4a failed!"));
         }
 
-        let sqrx = SomeSquare::new(
+        let sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0101")?,
-        );
+        ));
 
         if grpx.check_subset_square(&sqrx) {
             return Err(format!("check_subset_square: test 4b failed!"));

@@ -85,7 +85,7 @@ impl TargetStore {
     }
 
     /// Return a String representation of a TargetStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut flg = 0;
 
         let mut rc_str = String::new();
@@ -96,7 +96,7 @@ impl TargetStore {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
-            rc_str.push_str(&format!("{}", &targx));
+            rc_str.push_str(&targx.to_string());
             flg = 1;
         }
         rc_str.push(']');

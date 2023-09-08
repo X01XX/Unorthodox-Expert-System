@@ -30,7 +30,7 @@ pub struct SomeMask {
 /// Display trait for SomeMask
 impl fmt::Display for SomeMask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "m{}", self.formatted_string())
     }
 }
 
@@ -140,8 +140,8 @@ impl SomeMask {
     }
 
     /// Return a formatted string.
-    pub fn formatted_string(&self) -> String {
-        self.bts.formatted_string('m')
+    fn formatted_string(&self) -> String {
+        self.bts.to_string()
     }
 
     /// Create a formatted string to display under an instance,
@@ -221,7 +221,7 @@ impl BitsRef for SomeMask {
 /// Implement the trait StrLen for SomeMask.
 impl StrLen for SomeMask {
     fn strlen(&self) -> usize {
-        self.bts.strlen()
+        self.bts.strlen() + 1
     }
 }
 

@@ -10,7 +10,7 @@ use std::ops::Index;
 
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut str = self.regions.formatted_string();
+        let mut str = self.regions.to_string();
         str.push_str(&format!(", value: {:+}", self.value));
         str.push_str(&format!(", times visited {}", self.times_visited));
         write!(f, "{}", str)

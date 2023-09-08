@@ -126,7 +126,7 @@ impl PlanStore {
     }
 
     /// Return a String representation of a PlanStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut flg = 0;
 
         let mut rc_str = String::new();
@@ -137,7 +137,7 @@ impl PlanStore {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
-            rc_str.push_str(&format!("{}", &planx));
+            rc_str.push_str(&planx.to_string());
             flg = 1;
         }
         rc_str.push(')');

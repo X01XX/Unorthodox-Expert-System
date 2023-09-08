@@ -92,13 +92,13 @@ impl GroupStore {
                         act,
                         sqrx.state,
                         if let Some(rules) = &sqrx.rules {
-                            rules.formatted_string()
+                            rules.to_string()
                         } else {
                             String::from("None")
                         },
                         &grpx.region,
                         if let Some(rules) = &grpx.rules {
-                            rules.formatted_string()
+                            rules.to_string()
                         } else {
                             String::from("None")
                         },
@@ -395,7 +395,7 @@ impl GroupStore {
     }
 
     /// Return a String representation of a GroupStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::new();
 
@@ -403,7 +403,7 @@ impl GroupStore {
             if flg == 1 {
                 rc_str.push_str(",\n              ");
             }
-            rc_str.push_str(&grpx.formatted_string());
+            rc_str.push_str(&grpx.to_string());
             flg = 1;
         }
 

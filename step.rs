@@ -74,12 +74,12 @@ impl SomeStep {
     }
 
     /// Return a string representing a step.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
-        rcstr.push_str(&format!("{}", self.initial));
+        rcstr.push_str(&self.initial.to_string());
         rcstr.push_str(&format!(" -{:02}> ", self.act_num));
-        rcstr.push_str(&format!("{}", self.result));
+        rcstr.push_str(&self.result.to_string());
         rcstr.push(']');
         rcstr
     }

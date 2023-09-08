@@ -1279,14 +1279,14 @@ impl DomainStore {
     }
 
     /// Return a String representation of a DomainStore.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         let mut rc_str = String::from("[");
 
         for (inx, mskx) in self.avec.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", &mskx));
+            rc_str.push_str(&mskx.to_string());
         }
         rc_str.push(']');
 
@@ -2050,11 +2050,8 @@ mod tests {
 
         // Finish select regions setup.
         dmxs.calc_select();
-        println!("select regs: {}", dmxs.select.formatted_string());
-        println!(
-            "non-neg:     {}",
-            &dmxs.select_non_negative.formatted_string()
-        );
+        println!("select regs: {}", dmxs.select.to_string());
+        println!("non-neg:     {}", &dmxs.select_non_negative.to_string());
 
         // Get exit needs.
         if let Some(nds) = dmxs.check_select() {
