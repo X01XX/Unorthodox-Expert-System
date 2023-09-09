@@ -31,10 +31,6 @@ impl SomeSample {
 
     /// Return a string to represent a SomeSample instance.
     fn formatted_string(&self) -> String {
-        format!(
-            "{} -> {}",
-            self.initial,
-            self.result
-        )
+        format!("{} -> {}", self.initial, self.result)
     }
 }

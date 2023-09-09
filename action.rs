@@ -46,7 +46,7 @@ impl fmt::Display for SomeAction {
     }
 }
 
-const MAX_MEMORY: usize = 20; // Max number of recent current states to keep in a circular buffer.
+const MAX_MEMORY: usize = 20; // Max number of recent squares/samples to keep in a circular buffer.
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
@@ -70,8 +70,8 @@ pub struct SomeAction {
     /// When the action has no needs, check for any missed regions.
     remainder_checked: bool,
     remainder_check_region: Option<SomeRegion>,
-    /// Memory for past samples that were not stored in a square, oldest first.
-    pub memory: VecDeque<SomeSample>,
+    /// Memory for past samples that were not stored in a square, or squares removed from the cleanup function, oldest first.
+    pub memory: VecDeque<SomeSquare>,
 }
 
 impl SomeAction {
@@ -91,7 +91,7 @@ impl SomeAction {
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
             remainder_check_region: None,
-            memory: VecDeque::<SomeSample>::with_capacity(MAX_MEMORY),
+            memory: VecDeque::<SomeSquare>::with_capacity(MAX_MEMORY),
         }
     }
 
@@ -106,6 +106,22 @@ impl SomeAction {
         self.squares.find(&smpl.initial).expect("SNH")
     }
 
+    /// Evaluate a new or changed square.
+    fn eval_changed_square(&mut self, key: &SomeState) {
+        if let Some(sqrx) = self.squares.find_mut(key) {
+            // Check if it invalidates any groups.
+            let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_num, self.num);
+
+            if !regs_invalid.is_empty() {
+                self.process_invalid_regions(&regs_invalid);
+            }
+
+            if !self.groups.any_superset_of_state(key) {
+                self.create_groups_from_squares(&[key.clone()]);
+            }
+        }
+    }
+
     /// Do basic functions for any new sample.
     /// Return true if a matching square exists.
     pub fn eval_sample(&mut self, smpl: &SomeSample) -> bool {
@@ -113,15 +129,7 @@ impl SomeAction {
         // Check if a square already exists.
         if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
             if sqrx.add_sample(smpl) {
-                // If the square changed, check if it invalidates any groups.
-                let regs_invalid: RegionStore =
-                    self.groups.check_square(sqrx, self.dom_num, self.num);
-                if !regs_invalid.is_empty() {
-                    self.process_invalid_regions(&regs_invalid);
-                }
-                if !self.groups.any_superset_of_state(&smpl.initial) {
-                    self.create_groups_from_squares(&[smpl.initial.clone()]);
-                }
+                self.eval_changed_square(&smpl.initial);
             }
             return true;
         }
@@ -368,20 +376,27 @@ impl SomeAction {
             for ndx in ret.iter() {
                 // For each memory item, oldest first.
                 // If more than one sample is needed, and exists, sequence will be preserved.
-                for (iny, smpl) in self.memory.iter().enumerate() {
+                for (iny, sqrx) in self.memory.iter().enumerate() {
                     let targx = ndx.target();
-                    if targx.is_superset_of_state(&smpl.initial) {
-                        println!("Memory sample {} found for need {}", smpl, ndx);
-                        inx = Some(iny);
-                        found = true;
-                        break;
+                    if targx.is_superset_of_state(&sqrx.state) {
+                        println!("Memory square {} found for need {}", sqrx, ndx);
+                        if self.squares.find(&sqrx.state).is_some() {
+                            println!("Found already in square hash??");
+                        } else {
+                            inx = Some(iny);
+                            found = true;
+                            break;
+                        }
                     }
                 } // next smpl
 
-                // If a sample is found, remove it, use it.
+                // If a square is found, remove it, use it.
                 if let Some(iny) = inx {
-                    if let Some(smpl) = self.memory.remove(iny) {
-                        self.eval_sample_arbitrary(&smpl);
+                    if let Some(sqrx) = self.memory.remove(iny) {
+                        // Process square as a series of samples.
+                        let key = sqrx.state.clone();
+                        self.squares.insert(sqrx, self.dom_num, self.num);
+                        self.eval_changed_square(&key);
                     } else {
                         panic!("SNH");
                     }
@@ -1606,44 +1621,6 @@ impl SomeAction {
         ret_grps
     } // end possible_regions_from_square
 
-    /// Return squares, temporary unless stored by the caller, from memory samples,
-    /// that are in a given region, and not in an optional second region.
-    fn _squares_from_memory(
-        &self,
-        regx: &SomeRegion,
-        notreg: Option<&SomeRegion>,
-    ) -> Option<Vec<SomeSquare>> {
-        let mut ret_vec = Vec::<SomeSquare>::new();
-        for smplx in self.memory.iter() {
-            if regx.is_superset_of_state(&smplx.initial) {
-                if self.squares.find(&smplx.initial).is_some() {
-                    continue;
-                }
-                if let Some(regy) = notreg {
-                    if regy.is_superset_of_state(&smplx.initial) {
-                        continue;
-                    }
-                }
-                let mut found = false;
-                for sqrx in ret_vec.iter_mut() {
-                    if sqrx.state == smplx.initial {
-                        sqrx.add_sample(smplx);
-                        found = true;
-                    }
-                }
-                if !found {
-                    ret_vec.push(SomeSquare::new(smplx));
-                }
-            }
-        }
-        // Decide what to return.
-        if ret_vec.is_empty() {
-            None
-        } else {
-            Some(ret_vec)
-        }
-    }
-
     /// Validate a region that may be made from a given square, in combination with similar squares.
     fn validate_possible_group(
         &self,
@@ -1917,10 +1894,18 @@ impl SomeAction {
 
     /// Save a new sample to memory, oldest first.
     pub fn add_sample_to_memory(&mut self, asample: SomeSample) {
+        // Add to an existing square, if possible.
+        for sqrx in self.memory.iter_mut() {
+            if sqrx.state == asample.initial {
+                sqrx.add_sample(&asample);
+                return;
+            }
+        }
+
         if self.memory.len() >= MAX_MEMORY {
             self.memory.pop_front();
         }
-        self.memory.push_back(asample);
+        self.memory.push_back(SomeSquare::new(&asample));
     }
 } // end impl SomeAction
 
