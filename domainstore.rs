@@ -57,6 +57,10 @@ pub struct DomainStore {
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
     pub select: SelectRegionsStore,
+    /// Positive regions, not overlapped by negative >= value regions.
+    pub select_positive: SelectRegionsStore,
+    /// Negative regions, not overlapped by positive >= value regions.
+    pub select_negative: SelectRegionsStore,
     /// Non-negative Select Regions.
     pub select_non_negative: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
@@ -81,6 +85,8 @@ impl DomainStore {
             boredom: 0,
             boredom_limit: 0,
             select: SelectRegionsStore::new(vec![]),
+            select_negative: SelectRegionsStore::new(vec![]),
+            select_positive: SelectRegionsStore::new(vec![]),
             select_non_negative: SelectRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
             can_do: Vec::<InxPlan>::new(),
@@ -115,33 +121,110 @@ impl DomainStore {
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
-        let mut max = RegionStore::with_capacity(self.len());
-        for domx in self.avec.iter() {
-            max.push(domx.maximum_region());
-        }
-        let mut nnvec = SelectRegionsStore::new(vec![SelectRegions::new(max, 0)]);
-        for selx in self.select.iter() {
-            if selx.value < 0 {
-                nnvec = nnvec.subtract(selx);
+
+        // Calculate positive regions.
+        let mut pos_only = SelectRegionsStore::new(vec![]);
+        for inx in 0..(self.select.len()) {
+            if self.select[inx].value <= 0 {
+                continue;
+            }
+            let mut pos_regs = SelectRegionsStore::new(vec![self.select[inx].clone()]);
+            for iny in 0..self.select.len() {
+                if iny == inx {
+                    continue;
+                }
+                if self.select[iny].value >= 0 {
+                    continue;
+                }
+                if self.select[iny].value.abs() >= self.select[inx].value
+                    && pos_only.any_intersection_of(&self.select[iny].regions)
+                {
+                    pos_regs = pos_regs.subtract(&self.select[iny]);
+                }
+            } // next iny
+            for regsx in pos_regs.iter() {
+                pos_only.push_nosubs(regsx.clone());
+            }
+        } // next inx
+
+        // Store positive regions.
+        self.select_positive = pos_only;
+        println!("\nPositive Select Regions:");
+        if self.select_positive.is_empty() {
+            println!("  None");
+        } else {
+            for selx in self.select_positive.iter() {
+                println!("  {}", selx);
             }
         }
-        self.select_non_negative = nnvec;
-        println!("\nNon-negative Select Regions:");
-        for regsx in self.select_non_negative.iter() {
-            println!("  {}", regsx);
+
+        // Calculate negative regions.
+        let mut neg_only = SelectRegionsStore::new(vec![]);
+        for inx in 0..(self.select.len()) {
+            if self.select[inx].value >= 0 {
+                continue;
+            }
+            let mut neg_regs = SelectRegionsStore::new(vec![self.select[inx].clone()]);
+            for iny in 0..self.select.len() {
+                if iny == inx {
+                    continue;
+                }
+                if self.select[iny].value <= 0 {
+                    continue;
+                }
+                if self.select[iny].value >= self.select[inx].value.abs()
+                    && neg_only.any_intersection_of(&self.select[iny].regions)
+                {
+                    neg_regs = neg_regs.subtract(&self.select[iny]);
+                }
+            } // next iny
+            for regsx in neg_regs.iter() {
+                neg_only.push_nosubs(regsx.clone());
+            }
+        } // next inx
+
+        // Store negative regions.
+        self.select_negative = neg_only;
+        println!("\nNegative Select Regions:");
+        if self.select_negative.is_empty() {
+            println!("  None");
+        } else {
+            for selx in self.select_negative.iter() {
+                println!("  {}", selx);
+            }
         }
 
-        let mut adj_regs = SelectRegionsStore::new(vec![]);
+        // Calculate non-negative regions.
 
-        let mut num_int = 0;
-        let mut num_adjacent = 0;
-        for inx in 0..(self.select_non_negative.len()) {
-            for iny in (inx + 1)..self.select_non_negative.len() {
-                if self.select_non_negative[inx].intersects(&self.select_non_negative[iny]) {
-                    num_int += 1;
-                    //println!("{} intersects {}", self.select_non_negative[inx], self.select_non_negative[iny]);
-                } else if self.select_non_negative[inx].is_adjacent(&self.select_non_negative[iny])
-                {
+        // Start with maximum region.
+        let mut nn_only = RegionStore::with_capacity(self.len());
+        for domx in self.avec.iter() {
+            nn_only.push(domx.maximum_region());
+        }
+
+        // Subtract negative regions.
+        let mut nnvec = SelectRegionsStore::new(vec![SelectRegions::new(nn_only, 0)]);
+        for selx in self.select_negative.iter() {
+            nnvec = nnvec.subtract(selx);
+        }
+
+        // Store non-negative regions.
+        self.select_non_negative = nnvec;
+        println!("\nNon-Negative Select Regions:");
+        if self.select_non_negative.is_empty() {
+            println!("  None");
+        } else {
+            for selx in self.select_non_negative.iter() {
+                println!("  {}", selx);
+            }
+        }
+
+        // Find and add non-negative adjacent parts.
+        println!("\nNon-Negative Adjacent Select Regions:");
+        let mut adj_regs = SelectRegionsStore::new(vec![]);
+        for inx in 0..(self.select_non_negative.len() - 1) {
+            for iny in (inx + 1)..(self.select_non_negative.len()) {
+                if self.select_non_negative[inx].is_adjacent(&self.select_non_negative[iny]) {
                     let adjx =
                         self.select_non_negative[inx].adjacent_part(&self.select_non_negative[iny]);
                     println!(
@@ -149,13 +232,16 @@ impl DomainStore {
                         self.select_non_negative[inx], self.select_non_negative[iny], adjx
                     );
                     adj_regs.push(adjx);
-                    num_adjacent += 1;
                 }
             }
         }
+        if adj_regs.is_empty() {
+            println!("  None");
+        }
         self.select_non_negative.append(adj_regs);
 
-        println!("  {num_int} intersections, {num_adjacent} adjacent");
+        println!("\nSelect Regions: {}, Positive regions: {}, Negative Regions: {}, Non-Negative regions and adjacent {}",
+            self.select.len(), self.select_positive.len(), self.select_negative.len(),  self.select_non_negative.len());
     }
 
     /// Add a Domain struct to the store.
@@ -649,8 +735,7 @@ impl DomainStore {
         }
 
         // Get value of select states.
-        let val = self.select.value_supersets_of_states(&all_states);
-        if val < 0 {
+        if self.select_negative.any_supersets_of_states(&all_states) {
             self.boredom = 0;
             self.boredom_limit = 0;
 
@@ -685,7 +770,7 @@ impl DomainStore {
         }
 
         // Check current status within a select region, or not.
-        if self.select.any_supersets_of_states(&all_states) {
+        if self.select_positive.any_supersets_of_states(&all_states) {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
                 return None;
@@ -709,11 +794,13 @@ impl DomainStore {
 
     /// Return a need for moving to an select region.
     fn select_goal_needs(&self, all_states: &[&SomeState]) -> Option<NeedStore> {
+        println!("domainstore: select_goal_needs");
         // Get regions the current state is not in.
-        let mut notsups = self.select.not_supersets_of_states(all_states);
+        let mut notsups = self.select_positive.not_supersets_of_states(all_states);
 
         // If the current state is not in at least one select region, return None.
         if notsups.is_empty() {
+            println!("ret 1");
             return None;
         }
 
@@ -733,24 +820,10 @@ impl DomainStore {
             }
         }
 
-        let mut notsups2 = SelectRegionsStore::new(vec![]);
-        for subx in self.select_non_negative.iter() {
-            let mut found = false;
-            for sely in notsups.iter() {
-                if subx.regions.is_subset_of_corr(&sely.regions) {
-                    found = true;
-                    break;
-                }
-            }
-            if found {
-                notsups2.push(subx.clone());
-            }
-        }
-
         // Load return vector.
         let mut ret_str = NeedStore::with_capacity(notsups.len());
 
-        for nsupx in notsups2.iter() {
+        for nsupx in notsups.iter() {
             // Calc priority addon, to weight the priority by distance and value of the region.
             let (value, times_visited) = self.select.rate_regions(&nsupx.regions);
             if value < 0 {

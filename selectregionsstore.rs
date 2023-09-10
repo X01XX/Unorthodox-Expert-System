@@ -143,6 +143,16 @@ impl SelectRegionsStore {
         false
     }
 
+    /// Return true if any SelectRegion intersects a given RegionStore.
+    pub fn any_intersection_of(&self, regs: &RegionStore) -> bool {
+        for regsx in &self.regionstores {
+            if regsx.regions.intersects_corr(regs) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return list of select regions that are superset of a State vector.
     pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
         self.regionstores
