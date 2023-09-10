@@ -19,10 +19,8 @@ use std::fmt;
 /// SomeRegion struct
 pub struct SomeRegion {
     /// Vector for one, or more, states.
+    /// If more than one state is used, the last state will be the farthest from the first state.
     pub states: Vec<SomeState>,
-    /// If the number of states is GT 2, this will hold a state calculated to
-    /// be the farthest in the region from the first state.
-    far_state: Option<SomeState>,
 }
 
 /// Implement the fmt::Display trait.
@@ -55,10 +53,7 @@ impl SomeRegion {
 
         // Check for single-state region.
         if states.len() == 1 {
-            return Self {
-                states,
-                far_state: None,
-            };
+            return Self { states };
         }
 
         // Remove duplicate states, if any.
@@ -80,13 +75,11 @@ impl SomeRegion {
         }
 
         if states.len() < 3 {
-            return Self {
-                states,
-                far_state: None,
-            };
+            return Self { states };
         }
 
         // Remove unneeded states, if any.
+        // If GT 2 states, it might remove all but two states.
         remv = Vec::<usize>::new();
         for (inx, stax) in states.iter().enumerate().skip(1) {
             for (iny, stay) in states.iter().enumerate().skip(1) {
@@ -107,11 +100,8 @@ impl SomeRegion {
         }
 
         // Check for easy result.
-        if states.len() < 3 {
-            return Self {
-                states,
-                far_state: None,
-            };
+        if states.len() == 2 {
+            return Self { states };
         }
 
         // Calculate a state far from the first state.
@@ -120,10 +110,11 @@ impl SomeRegion {
             dif = dif.bitwise_or(&stax.bitwise_xor(&states[0]));
         }
 
-        let far_state = Some(states[0].bitwise_xor(&dif));
-
         // Return region with more than two states.
-        Self { states, far_state }
+        let far_state = states[0].bitwise_xor(&dif);
+        let mut states2 = states.clone();
+        states2.push(far_state);
+        Self { states: states2 }
     }
 
     /// Return a reference to the first state.
@@ -133,11 +124,7 @@ impl SomeRegion {
 
     /// Return a reference to the second state.
     pub fn state2(&self) -> &SomeState {
-        if let Some(far) = &self.far_state {
-            far
-        } else {
-            self.states.last().unwrap()
-        }
+        self.states.last().unwrap()
     }
 
     /// Return a Region from a string and the number of integers to use.
@@ -645,7 +632,7 @@ mod tests {
         let sta2 = tmp_sta.new_from_string("s0b0010")?;
         let reg3 = SomeRegion::new(vec![sta1.clone(), sta7.clone(), sta2.clone()]);
         println!("reg3 is {}", reg3);
-        assert!(reg3.states.len() == 3);
+        assert!(reg3.states.len() == 4);
 
         println!("reg3 state1 = {}", reg3.state1());
         assert!(reg3.state1() == &sta1);
@@ -680,7 +667,7 @@ mod tests {
         ]);
 
         println!("reg5 is {}", reg5);
-        assert!(reg5.states.len() == 3);
+        assert!(reg5.states.len() == 4);
 
         println!("reg5 state2 = {}", reg5.state2());
         assert!(reg5.state2() == &sta7);
@@ -694,7 +681,7 @@ mod tests {
             sta7.clone(),
         ]);
         println!("reg6 is {}", reg6);
-        assert!(reg6.states.len() == 3);
+        assert!(reg6.states.len() == 4);
 
         println!("reg6 state1 = {}", reg6.state1());
         assert!(reg6.state1() == &sta1);

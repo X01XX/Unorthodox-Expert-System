@@ -6,6 +6,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -133,16 +134,6 @@ impl SomeSquare {
         self.results.first()
     }
 
-    /// Return the second result for the square.
-    pub fn second_result(&self) -> &SomeState {
-        self.results.second()
-    }
-
-    /// Return the third result for the square.
-    pub fn third_result(&self) -> &SomeState {
-        self.results.third()
-    }
-
     pub fn num_results(&self) -> usize {
         self.results.num_results()
     }
@@ -251,6 +242,12 @@ impl SomeSquare {
     }
 } // end impl SomeSquare
 
+/// Implement the trait StrLen for SomeSquare.
+impl StrLen for SomeSquare {
+    fn strlen(&self) -> usize {
+        40
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

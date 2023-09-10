@@ -1052,8 +1052,10 @@ fn do_print_group_defining_squares_command(
         for stax in grpx.region.states.iter() {
             if let Some(sqrx) = dmx.actions[act_num].squares.find(stax) {
                 println!(" {}", &sqrx);
+            } else if let Some(sqrx) = dmx.actions[act_num].memory_find(stax) {
+                println!(" {} (from memory)", &sqrx);
             } else {
-                println!("far state {} not found", stax);
+                println!("state {} not found", stax);
             }
         }
     } else {

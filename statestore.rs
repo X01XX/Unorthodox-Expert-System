@@ -28,18 +28,6 @@ impl StateStore {
         Self { avec }
     }
 
-    /// Return a new, empty, StateStore instance, with a specified capacity.
-    pub fn with_capacity(num: usize) -> Self {
-        Self {
-            avec: Vec::<SomeState>::with_capacity(num),
-        }
-    }
-
-    /// Return the number of states in a StateStore.
-    pub fn len(&self) -> usize {
-        self.avec.len()
-    }
-
     /// Add a state to a StateStore.
     pub fn push(&mut self, val: SomeState) {
         self.avec.push(val);
@@ -50,19 +38,9 @@ impl StateStore {
         self.avec.is_empty()
     }
 
-    /// Return true if the store is not empty.
-    pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
-    }
-
     /// Return an immuable iterator.
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()
-    }
-
-    /// Return true if a StateStore contains a given state.
-    pub fn contains(&self, stax: &SomeState) -> bool {
-        self.avec.contains(stax)
     }
 } // end impl StateStore
 

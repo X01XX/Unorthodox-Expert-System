@@ -164,23 +164,6 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return a list of RegionStores, split by intersections, until
-    /// none have a partial intersection with the original RegionStores.
-    /// Some result RegionStores may overlap each other.
-    /// Each result regionstore will be a subset of one, or more, of the original regionstores,
-    /// where the sum of the SelectRegion values is greater than zero.
-    pub fn split_to_subsets(&self) -> Self {
-        //println!("selectregionsstore: split_to_subsets");
-        let mut rs = Self::with_capacity(self.len());
-        for reg_valx in &self.regionstores {
-            if !rs.any_supersets_of(&reg_valx.regions) {
-                rs.push(reg_valx.clone());
-            }
-        }
-
-        rs
-    }
-
     /// Return true if an equal RegionStore is already in the SelectRegionsStore.
     fn contains(&self, regstr: &RegionStore) -> bool {
         for regstrx in &self.regionstores {

@@ -149,11 +149,6 @@ impl ResultStore {
         &self.astore[1]
     }
 
-    /// Return the third result.
-    pub fn third(&self) -> &SomeState {
-        &self.astore[2]
-    }
-
     /// Return the most recent result.
     pub fn most_recent_result(&self) -> &SomeState {
         &self.astore[(self.num_results - 1) % MAX_RESULTS]

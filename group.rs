@@ -54,7 +54,7 @@ impl SomeGroup {
     pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>, pnc: bool) -> Self {
         //println!(
         //  "adding group {}",
-        //  SomeRegion::newif additions.is_not_low() {
+        //   regionx
         //);
         let mut pnx = Pn::One;
         if ruls.is_none() {
@@ -64,6 +64,7 @@ impl SomeGroup {
             if xruls.len() == 2 {
                 pnx = Pn::Two;
             }
+            assert!(regionx == xruls.initial_region());
         }
 
         Self {

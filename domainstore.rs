@@ -57,10 +57,6 @@ pub struct DomainStore {
     /// This may be changed from the UI, see the help display for the commands "oa" and "od".
     /// If more than one region, boredom may cause the program to run rules to switch to a different region.
     pub select: SelectRegionsStore,
-    /// To allow for intersecting Select RegionStores, store RegionStores that are a subset of
-    /// one, or more, Select Regions, with a sum of the values of the superset RegionStores that is greater than zero.
-    /// These become goals, after rule-building needs are satisfied.
-    pub select_subsets: SelectRegionsStore,
     /// Non-negative Select Regions.
     pub select_non_negative: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
@@ -84,7 +80,6 @@ impl DomainStore {
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
-            select_subsets: SelectRegionsStore::new(vec![]),
             select: SelectRegionsStore::new(vec![]),
             select_non_negative: SelectRegionsStore::new(vec![]),
             needs: NeedStore::new(vec![]),
@@ -120,11 +115,6 @@ impl DomainStore {
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
-        self.select_subsets = self.select.split_to_subsets();
-        //println!(
-        //    "\nSelect Regions positive subsets: {}",
-        //    RegionStore::vec_string(&self.select_subsets)
-        //);
         let mut max = RegionStore::with_capacity(self.len());
         for domx in self.avec.iter() {
             max.push(domx.maximum_region());
@@ -744,7 +734,7 @@ impl DomainStore {
         }
 
         let mut notsups2 = SelectRegionsStore::new(vec![]);
-        for subx in self.select_subsets.iter() {
+        for subx in self.select_non_negative.iter() {
             let mut found = false;
             for sely in notsups.iter() {
                 if subx.regions.is_subset_of_corr(&sely.regions) {
@@ -1161,9 +1151,17 @@ impl DomainStore {
             // Generate next level of bridge vectors.
             for btw_x in between_vecs.iter() {
                 for regcr_y in other_regions.iter() {
-                    if btw_x.contains(regcr_y) {
+                    let mut found = false;
+                    for reg_strx in btw_x.iter() {
+                        if reg_strx.eq_corr(regcr_y) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if found {
                         continue;
                     }
+
                     let left = btw_x.first().unwrap();
                     if left.intersects_corr(regcr_y) {
                         // Generate new between path.
@@ -1956,11 +1954,6 @@ mod tests {
         dmxs.add_select(regstr3, 1);
         dmxs.add_select(regstr4, 1);
         dmxs.calc_select();
-
-        println!("Select subsets:");
-        for regstrx in dmxs.select_subsets.iter() {
-            println!("regstrx: {}", regstrx);
-        }
 
         // Set state for domain 0.
         let state1 = dmxs[0].state_from_string("s0x12")?;

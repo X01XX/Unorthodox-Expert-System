@@ -4,7 +4,6 @@ use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
-use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -28,11 +27,11 @@ impl SquareStore {
         Self { ahash }
     }
 
-    pub fn del_squares(&mut self, sqrs: &StateStore) {
-        for sqrx in sqrs.iter() {
-            self.ahash.remove(sqrx);
-        }
+    /// Remove a square.
+    pub fn remove(&mut self, key: &SomeState) -> Option<SomeSquare> {
+        self.ahash.remove(key)
     }
+
     /// Return the number of squares stored.
     pub fn len(&self) -> usize {
         self.ahash.len()
