@@ -65,6 +65,7 @@ mod actioninterface;
 mod planstore;
 use planstore::PlanStore;
 mod selectregions;
+use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
 mod targetstore;
@@ -327,12 +328,12 @@ fn domainstore_init() -> DomainStore {
     );
 
     // Add select regionstores.
-    dmxs.add_select(regstr1, 3);
-    dmxs.add_select(regstr2, 2);
-    dmxs.add_select(regstr3, 3);
-    dmxs.add_select(regstr4, 1);
-    dmxs.add_select(regstr5, -1);
-    dmxs.add_select(regstr6, -1);
+    dmxs.add_select(SelectRegions::new(regstr1, 3, 0));
+    dmxs.add_select(SelectRegions::new(regstr2, 2, 0));
+    dmxs.add_select(SelectRegions::new(regstr3, 3, 0));
+    dmxs.add_select(SelectRegions::new(regstr4, 1, 0));
+    dmxs.add_select(SelectRegions::new(regstr5, 0, 1));
+    dmxs.add_select(SelectRegions::new(regstr6, 0, 1));
     dmxs.calc_select();
 
     dmxs
@@ -838,7 +839,8 @@ fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
             );
             if inx > 0 {
                 for sel_regx in dom_str.select.iter() {
-                    if sel_regx.regions.is_superset_states_corr(&cur_states) && sel_regx.value < 0 {
+                    if sel_regx.regions.is_superset_states_corr(&cur_states) && sel_regx.value() < 0
+                    {
                         print!(" in {:+}", sel_regx);
                     }
                 }

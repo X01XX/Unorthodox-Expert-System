@@ -246,6 +246,7 @@ impl SomeRegion {
 
     /// Return true if two regions are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
+        //println!("is_adjacent");
         self.diff_mask(other).just_one_bit()
     }
 
@@ -256,6 +257,7 @@ impl SomeRegion {
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &Self) -> bool {
+        //println!("intersects");
         self.diff_mask(other).is_low()
     }
 
@@ -354,6 +356,7 @@ impl SomeRegion {
 
     /// Return the union of two regions.
     pub fn union(&self, other: &Self) -> Self {
+        //println!("union {} and {}", self, other);
         let st_low = self.low_state().bitwise_and(&other.low_state());
 
         let st_high = self.high_state().bitwise_or(&other.high_state());

@@ -271,6 +271,19 @@ impl RegionStore {
     /// Corresponding functions.
     /// A RegionStore has a region for each domain.
 
+    /// Return the union of two RegionStores with corresponding regions.
+    pub fn union_corr(&self, other: &Self) -> Self {
+        let mut ret = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
+        for (regx, regy) in self.avec.iter().zip(other.avec.iter()) {
+            if regx.is_adjacent(regy) || regx.intersects(regy) {
+                ret.push(regx.union(regy));
+            } else {
+                panic!("regionstore: union_corr: {} union {}?", regx, regy);
+            }
+        }
+        ret
+    }
+
     /// Return True if a RegionStore is a superset of all corresponding states in a SomeState vector.
     /// Used in optimal regionstore calculations.
     pub fn is_superset_states_corr(&self, stas: &[&SomeState]) -> bool {
@@ -401,19 +414,22 @@ impl RegionStore {
         dist
     }
 
-    /// Return self - a given RegionStore.
+    /// Return self minus a given RegionStore.
     pub fn subtract_corr(&self, subtrahend: &Self) -> Vec<Self> {
         debug_assert!(self.len() == subtrahend.len());
 
         let mut ret = Vec::<Self>::new();
 
-        if self.is_subset_of_corr(subtrahend) {
-            return ret;
-        }
-
+        // Check for no change.
         if !self.intersects_corr(subtrahend) {
             ret.push(self.clone());
             return ret;
+        }
+        // Check for anf subset part.
+        for (regx, regy) in self.iter().zip(subtrahend.iter()) {
+            if regx.is_subset_of(regy) {
+                return ret;
+            }
         }
 
         for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
@@ -463,8 +479,8 @@ impl RegionStore {
         true
     }
 
-    /// Return true if at least one corresponding pair in two RegionStore is adjacent,
-    /// while other corresponding pairs are adjacent or intersect.
+    /// Return true if exoctly one corresponding pair in two RegionStore is adjacent,
+    /// while other corresponding pairs intersect.
     pub fn is_adjacent_corr(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
@@ -477,7 +493,7 @@ impl RegionStore {
             }
             num_dif += dif;
         }
-        num_dif > 0
+        num_dif == 1
     }
 
     /// Return the adjacent part of two RegionStores.
@@ -499,6 +515,64 @@ impl RegionStore {
         }
 
         ret_select
+    }
+
+    /// Add a RegionStore, removing subset (and equal) RegionStores.
+    /// Return true if the item was added.
+    pub fn vec_push_nosubs(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
+        // Check for supersets.
+        for itemx in avec.iter() {
+            if itemx.is_superset_of_corr(&item) {
+                return false;
+            }
+        }
+
+        // Identify supersets
+        let mut rmvec = Vec::<usize>::new();
+
+        for (inx, regx) in avec.iter().enumerate() {
+            if regx.is_subset_of_corr(&item) {
+                rmvec.push(inx);
+            }
+        }
+
+        // Remove identified regions, in reverse (highest index) order
+        for inx in rmvec.iter().rev() {
+            tools::remove_unordered(avec, *inx);
+        }
+
+        avec.push(item);
+
+        true
+    }
+
+    /// Add a RegionStore, removing superset (and equal) RegionStores.
+    /// Return true if the item was added.
+    pub fn vec_push_nosups(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
+        // Check for subsets.
+        for itemx in avec.iter() {
+            if itemx.is_subset_of_corr(&item) {
+                return false;
+            }
+        }
+
+        // Identify supersets
+        let mut rmvec = Vec::<usize>::new();
+
+        for (inx, regx) in avec.iter().enumerate() {
+            if regx.is_superset_of_corr(&item) {
+                rmvec.push(inx);
+            }
+        }
+
+        // Remove identified regions, in reverse (highest index) order
+        for inx in rmvec.iter().rev() {
+            tools::remove_unordered(avec, *inx);
+        }
+
+        avec.push(item);
+
+        true
     }
 } // End impl RegionStore.
 
@@ -793,6 +867,7 @@ mod tests {
                 tmp_reg0.new_from_string("rX010").expect("SNH")
             ])
         ));
+
         Ok(())
     }
 
