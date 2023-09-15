@@ -1101,16 +1101,11 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <p>
  The result is (XXX0, 00XX, 0X0X).
  </p>
-
+ <table class="indent1">
+    <tr>
+    <th>
  <table>
-	 <tr>
-	 <th>XXX0</th>
-	 <th>00XX</th>
-	 <th>0X0X</th>
-	 </tr>
-	 <tr>
-	 <td>
-   <table>
+ <caption>XXX0</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1147,9 +1142,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td class="bgg2">A</td>
     </tr>
  </table>
-	 </td>
-	 <td>
-   <table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>00XX</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1186,9 +1182,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-	 </td>
-	 <td>
-   <table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>0X0X</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -1225,12 +1222,193 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-     </td>
-     </tr>
+ </th>
+ </tr>
+    </table> 
+   <h3>Calculating a path to avoid a region.</h3>
+   <p class="indent1">
+   Assume you want to find a path from square 1 to square E, avoiding region X1X1.
+   </p>
+   <table class="indent1">
+ <caption>Squares 1 and E, and region X1X1</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td>0</td>
+  <td class="bgg">1</td>
+  <td>3</td>
+  <td>2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td>4</td>
+  <td class="bgr">5</td>
+  <td class="bgr">7</td>
+  <td>6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td>C</td>
+  <td class="bgr">D</td>
+  <td class="bgr">F</td>
+  <td class="bgg">E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td>8</td>
+  <td>9</td>
+  <td>B</td>
+  <td>A</td>
+    </tr>
  </table>
-
-
-
+   <p class="indent1">
+   The complement of region X1X1, containing square 1, is X0XX.
+   </p>
+   <p class="indent1">
+   The complement of region X1X1, containing square E, is XXX0.
+   </p>
+   <p class="indent1">
+   X0XX intersects XXX0 at X0X0.
+   </p>
+ <table class="indent1">
+    <tr>
+    <th>
+ <table>
+ <caption>X0XX</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg2">0</td>
+  <td class="bgg">1</td>
+  <td class="bgg2">3</td>
+  <td class="bgg2">2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td>4</td>
+  <td class="bgr">5</td>
+  <td class="bgr">7</td>
+  <td>6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td>C</td>
+  <td class="bgr">D</td>
+  <td class="bgr">F</td>
+  <td>E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td class="bgg2">8</td>
+  <td class="bgg2">9</td>
+  <td class="bgg2">B</td>
+  <td class="bgg2">A</td>
+    </tr>
+ </table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>XXX0</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg2">0</td>
+  <td>1</td>
+  <td>3</td>
+  <td class="bgg2">2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td class="bgg2">4</td>
+  <td class="bgr">5</td>
+  <td class="bgr">7</td>
+  <td class="bgg2">6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td class="bgg2">C</td>
+  <td class="bgr">D</td>
+  <td class="bgr">F</td>
+  <td class="bgg">E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td class="bgg2">8</td>
+  <td>9</td>
+  <td>B</td>
+  <td class="bgg2">A</td>
+    </tr>
+ </table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>X0X0</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg">0</td>
+  <td>1</td>
+  <td>3</td>
+  <td class="bgg">2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td>4</td>
+  <td class="bgr">5</td>
+  <td class="bgr">7</td>
+  <td>6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td>C</td>
+  <td class="bgr">D</td>
+  <td class="bgr">F</td>
+  <td>E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td class="bgg">8</td>
+  <td>9</td>
+  <td>B</td>
+  <td class="bgg">A</td>
+    </tr>
+ </table>
+ </th>
+ </tr>
+    </table> 
+   <p class="indent1">
+   So the path from 1 to E is 1 to X0X0, staying within X0XX.
+   </p>
+   <p class="indent1">
+   Then from X0X0, to E, staying within XXX0.
+   </p>
+   <p class="indent1">
+   To avoid multiple regions, intersect multiple complements for 1 and E.
+   </p>
   </div>
  <div id="learning">
  <a id="AL"></a>
@@ -2288,7 +2466,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 08/26/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 09/15/2023</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
