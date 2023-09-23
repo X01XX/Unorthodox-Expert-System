@@ -125,27 +125,26 @@ impl SomeChange {
         strrc
     }
 
-    /// Create a change for translating one region to another.
+    /// Create a change for translating one region into a subset of another.
     pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_ones = from.state1().bitwise_or(from.state2()).to_mask();
+        let f_xs = from.x_mask();
+        let f_ones = from.state1().bitwise_and(from.state2()).to_mask();
         let f_zeros = from
             .state1()
             .bitwise_not()
-            .bitwise_or(&from.state2().bitwise_not())
+            .bitwise_and(&from.state2().bitwise_not())
             .to_mask();
 
-        let t_ones = to.state1().bitwise_or(to.state2());
-        let t_zeros = &to
+        let t_ones = to.state1().bitwise_and(to.state2()).to_mask();
+        let t_zeros = to
             .state1()
             .bitwise_not()
-            .bitwise_or(&to.state2().bitwise_not())
+            .bitwise_and(&to.state2().bitwise_not())
             .to_mask();
 
-        let to_not_x = to.x_mask().bitwise_not();
-
         Self {
-            b01: f_zeros.bitwise_and(&t_ones.bitwise_and(&to_not_x)),
-            b10: f_ones.bitwise_and(&t_zeros.bitwise_and(&to_not_x)),
+            b01: f_zeros.bitwise_or(&f_xs).bitwise_and(&t_ones),
+            b10: f_ones.bitwise_or(&f_xs).bitwise_and(&t_zeros),
         }
     }
 

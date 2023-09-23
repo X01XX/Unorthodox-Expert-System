@@ -7,6 +7,7 @@ use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
+use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -83,12 +84,13 @@ impl ActionStore {
     }
 
     /// Return steps that make at least one needed bit change.
-    pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
+    /// Optional region reference indicating the steps must remain within the given region.
+    pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
         // Run a thread for each action
         let stps: Vec<StepStore> = self
             .avec
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_steps(achange))
+            .map(|actx| actx.get_steps(achange, within))
             .collect::<Vec<StepStore>>();
 
         // Consolidate steps into one StepStore.

@@ -1,4 +1,9 @@
 //! Implement a struct of Select RegionStores.
+//! This struct contains regions in domain order, the regions will have a size matching the corresponding domain, not other
+//! regions in the vector.
+//!
+//! The regions have a boolean And relationship.
+//! If only one region is non-maximum, that singles out that domain.
 
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
@@ -14,11 +19,9 @@ impl fmt::Display for SelectRegions {
         let mut str = self.regions.to_string();
         if self.pos > 0 || self.neg > 0 {
             str.push_str(&format!(", positive: {}, negative: {}", self.pos, self.neg));
-            // 123456789012  345678901234
         }
         if self.times_visited > 0 {
             str.push_str(&format!(", times visited {}", self.times_visited));
-            //     1234567890123456
         }
         write!(f, "{}", str)
     }
@@ -102,11 +105,18 @@ impl SelectRegions {
         Self::new(self.regions.adjacent_part_corr(&other.regions), 0, 0)
     }
 
-    /// Calculate the distance between a SelectRegions and the current state.
+    /// Calculate the distance between a SelectRegions and a vector of states.
     pub fn distance_states(&self, stas: &[&SomeState]) -> usize {
         debug_assert!(self.len() == stas.len());
 
         self.regions.distance_states_corr(stas)
+    }
+
+    /// Calculate the distance between two SelectRegions.
+    pub fn distance(&self, other: &Self) -> usize {
+        debug_assert!(self.len() == other.len());
+
+        self.regions.distance_corr(&other.regions)
     }
 
     /// Return the length of an instance.
@@ -127,32 +137,6 @@ impl SelectRegions {
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of_states(&self, stas: &[&SomeState]) -> bool {
         self.regions.is_superset_states_corr(stas)
-    }
-
-    /// Return true if two SelectRegions regions match.
-    pub fn regions_eq(&self, other: &Self) -> bool {
-        self.regions.eq_corr(&other.regions)
-    }
-
-    /// Subtract two SelectRegions.
-    pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
-        let mut ret_vec = Vec::<Self>::new();
-
-        if self.is_subset_of(subtrahend) {
-            return ret_vec;
-        }
-
-        if !self.intersects(subtrahend) {
-            ret_vec.push(self.clone());
-            return ret_vec;
-        }
-
-        let subvec = self.regions.subtract_corr(&subtrahend.regions);
-
-        for regstx in subvec {
-            ret_vec.push(SelectRegions::new(regstx, self.pos, self.neg));
-        }
-        ret_vec
     }
 }
 
@@ -175,7 +159,6 @@ impl StrLen for SelectRegions {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-    use crate::tools;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
@@ -237,122 +220,6 @@ mod tests {
         assert!(rslt.len() == srs.strlen());
 
         //assert!(1 == 2);
-        Ok(())
-    }
-
-    #[test]
-    fn test_subtract() -> Result<(), String> {
-        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-
-        let regstr1 = SelectRegions::new(
-            RegionStore::new(vec![ur_reg.new_from_string("r0xx1").expect("SNH")]),
-            0,
-            0,
-        );
-
-        let regstr2 = SelectRegions::new(
-            RegionStore::new(vec![ur_reg.new_from_string("r001x").expect("SNH")]),
-            0,
-            0,
-        );
-
-        let rslt = regstr1.subtract(&regstr2);
-        println!("rslt {}", tools::vec_string(&rslt));
-        assert!(rslt.len() == 2);
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![ur_reg.new_from_string("r0x01").expect("SNH")]),
-                0,
-                0
-            )
-        ));
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![ur_reg.new_from_string("r01x1").expect("SNH")]),
-                0,
-                0
-            )
-        ));
-
-        let rslt = regstr2.subtract(&regstr1);
-        println!("rslt {}", tools::vec_string(&rslt));
-        assert!(rslt.len() == 1);
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![ur_reg.new_from_string("r0010").expect("SNH")]),
-                0,
-                0
-            )
-        ));
-
-        let regstr1 = SelectRegions::new(
-            RegionStore::new(vec![
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-                ur_reg.new_from_string("r0101").expect("SNH"),
-            ]),
-            0,
-            0,
-        );
-
-        let regstr2 = SelectRegions::new(
-            RegionStore::new(vec![
-                ur_reg.new_from_string("r001x").expect("SNH"),
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-            ]),
-            0,
-            0,
-        );
-
-        let rslt = regstr1.subtract(&regstr2);
-        println!("rslt {}", tools::vec_string(&rslt));
-        assert!(rslt.len() == 0);
-
-        let rslt = regstr2.subtract(&regstr1);
-        println!("rslt {}", tools::vec_string(&rslt));
-        assert!(rslt.len() == 3);
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![
-                    ur_reg.new_from_string("r0010").expect("SNH"),
-                    ur_reg.new_from_string("r0xx1").expect("SNH")
-                ]),
-                0,
-                0
-            )
-        ));
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![
-                    ur_reg.new_from_string("r001x").expect("SNH"),
-                    ur_reg.new_from_string("r0x11").expect("SNH")
-                ]),
-                0,
-                0
-            )
-        ));
-        assert!(tools::vec_contains(
-            &rslt,
-            SelectRegions::regions_eq,
-            &SelectRegions::new(
-                RegionStore::new(vec![
-                    ur_reg.new_from_string("r001x").expect("SNH"),
-                    ur_reg.new_from_string("r00x1").expect("SNH")
-                ]),
-                0,
-                0
-            )
-        ));
-
         Ok(())
     }
 }

@@ -547,6 +547,34 @@ impl SomeRegion {
 
         reg1.intersection(&reg2).unwrap()
     }
+
+    /// Return the complement of a region.
+    pub fn complement(&self) -> Vec<Self> {
+        let nonxbits = self.non_x_mask().split();
+        let mut ret = Vec::<Self>::with_capacity(nonxbits.len());
+
+        let high_sta = self.state1().new_high();
+        let low_sta = high_sta.new_low();
+
+        for nbit in &nonxbits {
+            if nbit.bitwise_and(self.state1()).is_low() {
+                // The bit is a zero, force a one in that bit position.
+                ret.push(SomeRegion::new(vec![high_sta.clone(), nbit.to_state()]));
+            } else {
+                // The bit is a one, force a zero in that bit position.
+                ret.push(SomeRegion::new(vec![
+                    high_sta.bitwise_xor(nbit),
+                    low_sta.clone(),
+                ]));
+            }
+        }
+        ret
+    }
+
+    /// Return true if a region is all X.
+    pub fn all_x(&self) -> bool {
+        self.non_x_mask().is_low()
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -562,6 +590,23 @@ mod tests {
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn complement() -> Result<(), String> {
+        let ur_bits = SomeBits::new(vec![0]);
+        let ur_region = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
+
+        let reg1 = ur_region.new_from_string_pad_x("r10XX_X101").expect("SNH");
+
+        let comp1 = reg1.complement();
+        println!("comp1: {}", tools::vec_string(&comp1));
+
+        assert!(comp1.len() == 5);
+        assert!(comp1.contains(&ur_region.new_from_string("r0xxx_xxxx").expect("SNH")));
+        assert!(comp1.contains(&ur_region.new_from_string("rxxxx_xx1x").expect("SNH")));
+
+        Ok(())
+    }
 
     #[test]
     fn test_strlen() -> Result<(), String> {
@@ -739,8 +784,8 @@ mod tests {
     // Test new_from_string, using randomly chosen digits.
     #[test]
     fn new_from_string() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let ur_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let ur_reg = SomeRegion::new(vec![ur_sta.clone()]);
 
         let chars = ['0', '1', 'X', 'x']; // Possible chars to use.
 
@@ -756,18 +801,21 @@ mod tests {
             }
 
             // Get new bits instance.
-            let reg_instance = tmp_reg.new_from_string(&reg_from_str)?;
+            let reg_instance = ur_reg.new_from_string(&reg_from_str)?;
 
             // Check for the expected states forming the region.
             let state1_str =
                 "s0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
-            let state1 = tmp_sta.new_from_string(&state1_str)?;
+            let state1 = ur_sta.new_from_string(&state1_str)?;
             let state2 = reg_instance.state_far_from(&state1);
             println!("{} should equal {state1}", reg_instance.state1());
             assert!(reg_instance.state1() == &state1);
             println!("{} should equal {state1}", reg_instance.state2());
             assert!(reg_instance.state2() == &state2);
         }
+
+        //let reg2 = ur_reg.new_from_string("rx0x1.1x0x");
+
         Ok(())
     }
 

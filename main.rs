@@ -609,7 +609,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     // Take action after the desired state is reached.
-    match dmxs.needs[nd_inx] {
+    match &dmxs.needs[nd_inx] {
         SomeNeed::ToSelectRegion { .. } => {
             if dmxs.needs[nd_inx]
                 .target()
@@ -621,11 +621,12 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 return true;
             }
         }
-        SomeNeed::ExitSelectRegion { .. } => {
-            if dmxs.needs[nd_inx]
-                .target()
-                .is_superset_of_states(&dmxs.all_current_states())
-            {
+        SomeNeed::ExitSelectRegion {
+            dom_num,
+            target_region,
+            ..
+        } => {
+            if target_region.is_superset_of_state(&dmxs[*dom_num].cur_state) {
                 dmxs.set_boredom_limit();
                 return true;
             }

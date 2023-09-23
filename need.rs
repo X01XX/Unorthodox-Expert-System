@@ -101,7 +101,8 @@ pub enum SomeNeed {
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
     ExitSelectRegion {
-        target_regions: RegionStore,
+        dom_num: usize,
+        target_region: SomeRegion,
         priority: usize,
     },
 }
@@ -232,6 +233,7 @@ impl SomeNeed {
             Self::LimitGroupAdj { dom_num, .. } => *dom_num,
             Self::StateInRemainder { dom_num, .. } => *dom_num,
             Self::StateNotInGroup { dom_num, .. } => *dom_num,
+            Self::ExitSelectRegion { dom_num, .. } => *dom_num,
             _ => panic!(
                 "SomeNeed::dom_num should not be called for the {} need.",
                 self.name()
@@ -291,11 +293,13 @@ impl SomeNeed {
                 }
                 targ
             }
-            Self::ExitSelectRegion { target_regions, .. } => {
+            Self::ExitSelectRegion {
+                dom_num,
+                target_region,
+                ..
+            } => {
                 let mut targ = TargetStore::with_capacity(1);
-                for (dom_numx, regx) in target_regions.iter().enumerate() {
-                    targ.push(SomeTarget::new(dom_numx, regx.clone()));
-                }
+                targ.push(SomeTarget::new(*dom_num, target_region.clone()));
                 targ
             }
             _ => panic!(
@@ -419,10 +423,11 @@ impl SomeNeed {
                 format!("N(Pri {priority} To Select Regions {target_regions})")
             }
             Self::ExitSelectRegion {
-                target_regions,
+                dom_num,
+                target_region,
                 priority,
             } => {
-                format!("N(Pri {priority} Exit Select Regions to {target_regions})")
+                format!("N(Pri {priority} Exit Select Regions to domain {dom_num} {target_region})")
             }
         } // end match
     }

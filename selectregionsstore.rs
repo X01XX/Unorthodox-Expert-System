@@ -155,30 +155,30 @@ impl SelectRegionsStore {
         val
     }
 
-    /// Return true if any SelectRegion is a superset of a given RegionStore.
-    pub fn any_supersets_of(&self, regs: &SelectRegions) -> bool {
+    /// Return true if any SelectRegion is a region superset of another..
+    pub fn any_supersets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_of_corr(&regs.regions) {
+            if regsx.regions.is_superset_of_corr(&other.regions) {
                 return true;
             }
         }
         false
     }
 
-    /// Return true if any SelectRegion is a subset of a given RegionStore.
-    pub fn any_subsets_of(&self, regs: &SelectRegions) -> bool {
+    /// Return true if any SelectRegion is a region subset of another.
+    pub fn any_subsets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_subset_of_corr(&regs.regions) {
+            if regsx.regions.is_subset_of_corr(&other.regions) {
                 return true;
             }
         }
         false
     }
 
-    /// Return true if any SelectRegion intersects a given RegionStore.
-    pub fn any_intersection_of(&self, regs: &SelectRegions) -> bool {
+    /// Return true if any SelectRegion has regions equal to another.
+    pub fn any_equal_regions(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.intersects_corr(&regs.regions) {
+            if regsx.regions.eq_corr(&other.regions) {
                 return true;
             }
         }
@@ -442,12 +442,12 @@ impl SelectRegionsStore {
                                 tmpx.push(x_regs[inx][*choice].clone());
                             }
                             //println!("tmpx: {tmpx}");
-                            RegionStore::vec_push_nosubs(&mut next_stores, tmpx);
+                            RegionStore::vec_push_nosubs_corr(&mut next_stores, tmpx);
                         }
 
                         // Save intersection.
                         //println!("intx: {intx}");
-                        RegionStore::vec_push_nosubs(&mut next_stores, intx);
+                        RegionStore::vec_push_nosubs_corr(&mut next_stores, intx);
                     }
                 } // next origy
             } // next inx, curx
@@ -459,7 +459,7 @@ impl SelectRegionsStore {
             for (inx, strx) in cur_stores.iter().enumerate() {
                 if !split.contains(&inx) {
                     // println!("Adding {strx}");
-                    RegionStore::vec_push_nosubs(&mut next_stores, strx.clone());
+                    RegionStore::vec_push_nosubs_corr(&mut next_stores, strx.clone());
                 }
             }
             //println!("cur_stores:  {}", tools::vec_string(&cur_stores));

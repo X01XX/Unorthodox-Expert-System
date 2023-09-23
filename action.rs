@@ -1421,7 +1421,7 @@ impl SomeAction {
     ///
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
-    pub fn get_steps(&self, achange: &SomeChange) -> StepStore {
+    pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
         debug_assert!(achange.b01.bitwise_and(&achange.b10).is_low()); // No X->x change wanted.
 
         let mut stps = StepStore::new(vec![]);
@@ -1429,6 +1429,12 @@ impl SomeAction {
         for grpx in self.groups.iter() {
             if grpx.pn == Pn::Unpredictable {
                 continue;
+            }
+
+            if let Some(limit_reg) = within {
+                if !grpx.region.intersects(limit_reg) {
+                    continue;
+                }
             }
 
             // Check if group rules cause at least one change that is needed.
@@ -1629,7 +1635,9 @@ impl SomeAction {
                         max_reg.subtract_state_to_supersets_of(ex_regx.state2(), &sqrx.state),
                     );
                     let not_states = not_state1.union(&not_state2);
-                    poss_regs = poss_regs.intersection(&not_states);
+                    if let Some(next_regs) = poss_regs.intersection(&not_states) {
+                        poss_regs = next_regs;
+                    }
                     // println!("sqrx {} bad reg {}", sqrx.state, ex_regx);
                 }
             }

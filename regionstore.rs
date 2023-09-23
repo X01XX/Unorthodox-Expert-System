@@ -1,6 +1,5 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
-use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
@@ -219,6 +218,8 @@ impl RegionStore {
     /// Subtract a state from a RegionStore, with results being supersets of a second state.
     /// Assumes all regions are supersets of the second state before doing the subtraction.
     pub fn subtract_state_to_supersets_of(&self, substa: &SomeState, supsta: &SomeState) -> Self {
+        assert!(self.any_superset_of_state(substa));
+
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
@@ -256,7 +257,7 @@ impl RegionStore {
     }
 
     // Return the intersection of two RegionStores.
-    pub fn intersection(&self, other: &Self) -> Self {
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
             for regy in other.iter() {
@@ -265,25 +266,15 @@ impl RegionStore {
                 }
             }
         }
-        ret
-    }
-
-    /// Corresponding functions.
-    /// A RegionStore has a region for each domain.
-
-    /// Return the union of two RegionStores with corresponding regions.
-    pub fn union_corr(&self, other: &Self) -> Self {
-        let mut ret = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
-        for (regx, regy) in self.avec.iter().zip(other.avec.iter()) {
-            if regx.is_adjacent(regy) || regx.intersects(regy) {
-                ret.push(regx.union(regy));
-            } else {
-                panic!("regionstore: union_corr: {} union {}?", regx, regy);
-            }
+        if ret.is_empty() {
+            return None;
         }
-        ret
+        Some(ret)
     }
+}
 
+/// Corresponding functions.
+impl RegionStore {
     /// Return True if a RegionStore is a superset of all corresponding states in a SomeState vector.
     /// Used in optimal regionstore calculations.
     pub fn is_superset_states_corr(&self, stas: &[&SomeState]) -> bool {
@@ -354,32 +345,6 @@ impl RegionStore {
         dist
     }
 
-    /// Return a vector of difference masks for two RegionStores.
-    pub fn diff_masks_corr(&self, other: &Self) -> Vec<SomeMask> {
-        debug_assert!(self.len() == other.len());
-
-        let mut ret = Vec::<SomeMask>::with_capacity(self.len());
-
-        for (x, y) in self.iter().zip(other.iter()) {
-            ret.push(x.diff_mask(y));
-        }
-
-        ret
-    }
-
-    /// Return a RegionStore with certain bit positions set to X.
-    pub fn set_to_x_corr(&self, other: &Vec<SomeMask>) -> Self {
-        debug_assert!(self.len() == other.len());
-
-        let mut ret = Self::new(Vec::<SomeRegion>::with_capacity(self.len()));
-
-        for (x, y) in self.iter().zip(other.iter()) {
-            ret.push(x.set_to_x(y));
-        }
-
-        ret
-    }
-
     /// Return the intersection, if any, of two RegionStores.
     pub fn intersection_corr(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
@@ -425,11 +390,9 @@ impl RegionStore {
             ret.push(self.clone());
             return ret;
         }
-        // Check for anf subset part.
-        for (regx, regy) in self.iter().zip(subtrahend.iter()) {
-            if regx.is_subset_of(regy) {
-                return ret;
-            }
+        // Check for superest.
+        if subtrahend.is_superset_of_corr(self) {
+            return ret;
         }
 
         for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
@@ -519,7 +482,7 @@ impl RegionStore {
 
     /// Add a RegionStore, removing subset (and equal) RegionStores.
     /// Return true if the item was added.
-    pub fn vec_push_nosubs(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
+    pub fn vec_push_nosubs_corr(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
         // Check for supersets.
         for itemx in avec.iter() {
             if itemx.is_superset_of_corr(&item) {
@@ -532,35 +495,6 @@ impl RegionStore {
 
         for (inx, regx) in avec.iter().enumerate() {
             if regx.is_subset_of_corr(&item) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in reverse (highest index) order
-        for inx in rmvec.iter().rev() {
-            tools::remove_unordered(avec, *inx);
-        }
-
-        avec.push(item);
-
-        true
-    }
-
-    /// Add a RegionStore, removing superset (and equal) RegionStores.
-    /// Return true if the item was added.
-    pub fn vec_push_nosups(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
-        // Check for subsets.
-        for itemx in avec.iter() {
-            if itemx.is_subset_of_corr(&item) {
-                return false;
-            }
-        }
-
-        // Identify supersets
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if regx.is_superset_of_corr(&item) {
                 rmvec.push(inx);
             }
         }
@@ -655,39 +589,6 @@ mod tests {
         println!("Distance = {dist}");
 
         assert!(dist == 2);
-        Ok(())
-    }
-
-    #[test]
-    fn test_diff_masks_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
-
-        let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
-        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
-
-        let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(tmp_reg0.new_from_string("r0101").expect("SNH"));
-        regstr2.push(tmp_reg0.new_from_string("r1x01").expect("SNH"));
-
-        let diffs = regstr1.diff_masks_corr(&regstr2);
-
-        println!("regstr1 {}", regstr1);
-        println!("regstr2 {}", regstr2);
-        println!("diff masks {}", tools::vec_string(&diffs));
-        assert!(diffs.len() == 2);
-        assert!(tools::vec_contains(
-            &diffs,
-            SomeMask::eq,
-            &tmp_sta0.to_mask().new_from_string("m0b0001").expect("SNH")
-        ));
-        assert!(tools::vec_contains(
-            &diffs,
-            SomeMask::eq,
-            &tmp_sta0.to_mask().new_from_string("m0b0010").expect("SNH")
-        ));
-
         Ok(())
     }
 
@@ -952,6 +853,38 @@ mod tests {
     }
 
     #[test]
+    fn subtract_corr() -> Result<(), String> {
+        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+
+        let mut regstr1 = RegionStore::with_capacity(2);
+        regstr1.push(ur_reg.new_from_string("rxxxx")?);
+        regstr1.push(ur_reg.new_from_string("rxxxx")?);
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(ur_reg.new_from_string("r01x1")?);
+        regstr2.push(ur_reg.new_from_string("rxxxx")?);
+
+        let regstr3 = regstr1.subtract_corr(&regstr2);
+        println!("regstr3: {}", tools::vec_string(&regstr3));
+
+        assert!(regstr3.len() == 3);
+        assert!(regstr3.contains(&RegionStore::new(vec![
+            ur_reg.new_from_string("rxxx0")?,
+            ur_reg.new_from_string("r0xxxx")?
+        ])));
+        assert!(regstr3.contains(&RegionStore::new(vec![
+            ur_reg.new_from_string("rx0xx")?,
+            ur_reg.new_from_string("r0xxxx")?
+        ])));
+        assert!(regstr3.contains(&RegionStore::new(vec![
+            ur_reg.new_from_string("r1xxx")?,
+            ur_reg.new_from_string("r0xxxx")?
+        ])));
+
+        Ok(())
+    }
+
+    #[test]
     fn push_nosups() -> Result<(), String> {
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
@@ -1087,7 +1020,9 @@ mod tests {
 
         let not_state_6 = RegionStore::new(max_reg.subtract_state(&state_6));
         let not_state_a = RegionStore::new(max_reg.subtract_state(&state_a));
-        let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
+        let rslt = rslt
+            .intersection(&not_state_6.union(&not_state_a))
+            .expect("SNH");
 
         let state_4 = tmp_state.new_from_string("s0b0100")?;
         let state_d = tmp_state.new_from_string("s0b1101")?;
@@ -1095,7 +1030,9 @@ mod tests {
         let not_state_4 = RegionStore::new(max_reg.subtract_state(&state_4));
         let not_state_d = RegionStore::new(max_reg.subtract_state(&state_d));
 
-        let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
+        let rslt = rslt
+            .intersection(&not_state_4.union(&not_state_d))
+            .expect("SNH");
 
         println!("result regions {}", rslt);
 

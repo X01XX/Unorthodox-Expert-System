@@ -1982,21 +1982,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  We calculate the complement of 9, containing 0, (0XXX, XXX0).
  </p>
  <p>
- We form the union of the two complements, (X0XX, XX0X, XXX0, 0XXX).
+ We form the union of the two complements, (X0XX, 0XXX, XX0X, XXX0).
  </p>
  <p>
  We intersect the union with the list, (XXXX), which will be the same as the union.
  </p>
+ <table class="indent1">
+    <tr>
+    <th>
  <table>
-	 <tr>
-	 <th>X0XX</th>
-	 <th>XX0X</th>
-	 <th>XXX0</th>
-	 <th>0XXX</th>
-	 </tr>
-	 <tr>
-	 <td>
-   <table>
+ <caption>X0XX</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -2033,87 +2028,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td class="bgg2">A</td>
     </tr>
  </table>
-	 </td>
-	 <td>
-   <table>
-    <tr>
-  <th></th>
-  <th>00</th>
-  <th>01</th>
-  <th>11</th>
-  <th>10</th>
-    </tr>
-    <tr>
-  <th>00</th>
-  <td class="bgg">0</td>
-  <td class="bgg2">1</td>
-  <td>3</td>
-  <td>2</td>
-    </tr>
-    <tr>
-  <th>01</th>
-  <td class="bgg2">4</td>
-  <td class="bgg2">5</td>
-  <td class="bgg">7</td>
-  <td>6</td>
-    </tr>
-    <tr>
-  <th>11</th>
-  <td class="bgg2">C</td>
-  <td class="bgg2">D</td>
-  <td>F</td>
-  <td>E</td>
-    </tr>
-    <tr>
-  <th>10</th>
-  <td class="bgg2">8</td>
-  <td class="bgg">9</td>
-  <td>B</td>
-  <td>A</td>
-    </tr>
- </table>
-	 </td>
-	 <td>
-   <table>
-    <tr>
-  <th></th>
-  <th>00</th>
-  <th>01</th>
-  <th>11</th>
-  <th>10</th>
-    </tr>
-    <tr>
-  <th>00</th>
-  <td class="bgg">0</td>
-  <td>1</td>
-  <td>3</td>
-  <td class="bgg2">2</td>
-    </tr>
-    <tr>
-  <th>01</th>
-  <td class="bgg2">4</td>
-  <td>5</td>
-  <td class="bgg">7</td>
-  <td class="bgg2">6</td>
-    </tr>
-    <tr>
-  <th>11</th>
-  <td class="bgg2">C</td>
-  <td>D</td>
-  <td>F</td>
-  <td class="bgg2">E</td>
-    </tr>
-    <tr>
-  <th>10</th>
-  <td class="bgg2">8</td>
-  <td class="bgg">9</td>
-  <td>B</td>
-  <td class="bgg2">A</td>
-    </tr>
- </table>
-     </td>
-	 <td>
-   <table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>0XXX</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -2150,14 +2068,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
-     </td>
-
-     </tr>
- </table>
- <p>
- Notice that XX0X intersects 0XXX at 0X0X.
- </p>
-   <table>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>XX0X</caption>
     <tr>
   <th></th>
   <th>00</th>
@@ -2168,16 +2082,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <tr>
   <th>00</th>
   <td class="bgg">0</td>
-  <td class="bgr">1</td>
-  <td class="bgg2">3</td>
-  <td class="bgg2">2</td>
+  <td class="bgg2">1</td>
+  <td>3</td>
+  <td>2</td>
     </tr>
     <tr>
   <th>01</th>
   <td class="bgg2">4</td>
-  <td class="bgr">5</td>
+  <td class="bgg2">5</td>
   <td class="bgg">7</td>
-  <td class="bgg2">6</td>
+  <td>6</td>
     </tr>
     <tr>
   <th>11</th>
@@ -2194,11 +2108,49 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table>
- <p>
- The squares in 0X0X (0, 1, 4, 5) that have a rightmost 1 bit are (1, 5). 
- We do not know if 0X01 changes like 9 or 7.
- So 0X01, is a contradictory intersection.
- </p>
+ </th>
+    <th>
+ <table class="indent1">
+ <caption>XXX0</caption>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg">0</td>
+  <td>1</td>
+  <td>3</td>
+  <td class="bgg2">2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td class="bgg2">4</td>
+  <td>5</td>
+  <td class="bgg">7</td>
+  <td class="bgg2">6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td class="bgg2">C</td>
+  <td>D</td>
+  <td>F</td>
+  <td class="bgg2">E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td class="bgg2">8</td>
+  <td class="bgg">9</td>
+  <td>B</td>
+  <td class="bgg2">A</td>
+    </tr>
+ </table>
+ </th>
+ </tr>
+    </table> 
  <p>
  Notice that X0XX intersects 0XXX at 00XX.
  </p>
@@ -2243,6 +2195,51 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The squares in 00XX (0, 1, 2, 3) that have a rightmost 1 bit are (1, 3). 
  We do not know if 00X1 changes like 9 or 7.
  So 00X1, is a contradictory intersection.
+ </p>
+ <p>
+ Notice that XX0X intersects 0XXX at 0X0X.
+ </p>
+   <table>
+    <tr>
+  <th></th>
+  <th>00</th>
+  <th>01</th>
+  <th>11</th>
+  <th>10</th>
+    </tr>
+    <tr>
+  <th>00</th>
+  <td class="bgg">0</td>
+  <td class="bgr">1</td>
+  <td class="bgg2">3</td>
+  <td class="bgg2">2</td>
+    </tr>
+    <tr>
+  <th>01</th>
+  <td class="bgg2">4</td>
+  <td class="bgr">5</td>
+  <td class="bgg">7</td>
+  <td class="bgg2">6</td>
+    </tr>
+    <tr>
+  <th>11</th>
+  <td class="bgg2">C</td>
+  <td class="bgg2">D</td>
+  <td>F</td>
+  <td>E</td>
+    </tr>
+    <tr>
+  <th>10</th>
+  <td class="bgg2">8</td>
+  <td class="bgg">9</td>
+  <td>B</td>
+  <td>A</td>
+    </tr>
+ </table>
+ <p>
+ The squares in 0X0X (0, 1, 4, 5) that have a rightmost 1 bit are (1, 5). 
+ We do not know if 0X01 changes like 9 or 7.
+ So 0X01, is a contradictory intersection.
  </p>
  <p>
  Contradictory intersections are very nice targets, that allow improving the ability to predict responses to sampling.
