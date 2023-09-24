@@ -94,9 +94,10 @@ impl DomainStore {
         }
     }
 
-    /// Add an select region.
-    /// One region for each domain.
-    /// The logical "and" of each domain region given.
+    /// Add SelectRegions, one region for each domain.
+    /// [1x0x, x101] = Domain 0, 1x0x, AND domain 1, x101.
+    /// [1x0x, xxxx],
+    /// [xxxx, x101] (two additions) = Domain 0, 1x0x, OR domain 1, x101.
     pub fn add_select(&mut self, selx: SelectRegions) {
         debug_assert!(selx.len() == self.avec.len());
 
@@ -107,7 +108,7 @@ impl DomainStore {
 
         // Do not allow dups.
         if self.select.any_equal_regions(&selx) {
-            println!("Superset select regions found");
+            println!("Equal select regions found");
             return;
         }
 
@@ -506,6 +507,12 @@ impl DomainStore {
                         );
                         self.can_do[ndinx].plans = Some(planx);
                         self.can_do[ndinx].rate = rate;
+                    } else {
+                        println!(
+                            "\nFor plan {}/{}, better plan NOT found",
+                            self.can_do[ndinx].plans.as_ref().expect("SNH").str_terse(),
+                            max_rate,
+                        );
                     }
                 }
             }
@@ -1045,11 +1052,9 @@ impl DomainStore {
         self.run_plan(&plans[rand::thread_rng().gen_range(0..plans.len())])
     }
 
-    /// When the random depth-first plans,
-    /// from a initial region, that is not in a negative region,
-    /// to a goal region, that is not in a negative region,
-    /// all traverse a negative region,
-    /// try to form a plan that avoids negative regions.
+    /// Like Real Life, formulate a direct plan,
+    /// notice there are some negative aspects,
+    /// then try to form a plan that avoids the negative.
     fn avoid_negative_select_regions(
         &self,
         start_regs: &RegionStore,
@@ -1068,62 +1073,68 @@ impl DomainStore {
             }
         }
 
-        let mut ret_plans = PlanStore::new(vec![]);
+        // Outcome may depend on the order of the domains checked, so try a number of times.
+        for _ in 0..self.len() {
+            let mut ret_plans = PlanStore::new(vec![]);
 
-        let mut all_states_mem = Vec::<SomeState>::with_capacity(self.len());
-        for domx in self.avec.iter() {
-            all_states_mem.push(domx.cur_state.clone());
-        }
-
-        // Find a plan for a domain.
-        let mut found_one = true;
-        let mut doms = Vec::<usize>::with_capacity(self.len());
-
-        while found_one {
-            found_one = false;
-
-            // Generate new all_states.
-            let mut all_states = Vec::<&SomeState>::with_capacity(self.len());
-            for stax in all_states_mem.iter() {
-                all_states.push(stax);
+            let mut all_states_mem = Vec::<SomeState>::with_capacity(self.len());
+            for domx in self.avec.iter() {
+                all_states_mem.push(domx.cur_state.clone());
             }
 
-            for (dom_num, (start_reg, goal_reg)) in
-                start_regs.iter().zip(goal_regs.iter()).enumerate()
-            {
-                // Check if a plan has been found for this domain.
-                if doms.contains(&dom_num) {
-                    continue;
+            // Find a plan for a domain.
+            let mut found_one = true;
+            let mut doms = Vec::<usize>::with_capacity(self.len());
+
+            while found_one {
+                found_one = false;
+
+                // Generate new all_states.
+                let mut all_states = Vec::<&SomeState>::with_capacity(self.len());
+                for stax in all_states_mem.iter() {
+                    all_states.push(stax);
                 }
 
-                let non_neg = self.calc_non_negative_regions(dom_num, &all_states);
-                if non_neg.is_empty() {
-                    continue;
-                }
+                let mut options = tools::RandomPick::new(self.len());
 
-                // Find plans that avoid negative regions.
-                if let Some(mut dom_plans) =
-                    self[dom_num].plan_path_through_regions(start_reg, goal_reg, &non_neg)
-                {
-                    found_one = true;
-                    doms.push(dom_num);
-                    //let planx = dom_plans[rand::thread_rng().gen_range(0..dom_plans.len())].clone();
-                    let inx = rand::thread_rng().gen_range(0..dom_plans.len());
-                    if !dom_plans[inx].is_empty() {
-                        all_states_mem[dom_num] = dom_plans[inx].result_region().state1().clone();
-                        ret_plans.push(dom_plans.swap_remove(inx));
+                while let Some(dom_num) = options.pick() {
+                    let start_reg = &start_regs[dom_num];
+                    let goal_reg = &goal_regs[dom_num];
+
+                    // Check if a plan has been found for this domain.
+                    if doms.contains(&dom_num) {
+                        continue;
                     }
 
-                    break;
-                }
-            } // next inx, start_reg, goal_reg
+                    let non_neg = self.calc_non_negative_regions(dom_num, &all_states);
+                    if non_neg.is_empty() {
+                        continue;
+                    }
+
+                    // Find plans that avoid negative regions.
+                    if let Some(mut dom_plans) =
+                        self[dom_num].plan_path_through_regions(start_reg, goal_reg, &non_neg)
+                    {
+                        found_one = true;
+                        doms.push(dom_num);
+                        //let planx = dom_plans[rand::thread_rng().gen_range(0..dom_plans.len())].clone();
+                        let inx = rand::thread_rng().gen_range(0..dom_plans.len());
+                        if !dom_plans[inx].is_empty() {
+                            all_states_mem[dom_num] =
+                                dom_plans[inx].result_region().state1().clone();
+                            ret_plans.push(dom_plans.swap_remove(inx));
+                        }
+
+                        break;
+                    }
+                } // next inx, start_reg, goal_reg
+            }
+            // Return the plans.
+            if doms.len() == self.len() {
+                return Some(ret_plans);
+            }
         }
-        // Return the plans.
-        if doms.len() < self.len() {
-            return None;
-        }
-        //println!("avoid_negative_select_regions found a better plan from {} to {}\n{}", start_regs, goal_regs, ret_plans);
-        Some(ret_plans)
+        None
     } // end avoid_negative_select_regions
 
     /// Return a String representation of a DomainStore.
