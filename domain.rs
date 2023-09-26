@@ -31,6 +31,7 @@ use crate::tools::{self, StrLen};
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
 
@@ -81,6 +82,10 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// Memory for past samples that were not stored in a square.
     pub max_region: SomeRegion,
+    /// Save complements of negative SelectRegions, for more efficent calculations.
+    /// Exiting a negative region, or avoiding a negative region, may be time sensitive.
+    /// HashMap does not work well with SomeRegion:PartialEq, so use SelectRegions index instead.
+    pub complements: HashMap<usize, RegionStore>,
 }
 
 impl SomeDomain {
@@ -100,6 +105,7 @@ impl SomeDomain {
             ),
             cur_state,
             max_region,
+            complements: HashMap::new(),
         }
     }
 
@@ -128,6 +134,23 @@ impl SomeDomain {
     pub fn get_needs(&mut self) -> NeedStore {
         // Get all needs.
         self.actions.get_needs(&self.cur_state, self.num)
+    }
+
+    /// Add the complement of a region.
+    pub fn add_complement(&mut self, sel_num: usize, regx: &SomeRegion) {
+        if regx.all_x() {
+            return;
+        }
+
+        if self.complements.get(&sel_num).is_none() {
+            self.complements
+                .insert(sel_num, RegionStore::new(regx.complement()));
+        }
+    }
+
+    /// Return the complement of a region.
+    pub fn get_complement(&self, sel_num: usize) -> Option<&RegionStore> {
+        self.complements.get(&sel_num)
     }
 
     /// Evaluate an arbitrary sample given by the user.

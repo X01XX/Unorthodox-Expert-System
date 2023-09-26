@@ -275,8 +275,6 @@ impl SomeAction {
         //println!("create_groups_from_squares2 {}", key);
         debug_assert!(!self.groups.any_superset_of_state(key));
 
-        let mut ret = Vec::<SomeGroup>::new();
-
         // Lookup square.
         let sqrx = self
             .squares
@@ -288,28 +286,14 @@ impl SomeAction {
         // for group bootstrapping.
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return ret;
+            return vec![];
         }
 
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
         // Get possible regions, sqrx.state will be <region>.state1
-        // Duplicate group regions are possible, but at least one should be
-        // a valid new group.
-        let grps: Vec<SomeGroup> = self.possible_groups_from_square(sqrx);
-
-        if !grps.is_empty() {
-            for grpx in grps {
-                ret.push(grpx);
-            } // next regx
-            return ret;
-        }
-
-        // Make a single-square group
-        let regz = SomeRegion::new(vec![sqrx.state.clone()]);
-        ret.push(SomeGroup::new(regz, sqrx.rules.clone(), sqrx.pnc));
-
-        ret
+        // Duplicate group regions are possible.
+        self.possible_groups_from_square(sqrx)
     } // end create_groups_from_squares2
 
     /// Return needs for states that are not in a group.
@@ -1589,6 +1573,12 @@ impl SomeAction {
 
         // If no simmilar squares, done.
         if sim_sqrs.is_empty() {
+            // Make a single-square group
+            ret_grps.push(SomeGroup::new(
+                SomeRegion::new(vec![sqrx.state.clone()]),
+                sqrx.rules.clone(),
+                sqrx.pnc,
+            ));
             return ret_grps;
         }
 

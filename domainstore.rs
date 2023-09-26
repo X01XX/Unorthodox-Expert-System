@@ -140,7 +140,7 @@ impl DomainStore {
     fn calc_non_negative_regions(&self, dom_num: usize, cur_state: &[&SomeState]) -> RegionStore {
         let mut non_neg_regs = RegionStore::new(vec![self[dom_num].max_region.clone()]);
 
-        'next_selx: for selx in self.select_negative.iter() {
+        'next_selx: for (sel_num, selx) in self.select_negative.iter().enumerate() {
             // Check if other regions are satisfied.
             for (inx, regx) in selx.regions.iter().enumerate() {
                 if inx == dom_num {
@@ -156,9 +156,11 @@ impl DomainStore {
                 return RegionStore::new(vec![]);
             }
             // Calc complement, intersection.
-            non_neg_regs = non_neg_regs
-                .intersection(&RegionStore::new(selx.regions[dom_num].complement()))
-                .expect("SNH");
+            if let Some(comps) = self[dom_num].get_complement(sel_num) {
+                non_neg_regs = non_neg_regs.intersection(comps).expect("SNH");
+            } else {
+                panic!("SNH");
+            }
         } // next selx
 
         non_neg_regs
@@ -172,6 +174,14 @@ impl DomainStore {
             println!("  {}", selx);
             if selx.neg > selx.pos {
                 select_neg.push(selx.clone());
+            }
+        }
+        // Add complement calculation to each domain.
+        // There is a potential problem with HashMap used with SomeRegion:PartialEq, so
+        // use SelectRegions number which should not be changed later.
+        for (sel_num, selx) in select_neg.iter().enumerate() {
+            for (dom_num, regx) in selx.regions.iter().enumerate() {
+                self[dom_num].add_complement(sel_num, regx);
             }
         }
 
