@@ -63,7 +63,6 @@ mod stepstore;
 use domainstore::{DomainStore, InxPlan};
 mod actioninterface;
 mod planstore;
-use planstore::PlanStore;
 mod selectregions;
 use crate::selectregions::SelectRegions;
 mod selectregionsstore;
@@ -545,14 +544,15 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                 match ndx {
                     SomeNeed::ToSelectRegion { .. } => {
                         //println!("\n{}", &pln.str2());
-                        print_plan_detail(dmxs, pln);
+                        dmxs.print_plan_detail(pln);
                     }
                     _ => {
                         if ndx.satisfied_by(dmxs[ndx.dom_num()].get_current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
                             //println!("\n{}", &pln.str2());
-                            print_plan_detail(dmxs, pln);
+                            //print_plan_detail(dmxs, pln);
+                            dmxs.print_plan_detail(pln);
                         }
                     }
                 }
@@ -820,37 +820,6 @@ fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result
 
     // Display the rates
     dmxs[dom_num].display_action_anchor_info(act_num)
-}
-
-fn print_plan_detail(dom_str: &DomainStore, plan_str: &PlanStore) {
-    let mut cur_states = dom_str.all_current_states();
-
-    for planx in plan_str.iter() {
-        if planx.is_empty() {
-            continue;
-        }
-
-        println!("\nDomain: {}, Plan:", planx.dom_num);
-
-        for (inx, stepx) in planx.iter().enumerate() {
-            let df = stepx.initial.diff_mask(&stepx.result);
-            print!(
-                "{} Action {:02} Group {} ",
-                &stepx.initial, &stepx.act_num, &stepx.group_reg
-            );
-            if inx > 0 {
-                for sel_regx in dom_str.select.iter() {
-                    if sel_regx.regions.is_superset_states_corr(&cur_states) && sel_regx.value() < 0
-                    {
-                        print!(" in {:+}", sel_regx);
-                    }
-                }
-            }
-            println!("\n{}", df.str2());
-            cur_states[planx.dom_num] = stepx.result.state1();
-        } // next steps
-        println!("{}", planx.result_region());
-    } // next planx
 }
 
 /// Do print-squares command.

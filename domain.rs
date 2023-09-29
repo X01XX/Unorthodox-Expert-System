@@ -677,29 +677,28 @@ impl SomeDomain {
         // Gather possible start regions.
         let mut start_in: Vec<&SomeRegion> = vec![];
         for pathx in path_regions.iter() {
-            if pathx.is_superset_of(start_reg) {
-                if pathx.is_superset_of(goal_reg) {
-                    if let Some(step1_plans) = self.make_plans2(
-                        &SomeRegion::new(vec![self.cur_state.clone()]),
-                        goal_reg,
-                        Some(pathx),
-                    ) {
-                        for planx in step1_plans.iter() {
-                            if planx.path_region().expect("SNH").is_subset_of(pathx) {
-                                ret_plans.push(planx.clone());
-                                return Some(ret_plans);
-                            }
-                        }
-                    } else {
-                        //println!("No plans found");
-                    }
-                }
-                start_in.push(pathx);
+            if !pathx.is_superset_of(start_reg) {
+                continue;
             }
+            if pathx.is_superset_of(goal_reg) {
+                if let Some(step1_plans) = self.make_plans2(
+                    &SomeRegion::new(vec![self.cur_state.clone()]),
+                    goal_reg,
+                    Some(pathx),
+                ) {
+                    for planx in step1_plans.iter() {
+                        if planx.path_region().expect("SNH").is_subset_of(pathx) {
+                            ret_plans.push(planx.clone());
+                            return Some(ret_plans);
+                        }
+                    }
+                    return None;
+                }
+            }
+            start_in.push(pathx);
         }
-        //println!("start {start_reg} in {}", tools::vec_ref_string(&start_in));
+
         if start_in.is_empty() {
-            //println!("Start_in is empty");
             return None;
         }
 
@@ -710,26 +709,19 @@ impl SomeDomain {
                 goal_in.push(pathx);
             }
         }
-        //println!("goal {goal_reg} in {}", tools::vec_ref_string(&goal_in));
+
         if goal_in.is_empty() {
-            //println!("Goal _in is empty");
             return None;
         }
 
         // Init vector for paths thas lead from a domain start region to the goal region.
         let mut paths: Vec<Path> = vec![];
 
-        // Init start stack, levels of connections with non-negative regions.
-        let mut start_stack = vec![];
-        // Add first level to start stack.
-        start_stack.push(start_in);
+        // Init start stack, levels of connections with path regions.
+        let mut start_stack = vec![start_in];
 
         // Init goal stack, levels of connections with non-negative regions.
-        let mut goal_stack = vec![];
-        // Add first level to goal stack.
-        goal_stack.push(vec![goal_reg]);
-        // Add next level.
-        goal_stack.push(goal_in);
+        let mut goal_stack = vec![vec![goal_reg], goal_in];
 
         let mut intersections = vec![];
         let mut more_found = true;
@@ -750,6 +742,7 @@ impl SomeDomain {
             // Check if any top-level non-negative start region intersects an existing item is in the goal stack.
             if let Some(start_last_level) = start_stack.last() {
                 let start_levx = start_stack.len() - 1;
+
                 for (start_itemx, regx) in start_last_level.iter().enumerate() {
                     for (goal_levx, levelx) in goal_stack.iter().enumerate() {
                         for (goal_itemx, regy) in levelx.iter().enumerate() {
@@ -766,9 +759,10 @@ impl SomeDomain {
                 } // next regsx
             }
 
-            // Check if any top-level non-negative goal region intersects an existing item is in the start stack.
+            // Check if any top-level non-negative goal region intersects an existing item in the start stack.
             if let Some(goal_last_level) = goal_stack.last() {
                 let goal_levx = goal_stack.len() - 1;
+
                 for (goal_itemx, regx) in goal_last_level.iter().enumerate() {
                     for (start_levx, levelx) in start_stack.iter().enumerate() {
                         for (start_itemx, regy) in levelx.iter().enumerate() {
@@ -787,8 +781,8 @@ impl SomeDomain {
                 } // next regsx
             }
 
+            // Check if at leat one intersection is found.
             if !intersections.is_empty() {
-                //print!("Intersections found");
                 break;
             }
 
@@ -804,7 +798,7 @@ impl SomeDomain {
                     } // next regsx
                 } // next levelx
 
-                // Check for intersection with higest level.
+                // Check for intersection with highest level.
                 if let Some(levelx) = start_stack.last() {
                     for regx in levelx.iter() {
                         if selnnx.intersects(regx) {
@@ -835,17 +829,19 @@ impl SomeDomain {
                 }
             } // next selnnx
 
+            // Check if no more levels of intersection.
             if next_start_level.is_empty() && next_goal_level.is_empty() {
-                //println!("No next level found");
                 return None;
             }
+
+            // Add next level(s)
             if !next_start_level.is_empty() {
-                more_found = true;
                 start_stack.push(next_start_level);
+                more_found = true;
             }
             if !next_goal_level.is_empty() {
-                more_found = true;
                 goal_stack.push(next_goal_level);
+                more_found = true;
             }
         } // end while
 
@@ -911,7 +907,7 @@ impl SomeDomain {
             }
             //println!("goal side:  {}", tools::vec_ref_string(&goal_side));
 
-            // Check if the start siede end is eual to the goal_side begin.
+            // Check if the start side end is equal to the goal_side begin.
             if let Some(start_end) = start_side.last() {
                 if let Some(goal_start) = goal_side.first() {
                     if std::ptr::eq(start_end, goal_start) {
@@ -953,18 +949,14 @@ impl SomeDomain {
         }
 
         // Get some plans from paths.
-        let mut plans = (0..1)
+        let mut plans = (0..4)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .map(|_| self.plan_path_through_regions2(start_reg, goal_reg, &paths))
+            .map(|_| self.plan_path_through_regions2(&paths))
             .flatten()
             .collect::<Vec<SomePlan>>();
 
         // Check for failure.
         if plans.is_empty() {
-            //println!(
-            //    "plan_path_through_regions: No plan found for domain {}",
-            //    self.num
-            //);
             return None;
         }
 
@@ -977,35 +969,10 @@ impl SomeDomain {
         Some(ret_plans)
     } // end plan_path_through_regions
 
-    /// Find esteps thur a series of intersecting regions.
-    fn plan_path_through_regions2(
-        &self,
-        _start_reg: &SomeRegion,
-        _goal_reg: &SomeRegion,
-        paths: &[Path],
-    ) -> Vec<SomePlan> {
-        //println!(
-        //    "plan_path_through_regions2: starting: start reg  {start_reg}, goal_reg {goal_reg}"
-        //);
-        //for pathx in paths.iter() {
-        //println!("A path");
-        //    for pairx in pathx.steps.iter() {
-        //        println!(
-        //            "    from {} to {} staying within {}",
-        //            pairx.from, pairx.to, pairx.within
-        //        );
-        //    }
-        //}
-
+    /// Find steps through a series of intersecting regions.
+    fn plan_path_through_regions2(&self, paths: &[Path]) -> Vec<SomePlan> {
         // Select a path.
         let pathx = &paths[rand::thread_rng().gen_range(0..paths.len())];
-        //println!("Chosen path");
-        //for pairx in pathx.steps.iter() {
-        //    println!(
-        //        "    from {} to {} staying within {}",
-        //        pairx.from, pairx.to, pairx.within
-        //    );
-        //}
 
         // Process each path step.
         let mut cur_rslt = pathx.steps[0].from.clone();
@@ -1015,10 +982,6 @@ impl SomeDomain {
             // Process each step, domain by domain.
 
             if stepx.from.is_subset_of(&stepx.to) {
-                //println!(
-                //    "dom {} from {} is a subset of to {}",
-                //    self.num, stepx.from, stepx.to
-                //);
                 continue;
             }
 
@@ -1027,21 +990,10 @@ impl SomeDomain {
             // Get plans from start region to intersection region.
             let Some(step1_plans) = self.make_plans2(&cur_rslt, &stepx.to, Some(&stepx.within))
             else {
-                //println!(
-                //    "dom {} no plans found from {} to {}",
-                //    self.num, cur_rslt, stepx.to
-                //);
                 return vec![];
             };
 
-            //println!(
-            //    "dom {}  {} step1_plans found from {} is a subset of to {}",
-            //    self.num,
-            //    step1_plans.len(),
-            //    stepx.from,
-            //    stepx.to
-            //);
-
+            // Process possible plans for one step.
             let mut inps = vec![];
             for (inp, plan1) in step1_plans.iter().enumerate() {
                 // Check plan stays within path.
@@ -1053,21 +1005,12 @@ impl SomeDomain {
                 // Check result is OK.
                 let rslt = plan1.result_region();
                 if !rslt.is_subset_of(&stepx.to) {
-                    //println!(
-                    //    "    plan {} result {} is not within {}",
-                    //    plan1, rslt, stepx.to
-                    //);
                     continue;
                 }
                 // Check path is OK.
                 if !path_region.is_subset_of(&stepx.within) {
-                    //println!("    plan {} does NOT stay within {}", plan1, stepx.within);
                     continue;
                 }
-                //println!(
-                //    "    plan {} stays within {}, result {} in {}",
-                //    plan1, stepx.within, rslt, stepx.to
-                //);
 
                 inps.push(inp);
             } // next plan1
@@ -1075,6 +1018,7 @@ impl SomeDomain {
                 //println!("No plan found");
                 return vec![];
             }
+            // Select a possible plan.
             let inp = inps[rand::thread_rng().gen_range(0..inps.len())];
             //println!("plan {} chosen {}", inp, step1_plans[inp]);
             cur_rslt = step1_plans[inp].result_region().clone();
@@ -1087,11 +1031,7 @@ impl SomeDomain {
                 panic!("Plan link failure, {} to {}", plans[0], step1_plans[inp]);
             }
         } // next stepx
-          //if plans.is_empty() {
-          //    println!("Plan NOT found");
-          //} else {
-          //    println!("Plan found: {}", plans[0]);
-          //}
+
         plans
     } // end plan_path_through_regions2
 } // end impl SomeDomain

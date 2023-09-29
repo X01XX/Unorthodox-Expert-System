@@ -53,15 +53,14 @@ pub struct DomainStore {
     pub boredom: usize,
     /// A limit for becomming bored, then moving to another select state.
     pub boredom_limit: usize,
-    /// Zero, or more, select regions that are sought if there are no needs.
-    /// This may be changed from the UI, see the help display for the commands "oa" and "od".
-    /// If more than one region, boredom may cause the program to run rules to switch to a different region.
+    /// Zero, or more, select regions that may have poitive, or negative, value.
+    /// They may overlap.
     pub select: SelectRegionsStore,
     /// Positive regions, not overlapped by negative >= value regions.
     /// These tend to be goals.
     pub select_positive: SelectRegionsStore,
-    /// Negative regions, not overlapped by positive >= value regions.
-    /// These tend to be places to avoid in the middle of a path to a goal.
+    /// Negative regions, value regions.
+    /// These tend to be places to avoid in planning a path to a goal.
     pub select_negative: SelectRegionsStore,
     /// Save the results of the last run of get_needs.
     pub needs: NeedStore,
@@ -515,6 +514,11 @@ impl DomainStore {
                             planx.str_terse(),
                             rate
                         );
+                        println!("First plan:");
+                        self.print_plan_detail(self.can_do[ndinx].plans.as_ref().expect("SNH"));
+                        println!("A better plan");
+                        self.print_plan_detail(&planx);
+
                         self.can_do[ndinx].plans = Some(planx);
                         self.can_do[ndinx].rate = rate;
                     } else {
@@ -1169,6 +1173,40 @@ impl DomainStore {
             tot += domx.number_groups();
         }
         tot
+    }
+
+    /// Print a plan step-by-step, indicating changes.
+    pub fn print_plan_detail(&self, plan_str: &PlanStore) {
+        let mut cur_states = self.all_current_states();
+
+        for planx in plan_str.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+
+            println!("\nDomain: {}, Plan:", planx.dom_num);
+
+            for (inx, stepx) in planx.iter().enumerate() {
+                let df = stepx.initial.diff_mask(&stepx.result);
+                print!(
+                    "{} Action {:02} Group {} ",
+                    &stepx.initial, &stepx.act_num, &stepx.group_reg
+                );
+                if inx > 0 {
+                    for sel_regx in self.select.iter() {
+                        if sel_regx.regions.is_superset_states_corr(&cur_states)
+                            && sel_regx.value() < 0
+                        {
+                            print!(" in {:+}", sel_regx);
+                        }
+                    }
+                }
+                println!("\n{}", df.str2());
+
+                cur_states[planx.dom_num] = stepx.result.state1();
+            } // next steps
+            println!("{}", planx.result_region());
+        } // next planx
     }
 } // end impl DomainStore
 
