@@ -282,7 +282,7 @@ fn domainstore_init() -> DomainStore {
     regstr1.push(dmxs[0].region_from_string_pad_x("r0x0x").expect("SNH"));
     regstr1.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXX1X_1XXX_XXXX")
+            .region_from_string_pad_x("rXXXX_XX1X_1XXX_XXXX")
             .expect("SNH"),
     );
 
@@ -290,7 +290,7 @@ fn domainstore_init() -> DomainStore {
     regstr2.push(dmxs[0].region_from_string_pad_x("r0xx1").expect("SNH"));
     regstr2.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXXX1_1XXX_XXXX")
+            .region_from_string_pad_x("rXXXX_XXX1_1XXX_XXXX")
             .expect("SNH"),
     );
 
@@ -298,7 +298,7 @@ fn domainstore_init() -> DomainStore {
     regstr3.push(dmxs[0].region_from_string_pad_x("rx1x1").expect("SNH"));
     regstr3.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXX00_0XXX_XXXX")
+            .region_from_string_pad_x("rXXXX_XX00_0XXX_XXXX")
             .expect("SNH"),
     );
 
@@ -306,7 +306,7 @@ fn domainstore_init() -> DomainStore {
     regstr4.push(dmxs[0].region_from_string_pad_x("r1110").expect("SNH"));
     regstr4.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXXX0_0XXX_XXXX")
+            .region_from_string_pad_x("rXXXX_XXX0_0XXX_XXXX")
             .expect("SNH"),
     );
 
@@ -314,7 +314,7 @@ fn domainstore_init() -> DomainStore {
     regstr5.push(dmxs[0].region_from_string_pad_x("rXX00").expect("SNH"));
     regstr5.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXXx1_0xXX_XXXX")
+            .region_from_string_pad_x("rXXXX_XXx1_0xXX_XXXX")
             .expect("SNH"),
     );
 
@@ -322,7 +322,7 @@ fn domainstore_init() -> DomainStore {
     regstr6.push(dmxs[0].region_from_string_pad_x("rX10X").expect("SNH"));
     regstr6.push(
         dmxs[1]
-            .region_from_string_pad_x("rXXXXXX1x_x0XX_XXXX")
+            .region_from_string_pad_x("rXXXX_XX1x_x0XX_XXXX")
             .expect("SNH"),
     );
 

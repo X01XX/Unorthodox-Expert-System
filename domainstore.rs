@@ -136,21 +136,22 @@ impl DomainStore {
     /// If the current state is in a negative SelectRegions,
     /// and the select region for the given domain is the maximum region, the result will be empty,
     /// implying the need to change the state of another domain.
-    fn calc_non_negative_regions(&self, dom_num: usize, cur_state: &[&SomeState]) -> RegionStore {
+    fn calc_non_negative_regions(&self, dom_num: usize, cur_states: &[&SomeState]) -> RegionStore {
         let mut non_neg_regs = RegionStore::new(vec![self[dom_num].max_region.clone()]);
 
         'next_selx: for (sel_num, selx) in self.select_negative.iter().enumerate() {
-            // Check if other regions are satisfied.
+            // Check if any other domain is out of the SelectRegions.
             for (inx, regx) in selx.regions.iter().enumerate() {
                 if inx == dom_num {
                     continue;
                 }
-                if !regx.is_superset_of_state(cur_state[inx]) {
+                if !regx.is_superset_of_state(cur_states[inx]) {
                     continue 'next_selx;
                 }
             } // next inx, regx
 
             // If the region for the given domain is the maximum region, done.
+            // Changing the current state of another domain might solve this, in the above code.
             if selx.regions[dom_num].all_x() {
                 return RegionStore::new(vec![]);
             }
@@ -805,24 +806,22 @@ impl DomainStore {
             self.boredom = 0;
             self.boredom_limit = 0;
 
-            // Find closest non-negative region distance.
-            let mut min_dist = usize::MAX;
             for (inx, regstr) in non_negs.iter().enumerate() {
-                for regsx in regstr.iter() {
-                    let dist = regsx.distance_state(all_states[inx]);
+                // Find closest non-negative region distance.
+                let mut min_dist = usize::MAX;
+                for regx in regstr.iter() {
+                    let dist = regx.distance_state(all_states[inx]);
                     if dist < min_dist {
                         min_dist = dist;
                     }
                 }
-            }
 
-            // Process closest non-negative regions.
-            for (inx, regstr) in non_negs.iter().enumerate() {
-                for regsx in regstr.iter() {
-                    if regsx.distance_state(all_states[inx]) == min_dist {
+                // Process closest non-negative regions.
+                for regx in regstr.iter() {
+                    if regx.distance_state(all_states[inx]) == min_dist {
                         let mut needx = SomeNeed::ExitSelectRegion {
                             dom_num: inx,
-                            target_region: regsx.clone(),
+                            target_region: regx.clone(),
                             priority: 0,
                         };
                         needx.set_priority();
@@ -1757,7 +1756,7 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Set select region.
-        let max_region = dmxs[1].region_from_string_pad_x("rx").expect("SNH");
+        let max_region = dmxs[1].region_from_string_pad_x("rxxxx").expect("SNH");
 
         // Set up dom 0 negative regions.
         let mut regstr0 = RegionStore::with_capacity(2);

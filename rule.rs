@@ -76,44 +76,44 @@ impl SomeRule {
             if token.len() == 2 {
                 if token == "00" {
                     b00 = b00.push_1();
-                    b01 = b01.push_0();
-                    b11 = b11.push_0();
-                    b10 = b10.push_0();
+                    b01 = b01.shift_left();
+                    b11 = b11.shift_left();
+                    b10 = b10.shift_left();
                 } else if token == "01" {
-                    b00 = b00.push_0();
+                    b00 = b00.shift_left();
                     b01 = b01.push_1();
-                    b11 = b11.push_0();
-                    b10 = b10.push_0();
+                    b11 = b11.shift_left();
+                    b10 = b10.shift_left();
                 } else if token == "11" {
-                    b00 = b00.push_0();
-                    b01 = b01.push_0();
+                    b00 = b00.shift_left();
+                    b01 = b01.shift_left();
                     b11 = b11.push_1();
-                    b10 = b10.push_0();
+                    b10 = b10.shift_left();
                 } else if token == "10" {
-                    b00 = b00.push_0();
-                    b01 = b01.push_0();
-                    b11 = b11.push_0();
+                    b00 = b00.shift_left();
+                    b01 = b01.shift_left();
+                    b11 = b11.shift_left();
                     b10 = b10.push_1();
                 } else if token == "XX" || token == "xx" {
                     b00 = b00.push_1();
-                    b01 = b01.push_0();
+                    b01 = b01.shift_left();
                     b11 = b11.push_1();
-                    b10 = b10.push_0();
+                    b10 = b10.shift_left();
                 } else if token == "Xx" || token == "xX" {
-                    b00 = b00.push_0();
+                    b00 = b00.shift_left();
                     b01 = b01.push_1();
-                    b11 = b11.push_0();
+                    b11 = b11.shift_left();
                     b10 = b10.push_1();
                 } else if token == "X0" || token == "x0" {
                     b00 = b00.push_1();
-                    b01 = b01.push_0();
-                    b11 = b11.push_0();
+                    b01 = b01.shift_left();
+                    b11 = b11.shift_left();
                     b10 = b10.push_1();
                 } else if token == "X1" || token == "x1" {
-                    b00 = b00.push_0();
+                    b00 = b00.shift_left();
                     b01 = b01.push_1();
                     b11 = b11.push_1();
-                    b10 = b10.push_0();
+                    b10 = b10.shift_left();
                 } else {
                     return Err(format!("unrecognized token {}", &token));
                 }

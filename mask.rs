@@ -157,13 +157,6 @@ impl SomeMask {
         }
     }
 
-    /// Return mask after shifting left one position.
-    pub fn push_0(&self) -> Self {
-        Self {
-            bts: self.bts.push_0(),
-        }
-    }
-
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
         Self {

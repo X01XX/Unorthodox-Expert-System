@@ -94,6 +94,8 @@ impl SomeBits {
     /// }
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
+    /// Using multiple integers could allow for a number that is too big for
+    /// the standard methods of converting a string to an integer.
     pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut bts = self.new_low();
 
@@ -431,7 +433,7 @@ impl SomeBits {
 
     /// Return a copy, shifted left by 4 bits.
     /// The Most Significant 4 bit value is lost.
-    pub fn shift_left4(&self) -> Self {
+    fn shift_left4(&self) -> Self {
         let mut ints2 = vec![0 as Bitint; self.num_ints()];
 
         let mut carry: Bitint = 0;
@@ -447,7 +449,7 @@ impl SomeBits {
     }
 
     /// Return the number of integers used in the given SomeBits struct.
-    pub fn num_ints(&self) -> usize {
+    fn num_ints(&self) -> usize {
         self.ints.len()
     }
 
@@ -459,14 +461,14 @@ impl SomeBits {
     /// Return true if the highest bit is nonzero.
     /// This is used in the from_string functions to detect overflow
     /// from the next shift-left operation.
-    pub fn high_bit_nonzero(&self) -> bool {
+    fn high_bit_nonzero(&self) -> bool {
         self.ints[0] & INT_HIGH_BIT > 0
     }
 
     /// Return true if the highest nibble is nonzero.
     /// This is used in the from_string functions to detect overflow
     /// from the next shift-left operation.
-    pub fn high_nibble_nonzero(&self) -> bool {
+    fn high_nibble_nonzero(&self) -> bool {
         self.ints[0] & INT_HIGH_NIBBLE > 0
     }
 
@@ -521,11 +523,6 @@ impl SomeBits {
             }
         }
         astr
-    }
-
-    /// Return a copy, shifted 1 to the left.
-    pub fn push_0(&self) -> Self {
-        self.shift_left() // Shift all bits left, LSB bit becomes zero.
     }
 } // end impl SomeBits
 
@@ -800,21 +797,18 @@ mod tests {
     // Test change_bit functions.
     #[test]
     fn change_bits() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
-        let bx11 = tmp_bts.new_from_string("0x11")?;
-        let mut bitsx = tmp_bts.new_low();
-        bitsx = bitsx.change_bit(0).change_bit(4);
-        println!("bx11 {bx11} bitsx: {bitsx}");
-        assert!(bx11 == bitsx);
+        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let mut bits11 = SomeBits::new(vec![1, 1]);
 
-        let bx10 = tmp_bts.new_from_string("0x10")?;
-        bitsx = bitsx.set_bit_to_0(0);
-        println!("bx10 {bx10} bitsx: {bitsx}");
-        assert!(bx10 == bitsx);
-
-        bitsx = bitsx.set_bit_to_1(0);
-        println!("bx11 {bx11} bitsx: {bitsx}");
-        assert!(bx11 == bitsx);
+        for inx in 0..NUM_BITS_PER_INT {
+            let bitsx = tmp_bts.change_bit(inx).change_bit(inx + NUM_BITS_PER_INT);
+            println!("bits11 {bits11} bitsx: {bitsx}");
+            assert!(bitsx == bits11);
+            let bitsy = bits11.change_bit(inx).change_bit(inx + NUM_BITS_PER_INT);
+            println!("bitsy {bitsy} tmp_bts: {tmp_bts}");
+            assert!(bitsy == tmp_bts);
+            bits11 = bits11.shift_left();
+        }
 
         Ok(())
     }
