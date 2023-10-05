@@ -788,9 +788,12 @@ impl DomainStore {
         }
 
         // Check if current state is in a negative select state.
+        // Since SelectRegions have a Boolean AND relationship, only
+        // changing in one non-negative region, in one domain, is needed.
         if self.select_negative.any_supersets_of_states(&all_states) {
-            // Since SelectRegions have a Boolean AND relationship, only
-            // changing in one non-negative region, in one domain, is needed.
+            self.boredom = 0;
+            self.boredom_limit = 0;
+
             let mut ndstr = NeedStore::new(vec![]);
 
             print!("all_states: [");
@@ -798,29 +801,24 @@ impl DomainStore {
                 print!(" {}", stax);
             }
             println!("], is subset of a negative region. ");
-            let mut non_negs = Vec::<RegionStore>::with_capacity(self.len());
+
             for dom_num in 0..self.len() {
-                non_negs.push(self.calc_non_negative_regions(dom_num, &all_states));
-            }
+                let non_negs = self.calc_non_negative_regions(dom_num, &all_states);
 
-            self.boredom = 0;
-            self.boredom_limit = 0;
-
-            for (inx, regstr) in non_negs.iter().enumerate() {
                 // Find closest non-negative region distance.
                 let mut min_dist = usize::MAX;
-                for regx in regstr.iter() {
-                    let dist = regx.distance_state(all_states[inx]);
+                for regx in non_negs.iter() {
+                    let dist = regx.distance_state(all_states[dom_num]);
                     if dist < min_dist {
                         min_dist = dist;
                     }
                 }
 
                 // Process closest non-negative regions.
-                for regx in regstr.iter() {
-                    if regx.distance_state(all_states[inx]) == min_dist {
+                for regx in non_negs.iter() {
+                    if regx.distance_state(all_states[dom_num]) == min_dist {
                         let mut needx = SomeNeed::ExitSelectRegion {
-                            dom_num: inx,
+                            dom_num,
                             target_region: regx.clone(),
                             priority: 0,
                         };
@@ -828,7 +826,7 @@ impl DomainStore {
                         ndstr.push(needx);
                     }
                 }
-            }
+            } // next dom_num
             return Some(ndstr);
         }
 
