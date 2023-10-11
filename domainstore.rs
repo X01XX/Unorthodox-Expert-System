@@ -1216,19 +1216,16 @@ impl DomainStore {
             if selx.regions.is_superset_of_corr(start_regs)
                 || selx.regions.is_superset_of_corr(goal_regs)
             {
-                //println!("return 1");
                 return None;
             }
         }
 
         let mut first_plans = PlanStore::new(vec![]);
 
-        let mut start_stack = Vec::<RegionStore>::new();
         let mut cur_start = start_regs.clone();
 
-        while start_stack.len() < 4 {
+        for _ in 0..4 {
             if let Some((dom_num, sel_inxs)) = self.find_a_trap(&cur_start, goal_regs) {
-                //println!("    trap = {} sel inx {:?}", dom_num, sel_inxs);
                 // Find fix, else fail.
 
                 // See if other domains can change to disarm the trap.
@@ -1236,18 +1233,12 @@ impl DomainStore {
                     if domx == dom_num {
                         continue;
                     }
-                    //println!("    Alt domain {}", domx);
                     let mut comp = RegionStore::new(vec![self[domx].max_region.clone()]);
                     for sely in sel_inxs.iter() {
-                        //println!(
-                        //    "      alt sel inx {:?} sel {}",
-                        //    sely, self.select_negative[*sely]
-                        //);
                         comp = comp.intersection(&RegionStore::new(
                             self.select_negative[*sely].regions[domx].complement(),
                         ));
                     }
-                    println!("      alt cmps: {}", comp);
                     // Find closest complement regions.
                     let mut min_dist = usize::MAX;
                     for compx in comp.iter() {
@@ -1264,15 +1255,10 @@ impl DomainStore {
                     }
 
                     for compx in closest.iter() {
-                        //println!(
-                        //    "      {} is {} bits from {}",
-                        //    compx, min_dist, cur_start[domx]
-                        //);
                         if let Some(mut plans) =
                             self[domx].make_plans2(&cur_start[domx], compx, None)
                         {
-                            //println!("        Plans found: {}", tools::vec_string(&plans));
-
+                            // Alter cur_start, add to PlanStore.
                             let rslt = plans[0].result_region().clone();
                             cur_start[domx] = rslt;
                             first_plans.push(plans.swap_remove(0));
@@ -1281,18 +1267,12 @@ impl DomainStore {
                         }
                     }
                 } // next domx
-
-                // Alter cur_start, add to PlanStore.
-
-                start_stack.push(cur_start.clone());
             } else {
-                //println!("No more traps");
+                // No more traps
                 break;
             }
         } // end while
         if first_plans.is_not_empty() {
-            //println!("    cur_start: {}", cur_start);
-            //println!("    first_plans: {}", first_plans);
             if let Some(next_plans) = self.avoid_negative_select_regions2(&cur_start, goal_regs) {
                 first_plans.append(next_plans);
                 return Some(first_plans);
@@ -1313,13 +1293,6 @@ impl DomainStore {
         //println!("avoid_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}");
 
         // Outcome may depend on the order of the domains checked, so try a number of times.
-
-        // Generate new all_states.
-        //let all_states_mem: Vec::<&SomeState> = self.all_current_states();
-        //let mut all_states_mem = Vec::<SomeState>::with_capacity(self.len());
-        //for domx in self.avec.iter() {
-        //    all_states_mem.push(domx.cur_state.clone());
-        //}
 
         'try_again: for _ in 0..(self.len() * 2) {
             let mut start_states_mem = Vec::<SomeState>::with_capacity(self.len());
@@ -1433,12 +1406,10 @@ impl DomainStore {
         // Find plans that avoid negative regions.
         let mut dom_plans = self[dom_num].plan_paths_through_regions(start_reg, goal_reg, &non_neg);
         if dom_plans.is_empty() {
-            //println!("    no plan (1) found");
             return None;
         }
 
         let inx = self.choose_a_plan(&dom_plans);
-        //println!("  plan found {}", dom_plans[inx]);
 
         Some(dom_plans.swap_remove(inx))
     } // end avoid_negative_select_regions2_dom
