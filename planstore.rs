@@ -1,6 +1,7 @@
 //! The PlanStore struct, a vector of SomePlan structs.
 
 use crate::plan::SomePlan;
+use crate::region::SomeRegion;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -51,6 +52,11 @@ impl PlanStore {
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomePlan> {
         self.avec.iter()
+    }
+
+    /// Return a reference to the las plan.
+    pub fn last(&self) -> Option<&SomePlan> {
+        self.avec.last()
     }
 
     /// Return a more restricted display version of a PlanStore.
@@ -105,6 +111,25 @@ impl PlanStore {
     /// Do swap_remove for a PlanStore.
     pub fn swap_remove(&mut self, inx: usize) -> SomePlan {
         self.avec.swap_remove(inx)
+    }
+
+    /// Extend a StepStore by emtying another StepStore.
+    pub fn append(&mut self, mut other: Self) {
+        self.avec.append(&mut other.avec);
+    }
+
+    /// Return true if the last plan for a domain is the given region.
+    pub fn dom_result(&self, dom_num: usize, regx: &SomeRegion) -> bool {
+        let mut rslt: Option<&SomeRegion> = None;
+        for planx in self.iter() {
+            if planx.dom_num == dom_num && planx.is_not_empty() {
+                rslt = Some(planx.result_region());
+            }
+        }
+        if let Some(regy) = rslt {
+            return regy == regx;
+        }
+        false
     }
 } // end impl PlanStore
 

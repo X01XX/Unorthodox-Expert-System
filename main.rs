@@ -395,7 +395,8 @@ fn command_loop(dmxs: &mut DomainStore) {
         // Default command, just press Enter
         if cmd.is_empty() {
             // Process needs
-            if !dmxs.can_do.is_empty() {
+            if dmxs.can_do.is_empty() {
+            } else {
                 do_any_need(dmxs);
             }
             return;
@@ -482,7 +483,8 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "run" => {
-                if !dmxs.can_do.is_empty() {
+                if dmxs.can_do.is_empty() {
+                } else {
                     run_to_end(dmxs);
                 }
             }

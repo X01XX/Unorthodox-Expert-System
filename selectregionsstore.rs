@@ -292,7 +292,7 @@ impl SelectRegionsStore {
     pub fn rate_plans<'a>(&self, plans: &'a PlanStore, current_states: &[&'a SomeState]) -> isize {
         let mut non_empty_plans = Vec::<usize>::new();
         for (iny, plnx) in plans.iter().enumerate() {
-            if !plnx.is_empty() {
+            if plnx.is_not_empty() {
                 non_empty_plans.push(iny);
             }
         }
@@ -467,6 +467,16 @@ impl SelectRegionsStore {
             cur_stores = next_stores;
         } // end loop
     } // end split_to_subsets
+
+    /// Return true if there is any intersection with a given domain region.
+    pub fn any_intersection_dom(&self, dom_num: usize, regx: &SomeRegion) -> bool {
+        for selx in self.iter() {
+            if selx.regions[dom_num].intersects(regx) {
+                return true;
+            }
+        }
+        false
+    }
 } // End impl SelectRegionsStore
 
 impl Index<usize> for SelectRegionsStore {

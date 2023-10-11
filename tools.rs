@@ -70,7 +70,8 @@ impl RandomPick {
 /// Return a string representing a vector of items.
 pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
     let mut len = 2; // Length of brackets.
-    if !avec.is_empty() {
+    if avec.is_empty() {
+    } else {
         // Length of items may be different, as in corresponding region, or state, vectors.
         for itmx in avec.iter() {
             len += itmx.strlen(); // Length of item.
@@ -98,7 +99,8 @@ pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
 /// Return a string representing a vector of references to items.
 pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
     let mut len = 2; // Length of brackets.
-    if !avec.is_empty() {
+    if avec.is_empty() {
+    } else {
         // Length of items may be different, as in corresponding region, or state, vectors.
         for itmx in avec.iter() {
             len += itmx.strlen(); // Length of item.

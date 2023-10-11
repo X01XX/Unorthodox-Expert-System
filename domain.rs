@@ -19,7 +19,6 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
-use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
@@ -47,7 +46,7 @@ impl fmt::Display for PathStep {
     }
 }
 
-/// Implement the trait StrLen for SomeRegion.
+/// Implement the trait StrLen for PathStep.
 impl StrLen for PathStep {
     fn strlen(&self) -> usize {
         24 + (3 * self.from.strlen())
@@ -62,6 +61,34 @@ pub struct PathStep {
 
 pub struct Path {
     pub steps: Vec<PathStep>,
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut rc_str = String::new();
+        rc_str.push('[');
+
+        for (inx, stepx) in self.steps.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{}", stepx));
+        }
+
+        rc_str.push(']');
+        write!(f, "{}", rc_str)
+    }
+}
+
+/// Implement the trait StrLen for Path.
+impl StrLen for Path {
+    fn strlen(&self) -> usize {
+        if self.steps.is_empty() {
+            2
+        } else {
+            (2 * self.steps.len()) + (self.steps[0].strlen() * self.steps.len())
+        }
+    }
 }
 
 impl fmt::Display for SomeDomain {
@@ -319,7 +346,8 @@ impl SomeDomain {
         } // next vecx
 
         // If any forced asymmetrical single-bit changes found
-        if !asym_inx.is_empty() {
+        if asym_inx.is_empty() {
+        } else {
             // Init selected steps
             let mut selected_steps = Vec::<&SomeStep>::new();
 
@@ -646,32 +674,30 @@ impl SomeDomain {
         rc_str
     }
 
-    /// Plan a path, from an initial region, to a goal region,
-    /// within a series of intersecting regions.
-    pub fn plan_path_through_regions(
+    /// Plan a region-to-region path, via intersections, from an initial region, to a goal region.
+    pub fn find_paths_through_regions(
         &self,
         start_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         path_regions: &RegionStore,
-    ) -> Option<PlanStore> {
+    ) -> Vec<Path> {
         //println!(
         //    "plan_path_through_regions: starting: domain: {} cur state: {} start: {start_reg} goal: {goal_reg} path_regions: {path_regions}",
         //    self.num, self.cur_state
         //);
 
-        if path_regions.is_empty() {
-            return None;
-        }
+        let mut ret_paths = vec![];
 
-        let mut ret_plans = PlanStore::new(vec![]);
+        if path_regions.is_empty() {
+            return ret_paths;
+        }
 
         // Generate a plan.
 
         // Check if no plans are needed.
         if start_reg.is_subset_of(goal_reg) {
             //println!("No plan needed");
-            ret_plans.push(SomePlan::new(self.num, vec![]));
-            return Some(ret_plans);
+            return vec![];
         }
 
         // Gather possible start regions.
@@ -681,25 +707,21 @@ impl SomeDomain {
                 continue;
             }
             if pathx.is_superset_of(goal_reg) {
-                if let Some(step1_plans) = self.make_plans2(
-                    &SomeRegion::new(vec![self.cur_state.clone()]),
-                    goal_reg,
-                    Some(pathx),
-                ) {
-                    for planx in step1_plans.iter() {
-                        if planx.path_region().expect("SNH").is_subset_of(pathx) {
-                            ret_plans.push(planx.clone());
-                            return Some(ret_plans);
-                        }
-                    }
-                    return None;
-                }
+                let mut aplan = Path { steps: vec![] };
+                let astep = PathStep {
+                    from: start_reg.clone(),
+                    to: goal_reg.clone(),
+                    within: pathx.clone(),
+                };
+                aplan.steps.push(astep);
+                ret_paths.push(aplan);
+                return ret_paths;
             }
             start_in.push(pathx);
         }
 
         if start_in.is_empty() {
-            return None;
+            return vec![];
         }
 
         // Gather possible goal regions.
@@ -711,7 +733,7 @@ impl SomeDomain {
         }
 
         if goal_in.is_empty() {
-            return None;
+            return vec![];
         }
 
         // Init vector for paths thas lead from a domain start region to the goal region.
@@ -782,7 +804,8 @@ impl SomeDomain {
             }
 
             // Check if at leat one intersection is found.
-            if !intersections.is_empty() {
+            if intersections.is_empty() {
+            } else {
                 break;
             }
 
@@ -831,15 +854,17 @@ impl SomeDomain {
 
             // Check if no more levels of intersection.
             if next_start_level.is_empty() && next_goal_level.is_empty() {
-                return None;
+                return vec![];
             }
 
             // Add next level(s)
-            if !next_start_level.is_empty() {
+            if next_start_level.is_empty() {
+            } else {
                 start_stack.push(next_start_level);
                 more_found = true;
             }
-            if !next_goal_level.is_empty() {
+            if next_goal_level.is_empty() {
+            } else {
                 goal_stack.push(next_goal_level);
                 more_found = true;
             }
@@ -847,7 +872,7 @@ impl SomeDomain {
 
         if intersections.is_empty() {
             //println!("No intersections to process");
-            return None;
+            return vec![];
         }
 
         //println!("intersections found");
@@ -943,96 +968,108 @@ impl SomeDomain {
         //for pathx in paths.iter() {
         //    println!("    {}", tools::vec_string(&pathx.steps));
         //}
+        paths
+    }
+
+    /// Plan a path, from an initial region, to a goal region,
+    /// within a series of intersecting regions.
+    pub fn plan_paths_through_regions(
+        &self,
+        start_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        path_regions: &RegionStore,
+    ) -> Vec<SomePlan> {
+        let mut ret_plans = vec![];
+
+        // Check if no plans are needed.
+        if start_reg.is_subset_of(goal_reg) {
+            //println!("No plan needed");
+            ret_plans.push(SomePlan::new(self.num, vec![]));
+            return ret_plans;
+        }
+
+        let paths = self.find_paths_through_regions(start_reg, goal_reg, path_regions);
+
         if paths.is_empty() {
-            //println!("No path found");
-            return None;
+            return ret_plans;
         }
 
-        // Get some plans from paths.
-        let mut plans = (0..4)
-            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .map(|_| self.plan_path_through_regions2(&paths))
-            .flatten()
-            .collect::<Vec<SomePlan>>();
-
-        // Check for failure.
-        if plans.is_empty() {
-            return None;
-        }
-
-        let selected_plan = plans.swap_remove(rand::thread_rng().gen_range(0..plans.len()));
-
-        //println!("Returning {}", selected_plan);
-        ret_plans.push(selected_plan);
-
-        // Return one of the plans, avoiding the need to clone.
-        Some(ret_plans)
-    } // end plan_path_through_regions
+        // Return some plans from paths.
+        self.find_plans_through_paths(&paths)
+    } // end plan_paths_through_regions
 
     /// Find steps through a series of intersecting regions.
-    fn plan_path_through_regions2(&self, paths: &[Path]) -> Vec<SomePlan> {
-        // Select a path.
-        let pathx = &paths[rand::thread_rng().gen_range(0..paths.len())];
+    fn find_plans_through_paths(&self, paths: &[Path]) -> Vec<SomePlan> {
+        let mut ret_plans = Vec::<SomePlan>::new();
 
-        // Process each path step.
-        let mut cur_rslt = pathx.steps[0].from.clone();
-        let mut plans = Vec::<SomePlan>::new();
+        if paths.is_empty() {
+            return ret_plans;
+        }
 
-        for stepx in pathx.steps.iter() {
-            // Process each step, domain by domain.
+        // Try each path.
+        let mut rp = tools::RandomPick::new(paths.len());
+        while let Some(rpinx) = rp.pick() {
+            let pathx = &paths[rpinx];
+            let mut aplan = SomePlan::new(self.num, vec![]);
 
-            if stepx.from.is_subset_of(&stepx.to) {
-                continue;
-            }
+            // Process each path step.
+            let mut cur_rslt = pathx.steps[0].from.clone();
 
-            assert!(cur_rslt.is_subset_of(&stepx.from));
+            for stepx in pathx.steps.iter() {
+                // Process each step, domain by domain.
 
-            // Get plans from start region to intersection region.
-            let Some(step1_plans) = self.make_plans2(&cur_rslt, &stepx.to, Some(&stepx.within))
-            else {
-                return vec![];
-            };
+                if stepx.from.is_subset_of(&stepx.to) {
+                    continue;
+                }
 
-            // Process possible plans for one step.
-            let mut inps = vec![];
-            for (inp, plan1) in step1_plans.iter().enumerate() {
-                // Check plan stays within path.
-                let path_region = if plan1.is_empty() {
-                    self.current_region()
-                } else {
-                    plan1.path_region().expect("SNH")
+                assert!(cur_rslt.is_subset_of(&stepx.from));
+
+                // Get plans from start region to intersection region.
+                let Some(step1_plans) = self.make_plans2(&cur_rslt, &stepx.to, Some(&stepx.within))
+                else {
+                    break;
                 };
-                // Check result is OK.
-                let rslt = plan1.result_region();
-                if !rslt.is_subset_of(&stepx.to) {
-                    continue;
+
+                // Process possible plans for one step.
+                let mut inps = vec![];
+                for (inp, plan1) in step1_plans.iter().enumerate() {
+                    // Check plan stays within path.
+                    let path_region = if plan1.is_empty() {
+                        self.current_region()
+                    } else {
+                        plan1.path_region().expect("SNH")
+                    };
+                    // Check result is OK.
+                    let rslt = plan1.result_region();
+                    if !rslt.is_subset_of(&stepx.to) {
+                        continue;
+                    }
+                    // Check path is OK.
+                    if !path_region.is_subset_of(&stepx.within) {
+                        continue;
+                    }
+
+                    inps.push(inp);
+                } // next plan1
+                if inps.is_empty() {
+                    break;
                 }
-                // Check path is OK.
-                if !path_region.is_subset_of(&stepx.within) {
-                    continue;
+                // Select a possible plan.
+                let inp = inps[rand::thread_rng().gen_range(0..inps.len())];
+                //println!("plan {} chosen {}", inp, step1_plans[inp]);
+                cur_rslt = step1_plans[inp].result_region().clone();
+
+                if aplan.is_empty() {
+                    aplan = step1_plans[inp].clone();
+                } else if let Some(extended_plan) = aplan.link(&step1_plans[inp]) {
+                    aplan = extended_plan;
+                } else {
+                    panic!("Plan link failure, {} to {}", aplan, step1_plans[inp]);
                 }
-
-                inps.push(inp);
-            } // next plan1
-            if inps.is_empty() {
-                //println!("No plan found");
-                return vec![];
-            }
-            // Select a possible plan.
-            let inp = inps[rand::thread_rng().gen_range(0..inps.len())];
-            //println!("plan {} chosen {}", inp, step1_plans[inp]);
-            cur_rslt = step1_plans[inp].result_region().clone();
-
-            if plans.is_empty() {
-                plans = vec![step1_plans[inp].clone()];
-            } else if let Some(extended_plan) = plans[0].link(&step1_plans[inp]) {
-                plans = vec![extended_plan];
-            } else {
-                panic!("Plan link failure, {} to {}", plans[0], step1_plans[inp]);
-            }
-        } // next stepx
-
-        plans
+            } // next stepx
+            ret_plans.push(aplan);
+        }
+        ret_plans
     } // end plan_path_through_regions2
 } // end impl SomeDomain
 

@@ -120,7 +120,8 @@ impl SomeRule {
                 token.clear();
             }
         }
-        if !token.is_empty() {
+        if token.is_empty() {
+        } else {
             return Err(format!("Did not understand token {}", &token));
         }
 

@@ -119,7 +119,8 @@ impl GroupStore {
             tools::remove_unordered(&mut self.avec, *inx);
         }
 
-        if !rmvec.is_empty() {
+        if rmvec.is_empty() {
+        } else {
             self.calc_aggregate_changes();
         }
 

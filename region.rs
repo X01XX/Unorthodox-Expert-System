@@ -66,7 +66,8 @@ impl SomeRegion {
                 }
             }
         }
-        if !remv.is_empty() {
+        if remv.is_empty() {
+        } else {
             // Sort idicies higher to lower.
             remv.sort_by(|a, b| b.cmp(a));
             for inx in remv.iter() {
@@ -91,7 +92,8 @@ impl SomeRegion {
                 }
             }
         }
-        if !remv.is_empty() {
+        if remv.is_empty() {
+        } else {
             // Sort idicies higher to lower.
             remv.sort_by(|a, b| b.cmp(a));
             for inx in remv.iter() {

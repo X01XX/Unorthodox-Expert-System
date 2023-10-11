@@ -132,7 +132,7 @@ impl SomeAction {
             // Check if it invalidates any groups.
             let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_num, self.num);
 
-            if !regs_invalid.is_empty() {
+            if regs_invalid.is_not_empty() {
                 self.process_invalid_regions(&regs_invalid);
             }
 
@@ -162,7 +162,7 @@ impl SomeAction {
                 // Gather invalidated group regions.
                 let regs_invalid: RegionStore =
                     self.groups.check_square(sqrx, self.dom_num, self.num);
-                if !regs_invalid.is_empty() {
+                if regs_invalid.is_not_empty() {
                     self.process_invalid_regions(&regs_invalid);
                 }
             }
@@ -206,7 +206,8 @@ impl SomeAction {
             }
         }
         // Try creating groups from each square.
-        if !orphaned_stas.is_empty() {
+        if orphaned_stas.is_empty() {
+        } else {
             self.create_groups_from_squares(&orphaned_stas);
         }
     }
@@ -723,7 +724,8 @@ impl SomeAction {
         }
 
         // Delete squares.
-        if !to_del.is_empty() {
+        if to_del.is_empty() {
+        } else {
             println!(
                 "\nDom {} Act {} deleted unneeded squares: {}",
                 self.dom_num, self.num, to_del
@@ -1625,9 +1627,7 @@ impl SomeAction {
                         max_reg.subtract_state_to_supersets_of(ex_regx.state2(), &sqrx.state),
                     );
                     let not_states = not_state1.union(&not_state2);
-                    if let Some(next_regs) = poss_regs.intersection(&not_states) {
-                        poss_regs = next_regs;
-                    }
+                    poss_regs = poss_regs.intersection(&not_states);
                     // println!("sqrx {} bad reg {}", sqrx.state, ex_regx);
                 }
             }

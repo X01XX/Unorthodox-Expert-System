@@ -257,7 +257,7 @@ impl RegionStore {
     }
 
     // Return the intersection of two RegionStores.
-    pub fn intersection(&self, other: &Self) -> Option<Self> {
+    pub fn intersection(&self, other: &Self) -> Self {
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
             for regy in other.iter() {
@@ -266,10 +266,7 @@ impl RegionStore {
                 }
             }
         }
-        if ret.is_empty() {
-            return None;
-        }
-        Some(ret)
+        ret
     }
 }
 
@@ -1020,9 +1017,7 @@ mod tests {
 
         let not_state_6 = RegionStore::new(max_reg.subtract_state(&state_6));
         let not_state_a = RegionStore::new(max_reg.subtract_state(&state_a));
-        let rslt = rslt
-            .intersection(&not_state_6.union(&not_state_a))
-            .expect("SNH");
+        let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
 
         let state_4 = tmp_state.new_from_string("s0b0100")?;
         let state_d = tmp_state.new_from_string("s0b1101")?;
@@ -1030,9 +1025,7 @@ mod tests {
         let not_state_4 = RegionStore::new(max_reg.subtract_state(&state_4));
         let not_state_d = RegionStore::new(max_reg.subtract_state(&state_d));
 
-        let rslt = rslt
-            .intersection(&not_state_4.union(&not_state_d))
-            .expect("SNH");
+        let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
 
         println!("result regions {}", rslt);
 
