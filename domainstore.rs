@@ -1338,8 +1338,8 @@ impl DomainStore {
                     ) {
                         if aplan.is_not_empty() {
                             start_states_mem[dom_num] = aplan.result_region().state1().clone();
+                            ret_plans.push(aplan);
                         }
-                        ret_plans.push(aplan);
                     } else {
                         continue 'try_again;
                     }
@@ -1369,14 +1369,19 @@ impl DomainStore {
                         &goal_regs[dom_num],
                         &start_states_ref,
                     ) {
-                        start_states_ref[dom_num] = aplan.result_region().state1();
-                        ret_plans.push(aplan);
+                        if aplan.is_not_empty() {
+                            start_states_ref[dom_num] = aplan.result_region().state1();
+                            ret_plans.push(aplan);
+                        }
                     } else {
                         continue 'try_again;
                     }
                 }
             }
 
+            if ret_plans.is_empty() {
+                continue 'try_again;
+            }
             return Some(ret_plans);
         }
         None
@@ -2178,6 +2183,13 @@ mod tests {
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
+            assert!(plans.len() == 3);
+            // Domain 1, move 7 out of negative select regions.
+            assert!(plans[0].dom_num == 1);
+            // Domain 0, move 5 to 9.
+            assert!(plans[1].dom_num == 0);
+            // Domain 1, move state from the first step, back to 7.
+            assert!(plans[2].dom_num == 1);
             assert!(plans.dom_result(0, &goal_regions[0]));
             assert!(plans.dom_result(1, &goal_regions[1]));
         } else {

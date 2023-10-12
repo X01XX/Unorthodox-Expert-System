@@ -34,9 +34,17 @@ impl PlanStore {
         self.avec.len()
     }
 
-    /// Return true if the store is empty.
+    /// Return true if the store does not contain at least one non-empty plan.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        if self.avec.is_empty() {
+            return true;
+        }
+        for planx in self.avec.iter() {
+            if planx.is_not_empty() {
+                return false;
+            }
+        }
+        true
     }
 
     /// Return true if the store is not empty.
