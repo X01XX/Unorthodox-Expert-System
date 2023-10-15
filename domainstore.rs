@@ -517,13 +517,17 @@ impl DomainStore {
                 }
 
                 if let Some(planx) = self.avoid_negative_select_regions(&start_regs, &goal_regs) {
-                    let rate = self.select.rate_plans(&planx, &self.all_current_states());
+                    let rate = self
+                        .select_negative
+                        .rate_plans(&planx, &self.all_current_states());
                     //println!(" new rate {rate}");
                     if rate > max_rate {
                         println!(
-                            "\nFor plan {}/{}, better plan found {}/{}",
+                            "\nFor plan {}/{}, {} to {}, better plan found {}/{}",
                             self.can_do[ndinx].plans.as_ref().expect("SNH").str_terse(),
                             max_rate,
+                            start_regs,
+                            goal_regs,
                             planx.str_terse(),
                             rate
                         );
@@ -1091,9 +1095,6 @@ impl DomainStore {
         // Assuming all actions change one bit at a time.
         // F surrounded by 7, D, E and B, cannot be reached using 1-bit change actions.
 
-        // Select regions between the start and goal region, per domain.
-        let mut between = Vec::<Vec<usize>>::with_capacity(self.len());
-
         // Union of the start and goal region, per domain.
         let mut unions = Vec::<SomeRegion>::with_capacity(self.len());
 
@@ -1103,49 +1104,41 @@ impl DomainStore {
 
         // Init memory, per domain.
         for dom_num in 0..self.len() {
-            between.push(vec![]);
             unions.push(start_regs[dom_num].union(&goal_regs[dom_num]));
         }
 
         // Load info, per SelectRegions.
         for (inx, selx) in self.select_negative.iter().enumerate() {
             for dom_num in 0..self.len() {
-                if start_regs[dom_num].distance(&goal_regs[dom_num]) > 0
-                    && selx.regions[dom_num].intersects(&unions[dom_num])
-                {
-                    between[dom_num].push(inx);
+                if start_regs[dom_num] == goal_regs[dom_num] {
+                    continue;
                 }
-            }
-        }
 
-        // Look for traps.
-        // Collect all SelectRegions indicies in between.
-        let mut selx_between = Vec::<usize>::new();
-        for domx in between.iter() {
-            for inx in domx.iter() {
-                if selx_between.contains(inx) {
-                } else {
-                    selx_between.push(*inx);
+                if !selx.regions[dom_num].intersects(&unions[dom_num]) {
+                    continue;
                 }
-            }
-        }
-        // Check each SelectRegion.
-        for inx in selx_between.iter() {
-            // Count number of SelectRegions with only one region that
-            // is not a superset of the corresponding start region.
-            let mut ctr = 0;
-            let mut dom_num = 0;
-            for (iny, regx) in self.select_negative[*inx].regions.iter().enumerate() {
-                if regx.is_superset_of(&start_regs[iny]) {
-                } else {
-                    ctr += 1;
-                    dom_num = iny;
+
+                if selx.regions[dom_num].is_superset_of(&start_regs[dom_num]) {
+                    continue;
                 }
-            }
-            if ctr == 1 {
-                traps.push((dom_num, *inx));
-            }
-        }
+
+                // Check if all other domains have current states in the SelectRegions.
+                let mut all_other_in = true;
+                for (iny, regx) in selx.regions.iter().enumerate() {
+                    if iny == dom_num {
+                        continue;
+                    }
+                    if regx.is_superset_of(&start_regs[iny]) {
+                    } else {
+                        all_other_in = false;
+                        break;
+                    }
+                }
+                if all_other_in {
+                    traps.push((dom_num, inx));
+                }
+            } // next dom_num
+        } // next inx, selx
 
         // Check for no traps.
         if traps.is_empty() {
@@ -1192,6 +1185,10 @@ impl DomainStore {
             );
 
             if paths.is_empty() {
+                //println!("found trap, domain {} start {} goal {}", dom_num, start_regs[*dom_num], goal_regs[*dom_num]);
+                //for selx in sel_inxs.iter() {
+                //    println!("   {}", self.select_negative[*selx]);
+                //}
                 // Cannot get around trap, return trap details.
                 return Some((*dom_num, sel_inxs.to_vec()));
             }
@@ -1226,6 +1223,8 @@ impl DomainStore {
 
         for _ in 0..4 {
             if let Some((dom_num, sel_inxs)) = self.find_a_trap(&cur_start, goal_regs) {
+                println!("\nfound trap dom {} sel_inxs {:?}", dom_num, sel_inxs);
+
                 // Find fix, else fail.
 
                 // See if other domains can change to disarm the trap.
@@ -1402,7 +1401,7 @@ impl DomainStore {
             start_states_tmp.push(stax);
         }
 
-        let non_neg = self.calc_non_negative_regions(dom_num, start_states_ref, None);
+        let non_neg = self.calc_non_negative_regions(dom_num, start_states_ref, Some(dom_num));
         if non_neg.is_empty() {
             //println!("    No non neg found");
             return None;
@@ -1415,6 +1414,8 @@ impl DomainStore {
         }
 
         let inx = self.choose_a_plan(&dom_plans);
+
+        assert!(goal_reg.is_superset_of(dom_plans[inx].result_region()));
 
         Some(dom_plans.swap_remove(inx))
     } // end avoid_negative_select_regions2_dom

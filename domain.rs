@@ -485,7 +485,7 @@ impl SomeDomain {
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
     pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
-        //println!("make_plan start cur {} goal {}", self.cur_state, goal_reg);
+        //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
 
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of_state(&self.cur_state) {
@@ -505,7 +505,7 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: Option<&SomeRegion>,
     ) -> Option<Vec<SomePlan>> {
-        //println!("dom {} make_plans: from {from_reg} goal {goal_reg}", self.num);
+        //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         // Figure the required change.
         let required_change = SomeChange::region_to_region(from_reg, goal_reg);
 
@@ -538,7 +538,7 @@ impl SomeDomain {
             return None;
         }
 
-        //println!("make_plan returned {}", SomePlan::vec_string(&plans));
+        //println!("make_plans2 returns {}", tools::vec_string(&plans));
         Some(plans)
     } // end make plan
 
@@ -771,7 +771,7 @@ impl SomeDomain {
                             if let Some(_regsint) = regx.intersection(regy) {
                                 //println!(
                                 //    "  new start reg {} intersects goal reg {} at {}",
-                                //    regx, regy, regsint
+                                //    regx, regy, _regsint
                                 //);
                                 let item = (start_levx, start_itemx, goal_levx, goal_itemx);
                                 intersections.push(item);
@@ -791,7 +791,7 @@ impl SomeDomain {
                             if let Some(_regsint) = regx.intersection(regy) {
                                 //println!(
                                 //    "  new goal regs {} intersects start regs {} at {}",
-                                //    regx, regy, regsint
+                                //    regx, regy, _regsint
                                 //);
                                 let item = (start_levx, start_itemx, goal_levx, goal_itemx);
                                 if !intersections.contains(&item) {
@@ -964,7 +964,7 @@ impl SomeDomain {
             paths.push(path);
         } // End Build paths from intersections.
 
-        //println!("Paths:");
+        //println!("Dom {} Paths:", self.num);
         //for pathx in paths.iter() {
         //    println!("    {}", tools::vec_string(&pathx.steps));
         //}
@@ -979,19 +979,16 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         path_regions: &RegionStore,
     ) -> Vec<SomePlan> {
-        let mut ret_plans = vec![];
-
+        //println!("dom {} plan_paths_through_regions: from {} to {} regions {}", self.num, start_reg, goal_reg, path_regions);
         // Check if no plans are needed.
         if start_reg.is_subset_of(goal_reg) {
-            //println!("No plan needed");
-            ret_plans.push(SomePlan::new(self.num, vec![]));
-            return ret_plans;
+            panic!("No plan needed");
         }
 
         let paths = self.find_paths_through_regions(start_reg, goal_reg, path_regions);
 
         if paths.is_empty() {
-            return ret_plans;
+            return vec![];
         }
 
         // Return some plans from paths.
@@ -1006,10 +1003,14 @@ impl SomeDomain {
             return ret_plans;
         }
 
+        //println!("\npaths: {}", tools::vec_string(paths));
+
         // Try each path.
         let mut rp = tools::RandomPick::new(paths.len());
-        while let Some(rpinx) = rp.pick() {
+        'next_path: while let Some(rpinx) = rp.pick() {
             let pathx = &paths[rpinx];
+            //println!("\npathx: {}", &pathx);
+
             let mut aplan = SomePlan::new(self.num, vec![]);
 
             // Process each path step.
@@ -1018,24 +1019,22 @@ impl SomeDomain {
             for stepx in pathx.steps.iter() {
                 // Process each step, domain by domain.
 
-                if stepx.from.is_subset_of(&stepx.to) {
-                    continue;
-                }
-
                 assert!(cur_rslt.is_subset_of(&stepx.from));
 
                 // Get plans from start region to intersection region.
                 let Some(step1_plans) = self.make_plans2(&cur_rslt, &stepx.to, Some(&stepx.within))
                 else {
-                    break;
+                    continue 'next_path;
                 };
+
+                //println!("step1_plans {}", tools::vec_string(&step1_plans));
 
                 // Process possible plans for one step.
                 let mut inps = vec![];
                 for (inp, plan1) in step1_plans.iter().enumerate() {
                     // Check plan stays within path.
                     let path_region = if plan1.is_empty() {
-                        self.current_region()
+                        panic!("plan empty?");
                     } else {
                         plan1.path_region().expect("SNH")
                     };
@@ -1052,7 +1051,7 @@ impl SomeDomain {
                     inps.push(inp);
                 } // next plan1
                 if inps.is_empty() {
-                    break;
+                    continue 'next_path;
                 }
                 // Select a possible plan.
                 let inp = inps[rand::thread_rng().gen_range(0..inps.len())];
@@ -1067,8 +1066,17 @@ impl SomeDomain {
                     panic!("Plan link failure, {} to {}", aplan, step1_plans[inp]);
                 }
             } // next stepx
+            if aplan.is_empty() {
+                continue;
+            }
             ret_plans.push(aplan);
         }
+
+        println!(
+            "\ndom {} find_plans_through_paths: returning ret_plans: {}",
+            self.num,
+            tools::vec_string(&ret_plans)
+        );
         ret_plans
     } // end plan_path_through_regions2
 } // end impl SomeDomain

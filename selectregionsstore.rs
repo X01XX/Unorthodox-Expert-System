@@ -290,21 +290,15 @@ impl SelectRegionsStore {
     /// Return the sum of all select negative regions values a plan goes through.
     /// This ignores the select regions a plan starts, or ends, in.
     pub fn rate_plans<'a>(&self, plans: &'a PlanStore, current_states: &[&'a SomeState]) -> isize {
-        let mut non_empty_plans = Vec::<usize>::new();
-        for (iny, plnx) in plans.iter().enumerate() {
-            if plnx.is_not_empty() {
-                non_empty_plans.push(iny);
-            }
-        }
-        if non_empty_plans.is_empty() {
+        if plans.is_empty() {
             return 0;
         }
 
-        if non_empty_plans.len() == 1 {
-            return self.rate_plan(&plans[non_empty_plans[0]], current_states);
+        // Store rate for each step, per domain.
+        let mut rates = Vec::<Vec<isize>>::with_capacity(current_states.len());
+        for _ in 0..current_states.len() {
+            rates.push(vec![]);
         }
-
-        // Rate a multi-plan PlanStore.
 
         // Create mutable current_states vector.
         let mut all_states = Vec::<&SomeState>::with_capacity(current_states.len());
@@ -312,9 +306,12 @@ impl SelectRegionsStore {
             all_states.push(stateref);
         }
 
-        // Rate each option.
-        let mut rate: isize = 0;
+        // Rate each plan.
         for planx in plans.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+
             // Check that plan starts in the right state.
             let start = planx.initial_region();
             if start.state1() != all_states[planx.dom_num]
@@ -322,8 +319,47 @@ impl SelectRegionsStore {
             {
                 panic!("plans not in sync!");
             }
-            rate += self.rate_plan(planx, &all_states);
+            // Add rate for each setp.
+            for stepx in planx.iter() {
+                all_states[planx.dom_num] = stepx.initial.state1();
+                let valx = self.value_supersets_of_states(&all_states);
+                rates[planx.dom_num].push(valx);
+            }
             all_states[planx.dom_num] = planx.result_region().state1();
+        }
+
+        // Init rate to return.
+        let mut rate: isize = 0;
+
+        // Calc rate for each domain.
+        for domx_rates in rates.iter_mut() {
+            if domx_rates.is_empty() {
+                continue;
+            }
+            // Delete consecutive negative rates on end.
+            // The goal may be in a negative region.
+            while let Some(ratex) = domx_rates.last() {
+                if *ratex < 0 {
+                    domx_rates.pop();
+                } else {
+                    break;
+                }
+            }
+            // Delete consecutive negative rates at beginning.
+            // The initial region may be in a negative region.
+            domx_rates.reverse();
+            while let Some(ratex) = domx_rates.last() {
+                if *ratex < 0 {
+                    domx_rates.pop();
+                } else {
+                    break;
+                }
+            }
+
+            if domx_rates.is_empty() {
+            } else {
+                rate += domx_rates.iter().sum::<isize>()
+            }
         }
         rate
     }
