@@ -136,11 +136,6 @@ impl SomeDomain {
         }
     }
 
-    /// Return the current state as a region.
-    pub fn current_region(&self) -> SomeRegion {
-        SomeRegion::new(vec![self.cur_state.clone()])
-    }
-
     /// Set the domain number.
     pub fn set_domain_num(&mut self, dom_num: usize) {
         self.num = dom_num;

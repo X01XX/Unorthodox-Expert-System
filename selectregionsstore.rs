@@ -364,36 +364,6 @@ impl SelectRegionsStore {
         rate
     }
 
-    /// Subtract a SelectRegions.
-    pub fn subtract(&self, subtrahend: &SelectRegions) -> Option<Self> {
-        //println!("subtract {subtrahend} from {self}");
-        let mut ret_str = Self::new(vec![]);
-
-        for regy in self.iter() {
-            if subtrahend.intersects(regy) {
-                if subtrahend.regions.eq_corr(&regy.regions) {
-                    continue;
-                }
-                for regz in regy.regions.subtract_corr(&subtrahend.regions) {
-                    ret_str.push_nosubs(SelectRegions::new(regz, regy.pos, regy.neg));
-                }
-            } else {
-                ret_str.push_nosubs(regy.clone());
-            }
-        } // next regy
-
-        //println!(
-        //    "subtract {} from {} giving {}",
-        //    subtrahend.regions,
-        //    self.regions(),
-        //    ret_str.regions()
-        //);
-        if ret_str.is_empty() {
-            return None;
-        }
-        Some(ret_str)
-    }
-
     /// Append from another store.
     pub fn append(&mut self, mut val: Self) {
         self.regionstores.append(&mut val.regionstores);

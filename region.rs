@@ -402,7 +402,7 @@ impl SomeRegion {
     }
 
     /// Return a region with masked bit positions set to X.
-    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+    pub fn _set_to_x(&self, msk: &SomeMask) -> Self {
         let state1 = self.state1().bitwise_or(msk);
         let state2 = self.state2().bitwise_and(&msk.bitwise_not());
 
@@ -535,19 +535,6 @@ impl SomeRegion {
             }
         }
         ret_vec
-    }
-
-    /// Return the adjacent part of two regions.
-    /// A region implied, if the regions are held to be similar in some property.
-    /// If the regions can form a non-optimistic union, the result will be that union.
-    pub fn adjacent_part(&self, other: &Self) -> Self {
-        assert!(self.is_adjacent(other));
-
-        let msk = self.diff_mask(other);
-        let reg1 = self.set_to_x(&msk);
-        let reg2 = other.set_to_x(&msk);
-
-        reg1.intersection(&reg2).unwrap()
     }
 
     /// Return the complement of a region.
@@ -738,31 +725,6 @@ mod tests {
 
         println!("reg6 state2 = {}", reg6.state2());
         assert!(reg6.state2() == &sta6);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_adjacent_part() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("rx11x")?;
-        let reg3 = reg1.adjacent_part(&reg2);
-        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
-        assert!(reg3 == tmp_reg.new_from_string("rx1xx").unwrap());
-
-        let reg1 = tmp_reg.new_from_string("rx10x")?;
-        let reg2 = tmp_reg.new_from_string("rx110")?;
-        let reg3 = reg1.adjacent_part(&reg2);
-        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
-        assert!(reg3 == tmp_reg.new_from_string("rx1x0").unwrap());
-
-        let reg1 = tmp_reg.new_from_string("r000x")?;
-        let reg2 = tmp_reg.new_from_string("rxx11")?;
-        let reg3 = reg1.adjacent_part(&reg2);
-        println!("adjacent part of {} and {} is {}", reg1, reg2, reg3);
-        assert!(reg3 == tmp_reg.new_from_string("r00x1").unwrap());
 
         Ok(())
     }

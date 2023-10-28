@@ -219,8 +219,6 @@ impl DomainStore {
                     } else {
                         pos += selx.pos;
                     }
-                } else if subx.intersects_corr(&selx.regions) {
-                    panic!("   intersects ?? {}", selx);
                 }
             }
             if count == 0 {
@@ -422,7 +420,7 @@ impl DomainStore {
         let mut cur_pri_start = 0;
 
         // Find current priority end index.
-        let mut cur_pri_end = cur_pri_start;
+        let mut cur_pri_end = 0;
         let needs_len = self.needs.len();
 
         // Scan successive slices of items with the same priority.
@@ -430,7 +428,6 @@ impl DomainStore {
             // Find end of current slice.
             while cur_pri_end < needs_len && self.needs[cur_pri_end].priority() == cur_pri {
                 cur_pri_end += 1;
-                continue;
             }
             // Process a priority slice.
             print!("Priority {cur_pri}");
@@ -1185,10 +1182,13 @@ impl DomainStore {
             );
 
             if paths.is_empty() {
-                //println!("found trap, domain {} start {} goal {}", dom_num, start_regs[*dom_num], goal_regs[*dom_num]);
-                //for selx in sel_inxs.iter() {
-                //    println!("   {}", self.select_negative[*selx]);
-                //}
+                println!(
+                    "found trap, domain {} start {} goal {}",
+                    dom_num, start_regs[*dom_num], goal_regs[*dom_num]
+                );
+                for selx in sel_inxs.iter() {
+                    println!("   {}", self.select_negative[*selx]);
+                }
                 // Cannot get around trap, return trap details.
                 return Some((*dom_num, sel_inxs.to_vec()));
             }

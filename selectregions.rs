@@ -72,13 +72,6 @@ impl SelectRegions {
         self.times_visited += 1;
     }
 
-    /// Return true if there is an intersection of corresponding regions, of two SelectRegions.
-    pub fn intersects(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-
-        self.regions.intersects_corr(&other.regions)
-    }
-
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
@@ -88,35 +81,11 @@ impl SelectRegions {
             .map(|regs| Self::new(regs, self.pos + other.pos, self.neg + other.neg))
     }
 
-    /// Return true if at least one corresponding pair in two SelectRegions is adjacent,
-    /// while other corresponding pairs are adjacent or intersect.
-    pub fn is_adjacent(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-
-        self.regions.is_adjacent_corr(&other.regions)
-    }
-
-    /// Return the adjacent part of two SelectRegions.
-    /// Presumably, at least one pair of corresponding regions will be adjacent, calc the adjacent part.
-    /// If a pair of corresponding regions intersect, calc the intersection.
-    pub fn adjacent_part(&self, other: &Self) -> Self {
-        assert!(self.is_adjacent(other));
-
-        Self::new(self.regions.adjacent_part_corr(&other.regions), 0, 0)
-    }
-
     /// Calculate the distance between a SelectRegions and a vector of states.
     pub fn distance_states(&self, stas: &[&SomeState]) -> usize {
         debug_assert!(self.len() == stas.len());
 
         self.regions.distance_states_corr(stas)
-    }
-
-    /// Calculate the distance between two SelectRegions.
-    pub fn distance(&self, other: &Self) -> usize {
-        debug_assert!(self.len() == other.len());
-
-        self.regions.distance_corr(&other.regions)
     }
 
     /// Return the length of an instance.
