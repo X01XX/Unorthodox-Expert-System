@@ -1182,13 +1182,13 @@ impl DomainStore {
             );
 
             if paths.is_empty() {
-                println!(
-                    "found trap, domain {} start {} goal {}",
-                    dom_num, start_regs[*dom_num], goal_regs[*dom_num]
-                );
-                for selx in sel_inxs.iter() {
-                    println!("   {}", self.select_negative[*selx]);
-                }
+                //println!(
+                //    "found trap, domain {} start {} goal {}",
+                //    dom_num, start_regs[*dom_num], goal_regs[*dom_num]
+                //);
+                //for selx in sel_inxs.iter() {
+                //    println!("   {}", self.select_negative[*selx]);
+                //}
                 // Cannot get around trap, return trap details.
                 return Some((*dom_num, sel_inxs.to_vec()));
             }
