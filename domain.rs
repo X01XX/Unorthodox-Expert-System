@@ -216,7 +216,7 @@ impl SomeDomain {
             return true;
         }
 
-        if !pln.initial_region().is_superset_of_state(&self.cur_state) {
+        if !pln.initial_region().is_superset_of(&self.cur_state) {
             panic!(
                 "\nCurrent state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
@@ -230,7 +230,7 @@ impl SomeDomain {
             let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
             self.set_cur_state(asample.result.clone());
 
-            if stpx.result.is_superset_of_state(&self.cur_state) {
+            if stpx.result.is_superset_of(&self.cur_state) {
                 continue;
             }
 
@@ -242,7 +242,7 @@ impl SomeDomain {
                 let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
                 self.set_cur_state(asample.result.clone());
 
-                if stpx.result.is_superset_of_state(&self.cur_state) {
+                if stpx.result.is_superset_of(&self.cur_state) {
                     continue;
                 }
             }
@@ -255,7 +255,7 @@ impl SomeDomain {
             return false;
         } // next stpx
 
-        pln.result_region().is_superset_of_state(&self.cur_state)
+        pln.result_region().is_superset_of(&self.cur_state)
     } // end run_plan
 
     /// Return the steps of a plan to go from a given state/region to a given region.
@@ -483,7 +483,7 @@ impl SomeDomain {
         //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
 
         // Return no-op plan if the goal is already met.
-        if goal_reg.is_superset_of_state(&self.cur_state) {
+        if goal_reg.is_superset_of(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
             return Some(vec![SomePlan::new(self.num, vec![])]);
         }
@@ -763,7 +763,7 @@ impl SomeDomain {
                 for (start_itemx, regx) in start_last_level.iter().enumerate() {
                     for (goal_levx, levelx) in goal_stack.iter().enumerate() {
                         for (goal_itemx, regy) in levelx.iter().enumerate() {
-                            if let Some(_regsint) = regx.intersection(regy) {
+                            if let Some(_regsint) = regx.intersection(*regy) {
                                 //println!(
                                 //    "  new start reg {} intersects goal reg {} at {}",
                                 //    regx, regy, _regsint
@@ -783,7 +783,7 @@ impl SomeDomain {
                 for (goal_itemx, regx) in goal_last_level.iter().enumerate() {
                     for (start_levx, levelx) in start_stack.iter().enumerate() {
                         for (start_itemx, regy) in levelx.iter().enumerate() {
-                            if let Some(_regsint) = regx.intersection(regy) {
+                            if let Some(_regsint) = regx.intersection(*regy) {
                                 //println!(
                                 //    "  new goal regs {} intersects start regs {} at {}",
                                 //    regx, regy, _regsint
@@ -819,7 +819,7 @@ impl SomeDomain {
                 // Check for intersection with highest level.
                 if let Some(levelx) = start_stack.last() {
                     for regx in levelx.iter() {
-                        if selnnx.intersects(regx) {
+                        if selnnx.intersects(*regx) {
                             next_start_level.push(selnnx);
                         }
                     } // next regsx
@@ -840,7 +840,7 @@ impl SomeDomain {
                   // Check for intersection with higest level.
                 if let Some(levelx) = goal_stack.last() {
                     for regx in levelx.iter() {
-                        if nnx.intersects(regx) {
+                        if nnx.intersects(*regx) {
                             next_goal_level.push(nnx);
                         }
                     } // next regsx
@@ -902,7 +902,7 @@ impl SomeDomain {
                     panic!("SNH");
                 };
                 for start_itemx in start_stack[levx].iter() {
-                    if start_itemx.intersects(start_match) {
+                    if start_itemx.intersects(*start_match) {
                         start_side.push(start_itemx);
                         break;
                     }
@@ -919,7 +919,7 @@ impl SomeDomain {
                     panic!("SNH");
                 };
                 for goal_itemx in goal_stack[levx].iter() {
-                    if goal_itemx.intersects(goal_match) {
+                    if goal_itemx.intersects(*goal_match) {
                         goal_side.push(goal_itemx);
                         break;
                     }

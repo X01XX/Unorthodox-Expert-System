@@ -6,8 +6,8 @@
 //! If only one region is non-maximum, that singles out that domain.
 
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
-use crate::state::SomeState;
+use crate::regionstorecorr::RegionStoreCorr;
+use crate::statestorecorr::StateStoreCorr;
 use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
     /// If the regions are all X, except for one, then it affects only one domain.
     /// Otherwise, it affects a combination of two, or more, domains.
-    pub regions: RegionStore,
+    pub regions: RegionStoreCorr,
     /// A value for being in the select state.
     /// A Positive value is, so far, given to a goal state.
     pub pos: usize,
@@ -53,7 +53,7 @@ impl Index<usize> for SelectRegions {
 
 impl SelectRegions {
     /// Return a new SelectRegions instance.
-    pub fn new(regions: RegionStore, pos: usize, neg: usize) -> Self {
+    pub fn new(regions: RegionStoreCorr, pos: usize, neg: usize) -> Self {
         Self {
             regions,
             pos,
@@ -74,7 +74,7 @@ impl SelectRegions {
 
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.is_similar_to(other));
 
         self.regions
             .intersection_corr(&other.regions)
@@ -82,15 +82,28 @@ impl SelectRegions {
     }
 
     /// Calculate the distance between a SelectRegions and a vector of states.
-    pub fn distance_states(&self, stas: &[&SomeState]) -> usize {
+    pub fn distance_states(&self, stas: &StateStoreCorr) -> usize {
         debug_assert!(self.len() == stas.len());
 
         self.regions.distance_states_corr(stas)
     }
 
-    /// Return the length of an instance.
+    /// Return the number of regions in a SelectRegions instance.
     pub fn len(&self) -> usize {
         self.regions.len()
+    }
+
+    /// Return true if two SelectRegions are similar.
+    pub fn is_similar_to(&self, other: &Self) -> bool {
+        if self.regions.len() != other.regions.len() {
+            return false;
+        }
+        for (regx, regy) in self.regions.iter().zip(other.regions.iter()) {
+            if regx.num_bits() != regy.num_bits() {
+                return false;
+            }
+        }
+        true
     }
 
     /// Add a Region.
@@ -104,7 +117,7 @@ impl SelectRegions {
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
-    pub fn is_superset_of_states(&self, stas: &[&SomeState]) -> bool {
+    pub fn is_superset_of_states(&self, stas: &StateStoreCorr) -> bool {
         self.regions.is_superset_states_corr(stas)
     }
 }
@@ -128,13 +141,14 @@ impl StrLen for SelectRegions {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+    use crate::state::SomeState;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
         let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
 
         let srs = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
@@ -148,7 +162,7 @@ mod tests {
         assert!(rslt.len() == srs.strlen());
 
         let srs = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
@@ -161,7 +175,7 @@ mod tests {
         assert!(rslt.len() == srs.strlen());
 
         let mut srs = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
@@ -175,7 +189,7 @@ mod tests {
         assert!(rslt.len() == srs.strlen());
 
         let mut srs = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),

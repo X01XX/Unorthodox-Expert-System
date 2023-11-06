@@ -5,6 +5,7 @@
 
 use crate::mask::SomeMask;
 use crate::pn::Pn;
+use crate::region::AccessStates;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
@@ -137,7 +138,7 @@ impl SomeGroup {
 
     /// Return true if a subset square is compatible with a group.
     pub fn check_subset_square(&self, sqrx: &SomeSquare) -> bool {
-        assert!(self.region.is_superset_of_state(&sqrx.state));
+        assert!(self.region.is_superset_of(sqrx));
         //println!(
         //  "group:check_square grp {} sqr {}",
         //  &self.region, &sqrx.state
@@ -167,7 +168,7 @@ impl SomeGroup {
 
     /// Return true if a sample is compatible with a group.
     pub fn check_subset_sample(&self, smpl: &SomeSample) -> bool {
-        assert!(self.region.is_superset_of_state(&smpl.initial));
+        assert!(self.region.is_superset_of(&smpl.initial));
 
         if self.pn == Pn::Unpredictable {
             return true;
@@ -246,16 +247,43 @@ impl SomeGroup {
         }
     }
 
-    // Return true if a group region is a superset of a given state.
-    pub fn is_superset_of_state(&self, stax: &SomeState) -> bool {
-        self.region.is_superset_of_state(stax)
+    // Return true if a group region is a superset of a given group/region/square/state.
+    pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        self.region.is_superset_of(other)
     }
 
-    // Return true if a group region is a superset of a given region.
-    pub fn is_superset_of(&self, regx: &SomeRegion) -> bool {
-        self.region.is_superset_of(regx)
+    // Return true if a group region is a subset of a given group/region/square/state.
+    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        self.region.is_subset_of(other)
+    }
+
+    // Return true if a group region intersects another group/region/square/state.
+    pub fn intersects(&self, other: &impl AccessStates) -> bool {
+        self.region.intersects(other)
     }
 } // end impl SomeGroup
+
+/// Implement the trait AccessStates for SomeGroup.
+impl AccessStates for SomeGroup {
+    fn one_state(&self) -> bool {
+        1 == self.region.states.len()
+    }
+    fn first_state(&self) -> &SomeState {
+        self.region.states.first().expect("SNH")
+    }
+    fn x_mask(&self) -> SomeMask {
+        self.region.x_mask()
+    }
+    fn non_x_mask(&self) -> SomeMask {
+        self.region.non_x_mask()
+    }
+    fn high_state(&self) -> SomeState {
+        self.region.high_state()
+    }
+    fn low_state(&self) -> SomeState {
+        self.region.low_state()
+    }
+}
 
 #[cfg(test)]
 mod tests {

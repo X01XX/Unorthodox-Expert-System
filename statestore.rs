@@ -42,6 +42,16 @@ impl StateStore {
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()
     }
+
+    /// Return true if a StateStore contains a state.
+    pub fn contains(&self, stax: &SomeState) -> bool {
+        self.avec.contains(stax)
+    }
+
+    /// Return the number of states.
+    pub fn len(&self) -> usize {
+        self.avec.len()
+    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

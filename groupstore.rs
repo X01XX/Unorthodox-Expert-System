@@ -74,7 +74,7 @@ impl GroupStore {
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in self.avec.iter_mut().enumerate() {
-            if grpx.region.is_superset_of_state(&sqrx.state) && !grpx.check_subset_square(sqrx) {
+            if grpx.is_superset_of(sqrx) && !grpx.check_subset_square(sqrx) {
                 if sqrx.pn > grpx.pn {
                     println!(
                         "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
@@ -126,7 +126,7 @@ impl GroupStore {
 
         // Check limited status of groups.
         for grpx in self.avec.iter_mut() {
-            if !grpx.limited || !grpx.region.is_adjacent_state(&sqrx.state) {
+            if !grpx.limited || !grpx.region.is_adjacent(&sqrx.state) {
                 continue;
             }
             if let Some(anchor) = &grpx.anchor {
@@ -155,7 +155,7 @@ impl GroupStore {
         let mut num_grps = 0;
 
         for grpx in &self.avec {
-            if grpx.region.is_superset_of_state(stax) {
+            if grpx.is_superset_of(stax) {
                 num_grps += 1;
             }
         }
@@ -167,7 +167,7 @@ impl GroupStore {
         let mut num_grps = 0;
 
         for grpx in &self.avec {
-            if grpx.region.is_superset_of_state(stax) {
+            if grpx.is_superset_of(stax) {
                 if num_grps > 0 {
                     return false;
                 }
@@ -182,7 +182,7 @@ impl GroupStore {
         self.avec
             .iter()
             .filter_map(|grpx| {
-                if grpx.region.is_superset_of_state(stax) {
+                if grpx.is_superset_of(stax) {
                     Some(&grpx.region)
                 } else {
                     None
@@ -200,7 +200,7 @@ impl GroupStore {
         let mut index = 0;
 
         for (inx, grpx) in self.avec.iter().enumerate() {
-            if grpx.region.is_superset_of_state(astate) {
+            if grpx.is_superset_of(astate) {
                 num += 1;
                 if num > 1 {
                     return None;
@@ -222,7 +222,7 @@ impl GroupStore {
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         for grpx in &self.avec {
-            if grpx.region.is_superset_of(reg) {
+            if grpx.is_superset_of(reg) {
                 return true;
             }
         }
@@ -233,7 +233,7 @@ impl GroupStore {
     pub fn num_state_in(&self, stax: &SomeState) -> usize {
         let mut count = 0;
         for grpx in &self.avec {
-            if grpx.region.is_superset_of_state(stax) {
+            if grpx.is_superset_of(stax) {
                 count += 1;
             }
         }
@@ -242,7 +242,7 @@ impl GroupStore {
 
     /// Return true if any group is a superset, or equal, to a region.
     pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
-        tools::vec_contains(&self.avec, SomeGroup::is_superset_of_state, stax)
+        tools::vec_contains(&self.avec, SomeGroup::is_superset_of, stax)
     }
 
     /// Return regions of any group is a superset, or equal, to a region.
@@ -250,7 +250,7 @@ impl GroupStore {
         self.avec
             .iter()
             .filter_map(|grpx| {
-                if reg.is_subset_of(&grpx.region) {
+                if reg.is_subset_of(grpx) {
                     Some(&grpx.region)
                 } else {
                     None
@@ -289,7 +289,7 @@ impl GroupStore {
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in &mut self.avec.iter().enumerate() {
-            if grpx.region.is_subset_of(reg) {
+            if grpx.is_subset_of(reg) {
                 rmvec.push(inx);
             }
         }
@@ -349,7 +349,7 @@ impl GroupStore {
     /// Return true if any groups are invalidated.
     pub fn any_groups_invalidated(&mut self, smpl: &SomeSample) -> bool {
         for grpx in &mut self.avec {
-            if grpx.region.is_superset_of_state(&smpl.initial) && !grpx.check_subset_sample(smpl) {
+            if grpx.is_superset_of(&smpl.initial) && !grpx.check_subset_sample(smpl) {
                 return true;
             }
         }

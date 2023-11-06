@@ -205,7 +205,7 @@ impl SomeRule {
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
-        if !self.initial_region().is_superset_of_state(sta) {
+        if !self.initial_region().is_superset_of(sta) {
             panic!(
                 "result_from_initial_state: given state is not a subset of the ruls initial region"
             );

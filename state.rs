@@ -14,6 +14,7 @@
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::mask::SomeMask;
+use crate::region::AccessStates;
 use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
@@ -202,6 +203,28 @@ impl BitsRef for SomeState {
 impl StrLen for SomeState {
     fn strlen(&self) -> usize {
         self.bts.strlen() + 1
+    }
+}
+
+/// Implement the trait AccessStates for SomeState.
+impl AccessStates for SomeState {
+    fn one_state(&self) -> bool {
+        true
+    }
+    fn first_state(&self) -> &SomeState {
+        self
+    }
+    fn x_mask(&self) -> SomeMask {
+        self.new_low().to_mask()
+    }
+    fn non_x_mask(&self) -> SomeMask {
+        self.new_high().to_mask()
+    }
+    fn high_state(&self) -> SomeState {
+        self.clone()
+    }
+    fn low_state(&self) -> SomeState {
+        self.clone()
     }
 }
 

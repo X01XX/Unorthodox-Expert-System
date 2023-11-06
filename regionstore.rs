@@ -91,7 +91,7 @@ impl RegionStore {
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
-        tools::vec_contains(&self.avec, SomeRegion::is_superset_of_state, sta)
+        tools::vec_contains(&self.avec, SomeRegion::is_superset_of, sta)
     }
 
     /// Return vector of regions that are a superset of a given region.
@@ -190,7 +190,7 @@ impl RegionStore {
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
-            if regy.is_superset_of_state(stax) {
+            if regy.is_superset_of(stax) {
                 ret_str.push_nosubs(regy.clone());
             }
         } // next regy
@@ -203,8 +203,8 @@ impl RegionStore {
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
-            if regy.is_superset_of_state(stax) {
-                for regz in regy.subtract_state(stax) {
+            if regy.is_superset_of(stax) {
+                for regz in regy.subtract(stax) {
                     ret_str.push_nosubs(regz);
                 }
             } else {
@@ -223,7 +223,7 @@ impl RegionStore {
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
-            if regy.is_superset_of_state(substa) {
+            if regy.is_superset_of(substa) {
                 for regz in regy.subtract_state_to_supersets_of(substa, supsta) {
                     ret_str.push_nosubs(regz);
                 }
@@ -270,127 +270,6 @@ impl RegionStore {
     }
 }
 
-/// Corresponding functions.
-impl RegionStore {
-    /// Return True if a RegionStore is a superset of all corresponding states in a SomeState vector.
-    /// Used in optimal regionstore calculations.
-    pub fn is_superset_states_corr(&self, stas: &[&SomeState]) -> bool {
-        debug_assert!(self.len() == stas.len());
-
-        for (x, y) in self.iter().zip(stas.iter()) {
-            if x.is_superset_of_state(y) {
-            } else {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Return true if RegionStore is a subset of another RegionStore.
-    /// Used in optimal regionstore calculations.
-    pub fn is_subset_of_corr(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-
-        for (x, y) in self.iter().zip(other.iter()) {
-            if x.is_subset_of(y) {
-            } else {
-                return false;
-            }
-        }
-        true
-    }
-
-    /// Return True if a RegionStore is a superset of another RSC.
-    pub fn is_superset_of_corr(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-
-        for (x, y) in self.iter().zip(other.iter()) {
-            if x.is_superset_of(y) {
-            } else {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Return the intersection, if any, of two RegionStores.
-    pub fn intersection_corr(&self, other: &Self) -> Option<Self> {
-        debug_assert!(self.len() == other.len());
-
-        let mut ret = Self::with_capacity(self.len());
-
-        for (x, y) in self.iter().zip(other.iter()) {
-            if x.intersects(y) {
-                if let Some(reg_int) = x.intersection(y) {
-                    ret.push(reg_int);
-                }
-            } else {
-                return None;
-            }
-        }
-
-        Some(ret)
-    }
-
-    /// Calculate the distance between a RegionStore and the current state.
-    pub fn distance_states_corr(&self, stas: &[&SomeState]) -> usize {
-        debug_assert!(self.len() == stas.len());
-
-        let mut dist = 0;
-        for (x, y) in self.iter().zip(stas.iter()) {
-            if x.is_superset_of_state(y) {
-            } else {
-                dist += x.distance_state(y);
-            }
-        }
-
-        dist
-    }
-
-    /// Return true if two RegionsStores have corresponding equal regions.
-    pub fn eq_corr(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-
-        for (regx, regy) in self.avec.iter().zip(other.iter()) {
-            if regx != regy {
-                return false;
-            }
-        }
-        true
-    }
-
-    /// Add a RegionStore, removing subset (and equal) RegionStores.
-    /// Return true if the item was added.
-    pub fn vec_push_nosubs_corr(avec: &mut Vec<RegionStore>, item: RegionStore) -> bool {
-        // Check for supersets.
-        for itemx in avec.iter() {
-            if itemx.is_superset_of_corr(&item) {
-                return false;
-            }
-        }
-
-        // Identify supersets
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if regx.is_subset_of_corr(&item) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in reverse (highest index) order
-        for inx in rmvec.iter().rev() {
-            tools::remove_unordered(avec, *inx);
-        }
-
-        avec.push(item);
-
-        true
-    }
-} // End impl RegionStore.
-
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
     fn index(&self, i: usize) -> &SomeRegion {
@@ -422,104 +301,6 @@ impl StrLen for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-
-    #[test]
-    fn test_is_superset_states_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
-
-        let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
-        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
-
-        let sta1 = SomeState::new(SomeBits::new(vec![1]));
-        let sta8 = SomeState::new(SomeBits::new(vec![8]));
-        let stas = vec![&sta1, &sta8];
-
-        println!("regstr1 {}", regstr1);
-        println!("stas    {}", tools::vec_ref_string(&stas));
-
-        assert!(!regstr1.is_superset_states_corr(&stas));
-
-        let sta4 = SomeState::new(SomeBits::new(vec![4]));
-        let sta10 = SomeState::new(SomeBits::new(vec![10]));
-        let stas2 = vec![&sta4, &sta10];
-
-        println!("regstr1 {}", regstr1);
-        println!("stas2   {}", tools::vec_ref_string(&stas2));
-
-        assert!(regstr1.is_superset_states_corr(&stas2));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_distance_states_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
-
-        let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
-        regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
-
-        let sta1 = SomeState::new(SomeBits::new(vec![1]));
-        let sta8 = SomeState::new(SomeBits::new(vec![8]));
-        let stas = vec![&sta1, &sta8];
-
-        let dist = regstr1.distance_states_corr(&stas);
-        println!("Distance = {dist}");
-
-        assert!(dist == 2);
-        Ok(())
-    }
-
-    #[test]
-    fn test_is_superset_subset_of_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
-
-        let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(tmp_reg0.new_from_string("r0x0x").expect("SNH"));
-        regstr1.push(tmp_reg0.new_from_string("r1x0x").expect("SNH"));
-
-        let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(tmp_reg0.new_from_string("r0101").expect("SNH"));
-        regstr2.push(tmp_reg0.new_from_string("r1x01").expect("SNH"));
-
-        println!("regstr1 {}", regstr1);
-        println!("regstr2 {}", regstr2);
-
-        assert!(regstr1.is_superset_of_corr(&regstr2));
-        assert!(!regstr2.is_superset_of_corr(&regstr1));
-
-        assert!(!regstr1.is_subset_of_corr(&regstr2));
-        assert!(regstr2.is_subset_of_corr(&regstr1));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_intersection_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
-
-        let mut regstr1 = RegionStore::with_capacity(2);
-        regstr1.push(tmp_reg0.new_from_string("r0x0x").expect("SNH"));
-        regstr1.push(tmp_reg0.new_from_string("r1x0x").expect("SNH"));
-
-        let mut regstr2 = RegionStore::with_capacity(2);
-        regstr2.push(tmp_reg0.new_from_string("rx1x1").expect("SNH"));
-        regstr2.push(tmp_reg0.new_from_string("r1xx1").expect("SNH"));
-
-        let intreg = regstr1.intersection_corr(&regstr2).expect("SNH");
-        println!("int part {}", intreg);
-
-        assert!(intreg.eq_corr(&RegionStore::new(vec![
-            tmp_reg0.new_from_string("r0101").expect("SNH"),
-            tmp_reg0.new_from_string("r1x01").expect("SNH")
-        ])));
-        Ok(())
-    }
 
     #[test]
     fn subtract_region() -> Result<(), String> {
@@ -708,15 +489,15 @@ mod tests {
         let state_6 = tmp_state.new_from_string("s0b0110")?;
         let state_a = tmp_state.new_from_string("s0b1010")?;
 
-        let not_state_6 = RegionStore::new(max_reg.subtract_state(&state_6));
-        let not_state_a = RegionStore::new(max_reg.subtract_state(&state_a));
+        let not_state_6 = RegionStore::new(max_reg.subtract(&state_6));
+        let not_state_a = RegionStore::new(max_reg.subtract(&state_a));
         let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
 
         let state_4 = tmp_state.new_from_string("s0b0100")?;
         let state_d = tmp_state.new_from_string("s0b1101")?;
 
-        let not_state_4 = RegionStore::new(max_reg.subtract_state(&state_4));
-        let not_state_d = RegionStore::new(max_reg.subtract_state(&state_d));
+        let not_state_4 = RegionStore::new(max_reg.subtract(&state_4));
+        let not_state_d = RegionStore::new(max_reg.subtract(&state_d));
 
         let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
 
@@ -737,8 +518,8 @@ mod tests {
                     SomeState::new(SomeBits::new(vec![y])),
                 ]);
 
-                if (regx.is_superset_of_state(&state_6) && regx.is_superset_of_state(&state_a))
-                    || (regx.is_superset_of_state(&state_4) && regx.is_superset_of_state(&state_d))
+                if (regx.is_superset_of(&state_6) && regx.is_superset_of(&state_a))
+                    || (regx.is_superset_of(&state_4) && regx.is_superset_of(&state_d))
                 {
                     // Check there is no superset region in the result.
                     if rslt.any_superset_of(&regx) {

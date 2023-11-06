@@ -1,6 +1,8 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
+use crate::mask::SomeMask;
 use crate::pn::Pn;
+use crate::region::AccessStates;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
@@ -248,6 +250,29 @@ impl StrLen for SomeSquare {
         40
     }
 }
+
+/// Implement the trait AccessStates for SomeSquare.
+impl AccessStates for SomeSquare {
+    fn one_state(&self) -> bool {
+        true
+    }
+    fn first_state(&self) -> &SomeState {
+        &self.state
+    }
+    fn x_mask(&self) -> SomeMask {
+        self.state.new_low().to_mask()
+    }
+    fn non_x_mask(&self) -> SomeMask {
+        self.state.new_high().to_mask()
+    }
+    fn high_state(&self) -> SomeState {
+        self.state.clone()
+    }
+    fn low_state(&self) -> SomeState {
+        self.state.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

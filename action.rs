@@ -18,7 +18,7 @@ use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::pn::Pn;
-use crate::region::SomeRegion;
+use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
@@ -188,19 +188,19 @@ impl SomeAction {
     /// Check invalid regions for orphaneh squares, create new regions.
     fn process_invalid_regions(&mut self, invalid_regs: &RegionStore) {
         // Load states from squares in the invalidated regions.
-        let mut stas_in_regs = Vec::<&SomeState>::new();
+        let mut stas_in_regs = StateStore::new(vec![]);
         for regx in invalid_regs.iter() {
             let stas_in = self.squares.stas_in_reg(regx);
-            for stax in stas_in {
-                if !stas_in_regs.contains(&stax) {
+            for stax in stas_in.iter() {
+                if !stas_in_regs.contains(stax) {
                     // Skip duplicates caused by overlapping regions.
-                    stas_in_regs.push(stax);
+                    stas_in_regs.push(stax.clone());
                 }
             }
         }
         // Store states not in any groups.
         let mut orphaned_stas = Vec::<SomeState>::new();
-        for stax in stas_in_regs {
+        for stax in stas_in_regs.iter() {
             if !self.groups.any_superset_of_state(stax) {
                 orphaned_stas.push((*stax).clone());
             }
@@ -340,7 +340,7 @@ impl SomeAction {
         let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
 
         for stax in sqrs_pngt1.iter() {
-            if *stax == cur_state || self.groups.any_superset_of_state(stax) {
+            if stax == cur_state || self.groups.any_superset_of_state(stax) {
                 continue;
             }
 
@@ -383,7 +383,7 @@ impl SomeAction {
                 // If more than one sample is needed, and exists, sequence will be preserved.
                 for (iny, sqrx) in self.memory.iter().enumerate() {
                     let targx = ndx.target();
-                    if targx.is_superset_of_state(&sqrx.state) {
+                    if targx.is_superset_of(sqrx) {
                         println!("Memory square {} found for need {}", sqrx, ndx);
                         inx = Some(iny);
                         found = true;
@@ -679,7 +679,7 @@ impl SomeAction {
             // Check needs
             for ndx in needs.iter() {
                 for targx in ndx.target().iter() {
-                    if targx.is_superset_of_state(keyx) {
+                    if targx.is_superset_of(keyx) {
                         continue 'next_sqr;
                     }
                 }
@@ -688,7 +688,7 @@ impl SomeAction {
             // Don't delete squares in groups.
             // let mut in_groups = false;
             for grpx in self.groups.iter() {
-                if grpx.region.is_superset_of_state(keyx) {
+                if grpx.is_superset_of(keyx) {
                     for stax in grpx.region.states.iter() {
                         if stax == keyx {
                             continue 'next_sqr;
@@ -768,7 +768,7 @@ impl SomeAction {
             }
 
             // If this is a one-state group ..
-            if grpx.region.state1() == grpx.region.state2() {
+            if grpx.one_state() {
                 if sqrx.pnc {
                     grpx.set_pnc();
                 }
@@ -925,7 +925,7 @@ impl SomeAction {
         // For adjacent (other group) anchors,
         // store corresponding state in group region,
         // which has not have been sampled yet.
-        let mut stas_in: Vec<&SomeState> = self.squares.stas_in_reg(&grpx.region);
+        let mut stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
 
         // Home for additional states, that have not been sampled yet, so their
         // reference can be pushed to the stas_in vector.
@@ -933,10 +933,10 @@ impl SomeAction {
 
         for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
-            let stay = ancx.bitwise_xor(&grpx.region.diff_mask_state(ancx));
+            let stay = ancx.bitwise_xor(&grpx.region.diff_mask(ancx));
 
             // Check if the state has not been sampled already.
-            if !stas_in.contains(&&stay) {
+            if !stas_in.contains(&stay) {
                 // The state may be in the vertor already, due to being
                 // adjacent to more than one external regions' anchor.
                 if !additional_stas.contains(&stay) {
@@ -946,7 +946,7 @@ impl SomeAction {
         }
         // Add additional state references to stas_in vector.
         for stax in additional_stas.iter() {
-            stas_in.push(stax);
+            stas_in.push(stax.clone());
         }
 
         // For each state, sta1, only in the group region, greg:
@@ -960,7 +960,7 @@ impl SomeAction {
         // Create a StateStore composed of anchor, far, and adjacent-external states.
         let mut cfmv_max = Vec::<&SomeState>::new();
 
-        for stax in &stas_in {
+        for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
             if !self.groups.state_in_1_group(stax) {
                 continue;
@@ -1139,7 +1139,7 @@ impl SomeAction {
         // Instead of checking every adjacent square internal to the group.
 
         // Group is non-X, so no far state
-        if grpx.region.state1() == grpx.region.state2() {
+        if grpx.one_state() {
             return None;
         }
 
@@ -1211,7 +1211,7 @@ impl SomeAction {
                     continue;
                 }
 
-                if grpx.region.intersects(&grpy.region) {
+                if grpx.intersects(grpy) {
                     nds.append(self.group_pair_intersection_needs(grpx, grpy, inx));
                 }
             } // next iny
@@ -1418,7 +1418,7 @@ impl SomeAction {
             }
 
             if let Some(limit_reg) = within {
-                if !grpx.region.intersects(limit_reg) {
+                if !grpx.intersects(limit_reg) {
                     continue;
                 }
             }
@@ -1651,16 +1651,16 @@ impl SomeAction {
         sim_sqrs: &[&SomeSquare],
     ) -> Option<SomeGroup> {
         // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, sim_sqrs.len(), regx);
-        debug_assert!(regx.is_superset_of_state(&sqrx.state));
+        debug_assert!(regx.is_superset_of(sqrx));
 
         // Find squares in the given region, and calc region built from simmilar squares.
         let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
         let mut sqrs_in = Vec::<&SomeSquare>::new();
         for sqry in sim_sqrs.iter() {
-            if regx.is_superset_of_state(&sqry.state) {
+            if regx.is_superset_of(*sqry) {
                 sqrs_in.push(sqry);
-                if !regy.is_superset_of_state(&sqry.state) {
-                    regy = regy.union_state(&sqry.state);
+                if !regy.is_superset_of(*sqry) {
+                    regy = regy.union(*sqry);
                 }
             }
         }
@@ -1815,7 +1815,7 @@ impl SomeAction {
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
                             if let Some(anchory) = &grpy.anchor {
-                                if *stax == anchory {
+                                if stax == anchory {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
                                 } else {
                                     println!("adj    {sqrx} in one group {}", grps[0]);

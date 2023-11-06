@@ -246,19 +246,14 @@ impl SomeRegion {
         s1
     }
 
-    /// Return true if two regions are adjacent.
-    pub fn is_adjacent(&self, other: &Self) -> bool {
+    /// Return true if a region and a region/state are adjacent.
+    pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
         //println!("is_adjacent");
         self.diff_mask(other).just_one_bit()
     }
 
-    /// Return true if a region is adjacent to a state.
-    pub fn is_adjacent_state(&self, other: &SomeState) -> bool {
-        self.diff_mask_state(other).just_one_bit()
-    }
-
     /// Return true if two regions intersect.
-    pub fn intersects(&self, other: &Self) -> bool {
+    pub fn intersects(&self, other: &impl AccessStates) -> bool {
         //println!("intersects");
         self.diff_mask(other).is_low()
     }
@@ -268,23 +263,19 @@ impl SomeRegion {
     /// Strangely, the intersection of two adjacent regions produces
     /// most of an overlapping part, except for a 0/1 pair that needs to be changed
     /// to X.
-    pub fn intersection(&self, other: &Self) -> Option<Self> {
+    pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
         if !self.intersects(other) {
             return None;
         }
-        let state1 = self.high_state().bitwise_and(&other.high_state());
-        let state2 = self.low_state().bitwise_or(&other.low_state());
-
-        Some(Self::new(vec![state1, state2]))
-    }
-
-    /// Return true if a region is a superset of a state.
-    pub fn is_superset_of_state(&self, a_state: &SomeState) -> bool {
-        self.state1()
-            .bitwise_xor(a_state)
-            .bitwise_and(&self.state2().bitwise_xor(a_state))
-            .to_mask()
-            .is_low()
+        if self.one_state() {
+            Some(Self::new(vec![self.first_state().clone()]))
+        } else if other.one_state() {
+            Some(Self::new(vec![other.first_state().clone()]))
+        } else {
+            let state1 = self.high_state().bitwise_and(&other.high_state());
+            let state2 = self.low_state().bitwise_or(&other.low_state());
+            Some(Self::new(vec![state1, state2]))
+        }
     }
 
     /// Return a Mask of zero positions.
@@ -312,7 +303,7 @@ impl SomeRegion {
 
     /// Given a state in a region, return the far state in the region.
     pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
-        assert!(self.is_superset_of_state(sta));
+        assert!(self.is_superset_of(sta));
         self.state1().bitwise_xor(self.state2()).bitwise_xor(sta)
     }
 
@@ -337,7 +328,7 @@ impl SomeRegion {
     }
 
     /// Return true if a region is a subset on another region.
-    pub fn is_subset_of(&self, other: &Self) -> bool {
+    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -347,7 +338,7 @@ impl SomeRegion {
     }
 
     /// Return true if a region is a superset on another region.
-    pub fn is_superset_of(&self, other: &Self) -> bool {
+    pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -356,23 +347,43 @@ impl SomeRegion {
         false
     }
 
-    /// Return the union of two regions.
-    pub fn union(&self, other: &Self) -> Self {
+    /// Return the union of a region and a region/state.
+    pub fn union(&self, other: &impl AccessStates) -> Self {
         //println!("union {} and {}", self, other);
-        let st_low = self.low_state().bitwise_and(&other.low_state());
-
-        let st_high = self.high_state().bitwise_or(&other.high_state());
-
-        Self::new(vec![st_high, st_low])
-    }
-
-    /// Return the union of a region and a state.
-    pub fn union_state(&self, other: &SomeState) -> Self {
-        let st_low = self.low_state().bitwise_and(other);
-
-        let st_high = self.high_state().bitwise_or(other);
-
-        Self::new(vec![st_high, st_low])
+        match (self.one_state(), other.one_state()) {
+            (true, true) => {
+                let st_low = self.first_state().bitwise_or(other.first_state());
+                let st_high = self.first_state().bitwise_and(other.first_state());
+                Self::new(vec![st_high, st_low])
+            }
+            (false, true) => {
+                let st_low = self.high_state().bitwise_or(other.first_state());
+                let st_high = self.low_state().bitwise_and(other.first_state());
+                Self::new(vec![st_high, st_low])
+            }
+            (true, false) => {
+                let other_high = other.high_state();
+                let other_low = other.low_state();
+                let st_low = self
+                    .first_state()
+                    .bitwise_or(&other_high.bitwise_or(&other_low));
+                let st_high = self
+                    .first_state()
+                    .bitwise_and(&other_high.bitwise_and(&other_low));
+                Self::new(vec![st_high, st_low])
+            }
+            (false, false) => {
+                let other_high = other.high_state();
+                let other_low = other.low_state();
+                let st_low = self
+                    .high_state()
+                    .bitwise_or(&other_high.bitwise_or(&other_low));
+                let st_high = self
+                    .low_state()
+                    .bitwise_and(&other_high.bitwise_and(&other_low));
+                Self::new(vec![st_high, st_low])
+            }
+        }
     }
 
     /// Return the highest state in the region
@@ -409,22 +420,9 @@ impl SomeRegion {
         Self::new(vec![state1, state2])
     }
 
-    /// Return the distance from a region to a state.
-    pub fn distance_state(&self, stax: &SomeState) -> usize {
-        self.diff_mask_state(stax).num_one_bits()
-    }
-
-    /// Return the distance from a region to another.
-    pub fn distance(&self, regx: &Self) -> usize {
-        self.diff_mask(regx).num_one_bits()
-    }
-
-    /// Return a mask of different bits with a given state.
-    pub fn diff_mask_state(&self, sta1: &SomeState) -> SomeMask {
-        self.state1()
-            .bitwise_xor(sta1)
-            .bitwise_and(&self.state2().bitwise_xor(sta1))
-            .to_mask()
+    /// Return the distance from a region to a region/state.
+    pub fn distance(&self, other: &impl AccessStates) -> usize {
+        self.diff_mask(other).num_one_bits()
     }
 
     /// Return a non-x mask for a region.
@@ -432,16 +430,29 @@ impl SomeRegion {
         self.state1().bitwise_eqv(self.state2())
     }
 
-    /// Return a mask of different, non-x, bits between two regions.
-    pub fn diff_mask(&self, other: &Self) -> SomeMask {
-        self.non_x_mask()
-            .bitwise_and(&other.non_x_mask())
-            .bitwise_and(&self.state1().bitwise_xor(other.state1()))
+    /// Return a mask of different, non-x, bits between a region and a region/state.
+    pub fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        match (self.one_state(), other.one_state()) {
+            (true, true) => self
+                .first_state()
+                .bitwise_xor(other.first_state())
+                .to_mask(),
+            (false, true) => self
+                .non_x_mask()
+                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
+            (true, false) => other
+                .non_x_mask()
+                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
+            (false, false) => self
+                .non_x_mask()
+                .bitwise_and(&other.non_x_mask())
+                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
+        }
     }
 
     /// Given a region, and a second region, return the
     /// first region - the second
-    pub fn subtract(&self, other: &Self) -> Vec<Self> {
+    pub fn subtract(&self, other: &impl AccessStates) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
         // If no intersection, return self.
@@ -470,36 +481,6 @@ impl SomeRegion {
         ret_vec
     }
 
-    /// Return the result of region minus state.
-    pub fn subtract_state(&self, stax: &SomeState) -> Vec<Self> {
-        let mut ret_vec = Vec::<Self>::new();
-
-        // If region is not a superset of the state, return self.
-        if !self.is_superset_of_state(stax) {
-            ret_vec.push(self.clone());
-            return ret_vec;
-        };
-
-        // If region minus state is null, return empty vector.
-        if self.states.len() == 1 {
-            return ret_vec;
-        }
-
-        // Split by X over 0 or 1.
-        let x_over_not_xs: Vec<SomeMask> = self.x_mask().split();
-
-        for mskx in x_over_not_xs.iter() {
-            if mskx.bitwise_and(stax).is_low() {
-                // reg_int has a 0 bit in that position
-                ret_vec.push(self.set_to_ones(mskx));
-            } else {
-                // reg_int has a 1 in that bit position
-                ret_vec.push(self.set_to_zeros(mskx));
-            }
-        }
-        ret_vec
-    }
-
     /// Return the result of region minus state, supersets of a second state.
     pub fn subtract_state_to_supersets_of(
         &self,
@@ -509,7 +490,7 @@ impl SomeRegion {
         let mut ret_vec = Vec::<Self>::new();
 
         // If region is not a superset of the state, return self.
-        if !self.is_superset_of_state(substa) {
+        if !self.is_superset_of(substa) {
             ret_vec.push(self.clone());
             return ret_vec;
         };
@@ -564,12 +545,50 @@ impl SomeRegion {
     pub fn all_x(&self) -> bool {
         self.non_x_mask().is_low()
     }
+
+    /// Return the number of bits used to define a Region.
+    pub fn num_bits(&self) -> usize {
+        self.state1().num_bits()
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
 impl StrLen for SomeRegion {
     fn strlen(&self) -> usize {
         self.state1().strlen()
+    }
+}
+
+/// Define the AccessStates trait, so operations on Regions and States are smoother.
+/// A region defined by a single state, is similar to a single state.
+pub trait AccessStates {
+    fn one_state(&self) -> bool;
+    fn first_state(&self) -> &SomeState;
+    fn x_mask(&self) -> SomeMask;
+    fn non_x_mask(&self) -> SomeMask;
+    fn high_state(&self) -> SomeState;
+    fn low_state(&self) -> SomeState;
+}
+
+/// Implement the trait AccessStates for SomeRegion.
+impl AccessStates for SomeRegion {
+    fn one_state(&self) -> bool {
+        1 == self.states.len()
+    }
+    fn first_state(&self) -> &SomeState {
+        self.states.first().expect("SNH")
+    }
+    fn x_mask(&self) -> SomeMask {
+        self.x_mask()
+    }
+    fn non_x_mask(&self) -> SomeMask {
+        self.non_x_mask()
+    }
+    fn high_state(&self) -> SomeState {
+        self.high_state()
+    }
+    fn low_state(&self) -> SomeState {
+        self.low_state()
     }
 }
 
@@ -638,7 +657,7 @@ mod tests {
 
         for regx in regs.iter() {
             print!("{regx} ");
-            assert!(regx.is_superset_of_state(&sta5));
+            assert!(regx.is_superset_of(&sta5));
         }
         println!(" ");
 
@@ -815,22 +834,17 @@ mod tests {
         println!("{reg0} s/b adjacent {reg1}");
         assert!(!reg0.is_adjacent(&reg1));
 
-        Ok(())
-    }
-
-    #[test]
-    fn is_adjacent_state() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         let reg0 = tmp_reg.new_from_string("rX10X10X")?;
         let sta1 = tmp_sta.new_from_string("s0b1001100")?;
         println!("{reg0} s/b adjacent {sta1}");
-        assert!(reg0.is_adjacent_state(&sta1));
+        assert!(reg0.is_adjacent(&sta1));
 
         let sta2 = tmp_sta.new_from_string("s0b1001110")?;
         println!("{reg0} s/nb adjacent {sta2}");
-        assert!(!reg0.is_adjacent_state(&sta2));
+        assert!(!reg0.is_adjacent(&sta2));
 
         Ok(())
     }
@@ -864,27 +878,6 @@ mod tests {
         } else {
             return Err(format!("{reg0} does not intersect {reg1}?"));
         }
-        Ok(())
-    }
-
-    #[test]
-    fn is_superset_of_state() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        let reg0 = tmp_reg.new_from_string("rX10X")?;
-        let sta1 = tmp_sta.new_from_string("s0b1100")?;
-        println!("{reg0} s/b superset of {sta1}");
-        assert!(reg0.is_superset_of_state(&sta1));
-
-        let sta2 = tmp_sta.new_from_string("s0b0000")?;
-        println!("{reg0} s/nb superset of {sta2}");
-        assert!(!reg0.is_superset_of_state(&sta2));
-
-        let sta3 = tmp_sta.new_from_string("s0b0010")?;
-        println!("{reg0} s/nb superset of {sta3}");
-        assert!(!reg0.is_superset_of_state(&sta3));
-
         Ok(())
     }
 
@@ -1013,31 +1006,67 @@ mod tests {
         if reg0.is_superset_of(&reg2) {
             return Err(format!("{reg0} is superset {reg2}?"));
         }
+
+        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let reg0 = tmp_reg.new_from_string("rX10X")?;
+        let sta1 = tmp_sta.new_from_string("s0b1100")?;
+        println!("{reg0} s/b superset of {sta1}");
+        assert!(reg0.is_superset_of(&sta1));
+
+        let sta2 = tmp_sta.new_from_string("s0b0000")?;
+        println!("{reg0} s/nb superset of {sta2}");
+        assert!(!reg0.is_superset_of(&sta2));
+
+        let sta3 = tmp_sta.new_from_string("s0b0010")?;
+        println!("{reg0} s/nb superset of {sta3}");
+        assert!(!reg0.is_superset_of(&sta3));
+
         Ok(())
     }
 
     #[test]
     fn union() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0, 0]))]);
+        let ur_bts = SomeBits::new(vec![0]);
+        let ur_sta = SomeState::new(ur_bts.clone());
+        let ur_reg = SomeRegion::new(vec![SomeState::new(ur_bts)]);
 
-        let reg0 = tmp_reg.new_from_string("r111000XXX")?;
-        let reg1 = tmp_reg.new_from_string("r01X01X01X")?;
-        let reg2 = reg0.union(&reg1);
-        println!("union is {reg2}");
-        assert!(reg2 == tmp_reg.new_from_string("rX1X0XXXXX")?);
-        Ok(())
-    }
+        let reg2a = ur_reg.new_from_string("rXX0011")?; // Region >1 state.
+        let reg2b = ur_reg.new_from_string("rXX0111")?; // Region >1 state.
+        let reg1a = ur_reg.new_from_string("r000101")?; // Region =1 state.
+        let reg1b = ur_reg.new_from_string("r000011")?; // Region =1 state.
+        let sta0 = ur_sta.new_from_string("s0b010101")?; // State, =1 state.
 
-    #[test]
-    fn union_state() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        // Region >1 state, Region >1 state.
+        let union = reg2a.union(&reg2b);
+        println!("{reg2a} distance {reg2b} is {union}");
+        assert!(union == ur_reg.new_from_string("rxx0x11")?);
 
-        let reg0 = tmp_reg.new_from_string("rXX0101")?;
-        let state0 = tmp_sta.new_from_string("s0b101001")?;
-        let reg2 = reg0.union_state(&state0);
-        println!("{reg0} union {state0} is {reg2}");
-        assert!(reg2 == tmp_reg.new_from_string("rXXXX01")?);
+        // Region >1 state, Region =1 state.
+        let union = reg2a.union(&reg1a);
+        println!("{reg2a} distance {reg1a} is {union}");
+        assert!(union == ur_reg.new_from_string("rxx0xx1")?);
+
+        // Region >1 state, state.
+        let union = reg2a.union(&sta0);
+        println!("{reg2a} distance {sta0} is {union}");
+        assert!(union == ur_reg.new_from_string("rxx0xx1")?);
+
+        // Region =1 state, Region =1 state.
+        let union = reg1a.union(&reg1b);
+        println!("{reg1a} distance {reg1b} is {union}");
+        assert!(union == ur_reg.new_from_string("r0xx1")?);
+
+        // Region =1 state, Region >1 state.
+        let union = reg1a.union(&reg2a);
+        println!("{reg1a} distance {reg2a} is {union}");
+        assert!(union == ur_reg.new_from_string("rXX0xx1")?);
+
+        // Region =1 state, state.
+        let union = reg1a.union(&sta0);
+        println!("{reg1a} distance {sta0} is {union}");
+        assert!(union == ur_reg.new_from_string("r000x_0101")?);
 
         Ok(())
     }
@@ -1100,48 +1129,93 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn diff_mask_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
-        let tmp_msk = SomeMask::new(tmp_bts.clone());
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(tmp_bts)]);
+    #[test] // Also tests diff_mask.
+    fn distance() -> Result<(), String> {
+        let ur_bts = SomeBits::new(vec![0]);
+        let ur_sta = SomeState::new(ur_bts.clone());
+        let ur_reg = SomeRegion::new(vec![SomeState::new(ur_bts)]);
 
-        let reg0 = tmp_reg.new_from_string("rXX0011")?;
-        let state0 = tmp_sta.new_from_string("s0b010101")?;
-        let dif_msk = reg0.diff_mask_state(&state0);
-        println!("{reg0} diff_mask {state0} is {dif_msk}");
-        assert!(dif_msk == tmp_msk.new_from_string("m0b110")?);
+        let reg2a = ur_reg.new_from_string("rXX0011")?; // Region >1 state.
+        let reg2b = ur_reg.new_from_string("rXX0111")?; // Region >1 state.
+        let reg1a = ur_reg.new_from_string("r000101")?; // Region =1 state.
+        let reg1b = ur_reg.new_from_string("r000011")?; // Region =1 state.
+        let sta0 = ur_sta.new_from_string("s0b010101")?; // State, =1 state.
 
-        Ok(())
-    }
+        // Region >1 state, Region >1 state.
+        let dist = reg2a.distance(&reg2b);
+        println!("{reg2a} distance {reg2b} is {dist}");
+        assert!(dist == 1);
 
-    #[test]
-    fn distance_state() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(tmp_bts)]);
-
-        let reg0 = tmp_reg.new_from_string("rXX0011")?;
-        let state0 = tmp_sta.new_from_string("s0b010101")?;
-        let dist = reg0.distance_state(&state0);
-        println!("{reg0} distance {state0} is {dist}");
+        // Region >1 state, Region =1 state.
+        let dist = reg2a.distance(&reg1a);
+        println!("{reg2a} distance {reg1a} is {dist}");
         assert!(dist == 2);
+
+        // Region >1 state, state.
+        let dist = reg2a.distance(&sta0);
+        println!("{reg2a} distance {sta0} is {dist}");
+        assert!(dist == 2);
+
+        // Region =1 state, Region =1 state.
+        let dist = reg1a.distance(&reg1b);
+        println!("{reg1a} distance {reg1b} is {dist}");
+        assert!(dist == 2);
+
+        // Region =1 state, Region >1 state.
+        let dist = reg1a.distance(&reg2a);
+        println!("{reg1a} distance {reg2a} is {dist}");
+        assert!(dist == 2);
+
+        // Region =1 state, state.
+        let dist = reg1a.distance(&sta0);
+        println!("{reg1a} distance {sta0} is {dist}");
+        assert!(dist == 1);
 
         Ok(())
     }
 
     #[test]
     fn diff_mask() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
-        let tmp_msk = SomeMask::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(tmp_bts)]);
+        let ur_bts = SomeBits::new(vec![0]);
+        let ur_msk = SomeMask::new(ur_bts.clone());
+        let ur_sta = SomeState::new(ur_bts.clone());
+        let ur_reg = SomeRegion::new(vec![SomeState::new(ur_bts)]);
 
-        let reg0 = tmp_reg.new_from_string("r1XX000111")?;
-        let reg1 = tmp_reg.new_from_string("r01X01X01X")?;
-        let diff = reg0.diff_mask(&reg1);
-        println!("{reg0} diff_mask {reg1} is {diff}");
-        assert!(diff == tmp_msk.new_from_string("m0b100010100")?);
+        let reg2a = ur_reg.new_from_string("rXX0011")?; // Region >1 state.
+        let reg2b = ur_reg.new_from_string("rXX0111")?; // Region >1 state.
+        let reg1a = ur_reg.new_from_string("r000101")?; // Region =1 state.
+        let reg1b = ur_reg.new_from_string("r000011")?; // Region =1 state.
+        let sta0 = ur_sta.new_from_string("s0b010101")?; // State, =1 state.
+
+        // Region >1 state, Region >1 state.
+        let diff = reg2a.diff_mask(&reg2b);
+        println!("{reg2a} diff_mask {reg2b} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b0100")?);
+
+        // Region >1 state, Region =1 state.
+        let diff = reg2a.diff_mask(&reg1a);
+        println!("{reg2a} diff_mask {reg1a} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b0110")?);
+
+        // Region >1 state, state.
+        let diff = reg2a.diff_mask(&sta0);
+        println!("{reg2a} diff_mask {sta0} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b0110")?);
+
+        // Region =1 state, Region =1 state.
+        let diff = reg1a.diff_mask(&reg1b);
+        println!("{reg1a} diff_mask {reg1b} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b0110")?);
+
+        // Region =1 state, Region >1 state.
+        let diff = reg1a.diff_mask(&reg2a);
+        println!("{reg1a} diff_mask {reg2a} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b0110")?);
+
+        // Region =1 state, state.
+        let diff = reg1a.diff_mask(&sta0);
+        println!("{reg1a} diff_mask {sta0} is {diff}");
+        assert!(diff == ur_msk.new_from_string("m0b10000")?);
 
         Ok(())
     }

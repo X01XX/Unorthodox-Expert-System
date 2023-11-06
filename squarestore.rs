@@ -4,6 +4,7 @@ use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -38,18 +39,26 @@ impl SquareStore {
     }
 
     /// Return a list of squares in a given region.
-    pub fn stas_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeState> {
-        self.ahash
+    pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
+        let mut ret_keys = StateStore::new(vec![]);
+
+        let sel_keys: Vec<&SomeState> = self
+            .ahash
             .keys()
-            .filter(|keyx| areg.is_superset_of_state(keyx))
-            .collect()
+            .filter(|keyx| areg.is_superset_of(*keyx))
+            .collect();
+
+        for keyx in sel_keys.iter() {
+            ret_keys.push((*keyx).clone());
+        }
+        ret_keys
     }
 
     /// Return a list of squares in a given region.
     pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
         self.ahash
             .values()
-            .filter(|sqrx| areg.is_superset_of_state(&sqrx.state))
+            .filter(|sqrx| areg.is_superset_of(*sqrx))
             .collect()
     }
 
@@ -79,8 +88,11 @@ impl SquareStore {
     }
 
     /// Return a StateStore of squares with pn GT Pn:One, not yet pnc.
-    pub fn pn_gt1_no_pnc(&self) -> Vec<&SomeState> {
-        self.ahash
+    pub fn pn_gt1_no_pnc(&self) -> StateStore {
+        let mut ret_keys = StateStore::new(vec![]);
+
+        let sel_keys: Vec<&SomeState> = self
+            .ahash
             .values()
             .filter_map(|sqrx| {
                 if sqrx.pn != Pn::One && !sqrx.pnc {
@@ -89,15 +101,28 @@ impl SquareStore {
                     None
                 }
             })
-            .collect()
+            .collect();
+
+        for keyx in sel_keys.iter() {
+            ret_keys.push((*keyx).clone());
+        }
+        ret_keys
     }
 
     /// Return a StateStore of square states that are adjacent to a given region.
-    pub fn stas_adj_reg(&self, regx: &SomeRegion) -> Vec<&SomeState> {
-        self.ahash
+    pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
+        let mut ret_keys = StateStore::new(vec![]);
+
+        let sel_keys: Vec<&SomeState> = self
+            .ahash
             .keys()
-            .filter(|keyx| regx.is_adjacent_state(keyx))
-            .collect()
+            .filter(|keyx| regx.is_adjacent(*keyx))
+            .collect();
+
+        for keyx in sel_keys.iter() {
+            ret_keys.push((*keyx).clone());
+        }
+        ret_keys
     }
 
     /// Return a String representation of a SquareStore.

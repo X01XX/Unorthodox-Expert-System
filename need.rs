@@ -7,7 +7,7 @@
 //! Housekeeping needs, like adding a group.
 
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
+use crate::regionstorecorr::RegionStoreCorr;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::target::SomeTarget;
@@ -96,7 +96,7 @@ pub enum SomeNeed {
     },
     /// Move all current domain states to the corresponding regions of an SelectRegion.
     ToSelectRegion {
-        target_regions: RegionStore,
+        target_regions: RegionStoreCorr,
         priority: usize,
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
@@ -176,7 +176,7 @@ impl SomeNeed {
                 }
             }
             Self::ContradictoryIntersection { target_region, .. } => {
-                if target_region.is_superset_of_state(cur_state) {
+                if target_region.is_superset_of(cur_state) {
                     return true;
                 }
             }
@@ -191,7 +191,7 @@ impl SomeNeed {
                 }
             }
             Self::StateInRemainder { target_region, .. } => {
-                if target_region.is_superset_of_state(cur_state) {
+                if target_region.is_superset_of(cur_state) {
                     return true;
                 }
             }

@@ -1,6 +1,6 @@
+use crate::region::AccessStates;
 /// Implement a struct to indicate a desired region for a given domain.
 use crate::region::SomeRegion;
-use crate::state::SomeState;
 
 use std::fmt;
 
@@ -28,7 +28,7 @@ impl SomeTarget {
         }
     }
 
-    pub fn is_superset_of_state(&self, stax: &SomeState) -> bool {
-        self.region.is_superset_of_state(stax)
+    pub fn is_superset_of(&self, stax: &impl AccessStates) -> bool {
+        self.region.is_superset_of(stax)
     }
 }

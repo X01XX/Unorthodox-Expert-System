@@ -3,9 +3,9 @@
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
+use crate::regionstorecorr::RegionStoreCorr;
 use crate::selectregions::SelectRegions;
-use crate::state::SomeState;
+use crate::statestorecorr::StateStoreCorr;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ impl SelectRegionsStore {
         Self { regionstores }
     }
 
-    /// Return a new SelectRegionStore instance, empty, with a specified capacity.
+    /// Return a new SelectRegions instance, empty, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
             regionstores: Vec::<SelectRegions>::with_capacity(num),
@@ -113,8 +113,8 @@ impl SelectRegionsStore {
         self.regionstores.iter_mut()
     }
 
-    /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStore.
-    pub fn rate_regions(&self, regs: &RegionStore) -> (isize, usize) {
+    /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStoreCorr.
+    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> (isize, usize) {
         let mut times_visited: usize = 0;
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
@@ -127,7 +127,7 @@ impl SelectRegionsStore {
     }
 
     /// Return a Vector of SelectRegions not supersets of a given StateStore.
-    pub fn not_supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
+    pub fn not_supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
             .filter(|regsx| !regsx.regions.is_superset_states_corr(stas))
@@ -135,7 +135,7 @@ impl SelectRegionsStore {
     }
 
     /// Return true if any SelectRegion is a superset of a StateStore.
-    pub fn any_supersets_of_states(&self, stas: &[&SomeState]) -> bool {
+    pub fn any_supersets_of_states(&self, stas: &StateStoreCorr) -> bool {
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_states_corr(stas) {
                 return true;
@@ -145,7 +145,7 @@ impl SelectRegionsStore {
     }
 
     /// Return the aggregate value of negative select regions the current states are in.
-    pub fn value_supersets_of_states(&self, stas: &[&SomeState]) -> isize {
+    pub fn value_supersets_of_states(&self, stas: &StateStoreCorr) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_states_corr(stas) && regsx.value() < 0 {
@@ -178,7 +178,7 @@ impl SelectRegionsStore {
     /// Return true if any SelectRegion has regions equal to another.
     pub fn any_equal_regions(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.eq_corr(&other.regions) {
+            if regsx.regions == other.regions {
                 return true;
             }
         }
@@ -200,7 +200,7 @@ impl SelectRegionsStore {
     }
 
     /// Return list of select regions that are superset of a State vector.
-    pub fn supersets_of_states(&self, stas: &[&SomeState]) -> Vec<&SelectRegions> {
+    pub fn supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
             .filter(|regsx| regsx.regions.is_superset_states_corr(stas))
@@ -220,10 +220,10 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return true if an equal RegionStore is already in the SelectRegionsStore.
+    /// Return true if an equal RegionStoreCorr is already in the SelectRegionsStore.
     fn contains(&self, selx: &SelectRegions) -> bool {
         for regstrx in &self.regionstores {
-            if regstrx.regions.eq_corr(&selx.regions) {
+            if regstrx.regions == selx.regions {
                 return true;
             }
         }
@@ -232,16 +232,13 @@ impl SelectRegionsStore {
 
     /// Return the sum of all negative select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
-    pub fn rate_plan<'a>(&self, aplan: &'a SomePlan, current_states: &[&'a SomeState]) -> isize {
+    pub fn rate_plan(&self, aplan: &SomePlan, current_states: &StateStoreCorr) -> isize {
         if aplan.len() < 2 {
             return 0;
         }
 
         // Create a mutable state ref vector.
-        let mut all_states = Vec::<&SomeState>::with_capacity(current_states.len());
-        for statex in current_states.iter() {
-            all_states.push(statex);
-        }
+        let mut all_states = current_states.clone();
 
         let dom_num = aplan.dom_num;
 
@@ -249,7 +246,7 @@ impl SelectRegionsStore {
         let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
         for stepx in aplan.iter() {
-            all_states[dom_num] = stepx.initial.state1();
+            all_states[dom_num] = stepx.initial.state1().clone();
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.
             //for selx in self.regionstores.iter() {
@@ -289,7 +286,7 @@ impl SelectRegionsStore {
 
     /// Return the sum of all select negative regions values a plan goes through.
     /// This ignores the select regions a plan starts, or ends, in.
-    pub fn rate_plans<'a>(&self, plans: &'a PlanStore, current_states: &[&'a SomeState]) -> isize {
+    pub fn rate_plans(&self, plans: &PlanStore, current_states: &StateStoreCorr) -> isize {
         if plans.is_empty() {
             return 0;
         }
@@ -301,9 +298,9 @@ impl SelectRegionsStore {
         }
 
         // Create mutable current_states vector.
-        let mut all_states = Vec::<&SomeState>::with_capacity(current_states.len());
-        for stateref in current_states.iter() {
-            all_states.push(stateref);
+        let mut all_states = StateStoreCorr::with_capacity(current_states.len());
+        for statex in current_states.iter() {
+            all_states.push(statex.clone());
         }
 
         // Rate each plan.
@@ -314,18 +311,18 @@ impl SelectRegionsStore {
 
             // Check that plan starts in the right state.
             let start = planx.initial_region();
-            if start.state1() != all_states[planx.dom_num]
-                || start.state2() != all_states[planx.dom_num]
+            if *start.state1() != all_states[planx.dom_num]
+                || *start.state2() != all_states[planx.dom_num]
             {
                 panic!("plans not in sync!");
             }
             // Add rate for each setp.
             for stepx in planx.iter() {
-                all_states[planx.dom_num] = stepx.initial.state1();
+                all_states[planx.dom_num] = stepx.initial.state1().clone();
                 let valx = self.value_supersets_of_states(&all_states);
                 rates[planx.dom_num].push(valx);
             }
-            all_states[planx.dom_num] = planx.result_region().state1();
+            all_states[planx.dom_num] = planx.result_region().state1().clone();
         }
 
         // Init rate to return.
@@ -378,11 +375,11 @@ impl SelectRegionsStore {
     /// All subsets will add up to the original regions.
     /// All subsets will be a subset of one, or more, of the original regions,
     /// No subsets will be a partial intersection of any of the original regions.
-    pub fn split_to_subsets(&self) -> Vec<RegionStore> {
+    pub fn split_to_subsets(&self) -> Vec<RegionStoreCorr> {
         //println!("split_to_subsets: {self}");
 
-        let mut orig_stores = Vec::<RegionStore>::with_capacity(self.len());
-        let mut cur_stores = Vec::<RegionStore>::with_capacity(self.len());
+        let mut orig_stores = Vec::<RegionStoreCorr>::with_capacity(self.len());
+        let mut cur_stores = Vec::<RegionStoreCorr>::with_capacity(self.len());
         for selregsx in self.regionstores.iter() {
             cur_stores.push(selregsx.regions.clone());
             orig_stores.push(selregsx.regions.clone());
@@ -395,12 +392,12 @@ impl SelectRegionsStore {
         loop {
             // Process all intersections between any two SelectRegions.
             let mut split = Vec::<usize>::with_capacity(self.len());
-            let mut next_stores = Vec::<RegionStore>::new();
+            let mut next_stores = Vec::<RegionStoreCorr>::new();
 
-            // Compare each combination of RegionStores.
+            // Compare each combination of RegionStoreCorrs.
             for (inx, curx) in cur_stores.iter().enumerate() {
                 for origy in orig_stores.iter() {
-                    if curx.eq_corr(origy) {
+                    if curx == origy {
                         continue;
                     }
                     if curx.is_subset_of_corr(origy) {
@@ -416,7 +413,7 @@ impl SelectRegionsStore {
                         }
 
                         // Init vector for region-by-region split.
-                        let mut x_regs = Vec::<RegionStore>::new();
+                        let mut x_regs = Vec::<RegionStoreCorr>::new();
 
                         // Handle inx leftovers.
                         for (regstr_x, regstr_int) in curx.iter().zip(intx.iter()) {
@@ -426,9 +423,9 @@ impl SelectRegionsStore {
                             //    tools::vec_string(&x_left)
                             //);
                             if x_left.is_empty() {
-                                x_regs.push(RegionStore::new(vec![regstr_x.clone()]));
+                                x_regs.push(RegionStoreCorr::new(vec![regstr_x.clone()]));
                             } else {
-                                x_regs.push(RegionStore::new(x_left));
+                                x_regs.push(RegionStoreCorr::new(x_left));
                             }
                         }
 
@@ -443,17 +440,17 @@ impl SelectRegionsStore {
                         //println!("any1of {:?}", any1ofx);
 
                         for inxs in any1ofx.iter() {
-                            let mut tmpx = RegionStore::with_capacity(x_nums.len());
+                            let mut tmpx = RegionStoreCorr::with_capacity(x_nums.len());
                             for (inx, choice) in inxs.iter().enumerate() {
                                 tmpx.push(x_regs[inx][*choice].clone());
                             }
                             //println!("tmpx: {tmpx}");
-                            RegionStore::vec_push_nosubs_corr(&mut next_stores, tmpx);
+                            RegionStoreCorr::vec_push_nosubs_corr(&mut next_stores, tmpx);
                         }
 
                         // Save intersection.
                         //println!("intx: {intx}");
-                        RegionStore::vec_push_nosubs_corr(&mut next_stores, intx);
+                        RegionStoreCorr::vec_push_nosubs_corr(&mut next_stores, intx);
                     }
                 } // next origy
             } // next inx, curx
@@ -465,7 +462,7 @@ impl SelectRegionsStore {
             for (inx, strx) in cur_stores.iter().enumerate() {
                 if !split.contains(&inx) {
                     // println!("Adding {strx}");
-                    RegionStore::vec_push_nosubs_corr(&mut next_stores, strx.clone());
+                    RegionStoreCorr::vec_push_nosubs_corr(&mut next_stores, strx.clone());
                 }
             }
             //println!("cur_stores:  {}", tools::vec_string(&cur_stores));
@@ -497,6 +494,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::region::SomeRegion;
+    use crate::state::SomeState;
 
     #[test]
     fn test_split_to_subsets() -> Result<(), String> {
@@ -505,21 +503,21 @@ mod tests {
 
         let mut srs = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(
-            RegionStore::new(vec![ur_reg1.new_from_string("r0xx1").expect("SNH")]),
+            RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0xx1").expect("SNH")]),
             0,
             0,
         );
         srs.push(regstr1);
 
         let regstr2 = SelectRegions::new(
-            RegionStore::new(vec![ur_reg1.new_from_string("r0x1x").expect("SNH")]),
+            RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0x1x").expect("SNH")]),
             0,
             0,
         );
         srs.push(regstr2);
 
         let regstr3 = SelectRegions::new(
-            RegionStore::new(vec![ur_reg1.new_from_string("rx1xx").expect("SNH")]),
+            RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx1xx").expect("SNH")]),
             0,
             0,
         );
@@ -531,48 +529,48 @@ mod tests {
 
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0001").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0001").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0101").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0101").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0011").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0011").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0111").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0111").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0010").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0010").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r0110").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r0110").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("rx100").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx100").expect("SNH"),])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![ur_reg1.new_from_string("r11xx").expect("SNH"),])
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![ur_reg1.new_from_string("r11xx").expect("SNH"),])
         ));
 
         let mut srs = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0xx1").expect("SNH"),
                 ur_reg2.new_from_string("rx10x").expect("SNH"),
             ]),
@@ -582,7 +580,7 @@ mod tests {
         srs.push(regstr1);
 
         let regstr2 = SelectRegions::new(
-            RegionStore::new(vec![
+            RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x1x").expect("SNH"),
                 ur_reg2.new_from_string("r0xx1").expect("SNH"),
             ]),
@@ -597,40 +595,40 @@ mod tests {
 
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x01").expect("SNH"),
                 ur_reg2.new_from_string("rx100").expect("SNH"),
             ])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x01").expect("SNH"),
                 ur_reg2.new_from_string("r110x").expect("SNH"),
             ])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x11").expect("SNH"),
                 ur_reg2.new_from_string("r0101").expect("SNH"),
             ])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x10").expect("SNH"),
                 ur_reg2.new_from_string("r0x11").expect("SNH"),
             ])
         ));
         assert!(tools::vec_contains(
             &subs,
-            RegionStore::eq_corr,
-            &RegionStore::new(vec![
+            RegionStoreCorr::eq,
+            &RegionStoreCorr::new(vec![
                 ur_reg1.new_from_string("r0x10").expect("SNH"),
                 ur_reg2.new_from_string("r00x1").expect("SNH"),
             ])

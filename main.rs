@@ -39,6 +39,7 @@ mod region;
 use region::SomeRegion;
 mod change;
 mod regionstore;
+mod regionstorecorr;
 mod resultstore;
 mod rule;
 mod rulestore;
@@ -51,6 +52,7 @@ use sample::SomeSample;
 use state::SomeState;
 mod domain;
 mod statestore;
+mod statestorecorr;
 use domain::SomeDomain;
 mod needstore;
 mod plan;
@@ -69,7 +71,7 @@ mod selectregionsstore;
 mod target;
 mod targetstore;
 use crate::bits::SomeBits;
-use crate::regionstore::RegionStore;
+use crate::regionstorecorr::RegionStoreCorr;
 
 use std::io;
 use std::io::{Read, Write};
@@ -278,7 +280,7 @@ fn domainstore_init() -> DomainStore {
     dmxs[1].add_action();
 
     // Load optimal regions
-    let mut regstr1 = RegionStore::with_capacity(2);
+    let mut regstr1 = RegionStoreCorr::with_capacity(2);
     regstr1.push(dmxs[0].region_from_string_pad_x("r0x0x").expect("SNH"));
     regstr1.push(
         dmxs[1]
@@ -286,7 +288,7 @@ fn domainstore_init() -> DomainStore {
             .expect("SNH"),
     );
 
-    let mut regstr2 = RegionStore::with_capacity(2);
+    let mut regstr2 = RegionStoreCorr::with_capacity(2);
     regstr2.push(dmxs[0].region_from_string_pad_x("r0xx1").expect("SNH"));
     regstr2.push(
         dmxs[1]
@@ -294,7 +296,7 @@ fn domainstore_init() -> DomainStore {
             .expect("SNH"),
     );
 
-    let mut regstr3 = RegionStore::with_capacity(2);
+    let mut regstr3 = RegionStoreCorr::with_capacity(2);
     regstr3.push(dmxs[0].region_from_string_pad_x("rx1x1").expect("SNH"));
     regstr3.push(
         dmxs[1]
@@ -302,7 +304,7 @@ fn domainstore_init() -> DomainStore {
             .expect("SNH"),
     );
 
-    let mut regstr4 = RegionStore::with_capacity(2);
+    let mut regstr4 = RegionStoreCorr::with_capacity(2);
     regstr4.push(dmxs[0].region_from_string_pad_x("r1110").expect("SNH"));
     regstr4.push(
         dmxs[1]
@@ -310,7 +312,7 @@ fn domainstore_init() -> DomainStore {
             .expect("SNH"),
     );
 
-    let mut regstr5 = RegionStore::with_capacity(2);
+    let mut regstr5 = RegionStoreCorr::with_capacity(2);
     regstr5.push(dmxs[0].region_from_string_pad_x("rXX00").expect("SNH"));
     regstr5.push(
         dmxs[1]
@@ -318,7 +320,7 @@ fn domainstore_init() -> DomainStore {
             .expect("SNH"),
     );
 
-    let mut regstr6 = RegionStore::with_capacity(2);
+    let mut regstr6 = RegionStoreCorr::with_capacity(2);
     regstr6.push(dmxs[0].region_from_string_pad_x("rX10X").expect("SNH"));
     regstr6.push(
         dmxs[1]
@@ -583,10 +585,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             let nd_dom = dmxs.needs[nd_inx].dom_num();
             if dom_num != nd_dom {
                 // Show "before" state before running need.
-                println!(
-                    "\nAll domain states: {}",
-                    tools::vec_ref_string(&dmxs.all_current_states())
-                );
+                println!("\nAll domain states: {}", dmxs.all_current_states());
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();
                 //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
@@ -628,7 +627,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             target_region,
             ..
         } => {
-            if target_region.is_superset_of_state(&dmxs[*dom_num].cur_state) {
+            if target_region.is_superset_of(&dmxs[*dom_num].cur_state) {
                 dmxs.set_boredom_limit();
                 return true;
             }
@@ -713,7 +712,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     match dmx.region_from_string(cmd[1]) {
         Ok(goal_region) => {
             println!("\nChange Current_state {cur_state} to region {goal_region}");
-            if goal_region.is_superset_of_state(cur_state) {
+            if goal_region.is_superset_of(cur_state) {
                 println!(
                     "\nCurrent_state {} is already in region {}",
                     dmx.get_current_state(),
@@ -894,7 +893,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
                 max_pn_reg = Some(SomeRegion::new(vec![sqrx.state.clone()]));
             } else if sqrx.pn == max_pn {
                 if let Some(regx) = max_pn_reg {
-                    max_pn_reg = Some(regx.union_state(&sqrx.state));
+                    max_pn_reg = Some(regx.union(&sqrx.state));
                 } else {
                     max_pn_reg = Some(SomeRegion::new(vec![sqrx.state.clone()]));
                 }
@@ -919,7 +918,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
                     }
                 }
             } else if let Some(ref regx) = max_pn_reg {
-                if regx.is_superset_of_state(&sqrx.state) {
+                if regx.is_superset_of(*sqrx) {
                     non_pn_stas.push(sqrx.state.clone());
                 }
             }
