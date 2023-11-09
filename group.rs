@@ -54,7 +54,7 @@ impl SomeGroup {
     /// The RuleStore will be empty for Pn::Unpredictable squares.
     pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>, pnc: bool) -> Self {
         //println!(
-        //  "adding group {}",
+        //  "creating group {}",
         //   regionx
         //);
         let mut pnx = Pn::One;
@@ -274,14 +274,26 @@ impl AccessStates for SomeGroup {
     fn x_mask(&self) -> SomeMask {
         self.region.x_mask()
     }
-    fn non_x_mask(&self) -> SomeMask {
-        self.region.non_x_mask()
+    fn edge_mask(&self) -> SomeMask {
+        self.region.edge_mask()
     }
     fn high_state(&self) -> SomeState {
         self.region.high_state()
     }
     fn low_state(&self) -> SomeState {
         self.region.low_state()
+    }
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.region.diff_mask(other)
+    }
+    fn intersects(&self, other: &impl AccessStates) -> bool {
+        self.region.intersects(other)
+    }
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        self.region.is_subset_of(other)
+    }
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        self.region.is_superset_of(other)
     }
 }
 

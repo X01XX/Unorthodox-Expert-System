@@ -16,6 +16,7 @@
 use crate::actionstore::ActionStore;
 use crate::bits::SomeBits;
 use crate::change::SomeChange;
+use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -409,7 +410,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = SomeChange::region_to_region(from_reg, to_reg);
+        let required_change = from_reg.translate_to_region(to_reg).change();
 
         let steps_str = self.get_steps(&required_change, None)?;
 
@@ -502,7 +503,7 @@ impl SomeDomain {
     ) -> Option<Vec<SomePlan>> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         // Figure the required change.
-        let required_change = SomeChange::region_to_region(from_reg, goal_reg);
+        let required_change = from_reg.translate_to_region(goal_reg).change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();
@@ -586,6 +587,12 @@ impl SomeDomain {
         self.cur_state.new_from_string(str)
     }
 
+    /// Return a SomeMask instance from a string.
+    /// Left-most, consecutive, zeros can be omitted.
+    pub fn mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
+        self.cur_state.to_mask().new_from_string(str)
+    }
+
     /// Return a Action number from a string with a format that the parse method can understand.
     /// Left-most, consecutive, zeros can be omitted.
     /// Returns an error if the string is bad or no action exists of that number.
@@ -614,7 +621,7 @@ impl SomeDomain {
         let mut ncov = RegionStore::new(vec![self.reachable_region()]);
 
         for grpx in self.actions[act_num].groups.iter() {
-            ncov = ncov.subtract_region(&grpx.region);
+            ncov = ncov.subtract_item(&grpx.region);
         }
         ncov
     }

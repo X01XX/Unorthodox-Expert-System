@@ -5,7 +5,7 @@ use crate::region::SomeRegion;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::Index; // IndexMut;
+use std::ops::Index;
 use std::slice::Iter;
 
 impl fmt::Display for PlanStore {
@@ -121,7 +121,7 @@ impl PlanStore {
         self.avec.swap_remove(inx)
     }
 
-    /// Extend a StepStore by emtying another StepStore.
+    /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
         self.avec.append(&mut other.avec);
     }

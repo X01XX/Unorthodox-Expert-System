@@ -1,6 +1,6 @@
 //! The TargetStore struct, a vector of SomeTarget structs.
 
-use crate::region::{AccessStates, SomeRegion};
+use crate::region::SomeRegion;
 use crate::statestorecorr::StateStoreCorr;
 use crate::target::SomeTarget;
 
@@ -53,19 +53,13 @@ impl TargetStore {
     pub fn is_superset_of_states(&self, states: &StateStoreCorr) -> bool {
         assert_eq!(self.len(), states.len());
 
-        for (inx, targx) in self.avec.iter().enumerate() {
-            if targx.is_superset_of(&states[inx]) {
+        for targx in self.avec.iter() {
+            if targx.is_superset_of(&states[targx.dom_num]) {
                 continue;
             }
             return false;
         }
         true
-    }
-
-    /// Return true if the one region in a TargetStore is a superset of a given region/square/state.
-    pub fn is_superset_of(&self, state: &impl AccessStates) -> bool {
-        assert_eq!(self.len(), 1);
-        self.avec[0].is_superset_of(state)
     }
 
     /// If a target with a given domain number is in TargetStore,

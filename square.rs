@@ -223,6 +223,17 @@ impl SomeSquare {
         self.state.is_between(&sqr1.state, &sqr2.state)
     }
 
+    /// Return true is a square state is a subset of another group/square/regian/state.
+    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        match other.one_state() {
+            true => self.state == *other.first_state(),
+            false => other
+                .edge_mask()
+                .bitwise_and(&self.state.bitwise_xor(other.first_state()))
+                .is_low(),
+        }
+    }
+
     /// Return a String representation of a square.
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("S[");
@@ -262,7 +273,7 @@ impl AccessStates for SomeSquare {
     fn x_mask(&self) -> SomeMask {
         self.state.new_low().to_mask()
     }
-    fn non_x_mask(&self) -> SomeMask {
+    fn edge_mask(&self) -> SomeMask {
         self.state.new_high().to_mask()
     }
     fn high_state(&self) -> SomeState {
@@ -270,6 +281,18 @@ impl AccessStates for SomeSquare {
     }
     fn low_state(&self) -> SomeState {
         self.state.clone()
+    }
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.state.diff_mask(other)
+    }
+    fn intersects(&self, other: &impl AccessStates) -> bool {
+        self.state.intersects(other)
+    }
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        self.is_subset_of(other)
+    }
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        self.state.is_superset_of(other)
     }
 }
 

@@ -5,6 +5,7 @@
 //! The two states used to make the region, can be keys to two squares.
 
 use crate::mask::SomeMask;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
 
@@ -425,11 +426,6 @@ impl SomeRegion {
         self.diff_mask(other).num_one_bits()
     }
 
-    /// Return a non-x mask for a region.
-    pub fn non_x_mask(&self) -> SomeMask {
-        self.state1().bitwise_eqv(self.state2())
-    }
-
     /// Return a mask of different, non-x, bits between a region and a region/state.
     pub fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
         match (self.one_state(), other.one_state()) {
@@ -438,14 +434,14 @@ impl SomeRegion {
                 .bitwise_xor(other.first_state())
                 .to_mask(),
             (false, true) => self
-                .non_x_mask()
+                .edge_mask()
                 .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
             (true, false) => other
-                .non_x_mask()
+                .edge_mask()
                 .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
             (false, false) => self
-                .non_x_mask()
-                .bitwise_and(&other.non_x_mask())
+                .edge_mask()
+                .bitwise_and(&other.edge_mask())
                 .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
         }
     }
@@ -519,8 +515,9 @@ impl SomeRegion {
     }
 
     /// Return the complement of a region.
+    /// Caller shoud probably store the return vector into a RegionStore.
     pub fn complement(&self) -> Vec<Self> {
-        let nonxbits = self.non_x_mask().split();
+        let nonxbits = self.edge_mask().split();
         let mut ret = Vec::<Self>::with_capacity(nonxbits.len());
 
         let high_sta = self.state1().new_high();
@@ -543,12 +540,33 @@ impl SomeRegion {
 
     /// Return true if a region is all X.
     pub fn all_x(&self) -> bool {
-        self.non_x_mask().is_low()
+        self.edge_mask().is_low()
     }
 
     /// Return the number of bits used to define a Region.
     pub fn num_bits(&self) -> usize {
         self.state1().num_bits()
+    }
+
+    /// Return a rule for translating from a region to another region.
+    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
+    /// 0->0 instead of 0->X), the second region.
+    /// The minimum changes are sought, so X->x-not becomes X->X.
+    pub fn translate_to_region(&self, to: &SomeRegion) -> SomeRule {
+        let self_x = self.x_mask();
+        let self_1 = self.ones_mask().bitwise_or(&self_x);
+        let self_0 = self.zeros_mask().bitwise_or(&self_x);
+
+        let to_x = to.x_mask();
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
+
+        SomeRule {
+            b00: self_0.bitwise_and(&to_0.bitwise_or(&to_x)),
+            b01: self_0.bitwise_and(&to_1),
+            b11: self_1.bitwise_and(&to_1.bitwise_or(&to_x)),
+            b10: self_1.bitwise_and(&to_0),
+        }
     }
 } // end impl SomeRegion
 
@@ -565,9 +583,13 @@ pub trait AccessStates {
     fn one_state(&self) -> bool;
     fn first_state(&self) -> &SomeState;
     fn x_mask(&self) -> SomeMask;
-    fn non_x_mask(&self) -> SomeMask;
+    fn edge_mask(&self) -> SomeMask;
     fn high_state(&self) -> SomeState;
     fn low_state(&self) -> SomeState;
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask;
+    fn intersects(&self, other: &impl AccessStates) -> bool;
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool;
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool;
 }
 
 /// Implement the trait AccessStates for SomeRegion.
@@ -581,14 +603,26 @@ impl AccessStates for SomeRegion {
     fn x_mask(&self) -> SomeMask {
         self.x_mask()
     }
-    fn non_x_mask(&self) -> SomeMask {
-        self.non_x_mask()
+    fn edge_mask(&self) -> SomeMask {
+        self.edge_mask()
     }
     fn high_state(&self) -> SomeState {
         self.high_state()
     }
     fn low_state(&self) -> SomeState {
         self.low_state()
+    }
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.diff_mask(other)
+    }
+    fn intersects(&self, other: &impl AccessStates) -> bool {
+        self.intersects(other)
+    }
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        self.is_subset_of(other)
+    }
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        self.is_superset_of(other)
     }
 }
 
@@ -930,7 +964,7 @@ mod tests {
         let tmp_reg = SomeRegion::new(vec![SomeState::new(tmp_bts.clone())]);
 
         let reg0 = tmp_reg.new_from_string("r0000xx01")?;
-        let m1 = reg0.non_x_mask();
+        let m1 = reg0.edge_mask();
         println!("non_x_mask is {m1}");
         assert!(
             m1.bitwise_and(&tmp_bts.new_from_string("0xff")?)
@@ -1246,6 +1280,36 @@ mod tests {
         println!("{reg0} subtract {reg3} = {regs}");
         assert!(regs.len() == 1);
         assert!(regs.contains(&reg0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn translate_to_region() -> Result<(), String> {
+        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let reg1 = tmp_reg.new_from_string("r000_111_xxx")?;
+        let reg2 = tmp_reg.new_from_string("r01x_01x_01x")?;
+
+        let rul1 = reg1.translate_to_region(&reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
+        assert!(reg2.is_superset_of(&rul1.result_region()));
+
+        // Test proper subset region.
+        let reg1 = tmp_reg.new_from_string("r0011")?;
+        let reg2 = tmp_reg.new_from_string("rx01x")?;
+        let rul1 = reg1.translate_to_region(&reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
+        assert!(rul1.result_region() == reg1);
+
+        // Test intersecting regions.
+        let reg1 = tmp_reg.new_from_string("r010x")?;
+        let reg2 = tmp_reg.new_from_string("rx1x1")?;
+        let rul1 = reg1.translate_to_region(&reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
+        assert!(rul1.result_region() == tmp_reg.new_from_string("r0101")?);
 
         Ok(())
     }

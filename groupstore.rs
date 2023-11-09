@@ -4,7 +4,7 @@ use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
-use crate::region::SomeRegion;
+use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
@@ -58,7 +58,7 @@ impl GroupStore {
                 continue;
             }
             for rulx in grpx.rules.as_ref().expect("SNH").iter() {
-                new_chgs = new_chgs.bitwise_or_rule(rulx);
+                new_chgs = new_chgs.union(rulx);
             }
         }
 
@@ -150,24 +150,12 @@ impl GroupStore {
         regs_invalid
     }
 
-    /// Return the number of groups a state is in.
-    pub fn num_groups_state_in(&self, stax: &SomeState) -> usize {
+    /// Return true if an item is in exactly one group.
+    pub fn in_1_group(&self, itmx: &impl AccessStates) -> bool {
         let mut num_grps = 0;
 
         for grpx in &self.avec {
-            if grpx.is_superset_of(stax) {
-                num_grps += 1;
-            }
-        }
-        num_grps
-    }
-
-    /// Return true if a state is in exactly one group.
-    pub fn state_in_1_group(&self, stax: &SomeState) -> bool {
-        let mut num_grps = 0;
-
-        for grpx in &self.avec {
-            if grpx.is_superset_of(stax) {
+            if grpx.is_superset_of(itmx) {
                 if num_grps > 0 {
                     return false;
                 }
@@ -177,12 +165,12 @@ impl GroupStore {
         num_grps == 1
     }
 
-    /// Return the groups regions a state is in.
-    pub fn groups_state_in(&self, stax: &SomeState) -> Vec<&SomeRegion> {
+    /// Return the groups regions an item is in.
+    pub fn groups_in(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
         self.avec
             .iter()
             .filter_map(|grpx| {
-                if grpx.is_superset_of(stax) {
+                if grpx.is_superset_of(itmx) {
                     Some(&grpx.region)
                 } else {
                     None
@@ -219,38 +207,28 @@ impl GroupStore {
         None
     }
 
-    /// Return true if any group is a superset, or equal, to a region.
-    pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
-        for grpx in &self.avec {
-            if grpx.is_superset_of(reg) {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Return the number of groups a state is in.
-    pub fn num_state_in(&self, stax: &SomeState) -> usize {
+    /// Return the number of groups an item is in.
+    pub fn num_groups_in(&self, itmx: &impl AccessStates) -> usize {
         let mut count = 0;
         for grpx in &self.avec {
-            if grpx.is_superset_of(stax) {
+            if grpx.is_superset_of(itmx) {
                 count += 1;
             }
         }
         count
     }
 
-    /// Return true if any group is a superset, or equal, to a region.
-    pub fn any_superset_of_state(&self, stax: &SomeState) -> bool {
-        tools::vec_contains(&self.avec, SomeGroup::is_superset_of, stax)
+    /// Return true if any group is a superset of, or equal to, an item.
+    pub fn any_superset_of(&self, itmx: &impl AccessStates) -> bool {
+        tools::vec_contains(&self.avec, SomeGroup::is_superset_of, itmx)
     }
 
     /// Return regions of any group is a superset, or equal, to a region.
-    pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
         self.avec
             .iter()
             .filter_map(|grpx| {
-                if reg.is_subset_of(grpx) {
+                if grpx.is_subset_of(itmx) {
                     Some(&grpx.region)
                 } else {
                     None

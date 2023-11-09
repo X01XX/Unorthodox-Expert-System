@@ -128,7 +128,7 @@ impl ActionStore {
         let mut new_chgs = self.aggregate_changes.new_low();
 
         for actx in &self.avec {
-            new_chgs = new_chgs.bitwise_or(actx.aggregate_changes());
+            new_chgs = new_chgs.union(actx.aggregate_changes());
         }
 
         // Check for new changes.

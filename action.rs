@@ -136,7 +136,7 @@ impl SomeAction {
                 self.process_invalid_regions(&regs_invalid);
             }
 
-            if !self.groups.any_superset_of_state(key) {
+            if !self.groups.any_superset_of(key) {
                 self.create_groups_from_squares(&[key.clone()]);
             }
         }
@@ -170,7 +170,7 @@ impl SomeAction {
         }
 
         // Create group from square.
-        if !self.groups.any_superset_of_state(&smpl.initial) {
+        if !self.groups.any_superset_of(&smpl.initial) {
             self.add_new_sample(smpl);
             self.create_groups_from_squares(&[smpl.initial.clone()]);
             return true;
@@ -201,7 +201,7 @@ impl SomeAction {
         // Store states not in any groups.
         let mut orphaned_stas = Vec::<SomeState>::new();
         for stax in stas_in_regs.iter() {
-            if !self.groups.any_superset_of_state(stax) {
+            if !self.groups.any_superset_of(stax) {
                 orphaned_stas.push((*stax).clone());
             }
         }
@@ -274,7 +274,7 @@ impl SomeAction {
     /// Create a group with the square, if needed.
     fn create_groups_from_squares2(&self, key: &SomeState) -> Vec<SomeGroup> {
         //println!("create_groups_from_squares2 {}", key);
-        debug_assert!(!self.groups.any_superset_of_state(key));
+        debug_assert!(!self.groups.any_superset_of(key));
 
         // Lookup square.
         let sqrx = self
@@ -304,7 +304,7 @@ impl SomeAction {
         let mut nds = NeedStore::new(vec![]);
 
         // Check if current state is in any groups
-        if !self.groups.any_superset_of_state(cur_state) {
+        if !self.groups.any_superset_of(cur_state) {
             if let Some(sqrx) = self.squares.find(cur_state) {
                 if sqrx.pn == Pn::One || sqrx.pnc {
                     println!(
@@ -340,7 +340,7 @@ impl SomeAction {
         let sqrs_pngt1 = self.squares.pn_gt1_no_pnc();
 
         for stax in sqrs_pngt1.iter() {
-            if stax == cur_state || self.groups.any_superset_of_state(stax) {
+            if stax == cur_state || self.groups.any_superset_of(stax) {
                 continue;
             }
 
@@ -383,8 +383,8 @@ impl SomeAction {
                 // If more than one sample is needed, and exists, sequence will be preserved.
                 for (iny, sqrx) in self.memory.iter().enumerate() {
                     let targx = ndx.target();
-                    if targx.is_superset_of(sqrx) {
-                        println!("Memory square {} found for need {}", sqrx, ndx);
+                    if targx[0].is_superset_of(sqrx) {
+                        //println!("Memory square {} found for need {}", sqrx, ndx);
                         inx = Some(iny);
                         found = true;
                         break;
@@ -647,7 +647,7 @@ impl SomeAction {
         let mut remainder_regs = RegionStore::new(vec![max_region]);
 
         for grpx in self.groups.iter() {
-            remainder_regs = remainder_regs.subtract_region(&grpx.region);
+            remainder_regs = remainder_regs.subtract_item(&grpx.region);
         }
 
         if remainder_regs.is_not_empty() {
@@ -715,7 +715,7 @@ impl SomeAction {
 
             // Don't delete squares that are not in a group.
             // That is, squares with Pn: > One that need more samples.
-            if self.groups.num_groups_state_in(keyx) == 0 {
+            if self.groups.num_groups_in(keyx) == 0 {
                 continue;
             }
 
@@ -819,7 +819,7 @@ impl SomeAction {
                 continue;
             };
 
-            if !self.groups.state_in_1_group(stax) {
+            if !self.groups.in_1_group(stax) {
                 ret_nds.push(SomeNeed::RemoveGroupAnchor {
                     group_region: grpx.region.clone(),
                 });
@@ -873,7 +873,7 @@ impl SomeAction {
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
         //assert_eq!(self.groups.num_groups_state_in(stax), 1);
-        if !self.groups.state_in_1_group(stax) {
+        if !self.groups.in_1_group(stax) {
             return (0, 0, 0);
         }
 
@@ -962,7 +962,7 @@ impl SomeAction {
 
         for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
-            if !self.groups.state_in_1_group(stax) {
+            if !self.groups.in_1_group(stax) {
                 continue;
             }
 
@@ -1426,7 +1426,7 @@ impl SomeAction {
             // Check if group rules cause at least one change that is needed.
             let mut skip = true;
             for rulx in grpx.rules.as_ref().expect("SNH").iter() {
-                if achange.bitwise_and_rule(rulx).is_not_low() {
+                if achange.intersection(rulx).is_not_low() {
                     skip = false;
                     break;
                 }
@@ -1811,7 +1811,7 @@ impl SomeAction {
                     let sqrx = self.squares.find(stax).expect(
                         "Call to stas_adj_reg should return states that refer to existing squares",
                     );
-                    let grps = self.groups.groups_state_in(stax);
+                    let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
                             if let Some(anchory) = &grpy.anchor {
@@ -1865,7 +1865,7 @@ impl SomeAction {
 
             let cnt: usize = stas_in
                 .iter()
-                .map(|stax| usize::from(self.groups.num_state_in(stax) == 1))
+                .map(|stax| usize::from(self.groups.num_groups_in(stax) == 1))
                 .sum();
 
             rc_str.push_str(&format!(
@@ -1914,11 +1914,6 @@ impl SomeAction {
             self.memory.pop_front();
         }
         self.memory.push_back(sqrx);
-    }
-
-    /// Find a square in memroy that matches a key, return a reference.
-    pub fn memory_find(&self, val: &SomeState) -> Option<&SomeSquare> {
-        self.memory.iter().find(|&sqrx| sqrx.state == *val)
     }
 } // end impl SomeAction
 

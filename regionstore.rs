@@ -1,6 +1,6 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
-use crate::region::SomeRegion;
+use crate::region::{AccessStates, SomeRegion};
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
 
@@ -94,11 +94,11 @@ impl RegionStore {
         tools::vec_contains(&self.avec, SomeRegion::is_superset_of, sta)
     }
 
-    /// Return vector of regions that are a superset of a given region.
-    pub fn supersets_of(&self, reg: &SomeRegion) -> Vec<&SomeRegion> {
+    /// Return vector of regions that are a superset of a given item.
+    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
         self.avec
             .iter()
-            .filter(|regx| regx.is_superset_of(reg))
+            .filter(|regx| regx.is_superset_of(itmx))
             .collect()
     }
 
@@ -168,13 +168,13 @@ impl RegionStore {
         true
     }
 
-    /// Subtract a region from a RegionStore
-    pub fn subtract_region(&self, regx: &SomeRegion) -> Self {
+    /// Subtract a group/region/square/state from a RegionStore.
+    pub fn subtract_item(&self, itmx: &impl AccessStates) -> Self {
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
-            if regx.intersects(regy) {
-                for regz in regy.subtract(regx) {
+            if itmx.intersects(regy) {
+                for regz in regy.subtract(itmx) {
                     ret_str.push_nosubs(regz);
                 }
             } else {
@@ -185,33 +185,15 @@ impl RegionStore {
         ret_str
     }
 
-    /// Return a RegionStore of regions that are superset of a state.
-    pub fn supersets_of_state(&self, stax: &SomeState) -> Self {
-        let mut ret_str = Self::new(vec![]);
+    /// Subtract a RegionStore from a RegionStore
+    pub fn subtract(&self, subtrahend: &Self) -> Self {
+        let mut ret_str = self.clone();
 
-        for regy in &self.avec {
-            if regy.is_superset_of(stax) {
-                ret_str.push_nosubs(regy.clone());
+        for regx in subtrahend.iter() {
+            if ret_str.any_intersection(regx) {
+                ret_str = ret_str.subtract_item(regx);
             }
-        } // next regy
-
-        ret_str
-    }
-
-    /// Subtract a state from a RegionStore.
-    pub fn subtract_state(&self, stax: &SomeState) -> Self {
-        let mut ret_str = Self::new(vec![]);
-
-        for regy in &self.avec {
-            if regy.is_superset_of(stax) {
-                for regz in regy.subtract(stax) {
-                    ret_str.push_nosubs(regz);
-                }
-            } else {
-                ret_str.push_nosubs(regy.clone());
-            }
-        } // next regy
-
+        }
         ret_str
     }
 
@@ -232,18 +214,6 @@ impl RegionStore {
             }
         } // next regy
 
-        ret_str
-    }
-
-    /// Subtract a RegionStore from a RegionStore
-    pub fn subtract(&self, subtrahend: &Self) -> Self {
-        let mut ret_str = self.clone();
-
-        for regx in subtrahend.iter() {
-            if ret_str.any_intersection(regx) {
-                ret_str = ret_str.subtract_region(regx);
-            }
-        }
         ret_str
     }
 
@@ -316,7 +286,7 @@ mod tests {
 
         let regx = tmp_reg.new_from_string("r0101")?;
 
-        let reg_rslt = regstr.subtract_region(&regx);
+        let reg_rslt = regstr.subtract_item(&regx);
         println!("results {}", reg_rslt);
 
         assert!(reg_rslt.len() == 7);

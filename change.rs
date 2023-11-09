@@ -1,8 +1,6 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
 use crate::mask::SomeMask;
-use crate::region::SomeRegion;
-use crate::rule::SomeRule;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -37,34 +35,18 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise and of two changes
-    pub fn bitwise_and(&self, other: &Self) -> Self {
+    pub fn intersection(&self, other: &impl AccessChanges) -> Self {
         Self {
-            b01: self.b01.bitwise_and(&other.b01),
-            b10: self.b10.bitwise_and(&other.b10),
-        }
-    }
-
-    /// Return the logical bitwise and of a change and a rule.
-    pub fn bitwise_and_rule(&self, other: &SomeRule) -> Self {
-        Self {
-            b01: self.b01.bitwise_and(&other.b01),
-            b10: self.b10.bitwise_and(&other.b10),
+            b01: self.b01.bitwise_and(other.b01()),
+            b10: self.b10.bitwise_and(other.b10()),
         }
     }
 
     /// Return the logical bitwize or of two changes
-    pub fn bitwise_or(&self, other: &Self) -> Self {
+    pub fn union(&self, other: &impl AccessChanges) -> Self {
         Self {
-            b01: self.b01.bitwise_or(&other.b01),
-            b10: self.b10.bitwise_or(&other.b10),
-        }
-    }
-
-    /// Return the logical bitwize or of a change and a rule.
-    pub fn bitwise_or_rule(&self, other: &SomeRule) -> Self {
-        Self {
-            b01: self.b01.bitwise_or(&other.b01),
-            b10: self.b10.bitwise_or(&other.b10),
+            b01: self.b01.bitwise_or(other.b01()),
+            b10: self.b10.bitwise_or(other.b10()),
         }
     }
 
@@ -125,29 +107,6 @@ impl SomeChange {
         strrc
     }
 
-    /// Create a change for translating one region into a subset of another.
-    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let f_xs = from.x_mask();
-        let f_ones = from.state1().bitwise_and(from.state2()).to_mask();
-        let f_zeros = from
-            .state1()
-            .bitwise_not()
-            .bitwise_and(&from.state2().bitwise_not())
-            .to_mask();
-
-        let t_ones = to.state1().bitwise_and(to.state2()).to_mask();
-        let t_zeros = to
-            .state1()
-            .bitwise_not()
-            .bitwise_and(&to.state2().bitwise_not())
-            .to_mask();
-
-        Self {
-            b01: f_zeros.bitwise_or(&f_xs).bitwise_and(&t_ones),
-            b10: f_ones.bitwise_or(&f_xs).bitwise_and(&t_zeros),
-        }
-    }
-
     /// For a given change, subtract an other change.
     pub fn minus(&self, other: &Self) -> Self {
         Self {
@@ -157,43 +116,71 @@ impl SomeChange {
     }
 } // end impl SomeChange
 
+pub trait AccessChanges {
+    fn b01(&self) -> &SomeMask;
+    fn b10(&self) -> &SomeMask;
+}
+
+impl AccessChanges for SomeChange {
+    fn b01(&self) -> &SomeMask {
+        &self.b01
+    }
+    fn b10(&self) -> &SomeMask {
+        &self.b10
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::SomeDomain;
 
     #[test]
-    fn region_to_region() -> Result<(), String> {
+    fn intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let dm0 = SomeDomain::new(1);
 
-        let reg_0x1x = dm0.region_from_string("r0X1X")?;
+        let cng1 = SomeChange {
+            b01: dm0.mask_from_string("m0b1010")?,
+            b10: dm0.mask_from_string("m0b1010")?,
+        };
+        let cng2 = SomeChange {
+            b01: dm0.mask_from_string("m0b1001")?,
+            b10: dm0.mask_from_string("m0b0110")?,
+        };
+        let cng3 = SomeChange {
+            b01: dm0.mask_from_string("m0b1000")?,
+            b10: dm0.mask_from_string("m0b0010")?,
+        };
+        let cng4 = cng1.intersection(&cng2);
+        println!("cng4 {cng4}");
 
-        let reg_1100 = dm0.region_from_string("r1100")?;
+        assert!(cng3 == cng4);
 
-        let cng1 = SomeChange::region_to_region(&reg_0x1x, &reg_1100);
+        Ok(())
+    }
 
-        println!("change from {} to {} is {}", reg_0x1x, reg_1100, cng1);
+    #[test]
+    fn union() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let dm0 = SomeDomain::new(1);
 
-        if cng1.b01 != cng1.b01.new_from_string("m0b1100")?
-            || cng1.b10 != cng1.b10.new_from_string("m0b0011")?
-        {
-            return Err(format!("change {} to {} = {} ?", reg_0x1x, &reg_1100, cng1));
-        }
+        let cng1 = SomeChange {
+            b01: dm0.mask_from_string("m0b1010")?,
+            b10: dm0.mask_from_string("m0b1010")?,
+        };
+        let cng2 = SomeChange {
+            b01: dm0.mask_from_string("m0b1001")?,
+            b10: dm0.mask_from_string("m0b0110")?,
+        };
+        let cng3 = SomeChange {
+            b01: dm0.mask_from_string("m0b1011")?,
+            b10: dm0.mask_from_string("m0b1110")?,
+        };
+        let cng4 = cng1.union(&cng2);
+        println!("cng4 {cng4}");
 
-        let reg_01x1 = dm0.region_from_string("r01X1")?;
-
-        let reg_0x1x = dm0.region_from_string("r0X1X")?;
-
-        let cng1 = SomeChange::region_to_region(&reg_01x1, &reg_0x1x);
-
-        println!("change from {} to {} is {}", reg_01x1, reg_0x1x, cng1);
-
-        if cng1.b01 != cng1.b01.new_from_string("m0b0010")?
-            || cng1.b10 != cng1.b10.new_from_string("m0b0000")?
-        {
-            return Err(format!("change {} to {} = {} ?", reg_0x1x, &reg_1100, cng1));
-        }
+        assert!(cng3 == cng4);
 
         Ok(())
     }

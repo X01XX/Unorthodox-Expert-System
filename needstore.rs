@@ -5,7 +5,7 @@ use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::Index; // IndexMut
+use std::ops::Index;
 use std::slice::{Iter, IterMut};
 
 impl fmt::Display for NeedStore {

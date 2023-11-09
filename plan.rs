@@ -33,6 +33,31 @@ impl fmt::Display for SomePlan {
     }
 }
 
+/// Implement the PartialEq trait.
+impl PartialEq for SomePlan {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        if self.dom_num != other.dom_num {
+            return false;
+        }
+        if self.is_empty() {
+            return true;
+        }
+        if self[0].initial != other[0].initial {
+            return false;
+        }
+        for (stpx, stpy) in self.iter().zip(other.iter()) {
+            if stpx.result != stpy.result {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for SomePlan {}
+
 #[readonly::make]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomePlan {
@@ -114,8 +139,11 @@ impl SomePlan {
     }
 
     /// Append a plan from another plan.
-    pub fn append(&mut self, val: Self) {
-        self.steps.append(val.steps);
+    pub fn append(&mut self, other: Self) {
+        if self.is_not_empty() && other.is_not_empty() {
+            assert!(self.result_region() == other.initial_region());
+        }
+        self.steps.append(other.steps);
     }
 
     /// Add a step to a SomePlan.
@@ -300,28 +328,6 @@ impl SomePlan {
         &self[self.len() - 1].result
     }
 
-    /// Return true if two plans are equal.
-    pub fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        if self.dom_num != other.dom_num {
-            return false;
-        }
-        if self.is_empty() {
-            return true;
-        }
-        if self[0].initial != other[0].initial {
-            return false;
-        }
-        for (stpx, stpy) in self.iter().zip(other.iter()) {
-            if stpx.result != stpy.result {
-                return false;
-            }
-        }
-        true
-    }
-
     /// Return the region encompassed by the path of a plan.
     pub fn path_region(&self) -> Option<SomeRegion> {
         if self.is_empty() {
@@ -437,32 +443,12 @@ mod tests {
         let reg5 = tmp_reg.new_from_string("r101x")?;
         let reg6 = tmp_reg.new_from_string("r000x")?;
 
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg1, &reg2),
-            false,
-            reg1.clone(),
-        );
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg2, &reg3),
-            false,
-            reg2.clone(),
-        );
+        let step1 = SomeStep::new(0, reg1.translate_to_region(&reg2), false, reg1.clone());
+        let step2 = SomeStep::new(0, reg2.translate_to_region(&reg3), false, reg2.clone());
         let stp_str1 = SomePlan::new(0, vec![step1, step2]);
 
-        let step4 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg4, &reg5),
-            false,
-            reg4.clone(),
-        );
-        let step5 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg5, &reg6),
-            false,
-            reg5.clone(),
-        );
+        let step4 = SomeStep::new(0, reg4.translate_to_region(&reg5), false, reg4.clone());
+        let step5 = SomeStep::new(0, reg5.translate_to_region(&reg6), false, reg5.clone());
         let stp_str2 = SomePlan::new(0, vec![step4, step5]);
 
         println!("stp1 {}", &stp_str1);
@@ -493,40 +479,15 @@ mod tests {
         let reg5 = tmp_reg.new_from_string("r0101")?;
         let reg7 = tmp_reg.new_from_string("r0111")?;
 
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg1, &reg3),
-            false,
-            reg1.clone(),
-        );
+        let step1 = SomeStep::new(0, reg1.translate_to_region(&reg3), false, reg1.clone());
 
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg3, &reg7),
-            false,
-            reg3.clone(),
-        );
+        let step2 = SomeStep::new(0, reg3.translate_to_region(&reg7), false, reg3.clone());
 
-        let step3 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg7, &reg5),
-            false,
-            reg7.clone(),
-        );
+        let step3 = SomeStep::new(0, reg7.translate_to_region(&reg5), false, reg7.clone());
 
-        let step4 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg5, &reg1),
-            false,
-            reg5.clone(),
-        );
+        let step4 = SomeStep::new(0, reg5.translate_to_region(&reg1), false, reg5.clone());
 
-        let step5 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg1, &reg0),
-            false,
-            reg5.clone(),
-        );
+        let step5 = SomeStep::new(0, reg1.translate_to_region(&reg0), false, reg5.clone());
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
         println!("pln1: {}", pln1);
@@ -553,19 +514,9 @@ mod tests {
             return Err(format!("No shortcut found for {}?", pln1).to_string());
         }
 
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg1, &reg3),
-            false,
-            reg1.clone(),
-        );
+        let step1 = SomeStep::new(0, reg1.translate_to_region(&reg3), false, reg1.clone());
 
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::region_to_region(&reg3, &reg7),
-            false,
-            reg3.clone(),
-        );
+        let step2 = SomeStep::new(0, reg3.translate_to_region(&reg7), false, reg3.clone());
 
         let pln2 = SomePlan::new(0, vec![step1, step2]);
         println!("pln2: {pln2}");

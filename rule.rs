@@ -11,7 +11,7 @@
 //! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
 //! "backward chaining" (intitial_from_result).
 
-use crate::change::SomeChange;
+use crate::change::{AccessChanges, SomeChange};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -23,7 +23,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
@@ -325,7 +325,7 @@ impl SomeRule {
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
     pub fn parse_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
-        let cng_int = change_needed.bitwise_and_rule(self);
+        let cng_int = change_needed.intersection(self);
 
         if cng_int.is_low() {
             // No change found, or no change is needed
@@ -377,7 +377,7 @@ impl SomeRule {
         false
     }
 
-    /// Return true if the target rule, run before the second rule, will lose all desired changes.
+    /// Return true if the target rule, run before the second rule, will lose one, or more, desired changes.
     ///
     ///    A change can be lost by:
     ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
@@ -389,16 +389,17 @@ impl SomeRule {
         let rulx = self.then_to(other);
 
         // Get a mask of the wanted changes in this rule.
-        let s_wanted = wanted.bitwise_and_rule(self);
+        let s_wanted = wanted.intersection(self);
 
         // Get a mask of the wanted changes after running both rules.
-        let a_wanted = wanted.bitwise_and_rule(&rulx);
+        let a_wanted = wanted.intersection(&rulx);
 
         // Get a mask of wanted changes in this rule that remain after running the second rule.
-        let rslt = s_wanted.bitwise_and(&a_wanted);
+        let rslt = s_wanted.intersection(&a_wanted);
 
-        // Return true, the oreder is bad, if no wanted changes remain.
-        rslt.is_low()
+        // Return true, if any wanted changes lost.
+
+        rslt != s_wanted
     }
 
     /// Combine two rules in sequence.
@@ -407,12 +408,15 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.then_to2(other);
         }
-        let rul_between = Self::region_to_region(&self.result_region(), &other.initial_region());
+        let rul_between = self
+            .result_region()
+            .translate_to_region(&other.initial_region());
         self.then_to2(&rul_between).then_to2(other)
     }
 
     /// Combine two rules in sequence.
     /// The result region of the first rule must intersect the initial region of the second rule.
+    /// Changes in the first rule may be reversed in the second rule.
     fn then_to2(&self, other: &Self) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
@@ -436,25 +440,9 @@ impl SomeRule {
         }
     }
 
-    /// Return a rule for translating from region to region.
-    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
-    /// 0->0 instead of 0->X), the second region.
-    /// The minimum changes are sought, so X->x and x->X become X->X.
-    pub fn region_to_region(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let from_x = from.x_mask();
-        let from_1 = from.ones_mask().bitwise_or(&from_x);
-        let from_0 = from.zeros_mask().bitwise_or(&from_x);
-
-        let to_x = to.x_mask();
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
-
-        Self {
-            b00: from_0.bitwise_and(&to_0.bitwise_or(&to_x)),
-            b01: from_0.bitwise_and(&to_1),
-            b11: from_1.bitwise_and(&to_1.bitwise_or(&to_x)),
-            b10: from_1.bitwise_and(&to_0),
-        }
+    /// Return a SomeChange instance.
+    pub fn change(&self) -> SomeChange {
+        SomeChange::new(self.b01.clone(), self.b10.clone())
     }
 } // end impl SomeRule
 
@@ -462,6 +450,15 @@ impl SomeRule {
 impl StrLen for SomeRule {
     fn strlen(&self) -> usize {
         (self.b00.num_bits() * 2) + (self.b00.num_bits() - 1)
+    }
+}
+
+impl AccessChanges for SomeRule {
+    fn b01(&self) -> &SomeMask {
+        &self.b01
+    }
+    fn b10(&self) -> &SomeMask {
+        &self.b10
     }
 }
 
@@ -767,36 +764,6 @@ mod tests {
         };
         println!("rul3 = {}", &rul3);
         assert!(rul3 == tmp_rul.new_from_string("00/01/x0/Xx/xx")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn region_to_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        let reg1 = tmp_reg.new_from_string("r000_111_xxx")?;
-        let reg2 = tmp_reg.new_from_string("r01x_01x_01x")?;
-
-        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        assert!(reg2.is_superset_of(&rul1.result_region()));
-
-        // Test proper subset region.
-        let reg1 = tmp_reg.new_from_string("r0011")?;
-        let reg2 = tmp_reg.new_from_string("rx01x")?;
-        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        assert!(rul1.result_region() == reg1);
-
-        // Test intersecting regions.
-        let reg1 = tmp_reg.new_from_string("r010x")?;
-        let reg2 = tmp_reg.new_from_string("rx1x1")?;
-        let rul1 = SomeRule::region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        assert!(rul1.result_region() == tmp_reg.new_from_string("r0101")?);
 
         Ok(())
     }

@@ -190,6 +190,16 @@ impl SomeState {
             .to_mask()
             .is_low()
     }
+
+    /// Return a difference mask between a satate and another item.
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        match other.one_state() {
+            true => self.bitwise_xor(other.first_state()).to_mask(),
+            false => other
+                .edge_mask()
+                .bitwise_and(&self.bitwise_xor(other.first_state())),
+        }
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.
@@ -217,7 +227,7 @@ impl AccessStates for SomeState {
     fn x_mask(&self) -> SomeMask {
         self.new_low().to_mask()
     }
-    fn non_x_mask(&self) -> SomeMask {
+    fn edge_mask(&self) -> SomeMask {
         self.new_high().to_mask()
     }
     fn high_state(&self) -> SomeState {
@@ -225,6 +235,24 @@ impl AccessStates for SomeState {
     }
     fn low_state(&self) -> SomeState {
         self.clone()
+    }
+    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.diff_mask(other)
+    }
+    fn intersects(&self, other: &impl AccessStates) -> bool {
+        self.diff_mask(other).is_low()
+    }
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        match other.one_state() {
+            true => self == other.first_state(),
+            false => self.diff_mask(other).is_low(),
+        }
+    }
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        match other.one_state() {
+            true => self == other.first_state(),
+            false => false,
+        }
     }
 }
 

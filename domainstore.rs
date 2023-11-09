@@ -259,7 +259,7 @@ impl DomainStore {
                 for (inx, regx) in selx.regions.iter().enumerate() {
                     let mut regx_left = RegionStore::new(vec![regx.clone()]);
                     for subx in subs_of.iter() {
-                        regx_left = regx_left.subtract_region(&subx[inx]);
+                        regx_left = regx_left.subtract_item(&subx[inx]);
                     }
                     if regx_left.is_not_empty() {
                         panic!("inx {} regs_left {}", inx, regx_left);
