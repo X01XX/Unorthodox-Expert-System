@@ -408,13 +408,7 @@ mod tests {
             tmp_sta.new_from_string("s0b0101").unwrap(),
         ));
 
-        let sqr2 = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b0101").unwrap(),
-            tmp_sta.new_from_string("s0b0101").unwrap(),
-        ));
-
-        sqr1.can_combine_now(&sqr2);
-
+        sqr1.can_combine_now(&sqr1);
         ()
     }
 

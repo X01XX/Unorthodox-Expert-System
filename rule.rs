@@ -385,11 +385,11 @@ impl SomeRule {
     pub fn order_bad(&self, other: &Self, wanted: &SomeChange) -> bool {
         // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
-        // Calc aggregate rule.
-        let rulx = self.then_to(other);
-
         // Get a mask of the wanted changes in this rule.
         let s_wanted = wanted.intersection(self);
+
+        // Calc aggregate rule.
+        let rulx = self.combine_sequence(other);
 
         // Get a mask of the wanted changes after running both rules.
         let a_wanted = wanted.intersection(&rulx);
@@ -397,27 +397,28 @@ impl SomeRule {
         // Get a mask of wanted changes in this rule that remain after running the second rule.
         let rslt = s_wanted.intersection(&a_wanted);
 
-        // Return true, if any wanted changes lost.
-
+        // Return true, if any wanted changes from the first rule are lost.
         rslt != s_wanted
     }
 
     /// Combine two rules in sequence.
-    /// The result region of the first rule may not intersect the initial region of the second rule.
-    pub fn then_to(&self, other: &Self) -> Self {
+    /// The result region of the first rule is not required to intersect the initial region of the second rule.
+    /// Changes in the first rule may be reversed in the second rule.
+    pub fn combine_sequence(&self, other: &Self) -> Self {
         if self.result_region().intersects(&other.initial_region()) {
-            return self.then_to2(other);
+            return self.combine_pair(other);
         }
         let rul_between = self
             .result_region()
             .translate_to_region(&other.initial_region());
-        self.then_to2(&rul_between).then_to2(other)
+
+        self.combine_pair(&rul_between).combine_pair(other)
     }
 
-    /// Combine two rules in sequence.
+    /// Combine two rules.
     /// The result region of the first rule must intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
-    fn then_to2(&self, other: &Self) -> Self {
+    fn combine_pair(&self, other: &Self) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
