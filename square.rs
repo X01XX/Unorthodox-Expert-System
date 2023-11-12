@@ -44,10 +44,7 @@ impl SomeSquare {
         Self {
             state: asample.initial.clone(),
             results: ResultStore::new(vec![asample.result.clone()]),
-            rules: Some(RuleStore::new(vec![SomeRule::new(
-                &asample.initial,
-                &asample.result,
-            )])),
+            rules: Some(RuleStore::new(vec![SomeRule::new(asample)])),
             pn: Pn::One,
             pnc: false,
         }
@@ -93,15 +90,18 @@ impl SomeSquare {
 
             match self.pn {
                 Pn::One => {
-                    self.rules = Some(RuleStore::new(vec![SomeRule::new(
-                        &self.state,
-                        self.results.first(),
-                    )]));
+                    self.rules = Some(RuleStore::new(vec![SomeRule::new(asample)]));
                 }
                 Pn::Two => {
                     self.rules = Some(RuleStore::new(vec![
-                        SomeRule::new(&self.state, self.results.first()),
-                        SomeRule::new(&self.state, self.results.second()),
+                        SomeRule::new(&SomeSample::new(
+                            self.state.clone(),
+                            self.results.first().clone(),
+                        )),
+                        SomeRule::new(&SomeSample::new(
+                            self.state.clone(),
+                            self.results.second().clone(),
+                        )),
                     ]));
                 }
                 Pn::Unpredictable => {

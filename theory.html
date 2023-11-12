@@ -1556,10 +1556,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The rule may be one of the following four possibilities:
     </p>
     <ul class="indent1">
- <li>0 &#8594; 0</li>
- <li>0 &#8594; 1</li>
- <li>1 &#8594; 1</li>
- <li>1 &#8594; 0</li>
+ <li>0 &#129042; 0</li>
+ <li>0 &#129042; 1</li>
+ <li>1 &#129042; 1</li>
+ <li>1 &#129042; 0</li>
     </ul>
     <p>
  The left bit can be referred to as the initial state, the right bit can be referred to as the
@@ -1567,27 +1567,27 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p>
  On the third sample, a rule can be generated from the second and third samples.
- Assuming the samples are 0 &#8594; 1 &#8594; 0, we have rule 0 &#8594; 1 and 
- rule 1 &#8594; 0.
+ Assuming the samples are 0 &#129042; 1 &#129042; 0, we have rule 0 &#129042; 1 and 
+ rule 1 &#129042; 0.
     </p>
     <p>
  There are ten possible ways to combine two one-bit rules:
     </p>
     <ul class="indent1">
- <li>0 &#8594; 0, 0 &#8594; 0 = 0 &#8594; 0</li>
- <li>0 &#8594; 1, 0 &#8594; 1 = 0 &#8594; 1</li>
- <li>1 &#8594; 1, 1 &#8594; 1 = 1 &#8594; 1</li>
- <li>1 &#8594; 0, 1 &#8594; 0 = 1 &#8594; 0</li>
+ <li>0 &#129042; 0, 0 &#129042; 0 = 0 &#129042; 0</li>
+ <li>0 &#129042; 1, 0 &#129042; 1 = 0 &#129042; 1</li>
+ <li>1 &#129042; 1, 1 &#129042; 1 = 1 &#129042; 1</li>
+ <li>1 &#129042; 0, 1 &#129042; 0 = 1 &#129042; 0</li>
  </ul>
     <ul class="indent1">
- <li>0 &#8594; 0, 1 &#8594; 1 = X &#8594; X</li>
- <li>0 &#8594; 0, 1 &#8594; 0 = X &#8594; 0</li>
- <li>0 &#8594; 1, 1 &#8594; 1 = X &#8594; 1</li>
- <li>0 &#8594; 1, 1 &#8594; 0 = X &#8594; x</li>
+ <li>0 &#129042; 0, 1 &#129042; 1 = X &#129042; X</li>
+ <li>0 &#129042; 0, 1 &#129042; 0 = X &#129042; 0</li>
+ <li>0 &#129042; 1, 1 &#129042; 1 = X &#129042; 1</li>
+ <li>0 &#129042; 1, 1 &#129042; 0 = X &#129042; x</li>
  </ul>
     <ul class="indent1">
- <li>0 &#8594; 0, 0 &#8594; 1 = 0 &#8594; X (disallowed)</li>
- <li>1 &#8594; 1, 1 &#8594; 0 = 1 &#8594; X (disallowed)</li>
+ <li>0 &#129042; 0, 0 &#129042; 1 = 0 &#129042; X (disallowed)</li>
+ <li>1 &#129042; 1, 1 &#129042; 0 = 1 &#129042; X (disallowed)</li>
     </ul>
     <p>
     Combinations of the same one-bit rules, the first set of four, produce the same.
@@ -1596,10 +1596,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Combinations where the initial bits are different, the second set of four, will always be valid.
     </p>
     <p>
- Combinations that result in 0&#8594;X and 1&#8594;X, the third set, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
+ Combinations that result in 0&#129042;X and 1&#129042;X, the third set, having dissimilar changes, dissimilar results, and no predictive value, are disallowed.
     </p>
     <p>
- Combinations of more than two different 1-bit rules will always combine to one of 0&#8594;X and/or 1&#8594;X, and are disallowed.
+ Combinations of more than two different 1-bit rules will always combine to one of 0&#129042;X and/or 1&#129042;X, and are disallowed.
     </p>
     <p>
  The combined rules on the right side of the equals sign, above, can start and end with 0, 1 or X.
@@ -1610,10 +1610,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  If you have a four-bit state and sample it, the result state can be used to construct a four-bit State-Change rule.
     </p>
     <p>
- State 0010, with a result state of 0100 produces the State-Change rule: (0&#8594;0, 0&#8594;1, 1&#8594;0, 0&#8594;0).
+ State 0010, with a result state of 0100 produces the State-Change rule: (0&#129042;0, 0&#129042;1, 1&#129042;0, 0&#129042;0).
     </p>
     <p>
- State 0101, with a result state of 0001 produces the State-Change rule: (0&#8594;0, 1&#8594;0, 0&#8594;0, 1&#8594;1).
+ State 0101, with a result state of 0001 produces the State-Change rule: (0&#129042;0, 1&#129042;0, 0&#129042;0, 1&#129042;1).
     </p>
     <p>
  State 0010 and 0101 can form an Optimistic Union of 0XXX.
@@ -1622,43 +1622,43 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  The State-Change rules of State 0010 and 0101 can also be combined:
  </p>
  <p class="indent1">
- (0&#8594;0, 0&#8594;1, 1&#8594;0, 0&#8594;0)<br>
- (0&#8594;0, 1&#8594;0, 0&#8594;0, 1&#8594;1)<br>
+ (0&#129042;0, 0&#129042;1, 1&#129042;0, 0&#129042;0)<br>
+ (0&#129042;0, 1&#129042;0, 0&#129042;0, 1&#129042;1)<br>
  ------------------------------------<br>
- (0&#8594;0, X&#8594;x, X&#8594;0, X&#8594;X)
+ (0&#129042;0, X&#129042;x, X&#129042;0, X&#129042;X)
     </p>
     <p>
  The state 0110 is within the above union of 0XXX.
     </p>
     <p>
- State 0110, with a result state of 0100 produces the State-Change rule: (0&#8594;0, 1&#8594;1, 1&#8594;0, 0&#8594;0).
+ State 0110, with a result state of 0100 produces the State-Change rule: (0&#129042;0, 1&#129042;1, 1&#129042;0, 0&#129042;0).
     </p>
     <p>
-     In the State-Change rules for states 0010 and 0101, above, in the third position from the right, there are two bit changes, 0&#8594;1 and 1&#8594;0.
+     In the State-Change rules for states 0010 and 0101, above, in the third position from the right, there are two bit changes, 0&#129042;1 and 1&#129042;0.
     </p>
     <p>
- The State-Change rule for state 0110 adds a third kind of change in the second position, 1&#8594;1.
- The bit rules 1&#8594;1 and 1&#8594;0 invalidate the Optimistic Union. 
+ The State-Change rule for state 0110 adds a third kind of change in the second position, 1&#129042;1.
+ The bit rules 1&#129042;1 and 1&#129042;0 invalidate the Optimistic Union. 
     </p>
     <h3>Implementation</h3>
    <p>
         One way to represent a State-Change Rule, is to keep masks for each of the four possible bit changes.
     </p>
     <p>
-        Given a sample, i&#8594;r,
+        Given a sample, i&#129042;r,
         form the rule as follows:
     </p>
     <p class="indent1">
-        The 0&#8594;0 mask = ~i &amp; ~r
+        The 0&#129042;0 mask = ~i &amp; ~r
     </p>
     <p class="indent1">
-        The 0&#8594;1 mask = ~i &amp; r
+        The 0&#129042;1 mask = ~i &amp; r
     </p>
     <p class="indent1">
-        The 1&#8594;1 mask = i &amp; r
+        The 1&#129042;1 mask = i &amp; r
     </p>
     <p class="indent1">
-        The 1&#8594;0 mask = i &amp; ~r
+        The 1&#129042;0 mask = i &amp; ~r
     </p>
      <p>
         Two rules are equal if their corresponding masks are equal.
@@ -1670,16 +1670,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         A union combines bit-changes, so validate the result with:
     </p>
     <p class="indent2">
-        1&#8594;0 mask &amp; 1&#8594;1 mask = all zeros.
+        1&#129042;0 mask &amp; 1&#129042;1 mask = all zeros.
     </p>
     <p class="indent2">
-        0&#8594;0 mask &amp; 0&#8594;1 mask = all zeros.
+        0&#129042;0 mask &amp; 0&#129042;1 mask = all zeros.
     </p>
       <p class="indent2">
         Where these masks are non-zero, they identify a dissimilarity and can be useful.
     </p>
       <p class="indent2">
-         If a rule union with an initial region of 1X0X includes a 1&#8594;X bit in the third position from the right,
+         If a rule union with an initial region of 1X0X includes a 1&#129042;X bit in the third position from the right,
         that indicates that 110X is invalid, while 101X may be valid.
     </p>
       <p>
@@ -1689,10 +1689,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         The initial region can be calculated with:
     </p>
     <p class="indent1">
-      Region high-bits = <b>1</b>&#8594;1 mask + <b>1</b>&#8594;0 mask
+      Region high-bits = <b>1</b>&#129042;1 mask + <b>1</b>&#129042;0 mask
      </p>
      <p class="indent1">
-       Region low-bits = ~(<b>0</b>&#8594;0 mask + <b>0</b>&#8594;1 mask)
+       Region low-bits = ~(<b>0</b>&#129042;0 mask + <b>0</b>&#129042;1 mask)
     </p>
     <p>
         An intersection of two rules can be formed by calculating the intersection of corresponding masks.
@@ -1701,7 +1701,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         An intersection may lose bit-changes, so validate the result with:
     </p>
     <p class="indent2">
-        0&#8594;0 mask + 0&#8594;1 mask + 1&#8594;1 mask + 1&#8594;0 mask = all ones.
+        0&#129042;0 mask + 0&#129042;1 mask + 1&#129042;1 mask + 1&#129042;0 mask = all ones.
         If not, the entire intersection is dissimilar.
     </p>
      <p class="indent2">
@@ -1712,10 +1712,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         The result region can be calculated with:
     </p>
     <p class="indent1">
-      Region high-bits = 1&#8594;<b>1</b> mask + 0&#8594;<b>1</b> mask
+      Region high-bits = 1&#129042;<b>1</b> mask + 0&#129042;<b>1</b> mask
      </p>
      <p class="indent1">
-       Region low-bits = ~(0&#8594;<b>0</b> mask + 1&#8594;<b>0</b> mask)
+       Region low-bits = ~(0&#129042;<b>0</b> mask + 1&#129042;<b>0</b> mask)
     </p>     
     <p>
         Forward-Chaining
@@ -1724,16 +1724,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
        For a region (rg) that intersects the initial region of a rule, restrict the rule to that intersection by filtering similar initial bits:
     </p>
     <p class="indent2">
-      0&#8594;0 restricted = <b>0</b>&#8594;0 &amp; ~rg.<b>low-bits</b>
+      0&#129042;0 restricted = <b>0</b>&#129042;0 &amp; ~rg.<b>low-bits</b>
     </p>
     <p class="indent2">
-      0&#8594;1 restricted = <b>0</b>&#8594;1 &amp; ~rg.<b>low-bits</b>
+      0&#129042;1 restricted = <b>0</b>&#129042;1 &amp; ~rg.<b>low-bits</b>
     </p>
     <p class="indent2">
-      1&#8594;1 restricted = <b>1</b>&#8594;1 &amp; rg.<b>high-bits</b>
+      1&#129042;1 restricted = <b>1</b>&#129042;1 &amp; rg.<b>high-bits</b>
     </p>
     <p class="indent2">
-      1&#8594;0 restricted = <b>1</b>&#8594;0 &amp; rg.<b>high-bits</b>
+      1&#129042;0 restricted = <b>1</b>&#129042;0 &amp; rg.<b>high-bits</b>
     </p>
     <p class="indent1">
         Then calculate the result region of the restricted rule.
@@ -1745,16 +1745,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
          For a region (rg) that intersects the result region of a rule, restrict the rule to that intersection by filtering similar result bits:
     </p>
     <p class="indent2">
-      0&#8594;0 restricted = 0&#8594;<b>0</b> &amp; ~rg.<b>low-bits</b>
+      0&#129042;0 restricted = 0&#129042;<b>0</b> &amp; ~rg.<b>low-bits</b>
     </p>
     <p class="indent2">
-      0&#8594;1 restricted = 0&#8594;<b>1</b> &amp; rg.<b>high-bits</b>
+      0&#129042;1 restricted = 0&#129042;<b>1</b> &amp; rg.<b>high-bits</b>
     </p>
     <p class="indent2">
-      1&#8594;1 restricted = 1&#8594;<b>1</b> &amp; rg.<b>high-bits</b>
+      1&#129042;1 restricted = 1&#129042;<b>1</b> &amp; rg.<b>high-bits</b>
     </p>
     <p class="indent2">
-      1&#8594;0 restricted = 1&#8594;<b>0</b> &amp; ~rg.<b>low-bits</b>
+      1&#129042;0 restricted = 1&#129042;<b>0</b> &amp; ~rg.<b>low-bits</b>
     </p>
     <p class="indent1">
         Then calculate the initial region of the restricted rule.
@@ -1764,7 +1764,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p class="indent1">
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
-    e.g. 0X00&#8594; 0X01, later 1X00&#8594;.... 
+    e.g. 0X00&#129042; 0X01, later 1X00&#129042;.... 
     </p>
     <p class="indent1">
     Two rules can be mutually exclusive, that is neither order works.
@@ -1773,10 +1773,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Assuming a current state of 0000, and the wish to change to the state 0011:
     </p>
     <p class="indent2">
-    With the rule XX10&#8594;XX11 available to switch the rightmost bit.
+    With the rule XX10&#129042;XX11 available to switch the rightmost bit.
     </p>
     <p class="indent2">
-    With the rule XX01&#8594;XX11 available to switch the second rightmost bit.
+    With the rule XX01&#129042;XX11 available to switch the second rightmost bit.
     </p>
     <p class="indent2">
     Neither order will work for the rules.
@@ -1832,7 +1832,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     That is [s1.rule1 union s2.rule1] and [s1.rule2 union s2.rule2] or [s1.rule1 union s2.rule2] and [s1.rule2 union s2.rule1].
     </p>
     <p class="indent2">
-    For exactly one union to be valid, the two states must both have at least one bit position where they are both 0&#8594;0, 0&#8594;1 or 1&#8594;1, 1&#8594;0.
+    For exactly one union to be valid, the two states must both have at least one bit position where they are both 0&#129042;0, 0&#129042;1 or 1&#129042;1, 1&#129042;0.
     </p>
     <p class="indent2">
     Two valid combinations leads to (XX, Xx) vs. (X0, X1), which has no predictive value.
@@ -1882,7 +1882,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Make a mask of all bit positions that can change in both ways.
     </p>
     <p class="indent2">
-    For all available rules, generate the bitwise OR of all 0&#8594;1 masks, and the bitwise OR of all 1&#8594;0 masks.
+    For all available rules, generate the bitwise OR of all 0&#129042;1 masks, and the bitwise OR of all 1&#129042;0 masks.
     </p>
     <p class="indent2">
     Make the bitwise AND of the two masks.
@@ -1923,13 +1923,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Square 9 does not change its rightmost bit, 1. 
     </p>
     <p>
-    The rightmost bit changes of 7 and 9 combine to 1&#8594;X, which is disallowed.
+    The rightmost bit changes of 7 and 9 combine to 1&#129042;X, which is disallowed.
     </p>
     <p>
-    The rightmost bit changes of 0 and 7 combine to X&#8594;x.
+    The rightmost bit changes of 0 and 7 combine to X&#129042;x.
     </p>
     <p>
-    The rightmost bit changes of 0 and 9 combine to X&#8594;1.
+    The rightmost bit changes of 0 and 9 combine to X&#129042;1.
     </p>
    <table class="indent1">
  <caption>Square 0 and two similar squares, 7 and D</caption>
@@ -2673,16 +2673,16 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         If the result region of the first rule intersects the initial region of the second rule, the aggregate can be calculated as follows:
         </p>
     <p class="indent1">
-        0&#8594;0 mask = (0&#8594;0 &amp; 0&#8594;0) + (0&#8594;1 &amp; 1&#8594;0), (note: rule 1 change reversed)
+        0&#129042;0 mask = (0&#129042;0 &amp; 0&#129042;0) + (0&#129042;1 &amp; 1&#129042;0), (note: rule 1 change reversed)
     </p>
     <p class="indent1">
-        0&#8594;1 mask = (0&#8594;0 &amp; 0&#8594;1) + (0&#8594;1 &amp; 1&#8594;1)
+        0&#129042;1 mask = (0&#129042;0 &amp; 0&#129042;1) + (0&#129042;1 &amp; 1&#129042;1)
     </p>
     <p class="indent1">
-        1&#8594;1 mask = (1&#8594;1 &amp; 1&#8594;1) + (1&#8594;0 &amp; 0&#8594;1), (note: rule 1 change reversed)
+        1&#129042;1 mask = (1&#129042;1 &amp; 1&#129042;1) + (1&#129042;0 &amp; 0&#129042;1), (note: rule 1 change reversed)
     </p>
     <p class="indent1">
-        1&#8594;0 mask = (1&#8594;1 &amp; 1&#8594;0) + (1&#8594;0 &amp; 0&#8594;0)
+        1&#129042;0 mask = (1&#129042;1 &amp; 1&#129042;0) + (1&#129042;0 &amp; 0&#129042;0)
     </p>
         <p class="indent1">
         The form of a calculation in parentheses is (rule 1 change mask &amp; rule 2 change mask).
@@ -2701,35 +2701,35 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
 	From initial state to goal region:
         </p>
         <p class="indent2">
-	0&#8594;1, or 1&#8594;0: One change is required, or otherwise, an odd number of changes.
+	0&#129042;1, or 1&#129042;0: One change is required, or otherwise, an odd number of changes.
         </p>
         <p class="indent2">
-	0&#8594;0, or 1&#8594;1: No change is required, or otherwise, an even number of changes.
+	0&#129042;0, or 1&#129042;1: No change is required, or otherwise, an even number of changes.
         </p>
         <p class="indent2">
-	0&#8594;X, or 1&#8594;X: No change is required, or otherwise, any number of changes.
+	0&#129042;X, or 1&#129042;X: No change is required, or otherwise, any number of changes.
         </p>
    <h3>Rule for region to region change</h3>
        <p class="indent1">
        Calculate a rule to change r000_111_XXX to r01X_01X_01X.
        </p>
        <p class="indent1">
-       From a rule that does not change r000_111_XXX at all, all changes are 0&#8594;0 and 1&#8594;1, four modifications are needed:
+       From a rule that does not change r000_111_XXX at all, all changes are 0&#129042;0 and 1&#129042;1, four modifications are needed:
        </p>
        <p class="indent2">
-       For 0&#8594;1, a 0&#8594;0 change is replaced by 0&#8594;1.
+       For 0&#129042;1, a 0&#129042;0 change is replaced by 0&#129042;1.
        </p>
        <p class="indent2">
-       For 1&#8594;0, a 1&#8594;1 change is replaced by 1&#8594;0.
+       For 1&#129042;0, a 1&#129042;1 change is replaced by 1&#129042;0.
        </p>
        <p class="indent2">
-       For X&#8594;1, a 0&#8594;0 change is replaced by 0&#8594;1.
+       For X&#129042;1, a 0&#129042;0 change is replaced by 0&#129042;1.
        </p>
        <p class="indent2">
-       For X&#8594;0, a 1&#8594;1 change is replaced by 1&#8594;0.
+       For X&#129042;0, a 1&#129042;1 change is replaced by 1&#129042;0.
        </p>
        <p class="indent1">
-       For 0&#8594;X or 1&#8594;X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
+       For 0&#129042;X or 1&#129042;X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
        </p>
    <h3>Number of squares in a set of regions</h3>
        <p class="indent1">

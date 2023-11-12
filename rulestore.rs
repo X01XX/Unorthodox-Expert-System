@@ -375,6 +375,7 @@ impl Index<usize> for RuleStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+    use crate::sample::SomeSample;
     use crate::state::SomeState;
 
     // Test restrict_initial_region and initial_region
@@ -383,7 +384,7 @@ mod tests {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Produce R[00/00/00/00/00/XX/XX/11, 00/00/00/00/00/XX/XX/10].
         let rul_str1 = RuleStore::new(vec![
@@ -418,7 +419,7 @@ mod tests {
     fn intersection() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Intersect two single-rule RuleStores, it should work.
         let rul_str1 = RuleStore::new(vec![tmp_rul.new_from_string("00/X1/XX/Xx/xx")?]);
@@ -493,7 +494,7 @@ mod tests {
     fn is_subset_of() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Compare one-rule RuleStores.
         let rul_str1 = RuleStore::new(vec![tmp_rul.new_from_string("00/X1/XX/Xx/xx")?]);
@@ -531,7 +532,7 @@ mod tests {
     fn is_superset_of_rule() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Compare a rule to a one-rule RuleStore.
         let rul_str1 = RuleStore::new(vec![tmp_rul.new_from_string("00/X1/XX/Xx/xx")?]);
@@ -570,7 +571,7 @@ mod tests {
     fn union() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Produce /X0/X1/XX/Xx/XX.
         let rul_str1 = RuleStore::new(vec![tmp_rul.new_from_string("00/01/00/01/xx")?]);

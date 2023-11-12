@@ -7,6 +7,7 @@
 //! and the serialization crate.
 
 use crate::rule::SomeRule;
+use crate::sample::SomeSample;
 use crate::state::SomeState;
 
 /// Array of action function pointers for domain 0.
@@ -27,17 +28,24 @@ pub fn take_action(
     cur_state: &SomeState,
     sample_hint: usize,
 ) -> SomeState {
-    if dom_num == 0 {
+    let new_state = if dom_num == 0 {
         DOM0_ACTIONS[act_num](cur_state, sample_hint)
     } else {
         DOM1_ACTIONS[act_num](cur_state, sample_hint)
-    }
+    };
+    println!(
+        "\nDom 0 Act 0 {} -> {} R[{}]",
+        cur_state,
+        new_state,
+        SomeRule::new(&SomeSample::new(cur_state.clone(), new_state.clone()))
+    );
+    new_state
 }
 
 /// Domain 0, act 0, actions, given the current state.
 /// The SomeMask argument is a kludge to support multiple result actions.
 pub fn dom0_act0(cur: &SomeState, sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
+    if cur.is_bit_set(3) && !cur.is_bit_set(1)     // ...1X0X
         || !cur.is_bit_set(3) && cur.is_bit_set(1) // ...0X1X
         || cur.is_bit_set(2) && cur.is_bit_set(0)
     {
@@ -63,122 +71,65 @@ pub fn dom0_act0(cur: &SomeState, sample_hint: usize) -> SomeState {
         } else {
             cur.change_bit(3)
         }
-    };
-
-    println!(
-        "\nDom 0 Act 0 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 } // end action0
 
 /// Domain 0, act 1, actions, given the current state.
 /// Toggle bit 1. ....../Xx/.
 pub fn dom0_act1(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(1) {
+    if cur.is_bit_set(1) {
         cur.change_bit(2)
     } else {
         cur.change_bit(1)
-    };
-    println!(
-        "\nDom 0 Act 1 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 }
 
 /// Domain 0, act 2, actions, given the current state.
 /// Toggle bit 2. ...../Xx/..
 pub fn dom0_act2(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(1) {
+    if cur.is_bit_set(1) {
         cur.change_bit(1)
     } else {
         cur.change_bit(2)
-    };
-    println!(
-        "\nDom 0 Act 2 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 }
 
 /// Domain 0, act 3, actions, given the current state.
 /// Toggle bit 3. ..../Xx/...
 pub fn dom0_act3(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(3) {
+    if cur.is_bit_set(3) {
         cur.change_bit(4)
     } else {
         cur.change_bit(3)
-    };
-    println!(
-        "\nDom 0 Act 3 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 }
 
 /// Domain 0, act 4, actions, given the current state.
 /// Toggle bit 4. .../Xx/...
 pub fn dom0_act4(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(3) {
+    if cur.is_bit_set(3) {
         cur.change_bit(3)
     } else {
         cur.change_bit(4)
-    };
-    println!(
-        "\nDom 0 Act 4 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 }
 
 /// Domain 0, act 5, actions, given the current state.
 /// Toggle bit 5. ../Xx/.....
 pub fn dom0_act5(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(5);
-    println!(
-        "\nDom 0 Act 5 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(5)
 }
 
 /// Domain 0, act 6, actions, given the current state.
 /// Toggle bit 2,3 ..../Xx/Xx/..
 pub fn dom0_act6(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(2).change_bit(3);
-    println!(
-        "\nDom 0 Act 6 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(2).change_bit(3)
 }
 
 /// Domain 0, act 7, actions, given the current state.
 /// Toggle bit 6 and 7, Xx/Xx/......
 pub fn dom0_act7(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(6).change_bit(7);
-    println!(
-        "\nDom 0 Act 7 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(6).change_bit(7)
 }
 
 /// Domain 0, act 8, actions, given the current state.
@@ -189,116 +140,56 @@ pub fn dom0_act7(cur: &SomeState, _sample_hint: usize) -> SomeState {
 /// /Xx/Xx/, /Xx/Xx/, /Xx/Xx/
 /// /Xx/XX/, /Xx/00/, /Xx/11/
 pub fn dom0_act8(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(6);
-    println!(
-        "\nDom 0 Act 8 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(6)
 }
 
 /// Form a rule using X->0 and X->1.
 pub fn dom0_act9(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.set_bit_to_0(0).set_bit_to_1(1);
-    println!(
-        "\nDom 0 Act 9 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.set_bit_to_0(0).set_bit_to_1(1)
 }
 // Domain 1 actions
 
 /// Domain 1, act 0, actions, given the current state.
 /// Toggle bit 6.
 pub fn dom1_act0(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(5);
-    println!(
-        "\nDom 1 Act 0 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(5)
 }
 
 /// Domain 1, act 1, actions, given the current state.
 /// Toggle bit 7.
 pub fn dom1_act1(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(6);
-    println!(
-        "\nDom 1 Act 1 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(6)
 }
 
 /// Domain 1, act 2, actions, given the current state.
 /// Toggle bit 8.
 pub fn dom1_act2(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(7);
-    println!(
-        "\nDom 1 Act 2 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(7)
 }
 
 /// Domain 1, act 3, actions, given the current state.
 /// Toggle bit 9.
 pub fn dom1_act3(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(8);
-    println!(
-        "\nDom 1 Act 3 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(8)
 }
+
 /// Domain 1, act 4, actions, given the current state.
 pub fn dom1_act4(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(9);
-    println!(
-        "\nDom 1 Act 4 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(9)
 }
+
 /// Domain 1, act 5, actions, given the current state.
 pub fn dom1_act5(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = cur.change_bit(10);
-    println!(
-        "\nDom 1 Act 5 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    cur.change_bit(10)
 }
+
 /// Domain 1, act 6, actions, given the current state.
 pub fn dom1_act6(cur: &SomeState, _sample_hint: usize) -> SomeState {
-    let new_state = if cur.is_bit_set(5) {
+    if cur.is_bit_set(5) {
         cur.change_bit(8)
     } else if cur.is_bit_set(6) {
         cur.change_bit(9)
     } else {
         cur.change_bit(10)
-    };
-    println!(
-        "\nDom 1 Act 6 {} -> {} R[{}]",
-        cur,
-        new_state,
-        SomeRule::new(cur, &new_state)
-    );
-    new_state
+    }
 }

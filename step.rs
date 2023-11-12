@@ -104,13 +104,14 @@ mod tests {
     use crate::bits::SomeBits;
     use crate::region::SomeRegion;
     use crate::rule::SomeRule;
+    use crate::sample::SomeSample;
     use crate::state::SomeState;
     use crate::step::SomeStep;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
         let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
 

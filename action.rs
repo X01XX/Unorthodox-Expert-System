@@ -1944,23 +1944,24 @@ mod tests {
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
         // 0->1 and 0->1, in the fourth bit.
-        let s1 = tmp_sta.new_from_string("s0b0001").unwrap();
-        let s9 = tmp_sta.new_from_string("s0b1001").unwrap();
+        //let s1 = SomeState::new(SomeBits::new(vec![0x1]));
+        let s1 = tmp_sta.new_from_string("s0b0001")?;
+        let s9 = tmp_sta.new_from_string("s0b1001")?;
         act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s9.clone()));
-        let s5 = tmp_sta.new_from_string("s0b0101").unwrap();
+        let s5 = tmp_sta.new_from_string("s0b0101")?;
         act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
 
         // Set up first two_result square.
-        let s0 = tmp_sta.new_from_string("s0b0000").unwrap();
-        let s8 = tmp_sta.new_from_string("s0b1000").unwrap();
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
+        let s8 = tmp_sta.new_from_string("s0b1000")?;
         act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
 
         // Set up second two_result square.
-        let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
-        let sf = tmp_sta.new_from_string("s0b1111").unwrap();
+        let s7 = tmp_sta.new_from_string("s0b0111")?;
+        let sf = tmp_sta.new_from_string("s0b1111")?;
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
@@ -1982,7 +1983,7 @@ mod tests {
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Eval sample that other samples will be incompatible with.
-        let s7 = tmp_sta.new_from_string("s0b0111").unwrap();
+        let s7 = tmp_sta.new_from_string("s0b0111")?;
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
 
         // Process three similar samples.

@@ -52,9 +52,24 @@ impl PlanStore {
         !self.avec.is_empty()
     }
 
+    /// Return the index of the last plan with a given domain number.
+    fn last_dom(&self, dom_num: usize) -> Option<usize> {
+        let mut ret: Option<usize> = None;
+        for (inx, planx) in self.avec.iter().enumerate() {
+            if planx.dom_num == dom_num {
+                ret = Some(inx);
+            }
+        }
+        ret
+    }
+
     /// Add a plan to the vector.
-    pub fn push(&mut self, val: SomePlan) {
-        self.avec.push(val);
+    pub fn push(&mut self, planx: SomePlan) {
+        // Verify a domain plan that is split into parts.
+        if let Some(inx) = self.last_dom(planx.dom_num) {
+            assert!(self[inx].result_region() == planx.initial_region());
+        }
+        self.avec.push(planx);
     }
 
     /// Return a vector iterator.

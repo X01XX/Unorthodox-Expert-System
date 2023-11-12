@@ -307,7 +307,7 @@ mod tests {
     fn check_subset_sample() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
         let regx = tmp_reg.new_from_string("r1xx0")?;
@@ -328,7 +328,7 @@ mod tests {
     fn check_subset_square() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         // Test if sqrx.pn > self.pn
         let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);

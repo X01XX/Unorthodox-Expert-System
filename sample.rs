@@ -26,7 +26,7 @@ impl SomeSample {
 
     /// Create a rule from a sample.
     pub fn rule(&self) -> SomeRule {
-        SomeRule::new(&self.initial, &self.result)
+        SomeRule::new(self)
     }
 
     /// Return a string to represent a SomeSample instance.

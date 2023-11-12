@@ -366,12 +366,13 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::rule::SomeRule;
+    use crate::sample::SomeSample;
     use crate::state::SomeState;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
         let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
 
@@ -398,7 +399,7 @@ mod tests {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&tmp_sta, &tmp_sta);
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         let planx = SomePlan::new(0, vec![]);
         if let Some(regx) = planx.path_region() {
@@ -407,15 +408,15 @@ mod tests {
 
         let step0 = SomeStep::new(
             0,
-            tmp_rul.new_from_string("00/01/01/11").unwrap(),
+            tmp_rul.new_from_string("00/01/01/11")?,
             false,
-            tmp_reg.new_from_string("rXXXX").unwrap(),
+            tmp_reg.new_from_string("rXXXX")?,
         ); // 1 -> 7
         let step1 = SomeStep::new(
             0,
-            tmp_rul.new_from_string("01/11/10/11").unwrap(),
+            tmp_rul.new_from_string("01/11/10/11")?,
             false,
-            tmp_reg.new_from_string("rXXXX").unwrap(),
+            tmp_reg.new_from_string("rXXXX")?,
         ); // 7 -> D
         let planx = SomePlan::new(0, vec![step0, step1]);
         println!("plan: {planx}");
