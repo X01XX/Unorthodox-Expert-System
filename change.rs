@@ -1,6 +1,7 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
 use crate::mask::SomeMask;
+use crate::region::SomeRegion;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -42,11 +43,27 @@ impl SomeChange {
         }
     }
 
-    /// Return the logical bitwize or of two changes
+    /// Return the logical bitwise or of two changes
     pub fn union(&self, other: &impl AccessChanges) -> Self {
         Self {
             b01: self.b01.bitwise_or(other.b01()),
             b10: self.b10.bitwise_or(other.b10()),
+        }
+    }
+
+    /// Return the difference of two changes
+    pub fn difference(&self, other: &impl AccessChanges) -> Self {
+        Self {
+            b01: self.b01.bitwise_xor(other.b01()),
+            b10: self.b10.bitwise_xor(other.b10()),
+        }
+    }
+
+    /// Return a change that will reverse a given change.
+    pub fn reverse(&self) -> Self {
+        Self {
+            b01: self.b10().clone(),
+            b10: self.b01().clone(),
         }
     }
 
@@ -55,7 +72,7 @@ impl SomeChange {
         self.b01.bitwise_and(&self.b10)
     }
 
-    /// Return the logical bitwize not of a change
+    /// Return the logical bitwise not of a change
     pub fn bitwise_not(&self) -> Self {
         Self {
             b01: self.b01.bitwise_not(),
@@ -107,12 +124,13 @@ impl SomeChange {
         strrc
     }
 
-    /// For a given change, subtract an other change.
-    pub fn minus(&self, other: &Self) -> Self {
-        Self {
-            b01: self.b01.bitwise_xor(&self.b01.bitwise_and(&other.b01)),
-            b10: self.b10.bitwise_xor(&self.b10.bitwise_and(&other.b10)),
-        }
+    /// Return the result of applying a change to a region.
+    pub fn applied_to(&self, regx: &SomeRegion) -> SomeRegion {
+        let not_b10 = self.b10.bitwise_not();
+        SomeRegion::new(vec![
+            regx.state1().bitwise_or(&self.b01).bitwise_and(&not_b10),
+            regx.state2().bitwise_or(&self.b01).bitwise_and(&not_b10),
+        ])
     }
 } // end impl SomeChange
 
@@ -181,6 +199,77 @@ mod tests {
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn changes_wanted_unwanted_reverse() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let dm0 = SomeDomain::new(1);
+
+        let wanted_changes = SomeChange {
+            b01: dm0.mask_from_string("m0b1010")?,
+            b10: dm0.mask_from_string("m0b0100")?,
+        };
+        println!("wanted_changes    {wanted_changes}");
+
+        let available_changes = SomeChange {
+            b01: dm0.mask_from_string("m0b1001")?,
+            b10: dm0.mask_from_string("m0b1100")?,
+        };
+        println!("available_changes {available_changes}");
+
+        let possible_changes = wanted_changes.intersection(&available_changes);
+        println!("possible_changes  {possible_changes}");
+        assert!(
+            possible_changes
+                == SomeChange {
+                    b01: dm0.mask_from_string("m0b1000")?,
+                    b10: dm0.mask_from_string("m0b0100")?
+                }
+        );
+
+        let unwanted_changes = possible_changes.difference(&available_changes);
+        println!("unwanted_changes  {unwanted_changes}");
+        assert!(
+            unwanted_changes
+                == SomeChange {
+                    b01: dm0.mask_from_string("m0b0001")?,
+                    b10: dm0.mask_from_string("m0b1000")?
+                }
+        );
+
+        let reverse_changes = unwanted_changes.reverse();
+        println!("reverse_changes   {reverse_changes}");
+        assert!(
+            reverse_changes
+                == SomeChange {
+                    b01: dm0.mask_from_string("m0b1000")?,
+                    b10: dm0.mask_from_string("m0b0001")?
+                }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn applied_to() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let dm0 = SomeDomain::new(1);
+
+        let wanted_changes = SomeChange {
+            b01: dm0.mask_from_string("m0b1100")?,
+            b10: dm0.mask_from_string("m0b0011")?,
+        };
+        println!("wanted_changes    {wanted_changes}");
+
+        let reg1 = dm0.region_from_string("r0X1X")?;
+
+        let reg2 = wanted_changes.applied_to(&reg1);
+
+        println!("Reg {reg1} changed by {wanted_changes} is {reg2}");
+        assert!(reg2 == dm0.region_from_string("r1100")?);
 
         Ok(())
     }

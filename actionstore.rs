@@ -132,7 +132,7 @@ impl ActionStore {
         }
 
         // Check for new changes.
-        let additions = new_chgs.minus(&self.aggregate_changes);
+        let additions = new_chgs.difference(&self.aggregate_changes);
 
         // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.avec {
