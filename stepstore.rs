@@ -241,11 +241,11 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
             if iny == inx {
                 continue;
             }
-            if step_vecs_order_bad(&by_change[inx], &by_change[iny], wanted) && !inxs.contains(&inx)
+            if step_vecs_sequence_reverses_change(&by_change[inx], &by_change[iny], wanted) && !inxs.contains(&inx)
             {
                 inxs.push(inx);
             }
-            if step_vecs_order_bad(&by_change[iny], &by_change[inx], wanted) && !inxs.contains(&iny)
+            if step_vecs_sequence_reverses_change(&by_change[iny], &by_change[inx], wanted) && !inxs.contains(&iny)
             {
                 inxs.push(iny);
             }
@@ -261,7 +261,7 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
 
 /// Return true if the order of all steps in step vector arg one will reuire a
 /// wanted bit change to be reversed in order to do any step in step vector arg two.
-fn step_vecs_order_bad(
+fn step_vecs_sequence_reverses_change(
     vec_x: &Vec<&SomeStep>,
     vec_y: &Vec<&SomeStep>,
     wanted: &SomeChange,
@@ -273,7 +273,7 @@ fn step_vecs_order_bad(
             if std::ptr::eq(refx, refy) {
                 return false;
             }
-            if !refx.rule.order_bad(&refy.rule, wanted) {
+            if !refx.rule.sequence_reverses_change(&refy.rule, wanted) {
                 return false;
             }
         } //next refy

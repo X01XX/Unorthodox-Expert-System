@@ -333,7 +333,7 @@ impl SomeRule {
     /// X->0 is 0->0 and 1->0, the X can be changed to 1.
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
-    pub fn parse_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
+    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
         let cng_int = change_needed.intersection(self);
 
         if cng_int.is_low() {
@@ -380,7 +380,7 @@ impl SomeRule {
     /// Return true if two rules are mutually exclusive.
     /// Both rules lose wanted changes, running them in any order.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-        if self.order_bad(other, wanted) && other.order_bad(self, wanted) {
+        if self.sequence_reverses_change(other, wanted) && other.sequence_reverses_change(self, wanted) {
             return true;
         }
         false
@@ -391,8 +391,8 @@ impl SomeRule {
     ///    A change can be lost by:
     ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///        A wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
-    pub fn order_bad(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // println!("order_bad: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
+    pub fn sequence_reverses_change(&self, other: &Self, wanted: &SomeChange) -> bool {
+        // println!("order_losos_change: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
 
         // Get a mask of the wanted changes in this rule.
         let s_wanted = wanted.intersection(self);
@@ -670,7 +670,7 @@ mod tests {
     }
 
     #[test]
-    fn order_bad() -> Result<(), String> {
+    fn sequence_reverses_change() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_sta = SomeState::new(tmp_bts.clone());
@@ -684,18 +684,18 @@ mod tests {
         let chg1 = SomeChange::new(tmp_msk.new_from_string("m0b11")?, tmp_msk.new_low());
         println!("rul1: {rul1} rul2: {rul2} rul3: {rul3} chg1: {chg1}");
 
-        println!("1->2 {}", rul1.order_bad(&rul2, &chg1));
-        println!("2->1 {}", rul2.order_bad(&rul1, &chg1));
-        assert!(rul1.order_bad(&rul2, &chg1));
-        assert!(rul2.order_bad(&rul1, &chg1));
-        assert!(!rul1.order_bad(&rul3, &chg1));
-        assert!(!rul2.order_bad(&rul3, &chg1));
+        println!("1->2 {}", rul1.sequence_reverses_change(&rul2, &chg1));
+        println!("2->1 {}", rul2.sequence_reverses_change(&rul1, &chg1));
+        assert!(rul1.sequence_reverses_change(&rul2, &chg1));
+        assert!(rul2.sequence_reverses_change(&rul1, &chg1));
+        assert!(!rul1.sequence_reverses_change(&rul3, &chg1));
+        assert!(!rul2.sequence_reverses_change(&rul3, &chg1));
 
         Ok(())
     }
 
     #[test]
-    fn parse_for_changes() -> Result<(), String> {
+    fn restrict_for_changes() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_sta = SomeState::new(tmp_bts.clone());
@@ -707,7 +707,7 @@ mod tests {
             tmp_msk.new_from_string("m0b0010001")?,
         );
 
-        let Some(rul2) = rul1.parse_for_changes(&chg1) else {
+        let Some(rul2) = rul1.restrict_for_changes(&chg1) else {
             panic!("parse should succeed");
         };
         println!("rul2 {}", &rul2);

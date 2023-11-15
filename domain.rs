@@ -332,13 +332,10 @@ impl SomeDomain {
         // So run initial -(plan 1)> least-options-to-avoid-step -(plan 2)> goal.
         let mut asym_inx = Vec::<usize>::new();
 
-        'next_vecx: for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
-            for stepx in vecx.iter() {
-                if stepx.initial.is_superset_of(from_reg) || stepx.result.intersects(goal_reg) {
-                    continue 'next_vecx;
-                }
+        for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
+            if vecx.len() == 1 && !vecx[0].initial.is_superset_of(from_reg) && !vecx[0].result.intersects(goal_reg) {
+                asym_inx.push(inx);
             }
-            asym_inx.push(inx);
         } // next vecx
 
         // If any forced asymmetrical single-bit changes found
@@ -347,22 +344,12 @@ impl SomeDomain {
             // Init selected steps
             let mut selected_steps = Vec::<&SomeStep>::new();
 
-            // find min number of steps for the selected bit-changes
-            let mut min_steps = usize::MAX;
-            for inx in &asym_inx {
-                if steps_by_change_vov[*inx].len() < min_steps {
-                    min_steps = steps_by_change_vov[*inx].len();
-                }
-            }
             // Assemble possible steps
             for inx in asym_inx {
-                if steps_by_change_vov[inx].len() == min_steps {
-                    selected_steps.extend(&steps_by_change_vov[inx]);
-                }
+                selected_steps.extend(&steps_by_change_vov[inx]);
             }
 
             // Randomly choose a step.
-            assert!(!selected_steps.is_empty());
             let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
 
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
