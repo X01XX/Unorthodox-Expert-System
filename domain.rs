@@ -325,38 +325,33 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for single-bit step-vectors where no steps have an initial-region that
-        // is a superset of the from-region, and the result-region does not intersect the
-        // goal-region.
-        // Choose a step with the least options to avoid, first.
-        // So run initial -(plan 1)> least-options-to-avoid-step -(plan 2)> goal.
-        let mut asym_inx = Vec::<usize>::new();
+        // Check for single-bit change with only one avialable step.
+        // So run initial -(plan 1)> only-available-step -(plan 2)> goal.
+        // This is like identifying an absolute requirement, a single point of failure, for a solution path.
+        let mut asym_steps = Vec::<&SomeStep>::new();
 
-        for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
-            if vecx.len() == 1 && !vecx[0].initial.is_superset_of(from_reg) && !vecx[0].result.intersects(goal_reg) {
-                asym_inx.push(inx);
+        for vecx in steps_by_change_vov.iter() {
+            if vecx.len() == 1
+                && !vecx[0].initial.is_superset_of(from_reg)
+                && !vecx[0].result.intersects(goal_reg)
+            {
+                asym_steps.push(vecx[0]);
             }
-        } // next vecx
+        }
 
-        // If any forced asymmetrical single-bit changes found
-        if asym_inx.is_empty() {
+        // Check if any forced asymmetrical single-bit changes have been found.
+        if asym_steps.is_empty() {
         } else {
-            // Init selected steps
-            let mut selected_steps = Vec::<&SomeStep>::new();
-
-            // Assemble possible steps
-            for inx in asym_inx {
-                selected_steps.extend(&steps_by_change_vov[inx]);
-            }
-
             // Randomly choose a step.
-            let stepx = selected_steps[rand::thread_rng().gen_range(0..selected_steps.len())];
+            let stepx = asym_steps[rand::thread_rng().gen_range(0..asym_steps.len())];
 
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
-        // Randomly choose a step.
+        // Randomly choose a bit.
         let setx = rand::thread_rng().gen_range(0..steps_by_change_vov.len());
+
+        // Randomly choose a step.
         let stinx = rand::thread_rng().gen_range(0..steps_by_change_vov[setx].len());
 
         let stepx = steps_by_change_vov[setx][stinx];

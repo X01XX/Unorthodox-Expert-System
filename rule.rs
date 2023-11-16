@@ -380,7 +380,9 @@ impl SomeRule {
     /// Return true if two rules are mutually exclusive.
     /// Both rules lose wanted changes, running them in any order.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-        if self.sequence_reverses_change(other, wanted) && other.sequence_reverses_change(self, wanted) {
+        if self.sequence_reverses_change(other, wanted)
+            && other.sequence_reverses_change(self, wanted)
+        {
             return true;
         }
         false

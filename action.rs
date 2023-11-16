@@ -1437,7 +1437,8 @@ impl SomeAction {
 
             if grpx.pn == Pn::One {
                 // Find bit changes that are desired
-                if let Some(rulx) = grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange)
+                if let Some(rulx) =
+                    grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange)
                 {
                     stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
                 }

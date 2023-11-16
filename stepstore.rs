@@ -241,11 +241,13 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
             if iny == inx {
                 continue;
             }
-            if step_vecs_sequence_reverses_change(&by_change[inx], &by_change[iny], wanted) && !inxs.contains(&inx)
+            if step_vecs_sequence_reverses_change(&by_change[inx], &by_change[iny], wanted)
+                && !inxs.contains(&inx)
             {
                 inxs.push(inx);
             }
-            if step_vecs_sequence_reverses_change(&by_change[iny], &by_change[inx], wanted) && !inxs.contains(&iny)
+            if step_vecs_sequence_reverses_change(&by_change[iny], &by_change[inx], wanted)
+                && !inxs.contains(&iny)
             {
                 inxs.push(iny);
             }
