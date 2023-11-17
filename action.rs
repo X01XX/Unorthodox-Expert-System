@@ -1438,7 +1438,7 @@ impl SomeAction {
             if grpx.pn == Pn::One {
                 // Find bit changes that are desired
                 if let Some(rulx) =
-                    grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange)
+                    grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange, within)
                 {
                     stps.push(SomeStep::new(self.num, rulx, false, grpx.region.clone()));
                 }
@@ -1449,7 +1449,7 @@ impl SomeAction {
                 // Get restricted region for needed changes.
                 let mut parsed_region: Option<SomeRegion> = None;
                 for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.restrict_for_changes(achange) else {
+                    let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
                         continue;
                     };
                     parsed_region = Some(rulx.initial_region());
@@ -1467,7 +1467,7 @@ impl SomeAction {
                 }
 
                 for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.restrict_for_changes(achange) else {
+                    let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
                         continue;
                     };
 

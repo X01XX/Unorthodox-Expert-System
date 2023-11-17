@@ -333,48 +333,83 @@ impl SomeRule {
     /// X->0 is 0->0 and 1->0, the X can be changed to 1.
     /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
     ///
-    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Option<Self> {
-        let cng_int = change_needed.intersection(self);
+    /// For a change not sought:
+    /// X->1 is changed to 1->1.
+    /// X->0 is changed to 0->0.
+    ///
+    /// For a restriction on the region the rule should stay within:
+    /// X->X may remain the same, or be changed to 1->1 or 0->0.
+    /// X->x may remain the same, or it will be an excursion outside the desired region.
+    /// A 0 edge for X->x, or 0->1 will result in a 0->1 excursion.
+    /// A 1 edge for X->x, or 1->0 will result in a 1->0 excursion.
+    pub fn restrict_for_changes(
+        &self,
+        change_needed: &SomeChange,
+        within: Option<&SomeRegion>,
+    ) -> Option<Self> {
+        debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low());
 
+        // Init working copy of rule.
+        let mut rulex = self.clone();
+
+        // Get rule initial region.
+        let mut p_reg = self.initial_region();
+
+        // Alter rule if a within-limit is given.
+        if let Some(regx) = within {
+            // Restrict rule initial region, if needed.
+            if regx.is_superset_of(&p_reg) {
+            } else {
+                p_reg = p_reg.intersection(regx)?;
+                rulex = rulex.restrict_initial_region(regx);
+            }
+            // Check result is within limit.
+            if regx.is_superset_of(&rulex.result_region()) {
+            } else {
+                return None;
+            }
+        }
+
+        // Check at least one needed change is in rule.
+        let cng_int = change_needed.intersection(&rulex);
         if cng_int.is_low() {
-            // No change found, or no change is needed
             return None;
         }
 
-        // Get rule initial region and x mask.
-        let mut p_reg = self.initial_region();
+        // Get rule x-mask.
         let p_reg_xes = p_reg.x_mask();
 
         // Figure region bit positions to change from X to 1
         let to_ones = p_reg_xes.bitwise_and(&cng_int.b10);
-
         if to_ones.is_not_low() {
             p_reg = p_reg.set_to_ones(&to_ones);
         }
 
         // Figure region bit positions to change from X to 0
         let to_zeros = p_reg_xes.bitwise_and(&cng_int.b01);
-
         if to_zeros.is_not_low() {
             p_reg = p_reg.set_to_zeros(&to_zeros);
         }
 
-        // Parse out uneeded X->1, that is 0->1.
-        let x_to_1 = self.b01.bitwise_and(&self.b11);
+        // Change uneeded X->1 to 1->1.
+        let x_to_1 = rulex.b01.bitwise_and(&rulex.b11);
         let unneeded = x_to_1.bitwise_and(&change_needed.b01.bitwise_not());
         if unneeded.is_not_low() {
             p_reg = p_reg.set_to_ones(&unneeded);
         }
 
-        // Parse out unneeded X->0, that is 1->0.
-        let x_to_0 = self.b10.bitwise_and(&self.b00);
+        // Change unneeded X->0, to 0->0.
+        let x_to_0 = rulex.b10.bitwise_and(&rulex.b00);
         let unneeded = x_to_0.bitwise_and(&change_needed.b10.bitwise_not());
         if unneeded.is_not_low() {
             p_reg = p_reg.set_to_zeros(&unneeded);
         }
 
-        // Return a restricted rule
-        Some(self.restrict_initial_region(&p_reg))
+        // Form return rule.
+        let ret = rulex.restrict_initial_region(&p_reg);
+
+        // Return the restricted rule
+        Some(ret)
     }
 
     /// Return true if two rules are mutually exclusive.
@@ -702,19 +737,70 @@ mod tests {
         let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
-        let rul1 = tmp_rul.new_from_string("X1/X1/X0/X0/Xx/Xx/Xx")?;
+        // Change wanted   X->1 to 0->1.
+        // Change unwanted X->1 to 1->1.
+        // Change wanted   X->0 to 1->0.
+        // Change unwanted X->0 to 0->0.
+        let rul1 = tmp_rul.new_from_string("X1/X1/X0/X0")?;
         let chg1 = SomeChange::new(
-            tmp_msk.new_from_string("m0b1000010")?,
-            tmp_msk.new_from_string("m0b0010001")?,
+            tmp_msk.new_from_string("m0b1000")?,
+            tmp_msk.new_from_string("m0b0010")?,
         );
 
-        let Some(rul2) = rul1.restrict_for_changes(&chg1) else {
-            panic!("parse should succeed");
+        let Some(rul2) = rul1.restrict_for_changes(&chg1, None) else {
+            panic!("rul2 restriction should succeed");
         };
         println!("rul2 {}", &rul2);
 
-        assert!(rul2 == tmp_rul.new_from_string("01/11/10/00/Xx/01/10")?);
+        assert!(rul2 == tmp_rul.new_from_string("01/11/10/00")?);
+
+        // Change X->X to 0->0 by within restriction.
+        // Change X->X to 1->1 by within restriction.
+        // Leave one X->X unaffected.
+        let rul1 = tmp_rul.new_from_string("01/XX/XX/XX")?;
+        let chg1 = SomeChange::new(
+            tmp_msk.new_from_string("m0b1000")?,
+            tmp_msk.new_from_string("m0b0000")?,
+        );
+        let within = tmp_reg.new_from_string("rxx01")?;
+
+        let Some(rul3) = rul1.restrict_for_changes(&chg1, Some(&within)) else {
+            panic!("rul3 restriction should succeed");
+        };
+        println!("rul3 {}", &rul3);
+
+        assert!(rul3 == tmp_rul.new_from_string("01/XX/00/11")?);
+
+        // Change X->x to 1->0.
+        // Change X->x to 0->1.
+        // Leave one X->x unaffected.
+        let rul1 = tmp_rul.new_from_string("00/Xx/Xx/Xx")?;
+        let chg1 = SomeChange::new(
+            tmp_msk.new_from_string("m0b0010")?,
+            tmp_msk.new_from_string("m0b0100")?,
+        );
+
+        let Some(rul4) = rul1.restrict_for_changes(&chg1, None) else {
+            panic!("rul4 restriction should succeed");
+        };
+        println!("rul4 {}", &rul4);
+
+        assert!(rul4 == tmp_rul.new_from_string("00/10/01/Xx")?);
+
+        // Detect X-x excursion.
+        let rul1 = tmp_rul.new_from_string("01/Xx")?;
+        let chg1 = SomeChange::new(
+            tmp_msk.new_from_string("m0b10")?,
+            tmp_msk.new_from_string("m0b00")?,
+        );
+
+        let within = tmp_reg.new_from_string("rx1")?;
+
+        if let Some(_rul5) = rul1.restrict_for_changes(&chg1, Some(&within)) {
+            panic!("rul5 restriction should not succeed");
+        };
 
         Ok(())
     }

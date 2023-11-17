@@ -34,7 +34,8 @@ pub fn take_action(
         DOM1_ACTIONS[act_num](cur_state, sample_hint)
     };
     println!(
-        "\nDom 0 Act 0 {} -> {} R[{}]",
+        "\nDom {} Act 0 {} -> {} R[{}]",
+        dom_num,
         cur_state,
         new_state,
         SomeRule::new(&SomeSample::new(cur_state.clone(), new_state.clone()))
