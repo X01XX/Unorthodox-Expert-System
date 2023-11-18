@@ -56,6 +56,8 @@ impl SomeState {
     pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut rest = String::new();
 
+        let mut leading_zero = false;
+        let mut base_indicator = false;
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "s" || chr == "S" {
@@ -65,10 +67,19 @@ impl SomeState {
                     "Did not understand the string {str}, first character?"
                 ));
             }
-
+            if inx == 1 && chr == "0" {
+                leading_zero = true;
+            }
+            if inx == 2 && (chr == "b" || chr == "x") {
+                base_indicator = true;
+            }
             rest.push_str(chr);
         }
 
+        if leading_zero && base_indicator {
+        } else {
+            rest = "0b".to_owned() + &rest;
+        }
         match self.bts.new_from_string(&rest) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),

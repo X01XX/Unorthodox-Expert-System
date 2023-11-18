@@ -71,6 +71,7 @@ mod selectregionsstore;
 mod target;
 mod targetstore;
 use crate::bits::SomeBits;
+use crate::change::SomeChange;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::rule::SomeRule;
 
@@ -505,9 +506,40 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "rx" => {
+                // Check for, and process an argument to the rx command.
+                let mut goal: Option<SomeRegion> = None;
+                let mut dif: Option<SomeChange> = None;
+                let dmx = &dmxs.domains[dmxs.current_domain];
+                let mut cur_state = dmx.cur_state.clone();
+
+                if cmd.len() > 1 {
+                    if let Ok(regx) = dmx.region_from_string(cmd[1]) {
+                        if regx.is_superset_of(&cur_state) {
+                            println!("Current state is already in the goal");
+                        } else {
+                            goal = Some(regx);
+                            println!("A *  after a rule indicates at least one needed change.");
+                            println!("A *- after a rule indicates at least one additional uneeded change.");
+                        }
+                    } else {
+                        println!("Unable to convert string {} into a region", cmd[1]);
+                    }
+                }
                 let mut stack = Vec::<(SomeState, SomeRule, SomeState)>::new();
-                let ruls = dmxs.all_rules();
+                let ruls = dmx.all_rules();
                 loop {
+                    if let Some(ref regx) = goal {
+                        let cngx = SomeRegion::new(vec![cur_state.clone()])
+                            .translate_to_region(regx)
+                            .change();
+                        println!(
+                            "Goal {}, Change needed {} (number bits {})",
+                            regx,
+                            cngx,
+                            cngx.number_changes()
+                        );
+                        dif = Some(cngx);
+                    }
                     //println!("rules {}", tools::vec_ref_string(&ruls));
                     println!("{} rules", ruls.len());
                     if stack.is_empty() {
@@ -519,8 +551,6 @@ fn command_loop(dmxs: &mut DomainStore) {
                         }
                         println!(" ");
                     }
-                    let cur_state = dmxs.domains[dmxs.current_domain].cur_state.clone();
-                    let dom_num = dmxs.current_domain;
 
                     // Get rules that make a change to the current state.
                     // Save a list of valid indicies for later validation.
@@ -539,13 +569,46 @@ fn command_loop(dmxs: &mut DomainStore) {
                                 }
                                 if not_dup {
                                     valid_numbers.push(inx);
-                                    println!(
-                                        "  {:2} {} {} -> {}",
-                                        inx,
-                                        cur_state,
-                                        rulx,
-                                        rulx.result_from_initial_state(&cur_state)
-                                    );
+                                    if let Some(ref cngx) = dif {
+                                        if cngx.intersection(*rulx).is_low() {
+                                            println!(
+                                                "  {:2} {} {} -> {}",
+                                                inx,
+                                                cur_state,
+                                                rulx,
+                                                rulx.result_from_initial_state(&cur_state)
+                                            );
+                                        } else {
+                                            let ruly = rulx.restrict_initial_region(
+                                                &SomeRegion::new(vec![cur_state.clone()]),
+                                            );
+                                            if cngx.intersection(&ruly) != ruly.change() {
+                                                println!(
+                                                    "  {:2} {} {} -> {} *-",
+                                                    inx,
+                                                    cur_state,
+                                                    rulx,
+                                                    rulx.result_from_initial_state(&cur_state)
+                                                );
+                                            } else {
+                                                println!(
+                                                    "  {:2} {} {} -> {} *",
+                                                    inx,
+                                                    cur_state,
+                                                    rulx,
+                                                    rulx.result_from_initial_state(&cur_state)
+                                                );
+                                            }
+                                        }
+                                    } else {
+                                        println!(
+                                            "  {:2} {} {} -> {}",
+                                            inx,
+                                            cur_state,
+                                            rulx,
+                                            rulx.result_from_initial_state(&cur_state)
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -567,8 +630,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                     }
                     if cmd2[0] == "pop" {
                         if let Some((new_state, _rulx, _old_state)) = stack.pop() {
-                            let dmx = &mut dmxs[dom_num];
-                            dmx.set_cur_state(new_state);
+                            cur_state = new_state;
                         }
                         continue;
                     }
@@ -577,7 +639,6 @@ fn command_loop(dmxs: &mut DomainStore) {
                             if rul_num >= ruls.len() || !valid_numbers.contains(&rul_num) {
                                 println!("Number not matched");
                             } else {
-                                let dmx = &mut dmxs[dom_num];
                                 let new_state = ruls[rul_num].result_from_initial_state(&cur_state);
 
                                 stack.push((
@@ -585,7 +646,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     ruls[rul_num].clone(),
                                     new_state.clone(),
                                 ));
-                                dmx.set_cur_state(new_state);
+                                cur_state = new_state;
                             }
                         }
                         _ => println!("Did not understand number"),
@@ -1159,7 +1220,7 @@ fn usage() {
     );
     println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    rx                       - Experiment with rules of the CDD and it's current state. Esp. when a need cannot be satisfied.");
+    println!("\n    rx <region>              - Experiment with rules of the CDD and it's current state. Esp. when a need cannot be satisfied.");
     println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
     println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
     println!(

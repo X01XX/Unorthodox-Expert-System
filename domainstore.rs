@@ -9,7 +9,6 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::regionstorecorr::RegionStoreCorr;
-use crate::rule::SomeRule;
 use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
@@ -1456,10 +1455,6 @@ impl DomainStore {
             } // next steps
             println!("{}", planx.result_region());
         } // next planx
-    }
-
-    pub fn all_rules(&self) -> Vec<SomeRule> {
-        self.domains[self.current_domain].all_rules()
     }
 } // end impl DomainStore
 

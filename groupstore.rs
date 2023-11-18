@@ -390,12 +390,12 @@ impl GroupStore {
         rc_str
     }
 
-    pub fn all_rules(&self) -> Vec<SomeRule> {
-        let mut ret = Vec::<SomeRule>::new();
+    pub fn all_rules(&self) -> Vec<&SomeRule> {
+        let mut ret = Vec::<&SomeRule>::new();
         for grpx in self.avec.iter() {
             if let Some(rules) = &grpx.rules {
                 for rulx in rules.iter() {
-                    ret.push(rulx.clone());
+                    ret.push(rulx);
                 }
             }
         }

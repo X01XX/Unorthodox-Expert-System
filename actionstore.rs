@@ -164,8 +164,8 @@ impl ActionStore {
         rc_str
     }
 
-    pub fn all_rules(&self) -> Vec<SomeRule> {
-        let mut ret = Vec::<SomeRule>::new();
+    pub fn all_rules(&self) -> Vec<&SomeRule> {
+        let mut ret = Vec::<&SomeRule>::new();
         for actx in self.avec.iter() {
             ret.extend(actx.all_rules());
         }

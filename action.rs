@@ -1918,7 +1918,7 @@ impl SomeAction {
         self.memory.push_back(sqrx);
     }
 
-    pub fn all_rules(&self) -> Vec<SomeRule> {
+    pub fn all_rules(&self) -> Vec<&SomeRule> {
         self.groups.all_rules()
     }
 } // end impl SomeAction
