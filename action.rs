@@ -20,6 +20,7 @@ use crate::needstore::NeedStore;
 use crate::pn::Pn;
 use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
+use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
@@ -1915,6 +1916,10 @@ impl SomeAction {
             self.memory.pop_front();
         }
         self.memory.push_back(sqrx);
+    }
+
+    pub fn all_rules(&self) -> Vec<SomeRule> {
+        self.groups.all_rules()
     }
 } // end impl SomeAction
 

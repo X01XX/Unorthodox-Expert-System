@@ -22,6 +22,7 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
+use crate::rule::SomeRule;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
@@ -1063,6 +1064,10 @@ impl SomeDomain {
         );
         ret_plans
     } // end plan_path_through_regions2
+
+    pub fn all_rules(&self) -> Vec<SomeRule> {
+        self.actions.all_rules()
+    }
 } // end impl SomeDomain
 
 #[cfg(test)]

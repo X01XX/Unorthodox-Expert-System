@@ -8,6 +8,7 @@ use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -161,6 +162,14 @@ impl ActionStore {
         }
 
         rc_str
+    }
+
+    pub fn all_rules(&self) -> Vec<SomeRule> {
+        let mut ret = Vec::<SomeRule>::new();
+        for actx in self.avec.iter() {
+            ret.extend(actx.all_rules());
+        }
+        ret
     }
 } // end impl ActionStore
 

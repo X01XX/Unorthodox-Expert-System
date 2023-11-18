@@ -6,6 +6,7 @@ use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
+use crate::rule::SomeRule;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
@@ -387,6 +388,18 @@ impl GroupStore {
         }
 
         rc_str
+    }
+
+    pub fn all_rules(&self) -> Vec<SomeRule> {
+        let mut ret = Vec::<SomeRule>::new();
+        for grpx in self.avec.iter() {
+            if let Some(rules) = &grpx.rules {
+                for rulx in rules.iter() {
+                    ret.push(rulx.clone());
+                }
+            }
+        }
+        ret
     }
 } // end impl GroupStore
 

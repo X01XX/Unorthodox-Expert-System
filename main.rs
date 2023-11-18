@@ -72,6 +72,7 @@ mod target;
 mod targetstore;
 use crate::bits::SomeBits;
 use crate::regionstorecorr::RegionStoreCorr;
+use crate::rule::SomeRule;
 
 use std::io;
 use std::io::{Read, Write};
@@ -79,6 +80,7 @@ extern crate rand;
 use std::fs::File;
 use std::path::Path;
 use std::process;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 /// Get and react to arguments given.
@@ -502,6 +504,94 @@ fn command_loop(dmxs: &mut DomainStore) {
                     println!("{error}");
                 }
             },
+            "rx" => {
+                let mut stack = Vec::<(SomeState, SomeRule, SomeState)>::new();
+                let ruls = dmxs.all_rules();
+                loop {
+                    //println!("rules {}", tools::vec_ref_string(&ruls));
+                    println!("{} rules", ruls.len());
+                    if stack.is_empty() {
+                        println!("Stack: empty\n");
+                    } else {
+                        println!("Stack:");
+                        for (inx, (cur_sta, rulx, nxt_sta)) in stack.iter().enumerate() {
+                            println!("  {:2} {} {} -> {}", inx, cur_sta, rulx, nxt_sta);
+                        }
+                        println!(" ");
+                    }
+                    let cur_state = dmxs.domains[dmxs.current_domain].cur_state.clone();
+                    let dom_num = dmxs.current_domain;
+
+                    // Get rules that make a change to the current state.
+                    // Save a list of valid indicies for later validation.
+                    println!("Options:");
+                    let mut valid_numbers = Vec::<usize>::new();
+                    for (inx, rulx) in ruls.iter().enumerate() {
+                        if rulx.initial_region().is_superset_of(&cur_state) {
+                            let next_state = rulx.result_from_initial_state(&cur_state);
+                            if next_state != cur_state {
+                                // Check for dup state.
+                                let mut not_dup = true;
+                                for (cur_sta, _rulx, nxt_sta) in stack.iter() {
+                                    if next_state == *cur_sta || next_state == *nxt_sta {
+                                        not_dup = false;
+                                    }
+                                }
+                                if not_dup {
+                                    valid_numbers.push(inx);
+                                    println!(
+                                        "  {:2} {} {} -> {}",
+                                        inx,
+                                        cur_state,
+                                        rulx,
+                                        rulx.result_from_initial_state(&cur_state)
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    let mut cmd2 = Vec::<&str>::with_capacity(10);
+
+                    let guess2 = pause_for_input(
+                        "\nType a number, from options, above, pop, or q to quit: ",
+                    );
+
+                    for word in guess2.split_whitespace() {
+                        cmd2.push(word);
+                    }
+                    if cmd2.is_empty() {
+                        continue;
+                    }
+                    if cmd2[0] == "q" {
+                        return;
+                    }
+                    if cmd2[0] == "pop" {
+                        if let Some((new_state, _rulx, _old_state)) = stack.pop() {
+                            let dmx = &mut dmxs[dom_num];
+                            dmx.set_cur_state(new_state);
+                        }
+                        continue;
+                    }
+                    match usize::from_str(cmd2[0]) {
+                        Ok(rul_num) => {
+                            if rul_num >= ruls.len() || !valid_numbers.contains(&rul_num) {
+                                println!("Number not matched");
+                            } else {
+                                let dmx = &mut dmxs[dom_num];
+                                let new_state = ruls[rul_num].result_from_initial_state(&cur_state);
+
+                                stack.push((
+                                    cur_state.clone(),
+                                    ruls[rul_num].clone(),
+                                    new_state.clone(),
+                                ));
+                                dmx.set_cur_state(new_state);
+                            }
+                        }
+                        _ => println!("Did not understand number"),
+                    }
+                } // end while
+            }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
             }
@@ -1069,6 +1159,7 @@ fn usage() {
     );
     println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
+    println!("\n    rx                       - Experiment with rules of the CDD and it's current state. Esp. when a need cannot be satisfied.");
     println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
     println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
     println!(

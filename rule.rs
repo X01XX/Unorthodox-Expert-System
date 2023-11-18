@@ -464,7 +464,7 @@ impl SomeRule {
     /// Combine two rules.
     /// The result region of the first rule must intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
-    fn combine_pair(&self, other: &Self) -> Self {
+    pub fn combine_pair(&self, other: &Self) -> Self {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {

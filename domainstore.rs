@@ -9,6 +9,7 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::regionstorecorr::RegionStoreCorr;
+use crate::rule::SomeRule;
 use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
@@ -48,7 +49,7 @@ pub struct InxPlan {
 #[derive(Serialize, Deserialize, Default)]
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
-    pub avec: Vec<SomeDomain>,
+    pub domains: Vec<SomeDomain>,
     /// Domain displayed to user.
     pub current_domain: usize,
     /// A counter to indicate the number of steps the current state is in the same select region.
@@ -76,12 +77,12 @@ pub struct DomainStore {
 
 impl DomainStore {
     /// Return a new, empty, DomainStore struct.
-    pub fn new(mut avec: Vec<SomeDomain>) -> Self {
-        for (inx, domx) in avec.iter_mut().enumerate() {
+    pub fn new(mut domains: Vec<SomeDomain>) -> Self {
+        for (inx, domx) in domains.iter_mut().enumerate() {
             domx.set_domain_num(inx);
         }
         Self {
-            avec,
+            domains,
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
@@ -100,7 +101,7 @@ impl DomainStore {
     /// [1x0x, xxxx],
     /// [xxxx, x101] (two additions) = Domain 0, 1x0x, OR domain 1, x101.
     pub fn add_select(&mut self, selx: SelectRegions) {
-        debug_assert!(selx.len() == self.avec.len());
+        debug_assert!(selx.len() == self.domains.len());
 
         // Require some aggregate value.
         if selx.pos == selx.neg {
@@ -116,7 +117,7 @@ impl DomainStore {
         // Check that each select region matches the corresponding domain region size.
         // Check that at least one region has at least one non-x bit.
         let mut allx = true;
-        for (inx, dmx) in self.avec.iter().enumerate() {
+        for (inx, dmx) in self.domains.iter().enumerate() {
             if selx[inx].state1().num_bits() != dmx.cur_state.num_bits() {
                 panic!("reg {} bad number ints for domain {}", selx[inx], inx);
             }
@@ -300,11 +301,11 @@ impl DomainStore {
     pub fn push(&mut self, mut domx: SomeDomain) -> usize {
         debug_assert!(self.select.is_empty());
 
-        let dom_num = self.avec.len();
+        let dom_num = self.domains.len();
 
         domx.set_domain_num(dom_num);
 
-        self.avec.push(domx);
+        self.domains.push(domx);
 
         dom_num
     }
@@ -320,7 +321,7 @@ impl DomainStore {
 
         // Get all needs.
         let mut vecx: Vec<NeedStore> = self
-            .avec
+            .domains
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
             .collect::<Vec<NeedStore>>();
@@ -357,22 +358,22 @@ impl DomainStore {
     /// Run a plan for a given Domain.
     /// Return true if the plan ran to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
-        self.avec[pln.dom_num].run_plan(pln)
+        self.domains[pln.dom_num].run_plan(pln)
     }
 
     /// Take an action to satisfy a need,
     pub fn take_action_need(&mut self, nd_inx: usize) {
-        self.avec[self.needs[nd_inx].dom_num()].take_action_need(&self.needs[nd_inx]);
+        self.domains[self.needs[nd_inx].dom_num()].take_action_need(&self.needs[nd_inx]);
     }
 
     /// Take an arbitrary action
     pub fn take_action_arbitrary(&mut self, dmxi: usize, actx: usize) {
-        self.avec[dmxi].take_action_arbitrary(actx);
+        self.domains[dmxi].take_action_arbitrary(actx);
     }
 
     /// Return a reference to the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        self.avec[dmxi].get_current_state()
+        self.domains[dmxi].get_current_state()
     }
     /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
@@ -495,7 +496,7 @@ impl DomainStore {
             // Form start region corresponding.
             //let all_states = self.all_current_states();
             let mut start_regs = RegionStoreCorr::with_capacity(self.len());
-            for domx in self.avec.iter() {
+            for domx in self.domains.iter() {
                 start_regs.push(SomeRegion::new(vec![domx.cur_state.clone()]));
             }
 
@@ -504,7 +505,7 @@ impl DomainStore {
             for ndinx in 0..self.can_do.len() {
                 // Form goal region corresponding
                 let mut goal_regs = RegionStoreCorr::with_capacity(start_regs.len());
-                for (dom_inx, domx) in self.avec.iter().enumerate() {
+                for (dom_inx, domx) in self.domains.iter().enumerate() {
                     if let Some(regt) = self.needs[self.can_do[ndinx].inx]
                         .target()
                         .target_region(dom_inx)
@@ -587,7 +588,7 @@ impl DomainStore {
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plans(&self, dom_num: usize, goal_region: &SomeRegion) -> Option<Vec<SomePlan>> {
         //println!("domainstore: get_plans: dom {dom_num} goal {goal_region}");
-        self.avec[dom_num].make_plans(goal_region)
+        self.domains[dom_num].make_plans(goal_region)
     }
 
     /// Choose a plan from a vector of plans, for a need.
@@ -722,19 +723,19 @@ impl DomainStore {
 
     /// Return the length, the number of domains.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.domains.len()
     }
 
     /// Return true if the store is empty
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.domains.is_empty()
     }
 
     /// Return a vector of domain current state references, in domain number order.
     pub fn all_current_states(&self) -> StateStoreCorr {
         let mut all_states = StateStoreCorr::with_capacity(self.len());
 
-        for domx in self.avec.iter() {
+        for domx in self.domains.iter() {
             all_states.push(domx.get_current_state().clone());
         }
 
@@ -851,7 +852,7 @@ impl DomainStore {
     /// Return a vector of aggregate change references, per domain.
     pub fn aggregate_changes(&self) -> Vec<&SomeChange> {
         let mut change_vec = Vec::<&SomeChange>::with_capacity(self.len());
-        for domx in self.avec.iter() {
+        for domx in self.domains.iter() {
             change_vec.push(domx.aggregate_changes());
         }
         change_vec
@@ -966,9 +967,9 @@ impl DomainStore {
 
         print!("\nCurrent Domain: {} of {}", dom_num, self.len(),);
 
-        println!("\nActs: {}", &self.avec[dom_num].actions);
+        println!("\nActs: {}", &self.domains[dom_num].actions);
 
-        let cur_state = &self.avec[dom_num].get_current_state();
+        let cur_state = &self.domains[dom_num].get_current_state();
 
         println!("\nDom: {dom_num} Current State: {cur_state}");
     }
@@ -1006,7 +1007,7 @@ impl DomainStore {
 
     /// Change the current display domain.
     pub fn change_domain(&mut self, dom_num: usize) {
-        assert!(dom_num < self.avec.len());
+        assert!(dom_num < self.domains.len());
 
         self.current_domain = dom_num;
     }
@@ -1056,7 +1057,7 @@ impl DomainStore {
     /// Change the current state to be within a given region.
     /// Return True if the change succeeds.
     pub fn seek_state_in_region(&mut self, dom_num: usize, goal_region: &SomeRegion) -> bool {
-        if goal_region.is_superset_of(&self.avec[dom_num].cur_state) {
+        if goal_region.is_superset_of(&self.domains[dom_num].cur_state) {
             return true;
         }
 
@@ -1403,7 +1404,7 @@ impl DomainStore {
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("[");
 
-        for (inx, mskx) in self.avec.iter().enumerate() {
+        for (inx, mskx) in self.domains.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
@@ -1417,7 +1418,7 @@ impl DomainStore {
     /// Return the total number of groups in all the domains.
     pub fn number_groups(&self) -> usize {
         let mut tot = 0;
-        for domx in self.avec.iter() {
+        for domx in self.domains.iter() {
             tot += domx.number_groups();
         }
         tot
@@ -1456,18 +1457,22 @@ impl DomainStore {
             println!("{}", planx.result_region());
         } // next planx
     }
+
+    pub fn all_rules(&self) -> Vec<SomeRule> {
+        self.domains[self.current_domain].all_rules()
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
     type Output = SomeDomain;
     fn index(&self, i: usize) -> &SomeDomain {
-        &self.avec[i]
+        &self.domains[i]
     }
 }
 
 impl IndexMut<usize> for DomainStore {
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.avec[i]
+        &mut self.domains[i]
     }
 }
 
