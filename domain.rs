@@ -1065,7 +1065,7 @@ impl SomeDomain {
         ret_plans
     } // end plan_path_through_regions2
 
-    pub fn all_rules(&self) -> Vec<&SomeRule> {
+    pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
         self.actions.all_rules()
     }
 } // end impl SomeDomain

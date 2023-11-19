@@ -1918,8 +1918,12 @@ impl SomeAction {
         self.memory.push_back(sqrx);
     }
 
-    pub fn all_rules(&self) -> Vec<&SomeRule> {
-        self.groups.all_rules()
+    pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
+        let mut ret = Vec::<(usize, &SomeRule)>::new();
+        for rulx in self.groups.all_rules() {
+            ret.push((self.num, rulx));
+        }
+        ret
     }
 } // end impl SomeAction
 

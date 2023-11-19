@@ -525,7 +525,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         println!("Unable to convert string {} into a region", cmd[1]);
                     }
                 }
-                let mut stack = Vec::<(SomeState, SomeRule, SomeState)>::new();
+                let mut stack = Vec::<(SomeState, (usize, &SomeRule), SomeState)>::new();
                 let ruls = dmx.all_rules();
                 loop {
                     if let Some(ref regx) = goal {
@@ -547,7 +547,10 @@ fn command_loop(dmxs: &mut DomainStore) {
                     } else {
                         println!("Stack:");
                         for (inx, (cur_sta, rulx, nxt_sta)) in stack.iter().enumerate() {
-                            println!("  {:2} {} {} -> {}", inx, cur_sta, rulx, nxt_sta);
+                            println!(
+                                "  {:2} {} {} -{}-> {}",
+                                inx, cur_sta, rulx.1, rulx.0, nxt_sta
+                            );
                         }
                         println!(" ");
                     }
@@ -556,7 +559,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                     // Save a list of valid indicies for later validation.
                     println!("Options:");
                     let mut valid_numbers = Vec::<usize>::new();
-                    for (inx, rulx) in ruls.iter().enumerate() {
+                    for (inx, (act_num, rulx)) in ruls.iter().enumerate() {
                         if rulx.initial_region().is_superset_of(&cur_state) {
                             let next_state = rulx.result_from_initial_state(&cur_state);
                             if next_state != cur_state {
@@ -572,10 +575,11 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     if let Some(ref cngx) = dif {
                                         if cngx.intersection(*rulx).is_low() {
                                             println!(
-                                                "  {:2} {} {} -> {}",
+                                                "  {:2} {} {} -{}-> {}",
                                                 inx,
                                                 cur_state,
                                                 rulx,
+                                                act_num,
                                                 rulx.result_from_initial_state(&cur_state)
                                             );
                                         } else {
@@ -584,28 +588,31 @@ fn command_loop(dmxs: &mut DomainStore) {
                                             );
                                             if cngx.intersection(&ruly) != ruly.change() {
                                                 println!(
-                                                    "  {:2} {} {} -> {} *-",
+                                                    "  {:2} {} {} -{}-> {} *-",
                                                     inx,
                                                     cur_state,
                                                     rulx,
+                                                    act_num,
                                                     rulx.result_from_initial_state(&cur_state)
                                                 );
                                             } else {
                                                 println!(
-                                                    "  {:2} {} {} -> {} *",
+                                                    "  {:2} {} {} -{}-> {} *",
                                                     inx,
                                                     cur_state,
                                                     rulx,
+                                                    act_num,
                                                     rulx.result_from_initial_state(&cur_state)
                                                 );
                                             }
                                         }
                                     } else {
                                         println!(
-                                            "  {:2} {} {} -> {}",
+                                            "  {:2} {} {} -{}> {}",
                                             inx,
                                             cur_state,
                                             rulx,
+                                            act_num,
                                             rulx.result_from_initial_state(&cur_state)
                                         );
                                     }
@@ -639,13 +646,10 @@ fn command_loop(dmxs: &mut DomainStore) {
                             if rul_num >= ruls.len() || !valid_numbers.contains(&rul_num) {
                                 println!("Number not matched");
                             } else {
-                                let new_state = ruls[rul_num].result_from_initial_state(&cur_state);
+                                let new_state =
+                                    ruls[rul_num].1.result_from_initial_state(&cur_state);
 
-                                stack.push((
-                                    cur_state.clone(),
-                                    ruls[rul_num].clone(),
-                                    new_state.clone(),
-                                ));
+                                stack.push((cur_state.clone(), ruls[rul_num], new_state.clone()));
                                 cur_state = new_state;
                             }
                         }
