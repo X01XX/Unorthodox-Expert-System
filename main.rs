@@ -540,7 +540,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         );
                         dif = Some(cngx);
                     }
-                    //println!("rules {}", tools::vec_ref_string(&ruls));
+
                     println!("{} rules", ruls.len());
                     if stack.is_empty() {
                         println!("Stack: empty\n");
@@ -555,11 +555,23 @@ fn command_loop(dmxs: &mut DomainStore) {
                         println!(" ");
                     }
 
+                    // Get rules that make a needed change, but cannot be used with the current state.
+                    // Save a list of valid indicies for later display.
+                    let mut future_numbers = Vec::<usize>::new();
+                    if let Some(ref cngx) = dif {
+                        for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
+                            if !rulx.initial_region().is_superset_of(&cur_state)
+                                && cngx.intersection(*rulx).is_not_low()
+                            {
+                                future_numbers.push(inx);
+                            }
+                        }
+                    }
+
                     // Get rules that make a change to the current state.
-                    // Save a list of valid indicies for later validation.
-                    println!("Options:");
+                    // Save a list of valid indicies for later display and validation.
                     let mut valid_numbers = Vec::<usize>::new();
-                    for (inx, (act_num, rulx)) in ruls.iter().enumerate() {
+                    for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
                         if rulx.initial_region().is_superset_of(&cur_state) {
                             let next_state = rulx.result_from_initial_state(&cur_state);
                             if next_state != cur_state {
@@ -572,60 +584,95 @@ fn command_loop(dmxs: &mut DomainStore) {
                                 }
                                 if not_dup {
                                     valid_numbers.push(inx);
-                                    if let Some(ref cngx) = dif {
-                                        if cngx.intersection(*rulx).is_low() {
-                                            println!(
-                                                "  {:2} {} {} -{}-> {}",
-                                                inx,
-                                                cur_state,
-                                                rulx,
-                                                act_num,
-                                                rulx.result_from_initial_state(&cur_state)
-                                            );
-                                        } else {
-                                            let ruly = rulx.restrict_initial_region(
-                                                &SomeRegion::new(vec![cur_state.clone()]),
-                                            );
-                                            if cngx.intersection(&ruly) != ruly.change() {
-                                                println!(
-                                                    "  {:2} {} {} -{}-> {} *-",
-                                                    inx,
-                                                    cur_state,
-                                                    rulx,
-                                                    act_num,
-                                                    rulx.result_from_initial_state(&cur_state)
-                                                );
-                                            } else {
-                                                println!(
-                                                    "  {:2} {} {} -{}-> {} *",
-                                                    inx,
-                                                    cur_state,
-                                                    rulx,
-                                                    act_num,
-                                                    rulx.result_from_initial_state(&cur_state)
-                                                );
-                                            }
-                                        }
-                                    } else {
-                                        println!(
-                                            "  {:2} {} {} -{}> {}",
-                                            inx,
-                                            cur_state,
-                                            rulx,
-                                            act_num,
-                                            rulx.result_from_initial_state(&cur_state)
-                                        );
-                                    }
                                 }
                             }
                         }
                     }
-                    let mut cmd2 = Vec::<&str>::with_capacity(10);
 
+                    // Display future options, if any.
+                    if future_numbers.is_empty() {
+                    } else {
+                        println!("Possible future options, containing a needed change:");
+                        for inx in future_numbers.iter() {
+                            let (act_num, rulx) = ruls[*inx];
+                            println!(
+                                "  {:2} {} {} -{}-> {}",
+                                inx,
+                                rulx.initial_region(),
+                                rulx,
+                                act_num,
+                                rulx.result_region(),
+                            );
+                        }
+                        println!(" ");
+                    }
+
+                    // Display current options.
+                    if valid_numbers.is_empty() {
+                        println!("Current options: None");
+                    } else {
+                        println!("Current options:");
+                        for inx in valid_numbers.iter() {
+                            let (act_num, rulx) = ruls[*inx];
+
+                            if let Some(ref cngx) = dif {
+                                let mut suffix = String::new();
+                                let result = rulx.result_from_initial_state(&cur_state);
+
+                                let mut link_numbers = Vec::<usize>::new();
+                                for inf in future_numbers.iter() {
+                                    let (_act_numf, rulf) = ruls[*inf];
+                                    if rulf.initial_region().is_superset_of(&result) {
+                                        link_numbers.push(*inf);
+                                    }
+                                }
+                                if link_numbers.is_empty() {
+                                } else {
+                                    suffix = format!(" Links to {:?}, above", link_numbers);
+                                }
+
+                                if cngx.intersection(rulx).is_low() {
+                                    println!(
+                                        "  {:2} {} {} -{}-> {} {}",
+                                        inx, cur_state, rulx, act_num, result, suffix,
+                                    );
+                                } else {
+                                    let ruly =
+                                        rulx.restrict_initial_region(&SomeRegion::new(vec![
+                                            cur_state.clone(),
+                                        ]));
+                                    if cngx.intersection(&ruly) != ruly.change() {
+                                        println!(
+                                            "  {:2} {} {} -{}-> {} *- {}",
+                                            inx, cur_state, rulx, act_num, result, suffix,
+                                        );
+                                    } else {
+                                        println!(
+                                            "  {:2} {} {} -{}-> {} * {}",
+                                            inx, cur_state, rulx, act_num, result, suffix,
+                                        );
+                                    }
+                                }
+                            } else {
+                                println!(
+                                    "  {:2} {} {} -{}> {}",
+                                    inx,
+                                    cur_state,
+                                    rulx,
+                                    act_num,
+                                    rulx.result_from_initial_state(&cur_state)
+                                );
+                            }
+                        }
+                    }
+
+                    // Get user input.
+                    let mut cmd2 = Vec::<&str>::with_capacity(10);
                     let guess2 = pause_for_input(
-                        "\nType a number, from options, above, pop, or q to quit: ",
+                        "\nType a number, from options, above, pop, clear, or q to quit: ",
                     );
 
+                    // Process user input.
                     for word in guess2.split_whitespace() {
                         cmd2.push(word);
                     }
@@ -638,6 +685,14 @@ fn command_loop(dmxs: &mut DomainStore) {
                     if cmd2[0] == "pop" {
                         if let Some((new_state, _rulx, _old_state)) = stack.pop() {
                             cur_state = new_state;
+                        }
+                        continue;
+                    }
+                    if cmd2[0] == "clear" {
+                        while !stack.is_empty() {
+                            if let Some((new_state, _rulx, _old_state)) = stack.pop() {
+                                cur_state = new_state;
+                            }
                         }
                         continue;
                     }
