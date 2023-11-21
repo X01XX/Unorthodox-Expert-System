@@ -541,7 +541,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         dif = Some(cngx);
                     }
 
-                    println!("{} rules", ruls.len());
+                    // Print Stack.
                     if stack.is_empty() {
                         println!("Stack: empty\n");
                     } else {
@@ -555,113 +555,157 @@ fn command_loop(dmxs: &mut DomainStore) {
                         println!(" ");
                     }
 
-                    // Get rules that make a needed change, but cannot be used with the current state.
-                    // Save a list of valid indicies for later display.
-                    let mut future_numbers = Vec::<usize>::new();
-                    if let Some(ref cngx) = dif {
-                        for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
-                            if !rulx.initial_region().is_superset_of(&cur_state)
-                                && cngx.intersection(*rulx).is_not_low()
-                            {
-                                future_numbers.push(inx);
-                            }
+                    // Check if a goal is given and achieved.
+                    let mut show_rules = true;
+                    if let Some(ref regx) = goal {
+                        if regx.is_superset_of(&cur_state) {
+                            show_rules = false;
                         }
                     }
 
-                    // Get rules that make a change to the current state.
-                    // Save a list of valid indicies for later display and validation.
-                    let mut valid_numbers = Vec::<usize>::new();
-                    for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
-                        if rulx.initial_region().is_superset_of(&cur_state) {
-                            let next_state = rulx.result_from_initial_state(&cur_state);
-                            if next_state != cur_state {
-                                // Check for dup state.
-                                let mut not_dup = true;
-                                for (cur_sta, _rulx, nxt_sta) in stack.iter() {
-                                    if next_state == *cur_sta || next_state == *nxt_sta {
-                                        not_dup = false;
+                    // A list of valid indicies for later display and validation.
+                    let mut valid_indexes = Vec::<usize>::new();
+                    if show_rules {
+                        println!("{} rules", ruls.len());
+
+                        // Get rules that make a needed change, but cannot be used with the current state.
+                        // Save a list of valid indicies for later display.
+                        let mut future_numbers = Vec::<usize>::new();
+                        if let Some(ref cngx) = dif {
+                            for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
+                                if !rulx.initial_region().is_superset_of(&cur_state)
+                                    && cngx.intersection(*rulx).is_not_low()
+                                {
+                                    future_numbers.push(inx);
+                                }
+                            }
+                        }
+
+                        // Get rules that make a change to the current state.
+                        for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
+                            // If rule can be applied to the state..
+                            if rulx.initial_region().is_superset_of(&cur_state) {
+                                // Calc the result state is different from the current state.
+                                let next_state = rulx.result_from_initial_state(&cur_state);
+                                if next_state != cur_state {
+                                    // Check for dup state in the stack.
+                                    let mut not_dup = true;
+                                    for (cur_sta, _rulx, nxt_sta) in stack.iter() {
+                                        if next_state == *cur_sta || next_state == *nxt_sta {
+                                            not_dup = false;
+                                        }
+                                    }
+                                    // If no dup state found in the stack, add the index.
+                                    if not_dup {
+                                        valid_indexes.push(inx);
                                     }
                                 }
-                                if not_dup {
-                                    valid_numbers.push(inx);
-                                }
                             }
                         }
-                    }
 
-                    // Display future options, if any.
-                    if future_numbers.is_empty() {
-                    } else {
-                        println!("Possible future options, containing a needed change:");
-                        for inx in future_numbers.iter() {
-                            let (act_num, rulx) = ruls[*inx];
-                            println!(
-                                "  {:2} {} {} -{}-> {}",
-                                inx,
-                                rulx.initial_region(),
-                                rulx,
-                                act_num,
-                                rulx.result_region(),
-                            );
+                        // Display future options, if any.
+                        if future_numbers.is_empty() {
+                        } else {
+                            println!("Possible future options, containing a needed change:");
+                            for inx in future_numbers.iter() {
+                                let (act_num, rulx) = ruls[*inx];
+                                println!(
+                                    "  {:2} {} {} -{}-> {}",
+                                    inx,
+                                    rulx.initial_region(),
+                                    rulx,
+                                    act_num,
+                                    rulx.result_region(),
+                                );
+                            }
+                            println!(" ");
                         }
-                        println!(" ");
-                    }
 
-                    // Display current options.
-                    if valid_numbers.is_empty() {
-                        println!("Current options: None");
-                    } else {
-                        println!("Current options:");
-                        for inx in valid_numbers.iter() {
-                            let (act_num, rulx) = ruls[*inx];
+                        // Display current options.
+                        if valid_indexes.is_empty() {
+                            println!("Current options: None");
+                        } else {
+                            println!("Current options:");
+                            for inx in valid_indexes.iter() {
+                                let (act_num, rulx) = ruls[*inx];
 
-                            if let Some(ref cngx) = dif {
-                                let mut suffix = String::new();
+                                // Calc result of applying the rule.
                                 let result = rulx.result_from_initial_state(&cur_state);
 
-                                let mut link_numbers = Vec::<usize>::new();
-                                for inf in future_numbers.iter() {
-                                    let (_act_numf, rulf) = ruls[*inf];
-                                    if rulf.initial_region().is_superset_of(&result) {
-                                        link_numbers.push(*inf);
-                                    }
-                                }
-                                if link_numbers.is_empty() {
-                                } else {
-                                    suffix = format!(" Links to {:?}, above", link_numbers);
-                                }
+                                // If there is a change needed for a goal.
+                                if let Some(ref cngx) = dif {
+                                    // Init string for display of links.
+                                    let mut suffix = String::new();
+                                    // Init vector for link indicies.
+                                    let mut link_indexes = Vec::<usize>::new();
+                                    // Look for possible links.
+                                    for inf in future_numbers.iter() {
+                                        // Get rule info.
+                                        let (_act_numf, rulf) = ruls[*inf];
 
-                                if cngx.intersection(rulx).is_low() {
-                                    println!(
-                                        "  {:2} {} {} -{}-> {} {}",
-                                        inx, cur_state, rulx, act_num, result, suffix,
-                                    );
-                                } else {
+                                        // If possible future rule can be linked.
+                                        if rulf.initial_region().is_superset_of(&result) {
+                                            // Restrict rule to filter out changes that will not apply to the linked result state.
+                                            let ruly = rulf.restrict_initial_region(
+                                                &SomeRegion::new(vec![result.clone()]),
+                                            );
+                                            if cngx.intersection(&ruly).is_low() {
+                                            } else {
+                                                // There is a change caused by the rule, calc next state.
+                                                let next_state =
+                                                    ruly.result_from_initial_state(&result);
+                                                // Check for dup state, in stack.
+                                                let mut not_dup = true;
+                                                for (cur_sta, _rulx, nxt_sta) in stack.iter() {
+                                                    if next_state == *cur_sta
+                                                        || next_state == *nxt_sta
+                                                    {
+                                                        not_dup = false;
+                                                    }
+                                                }
+                                                // If no dup state in stack, add possible link.
+                                                if not_dup {
+                                                    link_indexes.push(*inf);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // Generate suffix for rule display, if needed.
+                                    if link_indexes.is_empty() {
+                                    } else {
+                                        suffix = format!(" Links to {:?}, above", link_indexes);
+                                    }
+                                    // Restrict rule to filter out bypassed changes.
                                     let ruly =
                                         rulx.restrict_initial_region(&SomeRegion::new(vec![
                                             cur_state.clone(),
                                         ]));
-                                    if cngx.intersection(&ruly) != ruly.change() {
+                                    // Chec if a wanted change occurs.
+                                    if cngx.intersection(&ruly).is_low() {
+                                        println!(
+                                            "  {:2} {} {} -{}-> {} {}",
+                                            inx, cur_state, rulx, act_num, result, suffix,
+                                        );
+                                    } else if cngx.intersection(&ruly) != ruly.change() {
+                                        // Check for uneeded change.
                                         println!(
                                             "  {:2} {} {} -{}-> {} *- {}",
                                             inx, cur_state, rulx, act_num, result, suffix,
                                         );
                                     } else {
+                                        // There is a needed change.
                                         println!(
                                             "  {:2} {} {} -{}-> {} * {}",
                                             inx, cur_state, rulx, act_num, result, suffix,
                                         );
                                     }
+                                } else {
+                                    // No goal was given.
+                                    println!(
+                                        "  {:2} {} {} -{}-> {}",
+                                        inx, cur_state, rulx, act_num, result
+                                    );
                                 }
-                            } else {
-                                println!(
-                                    "  {:2} {} {} -{}> {}",
-                                    inx,
-                                    cur_state,
-                                    rulx,
-                                    act_num,
-                                    rulx.result_from_initial_state(&cur_state)
-                                );
                             }
                         }
                     }
@@ -698,7 +742,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                     }
                     match usize::from_str(cmd2[0]) {
                         Ok(rul_num) => {
-                            if rul_num >= ruls.len() || !valid_numbers.contains(&rul_num) {
+                            if !valid_indexes.contains(&rul_num) {
                                 println!("Number not matched");
                             } else {
                                 let new_state =
@@ -710,7 +754,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         }
                         _ => println!("Did not understand number"),
                     }
-                } // end while
+                } // end loop
             }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
