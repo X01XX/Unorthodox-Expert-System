@@ -391,20 +391,6 @@ impl SomeRule {
             p_reg = p_reg.set_to_zeros(&to_zeros);
         }
 
-        // Change uneeded X->1 to 1->1.
-        let x_to_1 = rulex.b01.bitwise_and(&rulex.b11);
-        let unneeded = x_to_1.bitwise_and(&change_needed.b01.bitwise_not());
-        if unneeded.is_not_low() {
-            p_reg = p_reg.set_to_ones(&unneeded);
-        }
-
-        // Change unneeded X->0, to 0->0.
-        let x_to_0 = rulex.b10.bitwise_and(&rulex.b00);
-        let unneeded = x_to_0.bitwise_and(&change_needed.b10.bitwise_not());
-        if unneeded.is_not_low() {
-            p_reg = p_reg.set_to_zeros(&unneeded);
-        }
-
         // Form return rule.
         let ret = rulex.restrict_initial_region(&p_reg);
 
@@ -513,6 +499,104 @@ impl AccessChanges for SomeRule {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn combine_pair() -> Result<(), String> {
+        let ur_sta = SomeState::new(SomeBits::new(vec![0]));
+        let ur_rul = SomeRule::new(&SomeSample::new(ur_sta.clone(), ur_sta.clone()));
+
+        // Test 0->0
+        let rul1 = ur_rul.new_from_string("00/00/00/00/00/00")?;
+        let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("00/01/00/01/00/01")?;
+        assert!(rul3 == rul4);
+
+        // Test 0->1
+        let rul1 = ur_rul.new_from_string("01/01/01/01/01/01")?;
+        let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("01/00/00/01/01/00")?;
+        assert!(rul3 == rul4);
+
+        // Test 1->1
+        let rul1 = ur_rul.new_from_string("11/11/11/11/11/11")?;
+        let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("11/10/10/11/11/10")?;
+        assert!(rul3 == rul4);
+
+        // Test 1->0
+        let rul1 = ur_rul.new_from_string("10/10/10/10/10/10")?;
+        let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("10/11/10/11/10/11")?;
+        assert!(rul3 == rul4);
+
+        // Test X->0
+        let rul1 = ur_rul.new_from_string("X0/X0/X0/X0/X0/X0")?;
+        let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("X0/X1/X0/X1/X0/X1")?;
+        assert!(rul3 == rul4);
+
+        // Test X->1
+        let rul1 = ur_rul.new_from_string("X1/X1/X1/X1/X1/X1")?;
+        let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("X1/X0/X0/X1/X1/X0")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->x
+        let rul1 = ur_rul.new_from_string("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
+        let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rus3 {}", rul3.formatted_string());
+
+        let rul4 = ur_rul.new_from_string("01/00/10/11/X0/X1/Xx/XX")?;
+        assert!(rul3 == rul4);
+
+        Ok(())
+    }
 
     #[test]
     fn test_strlen() -> Result<(), String> {
@@ -740,9 +824,9 @@ mod tests {
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
         // Change wanted   X->1 to 0->1.
-        // Change unwanted X->1 to 1->1.
+        // Change depends  X->1 to X->1.
         // Change wanted   X->0 to 1->0.
-        // Change unwanted X->0 to 0->0.
+        // Change depends  X->0 to X->0.
         let rul1 = tmp_rul.new_from_string("X1/X1/X0/X0")?;
         let chg1 = SomeChange::new(
             tmp_msk.new_from_string("m0b1000")?,
@@ -754,7 +838,7 @@ mod tests {
         };
         println!("rul2 {}", &rul2);
 
-        assert!(rul2 == tmp_rul.new_from_string("01/11/10/00")?);
+        assert!(rul2 == tmp_rul.new_from_string("01/X1/10/X0")?);
 
         // Change X->X to 0->0 by within restriction.
         // Change X->X to 1->1 by within restriction.
@@ -798,7 +882,8 @@ mod tests {
 
         let within = tmp_reg.new_from_string("rx1")?;
 
-        if let Some(_rul5) = rul1.restrict_for_changes(&chg1, Some(&within)) {
+        if let Some(rul5) = rul1.restrict_for_changes(&chg1, Some(&within)) {
+            println!("rul5 ? {}", rul5);
             panic!("rul5 restriction should not succeed");
         };
 

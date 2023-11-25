@@ -5,6 +5,7 @@
 //! The two states used to make the region, can be keys to two squares.
 
 use crate::mask::SomeMask;
+use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
@@ -515,10 +516,9 @@ impl SomeRegion {
     }
 
     /// Return the complement of a region.
-    /// Caller shoud probably store the return vector into a RegionStore.
-    pub fn complement(&self) -> Vec<Self> {
+    pub fn complement(&self) -> RegionStore {
         let nonxbits = self.edge_mask().split();
-        let mut ret = Vec::<Self>::with_capacity(nonxbits.len());
+        let mut ret = RegionStore::with_capacity(nonxbits.len());
 
         let high_sta = self.state1().new_high();
         let low_sta = high_sta.new_low();
@@ -552,20 +552,40 @@ impl SomeRegion {
     /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
     /// 0->0 instead of 0->X), the second region.
     /// The minimum changes are sought, so X->x-not becomes X->X.
+    /// It can be thought that:
+    /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
+    /// or if in the other change may be unwanted.
+    /// For X->0, the requirement depends, a 0 input will be no change.
+    /// For X->1, the requirement depends, a 1 input will be no change.
+    /// Anything -> X, is a don't care.
     pub fn translate_to_region(&self, to: &SomeRegion) -> SomeRule {
         let self_x = self.x_mask();
-        let self_1 = self.ones_mask().bitwise_or(&self_x);
-        let self_0 = self.zeros_mask().bitwise_or(&self_x);
+        let self_1 = self.ones_mask();
+        let self_0 = self.zeros_mask();
 
         let to_x = to.x_mask();
         let to_1 = to.ones_mask();
         let to_0 = to.zeros_mask();
 
+        let x_to_0 = self_x.bitwise_and(&to_0);
+        let x_to_1 = self_x.bitwise_and(&to_1);
+        let x_to_x = self_x.bitwise_and(&to_x);
+        let zero_to_x = self_0.bitwise_and(&to_x);
+        let one_to_x = self_1.bitwise_and(&to_x);
+
         SomeRule {
-            b00: self_0.bitwise_and(&to_0.bitwise_or(&to_x)),
-            b01: self_0.bitwise_and(&to_1),
-            b11: self_1.bitwise_and(&to_1.bitwise_or(&to_x)),
-            b10: self_1.bitwise_and(&to_0),
+            b00: self_0
+                .bitwise_and(&to_0)
+                .bitwise_or(&x_to_0)
+                .bitwise_or(&x_to_x)
+                .bitwise_or(&zero_to_x),
+            b01: self_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
+            b11: self_1
+                .bitwise_and(&to_1)
+                .bitwise_or(&x_to_1)
+                .bitwise_or(&x_to_x)
+                .bitwise_or(&one_to_x),
+            b10: self_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
         }
     }
 } // end impl SomeRegion
@@ -641,7 +661,7 @@ mod tests {
         let reg1 = ur_region.new_from_string_pad_x("r10XX_X101").expect("SNH");
 
         let comp1 = reg1.complement();
-        println!("comp1: {}", tools::vec_string(&comp1));
+        println!("comp1: {}", comp1);
 
         assert!(comp1.len() == 5);
         assert!(comp1.contains(&ur_region.new_from_string("r0xxx_xxxx").expect("SNH")));

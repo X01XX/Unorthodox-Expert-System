@@ -390,12 +390,22 @@ impl GroupStore {
         rc_str
     }
 
+    /// Return a vector of rules for the "rx" command.
     pub fn all_rules(&self) -> Vec<&SomeRule> {
         let mut ret = Vec::<&SomeRule>::new();
         for grpx in self.avec.iter() {
             if let Some(rules) = &grpx.rules {
-                for rulx in rules.iter() {
-                    ret.push(rulx);
+                if rules.len() == 1 {
+                    if rules[0].change().is_not_low() {
+                        ret.push(&rules[0]);
+                    }
+                    continue;
+                }
+                if rules[0].change().is_low() && rules[1].change().is_not_low() {
+                    ret.push(&rules[1]);
+                }
+                if rules[0].change().is_not_low() && rules[1].change().is_low() {
+                    ret.push(&rules[0]);
                 }
             }
         }

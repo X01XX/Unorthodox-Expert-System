@@ -529,16 +529,16 @@ fn command_loop(dmxs: &mut DomainStore) {
                 let ruls = dmx.all_rules();
                 loop {
                     if let Some(ref regx) = goal {
-                        let cngx = SomeRegion::new(vec![cur_state.clone()])
+                        let wanted_changes = SomeRegion::new(vec![cur_state.clone()])
                             .translate_to_region(regx)
                             .change();
                         println!(
                             "Goal {}, Change needed {} (number bits {})",
                             regx,
-                            cngx,
-                            cngx.number_changes()
+                            wanted_changes,
+                            wanted_changes.number_changes()
                         );
-                        dif = Some(cngx);
+                        dif = Some(wanted_changes);
                     }
 
                     // Print Stack.
@@ -571,10 +571,10 @@ fn command_loop(dmxs: &mut DomainStore) {
                         // Get rules that make a needed change, but cannot be used with the current state.
                         // Save a list of valid indicies for later display.
                         let mut future_numbers = Vec::<usize>::new();
-                        if let Some(ref cngx) = dif {
+                        if let Some(ref wanted_changes) = &dif {
                             for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
                                 if !rulx.initial_region().is_superset_of(&cur_state)
-                                    && cngx.intersection(*rulx).is_not_low()
+                                    && wanted_changes.intersection(*rulx).is_not_low()
                                 {
                                     future_numbers.push(inx);
                                 }
@@ -609,13 +609,34 @@ fn command_loop(dmxs: &mut DomainStore) {
                             println!("Possible future options, containing a needed change:");
                             for inx in future_numbers.iter() {
                                 let (act_num, rulx) = ruls[*inx];
+                                let mut ruly = rulx.clone();
+
+                                let mut suffix = String::from(" ");
+                                if let Some(wanted_changes) = &dif {
+                                    ruly = rulx
+                                        .restrict_for_changes(wanted_changes, None)
+                                        .expect("SNH");
+                                    let to_rule = SomeRegion::new(vec![cur_state.clone()])
+                                        .translate_to_region(&ruly.initial_region());
+                                    let agg_rule = to_rule.combine_pair(&ruly);
+                                    let agg_cng = agg_rule.change();
+                                    let wanted_bit_changes = agg_cng.intersection(wanted_changes);
+                                    let unwanted_bit_changes =
+                                        agg_cng.intersection(&wanted_changes.bitwise_not());
+                                    if wanted_bit_changes.is_not_low() {
+                                        suffix += &format!("wanted {}", wanted_bit_changes);
+                                    }
+                                    if unwanted_bit_changes.is_not_low() {
+                                        suffix += &format!(" unwanted {}", unwanted_bit_changes);
+                                    }
+                                }
                                 println!(
-                                    "  {:2} {} {} -{}-> {}",
+                                    "  {:2} {} {} -{}-> {} {suffix}",
                                     inx,
-                                    rulx.initial_region(),
-                                    rulx,
+                                    ruly.initial_region(),
+                                    ruly,
                                     act_num,
-                                    rulx.result_region(),
+                                    ruly.result_region(),
                                 );
                             }
                             println!(" ");
@@ -632,8 +653,12 @@ fn command_loop(dmxs: &mut DomainStore) {
                                 // Calc result of applying the rule.
                                 let result = rulx.result_from_initial_state(&cur_state);
 
+                                let ruly = rulx.restrict_initial_region(&SomeRegion::new(vec![
+                                    cur_state.clone(),
+                                ]));
+
                                 // If there is a change needed for a goal.
-                                if let Some(ref cngx) = dif {
+                                if let Some(ref wanted_changes) = dif {
                                     // Init string for display of links.
                                     let mut suffix = String::new();
                                     // Init vector for link indicies.
@@ -649,7 +674,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                                             let ruly = rulf.restrict_initial_region(
                                                 &SomeRegion::new(vec![result.clone()]),
                                             );
-                                            if cngx.intersection(&ruly).is_low() {
+                                            if wanted_changes.intersection(&ruly).is_low() {
                                             } else {
                                                 // There is a change caused by the rule, calc next state.
                                                 let next_state =
@@ -675,36 +700,29 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     } else {
                                         suffix = format!(" Links to {:?}, above", link_indexes);
                                     }
-                                    // Restrict rule to filter out bypassed changes.
-                                    let ruly =
-                                        rulx.restrict_initial_region(&SomeRegion::new(vec![
-                                            cur_state.clone(),
-                                        ]));
-                                    // Chec if a wanted change occurs.
-                                    if cngx.intersection(&ruly).is_low() {
+
+                                    // Check if a wanted change occurs.
+                                    if wanted_changes.intersection(&ruly).is_low() {
                                         println!(
-                                            "  {:2} {} {} -{}-> {} {}",
-                                            inx, cur_state, rulx, act_num, result, suffix,
+                                            "  {:2} {} -{}-> {} {}",
+                                            inx, cur_state, act_num, result, suffix,
                                         );
-                                    } else if cngx.intersection(&ruly) != ruly.change() {
+                                    } else if wanted_changes.intersection(&ruly) != ruly.change() {
                                         // Check for uneeded change.
                                         println!(
-                                            "  {:2} {} {} -{}-> {} *- {}",
-                                            inx, cur_state, rulx, act_num, result, suffix,
+                                            "  {:2} {} -{}-> {} *- {}",
+                                            inx, cur_state, act_num, result, suffix,
                                         );
                                     } else {
                                         // There is a needed change.
                                         println!(
-                                            "  {:2} {} {} -{}-> {} * {}",
-                                            inx, cur_state, rulx, act_num, result, suffix,
+                                            "  {:2} {} -{}-> {} * {}",
+                                            inx, cur_state, act_num, result, suffix,
                                         );
                                     }
                                 } else {
                                     // No goal was given.
-                                    println!(
-                                        "  {:2} {} {} -{}-> {}",
-                                        inx, cur_state, rulx, act_num, result
-                                    );
+                                    println!("  {:2} {} -{}-> {}", inx, cur_state, act_num, result);
                                 }
                             }
                         }

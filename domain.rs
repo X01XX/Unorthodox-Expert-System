@@ -167,8 +167,7 @@ impl SomeDomain {
         }
 
         if self.complements.get(&sel_num).is_none() {
-            self.complements
-                .insert(sel_num, RegionStore::new(regx.complement()));
+            self.complements.insert(sel_num, regx.complement());
         }
     }
 
@@ -1065,6 +1064,7 @@ impl SomeDomain {
         ret_plans
     } // end plan_path_through_regions2
 
+    /// Return a vector of rules for the "rx" command.
     pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
         self.actions.all_rules()
     }

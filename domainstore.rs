@@ -1161,9 +1161,8 @@ impl DomainStore {
 
             let mut comp = RegionStore::new(vec![self[*dom_num].max_region.clone()]);
             for sely in sel_inxs.iter() {
-                comp = comp.intersection(&RegionStore::new(
-                    self.select_negative[*sely].regions[*dom_num].complement(),
-                ));
+                comp =
+                    comp.intersection(&self.select_negative[*sely].regions[*dom_num].complement());
             }
 
             let paths = self[*dom_num].find_paths_through_regions(
@@ -1225,9 +1224,8 @@ impl DomainStore {
                     }
                     let mut comp = RegionStore::new(vec![self[domx].max_region.clone()]);
                     for sely in sel_inxs.iter() {
-                        comp = comp.intersection(&RegionStore::new(
-                            self.select_negative[*sely].regions[domx].complement(),
-                        ));
+                        comp = comp
+                            .intersection(&self.select_negative[*sely].regions[domx].complement());
                     }
                     // Find closest complement regions.
                     let mut min_dist = usize::MAX;

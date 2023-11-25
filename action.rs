@@ -1918,6 +1918,7 @@ impl SomeAction {
         self.memory.push_back(sqrx);
     }
 
+    /// Return a vector of rules for the "rx" command.
     pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
         let mut ret = Vec::<(usize, &SomeRule)>::new();
         for rulx in self.groups.all_rules() {

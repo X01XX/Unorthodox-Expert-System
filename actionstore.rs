@@ -164,6 +164,7 @@ impl ActionStore {
         rc_str
     }
 
+    /// Return a vector of rules for the "rx" command.
     pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
         let mut ret = Vec::<(usize, &SomeRule)>::new();
         for actx in self.avec.iter() {
