@@ -80,6 +80,14 @@ impl SomeChange {
         }
     }
 
+    /// Return the logical bitwise and of a mask.
+    pub fn bitwise_and(&self, msk: &SomeMask) -> Self {
+        Self {
+            b01: self.b01.bitwise_and(msk),
+            b10: self.b10.bitwise_and(msk),
+        }
+    }
+
     /// Return true if no bits are set
     pub fn is_low(&self) -> bool {
         if !self.b01.is_low() {

@@ -501,6 +501,131 @@ mod tests {
     use crate::bits::SomeBits;
 
     #[test]
+    fn test_wanted_unwanted() -> Result<(), String> {
+        // For a given rule.
+        // With no intersection of start and rule initial region.
+        // With no intersection of rule result region and goal.
+        // Calc wanted, unwanted, missing and don't care changes.
+
+        let ur_bits = SomeBits::new(vec![0]);
+        let ur_sta = SomeState::new(ur_bits.clone());
+        let ur_mask = SomeMask::new(ur_bits.clone());
+        let ur_rul = SomeRule::new(&SomeSample::new(ur_sta.clone(), ur_sta.clone()));
+
+        // Init start, 0.
+        let start = SomeRegion::new(vec![ur_sta.new_from_string("s0000")?]);
+        println!("start {start}");
+
+        // Set up goal, 10X1.
+        let goal = SomeRegion::new(vec![
+            ur_sta.new_from_string("s1001")?,
+            ur_sta.new_from_string("s1011")?,
+        ]);
+        println!("goal {goal}");
+
+        // Random rule.
+        let rul1 = ur_rul.new_from_string("01/11/01/10")?; // 5 -> E
+        println!("rul1 {rul1}");
+
+        // Make a sequence rule, start to rul1 initial region, to rul1 result region.
+        // Given the changes wanted, start to goal, it may not be worth it to translate to the rule
+        // initial region.
+        let rul2 = start
+            .translate_to_region(&rul1.initial_region())
+            .combine_pair(&rul1);
+        println!("rul2 {rul2}");
+
+        // Figure start to goal, 0 -> 10X1, to contrast with rul2.
+        let rul3 = ur_rul.new_from_string("01/00/00/01")?; // 0 -> 10X1
+        println!("rul3 {rul3}");
+
+        // Figure mask for changes we care about.
+        let care = goal.edge_mask();
+        println!("Changes we care about mask {care}");
+
+        // Figure wanted changes.
+        let wanted = rul2
+            .change()
+            .intersection(&rul3.change())
+            .bitwise_and(&care);
+        println!(
+            "wanted change {wanted}, start {start} to {}",
+            wanted.applied_to(&start)
+        );
+        assert!(
+            wanted
+                == SomeChange::new(
+                    ur_mask.new_from_string("m0b1000")?,
+                    ur_mask.new_from_string("m0b0000")?
+                )
+        ); // b01, b10
+
+        // Figure unwanted changes.
+        let unwanted = rul2
+            .change()
+            .intersection(&rul3.change().bitwise_not())
+            .bitwise_and(&care);
+        println!(
+            "unwanted change {unwanted}, start {start} to {}",
+            unwanted.applied_to(&start)
+        );
+        assert!(
+            unwanted
+                == SomeChange::new(
+                    ur_mask.new_from_string("m0b0100")?,
+                    ur_mask.new_from_string("m0b0000")?
+                )
+        ); // b01, b10
+
+        // Figure missing change.
+        let missing = rul2
+            .change()
+            .bitwise_not()
+            .intersection(&rul3.change())
+            .bitwise_and(&care);
+        println!(
+            "missing change {missing}, start {start} to {}",
+            missing.applied_to(&start)
+        );
+        assert!(
+            missing
+                == SomeChange::new(
+                    ur_mask.new_from_string("m0b0001")?,
+                    ur_mask.new_from_string("m0b0000")?
+                )
+        ); // b01, b10
+
+        // Detect don't care change.
+        let dont = rul2.change().bitwise_and(&goal.x_mask());
+        println!("don't care {dont}");
+        assert!(
+            dont == SomeChange::new(
+                ur_mask.new_from_string("m0b0010")?,
+                ur_mask.new_from_string("m0b0000")?
+            )
+        ); // b01, b10
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn combine_sequence() -> Result<(), String> {
+        let ur_sta = SomeState::new(SomeBits::new(vec![0]));
+        let ur_rul = SomeRule::new(&SomeSample::new(ur_sta.clone(), ur_sta.clone()));
+
+        // Test C->9, 9->A implied, A->F = C->F
+        let rul1 = ur_rul.new_from_string("11/10/00/01")?;
+        let rul2 = ur_rul.new_from_string("11/01/11/01")?;
+        let rul3 = rul1.combine_sequence(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+        let rul4 = ur_rul.new_from_string("11/11/01/01")?;
+        assert!(rul3 == rul4);
+
+        Ok(())
+    }
+
+    #[test]
     fn combine_pair() -> Result<(), String> {
         let ur_sta = SomeState::new(SomeBits::new(vec![0]));
         let ur_rul = SomeRule::new(&SomeSample::new(ur_sta.clone(), ur_sta.clone()));
@@ -509,7 +634,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("00/00/00/00/00/00")?;
         let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("00/01/00/01/00/01")?;
         assert!(rul3 == rul4);
@@ -518,7 +643,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("01/01/01/01/01/01")?;
         let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("01/00/00/01/01/00")?;
         assert!(rul3 == rul4);
@@ -527,7 +652,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("11/11/11/11/11/11")?;
         let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("11/10/10/11/11/10")?;
         assert!(rul3 == rul4);
@@ -536,7 +661,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("10/10/10/10/10/10")?;
         let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("10/11/10/11/10/11")?;
         assert!(rul3 == rul4);
@@ -545,7 +670,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("X0/X0/X0/X0/X0/X0")?;
         let rul2 = ur_rul.new_from_string("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("X0/X1/X0/X1/X0/X1")?;
         assert!(rul3 == rul4);
@@ -554,7 +679,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("X1/X1/X1/X1/X1/X1")?;
         let rul2 = ur_rul.new_from_string("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("X1/X0/X0/X1/X1/X0")?;
         assert!(rul3 == rul4);
@@ -563,7 +688,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
@@ -572,7 +697,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
@@ -581,7 +706,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
@@ -590,7 +715,7 @@ mod tests {
         let rul1 = ur_rul.new_from_string("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
         let rul2 = ur_rul.new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_pair(&rul2);
-        println!("rus3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = ur_rul.new_from_string("01/00/10/11/X0/X1/Xx/XX")?;
         assert!(rul3 == rul4);

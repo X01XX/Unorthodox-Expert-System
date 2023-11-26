@@ -555,8 +555,8 @@ impl SomeRegion {
     /// It can be thought that:
     /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
     /// or if in the other change may be unwanted.
-    /// For X->0, the requirement depends, a 0 input will be no change.
-    /// For X->1, the requirement depends, a 1 input will be no change.
+    /// For X->0, the change is optional, a 0 input will be no change.
+    /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
     pub fn translate_to_region(&self, to: &SomeRegion) -> SomeRule {
         let self_x = self.x_mask();
@@ -651,6 +651,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
+    use crate::sample::SomeSample;
     use rand::Rng;
 
     #[test]
@@ -1306,30 +1307,50 @@ mod tests {
 
     #[test]
     fn translate_to_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+        let tmp_rul = SomeRule::new(&SomeSample::new(
+            SomeState::new(tmp_bts.clone()),
+            SomeState::new(tmp_bts.clone()),
+        ));
 
-        let reg1 = tmp_reg.new_from_string("r000_111_xxx")?;
-        let reg2 = tmp_reg.new_from_string("r01x_01x_01x")?;
-
+        let reg1 = tmp_reg.new_from_string("r000")?;
+        let reg2 = tmp_reg.new_from_string("r01X")?;
         let rul1 = reg1.translate_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        assert!(reg2.is_superset_of(&rul1.result_region()));
+        let rul2 = tmp_rul.new_from_string("00/01/00")?;
+        assert!(rul1 == rul2);
+
+        let reg1 = tmp_reg.new_from_string("r111")?;
+        let reg2 = tmp_reg.new_from_string("r01X")?;
+        let rul1 = reg1.translate_to_region(&reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
+        let rul2 = tmp_rul.new_from_string("10/11/11")?;
+        assert!(rul1 == rul2);
+
+        let reg1 = tmp_reg.new_from_string("rXXX")?;
+        let reg2 = tmp_reg.new_from_string("r01X")?;
+        let rul1 = reg1.translate_to_region(&reg2);
+        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
+        let rul2 = tmp_rul.new_from_string("X0/X1/XX")?;
+        assert!(rul1 == rul2);
 
         // Test proper subset region.
         let reg1 = tmp_reg.new_from_string("r0011")?;
         let reg2 = tmp_reg.new_from_string("rx01x")?;
         let rul1 = reg1.translate_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        assert!(rul1.result_region() == reg1);
+        let rul2 = tmp_rul.new_from_string("00/00/11/11")?;
+        assert!(rul1 == rul2);
 
         // Test intersecting regions.
         let reg1 = tmp_reg.new_from_string("r010x")?;
         let reg2 = tmp_reg.new_from_string("rx1x1")?;
         let rul1 = reg1.translate_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        assert!(rul1.result_region() == tmp_reg.new_from_string("r0101")?);
+        let rul2 = tmp_rul.new_from_string("00/11/00/X1")?;
+        assert!(rul1 == rul2);
 
         Ok(())
     }
