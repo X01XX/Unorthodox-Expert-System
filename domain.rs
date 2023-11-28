@@ -351,9 +351,67 @@ impl SomeDomain {
         // Randomly choose a bit.
         let setx = rand::thread_rng().gen_range(0..steps_by_change_vov.len());
 
-        // Randomly choose a step.
-        let stinx = rand::thread_rng().gen_range(0..steps_by_change_vov[setx].len());
+        let stinx = if steps_by_change_vov[setx].len() == 1 {
+            0
+        } else {
+            // Find minimum half-path number of unwanted changes.
+            // The other half of the path will necessarily reverse the unwanted changes.
 
+            // Get mask of changes we care about.
+            let edges = goal_reg.edge_mask();
+
+            // Get wanted changes.
+            let wanted_changes = from_reg.translate_to_region(goal_reg);
+
+            // Init minimum unwanted changes, and vector of step references.
+            let mut min_unwanted = usize::MAX;
+            let mut max_unwanted = 0;
+            let mut min_steps = Vec::<usize>::new();
+
+            for (inx, stepx) in steps_by_change_vov[setx].iter().enumerate() {
+                let tmp_min = if stepx.initial.is_superset_of(from_reg) {
+                    // Forward chaining
+                    let tmp_rul = stepx.rule.restrict_initial_region(from_reg);
+                    let unwanted = tmp_rul
+                        .change()
+                        .intersection(&wanted_changes.change().bitwise_not())
+                        .bitwise_and(&edges);
+                    unwanted.number_changes()
+                } else if stepx.result.intersects(goal_reg) {
+                    // Backward chaining.
+                    let tmp_rul = stepx.rule.restrict_result_region(goal_reg);
+                    let unwanted = tmp_rul
+                        .change()
+                        .intersection(&wanted_changes.change().bitwise_not())
+                        .bitwise_and(&edges);
+                    unwanted.number_changes()
+                } else {
+                    // Asymmetrical chaining.
+                    let tmp_rul0 = from_reg.translate_to_region(&stepx.initial);
+                    let tmp_rul = tmp_rul0.combine_pair(&stepx.rule);
+                    let unwanted = tmp_rul
+                        .change()
+                        .intersection(&wanted_changes.change().bitwise_not())
+                        .bitwise_and(&edges);
+                    unwanted.number_changes()
+                };
+                if tmp_min < min_unwanted {
+                    min_unwanted = tmp_min;
+                    min_steps = Vec::<usize>::new();
+                }
+                if tmp_min == min_unwanted {
+                    min_steps.push(inx);
+                }
+                if tmp_min > max_unwanted {
+                    max_unwanted = tmp_min;
+                }
+            }
+            //println!("number steps {}, max unwanted {}, min unwanted = {}", steps_by_change_vov[setx].len(), max_unwanted, min_unwanted);
+            min_steps[rand::thread_rng().gen_range(0..min_steps.len())]
+        };
+
+        // Randomly choose a step.
+        //let stinx = rand::thread_rng().gen_range(0..steps_by_change_vov[setx].len());
         let stepx = steps_by_change_vov[setx][stinx];
 
         // Process a forward chaining step.
