@@ -53,7 +53,6 @@ use state::SomeState;
 mod domain;
 mod statestore;
 mod statestorecorr;
-use domain::SomeDomain;
 mod needstore;
 mod plan;
 mod pn;
@@ -259,7 +258,9 @@ fn run_number_times(num_runs: usize) -> usize {
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn domainstore_init() -> DomainStore {
     // Start a DomainStore
-    let mut dmxs = DomainStore::new(vec![SomeDomain::new(1), SomeDomain::new(2)]);
+    let mut dmxs = DomainStore::new();
+    dmxs.add_domain(1);
+    dmxs.add_domain(2);
 
     // Add actions 0 through 9 to Domain 0;
     dmxs[0].add_action();
@@ -516,6 +517,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                     if let Ok(regx) = dmx.region_from_string(cmd[1]) {
                         if regx.is_superset_of(&cur_state) {
                             println!("Current state is already in the goal");
+                            return;
                         } else {
                             goal = Some(regx);
                             println!("A *  after a rule indicates at least one needed change.");
@@ -572,7 +574,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         // Save a list of valid indicies for later display.
                         let mut future_numbers = Vec::<usize>::new();
                         if let Some(ref wanted_changes) = &dif {
-                            for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
+                            for (inx, (_act_id, rulx)) in ruls.iter().enumerate() {
                                 if !rulx.initial_region().is_superset_of(&cur_state)
                                     && wanted_changes.intersection(*rulx).is_not_low()
                                 {
@@ -582,7 +584,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         }
 
                         // Get rules that make a change to the current state.
-                        for (inx, (_act_num, rulx)) in ruls.iter().enumerate() {
+                        for (inx, (_act_id, rulx)) in ruls.iter().enumerate() {
                             // If rule can be applied to the state..
                             if rulx.initial_region().is_superset_of(&cur_state) {
                                 // Calc the result state is different from the current state.
@@ -607,8 +609,11 @@ fn command_loop(dmxs: &mut DomainStore) {
                         if future_numbers.is_empty() {
                         } else {
                             println!("Possible future options, containing a needed change:");
+                            let goal_reg = goal.as_ref().expect("SNH");
+                            let edge_mask = goal_reg.edge_mask();
+
                             for inx in future_numbers.iter() {
-                                let (act_num, rulx) = ruls[*inx];
+                                let (act_id, rulx) = ruls[*inx];
                                 let mut ruly = rulx.clone();
 
                                 let mut suffix = String::from(" ");
@@ -618,11 +623,13 @@ fn command_loop(dmxs: &mut DomainStore) {
                                         .expect("SNH");
                                     let to_rule = SomeRegion::new(vec![cur_state.clone()])
                                         .translate_to_region(&ruly.initial_region());
+
                                     let agg_rule = to_rule.combine_pair(&ruly);
-                                    let agg_cng = agg_rule.change();
-                                    let wanted_bit_changes = agg_cng.intersection(wanted_changes);
-                                    let unwanted_bit_changes =
-                                        agg_cng.intersection(&wanted_changes.bitwise_not());
+
+                                    let wanted_bit_changes = wanted_changes.intersection(&agg_rule);
+
+                                    let unwanted_bit_changes = wanted_changes.bitwise_not().intersection(&agg_rule).bitwise_and(&edge_mask);
+
                                     if wanted_bit_changes.is_not_low() {
                                         suffix += &format!("wanted {}", wanted_bit_changes);
                                     }
@@ -635,7 +642,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     inx,
                                     ruly.initial_region(),
                                     ruly,
-                                    act_num,
+                                    act_id,
                                     ruly.result_region(),
                                 );
                             }
@@ -648,7 +655,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                         } else {
                             println!("Current options:");
                             for inx in valid_indexes.iter() {
-                                let (act_num, rulx) = ruls[*inx];
+                                let (act_id, rulx) = ruls[*inx];
 
                                 // Calc result of applying the rule.
                                 let result = rulx.result_from_initial_state(&cur_state);
@@ -666,7 +673,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     // Look for possible links.
                                     for inf in future_numbers.iter() {
                                         // Get rule info.
-                                        let (_act_numf, rulf) = ruls[*inf];
+                                        let (_act_idf, rulf) = ruls[*inf];
 
                                         // If possible future rule can be linked.
                                         if rulf.initial_region().is_superset_of(&result) {
@@ -705,24 +712,24 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     if wanted_changes.intersection(&ruly).is_low() {
                                         println!(
                                             "  {:2} {} -{}-> {} {}",
-                                            inx, cur_state, act_num, result, suffix,
+                                            inx, cur_state, act_id, result, suffix,
                                         );
                                     } else if wanted_changes.intersection(&ruly) != ruly.change() {
                                         // Check for uneeded change.
                                         println!(
                                             "  {:2} {} -{}-> {} *- {}",
-                                            inx, cur_state, act_num, result, suffix,
+                                            inx, cur_state, act_id, result, suffix,
                                         );
                                     } else {
                                         // There is a needed change.
                                         println!(
                                             "  {:2} {} -{}-> {} * {}",
-                                            inx, cur_state, act_num, result, suffix,
+                                            inx, cur_state, act_id, result, suffix,
                                         );
                                     }
                                 } else {
                                     // No goal was given.
-                                    println!("  {:2} {} -{}-> {}", inx, cur_state, act_num, result);
+                                    println!("  {:2} {} -{}-> {}", inx, cur_state, act_id, result);
                                 }
                             }
                         }
@@ -784,9 +791,9 @@ fn command_loop(dmxs: &mut DomainStore) {
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     // Get domain number from string
-    match dmxs.domain_num_from_string(cmd[1]) {
-        Ok(d_num) => {
-            dmxs.change_domain(d_num);
+    match dmxs.domain_id_from_string(cmd[1]) {
+        Ok(d_id) => {
+            dmxs.change_domain(d_id);
             Ok(())
         }
         Err(error) => Err(error),
@@ -823,7 +830,7 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                         dmxs.print_plan_detail(pln);
                     }
                     _ => {
-                        if ndx.satisfied_by(dmxs[ndx.dom_num()].get_current_state()) {
+                        if ndx.satisfied_by(dmxs[ndx.dom_id()].get_current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
                             //println!("\n{}", &pln.str2());
@@ -842,7 +849,7 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
 /// Try to satisfy a need.
 /// Return true if success.
 fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
-    let dom_num = dmxs.current_domain;
+    let dom_id = dmxs.current_domain;
     let nd_inx = inx_pln.inx;
 
     // Display Domain info, if needed.
@@ -854,8 +861,8 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
         }
         _ => {
-            let nd_dom = dmxs.needs[nd_inx].dom_num();
-            if dom_num != nd_dom {
+            let nd_dom = dmxs.needs[nd_inx].dom_id();
+            if dom_id != nd_dom {
                 // Show "before" state before running need.
                 println!("\nAll domain states: {}", dmxs.all_current_states());
                 dmxs.change_domain(nd_dom);
@@ -895,17 +902,17 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             }
         }
         SomeNeed::ExitSelectRegion {
-            dom_num,
+            dom_id,
             target_region,
             ..
         } => {
-            if target_region.is_superset_of(&dmxs[*dom_num].cur_state) {
+            if target_region.is_superset_of(&dmxs[*dom_id].cur_state) {
                 dmxs.set_boredom_limit();
                 return true;
             }
         }
         _ => {
-            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_num())) {
+            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_id())) {
                 dmxs.take_action_need(nd_inx);
                 return true;
             }
@@ -916,7 +923,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
 /// Try to satisfy a need chosen by the user.
 fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
+    let dom_id = dmxs.current_domain;
 
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
@@ -941,8 +948,8 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     SomeNeed::ToSelectRegion { .. } => (),
                     SomeNeed::ExitSelectRegion { .. } => (),
                     _ => {
-                        if dom_num != dmxs.needs[nd_inx].dom_num() {
-                            dmxs.change_domain(dmxs.needs[nd_inx].dom_num());
+                        if dom_id != dmxs.needs[nd_inx].dom_id() {
+                            dmxs.change_domain(dmxs.needs[nd_inx].dom_id());
                             dmxs.print_domain();
                         }
                     }
@@ -975,8 +982,8 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
 
 /// Do to-region command.
 fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_id];
 
     let cur_state = dmx.get_current_state();
 
@@ -990,7 +997,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
                     dmx.get_current_state(),
                     goal_region
                 );
-            } else if dmxs.seek_state_in_region(dom_num, &goal_region) {
+            } else if dmxs.seek_state_in_region(dom_id, &goal_region) {
                 println!("\nChange to region succeeded");
             } else {
                 println!("\nChange to region failed");
@@ -1003,8 +1010,8 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
 /// Do sample-state command.
 fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_id];
 
     let cur_state = dmx.get_current_state();
 
@@ -1012,16 +1019,16 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let act_num = match dmx.act_num_from_string(cmd[1]) {
-        Ok(act_num) => act_num,
+    let act_id = match dmx.act_id_from_string(cmd[1]) {
+        Ok(act_id) => act_id,
         Err(error) => {
             return Err(error);
         }
     };
 
     if cmd.len() == 2 {
-        println!("Act {act_num} sample State {cur_state}");
-        dmx.take_action_arbitrary(act_num);
+        println!("Act {act_id} sample State {cur_state}");
+        dmx.take_action_arbitrary(act_id);
         return Ok(());
     }
 
@@ -1034,9 +1041,9 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
             }
         };
 
-        println!("Act {act_num} sample State {a_state}");
+        println!("Act {act_id} sample State {a_state}");
         dmx.set_state(&a_state);
-        dmx.take_action_arbitrary(act_num);
+        dmx.take_action_arbitrary(act_id);
         return Ok(());
     }
 
@@ -1063,9 +1070,9 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
             }
         };
 
-        println!("Act {act_num} take sample {i_state} -> {r_state}");
+        println!("Act {act_id} take sample {i_state} -> {r_state}");
         let smpl = SomeSample::new(i_state, r_state);
-        dmx.eval_sample_arbitrary(act_num, &smpl);
+        dmx.eval_sample_arbitrary(act_id, &smpl);
         return Ok(());
     } // end command ss 4
 
@@ -1076,23 +1083,23 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 /// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
 /// should equal the sum of the first two number of the rating.
 fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_id];
 
     if cmd.len() == 1 {
         return Err("Need to supply an action number".to_string());
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(cmd[1]) {
-        Ok(act_num) => act_num,
+    let act_id = match dmx.act_id_from_string(cmd[1]) {
+        Ok(act_id) => act_id,
         Err(error) => {
             return Err(error);
         }
     };
 
     // Display the rates
-    dmxs[dom_num].display_action_anchor_info(act_num)
+    dmxs[dom_id].display_action_anchor_info(act_id)
 }
 
 /// Do print-squares command.
@@ -1109,16 +1116,16 @@ fn do_print_select_regions(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), St
 
 /// Do print-squares command.
 fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &dmxs[dom_id];
 
     if cmd.len() == 1 {
         return Err("Need to supply at least an action number".to_string());
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(cmd[1]) {
-        Ok(act_num) => act_num,
+    let act_id = match dmx.act_id_from_string(cmd[1]) {
+        Ok(act_id) => act_id,
         Err(error) => {
             return Err(error);
         }
@@ -1127,7 +1134,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
     if cmd.len() == 2 {
         println!(
             "Squares of Action {} are:\n{}\n",
-            &act_num, &dmx.actions[act_num].squares
+            &act_id, &dmx.actions[act_id].squares
         );
         return Ok(());
     }
@@ -1141,9 +1148,9 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
             }
         };
 
-        println!("Squares of Action {act_num} in region {aregion} are:\n");
+        println!("Squares of Action {act_id} in region {aregion} are:\n");
 
-        let sqrs = dmx.actions[act_num].squares.squares_in_reg(&aregion);
+        let sqrs = dmx.actions[act_id].squares.squares_in_reg(&aregion);
         if sqrs.is_empty() {
             println!("No squares in region {aregion}");
             return Ok(());
@@ -1201,7 +1208,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
         let mut rules_str = String::from("None");
         if max_pn == Pn::Unpredictable {
             for stax in non_pn_stas.iter() {
-                let sqrx = dmx.actions[act_num].squares.find(stax).unwrap();
+                let sqrx = dmx.actions[act_id].squares.find(stax).unwrap();
                 if sqrx.pnc {
                     form_group = false;
                 }
@@ -1209,7 +1216,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
         } else if let Some(ruls) = rules {
             rules_str = ruls.to_string();
             for stax in non_pn_stas.iter() {
-                let sqrx = dmx.actions[act_num].squares.find(stax).expect(
+                let sqrx = dmx.actions[act_id].squares.find(stax).expect(
                     "States in the non_pn_stas StateStore should all reference existing squares",
                 );
                 if !sqrx.rules.as_ref().expect("SNH").is_subset_of(&ruls) {
@@ -1234,16 +1241,16 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
 
 /// Do adjacent-anchor command.
 fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &dmxs[dom_id];
 
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(cmd[1]) {
-        Ok(act_num) => act_num,
+    let act_id = match dmx.act_id_from_string(cmd[1]) {
+        Ok(act_id) => act_id,
         Err(error) => {
             return Err(error);
         }
@@ -1260,7 +1267,7 @@ fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), 
         }
     };
 
-    dmx.display_group_anchor_info(act_num, &aregion)
+    dmx.display_group_anchor_info(act_id, &aregion)
 }
 
 /// Do print-group-defining-squares command.
@@ -1268,15 +1275,15 @@ fn do_print_group_defining_squares_command(
     dmxs: &DomainStore,
     cmd: &Vec<&str>,
 ) -> Result<(), String> {
-    let dom_num = dmxs.current_domain;
-    let dmx = &dmxs[dom_num];
+    let dom_id = dmxs.current_domain;
+    let dmx = &dmxs[dom_id];
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
 
     // Get action number
-    let act_num = match dmx.act_num_from_string(cmd[1]) {
-        Ok(act_num) => act_num,
+    let act_id = match dmx.act_id_from_string(cmd[1]) {
+        Ok(act_id) => act_id,
         Err(error) => {
             return Err(error);
         }
@@ -1293,9 +1300,9 @@ fn do_print_group_defining_squares_command(
         }
     };
 
-    if let Some(grpx) = dmx.actions[act_num].groups.find(&aregion) {
+    if let Some(grpx) = dmx.actions[act_id].groups.find(&aregion) {
         for stax in grpx.region.states.iter() {
-            if let Some(sqrx) = dmx.actions[act_num].squares.find(stax) {
+            if let Some(sqrx) = dmx.actions[act_id].squares.find(stax) {
                 println!(" {}", &sqrx);
             }
         }

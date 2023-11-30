@@ -30,12 +30,12 @@ impl ActionInterface {
     pub fn take_action(
         &mut self,
         cur_state: &SomeState,
-        dom_num: usize,
-        act_num: usize,
+        dom_id: usize,
+        act_id: usize,
     ) -> SomeState {
         let mut sample_hint = 0;
 
-        if dom_num == 0 && act_num == 0 {
+        if dom_id == 0 && act_id == 0 {
             if let Some(val) = self.ahash.get_mut(cur_state) {
                 sample_hint = *val;
                 *val = (sample_hint + 1) % 4;
@@ -45,6 +45,6 @@ impl ActionInterface {
                 self.ahash.insert(cur_state.clone(), (sample_hint + 1) % 4);
             };
         }
-        actions::take_action(dom_num, act_num, cur_state, sample_hint)
+        actions::take_action(dom_id, act_id, cur_state, sample_hint)
     }
 }

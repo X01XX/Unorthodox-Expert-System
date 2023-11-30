@@ -53,10 +53,10 @@ impl PlanStore {
     }
 
     /// Return the index of the last plan with a given domain number.
-    fn last_dom(&self, dom_num: usize) -> Option<usize> {
+    fn last_dom(&self, dom_id: usize) -> Option<usize> {
         let mut ret: Option<usize> = None;
         for (inx, planx) in self.avec.iter().enumerate() {
-            if planx.dom_num == dom_num {
+            if planx.dom_id == dom_id {
                 ret = Some(inx);
             }
         }
@@ -66,7 +66,7 @@ impl PlanStore {
     /// Add a plan to the vector.
     pub fn push(&mut self, planx: SomePlan) {
         // Verify a domain plan that is split into parts.
-        if let Some(inx) = self.last_dom(planx.dom_num) {
+        if let Some(inx) = self.last_dom(planx.dom_id) {
             assert!(self[inx].result_region() == planx.initial_region());
         }
         self.avec.push(planx);
@@ -142,10 +142,10 @@ impl PlanStore {
     }
 
     /// Return true if the last plan for a domain is the given region.
-    pub fn dom_result(&self, dom_num: usize, regx: &SomeRegion) -> bool {
+    pub fn dom_result(&self, dom_id: usize, regx: &SomeRegion) -> bool {
         let mut rslt: Option<&SomeRegion> = None;
         for planx in self.iter() {
-            if planx.dom_num == dom_num && planx.is_not_empty() {
+            if planx.dom_id == dom_id && planx.is_not_empty() {
                 rslt = Some(planx.result_region());
             }
         }

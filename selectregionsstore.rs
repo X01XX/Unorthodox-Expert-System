@@ -240,13 +240,13 @@ impl SelectRegionsStore {
         // Create a mutable state ref vector.
         let mut all_states = current_states.clone();
 
-        let dom_num = aplan.dom_num;
+        let dom_id = aplan.dom_id;
 
         // Store rate for each step.
         let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
         for stepx in aplan.iter() {
-            all_states[dom_num] = stepx.initial.state1().clone();
+            all_states[dom_id] = stepx.initial.state1().clone();
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.
             //for selx in self.regionstores.iter() {
@@ -311,18 +311,18 @@ impl SelectRegionsStore {
 
             // Check that plan starts in the right state.
             let start = planx.initial_region();
-            if *start.state1() != all_states[planx.dom_num]
-                || *start.state2() != all_states[planx.dom_num]
+            if *start.state1() != all_states[planx.dom_id]
+                || *start.state2() != all_states[planx.dom_id]
             {
                 panic!("plans not in sync!");
             }
             // Add rate for each setp.
             for stepx in planx.iter() {
-                all_states[planx.dom_num] = stepx.initial.state1().clone();
+                all_states[planx.dom_id] = stepx.initial.state1().clone();
                 let valx = self.value_supersets_of_states(&all_states);
-                rates[planx.dom_num].push(valx);
+                rates[planx.dom_id].push(valx);
             }
-            all_states[planx.dom_num] = planx.result_region().state1().clone();
+            all_states[planx.dom_id] = planx.result_region().state1().clone();
         }
 
         // Init rate to return.
@@ -472,9 +472,9 @@ impl SelectRegionsStore {
     } // end split_to_subsets
 
     /// Return true if there is any intersection with a given domain region.
-    pub fn any_intersection_dom(&self, dom_num: usize, regx: &SomeRegion) -> bool {
+    pub fn any_intersection_dom(&self, dom_id: usize, regx: &SomeRegion) -> bool {
         for selx in self.iter() {
-            if selx.regions[dom_num].intersects(regx) {
+            if selx.regions[dom_id].intersects(regx) {
                 return true;
             }
         }

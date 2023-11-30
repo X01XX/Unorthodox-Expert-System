@@ -39,7 +39,7 @@ impl PartialEq for SomePlan {
         if self.len() != other.len() {
             return false;
         }
-        if self.dom_num != other.dom_num {
+        if self.dom_id != other.dom_id {
             return false;
         }
         if self.is_empty() {
@@ -62,16 +62,16 @@ impl Eq for SomePlan {}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomePlan {
     /// Domain indicator
-    pub dom_num: usize,
+    pub dom_id: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
 }
 
 impl SomePlan {
     /// Return a new, empty, plan.
-    pub fn new(dom_num: usize, stepvec: Vec<SomeStep>) -> Self {
+    pub fn new(dom_id: usize, stepvec: Vec<SomeStep>) -> Self {
         Self {
-            dom_num,
+            dom_id,
             steps: StepStore::new(stepvec),
         }
     }
@@ -105,7 +105,7 @@ impl SomePlan {
         }
 
         Some(Self {
-            dom_num: self.dom_num,
+            dom_id: self.dom_id,
             steps,
         })
     }
@@ -133,7 +133,7 @@ impl SomePlan {
         } //next stepx
 
         Some(Self {
-            dom_num: self.dom_num,
+            dom_id: self.dom_id,
             steps,
         })
     }
@@ -157,7 +157,7 @@ impl SomePlan {
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
     pub fn link(&self, other: &Self) -> Option<Self> {
         // Sanity checks
-        if self.is_empty() || other.is_empty() || self.dom_num != other.dom_num {
+        if self.is_empty() || other.is_empty() || self.dom_id != other.dom_id {
             return None;
         }
 
@@ -219,7 +219,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = Self::new(self.dom_num, vec![]);
+                    let mut steps2 = Self::new(self.dom_id, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx < tupx.1[0] || inx >= tupx.1[1] {
@@ -259,7 +259,7 @@ impl SomePlan {
             for tupx in reg_inx.iter() {
                 if tupx.1.len() > 1 {
                     //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = Self::new(self.dom_num, vec![]);
+                    let mut steps2 = Self::new(self.dom_id, vec![]);
 
                     for (inx, stepx) in self.iter().enumerate() {
                         if inx <= tupx.1[0] || inx > tupx.1[1] {
@@ -281,7 +281,7 @@ impl SomePlan {
 
     /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
-        let mut rs = format!("P:{}[", self.dom_num);
+        let mut rs = format!("P:{}[", self.dom_id);
 
         let mut flg = 0;
         for stpx in self.steps.iter() {
@@ -290,7 +290,7 @@ impl SomePlan {
             } else {
                 rs.push(',');
             }
-            rs.push_str(&format!("{}", stpx.act_num));
+            rs.push_str(&format!("{}", stpx.act_id));
         }
         rs.push(']');
         rs
@@ -343,7 +343,7 @@ impl SomePlan {
 
     /// Return a String representation of SomePlan.
     fn formatted_string(&self) -> String {
-        format!("{} P:{}", self.steps, self.dom_num)
+        format!("{} P:{}", self.steps, self.dom_id)
     }
 } // end impl SomePlan
 

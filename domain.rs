@@ -104,7 +104,7 @@ impl fmt::Display for SomeDomain {
 /// The SomeDomain struct, a state and actions that can be run.
 pub struct SomeDomain {
     /// Domain number.  Index into a higher-level DomainStore.
-    pub num: usize,
+    pub id: usize,
     /// Actions the Domain can take.
     pub actions: ActionStore,
     /// The Current, internal, State.
@@ -120,27 +120,21 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(num_ints: usize) -> Self {
+    pub fn new(dom_id: usize, num_ints: usize) -> Self {
         debug_assert_ne!(num_ints, 0);
         // Set up a domain instance with the correct value for num_ints
         let ur_state = SomeState::new(SomeBits::new(vec![0; num_ints]));
         let cur_state = ur_state.new_random();
         let max_region = SomeRegion::new(vec![ur_state.new_high(), ur_state.new_low()]);
         Self {
-            num: 0, // May be changed later
+            id: dom_id,
             actions: ActionStore::new(
                 vec![],
-                SomeChange::new(ur_state.new_low().to_mask(), ur_state.new_low().to_mask()),
             ),
             cur_state,
             max_region,
             complements: HashMap::new(),
         }
-    }
-
-    /// Set the domain number.
-    pub fn set_domain_num(&mut self, dom_num: usize) {
-        self.num = dom_num;
     }
 
     /// Return a reference to the current, internal, state.
@@ -150,14 +144,14 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self) {
-        self.actions.add_action(self.num, self.cur_state.to_mask());
+        self.actions.add_action(self.id);
     }
 
     /// Return needs gathered from all actions.
     /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
         // Get all needs.
-        self.actions.get_needs(&self.cur_state, self.num)
+        self.actions.get_needs(&self.cur_state, self.id)
     }
 
     /// Add the complement of a region.
@@ -181,21 +175,21 @@ impl SomeDomain {
     /// Useful for testing a wholly different series of samples/results.
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
-    pub fn eval_sample_arbitrary(&mut self, act_num: usize, smpl: &SomeSample) {
-        self.actions[act_num].eval_sample_arbitrary(smpl);
+    pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
+        self.actions[act_id].eval_sample_arbitrary(smpl);
         self.set_cur_state(smpl.result.clone());
     }
 
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        let asample = self.actions[ndx.act_num()].take_action_need(&self.cur_state, ndx);
+        let asample = self.actions[ndx.act_id()].take_action_need(&self.cur_state, ndx);
         self.set_cur_state(asample.result.clone());
     }
 
     /// Take an action with the current state.
-    pub fn take_action_arbitrary(&mut self, act_num: usize) {
-        let asample = self.actions[act_num].take_action_arbitrary(&self.cur_state);
+    pub fn take_action_arbitrary(&mut self, act_id: usize) {
+        let asample = self.actions[act_id].take_action_arbitrary(&self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
 
@@ -211,7 +205,7 @@ impl SomeDomain {
 
     /// Run a plan, return true if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
-        assert_eq!(pln.dom_num, self.num);
+        assert_eq!(pln.dom_id, self.id);
 
         if pln.is_empty() {
             return true;
@@ -228,7 +222,7 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
-            let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
+            let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
             self.set_cur_state(asample.result.clone());
 
             if stpx.result.is_superset_of(&self.cur_state) {
@@ -240,7 +234,7 @@ impl SomeDomain {
             if prev_state == self.cur_state && stpx.alt_rule {
                 println!("Try action a second time");
 
-                let asample = self.actions[stpx.act_num].take_action_step(&self.cur_state);
+                let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
                 self.set_cur_state(asample.result.clone());
 
                 if stpx.result.is_superset_of(&self.cur_state) {
@@ -250,7 +244,7 @@ impl SomeDomain {
 
             println!(
                 "\nChange [{} -{:02}> {}] unexpected, expected {}",
-                &prev_state, &stpx.act_num, &self.cur_state, stpx,
+                &prev_state, &stpx.act_id, &self.cur_state, stpx,
             );
 
             return false;
@@ -314,7 +308,7 @@ impl SomeDomain {
                     let stepz = stepy.restrict_result_region(goal_reg);
 
                     //println!("random_depth_first_search2: suc 1 Found one step {} to go from {} to {}", &stepy, from_reg, goal_reg);
-                    return Some(SomePlan::new(self.num, vec![stepz]));
+                    return Some(SomePlan::new(self.id, vec![stepz]));
                 }
             }
         }
@@ -348,7 +342,7 @@ impl SomeDomain {
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
-        // Randomly choose a bit.
+        // Randomly choose a wanted single-bit change.
         let setx = rand::thread_rng().gen_range(0..steps_by_change_vov.len());
 
         let stinx = if steps_by_change_vov[setx].len() == 1 {
@@ -361,7 +355,7 @@ impl SomeDomain {
             let edges = goal_reg.edge_mask();
 
             // Get wanted changes.
-            let wanted_changes = from_reg.translate_to_region(goal_reg);
+            let wanted_changes = from_reg.translate_to_region(goal_reg).change();
 
             // Init minimum unwanted changes, and vector of step references.
             let mut min_unwanted = usize::MAX;
@@ -372,27 +366,18 @@ impl SomeDomain {
                 let tmp_min = if stepx.initial.is_superset_of(from_reg) {
                     // Forward chaining
                     let tmp_rul = stepx.rule.restrict_initial_region(from_reg);
-                    let unwanted = tmp_rul
-                        .change()
-                        .intersection(&wanted_changes.change().bitwise_not())
-                        .bitwise_and(&edges);
+                    let unwanted = wanted_changes.bitwise_not().intersection(&tmp_rul).bitwise_and(&edges);
                     unwanted.number_changes()
                 } else if stepx.result.intersects(goal_reg) {
                     // Backward chaining.
                     let tmp_rul = stepx.rule.restrict_result_region(goal_reg);
-                    let unwanted = tmp_rul
-                        .change()
-                        .intersection(&wanted_changes.change().bitwise_not())
-                        .bitwise_and(&edges);
+                    let unwanted = wanted_changes.bitwise_not().intersection(&tmp_rul).bitwise_and(&edges);
                     unwanted.number_changes()
                 } else {
                     // Asymmetrical chaining.
                     let tmp_rul0 = from_reg.translate_to_region(&stepx.initial);
                     let tmp_rul = tmp_rul0.combine_pair(&stepx.rule);
-                    let unwanted = tmp_rul
-                        .change()
-                        .intersection(&wanted_changes.change().bitwise_not())
-                        .bitwise_and(&edges);
+                    let unwanted = wanted_changes.bitwise_not().intersection(&tmp_rul).bitwise_and(&edges);
                     unwanted.number_changes()
                 };
                 if tmp_min < min_unwanted {
@@ -406,32 +391,31 @@ impl SomeDomain {
                     max_unwanted = tmp_min;
                 }
             }
-            //println!("number steps {}, max unwanted {}, min unwanted = {}", steps_by_change_vov[setx].len(), max_unwanted, min_unwanted);
+            //println!("number steps {}, max unwanted {}, min unwanted = {} number min {}",
+            //    steps_by_change_vov[setx].len(), max_unwanted, min_unwanted, min_steps.len());
+
             min_steps[rand::thread_rng().gen_range(0..min_steps.len())]
         };
 
         // Randomly choose a step.
-        //let stinx = rand::thread_rng().gen_range(0..steps_by_change_vov[setx].len());
         let stepx = steps_by_change_vov[setx][stinx];
 
         // Process a forward chaining step.
         if stepx.initial.is_superset_of(from_reg) {
-            //println!("forward step");
             let stepy = stepx.restrict_initial_region(from_reg);
 
             let plan_to_goal = self.plan_steps_between(&stepy.result, goal_reg, depth - 1)?;
 
-            return SomePlan::new(self.num, vec![stepy]).link(&plan_to_goal);
+            return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
         }
 
         // Process a backward chaining step.
         if stepx.result.intersects(goal_reg) {
-            //println!("backward step");
             let stepy = stepx.restrict_result_region(goal_reg);
 
             let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
 
-            return plan_to_step.link(&SomePlan::new(self.num, vec![stepy]));
+            return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
         }
 
         // Must be an asymmetric step.
@@ -513,7 +497,7 @@ impl SomeDomain {
 
         // Try linking two plans together with the step.
         to_step_plan
-            .link(&SomePlan::new(self.num, vec![stepy]))?
+            .link(&SomePlan::new(self.id, vec![stepy]))?
             .link(&from_step_plan)
     }
 
@@ -526,7 +510,7 @@ impl SomeDomain {
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", &self.cur_state, goal_reg);
-            return Some(vec![SomePlan::new(self.num, vec![])]);
+            return Some(vec![SomePlan::new(self.id, vec![])]);
         }
 
         let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
@@ -636,61 +620,67 @@ impl SomeDomain {
     /// Return a Action number from a string with a format that the parse method can understand.
     /// Left-most, consecutive, zeros can be omitted.
     /// Returns an error if the string is bad or no action exists of that number.
-    pub fn act_num_from_string(&self, str_num: &str) -> Result<usize, String> {
+    pub fn act_id_from_string(&self, str_num: &str) -> Result<usize, String> {
         match usize::from_str(str_num) {
-            Ok(act_num) => {
-                if act_num >= self.actions.len() {
-                    return Err(format!("Action number too large {act_num}"));
+            Ok(act_id) => {
+                if act_id >= self.actions.len() {
+                    return Err(format!("Action number too large {act_id}"));
                 }
-                Ok(act_num)
+                Ok(act_id)
             }
             Err(error) => Err(format!("\nDid not understand action number, {error}")),
         }
-    } // end act_num_from_string
+    } // end act_id_from_string
 
     /// Return the current maximum region that can be reached from the current state.
-    pub fn reachable_region(&self) -> SomeRegion {
-        SomeRegion::new(vec![
-            self.cur_state.clone(),
-            self.cur_state
-                .bitwise_xor(&self.actions.aggregate_changes.bits_change_mask()),
-        ])
+    pub fn reachable_region(&self) -> Option<SomeRegion> {
+        self.actions.aggregate_changes.as_ref().map(|changes| SomeRegion::new(vec![
+                self.cur_state.clone(),
+                self.cur_state
+                    .bitwise_xor(&changes.bits_change_mask()),
+            ]))
     }
 
-    pub fn regions_not_covered(&self, act_num: usize) -> RegionStore {
-        let mut ncov = RegionStore::new(vec![self.reachable_region()]);
+    /// Return regions not covered by existing groups.
+    pub fn regions_not_covered(&self, act_id: usize) -> RegionStore {
+        let mut ncov = RegionStore::new(vec![]);
 
-        for grpx in self.actions[act_num].groups.iter() {
-            ncov = ncov.subtract_item(&grpx.region);
+        if let Some(reachable) = self.reachable_region() {
+            ncov.push(reachable);
+
+            for grpx in self.actions[act_id].groups.iter() {
+                ncov = ncov.subtract_item(&grpx.region);
+            }
         }
         ncov
     }
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
-    pub fn display_action_anchor_info(&self, act_num: usize) -> Result<(), String> {
-        let max_region = self.reachable_region();
+    pub fn display_action_anchor_info(&self, act_id: usize) -> Result<(), String> {
+        if let Some(max_region) = self.reachable_region() {
 
-        self.actions[act_num].display_anchor_info()?;
+            self.actions[act_id].display_anchor_info()?;
 
-        let whats_left = self.regions_not_covered(act_num);
-        println!(
-            "\nMaximum Region: {}, Regions not covered by a group: {}",
-            max_region, whats_left
-        );
+            let whats_left = self.regions_not_covered(act_id);
+            println!(
+                "\nMaximum Region: {}, Regions not covered by a group: {}",
+                max_region, whats_left
+            );
+        };
         Ok(())
     }
 
     /// Display a group anchor and adjacent squares.
     pub fn display_group_anchor_info(
         &self,
-        act_num: usize,
+        act_id: usize,
         aregion: &SomeRegion,
     ) -> Result<(), String> {
-        self.actions[act_num].display_group_anchor_info(aregion)
+        self.actions[act_id].display_group_anchor_info(aregion)
     }
 
     /// Get aggregate changes for a domain.
-    pub fn aggregate_changes(&self) -> &SomeChange {
+    pub fn aggregate_changes(&self) -> &Option<SomeChange> {
         &self.actions.aggregate_changes
     }
 
@@ -707,7 +697,7 @@ impl SomeDomain {
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("D(ID: ");
 
-        rc_str.push_str(&self.num.to_string());
+        rc_str.push_str(&self.id.to_string());
 
         rc_str.push_str(&format!(", Current State: {}", &self.cur_state));
 
@@ -1053,7 +1043,7 @@ impl SomeDomain {
             let pathx = &paths[rpinx];
             //println!("\npathx: {}", &pathx);
 
-            let mut aplan = SomePlan::new(self.num, vec![]);
+            let mut aplan = SomePlan::new(self.id, vec![]);
 
             // Process each path step.
             let mut cur_rslt = pathx.steps[0].from.clone();
@@ -1116,7 +1106,7 @@ impl SomeDomain {
 
         println!(
             "\ndom {} find_plans_through_paths: returning ret_plans: {}",
-            self.num,
+            self.id,
             tools::vec_string(&ret_plans)
         );
         ret_plans
@@ -1152,14 +1142,15 @@ mod tests {
     #[test]
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dmxs = DomainStore::new();
+        dmxs.add_domain(1);
+        let dm0 = &mut dmxs[0];
+
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
-        let mut dmxs = DomainStore::new(vec![dm0]);
-        let dm0 = &mut dmxs[0];
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -1199,14 +1190,16 @@ mod tests {
     #[test]
     fn make_plan_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        //let mut dm0 = SomeDomain::new(1);
+        
+        let mut dmxs = DomainStore::new();
+        dmxs.add_domain(1);
+        let dm0 = &mut dmxs[0];
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
         dm0.add_action();
-        let mut dmxs = DomainStore::new(vec![dm0]);
-        let dm0 = &mut dmxs[0];
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -1252,7 +1245,7 @@ mod tests {
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1310,7 +1303,7 @@ mod tests {
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1393,7 +1386,7 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1429,7 +1422,7 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1523,7 +1516,7 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1576,7 +1569,7 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1618,7 +1611,7 @@ mod tests {
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
-        let mut dm0 = SomeDomain::new(2);
+        let mut dm0 = SomeDomain::new(0, 2);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action();
 
@@ -1652,7 +1645,7 @@ mod tests {
         let act0: usize = 0;
 
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(1);
+        let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1011")?;
         dm0.add_action();
 

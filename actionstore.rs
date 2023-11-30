@@ -4,7 +4,6 @@
 //!
 use crate::action::SomeAction;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
@@ -32,15 +31,15 @@ impl fmt::Display for ActionStore {
 pub struct ActionStore {
     /// A vector of SomeAction structs
     pub avec: Vec<SomeAction>,
-    pub aggregate_changes: SomeChange,
+    pub aggregate_changes: Option<SomeChange>,
 }
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new(avec: Vec<SomeAction>, aggregate_changes: SomeChange) -> Self {
+    pub fn new(avec: Vec<SomeAction>) -> Self {
         ActionStore {
             avec,
-            aggregate_changes,
+            aggregate_changes: None,
         }
     }
 
@@ -50,15 +49,15 @@ impl ActionStore {
     }
 
     /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_num: usize, init_mask: SomeMask) {
+    pub fn add_action(&mut self, dom_id: usize) {
         self.avec
-            .push(SomeAction::new(dom_num, self.avec.len(), init_mask));
+            .push(SomeAction::new(self.avec.len(), dom_id));
     }
 
     /// Check limited flag due to new changes.
-    pub fn check_limited(&mut self, change_mask: &SomeMask) {
+    pub fn check_limited(&mut self) {
         for actx in self.avec.iter_mut() {
-            actx.check_limited(change_mask);
+            actx.check_limited(&self.aggregate_changes);
         }
     }
 
@@ -69,6 +68,8 @@ impl ActionStore {
 
         self.calc_aggregate_changes();
 
+        let mut needs = NeedStore::new(Vec::<SomeNeed>::new());
+
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
@@ -76,11 +77,12 @@ impl ActionStore {
             .collect::<Vec<NeedStore>>();
 
         // Consolidate need into one NeedStore.
-        let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
-        let mut needs = NeedStore::new(Vec::<SomeNeed>::with_capacity(num_items));
+        //let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
+
         for needx in vecx {
             needs.append(needx);
         }
+
         needs
     }
 
@@ -126,14 +128,34 @@ impl ActionStore {
         }
 
         // Recalc ActionStore aggregate_changes.
-        let mut new_chgs = self.aggregate_changes.new_low();
+        let mut new_chgs: Option<SomeChange> = None;
 
         for actx in &self.avec {
-            new_chgs = new_chgs.union(actx.aggregate_changes());
+            if let Some(act_changes) = actx.aggregate_changes() {
+                if let Some(tot_changes) = new_chgs {
+                    new_chgs = Some(tot_changes.union(act_changes));
+                } else {
+                    new_chgs = Some(act_changes.clone());
+                }
+            }
         }
 
-        // Check for new changes.
-        let additions = new_chgs.difference(&self.aggregate_changes);
+        // Calc changes from previous.
+        let dif_changes = if let Some(old_changes) = &self.aggregate_changes {
+            if let Some(new_changes) = &new_chgs {
+                let dif = old_changes.difference(new_changes);
+                if dif.is_low() {
+                    None
+                } else {
+                    Some(dif)
+                }
+            } else {
+                Some(old_changes.clone())
+            }
+        } else {    // self.aggregate_changes = None.
+            new_chgs.as_ref().cloned()
+        };
+
 
         // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.avec {
@@ -142,15 +164,13 @@ impl ActionStore {
             }
         }
 
+        if dif_changes.is_none() {
+            return;
+        }
+
         self.aggregate_changes = new_chgs;
 
-        if additions.is_not_low() {
-            self.check_limited(
-                &additions
-                    .b01
-                    .bitwise_or(&additions.b01.bitwise_or(&additions.b10)),
-            );
-        }
+        self.check_limited();
     }
 
     /// Return a String representation of an ActionStore.

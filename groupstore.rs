@@ -29,17 +29,17 @@ pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
     /// Changes possible for all groups.
-    pub aggregate_changes: SomeChange,
+    pub aggregate_changes: Option<SomeChange>,
     /// Changes possible were recently updated.
     pub agg_chgs_updated: bool,
 }
 
 impl GroupStore {
     /// Return a new, empty, GroupStore.
-    pub fn new(avec: Vec<SomeGroup>, aggregate_changes: SomeChange) -> Self {
+    pub fn new(avec: Vec<SomeGroup>) -> Self {
         Self {
             avec,
-            aggregate_changes,
+            aggregate_changes: None,
             agg_chgs_updated: false,
         }
     }
@@ -52,18 +52,22 @@ impl GroupStore {
 
     /// Calculate and set the aggregate changes and updated flag.
     fn calc_aggregate_changes(&mut self) {
-        let mut new_chgs = self.aggregate_changes.new_low();
+
+        self.aggregate_changes = None;
 
         for grpx in &self.avec {
             if grpx.pn == Pn::Unpredictable {
                 continue;
             }
             for rulx in grpx.rules.as_ref().expect("SNH").iter() {
-                new_chgs = new_chgs.union(rulx);
+                if let Some(changes) = &self.aggregate_changes {
+                    self.aggregate_changes = Some(changes.union(rulx));
+                } else {
+                    self.aggregate_changes = Some(rulx.change());
+                }
             }
         }
 
-        self.aggregate_changes = new_chgs;
         self.agg_chgs_updated = true;
     }
 

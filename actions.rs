@@ -23,21 +23,21 @@ const DOM1_ACTIONS: [for<'a> fn(&SomeState, usize) -> SomeState; 7] = [
 
 /// Take an action given the domain number, action number, current_state and last change mask (if any).
 pub fn take_action(
-    dom_num: usize,
-    act_num: usize,
+    dom_id: usize,
+    act_id: usize,
     cur_state: &SomeState,
     sample_hint: usize,
 ) -> SomeState {
-    let new_state = if dom_num == 0 {
-        DOM0_ACTIONS[act_num](cur_state, sample_hint)
+    let new_state = if dom_id == 0 {
+        DOM0_ACTIONS[act_id](cur_state, sample_hint)
     } else {
-        DOM1_ACTIONS[act_num](cur_state, sample_hint)
+        DOM1_ACTIONS[act_id](cur_state, sample_hint)
     };
     println!(
         "\nDom {} {} -{}-> {} R[{}]",
-        dom_num,
+        dom_id,
         cur_state,
-        act_num,
+        act_id,
         new_state,
         SomeRule::new(&SomeSample::new(cur_state.clone(), new_state.clone()))
     );

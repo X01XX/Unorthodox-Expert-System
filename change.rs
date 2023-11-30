@@ -134,11 +134,17 @@ impl SomeChange {
 
     /// Return the result of applying a change to a region.
     pub fn applied_to(&self, regx: &SomeRegion) -> SomeRegion {
-        let not_b10 = self.b10.bitwise_not();
+        let state1 = regx.state1();
+        let state2 = regx.state2();
         SomeRegion::new(vec![
-            regx.state1().bitwise_or(&self.b01).bitwise_and(&not_b10),
-            regx.state2().bitwise_or(&self.b01).bitwise_and(&not_b10),
+            state1.bitwise_xor(&state1.bitwise_and(&self.b10).bitwise_or(&state1.bitwise_not().bitwise_and(&self.b01))),
+            state2.bitwise_xor(&state2.bitwise_and(&self.b10).bitwise_or(&state2.bitwise_not().bitwise_and(&self.b01))),
         ])
+    }
+
+    /// Return a mask of bit positions that can change.
+    pub fn change_mask(&self) -> SomeMask {
+        self.b01.bitwise_and(&self.b10)
     }
 } // end impl SomeChange
 
@@ -164,7 +170,7 @@ mod tests {
     #[test]
     fn intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let dm0 = SomeDomain::new(1);
+        let dm0 = SomeDomain::new(0, 1);
 
         let cng1 = SomeChange {
             b01: dm0.mask_from_string("m0b1010")?,
@@ -189,7 +195,7 @@ mod tests {
     #[test]
     fn union() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let dm0 = SomeDomain::new(1);
+        let dm0 = SomeDomain::new(0, 1);
 
         let cng1 = SomeChange {
             b01: dm0.mask_from_string("m0b1010")?,
@@ -214,7 +220,7 @@ mod tests {
     #[test]
     fn changes_wanted_unwanted_reverse() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let dm0 = SomeDomain::new(1);
+        let dm0 = SomeDomain::new(0, 1);
 
         let wanted_changes = SomeChange {
             b01: dm0.mask_from_string("m0b1010")?,
@@ -264,7 +270,7 @@ mod tests {
     #[test]
     fn applied_to() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let dm0 = SomeDomain::new(1);
+        let dm0 = SomeDomain::new(0, 1);
 
         let wanted_changes = SomeChange {
             b01: dm0.mask_from_string("m0b1100")?,

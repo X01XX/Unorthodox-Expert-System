@@ -17,7 +17,7 @@ impl fmt::Display for SomeStep {
 #[readonly::make]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomeStep {
-    pub act_num: usize,
+    pub act_id: usize,
     pub initial: SomeRegion,
     pub result: SomeRegion,
     pub rule: SomeRule,
@@ -27,12 +27,12 @@ pub struct SomeStep {
 
 impl SomeStep {
     /// Return a new Step struct instance.
-    pub fn new(act_num: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
+    pub fn new(act_id: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
         let initial = rule.initial_region();
 
         let result = rule.result_region();
         Self {
-            act_num,
+            act_id,
             initial,
             result,
             rule,
@@ -48,7 +48,7 @@ impl SomeStep {
         let rule_new = self.rule.restrict_initial_region(reg);
 
         Self {
-            act_num: self.act_num,
+            act_id: self.act_id,
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
@@ -64,7 +64,7 @@ impl SomeStep {
         let rule_new = self.rule.restrict_result_region(reg);
 
         Self {
-            act_num: self.act_num,
+            act_id: self.act_id,
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
@@ -78,7 +78,7 @@ impl SomeStep {
         let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
         rcstr.push_str(&self.initial.to_string());
-        rcstr.push_str(&format!(" -{:02}> ", self.act_num));
+        rcstr.push_str(&format!(" -{:02}> ", self.act_id));
         rcstr.push_str(&self.result.to_string());
         rcstr.push(']');
         rcstr

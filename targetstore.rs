@@ -54,7 +54,7 @@ impl TargetStore {
         assert_eq!(self.len(), states.len());
 
         for targx in self.avec.iter() {
-            if targx.is_superset_of(&states[targx.dom_num]) {
+            if targx.is_superset_of(&states[targx.dom_id]) {
                 continue;
             }
             return false;
@@ -64,9 +64,9 @@ impl TargetStore {
 
     /// If a target with a given domain number is in TargetStore,
     /// return ref to target region.
-    pub fn target_region(&self, dom_num: usize) -> Option<&SomeRegion> {
+    pub fn target_region(&self, dom_id: usize) -> Option<&SomeRegion> {
         for targx in self.avec.iter() {
-            if targx.dom_num == dom_num {
+            if targx.dom_id == dom_id {
                 return Some(&targx.region);
             }
         }
