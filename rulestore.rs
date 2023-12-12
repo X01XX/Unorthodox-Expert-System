@@ -190,7 +190,7 @@ impl RuleStore {
     ///     (X->1, X->X), 0->?
     ///     (X->0, X->X), 1->?
     pub fn union(&self, other: &Self) -> Option<Self> {
-        //println!("\nrulestore union {} and {}", &self, &other);
+        //println!("\nrulestore union {} and {}", self, other);
         assert!(!self.is_empty() && !other.is_empty());
 
         if self.len() != other.len() {
@@ -290,7 +290,7 @@ impl RuleStore {
         }
 
         if let Some(_ruls) = self.union(other) {
-            //println!("can_form_union: 1 returning T {}", &ruls);
+            //println!("can_form_union: 1 returning T {}", ruls);
             return Some(true);
         }
         //println!("can_form_union: 2 returning F");

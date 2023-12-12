@@ -50,8 +50,7 @@ impl ActionStore {
 
     /// Add a new action to the ActionStore.
     pub fn add_action(&mut self, dom_id: usize) {
-        self.avec
-            .push(SomeAction::new(self.avec.len(), dom_id));
+        self.avec.push(SomeAction::new(self.avec.len(), dom_id));
     }
 
     /// Check limited flag due to new changes.
@@ -62,7 +61,7 @@ impl ActionStore {
     }
 
     /// Get needs for all actions in the store.
-    pub fn get_needs(&mut self, cur: &SomeState, dom: usize) -> NeedStore {
+    pub fn get_needs(&mut self, cur: &SomeState, dom_id: usize) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
@@ -73,7 +72,7 @@ impl ActionStore {
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom, &self.aggregate_changes))
+            .map(|actx| actx.get_needs(cur, dom_id, &self.aggregate_changes))
             .collect::<Vec<NeedStore>>();
 
         // Consolidate need into one NeedStore.
@@ -152,10 +151,10 @@ impl ActionStore {
             } else {
                 Some(old_changes.clone())
             }
-        } else {    // self.aggregate_changes = None.
+        } else {
+            // self.aggregate_changes = None.
             new_chgs.as_ref().cloned()
         };
-
 
         // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.avec {

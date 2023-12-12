@@ -251,7 +251,7 @@ impl SomeRule {
     /// given region.  Assuming the region given is not a superset
     /// this will also change the initial region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
-        //println!("restricting result region of {} to {}", &self, &regx);
+        //println!("restricting result region of {} to {}", self, regx);
 
         let rslt_reg = self.result_region();
 
@@ -415,10 +415,13 @@ impl SomeRule {
     ///        A wanted 0->1 change in rule1 (self) corresponds with a 0 in the initial-region of step2.
     ///        A wanted 1->0 change in rule1 (self) corresponds with a 1 in the initial region of step2.
     pub fn sequence_reverses_change(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // println!("order_losos_change: {} to {} change wanted {}", &self.formatted_string(), &step2.formatted_string(), &wnated.formatted_string());
+        // println!("sequence_reverses_change: {} to {} change wanted {}", self.formatted_string(), step2.formatted_string(), wanted.formatted_string());
+
+        debug_assert!(wanted.change_mask().is_low()); // Check for a change in the same position of both masks.
 
         // Get a mask of the wanted changes in this rule.
         let s_wanted = wanted.intersection(self);
+        debug_assert!(s_wanted.is_not_low());
 
         // Calc aggregate rule.
         let rulx = self.combine_sequence(other);
@@ -440,9 +443,7 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.combine_pair(other);
         }
-        let rul_between = self
-            .result_region()
-            .translate_to_region(&other.initial_region());
+        let rul_between = self.result_region().rule_to_region(&other.initial_region());
 
         self.combine_pair(&rul_between).combine_pair(other)
     }
@@ -531,7 +532,7 @@ mod tests {
         // Given the changes wanted, start to goal, it may not be worth it to translate to the rule
         // initial region.
         let rul2 = start
-            .translate_to_region(&rul1.initial_region())
+            .rule_to_region(&rul1.initial_region())
             .combine_pair(&rul1);
         println!("rul2 {rul2}");
 
@@ -961,7 +962,7 @@ mod tests {
         let Some(rul2) = rul1.restrict_for_changes(&chg1, None) else {
             panic!("rul2 restriction should succeed");
         };
-        println!("rul2 {}", &rul2);
+        println!("rul2 {}", rul2);
 
         assert!(rul2 == tmp_rul.new_from_string("01/X1/10/X0")?);
 
@@ -978,7 +979,7 @@ mod tests {
         let Some(rul3) = rul1.restrict_for_changes(&chg1, Some(&within)) else {
             panic!("rul3 restriction should succeed");
         };
-        println!("rul3 {}", &rul3);
+        println!("rul3 {}", rul3);
 
         assert!(rul3 == tmp_rul.new_from_string("01/XX/00/11")?);
 
@@ -994,7 +995,7 @@ mod tests {
         let Some(rul4) = rul1.restrict_for_changes(&chg1, None) else {
             panic!("rul4 restriction should succeed");
         };
-        println!("rul4 {}", &rul4);
+        println!("rul4 {}", rul4);
 
         assert!(rul4 == tmp_rul.new_from_string("00/10/01/Xx")?);
 
@@ -1008,7 +1009,7 @@ mod tests {
         let within = tmp_reg.new_from_string("rx1")?;
 
         if let Some(rul5) = rul1.restrict_for_changes(&chg1, Some(&within)) {
-            println!("rul5 ? {}", rul5);
+            println!("rul5 ? {rul5}");
             panic!("rul5 restriction should not succeed");
         };
 
@@ -1076,7 +1077,7 @@ mod tests {
         let Some(rul3) = rul1.union(&rul2) else {
             panic!("This should work!");
         };
-        println!("rul3 = {}", &rul3);
+        println!("rul3 = {rul3}");
         assert!(rul3 == tmp_rul.new_from_string("00/01/x0/Xx/xx")?);
 
         Ok(())

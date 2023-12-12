@@ -141,7 +141,7 @@ impl SomeGroup {
         assert!(self.region.is_superset_of(sqrx));
         //println!(
         //  "group:check_square grp {} sqr {}",
-        //  &self.region, &sqrx.state
+        //  self.region, sqrx.state
         //);
 
         if self.pn == Pn::Unpredictable {
@@ -260,6 +260,11 @@ impl SomeGroup {
     // Return true if a group region intersects another group/region/square/state.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
         self.region.intersects(other)
+    }
+
+    // Return the number of edges in a group region.
+    pub fn num_edges(&self) -> usize {
+        self.region.num_edges()
     }
 } // end impl SomeGroup
 

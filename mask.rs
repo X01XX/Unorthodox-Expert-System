@@ -58,7 +58,7 @@ impl SomeMask {
     /// Left-most, consecutive, zeros can be omitted.
     ///
     /// if let Ok(msk) = SomeMask::from_string(1, "m0101")) {
-    ///    println!("Mask {}", &msk);
+    ///    println!("Mask {}", msk);
     /// } else {
     ///    panic!("Invalid Mask");
     /// }

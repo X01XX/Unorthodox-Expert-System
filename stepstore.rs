@@ -199,7 +199,7 @@ impl StepStore {
 fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
-            //println!("any_mutually_exclusive_changes checking {:?} and {:?}", &by_change[inx], &by_change[iny]);
+            //println!("any_mutually_exclusive_changes checking {:?} and {:?}", by_change[inx], by_change[iny]);
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
                 return true;
             }

@@ -135,7 +135,7 @@ impl SomeRegion {
     /// Left-most, consecutive, positions that are omitted will be padded with zeros.
     ///
     /// if let Ok(regx) = SomeRegion::new_from_string(1, "r01x1")) {
-    ///    println!("Region {}", &regx);
+    ///    println!("Region {}", regx);
     /// } else {
     ///    panic!("Invalid Region");
     /// }
@@ -558,7 +558,7 @@ impl SomeRegion {
     /// For X->0, the change is optional, a 0 input will be no change.
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
-    pub fn translate_to_region(&self, to: &SomeRegion) -> SomeRule {
+    pub fn rule_to_region(&self, to: &SomeRegion) -> SomeRule {
         let self_x = self.x_mask();
         let self_1 = self.ones_mask();
         let self_0 = self.zeros_mask();
@@ -587,6 +587,11 @@ impl SomeRegion {
                 .bitwise_or(&one_to_x),
             b10: self_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
         }
+    }
+
+    /// Return the number of edges in a region.
+    pub fn num_edges(&self) -> usize {
+        self.edge_mask().num_one_bits()
     }
 } // end impl SomeRegion
 
@@ -1306,7 +1311,7 @@ mod tests {
     }
 
     #[test]
-    fn translate_to_region() -> Result<(), String> {
+    fn rule_to_region() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
@@ -1317,21 +1322,21 @@ mod tests {
 
         let reg1 = tmp_reg.new_from_string("r000")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.translate_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("00/01/00")?;
         assert!(rul1 == rul2);
 
         let reg1 = tmp_reg.new_from_string("r111")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.translate_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("10/11/11")?;
         assert!(rul1 == rul2);
 
         let reg1 = tmp_reg.new_from_string("rXXX")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.translate_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("X0/X1/XX")?;
         assert!(rul1 == rul2);
@@ -1339,7 +1344,7 @@ mod tests {
         // Test proper subset region.
         let reg1 = tmp_reg.new_from_string("r0011")?;
         let reg2 = tmp_reg.new_from_string("rx01x")?;
-        let rul1 = reg1.translate_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = tmp_rul.new_from_string("00/00/11/11")?;
         assert!(rul1 == rul2);
@@ -1347,7 +1352,7 @@ mod tests {
         // Test intersecting regions.
         let reg1 = tmp_reg.new_from_string("r010x")?;
         let reg2 = tmp_reg.new_from_string("rx1x1")?;
-        let rul1 = reg1.translate_to_region(&reg2);
+        let rul1 = reg1.rule_to_region(&reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = tmp_rul.new_from_string("00/11/00/X1")?;
         assert!(rul1 == rul2);

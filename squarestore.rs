@@ -75,13 +75,13 @@ impl SquareStore {
     }
 
     /// Add a square that is not currently in the store.
-    pub fn insert(&mut self, sqrx: SomeSquare, dom: usize, act: usize) {
+    pub fn insert(&mut self, sqrx: SomeSquare, dom_id: usize, act_id: usize) {
         println!(
             "\nDom {} Adding square {} -{}-> {}",
-            dom,
+            dom_id,
             sqrx.state,
-            act,
-            &sqrx.first_result()
+            act_id,
+            sqrx.first_result()
         );
         assert!(self.find(&sqrx.state).is_none());
         self.ahash.insert(sqrx.state.clone(), sqrx);

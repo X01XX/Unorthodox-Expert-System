@@ -314,7 +314,7 @@ mod tests {
         regstr2.push(tmp_reg.new_from_string("r0x01")?);
 
         let regstr3 = regstr.subtract(&regstr2);
-        println!("regstr3: {}", &regstr3);
+        println!("regstr3: {}", regstr3);
 
         assert!(regstr3.len() == 5);
         assert!(regstr3.contains(&tmp_reg.new_from_string("r0x00")?));
@@ -339,7 +339,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         regstr.push_nosups(tmp_reg.new_from_string("r0111")?);
-        println!("results {}", &regstr);
+        println!("results {}", regstr);
 
         assert!(regstr.len() == 3);
         assert!(regstr.contains(&tmp_reg.new_from_string("r0x0x")?));
@@ -362,7 +362,7 @@ mod tests {
         // Intersections of intersections, 0101.
 
         regstr.push_nosubs(tmp_reg.new_from_string("rxxx1")?);
-        println!("results {}", &regstr);
+        println!("results {}", regstr);
 
         assert!(regstr.len() == 3);
         assert!(regstr.contains(&tmp_reg.new_from_string("r0x0x")?));

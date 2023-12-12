@@ -122,7 +122,7 @@ impl SomeSquare {
             str_info.push_str(&format!(", pnc {}", &self.pnc));
         }
 
-        println!("{}", &str_info);
+        println!("{}", str_info);
         changed
     }
 
@@ -522,15 +522,15 @@ mod tests {
             tmp_sta.new_from_string("s0b1100")?,
         ));
 
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
         assert!(sqr2.may_combine_later_to(&sqr1));
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
-        println!("sqr2 {}", sqr2);
-        println!("sqr3 {}", sqr3);
+        println!("sqr2 {sqr2}");
+        println!("sqr3 {sqr3}");
         assert!(!sqr2.can_combine_now(&sqr3));
 
         // Exersize other branch of code.
@@ -565,8 +565,8 @@ mod tests {
             sqr2.state.clone(),
             tmp_sta.new_from_string("s0b0100")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
         let cmb = sqr1.may_combine_later_to(&sqr2);
         println!("cmb {:?}", cmb);
 
@@ -583,8 +583,8 @@ mod tests {
             sqr3.state.clone(),
             tmp_sta.new_from_string("s0b1101")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr3 {}", sqr3);
+        println!("sqr1 {sqr1}");
+        println!("sqr3 {sqr3}");
         let cmb = sqr1.can_combine_now(&sqr3);
         println!("cmb {:?}", cmb);
 
@@ -616,8 +616,8 @@ mod tests {
             tmp_sta.new_from_string("s0b0100")?,
         ));
 
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
         assert!(sqr1.can_combine_now(&sqr2));
@@ -643,8 +643,8 @@ mod tests {
             sqr4.state.clone(),
             tmp_sta.new_from_string("s0b0101")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr4 {}", sqr4);
+        println!("sqr1 {sqr1}");
+        println!("sqr4 {sqr4}");
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
         assert!(!sqr1.can_combine_now(&sqr4));
@@ -667,8 +667,8 @@ mod tests {
             sqr5.state.clone(),
             tmp_sta.new_from_string("s0b0101")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr5 {}", sqr5);
+        println!("sqr1 {sqr1}");
+        println!("sqr5 {sqr5}");
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
         assert!(sqr1.can_combine_now(&sqr5));
@@ -701,8 +701,8 @@ mod tests {
             tmp_sta.new_from_string("s0b0101")?,
             tmp_sta.new_from_string("s0b0101")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
         assert!(!sqr1.can_combine_now(&sqr2));
@@ -712,7 +712,7 @@ mod tests {
             sqr2.state.clone(),
             tmp_sta.new_from_string("s0b0101")?,
         ));
-        println!("sqr2 {}", sqr2);
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
         assert!(!sqr1.can_combine_now(&sqr2));
@@ -749,8 +749,8 @@ mod tests {
             sqr2.state.clone(),
             tmp_sta.new_from_string("s0b0100")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
         let cmb = sqr1.can_combine_now(&sqr2);
@@ -766,8 +766,8 @@ mod tests {
             sqr2.state.clone(),
             tmp_sta.new_from_string("s0b0100")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
         assert!(!sqr1.can_combine_now(&sqr2));
@@ -809,8 +809,8 @@ mod tests {
             sqr2.state.clone(),
             tmp_sta.new_from_string("s0b0100")?,
         ));
-        println!("sqr1 {}", sqr1);
-        println!("sqr2 {}", sqr2);
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
         assert!(sqr1.can_combine_now(&sqr2));

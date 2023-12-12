@@ -297,7 +297,8 @@ impl DomainStore {
     pub fn add_domain(&mut self, num_ints: usize) {
         debug_assert!(self.select.is_empty());
 
-        self.domains.push(SomeDomain::new(self.domains.len(), num_ints));
+        self.domains
+            .push(SomeDomain::new(self.domains.len(), num_ints));
     }
 
     /// Get needs for each Domain.
@@ -680,18 +681,18 @@ impl DomainStore {
 
         // Take a random choice
         let cd2_inx = rand::thread_rng().gen_range(0..min_len_inxplans.len());
-        //println!("inx2 = {}  can_do2 = {}", &inx2, &can_do2[inx2]);
+        //println!("inx2 = {}  can_do2 = {}", inx2, can_do2[inx2]);
 
         let itmx = &self.can_do[min_len_inxplans[cd2_inx]];
-        //println!("itmx.inx = {}", &itmx.inx);
+        //println!("itmx.inx = {}", itmx.inx);
 
         let ndx = &self.needs[itmx.inx]; // get need using tuple index
 
         println!(
             "\nNeed chosen: {:2} {} {}",
-            &min_len_inxplans[cd2_inx],
-            &ndx,
-            &itmx.plans.as_ref().unwrap().str_terse()
+            min_len_inxplans[cd2_inx],
+            ndx,
+            itmx.plans.as_ref().unwrap().str_terse()
         );
 
         min_len_inxplans[cd2_inx]
@@ -858,7 +859,7 @@ impl DomainStore {
 
         // If the current state is not in at least one select region, return None.
         if notsups.is_empty() {
-            println!("ret 1");
+            //println!("ret 1");
             return None;
         }
 
@@ -959,7 +960,7 @@ impl DomainStore {
 
         print!("\nCurrent Domain: {} of {}", dom_id, self.len(),);
 
-        println!("\nActs: {}", &self.domains[dom_id].actions);
+        println!("\nActs: {}", self.domains[dom_id].actions);
 
         let cur_state = &self.domains[dom_id].get_current_state();
 
@@ -981,7 +982,7 @@ impl DomainStore {
                     println!(
                         "{:2} {} {}/{:+}",
                         inx,
-                        &self.needs[ndplnx.inx],
+                        self.needs[ndplnx.inx],
                         ndplnx.plans.as_ref().unwrap().str_terse(),
                         ndplnx.rate,
                     );
@@ -989,7 +990,7 @@ impl DomainStore {
                     println!(
                         "{:2} {} {}",
                         inx,
-                        &self.needs[ndplnx.inx],
+                        self.needs[ndplnx.inx],
                         ndplnx.plans.as_ref().unwrap().str_terse(),
                     );
                 }

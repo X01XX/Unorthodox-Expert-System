@@ -137,8 +137,16 @@ impl SomeChange {
         let state1 = regx.state1();
         let state2 = regx.state2();
         SomeRegion::new(vec![
-            state1.bitwise_xor(&state1.bitwise_and(&self.b10).bitwise_or(&state1.bitwise_not().bitwise_and(&self.b01))),
-            state2.bitwise_xor(&state2.bitwise_and(&self.b10).bitwise_or(&state2.bitwise_not().bitwise_and(&self.b01))),
+            state1.bitwise_xor(
+                &state1
+                    .bitwise_and(&self.b10)
+                    .bitwise_or(&state1.bitwise_not().bitwise_and(&self.b01)),
+            ),
+            state2.bitwise_xor(
+                &state2
+                    .bitwise_and(&self.b10)
+                    .bitwise_or(&state2.bitwise_not().bitwise_and(&self.b01)),
+            ),
         ])
     }
 

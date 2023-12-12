@@ -48,7 +48,7 @@ impl SomeState {
     /// Left-most, consecutive, zeros can be omitted.
     ///
     /// if let Ok(sta) = SomeState::new_from_string(1, "s0b0101")) {
-    ///    println!("State {}", &sta);
+    ///    println!("State {sta}");
     /// } else {
     ///    panic!("Invalid State");
     /// }

@@ -51,11 +51,11 @@ mod state;
 use sample::SomeSample;
 use state::SomeState;
 mod domain;
-mod statestore;
-mod statestorecorr;
 mod needstore;
 mod plan;
 mod pn;
+mod statestore;
+mod statestorecorr;
 use pn::Pn;
 mod actions;
 mod domainstore;
@@ -532,7 +532,7 @@ fn command_loop(dmxs: &mut DomainStore) {
                 loop {
                     if let Some(ref regx) = goal {
                         let wanted_changes = SomeRegion::new(vec![cur_state.clone()])
-                            .translate_to_region(regx)
+                            .rule_to_region(regx)
                             .change();
                         println!(
                             "Goal {}, Change needed {} (number bits {})",
@@ -622,13 +622,16 @@ fn command_loop(dmxs: &mut DomainStore) {
                                         .restrict_for_changes(wanted_changes, None)
                                         .expect("SNH");
                                     let to_rule = SomeRegion::new(vec![cur_state.clone()])
-                                        .translate_to_region(&ruly.initial_region());
+                                        .rule_to_region(&ruly.initial_region());
 
                                     let agg_rule = to_rule.combine_pair(&ruly);
 
                                     let wanted_bit_changes = wanted_changes.intersection(&agg_rule);
 
-                                    let unwanted_bit_changes = wanted_changes.bitwise_not().intersection(&agg_rule).bitwise_and(&edge_mask);
+                                    let unwanted_bit_changes = wanted_changes
+                                        .bitwise_not()
+                                        .intersection(&agg_rule)
+                                        .bitwise_and(&edge_mask);
 
                                     if wanted_bit_changes.is_not_low() {
                                         suffix += &format!("wanted {}", wanted_bit_changes);
@@ -823,17 +826,17 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                     .as_ref()
                     .expect("Any need in the can_do vector should have a non-None plan");
 
-                println!("\n{} Need: {}", &n_num, &ndx);
+                println!("\n{} Need: {}", n_num, ndx);
                 match ndx {
                     SomeNeed::ToSelectRegion { .. } => {
-                        //println!("\n{}", &pln.str2());
+                        //println!("\n{}", pln.str2());
                         dmxs.print_plan_detail(pln);
                     }
                     _ => {
                         if ndx.satisfied_by(dmxs[ndx.dom_id()].get_current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
-                            //println!("\n{}", &pln.str2());
+                            //println!("\n{}", pln.str2());
                             //print_plan_detail(dmxs, pln);
                             dmxs.print_plan_detail(pln);
                         }
@@ -855,10 +858,10 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     // Display Domain info, if needed.
     match dmxs.needs[nd_inx] {
         SomeNeed::ToSelectRegion { .. } => {
-            //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
+            //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
         }
         SomeNeed::ExitSelectRegion { .. } => {
-            //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse())
+            //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
         }
         _ => {
             let nd_dom = dmxs.needs[nd_inx].dom_id();
@@ -867,7 +870,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 println!("\nAll domain states: {}", dmxs.all_current_states());
                 dmxs.change_domain(nd_dom);
                 dmxs.print_domain();
-                //println!("\nNeed chosen: {} {}", &ndx, &plans.str_terse());
+                //println!("\nNeed chosen: {} {}", ndx, plans.str_terse());
             }
         }
     }
@@ -940,8 +943,8 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                 println!(
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
-                    &dmxs.needs[nd_inx],
-                    &plans.str_terse()
+                    dmxs.needs[nd_inx],
+                    plans.str_terse()
                 );
 
                 match dmxs.needs[nd_inx] {
@@ -1134,7 +1137,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
     if cmd.len() == 2 {
         println!(
             "Squares of Action {} are:\n{}\n",
-            &act_id, &dmx.actions[act_id].squares
+            act_id, dmx.actions[act_id].squares
         );
         return Ok(());
     }
@@ -1303,7 +1306,7 @@ fn do_print_group_defining_squares_command(
     if let Some(grpx) = dmx.actions[act_id].groups.find(&aregion) {
         for stax in grpx.region.states.iter() {
             if let Some(sqrx) = dmx.actions[act_id].squares.find(stax) {
-                println!(" {}", &sqrx);
+                println!(" {}", sqrx);
             }
         }
     } else {
