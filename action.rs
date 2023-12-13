@@ -510,7 +510,7 @@ impl SomeAction {
                     } => {
                         if let Some(grpx) = self.groups.find_mut(greg) {
                             println!(
-                                "\nDom {} Act {} Group {} limited num adj {}",
+                                "\nDom {} Act {} Group {} set limited, num adj {}",
                                 dom_id, self.id, greg, num_adj
                             );
                             grpx.set_limited(*num_adj);
@@ -861,7 +861,7 @@ impl SomeAction {
                 continue;
             }
             let num_edges = grpx.num_edges();
-            if num_edges <= max_edges {
+            if num_edges < max_edges {
                 grpx.set_limited_off();
             }
         }

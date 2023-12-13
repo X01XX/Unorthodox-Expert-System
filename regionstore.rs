@@ -227,6 +227,8 @@ impl RegionStore {
     }
 
     /// Return the intersection of two RegionStores.
+    /// Regions overlapping adjacent regions, in the result, are not found.
+    /// If that is wanted, it would be max-reg.subtract(&max-reg.subtract(ret))
     pub fn intersection(&self, other: &Self) -> Self {
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
@@ -238,7 +240,7 @@ impl RegionStore {
         }
         ret
     }
-}
+} // end impl RegionStore.
 
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
@@ -271,6 +273,27 @@ impl StrLen for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn intersection() -> Result<(), String> {
+        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(ur_reg.new_from_string("rx10x")?);
+
+        let mut regstr2 = RegionStore::with_capacity(2);
+        regstr2.push(ur_reg.new_from_string("r01x1")?);
+        regstr2.push(ur_reg.new_from_string("r11x1")?);
+
+        // Without additional processing, in RegionStore::intersection, the result would be [0101, 1101].
+        let regstr3 = regstr1.intersection(&regstr2);
+        println!("results {}", regstr3);
+        assert!(regstr3.len() == 2);
+        assert!(regstr3.contains(&ur_reg.new_from_string("r0101")?));
+        assert!(regstr3.contains(&ur_reg.new_from_string("r1101")?));
+
+        Ok(())
+    }
 
     #[test]
     fn subtract_region() -> Result<(), String> {
