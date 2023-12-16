@@ -108,7 +108,7 @@ impl SomeChange {
 
     /// Return true if a SomeChange struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        if self.b01.is_subset_of(&other.b01) && self.b10.is_subset_of(&other.b10) {
+        if self.b01.is_subset_ones_of(&other.b01) && self.b10.is_subset_ones_of(&other.b10) {
             return true;
         }
         false

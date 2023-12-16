@@ -356,12 +356,12 @@ impl SomeBits {
     }
 
     /// Return true if a Bits struct is a ones-subset of another.
-    pub fn is_subset_of(&self, other: &Self) -> bool {
+    pub fn is_subset_ones_of(&self, other: &Self) -> bool {
         *self == self.b_and(other)
     }
 
     /// Return true if a Bits struct is a ones-superset of another.
-    pub fn is_superset_of(&self, other: &Self) -> bool {
+    pub fn is_superset_ones_of(&self, other: &Self) -> bool {
         *other == self.b_and(other)
     }
 
@@ -928,24 +928,24 @@ mod tests {
         let bitsx = SomeBits::new(vec![0, 0]);
         let bitsy = bitsx.new_from_string("0x0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_of(&bitsy));
+        assert!(bitsx.is_subset_ones_of(&bitsy));
 
         let bitsy = bitsy.new_from_string("0x5")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_of(&bitsy));
-        assert!(!bitsy.is_subset_of(&bitsx));
+        assert!(bitsx.is_subset_ones_of(&bitsy));
+        assert!(!bitsy.is_subset_ones_of(&bitsx));
 
         let bitsx = bitsx.new_from_string("0x5555")?;
         let bitsy = bitsy.new_from_string("0x7777")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_of(&bitsy));
-        assert!(!bitsy.is_subset_of(&bitsx));
+        assert!(bitsx.is_subset_ones_of(&bitsy));
+        assert!(!bitsy.is_subset_ones_of(&bitsx));
 
         let bitsx = bitsx.new_from_string("0x5")?;
         let bitsy = bitsx.new_from_string("0x1")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy.is_subset_of(&bitsx));
-        assert!(!bitsx.is_subset_of(&bitsy));
+        assert!(bitsy.is_subset_ones_of(&bitsx));
+        assert!(!bitsx.is_subset_ones_of(&bitsy));
 
         Ok(())
     }
@@ -956,25 +956,25 @@ mod tests {
         let bitsx = SomeBits::new(vec![0, 0]);
         let bitsy = bitsx.new_from_string("0x0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_of(&bitsy));
+        assert!(bitsx.is_superset_ones_of(&bitsy));
 
         let bitsx = bitsx.new_from_string("0x5")?;
         let bitsy = bitsx.new_from_string("0x0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_of(&bitsy));
-        assert!(!bitsy.is_superset_of(&bitsx));
+        assert!(bitsx.is_superset_ones_of(&bitsy));
+        assert!(!bitsy.is_superset_ones_of(&bitsx));
 
         let bitsx = bitsx.new_from_string("0x7777")?;
         let bitsy = bitsx.new_from_string("0x5555")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_of(&bitsy));
-        assert!(!bitsy.is_superset_of(&bitsx));
+        assert!(bitsx.is_superset_ones_of(&bitsy));
+        assert!(!bitsy.is_superset_ones_of(&bitsx));
 
         let bitsx = bitsx.new_from_string("0x5")?;
         let bitsy = bitsx.new_from_string("0x1")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_of(&bitsy));
-        assert!(!bitsy.is_superset_of(&bitsx));
+        assert!(bitsx.is_superset_ones_of(&bitsy));
+        assert!(!bitsy.is_superset_ones_of(&bitsx));
 
         Ok(())
     }

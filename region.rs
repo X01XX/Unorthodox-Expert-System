@@ -317,7 +317,7 @@ impl SomeRegion {
 
         let ok_x_msk = other.x_mask();
 
-        assert!(ok_x_msk.is_subset_of(&int_x_msk));
+        assert!(ok_x_msk.is_subset_ones_of(&int_x_msk));
 
         // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
         // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
@@ -334,7 +334,7 @@ impl SomeRegion {
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
-            return x1.is_subset_of(&x2);
+            return x1.is_subset_ones_of(&x2);
         }
         false
     }
@@ -344,7 +344,7 @@ impl SomeRegion {
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
-            return x1.is_superset_of(&x2);
+            return x1.is_superset_ones_of(&x2);
         }
         false
     }

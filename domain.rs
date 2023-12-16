@@ -742,14 +742,14 @@ impl SomeDomain {
         // Gather possible start regions.
         let mut start_in: Vec<&SomeRegion> = vec![];
         for pathx in path_regions.iter() {
-            if !pathx.is_superset_of(start_reg) {
+            if !pathx.intersects(start_reg) {
                 continue;
             }
-            if pathx.is_superset_of(goal_reg) {
+            if pathx.intersects(goal_reg) {
                 let mut aplan = Path { steps: vec![] };
                 let astep = PathStep {
-                    from: start_reg.clone(),
-                    to: goal_reg.clone(),
+                    from: start_reg.intersection(pathx).expect("SNH"),
+                    to: goal_reg.intersection(pathx).expect("SNH"),
                     within: pathx.clone(),
                 };
                 aplan.steps.push(astep);
@@ -766,7 +766,7 @@ impl SomeDomain {
         // Gather possible goal regions.
         let mut goal_in: Vec<&SomeRegion> = vec![];
         for pathx in path_regions.iter() {
-            if pathx.is_superset_of(goal_reg) {
+            if pathx.intersects(goal_reg) {
                 goal_in.push(pathx);
             }
         }
@@ -881,7 +881,7 @@ impl SomeDomain {
                         }
                     } // next regsx
                 } // next levelx
-                  // Check for intersection with higest level.
+                // Check for intersection with highest level.
                 if let Some(levelx) = goal_stack.last() {
                     for regx in levelx.iter() {
                         if nnx.intersects(*regx) {
@@ -987,7 +987,7 @@ impl SomeDomain {
 
             // Build path.
             let mut path = Path { steps: vec![] };
-            let mut cur_result = start_reg.clone();
+            let mut cur_result = start_reg.intersection(full_path[0]).expect("SNH");
 
             for inx in 0..(full_path.len() - 1) {
                 let intx = full_path[inx]
@@ -1720,5 +1720,38 @@ mod tests {
         }
 
         Err("5 LimitGroupAdj need not found?".to_string())
+    }
+
+    #[test]
+    fn find_paths_through_regions() -> Result<(), String> {
+
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(0, 1);
+        dm0.cur_state = dm0.state_from_string("s0b1011")?;
+        dm0.add_action();
+
+        // Use start and goal regions that may be truncated to within an available path region.
+        let start = dm0.region_from_string("r00x1").expect("SNH");
+        let goal  = dm0.region_from_string("r111x").expect("SNH");
+
+        let mut regions = RegionStore::new(vec![]);
+        regions.push(dm0.region_from_string("r1x0x").expect("SNH"));
+        regions.push(dm0.region_from_string("r1xx0").expect("SNH"));
+        regions.push(dm0.region_from_string("r00xx").expect("SNH"));
+        regions.push(dm0.region_from_string("rx00x").expect("SNH"));
+        regions.push(dm0.region_from_string("rx0x0").expect("SNH"));
+        regions.push(dm0.region_from_string("r0x1x").expect("SNH"));
+        regions.push(dm0.region_from_string("rxx10").expect("SNH"));
+        println!("regs {}", regions);
+        
+        let paths: Vec::<Path> = dm0.find_paths_through_regions(&start, &goal, &regions);
+
+        println!("Paths:");
+        for pathx in paths.iter() {
+            println!("    {}", pathx);
+        }
+        assert!(paths.len() == 3);
+        //assert!(1 == 2);
+        Ok(())
     }
 } // end tests

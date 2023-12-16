@@ -104,13 +104,13 @@ impl SomeMask {
     }
 
     /// Return true if a mask is a subset of a second mask.
-    pub fn is_subset_of(&self, other: &Self) -> bool {
-        self.bts.is_subset_of(&other.bts)
+    pub fn is_subset_ones_of(&self, other: &Self) -> bool {
+        self.bts.is_subset_ones_of(&other.bts)
     }
 
     /// Return true if a mask is a superset of a second mask.
-    pub fn is_superset_of(&self, other: &Self) -> bool {
-        self.bts.is_superset_of(&other.bts)
+    pub fn is_superset_ones_of(&self, other: &Self) -> bool {
+        self.bts.is_superset_ones_of(&other.bts)
     }
 
     /// Return the number of bits set to one.
