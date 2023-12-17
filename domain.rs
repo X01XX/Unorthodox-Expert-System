@@ -361,7 +361,7 @@ impl SomeDomain {
             let mut min_steps = Vec::<usize>::new();
 
             for (inx, stepx) in steps_by_change_vov[setx].iter().enumerate() {
-                let tmp_min = if stepx.initial.is_superset_of(from_reg) {
+                let tmp_min = if stepx.initial.intersects(from_reg) {
                     // Forward chaining
                     let tmp_rul = stepx.rule.restrict_initial_region(from_reg);
                     let unwanted = wanted_changes
@@ -408,7 +408,7 @@ impl SomeDomain {
         let stepx = steps_by_change_vov[setx][stinx];
 
         // Process a forward chaining step.
-        if stepx.initial.is_superset_of(from_reg) {
+        if stepx.initial.intersects(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
 
             let plan_to_goal = self.plan_steps_between(&stepy.result, goal_reg, depth - 1)?;
@@ -742,21 +742,20 @@ impl SomeDomain {
         // Gather possible start regions.
         let mut start_in: Vec<&SomeRegion> = vec![];
         for pathx in path_regions.iter() {
-            if !pathx.intersects(start_reg) {
-                continue;
+            if let Some(startx) = pathx.intersection(start_reg) {
+                if let Some(goalx) = pathx.intersection(goal_reg) {
+                    let mut aplan = Path { steps: vec![] };
+                    let astep = PathStep {
+                        from: startx,
+                        to: goalx,
+                        within: pathx.clone(),
+                    };
+                    aplan.steps.push(astep);
+                    ret_paths.push(aplan);
+                    return ret_paths;
+                }
+                start_in.push(pathx);
             }
-            if pathx.intersects(goal_reg) {
-                let mut aplan = Path { steps: vec![] };
-                let astep = PathStep {
-                    from: start_reg.intersection(pathx).expect("SNH"),
-                    to: goal_reg.intersection(pathx).expect("SNH"),
-                    within: pathx.clone(),
-                };
-                aplan.steps.push(astep);
-                ret_paths.push(aplan);
-                return ret_paths;
-            }
-            start_in.push(pathx);
         }
 
         if start_in.is_empty() {
@@ -942,9 +941,8 @@ impl SomeDomain {
             let mut start_side = Vec::<&SomeRegion>::with_capacity(*start_levx + 1);
             start_side.push(start_stack[*start_levx][*start_itemx]);
             for levx in (0..*start_levx).rev() {
-                let Some(start_match) = start_side.last() else {
-                    panic!("SNH");
-                };
+                let start_match = start_side.last().expect("SNH");
+
                 for start_itemx in start_stack[levx].iter() {
                     if start_itemx.intersects(*start_match) {
                         start_side.push(start_itemx);
@@ -959,9 +957,8 @@ impl SomeDomain {
             let mut goal_side = Vec::<&SomeRegion>::with_capacity(*goal_levx + 1);
             goal_side.push(goal_stack[*goal_levx][*goal_itemx]);
             for levx in (0..*goal_levx).rev() {
-                let Some(goal_match) = goal_side.last() else {
-                    panic!("SNH");
-                };
+                let goal_match = goal_side.last().expect("SNH");
+
                 for goal_itemx in goal_stack[levx].iter() {
                     if goal_itemx.intersects(*goal_match) {
                         goal_side.push(goal_itemx);
