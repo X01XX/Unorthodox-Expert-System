@@ -14,6 +14,24 @@ impl fmt::Display for SomeStep {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum AltRuleHint {
+    NoAlt {},
+    AltNoChange {},
+    AltRule { rule: SomeRule },
+}
+
+impl fmt::Display for AltRuleHint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Self::NoAlt {} => String::from("Alt: none"),
+            Self::AltNoChange {} => String::from("Alt: No change"),
+            Self::AltRule { rule } => format!("Alt: {rule}"),
+        };
+        write!(f, "{}", str)
+    }
+}
+
 #[readonly::make]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SomeStep {
@@ -21,13 +39,18 @@ pub struct SomeStep {
     pub initial: SomeRegion,
     pub result: SomeRegion,
     pub rule: SomeRule,
-    pub alt_rule: bool,
+    pub alt_rule: AltRuleHint,
     pub group_reg: SomeRegion,
 }
 
 impl SomeStep {
     /// Return a new Step struct instance.
-    pub fn new(act_id: usize, rule: SomeRule, alt_rule: bool, group_reg: SomeRegion) -> Self {
+    pub fn new(
+        act_id: usize,
+        rule: SomeRule,
+        alt_rule: AltRuleHint,
+        group_reg: SomeRegion,
+    ) -> Self {
         let initial = rule.initial_region();
 
         let result = rule.result_region();
@@ -52,7 +75,7 @@ impl SomeStep {
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
-            alt_rule: self.alt_rule,
+            alt_rule: self.alt_rule.clone(),
             group_reg: self.group_reg.clone(),
         }
     }
@@ -68,7 +91,7 @@ impl SomeStep {
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
-            alt_rule: self.alt_rule,
+            alt_rule: self.alt_rule.clone(),
             group_reg: self.group_reg.clone(),
         }
     }
@@ -80,6 +103,7 @@ impl SomeStep {
         rcstr.push_str(&self.initial.to_string());
         rcstr.push_str(&format!(" -{:02}> ", self.act_id));
         rcstr.push_str(&self.result.to_string());
+        rcstr.push_str(&format!(" {}", self.alt_rule));
         rcstr.push(']');
         rcstr
     }
@@ -94,7 +118,14 @@ impl SomeStep {
 /// Implement the trait StrLen for SomeStep.
 impl StrLen for SomeStep {
     fn strlen(&self) -> usize {
-        8 + (2 * self.initial.strlen())
+        let mut len = 8 + (2 * self.initial.strlen());
+        // 1 = space separator. 5 = "Alt: ".
+        len += match &self.alt_rule {
+            AltRuleHint::NoAlt {} => 1 + 5 + 4,
+            AltRuleHint::AltNoChange {} => 1 + 5 + 9,
+            AltRuleHint::AltRule { rule } => 1 + 5 + rule.strlen(),
+        };
+        len
     }
 }
 
@@ -111,9 +142,10 @@ mod tests {
     #[test]
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_sta2 = SomeState::new(SomeBits::new(vec![2]));
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta2.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, tmp_reg.clone());
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -121,6 +153,28 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
+        let tmp_stp = SomeStep::new(
+            0,
+            tmp_rul.clone(),
+            AltRuleHint::AltNoChange {},
+            tmp_reg.clone(),
+        );
+
+        let strrep = format!("{tmp_stp}");
+        let len = strrep.len();
+        let calc_len = tmp_stp.strlen();
+        println!("str {tmp_stp} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_alt = SomeRule::new(&SomeSample::new(tmp_sta2.clone(), tmp_sta));
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt }, tmp_reg);
+
+        let strrep = format!("{tmp_stp}");
+        let len = strrep.len();
+        let calc_len = tmp_stp.strlen();
+        println!("str {tmp_stp} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+        //assert!(1 == 2);
         Ok(())
     }
 }

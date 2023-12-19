@@ -15,7 +15,7 @@ impl fmt::Display for PlanStore {
 }
 
 #[readonly::make]
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct PlanStore {
     /// A vector of SomePlan instances.
     pub avec: Vec<SomePlan>,

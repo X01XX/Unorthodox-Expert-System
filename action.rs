@@ -27,7 +27,7 @@ use crate::square::SomeSquare;
 use crate::squarestore::SquareStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::step::SomeStep;
+use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::tools;
 
@@ -1471,7 +1471,12 @@ impl SomeAction {
                 if let Some(rulx) =
                     grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange, within)
                 {
-                    stps.push(SomeStep::new(self.id, rulx, false, grpx.region.clone()));
+                    stps.push(SomeStep::new(
+                        self.id,
+                        rulx,
+                        AltRuleHint::NoAlt {},
+                        grpx.region.clone(),
+                    ));
                 }
                 continue;
             }
@@ -1497,40 +1502,61 @@ impl SomeAction {
                     }
                 }
 
-                for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
-                        continue;
-                    };
+                if let Some(rules) = &grpx.rules {
+                    for (inx, ruly) in rules.iter().enumerate() {
+                        let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
+                            continue;
+                        };
 
-                    // See if an existing square is ready to produce the desired result
-                    let i_reg = rulx.initial_region();
-                    let sqrs = self.squares.squares_in_reg(&i_reg);
+                        // See if an existing square is ready to produce the desired result
+                        let i_reg = rulx.initial_region();
+                        let sqrs = self.squares.squares_in_reg(&i_reg);
 
-                    let mut found = false;
-                    for sqrx in &sqrs {
-                        // Will include at least one bit change desired, but maybe others.
-                        let expected_result = rulx.result_from_initial_state(&sqrx.state);
+                        let mut found = false;
+                        for sqrx in &sqrs {
+                            // Will include at least one bit change desired, but maybe others.
+                            let expected_result = rulx.result_from_initial_state(&sqrx.state);
 
-                        // If a Pn::Two squares last result is not equal to what is wanted,
-                        // the next result should be.
-                        if *sqrx.most_recent_result() != expected_result {
-                            let stpx = SomeStep::new(
-                                self.id,
-                                rulx.restrict_initial_region(&SomeRegion::new(vec![sqrx
-                                    .state
-                                    .clone()])),
-                                false,
-                                grpx.region.clone(),
-                            );
-                            stps.push(stpx);
-                            found = true;
-                        } // end if
-                    } // next sqrx
+                            // If a Pn::Two squares last result is not equal to what is wanted,
+                            // the next result should be.
+                            if *sqrx.most_recent_result() != expected_result {
+                                let stpx = SomeStep::new(
+                                    self.id,
+                                    rulx.restrict_initial_region(&SomeRegion::new(vec![sqrx
+                                        .state
+                                        .clone()])),
+                                    AltRuleHint::NoAlt {},
+                                    grpx.region.clone(),
+                                );
+                                stps.push(stpx);
+                                found = true;
+                            } // end if
+                        } // next sqrx
 
-                    if !found && one_no_change {
-                        stps.push(SomeStep::new(self.id, rulx, true, grpx.region.clone()));
-                    }
-                } // next ruly
+                        if !found {
+                            if one_no_change {
+                                stps.push(SomeStep::new(
+                                    self.id,
+                                    rulx,
+                                    AltRuleHint::AltNoChange {},
+                                    grpx.region.clone(),
+                                ));
+                            } else {
+                                let alt_rule = if inx == 0 {
+                                    rules[1].clone()
+                                } else {
+                                    rules[0].clone()
+                                };
+                                stps.push(SomeStep::new(
+                                    self.id,
+                                    rulx,
+                                    AltRuleHint::AltRule { rule: alt_rule },
+                                    grpx.region.clone(),
+                                ));
+                            }
+                        }
+                    } // next ruly
+                }
             } // end Pn::Two
         } // next grpx
 

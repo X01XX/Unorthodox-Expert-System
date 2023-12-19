@@ -349,7 +349,7 @@ impl DomainStore {
     /// Run a plan for a given Domain.
     /// Return true if the plan ran to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
-        self.domains[pln.dom_id].run_plan(pln)
+        self.domains[pln.dom_id].run_plan(pln, 0)
     }
 
     /// Take an action to satisfy a need,

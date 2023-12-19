@@ -368,13 +368,14 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::state::SomeState;
+    use crate::step::AltRuleHint;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
 
@@ -409,13 +410,13 @@ mod tests {
         let step0 = SomeStep::new(
             0,
             tmp_rul.new_from_string("00/01/01/11")?,
-            false,
+            AltRuleHint::NoAlt {},
             tmp_reg.new_from_string("rXXXX")?,
         ); // 1 -> 7
         let step1 = SomeStep::new(
             0,
             tmp_rul.new_from_string("01/11/10/11")?,
-            false,
+            AltRuleHint::NoAlt {},
             tmp_reg.new_from_string("rXXXX")?,
         ); // 7 -> D
         let planx = SomePlan::new(0, vec![step0, step1]);
@@ -444,12 +445,32 @@ mod tests {
         let reg5 = tmp_reg.new_from_string("r101x")?;
         let reg6 = tmp_reg.new_from_string("r000x")?;
 
-        let step1 = SomeStep::new(0, reg1.rule_to_region(&reg2), false, reg1.clone());
-        let step2 = SomeStep::new(0, reg2.rule_to_region(&reg3), false, reg2.clone());
+        let step1 = SomeStep::new(
+            0,
+            reg1.rule_to_region(&reg2),
+            AltRuleHint::NoAlt {},
+            reg1.clone(),
+        );
+        let step2 = SomeStep::new(
+            0,
+            reg2.rule_to_region(&reg3),
+            AltRuleHint::NoAlt {},
+            reg2.clone(),
+        );
         let stp_str1 = SomePlan::new(0, vec![step1, step2]);
 
-        let step4 = SomeStep::new(0, reg4.rule_to_region(&reg5), false, reg4.clone());
-        let step5 = SomeStep::new(0, reg5.rule_to_region(&reg6), false, reg5.clone());
+        let step4 = SomeStep::new(
+            0,
+            reg4.rule_to_region(&reg5),
+            AltRuleHint::NoAlt {},
+            reg4.clone(),
+        );
+        let step5 = SomeStep::new(
+            0,
+            reg5.rule_to_region(&reg6),
+            AltRuleHint::NoAlt {},
+            reg5.clone(),
+        );
         let stp_str2 = SomePlan::new(0, vec![step4, step5]);
 
         println!("stp1 {}", stp_str1);
@@ -480,15 +501,40 @@ mod tests {
         let reg5 = tmp_reg.new_from_string("r0101")?;
         let reg7 = tmp_reg.new_from_string("r0111")?;
 
-        let step1 = SomeStep::new(0, reg1.rule_to_region(&reg3), false, reg1.clone());
+        let step1 = SomeStep::new(
+            0,
+            reg1.rule_to_region(&reg3),
+            AltRuleHint::NoAlt {},
+            reg1.clone(),
+        );
 
-        let step2 = SomeStep::new(0, reg3.rule_to_region(&reg7), false, reg3.clone());
+        let step2 = SomeStep::new(
+            0,
+            reg3.rule_to_region(&reg7),
+            AltRuleHint::NoAlt {},
+            reg3.clone(),
+        );
 
-        let step3 = SomeStep::new(0, reg7.rule_to_region(&reg5), false, reg7.clone());
+        let step3 = SomeStep::new(
+            0,
+            reg7.rule_to_region(&reg5),
+            AltRuleHint::NoAlt {},
+            reg7.clone(),
+        );
 
-        let step4 = SomeStep::new(0, reg5.rule_to_region(&reg1), false, reg5.clone());
+        let step4 = SomeStep::new(
+            0,
+            reg5.rule_to_region(&reg1),
+            AltRuleHint::NoAlt {},
+            reg5.clone(),
+        );
 
-        let step5 = SomeStep::new(0, reg1.rule_to_region(&reg0), false, reg5.clone());
+        let step5 = SomeStep::new(
+            0,
+            reg1.rule_to_region(&reg0),
+            AltRuleHint::NoAlt {},
+            reg5.clone(),
+        );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
         println!("pln1: {}", pln1);
@@ -515,9 +561,19 @@ mod tests {
             return Err(format!("No shortcut found for {}?", pln1).to_string());
         }
 
-        let step1 = SomeStep::new(0, reg1.rule_to_region(&reg3), false, reg1.clone());
+        let step1 = SomeStep::new(
+            0,
+            reg1.rule_to_region(&reg3),
+            AltRuleHint::NoAlt {},
+            reg1.clone(),
+        );
 
-        let step2 = SomeStep::new(0, reg3.rule_to_region(&reg7), false, reg3.clone());
+        let step2 = SomeStep::new(
+            0,
+            reg3.rule_to_region(&reg7),
+            AltRuleHint::NoAlt {},
+            reg3.clone(),
+        );
 
         let pln2 = SomePlan::new(0, vec![step1, step2]);
         println!("pln2: {pln2}");

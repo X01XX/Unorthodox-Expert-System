@@ -313,14 +313,14 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::state::SomeState;
-    use crate::step::SomeStep;
+    use crate::step::{AltRuleHint, SomeStep};
 
     #[test]
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-        let tmp_stp = SomeStep::new(0, tmp_rul, true, tmp_reg);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);
 

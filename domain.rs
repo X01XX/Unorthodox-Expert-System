@@ -25,7 +25,7 @@ use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::step::SomeStep;
+use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::tools::{self, StrLen};
 
@@ -202,7 +202,7 @@ impl SomeDomain {
     }
 
     /// Run a plan, return true if it runs to completion.
-    pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
+    pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> bool {
         assert_eq!(pln.dom_id, self.id);
 
         if pln.is_empty() {
@@ -227,25 +227,60 @@ impl SomeDomain {
                 continue;
             }
 
-            // Handle unexpected/unwanted result
-            // May be an expected possibility from a two result state.
-            if prev_state == self.cur_state && stpx.alt_rule {
-                println!("Try action a second time");
-
-                let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
-                self.set_cur_state(asample.result.clone());
-
-                if stpx.result.is_superset_of(&self.cur_state) {
-                    continue;
-                }
-            }
-
+            // Handle unexpected/unwanted result.
             println!(
                 "\nChange [{} -{:02}> {}] unexpected, expected {}",
                 prev_state, stpx.act_id, self.cur_state, stpx,
             );
 
-            return false;
+            // Avoid an infinite loop of retries.
+            if depth == 1 {
+                return false;
+            }
+
+            // May be an expected possibility from a two result state.
+            match &stpx.alt_rule {
+                AltRuleHint::NoAlt {} => return false,
+                AltRuleHint::AltNoChange {} => {
+                    println!("Try action a second time");
+
+                    let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                    self.set_cur_state(asample.result.clone());
+
+                    if stpx.result.is_superset_of(&self.cur_state) {
+                        continue;
+                    }
+                    return false;
+                }
+                AltRuleHint::AltRule { rule } => {
+                    if rule.result_region().is_superset_of(&self.cur_state) {
+                        if let Some(planx) =
+                            self.make_plans(&SomeRegion::new(vec![prev_state.clone()]))
+                        {
+                            println!("Try action plan to return {}", planx[0]);
+                            if self.run_plan(&planx[0], 1) {
+                                println!("Try action return worked.");
+                                let asample =
+                                    self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                                self.set_cur_state(asample.result.clone());
+
+                                if stpx.result.is_superset_of(&self.cur_state) {
+                                    continue;
+                                }
+                                println!("Try action return retry failed.");
+                                return false;
+                            } else {
+                                println!("Try action return failed.");
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            }
         } // next stpx
 
         pln.result_region().is_superset_of(&self.cur_state)
@@ -880,7 +915,7 @@ impl SomeDomain {
                         }
                     } // next regsx
                 } // next levelx
-                // Check for intersection with highest level.
+                  // Check for intersection with highest level.
                 if let Some(levelx) = goal_stack.last() {
                     for regx in levelx.iter() {
                         if nnx.intersects(*regx) {
@@ -1721,7 +1756,6 @@ mod tests {
 
     #[test]
     fn find_paths_through_regions() -> Result<(), String> {
-
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1011")?;
@@ -1729,7 +1763,7 @@ mod tests {
 
         // Use start and goal regions that may be truncated to within an available path region.
         let start = dm0.region_from_string("r00x1").expect("SNH");
-        let goal  = dm0.region_from_string("r111x").expect("SNH");
+        let goal = dm0.region_from_string("r111x").expect("SNH");
 
         let mut regions = RegionStore::new(vec![]);
         regions.push(dm0.region_from_string("r1x0x").expect("SNH"));
@@ -1740,8 +1774,8 @@ mod tests {
         regions.push(dm0.region_from_string("r0x1x").expect("SNH"));
         regions.push(dm0.region_from_string("rxx10").expect("SNH"));
         println!("regs {}", regions);
-        
-        let paths: Vec::<Path> = dm0.find_paths_through_regions(&start, &goal, &regions);
+
+        let paths: Vec<Path> = dm0.find_paths_through_regions(&start, &goal, &regions);
 
         println!("Paths:");
         for pathx in paths.iter() {
