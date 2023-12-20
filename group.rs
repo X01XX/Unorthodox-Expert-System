@@ -61,11 +61,11 @@ impl SomeGroup {
         if ruls.is_none() {
             pnx = Pn::Unpredictable;
         } else if let Some(xruls) = ruls.as_ref() {
-            assert!(!xruls.is_empty() && xruls.len() < 3);
+            assert!(!xruls.is_empty() && xruls.is_valid());
+            assert!(regionx == xruls.initial_region());
             if xruls.len() == 2 {
                 pnx = Pn::Two;
             }
-            assert!(regionx == xruls.initial_region());
         }
 
         Self {

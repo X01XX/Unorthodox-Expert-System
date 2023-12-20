@@ -23,6 +23,7 @@ use crate::plan::SomePlan;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
+use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::{AltRuleHint, SomeStep};
@@ -135,14 +136,24 @@ impl SomeDomain {
         }
     }
 
+    /// Return the number of bits used in a domain.
+    pub fn num_bits(&self) -> usize {
+        self.cur_state.num_bits()
+    }
+
     /// Return a reference to the current, internal, state.
     pub fn get_current_state(&self) -> &SomeState {
         &self.cur_state
     }
 
     /// Add a SomeAction instance to the store.
-    pub fn add_action(&mut self) {
-        self.actions.add_action(self.id);
+    pub fn add_action(&mut self, rules: Vec<RuleStore>) {
+        for rulesx in rules.iter() {
+            if rulesx.is_not_empty() {
+                assert!(self.num_bits() == rulesx[0].num_bits());
+            }
+        }
+        self.actions.add_action(self.id, rules);
     }
 
     /// Return needs gathered from all actions.
@@ -651,6 +662,16 @@ impl SomeDomain {
     /// Left-most, consecutive, zeros can be omitted.
     pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
         self.cur_state.new_from_string(str)
+    }
+
+    /// Return a SomeRule instance from a string.
+    /// Left-most, consecutive, 00s can be omitted.
+    pub fn rule_from_string(&self, str: &str) -> Result<SomeRule, String> {
+        SomeRule::new(&SomeSample::new(
+            self.cur_state.clone(),
+            self.cur_state.clone(),
+        ))
+        .new_from_string(str)
     }
 
     /// Return a SomeMask instance from a string.
@@ -1186,10 +1207,10 @@ mod tests {
         let dm0 = &mut dmxs[0];
 
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
-        dm0.add_action();
-        dm0.add_action();
-        dm0.add_action();
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -1235,10 +1256,10 @@ mod tests {
         dmxs.add_domain(1);
         let dm0 = &mut dmxs[0];
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
-        dm0.add_action();
-        dm0.add_action();
-        dm0.add_action();
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0")?;
         let sf = dm0.state_from_string("s0b1111")?;
@@ -1286,7 +1307,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1344,7 +1365,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions.avec[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1427,7 +1448,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         let s00 = dm0.state_from_string("s0b0")?;
         let s01 = dm0.state_from_string("s0b01")?;
@@ -1463,7 +1484,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         // Set up group XXXX_XX0X->XXXX_XX0X
         let s04 = dm0.state_from_string("s0b00000100")?;
@@ -1557,7 +1578,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         let s5 = dm0.state_from_string("s0b101")?;
 
@@ -1610,7 +1631,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         let s5 = dm0.state_from_string("s0b101")?;
         let s4 = dm0.state_from_string("s0b100")?;
@@ -1652,7 +1673,7 @@ mod tests {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, 2);
         dm0.cur_state = dm0.state_from_string("s0b1")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0001010010101000")?;
         let s1 = dm0.state_from_string("s0b1111010110101011")?;
@@ -1686,7 +1707,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1011")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         // Create group XXX1 -> XXX1, no way to change any bit.
         let s0b = dm0.state_from_string("s0b1011")?;
@@ -1759,7 +1780,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
         dm0.cur_state = dm0.state_from_string("s0b1011")?;
-        dm0.add_action();
+        dm0.add_action(vec![]);
 
         // Use start and goal regions that may be truncated to within an available path region.
         let start = dm0.region_from_string("r00x1").expect("SNH");

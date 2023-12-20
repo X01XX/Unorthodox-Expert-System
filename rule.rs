@@ -137,6 +137,11 @@ impl SomeRule {
         Ok(Self { b00, b01, b11, b10 })
     }
 
+    /// Return the number of bits used in a rule.
+    pub fn num_bits(&self) -> usize {
+        self.b00.num_bits()
+    }
+
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         let Some(tmprul) = self.intersection(other) else {

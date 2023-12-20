@@ -50,9 +50,12 @@ impl Eq for RuleStore {}
 impl RuleStore {
     /// Return a new, empty, RuleStore.
     pub fn new(avec: Vec<SomeRule>) -> Self {
-        let ret = Self { avec };
-        assert!(ret.is_valid());
-        ret
+        if avec.len() > 1 {
+            for rulx in avec.iter() {
+                assert!(rulx.num_bits() == avec[0].num_bits());
+            }
+        }
+        Self { avec }
     }
 
     /// Return if a square result rulestore is valid
@@ -305,7 +308,7 @@ impl RuleStore {
     /// Return the intersection of two RuleStores.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         if self.len() != other.len() {
-            panic!("rulestore lengths not eq!");
+            panic!("rulestore lengths not eq! {} vs {}", self, other);
         }
 
         if self.len() == 1 {

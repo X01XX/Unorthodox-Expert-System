@@ -8,6 +8,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
+use crate::rulestore::RuleStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -49,8 +50,9 @@ impl ActionStore {
     }
 
     /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_id: usize) {
-        self.avec.push(SomeAction::new(self.avec.len(), dom_id));
+    pub fn add_action(&mut self, dom_id: usize, rules: Vec<RuleStore>) {
+        self.avec
+            .push(SomeAction::new(self.avec.len(), dom_id, rules));
     }
 
     /// Check limited flag due to new changes.

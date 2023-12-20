@@ -79,13 +79,13 @@ impl SomeAction {
     /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
     /// The action number, an index into the ActionStore that will contain it, is set to zero and
     /// changed later.
-    pub fn new(act_id: usize, dom_id: usize) -> Self {
+    pub fn new(act_id: usize, dom_id: usize, rules: Vec<RuleStore>) -> Self {
         SomeAction {
             id: act_id,
             dom_id,
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new()),
-            do_something: ActionInterface::new(),
+            do_something: ActionInterface::new(rules),
             cleanup_trigger: CLEANUP,
             remainder_checked: false,
             remainder_check_region: None,
@@ -1317,6 +1317,8 @@ impl SomeAction {
 
         // If contradictory, return needs to resolve
 
+        println!("grpx {grpx} grpy {grpy}");
+
         // Check if a valid sub-region of the intersection exists
         if let Some(rulsxy) = rulsx.intersection(&rulsy) {
             // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
@@ -1807,10 +1809,6 @@ impl SomeAction {
 
         let asample = SomeSample::new(cur_state.clone(), astate);
 
-        if self.squares.find(cur_state).is_none() {
-            self.add_new_sample(&asample);
-        }
-
         if !self.eval_sample(&asample) {
             self.add_new_sample(&asample);
         }
@@ -2011,7 +2009,7 @@ mod tests {
     fn two_result_group() -> Result<(), String> {
         // Init action
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
 
         // Put in two incompatible one-result squares, but both subset of the
@@ -2051,7 +2049,7 @@ mod tests {
     fn groups_formed_1() -> Result<(), String> {
         // Init action
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
@@ -2101,7 +2099,7 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
 
         // Set up 2-result square sf.
@@ -2143,7 +2141,7 @@ mod tests {
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
@@ -2175,7 +2173,7 @@ mod tests {
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
@@ -2220,7 +2218,7 @@ mod tests {
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
         let tmp_bts = SomeBits::new(vec![0]);
-        let mut act0 = SomeAction::new(0, 0);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
