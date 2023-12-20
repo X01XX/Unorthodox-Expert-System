@@ -213,18 +213,20 @@ impl SomeDomain {
     }
 
     /// Run a plan, return true if it runs to completion.
-    pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> bool {
+    pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
         assert_eq!(pln.dom_id, self.id);
 
+        let mut num_steps = 0;
+
         if pln.is_empty() {
-            return true;
+            return Ok(num_steps);
         }
 
         if !pln.initial_region().is_superset_of(&self.cur_state) {
-            panic!(
-                "\nCurrent state {} is not in the start region of plan {}",
+            return Err(format!(
+                "Current state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
-            );
+            ));
         }
 
         // Run each step of the plan.
@@ -232,6 +234,8 @@ impl SomeDomain {
             let prev_state = self.cur_state.clone();
 
             let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
+            num_steps += 1;
+
             self.set_cur_state(asample.result.clone());
 
             if stpx.result.is_superset_of(&self.cur_state) {
@@ -246,22 +250,24 @@ impl SomeDomain {
 
             // Avoid an infinite loop of retries.
             if depth == 1 {
-                return false;
+                return Err("Try return/retry depth limit exceeded".to_string());
             }
 
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
-                AltRuleHint::NoAlt {} => return false,
+                AltRuleHint::NoAlt {} => return Err("Step failed".to_string()),
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
 
                     let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                    num_steps += 1;
+
                     self.set_cur_state(asample.result.clone());
 
                     if stpx.result.is_superset_of(&self.cur_state) {
                         continue;
                     }
-                    return false;
+                    return Err("Action retry failed".to_string());
                 }
                 AltRuleHint::AltRule { rule } => {
                     if rule.result_region().is_superset_of(&self.cur_state) {
@@ -269,32 +275,39 @@ impl SomeDomain {
                             self.make_plans(&SomeRegion::new(vec![prev_state.clone()]))
                         {
                             println!("Try action plan to return {}", planx[0]);
-                            if self.run_plan(&planx[0], 1) {
-                                println!("Try action return worked.");
-                                let asample =
-                                    self.actions[stpx.act_id].take_action_step(&self.cur_state);
-                                self.set_cur_state(asample.result.clone());
+                            match self.run_plan(&planx[0], 1) {
+                                Ok(num) => {
+                                    println!("Try action return worked.");
+                                    num_steps += num;
 
-                                if stpx.result.is_superset_of(&self.cur_state) {
-                                    continue;
+                                    let asample =
+                                        self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                                    num_steps += 1;
+
+                                    self.set_cur_state(asample.result.clone());
+
+                                    if stpx.result.is_superset_of(&self.cur_state) {
+                                        continue;
+                                    }
+                                    return Err("Action return/retry failed.".to_string());
                                 }
-                                println!("Try action return retry failed.");
-                                return false;
-                            } else {
-                                println!("Try action return failed.");
-                                return false;
+                                Err(msg) => {
+                                    return Err(msg);
+                                }
                             }
-                        } else {
-                            return false;
                         }
                     } else {
-                        return false;
+                        return Err("Action plan to return/retry not found".to_string());
                     }
                 }
             }
         } // next stpx
 
-        pln.result_region().is_superset_of(&self.cur_state)
+        if pln.result_region().is_superset_of(&self.cur_state) {
+            Ok(num_steps)
+        } else {
+            Err("Plan result region not reached".to_string())
+        }
     } // end run_plan
 
     /// Return the steps of a plan to go from a given state/region to a given region.
@@ -1195,6 +1208,142 @@ mod tests {
             }
         }
         false
+    }
+
+    // Test running a plan using an alt-rule (change) group.
+    #[test]
+    fn alt_rule1() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(0, 1);
+
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
+            dm0.rule_from_string("00/11/01/11").expect("SNH"),
+            dm0.rule_from_string("00/11/00/10").expect("SNH"),
+        ])];
+        dm0.add_action(ruls0);
+
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![dm0
+            .rule_from_string("00/11/x0/x1")
+            .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        dm0.cur_state = dm0.state_from_string("s0b0101")?;
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+
+        println!("\ndm0: cur_state {}", dm0.cur_state);
+        println!("Acts: {}\n", dm0.actions);
+
+        let mut num_steps1 = 0;
+
+        // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
+        if let Some(plans) = dm0.make_plans2(
+            &dm0.region_from_string("r0101").expect("SNH"),
+            &dm0.region_from_string("r0100").expect("SNH"),
+            None,
+        ) {
+            //println!("plans {}", tools::vec_string(&plans));
+            match dm0.run_plan(&plans[0], 2) {
+                Ok(num) => num_steps1 = num,
+                Err(msg) => return Err(msg),
+            }
+        }
+
+        // Reset current state to 5.
+        dm0.take_action_arbitrary(1);
+
+        let mut num_steps2 = 0;
+
+        // Redo plans, as step alt value may change due to previous running of a plan.
+        if let Some(plans) = dm0.make_plans2(
+            &dm0.region_from_string("r0101").expect("SNH"),
+            &dm0.region_from_string("r0100").expect("SNH"),
+            None,
+        ) {
+            match dm0.run_plan(&plans[0], 2) {
+                Ok(num) => num_steps2 = num,
+                Err(msg) => return Err(msg),
+            }
+        }
+
+        println!("num steps 1 {num_steps1} num steps 2 {num_steps2}");
+        assert!(num_steps1 == 3 || num_steps2 == 3);
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    // Test running a plan using an alt-rule (no change) group.
+    #[test]
+    fn alt_rule2() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let mut dm0 = SomeDomain::new(0, 1);
+
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
+            dm0.rule_from_string("00/11/00/10").expect("SNH"),
+            dm0.rule_from_string("00/11/00/11").expect("SNH"),
+        ])];
+        dm0.add_action(ruls0);
+
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![dm0
+            .rule_from_string("00/11/x0/x1")
+            .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        dm0.cur_state = dm0.state_from_string("s0b0101")?;
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+
+        println!("\ndm0: cur_state {}", dm0.cur_state);
+        println!("Acts: {}\n", dm0.actions);
+
+        let mut num_steps1 = 0;
+
+        // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
+        if let Some(plans) = dm0.make_plans2(
+            &dm0.region_from_string("r0101").expect("SNH"),
+            &dm0.region_from_string("r0100").expect("SNH"),
+            None,
+        ) {
+            //println!("plans {}", tools::vec_string(&plans));
+            match dm0.run_plan(&plans[0], 2) {
+                Ok(num) => num_steps1 = num,
+                Err(msg) => return Err(msg),
+            }
+        }
+
+        // Reset current state to 5.
+        dm0.take_action_arbitrary(1);
+
+        let mut num_steps2 = 0;
+
+        // Redo plans, as step alt value may change due to previous running of a plan.
+        if let Some(plans) = dm0.make_plans2(
+            &dm0.region_from_string("r0101").expect("SNH"),
+            &dm0.region_from_string("r0100").expect("SNH"),
+            None,
+        ) {
+            match dm0.run_plan(&plans[0], 2) {
+                Ok(num) => num_steps2 = num,
+                Err(msg) => return Err(msg),
+            }
+        }
+
+        println!("num steps 1 {num_steps1} num steps 2 {num_steps2}");
+        assert!(num_steps1 == 2 || num_steps2 == 2);
+        //assert!(1 == 2);
+        Ok(())
     }
 
     // Test a simple four-step plan to change the domain current state

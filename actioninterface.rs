@@ -47,29 +47,26 @@ impl ActionInterface {
         act_id: usize,
     ) -> SomeState {
         let mut new_state = cur_state.clone();
-
         'next_rs: for rsx in self.rules.iter() {
-            if rsx.is_not_empty() {
-                if rsx[0].initial_region().is_superset_of(cur_state) {
-                    if rsx.len() == 1 {
-                        new_state = rsx[0].result_from_initial_state(cur_state);
+            if rsx.is_not_empty() && rsx[0].initial_region().is_superset_of(cur_state) {
+                if rsx.len() == 1 {
+                    new_state = rsx[0].result_from_initial_state(cur_state);
+                } else {
+                    let rule_hint = if let Some(val) = self.ahash.get_mut(cur_state) {
+                        *val += 1;
+                        if *val == rsx.len() {
+                            *val = 0;
+                        }
+                        *val
                     } else {
-                        let rule_hint = if let Some(val) = self.ahash.get_mut(cur_state) {
-                            *val += 1;
-                            if *val == rsx.len() {
-                                *val = 0;
-                            }
-                            *val
-                        } else {
-                            // Start a new state counter at a random place in the cycle.
-                            let sample_hint = rand::thread_rng().gen_range(0..rsx.len());
-                            self.ahash.insert(cur_state.clone(), sample_hint);
-                            sample_hint
-                        };
-                        new_state = rsx[rule_hint].result_from_initial_state(cur_state);
-                    }
-                    break 'next_rs;
+                        // Start a new state counter at a random place in the cycle.
+                        let sample_hint = rand::thread_rng().gen_range(0..rsx.len());
+                        self.ahash.insert(cur_state.clone(), sample_hint);
+                        sample_hint
+                    };
+                    new_state = rsx[rule_hint].result_from_initial_state(cur_state);
                 }
+                break 'next_rs;
             }
         } // next rsx
         println!(

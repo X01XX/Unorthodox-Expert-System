@@ -68,9 +68,9 @@ pub struct SomeAction {
     do_something: ActionInterface,
     /// Trigger cleanup logic after a number of new squares.
     cleanup_trigger: usize,
-    /// When the action has no needs, check for any missed regions.
-    remainder_checked: bool,
-    remainder_check_region: Option<SomeRegion>,
+    /// When the actions groups change check for any missed regions.
+    check_remainder: bool,
+    remainder_check_regions: RegionStore,
     /// Memory for past samples that were not stored in a square, or squares removed from the cleanup function, oldest first.
     pub memory: VecDeque<SomeSquare>,
 }
@@ -87,8 +87,8 @@ impl SomeAction {
             squares: SquareStore::new(HashMap::new()),
             do_something: ActionInterface::new(rules),
             cleanup_trigger: CLEANUP,
-            remainder_checked: false,
-            remainder_check_region: None,
+            check_remainder: false,
+            remainder_check_regions: RegionStore::new(vec![]),
             memory: VecDeque::<SomeSquare>::with_capacity(MAX_MEMORY),
         }
     }
@@ -131,6 +131,7 @@ impl SomeAction {
             let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
 
             if regs_invalid.is_not_empty() {
+                self.check_remainder = true;
                 self.process_invalid_regions(&regs_invalid);
             }
 
@@ -161,6 +162,7 @@ impl SomeAction {
                 let regs_invalid: RegionStore =
                     self.groups.check_square(sqrx, self.dom_id, self.id);
                 if regs_invalid.is_not_empty() {
+                    self.check_remainder = true;
                     self.process_invalid_regions(&regs_invalid);
                 }
             }
@@ -213,27 +215,18 @@ impl SomeAction {
     /// Evaluate a sample taken to satisfy a need.
     pub fn eval_need_sample(&mut self, ndx: &SomeNeed) {
         // Additional processing for selected kinds of need
-        match ndx {
-            // Check if group can be confirmed.
-            SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                let Some(sqr1) = self.squares.find(grp_reg.state1()) else {
-                    return;
-                };
-                let Some(sqr2) = self.squares.find(grp_reg.state2()) else {
-                    return;
-                };
+        if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
+            let Some(sqr1) = self.squares.find(grp_reg.state1()) else {
+                return;
+            };
+            let Some(sqr2) = self.squares.find(grp_reg.state2()) else {
+                return;
+            };
 
-                if sqr1.pnc && sqr2.pnc {
-                    self.set_group_pnc(grp_reg);
-                }
+            if sqr1.pnc && sqr2.pnc {
+                self.set_group_pnc(grp_reg);
             }
-            // Reset remainder check fields.
-            SomeNeed::StateInRemainder { .. } => {
-                self.remainder_checked = false;
-                self.remainder_check_region = None;
-            }
-            _ => (),
-        } // end match ndx
+        }
     } // end eval_need_sample
 
     /// Find a group by region, set group pnc.
@@ -249,6 +242,7 @@ impl SomeAction {
     /// Create possible groups from one, or more, states.
     fn create_groups_from_squares(&mut self, keys: &[SomeState]) {
         assert!(!keys.is_empty());
+        self.check_remainder = true;
 
         // Collect possible groups.
         let groups: Vec<SomeGroup> = if keys.len() == 1 {
@@ -592,50 +586,29 @@ impl SomeAction {
                 // Look for needs for states not in groups
                 nds.append(self.state_not_in_group_needs(cur_state));
 
-                if nds.is_empty() {
-                    // Do remainder check.
-                    if self.remainder_checked {
-                        if let Some(aregion) = &self.remainder_check_region {
-                            //println!("dom {} act {} remainder need 2 added for {}", self.dom_id, self.num, astate);
-                            let mut needx = SomeNeed::StateInRemainder {
-                                dom_id: self.dom_id,
-                                act_id: self.id,
-                                target_region: aregion.clone(),
-                                priority: 0,
-                            };
-                            needx.set_priority();
-                            nds.push(needx);
-                        }
-                    } else {
-                        self.remainder_checked = true;
-
+                if nds.kind_is_in("StateNotInGroup") {
+                } else {
+                    if self.check_remainder {
                         if let Some(changes) = agg_changes {
                             let max_reg = SomeRegion::new(vec![
                                 cur_state.clone(),
                                 cur_state.bitwise_xor(&changes.b01.bitwise_and(&changes.b10)),
                             ]);
 
-                            self.remainder_check_region = self.remainder_check_region(max_reg);
-
-                            if let Some(aregion) = &self.remainder_check_region {
-                                //match self.display_anchor_info() {
-                                //    _ => ()
-                                //}
-                                //println!("dom {} act {} remainder need 1 added for {}", self.dom_id, self.num, astate);
-                                let mut needx = SomeNeed::StateInRemainder {
-                                    dom_id: self.dom_id,
-                                    act_id: self.id,
-                                    target_region: aregion.clone(),
-                                    priority: 0,
-                                };
-                                needx.set_priority();
-                                nds.push(needx);
-                            }
+                            self.remainder_check_regions = self.remainder_check_region(max_reg);
+                            self.check_remainder = false;
                         }
                     }
-                } else {
-                    self.remainder_checked = false;
-                    self.remainder_check_region = None;
+                    for regx in self.remainder_check_regions.iter() {
+                        let mut needx = SomeNeed::StateInRemainder {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target_region: regx.clone(),
+                            priority: 0,
+                        };
+                        needx.set_priority();
+                        nds.push(needx);
+                    }
                 }
 
                 return nds;
@@ -646,31 +619,21 @@ impl SomeAction {
     } // end get_needs
 
     /// Check for needs in a region not covered by current groups.
-    fn remainder_check_region(&self, max_region: SomeRegion) -> Option<SomeRegion> {
+    fn remainder_check_region(&self, max_region: SomeRegion) -> RegionStore {
         let mut remainder_regs = RegionStore::new(vec![max_region]);
 
         for grpx in self.groups.iter() {
             remainder_regs = remainder_regs.subtract_item(&grpx.region);
         }
 
-        if remainder_regs.is_not_empty() {
-            println!(
-                "Dom {} Act {} remainder is {}",
-                self.dom_id, self.id, remainder_regs
-            );
-        }
+        //if remainder_regs.is_not_empty() {
+        //    println!(
+        //        "Dom {} Act {} remainder is {}",
+        //        self.dom_id, self.id, remainder_regs
+        //    );
+        //}
 
-        if remainder_regs.is_not_empty() {
-            //println!("Checking null check state, returning {}", remainder_regs[0].state1);
-            let mut inx = 0;
-            if remainder_regs.len() > 1 {
-                inx = rand::thread_rng().gen_range(0..remainder_regs.len());
-            }
-            return Some(remainder_regs.swap_remove(inx));
-        }
-
-        //println!("Checking null check state, returning None");
-        None
+        remainder_regs
     }
 
     /// Cleanup unneeded squares.
@@ -1317,8 +1280,6 @@ impl SomeAction {
 
         // If contradictory, return needs to resolve
 
-        println!("grpx {grpx} grpy {grpy}");
-
         // Check if a valid sub-region of the intersection exists
         if let Some(rulsxy) = rulsx.intersection(&rulsy) {
             // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
@@ -1492,6 +1453,7 @@ impl SomeAction {
                     };
                     parsed_region = Some(rulx.initial_region());
                 }
+
                 // Check if any rule has no changes, so a state could be sampled once, or twice, to get the desired change.
                 let mut one_no_change = false;
                 if let Some(regx) = parsed_region {
@@ -1917,8 +1879,8 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
-        if let Some(aregion) = &self.remainder_check_region {
-            rc_str.push_str(&format!(", remainder: {}", aregion));
+        if self.remainder_check_regions.is_not_empty() {
+            rc_str.push_str(&format!(", remainder: {}", self.remainder_check_regions));
         }
 
         let mut fil = ",\n       Grps: ";
@@ -2130,7 +2092,7 @@ mod tests {
         println!("Act: {}", act0);
         println!("needs: {}", nds);
 
-        assert!(nds.len() == 1);
+        assert!(nds.kind_is_in("LimitGroupAdj"));
         assert!(act0.groups.len() == 1);
 
         Ok(())

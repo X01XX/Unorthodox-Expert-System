@@ -339,8 +339,12 @@ impl DomainStore {
     /// Run a PlanStore.
     pub fn run_plan_store(&mut self, plns: &PlanStore) -> bool {
         for plnx in plns.iter() {
-            if !self.run_plan(plnx) {
-                return false;
+            match self.run_plan(plnx) {
+                Ok(_) => continue,
+                Err(msg) => {
+                    println!("{}", msg);
+                    return false;
+                }
             }
         }
         true
@@ -348,7 +352,7 @@ impl DomainStore {
 
     /// Run a plan for a given Domain.
     /// Return true if the plan ran to completion.
-    pub fn run_plan(&mut self, pln: &SomePlan) -> bool {
+    pub fn run_plan(&mut self, pln: &SomePlan) -> Result<usize, String> {
         self.domains[pln.dom_id].run_plan(pln, 0)
     }
 
@@ -1059,7 +1063,13 @@ impl DomainStore {
         };
 
         // Do a plan
-        self.run_plan(&plans[rand::thread_rng().gen_range(0..plans.len())])
+        match self.run_plan(&plans[rand::thread_rng().gen_range(0..plans.len())]) {
+            Ok(_) => true,
+            Err(msg) => {
+                println!("{}", msg);
+                false
+            }
+        }
     }
 
     // Find traps to further progess from start to goal.
