@@ -430,15 +430,6 @@ impl GroupStore {
         ret
     }
 
-    /// Set a groups limited indicator off, if needed.
-    pub fn check_limited_reset(&mut self, stax: &SomeState) {
-        for grpx in self.avec.iter_mut() {
-            if grpx.region.is_superset_of(stax) && grpx.limited {
-                grpx.set_limited_off();
-            }
-        }
-    }
-
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
         self.avec.is_empty()

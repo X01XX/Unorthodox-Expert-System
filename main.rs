@@ -569,7 +569,7 @@ fn command_loop(dmxs: &mut DomainStore) {
             "cd" => match do_change_domain(dmxs, &cmd) {
                 Ok(()) => {
                     dmxs.print_domain();
-                    dmxs.print_can_do();
+                    dmxs.display_needs();
                 }
                 Err(error) => {
                     println!("{error}");

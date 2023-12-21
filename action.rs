@@ -943,6 +943,34 @@ impl SomeAction {
             stas_in.push(stax.clone());
         }
 
+        // Calculate shared symmetrical regions.
+        let mut shared_regions = RegionStore::new(vec![]);
+        for (inx, grpy) in self.groups.iter().enumerate() {
+            if inx == group_num {
+                continue;
+            }
+            if grpy.pn != grpx.pn {
+                continue;
+            }
+            if let Some(shared) = grpy.region.shared_symmetric_region(&grpx.region) {
+                if grpx.pn == Pn::Unpredictable {
+                    shared_regions.push(shared);
+                } else {
+                    if let Some(ruls) = &grpx.rules {
+                        let rulsx = ruls.restrict_initial_region(&shared);
+                        if let Some(ruls) = &grpy.rules {
+                            let rulsy = ruls.restrict_initial_region(&shared);
+
+                            if rulsx.union(&rulsy).is_some() {
+                                //println!("shared region : {} {} {shared}", grpx.region, grpy.region);
+                                shared_regions.push(shared);
+                            }
+                        }
+                    }
+                }
+            } 
+        }
+
         // For each state, sta1, only in the group region, greg:
         //
         //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
@@ -956,10 +984,12 @@ impl SomeAction {
 
         for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
-            if !self.groups.in_1_group(stax) {
+            if !self.groups.in_1_group(stax) || shared_regions.any_superset_of_state(stax) {
+                //println!("stax for anchor {stax} in group {} skipped", grpx.region);
                 continue;
             }
 
+            //println!("stax for anchor {stax} in group {}", grpx.region);
             let sta_rate = self.group_anchor_rate(grpx, stax);
 
             //println!("group {} possible anchor {} rating {} {} {}", grpx.region, stax, sta_rate.0, sta_rate.1, sta_rate.2);
@@ -1965,6 +1995,69 @@ mod tests {
             };
             grpx.set_anchor(anchor);
         }
+    }
+
+    #[test]
+    fn shared_symmetric_region() -> Result<(), String> {
+        // Init action
+        let tmp_bts = SomeBits::new(vec![0]);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_msk = SomeMask::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let s3 = tmp_sta.new_from_string("s0b0011")?;
+        let s4 = tmp_sta.new_from_string("s0b0100")?;
+        let s5 = tmp_sta.new_from_string("s0b0101")?;
+        let s8 = tmp_sta.new_from_string("s0b1000")?;
+        let s7 = tmp_sta.new_from_string("s0b0111")?;
+        let s9 = tmp_sta.new_from_string("s0b1001")?;
+        let sa = tmp_sta.new_from_string("s0b1010")?;
+        let sb = tmp_sta.new_from_string("s0b1011")?;
+        let sc = tmp_sta.new_from_string("s0b1100")?;
+        let se = tmp_sta.new_from_string("s0b1110")?;
+        let sf = tmp_sta.new_from_string("s0b1111")?;
+
+        // Set up XX01 group.
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
+
+        // Set up divider squares.
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), s4.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sc.clone(), s3.clone()));
+
+        // Set up 111X group.
+        // The shared symetric group will be 11X1.
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
+
+        let cngs = SomeChange::new(tmp_msk.new_from_string("m0b1111").expect("SNH"),
+                                   tmp_msk.new_from_string("m0b1111").expect("SNH"));
+        let nds = act0.get_needs(&sa, 0, &Some(cngs));
+
+        println!("Groups {}", act0.groups);
+        println!("needs {nds}");
+
+        if let Some(grpx) = act0.groups.find(&tmp_reg.new_from_string("r111x").expect("SNH")) {
+            if let Some(ancx) = &grpx.anchor {
+                if *ancx == se {
+                } else {
+                    return Err(format!("group 111X anchor not 1110"));
+                }
+            } else {
+                return Err(format!("group 111X expected anchor not found"));
+            }
+        } else {
+            return Err(format!("group 111X not found"));
+        }
+
+        //assert!(1 == 2);
+        Ok(())
     }
 
     #[test]

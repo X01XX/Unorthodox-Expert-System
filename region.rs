@@ -8,7 +8,7 @@ use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
-use crate::tools::{self, StrLen};
+use crate::tools::{self, StrLen, not};
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -415,7 +415,7 @@ impl SomeRegion {
     }
 
     /// Return a region with masked bit positions set to X.
-    pub fn _set_to_x(&self, msk: &SomeMask) -> Self {
+    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
         let state1 = self.state1().bitwise_or(msk);
         let state2 = self.state2().bitwise_and(&msk.bitwise_not());
 
@@ -593,6 +593,29 @@ impl SomeRegion {
     pub fn num_edges(&self) -> usize {
         self.edge_mask().num_one_bits()
     }
+
+    /// Return the shared symmetric region between two regions, if any.
+    pub fn shared_symmetric_region(&self, other: &Self) -> Option<SomeRegion> {
+        // Regions must be adjacent.
+        if not(self.is_adjacent(other)) {
+            return None;
+        }
+        let x1 = self.x_mask();
+        let x2 = other.x_mask();
+        // Regions must have at last one position of X/non-x.
+        if x1 == x2 || x1.is_superset_ones_of(&x2) || x2.is_superset_ones_of(&x1) {
+            return None;
+        }
+        // Get dif mask.
+        let diff = self.diff_mask(other);
+
+        // Prepare the regions to make a valid intersection.
+        let reg1 = self.set_to_x(&diff);
+        let reg2 = other.set_to_x(&diff);
+
+        reg1.intersection(&reg2)
+    }
+
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -658,6 +681,38 @@ mod tests {
     use crate::regionstore::RegionStore;
     use crate::sample::SomeSample;
     use rand::Rng;
+
+    #[test]
+    fn shared_symmetric_region() -> Result<(), String> {
+        let ur_bits = SomeBits::new(vec![0]);
+        let ur_region = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
+
+        let reg1 = ur_region.new_from_string("rX101").expect("SNH");
+        let reg2 = ur_region.new_from_string("rX111").expect("SNH");
+        let reg3 = ur_region.new_from_string("r0X10").expect("SNH");
+        let reg4 = ur_region.new_from_string("r011X").expect("SNH");
+
+        if let Some(result) = reg1.shared_symmetric_region(&reg2) {
+            println!("result {result}");
+            return Err(format!("bad result from {reg1} {reg2}"));
+        }
+        
+        if let Some(result) = reg1.shared_symmetric_region(&reg3) {
+            println!("result {result}");
+            return Err(format!("bad result from {reg1} {reg3}"));
+        }
+        
+        if let Some(result) = reg2.shared_symmetric_region(&reg3) {
+            println!("result {result}");
+            if result != reg4 {
+                return Err(format!("bad result from {reg2} {reg3}"));
+            }
+        } else {
+            return Err(format!("bad result {reg2} {reg3} = None"));
+        }
+        //assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn complement() -> Result<(), String> {

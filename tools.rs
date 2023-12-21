@@ -191,6 +191,11 @@ fn add_one_of_next<T: Copy>(avec: &[Vec<T>], options: &Vec<Vec<T>>) -> Vec<Vec<T
     add_one_of_next(&avec[1..], &next_options)
 }
 
+/// Allow more obvious not operation than the exclamation point.
+pub fn not(val: bool) -> bool {
+    !val
+}
+
 /// Define the StrLen trait, so structs can return their expected string length for display.
 pub trait StrLen {
     fn strlen(&self) -> usize;
