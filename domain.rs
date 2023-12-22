@@ -769,6 +769,15 @@ impl SomeDomain {
         tot
     }
 
+    /// Return the total number of groups expected in all the actions.
+    pub fn number_groups_expected(&self) -> usize {
+        let mut tot = 0;
+        for actx in self.actions.iter() {
+            tot += actx.number_groups_expected();
+        }
+        tot
+    }
+
     /// Return a String representation of SomeDomain.
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("D(ID: ");

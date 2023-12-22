@@ -577,7 +577,7 @@ impl SomeAction {
 
                 // Do cleanup
                 if self.cleanup_trigger == 0 {
-                    self.cleanup(&nds);
+                    self.cleanup(&nds, dom_id);
                     self.cleanup_trigger = CLEANUP;
                 }
 
@@ -637,7 +637,7 @@ impl SomeAction {
     }
 
     /// Cleanup unneeded squares.
-    fn cleanup(&mut self, needs: &NeedStore) {
+    fn cleanup(&mut self, needs: &NeedStore, dom_id: usize) {
         // Store for keys of squares to delete.
         let mut to_del = StateStore::new(vec![]);
 
@@ -649,6 +649,39 @@ impl SomeAction {
                         continue 'next_sqr;
                     }
                 }
+            }
+
+            // Identify shared symmetric groups.
+            let mut shared_regions = RegionStore::new(vec![]);
+            for inx in 0..(self.groups.len() - 1) {
+                let grpx = &self.groups[inx];
+
+                for iny in (inx + 1)..self.groups.len() {
+                    let grpy = &self.groups[iny];
+
+                    if grpy.pn != grpx.pn {
+                        continue;
+                    }
+                    if let Some(shared) = grpy.region.shared_symmetric_region(&grpx.region) {
+                        if grpx.pn == Pn::Unpredictable {
+                            shared_regions.push(shared);
+                        } else if let Some(ruls) = &grpx.rules {
+                            let rulsx = ruls.restrict_initial_region(&shared);
+                            if let Some(ruls) = &grpy.rules {
+                                let rulsy = ruls.restrict_initial_region(&shared);
+
+                                if rulsx.union(&rulsy).is_some() {
+                                    //println!("shared region : {} {} {shared}", grpx.region, grpy.region);
+                                    shared_regions.push(shared);
+                                }
+                            }
+                        }
+                    }
+                } // next iny
+            } // next inx
+              // Delete shared symmetric groups.
+            for regx in shared_regions.iter() {
+                self.groups.remove_subsets_of(regx, dom_id, self.id);
             }
 
             // Don't delete squares in groups.
@@ -943,7 +976,7 @@ impl SomeAction {
             stas_in.push(stax.clone());
         }
 
-        // Calculate shared symmetrical regions.
+        // Calculate shared symmetric regions.
         let mut shared_regions = RegionStore::new(vec![]);
         for (inx, grpy) in self.groups.iter().enumerate() {
             if inx == group_num {
@@ -955,20 +988,18 @@ impl SomeAction {
             if let Some(shared) = grpy.region.shared_symmetric_region(&grpx.region) {
                 if grpx.pn == Pn::Unpredictable {
                     shared_regions.push(shared);
-                } else {
-                    if let Some(ruls) = &grpx.rules {
-                        let rulsx = ruls.restrict_initial_region(&shared);
-                        if let Some(ruls) = &grpy.rules {
-                            let rulsy = ruls.restrict_initial_region(&shared);
+                } else if let Some(ruls) = &grpx.rules {
+                    let rulsx = ruls.restrict_initial_region(&shared);
+                    if let Some(ruls) = &grpy.rules {
+                        let rulsy = ruls.restrict_initial_region(&shared);
 
-                            if rulsx.union(&rulsy).is_some() {
-                                //println!("shared region : {} {} {shared}", grpx.region, grpy.region);
-                                shared_regions.push(shared);
-                            }
+                        if rulsx.union(&rulsy).is_some() {
+                            //println!("shared region : {} {} {shared}", grpx.region, grpy.region);
+                            shared_regions.push(shared);
                         }
                     }
                 }
-            } 
+            }
         }
 
         // For each state, sta1, only in the group region, greg:
@@ -1900,6 +1931,11 @@ impl SomeAction {
         self.groups.len()
     }
 
+    /// Return the number of groups expected in the action.
+    pub fn number_groups_expected(&self) -> usize {
+        self.do_something.len()
+    }
+
     /// Return a String representation of SomeAction.
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("A(ID: ");
@@ -2009,8 +2045,8 @@ mod tests {
         let s3 = tmp_sta.new_from_string("s0b0011")?;
         let s4 = tmp_sta.new_from_string("s0b0100")?;
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        let s8 = tmp_sta.new_from_string("s0b1000")?;
         let s7 = tmp_sta.new_from_string("s0b0111")?;
+        let s8 = tmp_sta.new_from_string("s0b1000")?;
         let s9 = tmp_sta.new_from_string("s0b1001")?;
         let sa = tmp_sta.new_from_string("s0b1010")?;
         let sb = tmp_sta.new_from_string("s0b1011")?;
@@ -2036,14 +2072,19 @@ mod tests {
         act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
 
-        let cngs = SomeChange::new(tmp_msk.new_from_string("m0b1111").expect("SNH"),
-                                   tmp_msk.new_from_string("m0b1111").expect("SNH"));
+        let cngs = SomeChange::new(
+            tmp_msk.new_from_string("m0b1111").expect("SNH"),
+            tmp_msk.new_from_string("m0b1111").expect("SNH"),
+        );
         let nds = act0.get_needs(&sa, 0, &Some(cngs));
 
         println!("Groups {}", act0.groups);
         println!("needs {nds}");
 
-        if let Some(grpx) = act0.groups.find(&tmp_reg.new_from_string("r111x").expect("SNH")) {
+        if let Some(grpx) = act0
+            .groups
+            .find(&tmp_reg.new_from_string("r111x").expect("SNH"))
+        {
             if let Some(ancx) = &grpx.anchor {
                 if *ancx == se {
                 } else {
@@ -2056,6 +2097,61 @@ mod tests {
             return Err(format!("group 111X not found"));
         }
 
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn delete_shared_symmetric_region() -> Result<(), String> {
+        // Init action
+        let tmp_bts = SomeBits::new(vec![0]);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
+
+        let s4 = tmp_sta.new_from_string("s0b0100")?;
+        let s6 = tmp_sta.new_from_string("s0b0110")?;
+        let s7 = tmp_sta.new_from_string("s0b0111")?;
+        let s8 = tmp_sta.new_from_string("s0b1000")?;
+        let s9 = tmp_sta.new_from_string("s0b1001")?;
+        let sa = tmp_sta.new_from_string("s0b1010")?;
+        let sd = tmp_sta.new_from_string("s0b1101")?;
+        let sf = tmp_sta.new_from_string("s0b1111")?;
+
+        // Set up X10X group.
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
+
+        // Set up divider squares.
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s8.clone(), s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s6.clone()));
+
+        // Set up 1X1X group.
+        // The shared symetric group will be 11X1.
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()));
+
+        println!("Groups {}", act0.groups);
+
+        if let Some(_) = act0
+            .groups
+            .find(&tmp_reg.new_from_string("r11x1").expect("SNH"))
+        {
+            act0.cleanup(&NeedStore::new(vec![]), 0);
+            if let Some(_) = act0
+                .groups
+                .find(&tmp_reg.new_from_string("r11x1").expect("SNH"))
+            {
+                return Err(format!("group 11X1 not deleted"));
+            }
+        } else {
+            return Err(format!("group 11X1 not found"));
+        }
         //assert!(1 == 2);
         Ok(())
     }

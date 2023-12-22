@@ -79,4 +79,9 @@ impl ActionInterface {
         );
         new_state
     }
+
+    /// Return the number of RuleStores.
+    pub fn len(&self) -> usize {
+        self.rules.len()
+    }
 }

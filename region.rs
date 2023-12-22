@@ -8,7 +8,7 @@ use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
-use crate::tools::{self, StrLen, not};
+use crate::tools::{self, not, StrLen};
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -615,7 +615,6 @@ impl SomeRegion {
 
         reg1.intersection(&reg2)
     }
-
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -696,12 +695,12 @@ mod tests {
             println!("result {result}");
             return Err(format!("bad result from {reg1} {reg2}"));
         }
-        
+
         if let Some(result) = reg1.shared_symmetric_region(&reg3) {
             println!("result {result}");
             return Err(format!("bad result from {reg1} {reg3}"));
         }
-        
+
         if let Some(result) = reg2.shared_symmetric_region(&reg3) {
             println!("result {result}");
             if result != reg4 {

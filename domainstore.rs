@@ -1425,6 +1425,15 @@ impl DomainStore {
         tot
     }
 
+    /// Return the total number of groups expected in all the domains.
+    pub fn number_groups_expected(&self) -> usize {
+        let mut tot = 0;
+        for domx in self.domains.iter() {
+            tot += domx.number_groups_expected();
+        }
+        tot
+    }
+
     /// Print a plan step-by-step, indicating changes.
     pub fn print_plan_detail(&self, plan_str: &PlanStore) {
         let mut cur_states = self.all_current_states();

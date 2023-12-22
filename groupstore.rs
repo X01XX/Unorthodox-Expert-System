@@ -281,7 +281,7 @@ impl GroupStore {
     //  }
 
     /// Find and remove any subset groups.
-    fn remove_subsets_of(&mut self, reg: &SomeRegion, dom_id: usize, act_id: usize) -> bool {
+    pub fn remove_subsets_of(&mut self, reg: &SomeRegion, dom_id: usize, act_id: usize) -> bool {
         // Accumulate indices of groups that are subsets
         let mut rmvec = Vec::<usize>::new();
 

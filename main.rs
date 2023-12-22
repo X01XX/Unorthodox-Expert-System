@@ -68,7 +68,6 @@ use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
 mod targetstore;
-use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::rule::SomeRule;
@@ -185,7 +184,7 @@ fn run_number_times(num_runs: usize) -> usize {
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
     let mut steps_vec = Vec::<usize>::with_capacity(num_runs);
-    let mut num_groups_unexpected = 0;
+    let num_groups_unexpected = 0;
     let mut num_groups_off = 0;
 
     while runs_left > 0 {
@@ -193,19 +192,17 @@ fn run_number_times(num_runs: usize) -> usize {
 
         let start = Instant::now();
         match do_one_session() {
-            Ok((steps, groups, reg_found)) => {
-                if groups == 29 && reg_found {
+            Ok((steps, groups, expected)) => {
+                if groups == expected {
                     let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?} XXXX_101X reg found: true");
+                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?}");
                     duration_vec.push(duration);
                     steps_vec.push(steps);
                 } else {
                     let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?} XXXX_101X reg found: {reg_found}");
-                    if !reg_found {
-                        num_groups_unexpected += 1;
-                    }
-                    if groups != 29 {
+                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?}");
+
+                    if groups != expected {
                         num_groups_off += 1
                     }
                 }
@@ -217,7 +214,7 @@ fn run_number_times(num_runs: usize) -> usize {
     }
 
     if duration_vec.is_empty() {
-        println!("Number with unsatisfied needs: {cant_do} Num groups off {num_groups_off} Regions not found {num_groups_unexpected}");
+        println!("Number with unsatisfied needs: {cant_do} Num groups off {num_groups_off}");
         return 1;
     }
 
@@ -488,7 +485,7 @@ fn domainstore_init() -> DomainStore {
 /// there are no more needs.
 /// Return error if no needs that can be done are available and
 /// there are needs than cannot be done.
-fn do_one_session() -> Result<(usize, usize, bool), String> {
+fn do_one_session() -> Result<(usize, usize, usize), String> {
     let mut dmxs = domainstore_init();
     loop {
         // Generate needs, get can_do and cant_do need vectors.
@@ -497,13 +494,11 @@ fn do_one_session() -> Result<(usize, usize, bool), String> {
         // Check for end.
         if dmxs.can_do.is_empty() {
             if dmxs.cant_do.is_empty() {
-                // If a region is missed is Dom 0, Act 0, its commonly this one.
-                let regx = SomeRegion::new(vec![
-                    SomeState::new(SomeBits::new(vec![0xfb])),
-                    SomeState::new(SomeBits::new(vec![0x0a])),
-                ]);
-                let check = dmxs[0].actions[0].groups.find(&regx).is_some();
-                return Ok((dmxs.step_num, dmxs.number_groups(), check));
+                return Ok((
+                    dmxs.step_num,
+                    dmxs.number_groups(),
+                    dmxs.number_groups_expected(),
+                ));
             } else {
                 // do_session(&mut dmxs);
                 // process::exit(0);
