@@ -1613,8 +1613,8 @@ impl SomeAction {
 
             // Previous subtractions may put some squares out of reach.
             if poss_regs.any_superset_of_state(&sqry.state)
-                && !sqrx.can_combine_now(sqry)
-                && !sqrx.may_combine_later_to(sqry)
+                && (sqrx.pn < sqry.pn
+                    || (!sqrx.can_combine_now(sqry) && !sqrx.may_combine_later_to(sqry)))
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqry.state, &sqrx.state);
             }
