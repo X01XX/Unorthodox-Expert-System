@@ -8,7 +8,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools::{not, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -150,56 +150,77 @@ impl SomeSquare {
         self.results.most_recent_result()
     }
 
-    /// Check true if a square can be combined with some other, now.
-    /// This does not check squares that may be between them.
-    pub fn can_combine_now(&self, other: &Self) -> bool {
-        //println!("running can_combine_now: {} {}", self.state, other.state);
-        assert_ne!(self.state, other.state); // Combining a square with itself is probably an error in logic.
-        if self.pn != other.pn {
-            //println!("running can_combine: returns false (1)");
-            return false;
+    /// Return indication of compatibility for two squares to
+    /// form a union, with the same number of rules as the first square.
+    /// Some(true) = true.
+    /// Some(false) = false.
+    /// None = More samples needed.
+    pub fn compatible(&self, other: &Self) -> Option<bool> {
+        assert!(self.state != other.state);
+
+        // Check the suitability of the first square.
+        if not(self.pn == Pn::One || self.pnc) {
+            return None;
         }
 
+        // Check that the first square pn value is >= than the second.
+        if self.pn < other.pn {
+            return Some(false);
+        }
+
+        // Check for subcompatibility.
+        if self.pn > other.pn {
+            // Check if other pnc = true.
+            if other.pnc {
+                return Some(false);
+            }
+            // Check if the first square in Pn::Unpredictable.
+            if self.pn == Pn::Unpredictable {
+                return None;
+            }
+            // Compare rules.
+            if let Some(rules1) = &self.rules {
+                if let Some(rules2) = &other.rules {
+                    if rules1.subcompatible(rules2) {
+                        return None;
+                    } else {
+                        return Some(false);
+                    }
+                } else {
+                    panic!("SNH");
+                }
+            } else {
+                panic!("SNH");
+            }
+        }
+        // Must have the same number of rules.
+
+        // Check for pn == Pn::Unpredicable.
         if self.pn == Pn::Unpredictable {
-            return true;
+            return Some(true);
         }
-
-        if self
-            .rules
-            .as_ref()
-            .expect("SNH")
-            .can_combine(other.rules.as_ref().expect("SNH"))
-        {
-            //println!("running can_combine: returns calced {}", self.pn == Pn::One || self.pnc && other.pnc);
-            return self.pn == Pn::One || self.pnc && other.pnc;
+        // Check if rules can form a union.
+        if let Some(rules1) = &self.rules {
+            if let Some(rules2) = &other.rules {
+                if rules1.compatible(rules2) {
+                    if other.pn == Pn::Two {
+                        if other.pnc {
+                            Some(true)
+                        } else {
+                            None
+                        }
+                    } else {
+                        Some(true)
+                    }
+                } else {
+                    Some(false)
+                }
+            } else {
+                panic!("SNH");
+            }
+        } else {
+            panic!("SNH");
         }
-        //println!("running can_combine: returns false (2)");
-        false
-    }
-
-    /// Return true if a square and another, after failing the can_combine_now test,
-    /// may combine after the other has more samples.
-    /// This assumes no substantial future change to the method-initiating square.
-    pub fn may_combine_later_to(&self, other: &Self) -> bool {
-        //println!("running may_combine_later_to: {} {}", self.state, other.state);
-        if other.pn > self.pn || other.pnc {
-            return false;
-        }
-
-        if self.pn == Pn::Unpredictable {
-            return true;
-        }
-
-        if self
-            .rules
-            .as_ref()
-            .expect("SNH")
-            .can_form_union(other.rules.as_ref().expect("SNH"))
-            != Some(false)
-        {
-            return true;
-        }
-        false
     }
 
     /// Return the Pattern Number Confirmed (pnc) value.
@@ -399,8 +420,8 @@ mod tests {
 
     // Test can_combine, cannot compare the same square.
     #[test]
-    #[should_panic(expected = "left != right")]
-    fn can_combine_not_same() {
+    #[should_panic(expected = "self.state != other.state")]
+    fn compatible_not_same() {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         let sqr1 = SomeSquare::new(&SomeSample::new(
@@ -408,13 +429,13 @@ mod tests {
             tmp_sta.new_from_string("s0b0101").unwrap(),
         ));
 
-        sqr1.can_combine_now(&sqr1);
+        sqr1.compatible(&sqr1);
         ()
     }
 
-    // Test can_combine Pn == One
+    // Test compatible Pn == One
     #[test]
-    fn can_combine_pn_one_one() -> Result<(), String> {
+    fn compatible_pn_one_one() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Test two squares with only one sample each.
@@ -431,7 +452,9 @@ mod tests {
         println!("sqr1: {sqr1}");
         println!("sqr2: {sqr2}");
 
-        assert!(sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
 
         // Create a square incompatible to sqr1 to produce M result.
         let mut sqr3 = SomeSquare::new(&SomeSample::new(
@@ -440,7 +463,9 @@ mod tests {
         ));
         println!("sqr3: {sqr3}");
 
-        assert!(!sqr1.can_combine_now(&sqr3));
+        let rslt = sqr1.compatible(&sqr3);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Add to sqr3 to make it pnc.
         sqr3.add_sample(&SomeSample::new(
@@ -449,15 +474,20 @@ mod tests {
         ));
         println!("sqr3: {sqr3}");
 
-        assert!(!sqr1.can_combine_now(&sqr3));
-        assert!(!sqr3.can_combine_now(&sqr1));
+        let rslt = sqr1.compatible(&sqr3);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
+
+        let rslt = sqr3.compatible(&sqr1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test can_combine Pn == One and Pn == two
+    // Test compatible Pn == One and Pn == two
     #[test]
-    fn can_combine_pn_one_two() -> Result<(), String> {
+    fn compatible_pn_one_two() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn 1 pnc f.
@@ -469,6 +499,18 @@ mod tests {
         // Create sqr2 pn 2 pnc f, one result compatible to sqr1.
         let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
+
+        // Make sqr2 Pn::Two.
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
+
+        // Make sqr2 pnc = true.
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
             tmp_sta.new_from_string("s0b1101")?,
         ));
 
@@ -488,10 +530,14 @@ mod tests {
         println!("sqr3: {sqr3}");
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(sqr2.may_combine_later_to(&sqr1));
+        let rslt = sqr2.compatible(&sqr1);
+        println!("result {:?}", rslt);
+        assert!(rslt == None);
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(!sqr2.can_combine_now(&sqr3));
+        let rslt = sqr2.compatible(&sqr3);
+        println!("result {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
         let mut sqr4 = SomeSquare::new(&SomeSample::new(
@@ -507,10 +553,14 @@ mod tests {
         println!("sqr2: {sqr2}");
 
         // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        assert!(!sqr4.may_combine_later_to(&sqr2));
+        let rslt = sqr4.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Exersize other branch of code.
-        assert!(!sqr2.may_combine_later_to(&sqr4));
+        let rslt = sqr2.compatible(&sqr4);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Add to sqr2 to make it pnc.
         sqr2.add_sample(&SomeSample::new(
@@ -526,27 +576,44 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        assert!(sqr2.may_combine_later_to(&sqr1));
+        let rslt = sqr2.compatible(&sqr1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
 
         // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
         println!("sqr2 {sqr2}");
         println!("sqr3 {sqr3}");
-        assert!(!sqr2.can_combine_now(&sqr3));
+
+        let rslt = sqr2.compatible(&sqr3);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Exersize other branch of code.
-        assert!(!sqr3.can_combine_now(&sqr2));
+        let rslt = sqr3.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test can_combine Pn == two
+    // Test compatible Pn == two
     #[test]
-    fn can_combine_pn_two_two() -> Result<(), String> {
+    fn compatible_pn_two_two() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
-        // Create sqr1 pn 2 pnc f.
+        // Create sqr1 pn 2 pnc t.
         let mut sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
+
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
+            tmp_sta.new_from_string("s0b1100")?,
+        ));
+
+        sqr1.add_sample(&SomeSample::new(
+            sqr1.state.clone(),
             tmp_sta.new_from_string("s0b1101")?,
         ));
 
@@ -567,11 +634,12 @@ mod tests {
         ));
         println!("sqr1 {sqr1}");
         println!("sqr2 {sqr2}");
-        let cmb = sqr1.may_combine_later_to(&sqr2);
-        println!("cmb {:?}", cmb);
+
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
 
         // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(cmb);
+        assert!(rslt == None);
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
         let mut sqr3 = SomeSquare::new(&SomeSample::new(
@@ -585,11 +653,11 @@ mod tests {
         ));
         println!("sqr1 {sqr1}");
         println!("sqr3 {sqr3}");
-        let cmb = sqr1.can_combine_now(&sqr3);
-        println!("cmb {:?}", cmb);
+        let rslt = sqr1.compatible(&sqr3);
+        println!("rslt {:?}", rslt);
 
         // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
-        assert!(!cmb);
+        assert!(rslt == Some(false));
 
         // Make sqr1 pnc.
         sqr1.add_sample(&SomeSample::new(
@@ -602,7 +670,7 @@ mod tests {
         ));
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr1.can_combine_now(&sqr2) {
+        if sqr1.compatible(&sqr2) == Some(true) {
             return Err(String::from("Test 3 failed?"));
         }
 
@@ -620,10 +688,14 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
-        assert!(sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
 
         // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
-        assert!(!sqr1.can_combine_now(&sqr3));
+        let rslt = sqr1.compatible(&sqr3);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
         let mut sqr4 = SomeSquare::new(&SomeSample::new(
@@ -647,7 +719,9 @@ mod tests {
         println!("sqr4 {sqr4}");
 
         // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
-        assert!(!sqr1.can_combine_now(&sqr4));
+        let rslt = sqr1.compatible(&sqr4);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         // Create sqr5, combinable with sqr1, but results in reverse order.
         let mut sqr5 = SomeSquare::new(&SomeSample::new(
@@ -671,14 +745,16 @@ mod tests {
         println!("sqr5 {sqr5}");
 
         // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
-        assert!(sqr1.can_combine_now(&sqr5));
+        let rslt = sqr1.compatible(&sqr5);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
 
         Ok(())
     }
 
-    // Test can_combine Pn == Unpredictable, Pn == 1
+    // Test compatible Pn == Unpredictable, Pn == 1
     #[test]
-    fn can_combine_pn_u_one() -> Result<(), String> {
+    fn compatible_pn_u_one() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
@@ -705,7 +781,9 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
-        assert!(!sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
 
         // Make sqr2 pnc == true.
         sqr2.add_sample(&SomeSample::new(
@@ -715,14 +793,16 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
-        assert!(!sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test can_combine Pn == Unpredictable, Pn == 2
+    // Test compatible Pn == Unpredictable, Pn == 2
     #[test]
-    fn can_combine_pn_u_two() -> Result<(), String> {
+    fn compatible_pn_u_two() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
@@ -753,9 +833,9 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
-        let cmb = sqr1.can_combine_now(&sqr2);
-        println!("cmb is {:?}", cmb);
-        assert!(!sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
 
         // Make sqr2 pnc == true.
         sqr2.add_sample(&SomeSample::new(
@@ -770,14 +850,16 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
-        assert!(!sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test can_combine Pn == Unpredictable, Pn == Unpredictable
+    // Test compatible Pn == Unpredictable, Pn == Unpredictable
     #[test]
-    fn can_combine_pn_u_u() -> Result<(), String> {
+    fn compatible_pn_u_u() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
 
         // Create sqr1 pn U pnc T.
@@ -813,7 +895,9 @@ mod tests {
         println!("sqr2 {sqr2}");
 
         // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
-        assert!(sqr1.can_combine_now(&sqr2));
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
 
         Ok(())
     }

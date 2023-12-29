@@ -1135,7 +1135,7 @@ impl SomeAction {
                     // Create new group, if an adjacent square can combine with the anchor.
                     // Current anchor will then be in two regions,
                     // the next run of limit_group_anchor_needs will deal with it.
-                    if anchor_sqr.can_combine_now(adj_sqr) {
+                    if anchor_sqr.compatible(adj_sqr) == Some(true) {
                         let regz = SomeRegion::new(vec![anchor_sta.clone(), adj_sta]);
 
                         let ruls: Option<RuleStore> = if anchor_sqr.pn == Pn::Unpredictable {
@@ -1612,9 +1612,7 @@ impl SomeAction {
             }
 
             // Previous subtractions may put some squares out of reach.
-            if poss_regs.any_superset_of_state(&sqry.state)
-                && (sqrx.pn < sqry.pn
-                    || (!sqrx.can_combine_now(sqry) && !sqrx.may_combine_later_to(sqry)))
+            if poss_regs.any_superset_of_state(&sqry.state) && sqrx.compatible(sqry) == Some(false)
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqry.state, &sqrx.state);
             }
@@ -1625,9 +1623,7 @@ impl SomeAction {
             //if sqrm.state == sqrx.state {
             //    continue;
             //}
-            if poss_regs.any_superset_of_state(&sqrm.state)
-                && !sqrx.can_combine_now(sqrm)
-                && !sqrx.may_combine_later_to(sqrm)
+            if poss_regs.any_superset_of_state(&sqrm.state) && sqrx.compatible(sqrm) == Some(false)
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqrm.state, &sqrx.state);
             }
@@ -1641,7 +1637,7 @@ impl SomeAction {
                 continue;
             }
 
-            if poss_regs.any_superset_of_state(&sqry.state) && sqrx.can_combine_now(sqry) {
+            if poss_regs.any_superset_of_state(&sqry.state) && sqrx.compatible(sqry) == Some(true) {
                 sim_sqrs.push(sqry);
             }
         }
@@ -1651,7 +1647,7 @@ impl SomeAction {
             //if sqrm.state == sqrx.state {
             //    continue;
             //}
-            if poss_regs.any_superset_of_state(&sqrm.state) && sqrx.can_combine_now(sqrm) {
+            if poss_regs.any_superset_of_state(&sqrm.state) && sqrx.compatible(sqrm) == Some(true) {
                 sim_sqrs.push(sqrm);
             }
         }
@@ -1683,7 +1679,7 @@ impl SomeAction {
 
             for iny in 0..(sim_sqrs.len() - 1) {
                 for inz in (iny + 1)..sim_sqrs.len() {
-                    if !sim_sqrs[iny].can_combine_now(sim_sqrs[inz]) {
+                    if sim_sqrs[iny].compatible(sim_sqrs[inz]) == Some(false) {
                         excluded_regs.push_nosups(SomeRegion::new(vec![
                             sim_sqrs[iny].state.clone(),
                             sim_sqrs[inz].state.clone(),

@@ -246,58 +246,34 @@ impl RuleStore {
         panic!("unexpected RuleStore length");
     }
 
-    /// Return Truth value of a union of two RuleStores.
-    pub fn can_combine(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        if self.is_empty() {
-            return true;
-        }
-        if self.union(other).is_some() {
-            return true;
-        }
-        false
+    /// Return true if a two-rule RuleStore could be compatible with
+    /// a one-rule RuleStore.
+    pub fn subcompatible(&self, other: &RuleStore) -> bool {
+        println!("starting subcompatible");
+        assert!(self.len() == 2);
+        assert!(other.len() == 1);
+
+        println!(
+            "~&one {} two {}",
+            self[0].union(&other[0]).is_some(),
+            self[1].union(&other[0]).is_some()
+        );
+
+        self[0].union(&other[0]).is_some() ^ self[1].union(&other[0]).is_some()
     }
 
-    /// Return Truth value of a possible union.
-    pub fn can_form_union(&self, other: &Self) -> Option<bool> {
-        if self.is_empty() && other.is_empty() {
-            return Some(true);
-        }
-        if self.is_empty() {
-            return Some(false);
-        }
-        if other.is_empty() {
-            return Some(false);
+    /// Return true if two one-rule RuleStores,
+    /// or two two-rule RuleStores are compatible.
+    pub fn compatible(&self, other: &RuleStore) -> bool {
+        assert!(self.len() == other.len());
+
+        if self.len() == 1 {
+            return self[0].union(&other[0]).is_some();
         }
 
-        // Handle Pn1 vs. Pn2.
-        // The Pn1 type should not have enough samples to be pnc, caller to insure.
-        if self.len() < other.len() {
-            for rulx in other.iter() {
-                if rulx.union(&self[0]).is_some() {
-                    return None;
-                }
-            }
-            return Some(false);
-        }
-
-        if other.len() < self.len() {
-            for rulx in self.iter() {
-                if rulx.union(&other[0]).is_some() {
-                    return None;
-                }
-            }
-            return Some(false);
-        }
-
-        if let Some(_ruls) = self.union(other) {
-            //println!("can_form_union: 1 returning T {}", ruls);
-            return Some(true);
-        }
-        //println!("can_form_union: 2 returning F");
-        Some(false)
+        // Must be two-rule RuleStores.
+        (self[0].union(&other[0]).is_some() && self[1].union(&other[1]).is_some())
+            ^ (self[0].union(&other[1]).is_some() && self[1].union(&other[0]).is_some())
     }
 
     /// Return a vector iterator.
