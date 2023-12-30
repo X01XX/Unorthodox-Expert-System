@@ -247,17 +247,21 @@ impl RuleStore {
     }
 
     /// Return true if a two-rule RuleStore could be compatible with
-    /// a one-rule RuleStore.
+    /// a one-rule RuleStore, although another sample/rule is needed to
+    /// fill out the one-rule RuleStore.
+    ///
+    /// This is mostly useful in finding that a single rule is not compatible
+    /// to a two-rule store, so its not neccessary to get the second sample/rule.
     pub fn subcompatible(&self, other: &RuleStore) -> bool {
         println!("starting subcompatible");
         assert!(self.len() == 2);
         assert!(other.len() == 1);
 
-        println!(
-            "~&one {} two {}",
-            self[0].union(&other[0]).is_some(),
-            self[1].union(&other[0]).is_some()
-        );
+        //println!(
+        //    "~&one {} two {}",
+        //    self[0].union(&other[0]).is_some(),
+        //    self[1].union(&other[0]).is_some()
+        //);
 
         self[0].union(&other[0]).is_some() ^ self[1].union(&other[0]).is_some()
     }

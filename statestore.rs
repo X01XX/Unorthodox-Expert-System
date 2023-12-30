@@ -1,5 +1,6 @@
 //! The StateStore struct. A vector of SomeState structs.
 
+use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::tools;
 
@@ -51,6 +52,19 @@ impl StateStore {
     /// Return the number of states.
     pub fn len(&self) -> usize {
         self.avec.len()
+    }
+
+    /// Return states not in a given region.
+    pub fn not_in_reg(&self, not_reg: &SomeRegion) -> Self {
+        let mut ret_stas = Self::new(vec![]);
+
+        for stax in self.avec.iter() {
+            if not_reg.is_subset_of(stax) {
+            } else {
+                ret_stas.push(stax.clone());
+            }
+        }
+        ret_stas
     }
 } // end impl StateStore
 

@@ -7,6 +7,7 @@ use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::AccessStates;
 use crate::region::SomeRegion;
+use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
@@ -47,12 +48,18 @@ pub struct SomeGroup {
     pub anchor: Option<SomeState>,
     /// Number adjacent squares used to limit a group.
     pub anchor_num: usize,
+    pub expand: Option<SomeRegion>,
 }
 
 impl SomeGroup {
     /// Return a new group, given a region, RuleStore, pnc values.
     /// The RuleStore will be empty for Pn::Unpredictable squares.
-    pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>, pnc: bool) -> Self {
+    pub fn new(
+        regionx: SomeRegion,
+        ruls: Option<RuleStore>,
+        pnc: bool,
+        expand: Option<SomeRegion>,
+    ) -> Self {
         //println!(
         //  "creating group {}",
         //   regionx
@@ -76,6 +83,7 @@ impl SomeGroup {
             limited: false,
             anchor: None,
             anchor_num: 0,
+            expand,
         }
     }
 
@@ -132,13 +140,54 @@ impl SomeGroup {
             None => (),
         }
 
+        match &self.expand {
+            Some(expreg) => rc_str.push_str(&format!(", expand {}", expreg)),
+            None => (),
+        }
+
         rc_str.push(')');
         rc_str
     }
 
-    /// Return true if a subset square is compatible with a group.
-    pub fn check_subset_square(&self, sqrx: &SomeSquare) -> bool {
-        assert!(self.region.is_superset_of(sqrx));
+    /// Return false if a subset square is incompatible with a group.
+    /// Delete expand region if needed.
+    pub fn check_square(&mut self, sqrx: &SomeSquare) -> bool {
+        if !self.region.is_superset_of(sqrx) {
+            if let Some(expreg) = &self.expand {
+                if expreg.is_superset_of(sqrx) {
+                    if sqrx.pn > self.pn {
+                        //println!("deleting expand for sqr");
+                        self.expand = None;
+                        return true;
+                    }
+                    if self.pn == Pn::Unpredictable {
+                    } else if let Some(sqr_rules) = &sqrx.rules {
+                        if self.pn == Pn::Two {
+                            if let Some(rules) = &self.rules {
+                                if sqrx.pn == Pn::Two {
+                                    if rules.compatible(sqr_rules) {
+                                    } else {
+                                        //println!("deleting expand for sqr");
+                                        self.expand = None;
+                                    }
+                                } else if rules.subcompatible(sqr_rules) {
+                                } else {
+                                    //println!("deleting expand for sqr");
+                                    self.expand = None;
+                                }
+                            }
+                        } else if let Some(rules) = &self.rules {
+                            if rules.compatible(sqr_rules) {
+                            } else {
+                                //println!("deleting expand for sqr");
+                                self.expand = None;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+        }
         //println!(
         //  "group:check_square grp {} sqr {}",
         //  self.region, sqrx.state
@@ -166,9 +215,33 @@ impl SomeGroup {
             .is_superset_of(sqrx.rules.as_ref().expect("SNH"))
     }
 
-    /// Return true if a sample is compatible with a group.
-    pub fn check_subset_sample(&self, smpl: &SomeSample) -> bool {
-        assert!(self.region.is_superset_of(&smpl.initial));
+    /// Return false if a sample is incompatible with a group.
+    /// Delete expand region if needed.
+    pub fn check_sample(&mut self, smpl: &SomeSample) -> bool {
+        if !self.region.is_superset_of(&smpl.initial) {
+            if let Some(expreg) = &self.expand {
+                if expreg.is_superset_of(&smpl.initial) {
+                    let samp_rules = RuleStore::new(vec![SomeRule::new(smpl)]);
+                    if self.pn == Pn::Unpredictable {
+                    } else if self.pn == Pn::Two {
+                        if let Some(rules) = &self.rules {
+                            if rules.subcompatible(&samp_rules) {
+                            } else {
+                                //println!("deleting expand");
+                                self.expand = None;
+                            }
+                        }
+                    } else if let Some(rules) = &self.rules {
+                        if rules.compatible(&samp_rules) {
+                        } else {
+                            //println!("deleting expand");
+                            self.expand = None;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
 
         if self.pn == Pn::Unpredictable {
             return true;
@@ -266,6 +339,12 @@ impl SomeGroup {
     pub fn num_edges(&self) -> usize {
         self.region.num_edges()
     }
+
+    // Clear the expand field.
+    pub fn clear_expand(&mut self) {
+        //println!("clearing expand");
+        self.expand = None;
+    }
 } // end impl SomeGroup
 
 /// Implement the trait AccessStates for SomeGroup.
@@ -317,12 +396,12 @@ mod tests {
         let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
         let regx = tmp_reg.new_from_string("r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, Some(rules), true);
+        let mut grpx = SomeGroup::new(regx, Some(rules), true, None);
 
         let initial = tmp_sta.new_from_string("s0b1100")?;
         let result = tmp_sta.new_from_string("s0b0100")?;
 
-        if !grpx.check_subset_sample(&SomeSample::new(initial, result)) {
+        if !grpx.check_sample(&SomeSample::new(initial, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
         }
 
@@ -339,7 +418,7 @@ mod tests {
         let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
         let regx = tmp_reg.new_from_string("r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
+        let mut grpx = SomeGroup::new(regx, Some(rules), true, None); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
@@ -350,7 +429,7 @@ mod tests {
             tmp_sta.new_from_string("s0b0101")?,
         )); // Pn::Two, pnc == false.
 
-        if grpx.check_subset_square(&sqrx) {
+        if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 1 failed!"));
         }
 
@@ -362,7 +441,7 @@ mod tests {
 
         let regx = tmp_reg.new_from_string("r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
+        let mut grpx = SomeGroup::new(regx, Some(rules), true, None); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
@@ -373,7 +452,7 @@ mod tests {
             tmp_sta.new_from_string("s0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
-        if grpx.check_subset_square(&sqrx) {
+        if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
         }
 
@@ -382,14 +461,14 @@ mod tests {
 
         let regx = tmp_reg.new_from_string("r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, rules, true);
+        let mut grpx = SomeGroup::new(regx, rules, true, None);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
         ));
 
-        if !grpx.check_subset_square(&sqrx) {
+        if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 3 failed!"));
         }
 
@@ -398,14 +477,14 @@ mod tests {
 
         let regx = tmp_reg.new_from_string("r1xx0")?;
 
-        let grpx = SomeGroup::new(regx, Some(rules), true);
+        let mut grpx = SomeGroup::new(regx, Some(rules), true, None);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1100")?,
             tmp_sta.new_from_string("s0b0100")?,
         ));
 
-        if !grpx.check_subset_square(&sqrx) {
+        if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4a failed!"));
         }
 
@@ -414,7 +493,7 @@ mod tests {
             tmp_sta.new_from_string("s0b0101")?,
         ));
 
-        if grpx.check_subset_square(&sqrx) {
+        if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4b failed!"));
         }
         Ok(())

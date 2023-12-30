@@ -29,6 +29,7 @@ pub enum SomeNeed {
     AddGroup {
         group_region: SomeRegion,
         rules: Option<RuleStore>,
+        expand: Option<SomeRegion>,
     },
     /// Get an additional sample of a state.
     ConfirmGroup {
@@ -315,11 +316,17 @@ impl SomeNeed {
             Self::AddGroup {
                 group_region,
                 rules,
+                expand,
             } => {
-                if let Some(xrules) = rules {
-                    format!("N(Create group from {group_region} {xrules})")
+                let exp = if let Some(expreg) = expand {
+                    format!("expand {}", expreg)
                 } else {
-                    format!("N(Create group from {group_region} None)")
+                    String::new()
+                };
+                if let Some(xrules) = rules {
+                    format!("N(Create group from {group_region} {xrules} {exp})")
+                } else {
+                    format!("N(Create group from {group_region} No rules {exp})")
                 }
             }
             Self::ConfirmGroup {

@@ -185,20 +185,23 @@ impl SomeDomain {
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
-        self.actions[act_id].eval_sample_arbitrary(smpl);
+        let max_reg = self.max_agg_region();
+        self.actions[act_id].eval_sample_arbitrary(smpl, &max_reg);
         self.set_cur_state(smpl.result.clone());
     }
 
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        let asample = self.actions[ndx.act_id()].take_action_need(&self.cur_state, ndx);
+        let max_reg = self.max_agg_region();
+        let asample = self.actions[ndx.act_id()].take_action_need(&self.cur_state, ndx, &max_reg);
         self.set_cur_state(asample.result.clone());
     }
 
     /// Take an action with the current state.
     pub fn take_action_arbitrary(&mut self, act_id: usize) {
-        let asample = self.actions[act_id].take_action_arbitrary(&self.cur_state);
+        let max_reg = self.max_agg_region();
+        let asample = self.actions[act_id].take_action_arbitrary(&self.cur_state, &max_reg);
         self.set_cur_state(asample.result.clone());
     }
 
@@ -215,6 +218,8 @@ impl SomeDomain {
     /// Run a plan, return true if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
         assert_eq!(pln.dom_id, self.id);
+
+        let max_reg = self.max_agg_region();
 
         let mut num_steps = 0;
 
@@ -233,7 +238,7 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
-            let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
+            let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state, &max_reg);
             num_steps += 1;
 
             self.set_cur_state(asample.result.clone());
@@ -259,7 +264,8 @@ impl SomeDomain {
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
 
-                    let asample = self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                    let asample =
+                        self.actions[stpx.act_id].take_action_step(&self.cur_state, &max_reg);
                     num_steps += 1;
 
                     self.set_cur_state(asample.result.clone());
@@ -280,8 +286,8 @@ impl SomeDomain {
                                     println!("Try action return worked.");
                                     num_steps += num;
 
-                                    let asample =
-                                        self.actions[stpx.act_id].take_action_step(&self.cur_state);
+                                    let asample = self.actions[stpx.act_id]
+                                        .take_action_step(&self.cur_state, &max_reg);
                                     num_steps += 1;
 
                                     self.set_cur_state(asample.result.clone());
@@ -758,6 +764,16 @@ impl SomeDomain {
     /// Get aggregate changes for a domain.
     pub fn aggregate_changes(&self) -> &Option<SomeChange> {
         &self.actions.aggregate_changes
+    }
+
+    /// Return the expected maximun region, based on the current state
+    /// and know possible bit position changes.
+    pub fn max_agg_region(&self) -> SomeRegion {
+        if let Some(chgs) = self.aggregate_changes() {
+            SomeRegion::new(vec![self.cur_state.clone()]).set_to_x(&chgs.change_mask())
+        } else {
+            SomeRegion::new(vec![self.cur_state.clone()])
+        }
     }
 
     /// Return the total number of groups in all the actions.

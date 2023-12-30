@@ -78,7 +78,7 @@ impl GroupStore {
         let mut rmvec = Vec::<usize>::new();
 
         for (inx, grpx) in self.avec.iter_mut().enumerate() {
-            if grpx.is_superset_of(sqrx) && !grpx.check_subset_square(sqrx) {
+            if !grpx.check_square(sqrx) {
                 if sqrx.pn > grpx.pn {
                     println!(
                         "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
@@ -346,7 +346,7 @@ impl GroupStore {
     /// Return true if any groups are invalidated.
     pub fn any_groups_invalidated(&mut self, smpl: &SomeSample) -> bool {
         for grpx in &mut self.avec {
-            if grpx.is_superset_of(&smpl.initial) && !grpx.check_subset_sample(smpl) {
+            if !grpx.check_sample(smpl) {
                 return true;
             }
         }

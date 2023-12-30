@@ -150,6 +150,33 @@ impl SomeSquare {
         self.results.most_recent_result()
     }
 
+    /// Check if squares rules are, or could be, compatible.
+    pub fn rules_compatible(&self, other: &Self) -> bool {
+        if self.pn == Pn::Unpredictable {
+            return true;
+        }
+
+        if self.pn > other.pn {
+            if let Some(rules1) = &self.rules {
+                if let Some(rules2) = &other.rules {
+                    rules1.subcompatible(rules2)
+                } else {
+                    panic!("SNH");
+                }
+            } else {
+                panic!("SNH");
+            }
+        } else if let Some(rules1) = &self.rules {
+            if let Some(rules2) = &other.rules {
+                rules1.compatible(rules2)
+            } else {
+                panic!("SNH");
+            }
+        } else {
+            panic!("SNH");
+        }
+    }
+
     /// Return indication of compatibility for two squares to
     /// form a union, with the same number of rules as the first square.
     /// Some(true) = true.
