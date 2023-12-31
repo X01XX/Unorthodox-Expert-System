@@ -335,6 +335,7 @@ impl GroupStore {
         } else {
             println!("\nDom {} Act {} Adding group {}", dom_id, act_id, grp);
         }
+
         self.avec.push(grp);
 
         self.calc_aggregate_changes();

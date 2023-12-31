@@ -313,6 +313,7 @@ impl SomeRegion {
     /// far region within the superset region.
     pub fn far_reg(&self, other: &Self) -> Self {
         assert!(self.is_superset_of(other));
+
         let int_x_msk = self.x_mask();
 
         let ok_x_msk = other.x_mask();

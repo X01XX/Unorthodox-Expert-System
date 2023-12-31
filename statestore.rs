@@ -54,6 +54,18 @@ impl StateStore {
         self.avec.len()
     }
 
+    /// Return states in a given region.
+    pub fn in_reg(&self, targ_reg: &SomeRegion) -> Self {
+        let mut ret_stas = Self::new(vec![]);
+
+        for stax in self.avec.iter() {
+            if targ_reg.is_subset_of(stax) {
+                ret_stas.push(stax.clone());
+            }
+        }
+        ret_stas
+    }
+
     /// Return states not in a given region.
     pub fn not_in_reg(&self, not_reg: &SomeRegion) -> Self {
         let mut ret_stas = Self::new(vec![]);

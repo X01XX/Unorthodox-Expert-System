@@ -435,9 +435,7 @@ impl SomeAction {
             nds.append(self.group_pair_needs());
 
             // Check for expand needs.
-            if let Some(ndx) = self.expand_groups_needs() {
-                nds.append(ndx);
-            }
+            nds.append(self.expand_groups_needs());
 
             // Check for squares in-one-group needs
             if let Some(changes) = agg_changes {
@@ -815,8 +813,11 @@ impl SomeAction {
         ret_nds
     } // end confirm_group_needs
 
-    // Return expansion needs.
-    pub fn expand_groups_needs(&mut self) -> Option<NeedStore> {
+    /// Return group expansion needs.
+    pub fn expand_groups_needs(&mut self) -> NeedStore {
+        let mut ret_nds = NeedStore::new(vec![]);
+
+        let mut clear_groups = RegionStore::new(vec![]);
         for grpx in self.groups.iter_mut() {
             let Some(expreg) = &grpx.expand else {
                 continue;
@@ -827,21 +828,79 @@ impl SomeAction {
             for stax in stas2.iter() {
                 if let Some(sqrx) = self.squares.find(stax) {
                     if sqrx.pn >= grpx.pn || sqrx.pnc {
-                        grpx.clear_expand();
+                        clear_groups.push(grpx.region.clone());
                         continue;
                     }
                     if let Some(grpruls) = &grpx.rules {
                         if let Some(sqrruls) = &sqrx.rules {
                             if grpruls.subcompatible(sqrruls) {
                             } else {
-                                grpx.clear_expand();
+                                clear_groups.push(grpx.region.clone());
+                                continue;
                             }
                         }
                     }
                 }
             } // next stax
+
+            // Calc target region.
+            let targ_reg = expreg.far_reg(&grpx.region);
+
+            // Check squares in target region.
+            let stas3 = stas2.in_reg(&targ_reg);
+
+            if stas3.is_empty() {
+                let mut ndx = SomeNeed::ExpandGroup {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    group_region: grpx.region.clone(),
+                    expand_region: expreg.clone(),
+                    target_region: targ_reg,
+                    priority: 0,
+                };
+                ndx.set_priority();
+                ret_nds.push(ndx);
+                continue;
+            }
+
+            // Find highest number samples squares in target region.
+            let mut highest_samples = StateStore::new(vec![]);
+            let mut highest_num = 0;
+            for stax in stas3.iter() {
+                if let Some(sqrx) = self.squares.find(stax) {
+                    if sqrx.num_results() > highest_num {
+                        highest_samples = StateStore::new(vec![]);
+                        highest_num = sqrx.num_results();
+                    }
+                    if sqrx.num_results() == highest_num {
+                        highest_samples.push(stax.clone());
+                    }
+                } else {
+                    panic!("SNH");
+                }
+            }
+
+            let mut ndx = SomeNeed::ExpandGroup {
+                dom_id: self.dom_id,
+                act_id: self.id,
+                group_region: grpx.region.clone(),
+                expand_region: expreg.clone(),
+                target_region: SomeRegion::new(vec![highest_samples
+                    [rand::thread_rng().gen_range(0..highest_samples.len())]
+                .clone()]),
+                priority: 0,
+            };
+            ndx.set_priority();
+            ret_nds.push(ndx);
+        } // next grpx
+
+        // Clear expand in selected groups.
+        for grp_key in clear_groups.iter() {
+            if let Some(grpx) = self.groups.find_mut(grp_key) {
+                grpx.clear_expand();
+            }
         }
-        None
+        ret_nds
     }
 
     /// Check for squares-in-one-group (anchor) needs.
@@ -916,17 +975,17 @@ impl SomeAction {
             if let Some(ndx) = self.limit_group_anchor_needs(grpx, group_num) {
                 ret_nds.append(ndx);
             } else if let Some(anchor) = &grpx.anchor {
-                // Get masks of edge bits to use to limit group.
-                // Ignore bits that cannot be changed by any action.
-                let change_bits = grpx.region.edge_mask().bitwise_and(change_mask);
-                let edge_msks: Vec<SomeMask> = change_bits.split();
-
-                if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, &edge_msks, group_num) {
+                if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, change_mask, group_num)
+                {
                     ret_nds.append(ndx);
                 } else {
                     ret_nds.push(SomeNeed::SetGroupLimited {
                         group_region: grpx.region.clone(),
-                        num_adj: edge_msks.len(),
+                        num_adj: grpx
+                            .region
+                            .edge_mask()
+                            .bitwise_and(change_mask)
+                            .num_one_bits(),
                     });
                 }
             }
@@ -1152,7 +1211,7 @@ impl SomeAction {
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
-        edge_msks: &[SomeMask],
+        change_mask: &SomeMask,
         group_num: usize,
     ) -> Option<NeedStore> {
         // If any external adjacent states have not been sampled, or not enough,
@@ -1172,8 +1231,13 @@ impl SomeAction {
         let mut nds_grp = NeedStore::new(vec![]); // needs for more samples
         let mut nds_grp_add = NeedStore::new(vec![]); // needs for added group
 
+        // Get masks of edge bits to use to limit group.
+        // Ignore bits that cannot be changed by any action.
+        let change_bits = grpx.region.edge_mask().bitwise_and(change_mask);
+        let edge_msks: Vec<SomeMask> = change_bits.split();
+
         for mskx in edge_msks {
-            let adj_sta = anchor_sta.bitwise_xor(mskx);
+            let adj_sta = anchor_sta.bitwise_xor(&mskx);
 
             //println!("*** for group {} checking adj sqr {}", greg, adj_sta);
 
@@ -1704,23 +1768,6 @@ impl SomeAction {
             }
         }
 
-        // If no simmilar squares, done.
-        if sim_sqrs.is_empty() {
-            // Make a single-square group
-            let expand = if max_reg.x_mask().is_low() {
-                None
-            } else {
-                Some(max_reg.clone())
-            };
-            ret_grps.push(SomeGroup::new(
-                SomeRegion::new(vec![sqrx.state.clone()]),
-                sqrx.rules.clone(),
-                sqrx.pnc,
-                expand,
-            ));
-            return ret_grps;
-        }
-
         // println!("Similar squares:");
         // for sqrz in sim_sqrs2.iter() {
         //    println!("  {}", sqrz);
@@ -1812,11 +1859,6 @@ impl SomeAction {
             return None;
         }
 
-        // Don't make a single-state region.
-        //if sqrs_in.is_empty() {
-        //    return None;
-        //}
-
         let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
 
         stas_in.push(sqrx.state.clone());
@@ -1853,10 +1895,18 @@ impl SomeAction {
         }
 
         // Retain information about possible expansion.
-        let expand = if grp_reg == *regx || max_reg.is_subset_of(regx) || regx.all_x() {
-            None
+        let expand = if max_reg.is_superset_of(&grp_reg) {
+            let change_mask = grp_reg
+                .edge_mask()
+                .bitwise_and(&regx.x_mask())
+                .bitwise_and(&max_reg.x_mask());
+            if change_mask.is_low() {
+                None
+            } else {
+                Some(grp_reg.set_to_x(&change_mask))
+            }
         } else {
-            Some(regx.clone())
+            None
         };
 
         // Return a group, keeping sqrx.state as first state in the group region.
