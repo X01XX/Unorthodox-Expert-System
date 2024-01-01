@@ -1,7 +1,6 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
 use crate::mask::SomeMask;
-use crate::region::SomeRegion;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -132,24 +131,6 @@ impl SomeChange {
         strrc
     }
 
-    /// Return the result of applying a change to a region.
-    pub fn applied_to(&self, regx: &SomeRegion) -> SomeRegion {
-        let state1 = regx.state1();
-        let state2 = regx.state2();
-        SomeRegion::new(vec![
-            state1.bitwise_xor(
-                &state1
-                    .bitwise_and(&self.b10)
-                    .bitwise_or(&state1.bitwise_not().bitwise_and(&self.b01)),
-            ),
-            state2.bitwise_xor(
-                &state2
-                    .bitwise_and(&self.b10)
-                    .bitwise_or(&state2.bitwise_not().bitwise_and(&self.b01)),
-            ),
-        ])
-    }
-
     /// Return a mask of bit positions that can change.
     pub fn change_mask(&self) -> SomeMask {
         self.b01.bitwise_and(&self.b10)
@@ -271,27 +252,6 @@ mod tests {
                     b10: dm0.mask_from_string("m0b0001")?
                 }
         );
-
-        Ok(())
-    }
-
-    #[test]
-    fn applied_to() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-        let dm0 = SomeDomain::new(0, 1);
-
-        let wanted_changes = SomeChange {
-            b01: dm0.mask_from_string("m0b1100")?,
-            b10: dm0.mask_from_string("m0b0011")?,
-        };
-        println!("wanted_changes    {wanted_changes}");
-
-        let reg1 = dm0.region_from_string("r0X1X")?;
-
-        let reg2 = wanted_changes.applied_to(&reg1);
-
-        println!("Reg {reg1} changed by {wanted_changes} is {reg2}");
-        assert!(reg2 == dm0.region_from_string("r1100")?);
 
         Ok(())
     }

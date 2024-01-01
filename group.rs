@@ -267,16 +267,21 @@ impl SomeGroup {
     }
 
     /// Set limited to false.
-    pub fn set_limited_off(&mut self) {
-        //        assert!(self.limited);
+    pub fn set_limited_off(&mut self, dom_id: usize, act_id: usize) {
+        println!(
+            "Dom {} Act {} Group {} set limited off",
+            dom_id, act_id, self.region
+        );
         self.limited = false;
         self.anchor_num = 0;
     }
 
     /// Set limited to true.
-    pub fn set_limited(&mut self, num: usize) {
-        //        assert!(!self.limited);
-
+    pub fn set_limited(&mut self, num: usize, dom_id: usize, act_id: usize) {
+        println!(
+            "Dom {} Act {} Group {} set limited on, num adj {}",
+            dom_id, act_id, self.region, num
+        );
         self.limited = true;
         self.anchor_num = num;
 
@@ -301,12 +306,14 @@ impl SomeGroup {
     /// Check limited setting in groups due to new bit that can change.
     /// If the group region has a non-X bit position matching a new bit position that can change,
     /// set the limited indicator to false.
-    pub fn check_limited(&mut self, change_mask: &SomeMask) {
+    pub fn check_limited(&mut self, max_reg: &SomeRegion) {
         assert!(self.limited);
 
-        let edge_mask = self.region.edge_mask();
+        let Some(grp_reg) = self.region.intersection(max_reg) else {
+            return;
+        };
 
-        let positions = edge_mask.bitwise_and(change_mask);
+        let positions = grp_reg.edge_mask().bitwise_and(&max_reg.x_mask());
 
         //        println!(
         //            "Check limited setting for {} with {} positions {}",

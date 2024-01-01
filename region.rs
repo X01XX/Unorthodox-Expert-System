@@ -4,6 +4,7 @@
 //!
 //! The two states used to make the region, can be keys to two squares.
 
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
@@ -615,6 +616,24 @@ impl SomeRegion {
         let reg2 = other.set_to_x(&diff);
 
         reg1.intersection(&reg2)
+    }
+
+    /// Return the result of applying a change to a region.
+    pub fn apply_changes(&self, chgs: &SomeChange) -> SomeRegion {
+        let state1 = self.state1();
+        let state2 = self.state2();
+        SomeRegion::new(vec![
+            state1.bitwise_xor(
+                &state1
+                    .bitwise_and(&chgs.b10)
+                    .bitwise_or(&state1.bitwise_not().bitwise_and(&chgs.b01)),
+            ),
+            state2.bitwise_xor(
+                &state2
+                    .bitwise_and(&chgs.b10)
+                    .bitwise_or(&state2.bitwise_not().bitwise_and(&chgs.b01)),
+            ),
+        ])
     }
 } // end impl SomeRegion
 
@@ -1411,6 +1430,29 @@ mod tests {
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = tmp_rul.new_from_string("00/11/00/X1")?;
         assert!(rul1 == rul2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn apply_changes() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+        let ur_bits = SomeBits::new(vec![0]);
+        let ur_state = SomeState::new(ur_bits.clone());
+        let ur_mask = SomeMask::new(ur_bits);
+        let ur_region = SomeRegion::new(vec![ur_state.clone()]);
+
+        let wanted_changes = SomeChange::new(
+            ur_mask.new_from_string("m0b1100")?,
+            ur_mask.new_from_string("m0b0011")?,
+        );
+        println!("wanted_changes    {wanted_changes}");
+
+        let reg1 = ur_region.new_from_string("r0011")?;
+        let reg2 = reg1.apply_changes(&wanted_changes);
+
+        println!("Reg1 {reg1} changed by {wanted_changes} is {reg2}");
+        assert!(reg2 == ur_region.new_from_string("r1100")?);
 
         Ok(())
     }

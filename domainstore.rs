@@ -143,7 +143,7 @@ impl DomainStore {
         cur_states: &StateStoreCorr,
         assume: Option<usize>,
     ) -> RegionStore {
-        let mut non_neg_regs = RegionStore::new(vec![self[dom_id].max_region.clone()]);
+        let mut non_neg_regs = RegionStore::new(vec![self[dom_id].max_poss_region.clone()]);
 
         'next_selx: for (sel_num, selx) in self.select_negative.iter().enumerate() {
             // Check if any other domain is out of the SelectRegions.
@@ -1163,7 +1163,7 @@ impl DomainStore {
         while let Some(trap_inx) = rp1.pick() {
             let (dom_id, sel_inxs) = &traps2[trap_inx];
 
-            let mut comp = RegionStore::new(vec![self[*dom_id].max_region.clone()]);
+            let mut comp = RegionStore::new(vec![self[*dom_id].max_poss_region.clone()]);
             for sely in sel_inxs.iter() {
                 comp =
                     comp.intersection(&self.select_negative[*sely].regions[*dom_id].complement());
@@ -1226,7 +1226,7 @@ impl DomainStore {
                     if domx == dom_id {
                         continue;
                     }
-                    let mut comp = RegionStore::new(vec![self[domx].max_region.clone()]);
+                    let mut comp = RegionStore::new(vec![self[domx].max_poss_region.clone()]);
                     for sely in sel_inxs.iter() {
                         comp = comp
                             .intersection(&self.select_negative[*sely].regions[domx].complement());

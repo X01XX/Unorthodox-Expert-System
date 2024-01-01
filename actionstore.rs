@@ -9,6 +9,7 @@ use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
+use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -56,25 +57,33 @@ impl ActionStore {
     }
 
     /// Check limited flag due to new changes.
-    pub fn check_limited(&mut self) {
+    pub fn check_limited(&mut self, max_reg: &SomeRegion) {
         for actx in self.avec.iter_mut() {
-            actx.check_limited(&self.aggregate_changes);
+            actx.check_limited(max_reg);
         }
     }
 
     /// Get needs for all actions in the store.
-    pub fn get_needs(&mut self, cur: &SomeState, dom_id: usize) -> NeedStore {
+    pub fn get_needs(&mut self, cur_state: &SomeState, dom_id: usize) -> NeedStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
+        let max_reg_prev = self.max_agg_region(cur_state);
+
         self.calc_aggregate_changes();
+
+        let max_reg = self.max_agg_region(cur_state);
+
+        if max_reg != max_reg_prev {
+            self.check_limited(&max_reg);
+        }
 
         let mut needs = NeedStore::new(Vec::<SomeNeed>::new());
 
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur, dom_id, &self.aggregate_changes))
+            .map(|actx| actx.get_needs(cur_state, dom_id, &max_reg))
             .collect::<Vec<NeedStore>>();
 
         // Consolidate need into one NeedStore.
@@ -110,6 +119,16 @@ impl ActionStore {
     /// Return an iterator
     pub fn iter(&self) -> Iter<SomeAction> {
         self.avec.iter()
+    }
+
+    /// Return the expected maximum reachable region, based on the current state
+    /// and known possible bit position changes.
+    pub fn max_agg_region(&self, cur_state: &SomeState) -> SomeRegion {
+        if let Some(chgs) = &self.aggregate_changes {
+            SomeRegion::new(vec![cur_state.clone(), cur_state.apply_changes(chgs)])
+        } else {
+            SomeRegion::new(vec![cur_state.clone()])
+        }
     }
 
     /// Calc all possible changes.
@@ -170,8 +189,6 @@ impl ActionStore {
         }
 
         self.aggregate_changes = new_chgs;
-
-        self.check_limited();
     }
 
     /// Return a String representation of an ActionStore.
@@ -192,6 +209,42 @@ impl ActionStore {
             ret.extend(actx.all_rules());
         }
         ret
+    }
+
+    /// Take an action with the current state.
+    pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
+        let max_reg = self.max_agg_region(cur_state);
+        self.avec[act_id].take_action_arbitrary(cur_state, &max_reg)
+    }
+
+    /// Take an action for a need, evaluate the resulting sample.
+    /// It is assumed that a sample made for a need must be saved.
+    pub fn take_action_need(&mut self, ndx: &SomeNeed, cur_state: &SomeState) -> SomeSample {
+        let max_reg = self.max_agg_region(cur_state);
+        self.avec[ndx.act_id()].take_action_need(cur_state, ndx, &max_reg)
+    }
+
+    /// Evaluate an arbitrary sample given by the user.
+    /// This tends to break things for an action, unless all samples are arbitrary.
+    /// Useful for testing a wholly different series of samples/results.
+    /// Using the command: ss  action-number  initial-state  result-state
+    /// e.g. ss  0  s0b1010  s0b1111
+    pub fn eval_sample_arbitrary(
+        &mut self,
+        act_id: usize,
+        smpl: &SomeSample,
+        cur_state: &SomeState,
+    ) {
+        let max_reg = self.max_agg_region(cur_state);
+        //println!("max_reg {max_reg}");
+        self.avec[act_id].eval_sample_arbitrary(smpl, &max_reg);
+    }
+
+    /// Take an action with the current state.
+    /// Return true if a square for the generated sample exists.
+    pub fn take_action_step(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
+        let max_reg = self.max_agg_region(cur_state);
+        self.avec[act_id].take_action_step(cur_state, &max_reg)
     }
 } // end impl ActionStore
 

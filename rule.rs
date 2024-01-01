@@ -556,7 +556,7 @@ mod tests {
             .bitwise_and(&care);
         println!(
             "wanted change {wanted}, start {start} to {}",
-            wanted.applied_to(&start)
+            start.apply_changes(&wanted)
         );
         assert!(
             wanted
@@ -573,7 +573,7 @@ mod tests {
             .bitwise_and(&care);
         println!(
             "unwanted change {unwanted}, start {start} to {}",
-            unwanted.applied_to(&start)
+            start.apply_changes(&unwanted)
         );
         assert!(
             unwanted
@@ -591,7 +591,7 @@ mod tests {
             .bitwise_and(&care);
         println!(
             "missing change {missing}, start {start} to {}",
-            missing.applied_to(&start)
+            start.apply_changes(&missing)
         );
         assert!(
             missing

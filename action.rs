@@ -356,22 +356,15 @@ impl SomeAction {
         &mut self,
         cur_state: &SomeState,
         dom_id: usize,
-        agg_changes: &Option<SomeChange>,
+        max_reg: &SomeRegion,
     ) -> NeedStore {
         let mut ret = NeedStore::new(vec![]);
-
-        // Calc maximum expected region.
-        let max_reg = if let Some(chgs) = agg_changes {
-            SomeRegion::new(vec![cur_state.clone()]).set_to_x(&chgs.change_mask())
-        } else {
-            SomeRegion::new(vec![cur_state.clone()])
-        };
 
         let mut found = true;
         while found {
             found = false;
 
-            ret = self.get_needs2(cur_state, dom_id, agg_changes);
+            ret = self.get_needs2(cur_state, dom_id, max_reg);
 
             // Check memory.
             let mut inx: Option<usize> = None;
@@ -396,7 +389,7 @@ impl SomeAction {
                         // Process square as a series of samples.
                         let key = sqrx.state.clone();
                         self.squares.insert(sqrx, self.dom_id, self.id);
-                        self.eval_changed_square(&key, &max_reg);
+                        self.eval_changed_square(&key, max_reg);
                     } else {
                         panic!("SNH");
                     }
@@ -413,7 +406,7 @@ impl SomeAction {
         &mut self,
         cur_state: &SomeState,
         dom_id: usize,
-        agg_changes: &Option<SomeChange>,
+        max_reg: &SomeRegion,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs {}", self.num, cur_state);
 
@@ -438,10 +431,8 @@ impl SomeAction {
             nds.append(self.expand_groups_needs());
 
             // Check for squares in-one-group needs
-            if let Some(changes) = agg_changes {
-                if let Some(ndx) = self.limit_groups_needs(&changes.bits_change_mask()) {
-                    nds.append(ndx);
-                }
+            if let Some(ndx) = self.limit_groups_needs(max_reg) {
+                nds.append(ndx);
             }
 
             // Check for repeating housekeeping needs loop
@@ -519,11 +510,11 @@ impl SomeAction {
                         num_adj,
                     } => {
                         if let Some(grpx) = self.groups.find_mut(greg) {
-                            println!(
-                                "\nDom {} Act {} Group {} set limited, num adj {}",
-                                dom_id, self.id, greg, num_adj
-                            );
-                            grpx.set_limited(*num_adj);
+                            //println!(
+                            //   "\nDom {} Act {} Group {} set limited, num adj {}",
+                            //    dom_id, self.id, greg, num_adj
+                            //);
+                            grpx.set_limited(*num_adj, dom_id, self.id);
                         }
                     }
                     SomeNeed::SetGroupAnchor {
@@ -605,15 +596,8 @@ impl SomeAction {
                 if nds.kind_is_in("StateNotInGroup") {
                 } else {
                     if self.check_remainder {
-                        if let Some(changes) = agg_changes {
-                            let max_reg = SomeRegion::new(vec![
-                                cur_state.clone(),
-                                cur_state.bitwise_xor(&changes.b01.bitwise_and(&changes.b10)),
-                            ]);
-
-                            self.remainder_check_regions = self.remainder_check_region(max_reg);
-                            self.check_remainder = false;
-                        }
+                        self.remainder_check_regions = self.remainder_check_region(max_reg);
+                        self.check_remainder = false;
                     }
                     for regx in self.remainder_check_regions.iter() {
                         let mut needx = SomeNeed::StateInRemainder {
@@ -635,8 +619,8 @@ impl SomeAction {
     } // end get_needs
 
     /// Check for needs in a region not covered by current groups.
-    fn remainder_check_region(&self, max_region: SomeRegion) -> RegionStore {
-        let mut remainder_regs = RegionStore::new(vec![max_region]);
+    fn remainder_check_region(&self, max_reg: &SomeRegion) -> RegionStore {
+        let mut remainder_regs = RegionStore::new(vec![max_reg.clone()]);
 
         for grpx in self.groups.iter() {
             remainder_regs = remainder_regs.subtract_item(&grpx.region);
@@ -913,7 +897,7 @@ impl SomeAction {
     ///
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
-    pub fn limit_groups_needs(&mut self, change_mask: &SomeMask) -> Option<NeedStore> {
+    pub fn limit_groups_needs(&mut self, max_reg: &SomeRegion) -> Option<NeedStore> {
         //println!("limit_groups_needs chg {}", change_mask);
 
         let mut ret_nds = NeedStore::new(vec![]);
@@ -964,7 +948,7 @@ impl SomeAction {
             }
             let num_edges = grpx.num_edges();
             if num_edges < max_edges {
-                grpx.set_limited_off();
+                grpx.set_limited_off(self.dom_id, self.id);
             }
         }
 
@@ -975,16 +959,14 @@ impl SomeAction {
             if let Some(ndx) = self.limit_group_anchor_needs(grpx, group_num) {
                 ret_nds.append(ndx);
             } else if let Some(anchor) = &grpx.anchor {
-                if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, change_mask, group_num)
-                {
+                if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, max_reg, group_num) {
                     ret_nds.append(ndx);
-                } else {
+                } else if let Some(grp_reg) = grpx.region.intersection(max_reg) {
                     ret_nds.push(SomeNeed::SetGroupLimited {
                         group_region: grpx.region.clone(),
-                        num_adj: grpx
-                            .region
+                        num_adj: grp_reg
                             .edge_mask()
-                            .bitwise_and(change_mask)
+                            .bitwise_and(&max_reg.x_mask())
                             .num_one_bits(),
                     });
                 }
@@ -1211,7 +1193,7 @@ impl SomeAction {
         &self,
         grpx: &SomeGroup,
         anchor_sta: &SomeState,
-        change_mask: &SomeMask,
+        max_reg: &SomeRegion,
         group_num: usize,
     ) -> Option<NeedStore> {
         // If any external adjacent states have not been sampled, or not enough,
@@ -1233,7 +1215,12 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         // Ignore bits that cannot be changed by any action.
-        let change_bits = grpx.region.edge_mask().bitwise_and(change_mask);
+        let Some(grp_reg) = grpx.region.intersection(max_reg) else {
+            return None;
+        };
+
+        let change_bits = grp_reg.edge_mask().bitwise_and(&max_reg.x_mask());
+
         let edge_msks: Vec<SomeMask> = change_bits.split();
 
         for mskx in edge_msks {
@@ -2046,11 +2033,10 @@ impl SomeAction {
         }
         Ok(())
     }
+
     /// Check group limited setting.
-    pub fn check_limited(&mut self, agg_changes: &Option<SomeChange>) {
-        if let Some(changes) = agg_changes {
-            self.groups.check_limited(&changes.change_mask());
-        }
+    pub fn check_limited(&mut self, max_reg: &SomeRegion) {
+        self.groups.check_limited(max_reg);
     }
 
     /// Return the total number of groups in the action.
@@ -2166,8 +2152,8 @@ mod tests {
         let tmp_bts = SomeBits::new(vec![0]);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_msk = SomeMask::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         let s3 = tmp_sta.new_from_string("s0b0011")?;
         let s4 = tmp_sta.new_from_string("s0b0100")?;
@@ -2182,28 +2168,24 @@ mod tests {
         let sf = tmp_sta.new_from_string("s0b1111")?;
 
         // Set up XX01 group.
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()), &max_reg);
 
         // Set up divider squares.
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), s4.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sc.clone(), s3.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), s4.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sc.clone(), s3.clone()), &max_reg);
 
         // Set up 111X group.
         // The shared symetric group will be 11X1.
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()), &max_reg);
 
-        let cngs = SomeChange::new(
-            tmp_msk.new_from_string("m0b1111").expect("SNH"),
-            tmp_msk.new_from_string("m0b1111").expect("SNH"),
-        );
-        let nds = act0.get_needs(&sa, 0, &Some(cngs));
+        let nds = act0.get_needs(&sa, 0, &tmp_reg);
 
         println!("Groups {}", act0.groups);
         println!("needs {nds}");
@@ -2235,6 +2217,7 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         let s4 = tmp_sta.new_from_string("s0b0100")?;
         let s6 = tmp_sta.new_from_string("s0b0110")?;
@@ -2246,22 +2229,22 @@ mod tests {
         let sf = tmp_sta.new_from_string("s0b1111")?;
 
         // Set up X10X group.
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()), &max_reg);
 
         // Set up divider squares.
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s8.clone(), s7.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s6.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s8.clone(), s7.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s6.clone()), &max_reg);
 
         // Set up 1X1X group.
         // The shared symetric group will be 11X1.
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()), &max_reg);
 
         println!("Groups {}", act0.groups);
 
@@ -2290,6 +2273,7 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
@@ -2297,25 +2281,25 @@ mod tests {
         //let s1 = SomeState::new(SomeBits::new(vec![0x1]));
         let s1 = tmp_sta.new_from_string("s0b0001")?;
         let s9 = tmp_sta.new_from_string("s0b1001")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s9.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s9.clone()), &max_reg);
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
 
         // Set up first two_result square.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
         let s8 = tmp_sta.new_from_string("s0b1000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()), &max_reg);
 
         // Set up second two_result square.
         let s7 = tmp_sta.new_from_string("s0b0111")?;
         let sf = tmp_sta.new_from_string("s0b1111")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &max_reg);
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 1);
@@ -2331,10 +2315,11 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Eval sample that other samples will be incompatible with.
         let s7 = tmp_sta.new_from_string("s0b0111")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()), &max_reg);
 
         // Process three similar samples.
         act0.eval_sample_arbitrary(
@@ -2342,7 +2327,7 @@ mod tests {
                 tmp_sta.new_from_string("s0b1011")?,
                 tmp_sta.new_from_string("s0b1010")?,
             ),
-            &tmp_reg,
+            &max_reg,
         );
 
         act0.eval_sample_arbitrary(
@@ -2350,7 +2335,7 @@ mod tests {
                 tmp_sta.new_from_string("s0b1101")?,
                 tmp_sta.new_from_string("s0b1100")?,
             ),
-            &tmp_reg,
+            &max_reg,
         );
 
         act0.eval_sample_arbitrary(
@@ -2358,7 +2343,7 @@ mod tests {
                 tmp_sta.new_from_string("s0b0001")?,
                 tmp_sta.new_from_string("s0b0000")?,
             ),
-            &tmp_reg,
+            &max_reg,
         );
 
         println!("Groups {}", act0.groups);
@@ -2390,32 +2375,26 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Set up 2-result square sf.
         let sf = tmp_sta.new_from_string("s0b1111")?;
         let se = tmp_sta.new_from_string("s0b1110")?;
 
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()), &max_reg);
 
         // Set up 2-result square s1.
         let s1 = tmp_sta.new_from_string("s0b0001")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()), &tmp_reg);
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()), &max_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()), &max_reg);
 
-        let nds = act0.get_needs(
-            &s1,
-            0,
-            &Some(SomeChange::new(
-                tmp_sta.to_mask().new_from_string("m0b1111")?,
-                tmp_sta.to_mask().new_from_string("m0b1111")?,
-            )),
-        );
+        let nds = act0.get_needs(&s1, 0, &max_reg);
         println!("Act: {}", act0);
         println!("needs: {}", nds);
 
@@ -2433,18 +2412,19 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &max_reg);
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()), &max_reg);
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
 
         println!("Act: {}", act0);
 
@@ -2465,22 +2445,23 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Set up square 0.
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()), &max_reg);
 
         // Set up square 3.
         let s3 = tmp_sta.new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()), &max_reg);
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
         let s4 = tmp_sta.new_from_string("s0b0100")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s0.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s0.clone()), &max_reg);
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
 
         println!("Act: {}", act0);
 
@@ -2510,19 +2491,20 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXXX")?;
 
         // Set up square 2.
         let s2 = tmp_sta.new_from_string("s0b0010")?;
         let s0 = tmp_sta.new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), s0.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), s0.clone()), &max_reg);
 
         // Set up square b.
         let sb = tmp_sta.new_from_string("s0b1011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), sb.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), sb.clone()), &max_reg);
 
         // Set up square 5.
         let s5 = tmp_sta.new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &tmp_reg);
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()), &max_reg);
 
         println!("Act: {}", act0);
 

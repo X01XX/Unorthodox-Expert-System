@@ -2,7 +2,6 @@
 
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
-use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
@@ -136,12 +135,12 @@ impl GroupStore {
             if let Some(anchor) = &grpx.anchor {
                 if anchor.is_adjacent(&sqrx.state) {
                     if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
-                        grpx.set_limited_off();
+                        grpx.set_limited_off(dom_id, act_id);
                     } else if grpx.pn == sqrx.pn {
                         if let Some(grpx_ruls) = &grpx.rules {
                             if let Some(sqr_ruls) = &sqrx.rules {
                                 if grpx_ruls.union(sqr_ruls).is_some() {
-                                    grpx.set_limited_off();
+                                    grpx.set_limited_off(dom_id, act_id);
                                 }
                             }
                         }
@@ -385,10 +384,10 @@ impl GroupStore {
     }
 
     /// Check limited setting in groups due to new bit that can change.
-    pub fn check_limited(&mut self, change_mask: &SomeMask) {
+    pub fn check_limited(&mut self, max_reg: &SomeRegion) {
         for grpx in &mut self.avec {
             if grpx.limited {
-                grpx.check_limited(change_mask);
+                grpx.check_limited(max_reg);
             }
         }
     }
