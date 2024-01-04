@@ -361,9 +361,9 @@ impl DomainStore {
         self.domains[self.needs[nd_inx].dom_id()].take_action_need(&self.needs[nd_inx]);
     }
 
-    /// Take an arbitrary action
-    pub fn take_action_arbitrary(&mut self, dmxi: usize, actx: usize) {
-        self.domains[dmxi].take_action_arbitrary(actx);
+    /// Take an action.
+    pub fn take_action(&mut self, dmxi: usize, actx: usize) {
+        self.domains[dmxi].take_action(actx);
     }
 
     /// Return a reference to the current state of a given Domain index

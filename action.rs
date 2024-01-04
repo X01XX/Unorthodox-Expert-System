@@ -157,15 +157,8 @@ impl SomeAction {
         if self.groups.any_groups_invalidated(smpl) {
             // Add new square.
             self.add_new_sample(smpl);
-            if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
-                // Gather invalidated group regions.
-                let regs_invalid: RegionStore =
-                    self.groups.check_square(sqrx, self.dom_id, self.id);
-                if regs_invalid.is_not_empty() {
-                    self.check_remainder = true;
-                    self.process_invalid_regions(&regs_invalid, max_reg);
-                }
-            }
+            self.eval_changed_square(&smpl.initial, max_reg);
+
             return true;
         }
 
@@ -212,23 +205,6 @@ impl SomeAction {
         }
     }
 
-    /// Evaluate a sample taken to satisfy a need.
-    pub fn eval_need_sample(&mut self, ndx: &SomeNeed) {
-        // Additional processing for selected kinds of need
-        if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
-            let Some(sqr1) = self.squares.find(grp_reg.state1()) else {
-                return;
-            };
-            let Some(sqr2) = self.squares.find(grp_reg.state2()) else {
-                return;
-            };
-
-            if sqr1.pnc && sqr2.pnc {
-                self.set_group_pnc(grp_reg);
-            }
-        }
-    } // end eval_need_sample
-
     /// Find a group by region, set group pnc.
     pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
         let Some(grpx) = self.groups.find_mut(grp_reg) else {
@@ -263,7 +239,6 @@ impl SomeAction {
     }
 
     /// Check groups due to a new, or updated, square.
-    /// Create a group with the square, if needed.
     fn create_groups_from_squares2(&self, key: &SomeState, max_reg: &SomeRegion) -> Vec<SomeGroup> {
         //println!("create_groups_from_squares2 {}", key);
         debug_assert!(!self.groups.any_superset_of(key));
@@ -505,18 +480,6 @@ impl SomeAction {
                         );
                         try_again = true;
                     }
-                    SomeNeed::SetGroupLimited {
-                        group_region: greg,
-                        num_adj,
-                    } => {
-                        if let Some(grpx) = self.groups.find_mut(greg) {
-                            //println!(
-                            //   "\nDom {} Act {} Group {} set limited, num adj {}",
-                            //    dom_id, self.id, greg, num_adj
-                            //);
-                            grpx.set_limited(*num_adj, dom_id, self.id);
-                        }
-                    }
                     SomeNeed::SetGroupAnchor {
                         group_region: greg,
                         anchor: sta1,
@@ -540,18 +503,6 @@ impl SomeAction {
                         try_again = true;
                         break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
                     }
-                    SomeNeed::RemoveGroupAnchor { group_region: greg } => {
-                        let Some(grpx) = self.groups.find_mut(greg) else {
-                            continue;
-                        };
-
-                        println!(
-                            "\nDom {} Act {} Group {} remove anchor",
-                            dom_id, self.id, greg
-                        );
-                        try_again = true;
-                        grpx.set_anchor_off();
-                    }
                     _ => (),
                 } // end match
             } // next ndx
@@ -566,14 +517,8 @@ impl SomeAction {
                 let mut inxs = Vec::<usize>::with_capacity(nds.len());
 
                 for (inx, ndx) in nds.iter().enumerate() {
-                    match ndx {
-                        SomeNeed::AddGroup { .. } => {
-                            inxs.push(inx);
-                        }
-                        SomeNeed::SetGroupLimited { .. } => {
-                            inxs.push(inx);
-                        }
-                        _ => (),
+                    if let SomeNeed::AddGroup { .. } = ndx {
+                        inxs.push(inx);
                     }
                 }
 
@@ -900,78 +845,74 @@ impl SomeAction {
     pub fn limit_groups_needs(&mut self, max_reg: &SomeRegion) -> Option<NeedStore> {
         //println!("limit_groups_needs chg {}", change_mask);
 
-        let mut ret_nds = NeedStore::new(vec![]);
+        //let mut ret_nds = NeedStore::new(vec![]);
 
-        // Check groups current anchors are still in only one region,
+        // Check if groups current anchors are still in only one region.
+        let mut remove_anchor = Vec::<SomeRegion>::new();
         for grpx in self.groups.iter() {
             let Some(stax) = &grpx.anchor else {
                 continue;
             };
 
             if !self.groups.in_1_group(stax) {
-                ret_nds.push(SomeNeed::RemoveGroupAnchor {
-                    group_region: grpx.region.clone(),
-                });
+                remove_anchor.push(grpx.region.clone());
             }
         }
-        if ret_nds.is_not_empty() {
-            return Some(ret_nds);
-        }
-
-        // Gather priority groups.
-        let mut group_inxs = Vec::<usize>::new();
-        let mut max_edges = 0;
-
-        for (inx, grpx) in self.groups.iter().enumerate() {
-            if !grpx.pnc || grpx.limited || self.groups.remainder(inx).is_empty() {
-                continue;
-            }
-            let num_edges = grpx.num_edges();
-            if num_edges > max_edges {
-                max_edges = num_edges;
-                group_inxs = Vec::<usize>::new();
-            }
-            if num_edges == max_edges {
-                group_inxs.push(inx);
+        // Remove anchors, as needed.
+        for regx in remove_anchor.iter() {
+            if let Some(grpx) = self.groups.find_mut(regx) {
+                //println!("set {} anchor off", grpx.region);
+                grpx.set_anchor_off();
             }
         }
 
-        // Check for none found.
-        if group_inxs.is_empty() {
-            return Some(ret_nds);
-        }
+        let mut ret_nds = NeedStore::new(vec![]);
 
         // Reset limited indicator to recheck.
         for grpx in self.groups.iter_mut() {
+            if not(grpx.pnc) {
+                continue;
+            }
             if !grpx.limited {
                 continue;
             }
-            let num_edges = grpx.num_edges();
-            if num_edges < max_edges {
-                grpx.set_limited_off(self.dom_id, self.id);
+            if let Some(grp_int) = grpx.region.intersection(max_reg) {
+                if let Some(anchor_mask) = &grpx.anchor_mask {
+                    let max_mask = max_reg.x_mask().bitwise_and(&grp_int.edge_mask());
+                    if *anchor_mask != max_mask {
+                        grpx.set_limited_off(self.dom_id, self.id);
+                    }
+                }
             }
         }
 
         // Get anchor needs.
-        for group_num in group_inxs {
-            let grpx = &self.groups[group_num];
+        for group_num in 0..self.groups.len() {
+            let regx = self.groups[group_num].region.clone();
+            let grpx = self.groups.find(&regx).expect("SNH");
 
-            if let Some(ndx) = self.limit_group_anchor_needs(grpx, group_num) {
-                ret_nds.append(ndx);
-            } else if let Some(anchor) = &grpx.anchor {
+            if grpx.limited {
+                continue;
+            }
+            if not(grpx.pnc) {
+                continue;
+            }
+
+            ret_nds.append(self.limit_group_anchor_needs(grpx, group_num));
+
+            if let Some(anchor) = &self.groups[group_num].anchor {
                 if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, max_reg, group_num) {
                     ret_nds.append(ndx);
-                } else if let Some(grp_reg) = grpx.region.intersection(max_reg) {
-                    ret_nds.push(SomeNeed::SetGroupLimited {
-                        group_region: grpx.region.clone(),
-                        num_adj: grp_reg
-                            .edge_mask()
-                            .bitwise_and(&max_reg.x_mask())
-                            .num_one_bits(),
-                    });
+                } else if let Some(grp_int) = regx.intersection(max_reg) {
+                    let grpx = self.groups.find_mut(&regx).expect("SNH");
+                    let edges = grp_int.edge_mask().bitwise_and(&max_reg.x_mask());
+                    grpx.set_limited(edges, self.dom_id, self.id);
+                } else {
+                    println!("no intersection of {regx} and {max_reg}");
                 }
             }
         }
+
         if ret_nds.is_not_empty() {
             return Some(ret_nds);
         }
@@ -1028,11 +969,7 @@ impl SomeAction {
     /// If no state in the group is in only one group, return None.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return None.
-    pub fn limit_group_anchor_needs(
-        &self,
-        grpx: &SomeGroup,
-        group_num: usize,
-    ) -> Option<NeedStore> {
+    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, group_num: usize) -> NeedStore {
         let mut ret_nds = NeedStore::new(vec![]);
 
         let adj_squares = self.squares.stas_adj_reg(&grpx.region);
@@ -1126,7 +1063,7 @@ impl SomeAction {
 
         if cfmv_max.is_empty() {
             //println!("group {} cfmv_max empty", grpx.region);
-            return None;
+            return NeedStore::new(vec![]);
         }
 
         // Check current anchor, if any
@@ -1140,7 +1077,7 @@ impl SomeAction {
                     .expect("Group anchor state should refer to an existing square");
 
                 if anchor_sqr.pnc {
-                    return None;
+                    return NeedStore::new(vec![]);
                     // println!("group {} anchor {} pnc", greg, anchor_sta);
                 }
 
@@ -1156,7 +1093,7 @@ impl SomeAction {
                 needx.set_priority();
                 ret_nds.push(needx);
 
-                return Some(ret_nds);
+                return ret_nds;
             }
         }
 
@@ -1185,7 +1122,7 @@ impl SomeAction {
             needx.set_priority();
             ret_nds.push(needx);
         }
-        Some(ret_nds)
+        ret_nds
     } // end limit_group_anchor_needs
 
     /// Return the limiting needs for a group with an anchor chosen, but not yet set to limited.
@@ -1907,21 +1844,31 @@ impl SomeAction {
         ndx: &SomeNeed,
         max_reg: &SomeRegion,
     ) -> SomeSample {
-        let astate = self
-            .do_something
-            .take_action(cur_state, self.dom_id, self.id);
+        let asample = self.take_action(cur_state, max_reg);
 
-        let asample = SomeSample::new(cur_state.clone(), astate);
-        if !self.eval_sample(&asample, max_reg) {
-            self.add_new_sample(&asample);
+        // Additional processing for selected kinds of need
+        if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
+            // The sample could have invalidated the group.
+            if let Some(grpx) = self.groups.find_mut(grp_reg) {
+                let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
+                if grp_reg.len() == 1 {
+                    if sqr1.pnc {
+                        grpx.set_pnc();
+                    }
+                } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
+                    if sqr1.pnc && sqr2.pnc {
+                        grpx.set_pnc();
+                    }
+                }
+            }
         }
-        self.eval_need_sample(ndx);
+
         asample
     }
 
     /// Take an action with the current state.
-    /// Return true if a square for the generated sample exists.
-    pub fn take_action_step(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> SomeSample {
+    /// Return a sample.
+    pub fn take_action(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> SomeSample {
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_id, self.id);
@@ -1929,25 +1876,6 @@ impl SomeAction {
         let asample = SomeSample::new(cur_state.clone(), astate);
         if !self.eval_sample(&asample, max_reg) {
             self.add_sample_to_memory(asample.clone());
-        }
-        asample
-    }
-
-    /// Take an action with a given state.
-    pub fn take_action_arbitrary(
-        &mut self,
-        cur_state: &SomeState,
-        max_reg: &SomeRegion,
-    ) -> SomeSample {
-        //println!("action {} take_action_arbitrary", self.num);
-        let astate = self
-            .do_something
-            .take_action(cur_state, self.dom_id, self.id);
-
-        let asample = SomeSample::new(cur_state.clone(), astate);
-
-        if !self.eval_sample(&asample, max_reg) {
-            self.add_new_sample(&asample);
         }
         asample
     }

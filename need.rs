@@ -68,18 +68,10 @@ pub enum SomeNeed {
         anchor: SomeState,
         priority: usize,
     },
-    /// Housekeeping, Remove group anchor.
-    RemoveGroupAnchor { group_region: SomeRegion },
     /// Housekeeping, set the anchor for a group.
     SetGroupAnchor {
         group_region: SomeRegion,
         anchor: SomeState,
-    },
-    /// Housekeeping, set a group to limited, using a state that is only in that group,
-    /// and has adjacent, external, dissimilar squares on all group region edges.
-    SetGroupLimited {
-        group_region: SomeRegion,
-        num_adj: usize,
     },
     /// Seek a sample in a region that other groups do not cover.
     StateInRemainder {
@@ -126,9 +118,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
-            Self::RemoveGroupAnchor { .. } => "RemoveGroupAnchor",
             Self::SetGroupAnchor { .. } => "SetGroupAnchor",
-            Self::SetGroupLimited { .. } => "SetGroupLimited",
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
             Self::ToSelectRegion { .. } => "ToSelectRegion",
@@ -433,19 +423,10 @@ impl SomeNeed {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
             }
-            Self::RemoveGroupAnchor { group_region } => {
-                format!("N(Remove anchor for group {group_region})")
-            }
             Self::SetGroupAnchor {
                 group_region,
                 anchor,
             } => format!("N(set group {group_region} anchor {anchor})"),
-            Self::SetGroupLimited {
-                group_region,
-                num_adj,
-            } => {
-                format!("N(set group {group_region} limited, num adj {num_adj})")
-            }
             Self::StateInRemainder {
                 dom_id,
                 act_id,

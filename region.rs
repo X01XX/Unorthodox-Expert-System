@@ -1,8 +1,7 @@
 //! The SomeRegion struct, representing a region on a pseudo Karnaugh Map.
 //!
-//! Uses two states (they can be the same) to represent a region, which includes every state between them.
+//! Uses one, or more, states to represent a region.
 //!
-//! The two states used to make the region, can be keys to two squares.
 
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
@@ -48,9 +47,11 @@ impl Eq for SomeRegion {}
 impl SomeRegion {
     /// Create new region from two states.
     ///
-    /// For a group region, the states have corresponding squares that have been sampled.
-    /// A group region may have more than two states, so the far_state is calculated.
-    /// For reasons outside of this module, the first state in the vector is not deleted or moved.
+    /// For a group region, the first state will correspond to a square that has been sampled.
+    ///
+    /// Duplicate, and uneeded states, are removed.
+    ///
+    /// If a region has more than two states, the far_state, from the first state, is calculated and added.
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
 
@@ -634,6 +635,11 @@ impl SomeRegion {
                     .bitwise_or(&state2.bitwise_not().bitwise_and(&chgs.b01)),
             ),
         ])
+    }
+
+    /// Return the number of states defining the region.
+    pub fn len(&self) -> usize {
+        self.states.len()
     }
 } // end impl SomeRegion
 

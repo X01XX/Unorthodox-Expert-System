@@ -46,8 +46,8 @@ pub struct SomeGroup {
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
-    /// Number adjacent squares used to limit a group.
-    pub anchor_num: usize,
+    /// Maskof  adjacent squares used to limit a group.
+    pub anchor_mask: Option<SomeMask>,
     pub expand: Option<SomeRegion>,
 }
 
@@ -82,7 +82,7 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
-            anchor_num: 0,
+            anchor_mask: None,
             expand,
         }
     }
@@ -129,10 +129,10 @@ impl SomeGroup {
         match &self.anchor {
             Some(sta1) => {
                 if self.limited {
-                    rc_str.push_str(&format!(
-                        ", limited using {sta1} num adj {}",
-                        self.anchor_num
-                    ));
+                    rc_str.push_str(&format!(", limited using {sta1}"));
+                    if let Some(anchor_mask) = &self.anchor_mask {
+                        rc_str.push_str(&format!(" adj mask {}", anchor_mask));
+                    }
                 } else {
                     rc_str.push_str(&format!(", limiting using {sta1}"));
                 }
@@ -263,7 +263,7 @@ impl SomeGroup {
         self.anchor = None;
 
         self.limited = false;
-        self.anchor_num = 0;
+        self.anchor_mask = None;
     }
 
     /// Set limited to false.
@@ -273,17 +273,17 @@ impl SomeGroup {
             dom_id, act_id, self.region
         );
         self.limited = false;
-        self.anchor_num = 0;
+        self.anchor_mask = None;
     }
 
     /// Set limited to true.
-    pub fn set_limited(&mut self, num: usize, dom_id: usize, act_id: usize) {
+    pub fn set_limited(&mut self, anchor_mask: SomeMask, dom_id: usize, act_id: usize) {
         println!(
-            "Dom {} Act {} Group {} set limited on, num adj {}",
-            dom_id, act_id, self.region, num
+            "Dom {} Act {} Group {} set limited on, adj mask {}",
+            dom_id, act_id, self.region, anchor_mask
         );
         self.limited = true;
-        self.anchor_num = num;
+        self.anchor_mask = Some(anchor_mask);
 
         if let Some(astate) = &self.anchor {
             if self.region.state1() != astate && self.region.state2() != astate {
@@ -300,7 +300,7 @@ impl SomeGroup {
         self.anchor = Some(astate.clone());
 
         self.limited = false;
-        self.anchor_num = 0;
+        self.anchor_mask = None;
     }
 
     /// Check limited setting in groups due to new bit that can change.
@@ -322,7 +322,7 @@ impl SomeGroup {
 
         if !positions.is_low() {
             self.limited = false;
-            self.anchor_num = 0;
+            self.anchor_mask = None;
             //println!("resetting limit flag!");
         }
     }

@@ -211,12 +211,6 @@ impl ActionStore {
         ret
     }
 
-    /// Take an action with the current state.
-    pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        let max_reg = self.max_agg_region(cur_state);
-        self.avec[act_id].take_action_arbitrary(cur_state, &max_reg)
-    }
-
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed, cur_state: &SomeState) -> SomeSample {
@@ -241,10 +235,10 @@ impl ActionStore {
     }
 
     /// Take an action with the current state.
-    /// Return true if a square for the generated sample exists.
-    pub fn take_action_step(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
+    /// Return a sample.
+    pub fn take_action(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
         let max_reg = self.max_agg_region(cur_state);
-        self.avec[act_id].take_action_step(cur_state, &max_reg)
+        self.avec[act_id].take_action(cur_state, &max_reg)
     }
 } // end impl ActionStore
 

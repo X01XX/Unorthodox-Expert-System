@@ -197,8 +197,8 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state.
-    pub fn take_action_arbitrary(&mut self, act_id: usize) {
-        let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
+    pub fn take_action(&mut self, act_id: usize) {
+        let asample = self.actions.take_action(act_id, &self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
 
@@ -233,7 +233,7 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
-            let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
+            let asample = self.actions.take_action(stpx.act_id, &self.cur_state);
             num_steps += 1;
 
             self.set_cur_state(asample.result.clone());
@@ -259,7 +259,7 @@ impl SomeDomain {
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
 
-                    let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
+                    let asample = self.actions.take_action(stpx.act_id, &self.cur_state);
                     num_steps += 1;
 
                     self.set_cur_state(asample.result.clone());
@@ -281,7 +281,7 @@ impl SomeDomain {
                                     num_steps += num;
 
                                     let asample =
-                                        self.actions.take_action_step(stpx.act_id, &self.cur_state);
+                                        self.actions.take_action(stpx.act_id, &self.cur_state);
                                     num_steps += 1;
 
                                     self.set_cur_state(asample.result.clone());
@@ -1237,14 +1237,14 @@ mod tests {
         dm0.add_action(ruls1);
 
         dm0.cur_state = dm0.state_from_string("s0b0101")?;
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
 
         println!("\ndm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1265,7 +1265,7 @@ mod tests {
         }
 
         // Reset current state to 5.
-        dm0.take_action_arbitrary(1);
+        dm0.take_action(1);
 
         let mut num_steps2 = 0;
 
@@ -1305,14 +1305,14 @@ mod tests {
         dm0.add_action(ruls1);
 
         dm0.cur_state = dm0.state_from_string("s0b0101")?;
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
+        dm0.take_action(0);
+        dm0.take_action(1);
 
         println!("\n(1) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1336,7 +1336,7 @@ mod tests {
         println!("Acts: {}\n", dm0.actions);
 
         // Reset current state to 5.
-        dm0.take_action_arbitrary(1);
+        dm0.take_action(1);
 
         println!("\n(3) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1706,24 +1706,13 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s02.clone()));
 
-        println!("dm0 {}", dm0.actions[0]);
-        let Some(nds3) = dm0.actions[0].limit_groups_needs(&max_reg) else {
-            return Err("limit_groups_needs returns None?".to_string());
-        };
-        println!("needs3 are {}", nds3);
+        // Set limited flag for first group.
+        dm0.actions[0].limit_groups_needs(&max_reg);
 
-        let mut found = false;
-        for needx in nds3.iter() {
-            match needx {
-                SomeNeed::SetGroupLimited { group_region, .. } => {
-                    if *group_region == grp_reg {
-                        found = true;
-                    }
-                }
-                _ => (),
-            }
-        }
-        assert!(found);
+        println!("dm0 {}", dm0.actions[0]);
+
+        let grpx = dm0.actions[0].groups.find(&grp_reg).expect("SNH");
+        assert!(grpx.limited);
 
         Ok(())
     }
@@ -1875,78 +1864,79 @@ mod tests {
         dm0.add_action(vec![]); // Act 1
 
         // Create group XXX1 -> XXX1, no way to change any bit.
-        let s0b = dm0.state_from_string("s0b1011")?;
         let s05 = dm0.state_from_string("s0b0101")?;
 
         // Set up group 1 to allow changing bits, which indicates adjacent limit
         // states to seek.
-        let s0 = dm0.state_from_string("s0b000")?;
-        let s4 = dm0.state_from_string("s0b100")?;
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s4.clone()));
+        let sb = dm0.state_from_string("s0b1011")?;
+        let s4 = dm0.state_from_string("s0b0100")?;
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(sb.clone(), s4.clone()));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(s05.clone(), sb.clone()));
 
-        // Start group.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), s05.clone()));
+        // Start groups.
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sb.clone(), s4.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), sb.clone()));
 
-        // Confirm group.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), s05.clone()));
+        // Confirm groups.
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sb.clone(), s4.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), sb.clone()));
 
         // get_needs checks the limited flag for each group.
         let nds = dm0.get_needs();
         println!("\n(1){}", dm0.actions[act0]);
         println!("needs {}", nds);
 
-        // Limited flag should be true.
-        assert!(dm0.actions[act0].groups[0].limited);
-
-        // Add a way to change bit position 1, 0->1.
-        let s10 = dm0.state_from_string("s0x0")?;
-        let s12 = dm0.state_from_string("s0x2")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s10.clone(), s12.clone()));
-
         let nds = dm0.get_needs();
         println!("\n(2){}", dm0.actions[act0]);
         println!("needs {}", nds);
 
-        // Changing bit position 1 should not affect the limited flag,
-        // where the group bit position one is X.
-        //assert!(dm0.actions[act0].groups[0].limited);
+        // Set up limiting squares for 1011.
+        let sa = dm0.state_from_string("s0b1010")?;
+        let s8 = dm0.state_from_string("s0b1000")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sa.clone(), s8.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sa.clone(), s8.clone()));
 
-        // Add a way to change bit position 0, 0->1.
-        let s21 = dm0.state_from_string("s0x1")?;
-        let s20 = dm0.state_from_string("s0x0")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s21.clone(), s20.clone()));
-        println!("\n{}", dm0.actions[act0]);
+        let s0 = dm0.state_from_string("s0b0000")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s8.clone(), s0.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s8.clone(), s0.clone()));
 
-        // Add a way to change bit position 0, 1->0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s20.clone(), s21.clone()));
+        let s2 = dm0.state_from_string("s0b0010")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
 
-        let nds = dm0.get_needs();
+        let se = dm0.state_from_string("s0b1110")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(se.clone(), s2.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(se.clone(), s2.clone()));
+
         println!("\n(3){}", dm0.actions[act0]);
-        println!("needs {}", nds);
+        let nds = dm0.get_needs();
+        println!("\n(4){}", dm0.actions[act0]);
+        println!("needs: {}", nds);
 
         // Changing bit position 1 should not affect the limited flag,
         // where the group bit position one is X.
-        assert!(!dm0.actions[act0].groups[0].limited);
+        let grpx = dm0.actions[act0]
+            .groups
+            .find(&dm0.region_from_string("r1010").expect("SNH"))
+            .expect("SNH");
+        assert!(grpx.limited);
+        assert!(grpx.anchor.is_some());
 
-        // Check for limit need.
-        for ndx in nds.iter() {
-            if ndx.name() == "LimitGroupAdj" {
-                match ndx {
-                    SomeNeed::LimitGroupAdj { anchor, .. } => {
-                        if anchor == &s0b || anchor == &s05 {
-                            //assert!(1 == 2);
-                            return Ok(());
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
+        let grpx = dm0.actions[act0]
+            .groups
+            .find(&dm0.region_from_string("rx1xx").expect("SNH"))
+            .expect("SNH");
+        assert!(grpx.anchor.is_none());
+        assert!(!grpx.limited);
 
-        Err("5 LimitGroupAdj need not found?".to_string())
+        let grpx = dm0.actions[act0]
+            .groups
+            .find(&dm0.region_from_string("r1011").expect("SNH"))
+            .expect("SNH");
+        assert!(grpx.anchor.is_some());
+        assert!(!grpx.limited);
+
+        Ok(())
     }
 
     #[test]
