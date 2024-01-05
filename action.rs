@@ -430,81 +430,51 @@ impl SomeAction {
             // Process a few specific housekeeping needs related to changing the Action or groups.
             let mut try_again = false;
             for ndx in nds.iter_mut() {
-                match ndx {
-                    SomeNeed::AddGroup {
-                        group_region,
-                        rules,
-                        expand,
-                    } => {
-                        if !new_grp_regs.contains(group_region) {
-                            continue;
-                        }
-
-                        // Check for supersets
-                        if self.groups.any_superset_of(group_region) {
-                            if self.groups.find(group_region).is_some() {
-                            } else {
-                                println!(
-                                    "\nDom {} Act {} **** Supersets found for new group {} in {}",
-                                    dom_id,
-                                    self.id,
-                                    &group_region,
-                                    tools::vec_ref_string(&self.groups.supersets_of(group_region))
-                                );
-                            }
-                            continue;
-                        }
-
-                        // Calc pnc
-                        let sqrx = self
-                            .squares
-                            .find(group_region.state1())
-                            .expect("Group region states should refer to existing squares");
-                        let pnc = if group_region.state2() == group_region.state1() {
-                            sqrx.pnc
-                        } else if let Some(sqry) = self.squares.find(group_region.state2()) {
-                            sqrx.pnc && sqry.pnc
-                        } else {
-                            false
-                        };
-
-                        self.groups.push_nosubs(
-                            SomeGroup::new(
-                                group_region.clone(),
-                                rules.clone(),
-                                pnc,
-                                expand.clone(),
-                            ),
-                            dom_id,
-                            self.id,
-                        );
-                        try_again = true;
+                if let SomeNeed::AddGroup {
+                    group_region,
+                    rules,
+                    expand,
+                } = ndx
+                {
+                    if !new_grp_regs.contains(group_region) {
+                        continue;
                     }
-                    SomeNeed::SetGroupAnchor {
-                        group_region: greg,
-                        anchor: sta1,
-                    } => {
-                        let Some(grpx) = self.groups.find_mut(greg) else {
-                            continue;
-                        };
 
-                        if let Some(anchor) = &grpx.anchor {
-                            println!(
-                                "\nDom {} Act {} Group {} setting anchor from {} to {}",
-                                dom_id, self.id, greg, anchor, sta1
-                            );
+                    // Check for supersets
+                    if self.groups.any_superset_of(group_region) {
+                        if self.groups.find(group_region).is_some() {
                         } else {
                             println!(
-                                "\nDom {} Act {} Group {} setting anchor to {}",
-                                dom_id, self.id, greg, sta1
+                                "\nDom {} Act {} **** Supersets found for new group {} in {}",
+                                dom_id,
+                                self.id,
+                                &group_region,
+                                tools::vec_ref_string(&self.groups.supersets_of(group_region))
                             );
                         }
-                        grpx.set_anchor(sta1);
-                        try_again = true;
-                        break; // Only set one anchor for any group of needs to avoid loop with two changes at a time.
+                        continue;
                     }
-                    _ => (),
-                } // end match
+
+                    // Calc pnc
+                    let sqrx = self
+                        .squares
+                        .find(group_region.state1())
+                        .expect("Group region states should refer to existing squares");
+                    let pnc = if group_region.state2() == group_region.state1() {
+                        sqrx.pnc
+                    } else if let Some(sqry) = self.squares.find(group_region.state2()) {
+                        sqrx.pnc && sqry.pnc
+                    } else {
+                        false
+                    };
+
+                    self.groups.push_nosubs(
+                        SomeGroup::new(group_region.clone(), rules.clone(), pnc, expand.clone()),
+                        dom_id,
+                        self.id,
+                    );
+                    try_again = true;
+                }
             } // next ndx
 
             if !try_again {
@@ -876,48 +846,108 @@ impl SomeAction {
             if !grpx.limited {
                 continue;
             }
-            if let Some(grp_int) = grpx.region.intersection(max_reg) {
-                if let Some(anchor_mask) = &grpx.anchor_mask {
-                    let max_mask = max_reg.x_mask().bitwise_and(&grp_int.edge_mask());
-                    if *anchor_mask != max_mask {
-                        grpx.set_limited_off(self.dom_id, self.id);
+            if let Some(anchor) = &grpx.anchor {
+                if max_reg.is_superset_of(anchor) {
+                    if let Some(anchor_mask) = &grpx.anchor_mask {
+                        let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
+                        if *anchor_mask != max_mask {
+                            grpx.set_limited_off(self.dom_id, self.id);
+                        }
                     }
                 }
             }
         }
 
         // Get anchor needs.
-        for group_num in 0..self.groups.len() {
-            let regx = self.groups[group_num].region.clone();
-            let grpx = self.groups.find(&regx).expect("SNH");
+        let mut try_again = true;
+        while try_again {
+            try_again = false;
 
-            if grpx.limited {
-                continue;
-            }
-            if not(grpx.pnc) {
-                continue;
-            }
+            // Gather group anchor adjacent needs.
+            // Possibly decide to turn the limited flag on.
+            let mut set_on = Vec::<(SomeRegion, SomeMask)>::new();
 
-            ret_nds.append(self.limit_group_anchor_needs(grpx, group_num));
+            for group_num in 0..self.groups.len() {
+                let regx = self.groups[group_num].region.clone();
+                {
+                    let grpx = self.groups.find(&regx).expect("SNH");
 
-            if let Some(anchor) = &self.groups[group_num].anchor {
-                if let Some(ndx) = self.limit_group_adj_needs(grpx, anchor, max_reg, group_num) {
-                    ret_nds.append(ndx);
-                } else if let Some(grp_int) = regx.intersection(max_reg) {
-                    let grpx = self.groups.find_mut(&regx).expect("SNH");
-                    let edges = grp_int.edge_mask().bitwise_and(&max_reg.x_mask());
-                    grpx.set_limited(edges, self.dom_id, self.id);
-                } else {
-                    println!("no intersection of {regx} and {max_reg}");
+                    if grpx.limited {
+                        continue;
+                    }
+                    if not(grpx.pnc) {
+                        continue;
+                    }
+                }
+                let ndsx = self.limit_group_anchor_needs(&regx, group_num, max_reg);
+                if ndsx.is_not_empty() {
+                    ret_nds.append(ndsx);
+                    continue;
+                }
+
+                let grpx_anchor = self
+                    .groups
+                    .find(&regx)
+                    .as_ref()
+                    .expect("SNH")
+                    .anchor
+                    .clone();
+                if let Some(anchor) = &grpx_anchor {
+                    if max_reg.is_superset_of(anchor) {
+                        if let Some(ndx) =
+                            self.limit_group_adj_needs(&regx, anchor, max_reg, group_num)
+                        {
+                            ret_nds.append(ndx);
+                            continue;
+                        } else {
+                            let edges = regx.edge_mask().bitwise_and(&max_reg.x_mask());
+                            set_on.push((self.groups[group_num].region.clone(), edges));
+                        }
+                    }
                 }
             }
-        }
+
+            // Set limited on for selected groups.
+            for (grp_reg, edges) in set_on {
+                //let grpx = self.groups.find_mut(&grp_reg).expect("SNH");
+                //grpx.set_limited(edges, self.dom_id, self.id);
+                self.set_group_limited(&grp_reg, edges);
+                try_again = true;
+            }
+        } // end try_again
 
         if ret_nds.is_not_empty() {
             return Some(ret_nds);
         }
         None
     } // end limit_groups_needs
+
+    /// Set the limited flag on for a given group.
+    /// For other groups, with the limited flag on, if the number of edges
+    /// used to limit the group is less than the number used to limit
+    /// the given group, set their limit flag of, to recalculate the best
+    /// anchor.
+    fn set_group_limited(&mut self, grp_reg: &SomeRegion, edges: SomeMask) {
+        let num_edges = edges.num_one_bits();
+
+        let grpx = self.groups.find_mut(grp_reg).expect("SNH");
+        grpx.set_limited(edges, self.dom_id, self.id);
+
+        for grpy in self.groups.iter_mut() {
+            if grpy.limited {
+            } else {
+                continue;
+            }
+            if grpy.region == *grp_reg {
+                continue;
+            }
+            if let Some(edgesy) = &grpy.anchor_mask {
+                if edgesy.num_one_bits() < num_edges {
+                    grpy.set_limited_off(self.dom_id, self.id);
+                }
+            }
+        } // next grpy
+    }
 
     /// Return a rate for a possible anchor for a group.
     /// The rate will be a tuple containing:
@@ -927,7 +957,7 @@ impl SomeAction {
     /// To set an anchor, a square with at least one sample is required, but ..
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
-    pub fn group_anchor_rate(&self, grpx: &SomeGroup, stax: &SomeState) -> (usize, usize, usize) {
+    pub fn group_anchor_rate(&self, regx: &SomeRegion, stax: &SomeState) -> (usize, usize, usize) {
         //assert_eq!(self.groups.num_groups_state_in(stax), 1);
         if !self.groups.in_1_group(stax) {
             return (0, 0, 0);
@@ -938,7 +968,7 @@ impl SomeAction {
         let mut sqr_samples = 0;
 
         // Get masks of edge bits to use to limit group.
-        let edge_msks = grpx.region.edge_mask().split();
+        let edge_msks = regx.edge_mask().split();
 
         // Rate adjacent external states
         for edge_bit in &edge_msks {
@@ -969,15 +999,22 @@ impl SomeAction {
     /// If no state in the group is in only one group, return None.
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// return None.
-    pub fn limit_group_anchor_needs(&self, grpx: &SomeGroup, group_num: usize) -> NeedStore {
+    pub fn limit_group_anchor_needs(
+        &mut self,
+        regx: &SomeRegion,
+        group_num: usize,
+        max_reg: &SomeRegion,
+    ) -> NeedStore {
+        //let grpx = self.groups.find_mut(&regx).expect("SNH");
+
         let mut ret_nds = NeedStore::new(vec![]);
 
-        let adj_squares = self.squares.stas_adj_reg(&grpx.region);
+        let adj_squares = self.squares.stas_adj_reg(regx);
 
         // For adjacent (other group) anchors,
         // store corresponding state in group region,
         // which has not have been sampled yet.
-        let mut stas_in: StateStore = self.squares.stas_in_reg(&grpx.region);
+        let mut stas_in: StateStore = self.squares.stas_in_reg(regx);
 
         // Home for additional states, that have not been sampled yet, so their
         // reference can be pushed to the stas_in vector.
@@ -985,7 +1022,7 @@ impl SomeAction {
 
         for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
-            let stay = ancx.bitwise_xor(&grpx.region.diff_mask(ancx));
+            let stay = ancx.bitwise_xor(&regx.diff_mask(ancx));
 
             // Check if the state has not been sampled already.
             if !stas_in.contains(&stay) {
@@ -1001,19 +1038,22 @@ impl SomeAction {
             stas_in.push(stax.clone());
         }
 
+        let grpx_pn = self.groups.find(regx).as_ref().expect("SNH").pn;
+        let grpx_rules = self.groups.find(regx).as_ref().expect("SNH").rules.clone();
+
         // Calculate shared symmetric regions.
         let mut shared_regions = RegionStore::new(vec![]);
         for (inx, grpy) in self.groups.iter().enumerate() {
             if inx == group_num {
                 continue;
             }
-            if grpy.pn != grpx.pn {
+            if grpy.pn != grpx_pn {
                 continue;
             }
-            if let Some(shared) = grpy.region.shared_symmetric_region(&grpx.region) {
-                if grpx.pn == Pn::Unpredictable {
+            if let Some(shared) = grpy.region.shared_symmetric_region(regx) {
+                if grpx_pn == Pn::Unpredictable {
                     shared_regions.push(shared);
-                } else if let Some(ruls) = &grpx.rules {
+                } else if let Some(ruls) = &grpx_rules {
                     let rulsx = ruls.restrict_initial_region(&shared);
                     if let Some(ruls) = &grpy.rules {
                         let rulsy = ruls.restrict_initial_region(&shared);
@@ -1040,13 +1080,16 @@ impl SomeAction {
 
         for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
-            if !self.groups.in_1_group(stax) || shared_regions.any_superset_of_state(stax) {
+            if !self.groups.in_1_group(stax)
+                || shared_regions.any_superset_of_state(stax)
+                || !max_reg.is_superset_of(stax)
+            {
                 //println!("stax for anchor {stax} in group {} skipped", grpx.region);
                 continue;
             }
 
             //println!("stax for anchor {stax} in group {}", grpx.region);
-            let sta_rate = self.group_anchor_rate(grpx, stax);
+            let sta_rate = self.group_anchor_rate(regx, stax);
 
             //println!("group {} possible anchor {} rating {} {} {}", grpx.region, stax, sta_rate.0, sta_rate.1, sta_rate.2);
 
@@ -1067,7 +1110,8 @@ impl SomeAction {
         }
 
         // Check current anchor, if any
-        if let Some(anchor) = &grpx.anchor {
+        let grpx_anchor = self.groups.find(regx).as_ref().expect("SNH").anchor.clone();
+        if let Some(anchor) = &grpx_anchor {
             //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
             if cfmv_max.contains(&anchor) {
                 //println!("group {} anchor {} still good, cfmv_max", grpx.region, anchor);
@@ -1087,7 +1131,7 @@ impl SomeAction {
                     act_id: self.id,
                     anchor: anchor.clone(),
                     target_state: anchor.clone(),
-                    for_group: grpx.region.clone(),
+                    for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
@@ -1105,10 +1149,8 @@ impl SomeAction {
         }
 
         if let Some(_sqrx) = self.squares.find(cfm_max) {
-            ret_nds.push(SomeNeed::SetGroupAnchor {
-                group_region: grpx.region.clone(),
-                anchor: cfm_max.clone(),
-            });
+            self.groups.find_mut(regx).expect("SNH").set_anchor(cfm_max);
+            return NeedStore::new(vec![]);
         } else {
             // Potential anchor not sampled yet.
             let mut needx = SomeNeed::LimitGroup {
@@ -1116,7 +1158,7 @@ impl SomeAction {
                 act_id: self.id,
                 anchor: cfm_max.clone(),
                 target_state: cfm_max.clone(),
-                for_group: grpx.region.clone(),
+                for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
             needx.set_priority();
@@ -1127,12 +1169,13 @@ impl SomeAction {
 
     /// Return the limiting needs for a group with an anchor chosen, but not yet set to limited.
     pub fn limit_group_adj_needs(
-        &self,
-        grpx: &SomeGroup,
+        &mut self,
+        regx: &SomeRegion,
         anchor_sta: &SomeState,
         max_reg: &SomeRegion,
         group_num: usize,
     ) -> Option<NeedStore> {
+        // let grpx = self.groups.find_mut(&regx).expect("SNH");
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
@@ -1152,11 +1195,12 @@ impl SomeAction {
 
         // Get masks of edge bits to use to limit group.
         // Ignore bits that cannot be changed by any action.
-        let Some(grp_reg) = grpx.region.intersection(max_reg) else {
+        if max_reg.is_superset_of(anchor_sta) {
+        } else {
             return None;
-        };
+        }
 
-        let change_bits = grp_reg.edge_mask().bitwise_and(&max_reg.x_mask());
+        let change_bits = regx.edge_mask().bitwise_and(&max_reg.x_mask());
 
         let edge_msks: Vec<SomeMask> = change_bits.split();
 
@@ -1195,7 +1239,7 @@ impl SomeAction {
                         act_id: self.id,
                         anchor: anchor_sta.clone(),
                         target_state: adj_sta,
-                        for_group: grpx.region.clone(),
+                        for_group: regx.clone(),
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
                     needx.set_priority();
@@ -1208,7 +1252,7 @@ impl SomeAction {
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
                     target_state: adj_sta,
-                    for_group: grpx.region.clone(),
+                    for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
@@ -1230,11 +1274,11 @@ impl SomeAction {
         // Instead of checking every adjacent square internal to the group.
 
         // Group is non-X, so no far state
-        if grpx.one_state() {
+        if regx.len() == 1 {
             return None;
         }
 
-        let sta_far = grpx.region.state_far_from(anchor_sta);
+        let sta_far = regx.state_far_from(anchor_sta);
 
         if let Some(sqrf) = self.squares.find(&sta_far) {
             if sqrf.pnc {
@@ -1246,7 +1290,7 @@ impl SomeAction {
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
                     target_state: sta_far,
-                    for_group: grpx.region.clone(),
+                    for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
@@ -1259,7 +1303,7 @@ impl SomeAction {
                 act_id: self.id,
                 anchor: anchor_sta.clone(),
                 target_state: sta_far,
-                for_group: grpx.region.clone(),
+                for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
             needx.set_priority();
@@ -1928,7 +1972,7 @@ impl SomeAction {
                 .squares
                 .find(anchor)
                 .expect("Group anchor should refer to an existing square");
-            let rate = self.group_anchor_rate(grpx, anchor);
+            let rate = self.group_anchor_rate(&grpx.region, anchor);
             println!("anchor {sqrx} rate {:?}", rate);
             let stas_adj = self.squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {

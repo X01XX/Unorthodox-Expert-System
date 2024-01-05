@@ -31,7 +31,7 @@ pub enum SomeNeed {
         rules: Option<RuleStore>,
         expand: Option<SomeRegion>,
     },
-    /// Get an additional sample of a state.
+    /// Get an additional sample of a state, to confirm a group.
     ConfirmGroup {
         dom_id: usize,
         act_id: usize,
@@ -67,11 +67,6 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
         priority: usize,
-    },
-    /// Housekeeping, set the anchor for a group.
-    SetGroupAnchor {
-        group_region: SomeRegion,
-        anchor: SomeState,
     },
     /// Seek a sample in a region that other groups do not cover.
     StateInRemainder {
@@ -118,7 +113,6 @@ impl SomeNeed {
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
-            Self::SetGroupAnchor { .. } => "SetGroupAnchor",
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
             Self::ToSelectRegion { .. } => "ToSelectRegion",
@@ -423,10 +417,6 @@ impl SomeNeed {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
             }
-            Self::SetGroupAnchor {
-                group_region,
-                anchor,
-            } => format!("N(set group {group_region} anchor {anchor})"),
             Self::StateInRemainder {
                 dom_id,
                 act_id,

@@ -135,11 +135,13 @@ impl GroupStore {
             if let Some(anchor) = &grpx.anchor {
                 if anchor.is_adjacent(&sqrx.state) {
                     if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
+                        println!("at 4");
                         grpx.set_limited_off(dom_id, act_id);
                     } else if grpx.pn == sqrx.pn {
                         if let Some(grpx_ruls) = &grpx.rules {
                             if let Some(sqr_ruls) = &sqrx.rules {
                                 if grpx_ruls.union(sqr_ruls).is_some() {
+                                    println!("at 3");
                                     grpx.set_limited_off(dom_id, act_id);
                                 }
                             }

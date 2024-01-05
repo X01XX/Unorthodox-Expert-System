@@ -1671,22 +1671,16 @@ mod tests {
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&max_reg) else {
             return Err("No needs?".to_string());
         };
-
+        println!("dm0 {}", dm0.actions[0]);
         println!("Needs: {}", nds1);
-        let mut found = false;
-        for needx in nds1.iter() {
-            match needx {
-                SomeNeed::SetGroupAnchor { group_region, .. } => {
-                    if *group_region == grp_reg {
-                        found = true;
-                    }
-                }
-                _ => (),
-            }
-        }
-        assert!(found);
 
-        dm0.actions[0].set_group_anchor(&grp_reg, &s04);
+        assert!(dm0.actions[0]
+            .groups
+            .find(&grp_reg)
+            .as_ref()
+            .expect("SNH")
+            .anchor
+            .is_some());
 
         println!("dm0 {}", dm0.actions[0]);
 
@@ -1859,82 +1853,66 @@ mod tests {
 
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, 1);
-        dm0.cur_state = dm0.state_from_string("s0b1011")?;
+        dm0.cur_state = dm0.state_from_string("s0b0011")?;
         dm0.add_action(vec![]); // Act 0
-        dm0.add_action(vec![]); // Act 1
 
-        // Create group XXX1 -> XXX1, no way to change any bit.
-        let s05 = dm0.state_from_string("s0b0101")?;
-
-        // Set up group 1 to allow changing bits, which indicates adjacent limit
-        // states to seek.
-        let sb = dm0.state_from_string("s0b1011")?;
-        let s4 = dm0.state_from_string("s0b0100")?;
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(sb.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s05.clone(), sb.clone()));
+        let s0d = dm0.state_from_string("s0b1101")?;
+        let s0f = dm0.state_from_string("s0b1111")?;
 
         // Start groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sb.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), sb.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
 
         // Confirm groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sb.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s05.clone(), sb.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
 
         // get_needs checks the limited flag for each group.
         let nds = dm0.get_needs();
         println!("\n(1){}", dm0.actions[act0]);
         println!("needs {}", nds);
 
-        let nds = dm0.get_needs();
-        println!("\n(2){}", dm0.actions[act0]);
-        println!("needs {}", nds);
-
-        // Set up limiting squares for 1011.
-        let sa = dm0.state_from_string("s0b1010")?;
-        let s8 = dm0.state_from_string("s0b1000")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sa.clone(), s8.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sa.clone(), s8.clone()));
-
-        let s0 = dm0.state_from_string("s0b0000")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s8.clone(), s0.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s8.clone(), s0.clone()));
-
-        let s2 = dm0.state_from_string("s0b0010")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
-
-        let se = dm0.state_from_string("s0b1110")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(se.clone(), s2.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(se.clone(), s2.clone()));
-
-        println!("\n(3){}", dm0.actions[act0]);
-        let nds = dm0.get_needs();
-        println!("\n(4){}", dm0.actions[act0]);
-        println!("needs: {}", nds);
-
-        // Changing bit position 1 should not affect the limited flag,
-        // where the group bit position one is X.
         let grpx = dm0.actions[act0]
             .groups
-            .find(&dm0.region_from_string("r1010").expect("SNH"))
+            .find(&dm0.region_from_string("r11x1").expect("SNH"))
             .expect("SNH");
         assert!(grpx.limited);
-        assert!(grpx.anchor.is_some());
 
-        let grpx = dm0.actions[act0]
-            .groups
-            .find(&dm0.region_from_string("rx1xx").expect("SNH"))
-            .expect("SNH");
-        assert!(grpx.anchor.is_none());
-        assert!(!grpx.limited);
+        // Get needs for a given max_reg.
+        let max_reg = dm0.region_from_string("rX11X").expect("SNH");
+        let nds = dm0.actions[act0].limit_groups_needs(&max_reg);
+        println!("\n(1){}", dm0.actions[act0]);
+        if let Some(needs) = nds {
+            println!("needs {}", needs);
+            assert!(needs.len() == 2);
+            assert!(contains_similar_need(
+                &needs,
+                "LimitGroupAdj",
+                &dm0.region_from_string("r1110").expect("SNH")
+            ));
+            assert!(contains_similar_need(
+                &needs,
+                "LimitGroupAdj",
+                &dm0.region_from_string("r0111").expect("SNH")
+            ));
+        } else {
+            println!("needs []");
+            panic!("SNH");
+        }
 
-        let grpx = dm0.actions[act0]
-            .groups
-            .find(&dm0.region_from_string("r1011").expect("SNH"))
-            .expect("SNH");
-        assert!(grpx.anchor.is_some());
-        assert!(!grpx.limited);
+        // Get needs for a another max_reg.
+        let max_reg = dm0.region_from_string("rX10X").expect("SNH");
+        let nds = dm0.actions[act0].limit_groups_needs(&max_reg);
+        println!("\n(2){}", dm0.actions[act0]);
+        if let Some(needs) = nds {
+            println!("needs {}", needs);
+            //assert!(needs.len() == 2);
+            //assert!(contains_similar_need(&needs, "LimitGroupAdj", &dm0.region_from_string("r1110").expect("SNH")));
+            //assert!(contains_similar_need(&needs, "LimitGroupAdj", &dm0.region_from_string("r0111").expect("SNH")));
+        } else {
+            println!("needs []");
+            panic!("SNH");
+        }
 
         Ok(())
     }

@@ -309,11 +309,13 @@ impl SomeGroup {
     pub fn check_limited(&mut self, max_reg: &SomeRegion) {
         assert!(self.limited);
 
-        let Some(grp_reg) = self.region.intersection(max_reg) else {
+        let anchor = self.anchor.as_ref().expect("SNH");
+        if max_reg.is_superset_of(anchor) {
+        } else {
             return;
         };
 
-        let positions = grp_reg.edge_mask().bitwise_and(&max_reg.x_mask());
+        let positions = self.region.edge_mask().bitwise_and(&max_reg.x_mask());
 
         //        println!(
         //            "Check limited setting for {} with {} positions {}",
