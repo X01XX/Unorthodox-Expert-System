@@ -179,117 +179,62 @@ impl DomainStore {
 
     /// Calculate parts of select regions, in case of any overlaps.
     pub fn calc_select(&mut self) {
-        let mut select_neg = Vec::<SelectRegions>::new();
         println!("\nSelect Regions:");
         for selx in self.select.iter() {
             println!("  {}", selx);
-            if selx.neg > selx.pos {
-                select_neg.push(selx.clone());
+        }
+        // Get subset intersection regions.
+        let subsets = self.select.split_to_subsets();
+
+        for selx in self.select.iter() {
+            match selx.pos.cmp(&selx.neg) {
+                Ordering::Greater => self.select_positive.push_nosubs(selx.clone()),
+                Ordering::Less => self.select_negative.push_nosubs(selx.clone()),
+                _ => (),
             }
         }
+
+        if subsets.is_empty() {
+            return;
+        }
+
+        println!("\nSubset Regions:");
+        for sely in subsets {
+            let mut pos = 0;
+            let mut neg = 0;
+            for selx in self.select.iter() {
+                if selx.regions.is_superset_of_corr(&sely) {
+                    pos += selx.pos;
+                    neg += selx.neg;
+                }
+            }
+            match pos.cmp(&neg) {
+                Ordering::Greater => {
+                    println!("  {} pos {pos} neg {neg}", sely);
+                    self.select_positive
+                        .push_nosups(SelectRegions::new(sely, pos, neg));
+                }
+                Ordering::Less => {
+                    println!("  {} pos {pos} neg {neg}", sely);
+                    self.select_negative
+                        .push_nosups(SelectRegions::new(sely, pos, neg));
+                }
+                _ => (),
+            }
+        }
+
         // Add complement calculation to each domain.
         // There is a potential problem with HashMap used with SomeRegion:PartialEq, so
         // use SelectRegions number which should not be changed later.
-        for (sel_num, selx) in select_neg.iter().enumerate() {
+        let mut comps = Vec::<(usize, usize, SomeRegion)>::new();
+        for (sel_num, selx) in self.select_negative.iter().enumerate() {
             for (dom_id, regx) in selx.regions.iter().enumerate() {
-                self[dom_id].add_complement(sel_num, regx);
+                comps.push((sel_num, dom_id, regx.clone()));
             }
         }
-
-        let subs: Vec<RegionStoreCorr> = self.select.split_to_subsets();
-        //println!("subs {} {}", tools::vec_string(&subs), subs.len());
-
-        // Check each subset is subset of at least one SelectRegions.
-        // And not a partial subset of any SelectRegion.
-        let mut subselect_pos = Vec::<SelectRegions>::new();
-
-        //println!("\nSelectRegions superset of each subset");
-        for subx in subs.iter() {
-            //println!("sub {}", subx);
-            let mut count = 0;
-            let mut pos: usize = 0;
-            let mut neg: usize = 0;
-            for selx in self.select.iter() {
-                if subx.is_subset_of_corr(&selx.regions) {
-                    //println!("   sup is {}", selx);
-                    count += 1;
-                    if selx.value() < 1 {
-                        neg += selx.neg;
-                    } else {
-                        pos += selx.pos;
-                    }
-                }
-            }
-            if count == 0 {
-                panic!("    Not subset anything?");
-            }
-            // Store non-zero value subsets.
-            if pos > neg {
-                subselect_pos.push(SelectRegions::new(subx.clone(), pos, neg));
-            }
-            //println!("   value: pos {pos} neg {neg}");
+        for (sel_num, dom_id, regx) in comps.iter() {
+            self[*dom_id].add_complement(*sel_num, regx);
         }
-        self.select_positive = SelectRegionsStore::new(subselect_pos);
-        self.select_negative = SelectRegionsStore::new(select_neg);
-
-        // Check the subsets of each SelectRegion.
-        //println!("\nSubsets of each SelectRegion");
-        for selx in self.select.iter() {
-            //println!("selx {}", selx);
-            let mut subs_of = Vec::<RegionStoreCorr>::new();
-            for subx in subs.iter() {
-                if subx.is_subset_of_corr(&selx.regions) {
-                    //println!("   sub is {}", subx);
-                    subs_of.push(subx.clone());
-                }
-            }
-            // Check subs fully account for the SelectRegions.
-            if subs_of.is_empty() {
-                panic!("No subs?");
-            } else if subs_of.len() == 1 {
-                if subs_of[0] != selx.regions {
-                    panic!("NE?");
-                }
-            } else {
-                // Check that each region of the superset SelectRegions is fully
-                // used by the subsets.
-                for (inx, regx) in selx.regions.iter().enumerate() {
-                    let mut regx_left = RegionStore::new(vec![regx.clone()]);
-                    for subx in subs_of.iter() {
-                        regx_left = regx_left.subtract_item(&subx[inx]);
-                    }
-                    if regx_left.is_not_empty() {
-                        panic!("inx {} regs_left {}", inx, regx_left);
-                    }
-                }
-            }
-        } // next selx
-
-        println!("\nPositive Select Sub-Regions, taking into account intersections:");
-        for selx in self.select_positive.iter() {
-            println!("  {}", selx);
-        }
-        //        println!("\nNegative Select Sub-Regions, taking into account intersections:");
-        //        for selx in self.select_negative.iter() {
-        //            println!("  {}", selx);
-        //        }
-
-        let mut pos = 0;
-        let mut neg = 0;
-        for selx in self.select.iter() {
-            if selx.pos < selx.neg {
-                neg += 1;
-            }
-            if selx.pos > selx.neg {
-                pos += 1;
-            }
-        }
-        println!(
-            "\nSelect Regions: {}, Positive regions: {}, Negative Regions: {}",
-            self.select.len(),
-            pos,
-            neg
-        );
     }
 
     /// Add a Domain struct to the store.
@@ -2479,8 +2424,11 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr4, 0, 5));
         dmxs.calc_select();
 
+        println!("pos select num {}", dmxs.select_positive.len());
         assert!(dmxs.select_positive.len() == 5);
-        assert!(dmxs.select_negative.len() == 3);
+
+        println!("neg select num {}", dmxs.select_negative.len());
+        assert!(dmxs.select_negative.len() == 4);
 
         // assert!(1 == 2);
         Ok(())

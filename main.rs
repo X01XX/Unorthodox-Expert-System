@@ -475,6 +475,7 @@ fn domainstore_init() -> DomainStore {
     dmxs.add_select(SelectRegions::new(regstr4, 1, 0));
     dmxs.add_select(SelectRegions::new(regstr5, 0, 1));
     dmxs.add_select(SelectRegions::new(regstr6, 0, 1));
+
     dmxs.calc_select();
 
     dmxs
