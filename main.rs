@@ -597,6 +597,12 @@ fn command_loop(dmxs: &mut DomainStore) {
                     println!("{error}");
                 }
             },
+            "gnds" => {
+                let dom_id = dmxs.current_domain;
+                dmxs[dom_id].get_needs();
+                dmxs.print_domain();
+                continue;
+            }
             "gps" => match do_print_group_defining_squares_command(dmxs, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {

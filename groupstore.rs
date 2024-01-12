@@ -72,6 +72,7 @@ impl GroupStore {
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
     pub fn check_square(&mut self, sqrx: &SomeSquare, dom_id: usize, act_id: usize) -> RegionStore {
+        //println!("GroupStore:check_square: {}", sqrx.state);
         let mut regs_invalid = RegionStore::new(vec![]);
 
         let mut rmvec = Vec::<usize>::new();

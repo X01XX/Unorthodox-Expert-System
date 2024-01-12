@@ -541,6 +541,31 @@ impl SomeRegion {
         ret
     }
 
+    /// Return the complement of a region, within a given region.
+    pub fn complement_in(&self, max_reg: &SomeRegion) -> RegionStore {
+        assert!(self.intersects(max_reg));
+
+        let nonxbits = self.edge_mask().bitwise_and(&max_reg.x_mask()).split();
+        let mut ret = RegionStore::with_capacity(nonxbits.len());
+
+        let high_sta = self.state1().new_high();
+        let low_sta = high_sta.new_low();
+
+        for nbit in &nonxbits {
+            if nbit.bitwise_and(self.state1()).is_low() {
+                // The bit is a zero, force a one in that bit position.
+                ret.push(SomeRegion::new(vec![high_sta.clone(), nbit.to_state()]));
+            } else {
+                // The bit is a one, force a zero in that bit position.
+                ret.push(SomeRegion::new(vec![
+                    high_sta.bitwise_xor(nbit),
+                    low_sta.clone(),
+                ]));
+            }
+        }
+        ret
+    }
+
     /// Return true if a region is all X.
     pub fn all_x(&self) -> bool {
         self.edge_mask().is_low()

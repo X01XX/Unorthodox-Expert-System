@@ -1665,7 +1665,6 @@ mod tests {
 
         // Set group pnc
         let grp_reg = dm0.region_from_string("rXXXX_XX0X")?;
-        dm0.actions[0].set_group_pnc(&grp_reg);
         println!("dm0 {}", dm0.actions[0]);
 
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&max_reg) else {

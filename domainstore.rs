@@ -179,13 +179,16 @@ impl DomainStore {
 
     /// Calculate parts of select regions, in case of any overlaps.
     pub fn calc_select(&mut self) {
+        if self.select.is_empty() {
+            return;
+        }
+
         println!("\nSelect Regions:");
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
-        // Get subset intersection regions.
-        let subsets = self.select.split_to_subsets();
 
+        // Init negative and positive stores.
         for selx in self.select.iter() {
             match selx.pos.cmp(&selx.neg) {
                 Ordering::Greater => self.select_positive.push_nosubs(selx.clone()),
@@ -194,9 +197,8 @@ impl DomainStore {
             }
         }
 
-        if subsets.is_empty() {
-            return;
-        }
+        // Get subset intersection regions.
+        let subsets = self.select.split_to_subsets();
 
         println!("\nSubset Regions:");
         for sely in subsets {

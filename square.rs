@@ -472,14 +472,36 @@ mod tests {
             tmp_sta.new_from_string("s0b0101")?,
         ));
 
-        let sqr2 = SomeSquare::new(&SomeSample::new(
+        let mut sqr2 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b1101")?,
             tmp_sta.new_from_string("s0b1101")?,
         ));
         println!("sqr1: {sqr1}");
         println!("sqr2: {sqr2}");
 
+        // Try 1 vs 2 order.
         let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
+
+        // Try reverse order.
+        let rslt = sqr2.compatible(&sqr1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
+
+        // Add a sample to a square.
+        sqr2.add_sample(&SomeSample::new(
+            tmp_sta.new_from_string("s0b1101")?,
+            tmp_sta.new_from_string("s0b1101")?,
+        ));
+
+        // Try 1 vs 2 order.
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
+
+        // Try reverse order.
+        let rslt = sqr2.compatible(&sqr1);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(true));
 

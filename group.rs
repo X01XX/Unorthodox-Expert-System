@@ -89,9 +89,12 @@ impl SomeGroup {
 
     /// Accessor set the pnc field to true.
     /// Reform region, if needed.
-    pub fn set_pnc(&mut self) {
+    pub fn set_pnc(&mut self, dom_id: usize, act_id: usize) {
         if self.pnc {
-            println!("Group {} pnc already true", self.region);
+            println!(
+                "Dom {} Act {} Group {} already confirmed",
+                dom_id, act_id, self.region
+            );
             return;
         }
 
@@ -102,7 +105,10 @@ impl SomeGroup {
                 self.region.state2().clone(),
             ]);
         }
-        println!("  Group  {} confirmed.", self.region);
+        println!(
+            "Dom {} Act {} Group {} confirmed",
+            dom_id, act_id, self.region
+        );
     }
 
     /// Return a string representing a group.
@@ -152,6 +158,7 @@ impl SomeGroup {
     /// Return false if a subset square is incompatible with a group.
     /// Delete expand region if needed.
     pub fn check_square(&mut self, sqrx: &SomeSquare) -> bool {
+        //println!("SomeGroup:check_square {}", sqrx.state);
         if !self.region.is_superset_of(sqrx) {
             if let Some(expreg) = &self.expand {
                 if expreg.is_superset_of(sqrx) {

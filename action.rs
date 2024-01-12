@@ -126,6 +126,7 @@ impl SomeAction {
 
     /// Evaluate a new or changed square.
     fn eval_changed_square(&mut self, key: &SomeState, max_reg: &SomeRegion) {
+        //println!("SomeAction:eval_changed_square {key}");
         if let Some(sqrx) = self.squares.find_mut(key) {
             // Check if it invalidates any groups.
             let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
@@ -137,6 +138,36 @@ impl SomeAction {
 
             if !self.groups.any_superset_of(key) {
                 self.create_groups_from_squares(&[key.clone()], max_reg);
+            }
+        } else {
+            return;
+        }
+        // Check if a group can be confirmed.
+        if let Some(sqrx) = self.squares.find_mut(key) {
+            if sqrx.pnc {
+                for grpx in self.groups.iter_mut() {
+                    if grpx.pnc || !grpx.region.is_superset_of(key) {
+                        continue;
+                    }
+
+                    if grpx.region.len() == 1 {
+                        grpx.set_pnc(self.dom_id, self.id);
+                    } else if grpx.region.len() == 2 {
+                        if key == grpx.region.state1() {
+                            if let Some(sqr2) = self.squares.find_mut(grpx.region.state2()) {
+                                if sqr2.pnc {
+                                    grpx.set_pnc(self.dom_id, self.id);
+                                }
+                            }
+                        } else if key == grpx.region.state2() {
+                            if let Some(sqr1) = self.squares.find_mut(grpx.region.state1()) {
+                                if sqr1.pnc {
+                                    grpx.set_pnc(self.dom_id, self.id);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -203,16 +234,6 @@ impl SomeAction {
         } else {
             self.create_groups_from_squares(&orphaned_stas, max_reg);
         }
-    }
-
-    /// Find a group by region, set group pnc.
-    pub fn set_group_pnc(&mut self, grp_reg: &SomeRegion) {
-        let Some(grpx) = self.groups.find_mut(grp_reg) else {
-            println!("ConfirmGroup {grp_reg} group not found?");
-            return;
-        };
-
-        grpx.set_pnc();
     }
 
     /// Create possible groups from one, or more, states.
@@ -403,7 +424,12 @@ impl SomeAction {
             nds.append(self.group_pair_needs());
 
             // Check for expand needs.
-            nds.append(self.expand_groups_needs());
+            if nds.is_empty() {
+                nds.append(self.expand_groups_needs2(max_reg));
+            }
+
+            // Check for expand needs.
+            //nds.append(self.expand_groups_needs());
 
             // Check for squares in-one-group needs
             if let Some(ndx) = self.limit_groups_needs(max_reg) {
@@ -683,17 +709,17 @@ impl SomeAction {
 
             // If this is a one-state group ..
             if grpx.one_state() {
-                if sqrx.pnc {
-                    grpx.set_pnc();
-                }
+                //if sqrx.pnc {
+                //    grpx.set_pnc(self.dom_id, self.id, 5);
+                //}
                 continue;
             }
 
             if let Some(sqry) = self.squares.find(grpx.region.state2()) {
                 if sqry.pnc {
-                    if sqrx.pnc {
-                        grpx.set_pnc();
-                    }
+                    //if sqrx.pnc {
+                    //    grpx.set_pnc(self.dom_id, self.id, 6);
+                    //}
                     continue;
                 }
             }
@@ -713,7 +739,130 @@ impl SomeAction {
     } // end confirm_group_needs
 
     /// Return group expansion needs.
-    pub fn expand_groups_needs(&mut self) -> NeedStore {
+    /// Based on dissimilar groups.
+    pub fn expand_groups_needs2(&mut self, max_reg: &SomeRegion) -> NeedStore {
+        let mut ret_nds = NeedStore::new(vec![]);
+
+        if self.groups.len() < 2 {
+            return ret_nds;
+        }
+
+        // Storage for non-intersecting, dissimilar group regions.
+        let mut pairs = Vec::<(&SomeRegion, &SomeRegion)>::new();
+
+        for inx in 0..(self.groups.len() - 1) {
+            let grpx = &self.groups[inx];
+            if grpx.region.intersects(max_reg) {
+            } else {
+                continue;
+            }
+
+            for iny in (inx + 1)..self.groups.len() {
+                let grpy = &self.groups[iny];
+
+                if grpy.region.intersects(max_reg) {
+                } else {
+                    continue;
+                }
+
+                if grpx.region.intersects(&grpy.region) {
+                    continue;
+                }
+
+                if grpy.pn != grpx.pn {
+                    pairs.push((&grpx.region, &grpy.region));
+                } else if grpy.pn == Pn::Unpredictable {
+                    continue;
+                } else if let Some(xrules) = &grpx.rules {
+                    if let Some(yrules) = &grpy.rules {
+                        if xrules.union(yrules).is_none() {
+                            pairs.push((&grpx.region, &grpy.region));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Init initial possible regions.
+        let mut poss_regs = RegionStore::new(vec![max_reg.clone()]);
+
+        // Add each pair compliment.
+        for pairx in pairs.iter() {
+            poss_regs = poss_regs.intersection(
+                &pairx
+                    .0
+                    .complement_in(max_reg)
+                    .union(&pairx.1.complement_in(max_reg)),
+            );
+        }
+
+        //println!("Possible regions: {}", poss_regs);
+
+        // Analyze results.
+
+        // Check each group.
+        for grpx in self.groups.iter() {
+            'next_regx: for regx in poss_regs.iter() {
+                if regx.is_superset_of(&grpx.region) && grpx.region != *regx {
+                    let target_reg = regx.far_reg(&grpx.region);
+                    let sqrs = self.squares.squares_in_reg(&target_reg);
+                    if sqrs.is_empty() {
+                    } else {
+                        for sqrx in sqrs.iter() {
+                            if sqrx.pnc {
+                                continue 'next_regx;
+                            }
+                        }
+                        // Get squares with the maximum number of samples.
+                        let mut max_rated = Vec::<&SomeSquare>::new();
+                        let mut max_rate = 0;
+                        for sqrx in sqrs.iter() {
+                            let rt = sqrx.rate();
+                            if rt > max_rate {
+                                max_rated = Vec::<&SomeSquare>::new();
+                                max_rate = rt;
+                            }
+                            if rt == max_rate {
+                                max_rated.push(sqrx);
+                            }
+                        }
+                        // Choose a maximum rated square.
+                        let sqrx = max_rated[rand::thread_rng().gen_range(0..max_rated.len())];
+
+                        //println!("Dom {} Act {} group {} may be expanded to {}?", self.dom_id, self.id, grpx.region, regx);
+                        let mut ndx = SomeNeed::ExpandGroup {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            group_region: grpx.region.clone(),
+                            expand_region: regx.clone(),
+                            target_region: SomeRegion::new(vec![sqrx.state.clone()]),
+                            priority: 0,
+                        };
+                        ndx.set_priority();
+                        ret_nds.push(ndx);
+
+                        continue 'next_regx;
+                    }
+                    //println!("Dom {} Act {} group {} may be expanded to {}?", self.dom_id, self.id, grpx.region, regx);
+                    let mut ndx = SomeNeed::ExpandGroup {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        group_region: grpx.region.clone(),
+                        expand_region: regx.clone(),
+                        target_region: regx.far_reg(&grpx.region),
+                        priority: 0,
+                    };
+                    ndx.set_priority();
+                    ret_nds.push(ndx);
+                }
+            }
+        }
+
+        ret_nds
+    }
+
+    /// Return group expansion needs.
+    pub fn _expand_groups_needs(&mut self) -> NeedStore {
         let mut ret_nds = NeedStore::new(vec![]);
 
         let mut clear_groups = RegionStore::new(vec![]);
@@ -1675,7 +1824,7 @@ impl SomeAction {
         sqrx: &SomeSquare,
         max_reg: &SomeRegion,
     ) -> Vec<SomeGroup> {
-        // println!("possible_groups_from_square {}", sqrx.state);
+        //println!("possible_groups_from_square {}", sqrx.state);
 
         let mut ret_grps = Vec::<SomeGroup>::new();
 
@@ -1838,9 +1987,6 @@ impl SomeAction {
         // Create region, cleanup squares between, etc.
         let grp_reg = SomeRegion::new(stas_in);
 
-        let far_state = grp_reg.state2();
-        let mut far_pnc = false;
-
         // If sqrx is not Pn::Unpredictable, aggregate the rules.
         let mut rules: Option<RuleStore> = None;
         if let Some(rulesx) = &sqrx.rules {
@@ -1850,12 +1996,20 @@ impl SomeAction {
                 // Far state may not be found, for a GT two state region.
                 if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == stay) {
                     rulesz = rulesz.union(sqry.rules.as_ref()?)?;
-                    if stay == far_state {
-                        far_pnc = sqry.pnc;
-                    }
                 }
             }
             rules = Some(rulesz);
+        }
+
+        // Get far_state_pnc.
+        let mut far_pnc = false;
+        if grp_reg.len() == 1 {
+            far_pnc = sqrx.pnc;
+        } else if grp_reg.len() == 2 {
+            let far_state = grp_reg.state2();
+            if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == far_state) {
+                far_pnc = sqry.pnc;
+            }
         }
 
         if self.groups.any_superset_of(&grp_reg) {
@@ -1894,14 +2048,16 @@ impl SomeAction {
         if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
             // The sample could have invalidated the group.
             if let Some(grpx) = self.groups.find_mut(grp_reg) {
-                let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
-                if grp_reg.len() == 1 {
-                    if sqr1.pnc {
-                        grpx.set_pnc();
-                    }
-                } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
-                    if sqr1.pnc && sqr2.pnc {
-                        grpx.set_pnc();
+                if !grpx.pnc {
+                    let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
+                    if grp_reg.len() == 1 {
+                        if sqr1.pnc {
+                            grpx.set_pnc(self.dom_id, self.id);
+                        }
+                    } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
+                        if sqr1.pnc && sqr2.pnc {
+                            grpx.set_pnc(self.dom_id, self.id);
+                        }
                     }
                 }
             }
@@ -2489,6 +2645,58 @@ mod tests {
             .groups
             .find(&tmp_reg.new_from_string("rxxx1")?)
             .is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_expand() -> Result<(), String> {
+        // Init action.
+        let tmp_bts = SomeBits::new(vec![0]);
+        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let tmp_sta = SomeState::new(tmp_bts.clone());
+        let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
+        let max_reg = tmp_reg.new_from_string("rXXX0")?;
+
+        // Set up square 2.
+        let s2 = tmp_sta.new_from_string("s0b0010")?;
+        let s0 = tmp_sta.new_from_string("s0b0000")?;
+        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), s0.clone()), &max_reg);
+
+        println!("Act: {}", act0);
+
+        if let Some(grpx) = act0.groups.find(&SomeRegion::new(vec![s2.clone()])) {
+            if let Some(expand) = &grpx.expand {
+                if *expand != max_reg {
+                    return Err("expand not eq max_reg".to_string());
+                }
+            } else {
+                return Err("group expand not found".to_string());
+            }
+        } else {
+            return Err("group not found".to_string());
+        }
+
+        // Set up square 8.
+        let s8 = tmp_sta.new_from_string("s0b1000")?;
+        let s1 = tmp_sta.new_from_string("s0b0001")?;
+        act0.eval_sample_arbitrary(&SomeSample::new(s8.clone(), s1.clone()), &max_reg);
+
+        if let Some(grpx) = act0.groups.find(&SomeRegion::new(vec![s8.clone()])) {
+            if let Some(expand) = &grpx.expand {
+                if *expand != tmp_reg.new_from_string("rXX00")?
+                    && *expand != tmp_reg.new_from_string("r1XX0")?
+                {
+                    return Err("expand not eq max_reg".to_string());
+                }
+            } else {
+                return Err("group expand not found".to_string());
+            }
+        } else {
+            return Err("group not found".to_string());
+        }
+
+        println!("Act: {}", act0);
 
         Ok(())
     }
