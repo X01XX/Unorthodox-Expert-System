@@ -214,8 +214,7 @@ impl ActionStore {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed, cur_state: &SomeState) -> SomeSample {
-        let max_reg = self.max_agg_region(cur_state);
-        self.avec[ndx.act_id()].take_action_need(cur_state, ndx, &max_reg)
+        self.avec[ndx.act_id()].take_action_need(cur_state, ndx)
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -223,22 +222,15 @@ impl ActionStore {
     /// Useful for testing a wholly different series of samples/results.
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
-    pub fn eval_sample_arbitrary(
-        &mut self,
-        act_id: usize,
-        smpl: &SomeSample,
-        cur_state: &SomeState,
-    ) {
-        let max_reg = self.max_agg_region(cur_state);
+    pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
         //println!("max_reg {max_reg}");
-        self.avec[act_id].eval_sample_arbitrary(smpl, &max_reg);
+        self.avec[act_id].eval_sample_arbitrary(smpl);
     }
 
     /// Take an action with the current state.
     /// Return a sample.
     pub fn take_action(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        let max_reg = self.max_agg_region(cur_state);
-        self.avec[act_id].take_action(cur_state, &max_reg)
+        self.avec[act_id].take_action(cur_state)
     }
 } // end impl ActionStore
 

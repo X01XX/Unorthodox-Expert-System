@@ -184,8 +184,7 @@ impl SomeDomain {
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
-        self.actions
-            .eval_sample_arbitrary(act_id, smpl, &self.cur_state);
+        self.actions.eval_sample_arbitrary(act_id, smpl);
         self.set_cur_state(smpl.result.clone());
     }
 
