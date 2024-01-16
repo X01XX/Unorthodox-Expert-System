@@ -217,15 +217,16 @@ mod tests {
 
     #[test]
     fn test_is_superset_states_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let ur_bits = SomeBits::new(8);
+        let tmp_sta0 = SomeState::new(ur_bits.clone());
         let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
         regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
         regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
 
-        let sta1 = SomeState::new(SomeBits::new(vec![1]));
-        let sta8 = SomeState::new(SomeBits::new(vec![8]));
+        let sta1 = SomeState::new(ur_bits.new_from_string("0x1")?);
+        let sta8 = SomeState::new(ur_bits.new_from_string("0x8")?);
         let stas = StateStoreCorr::new(vec![sta1, sta8]);
 
         println!("regstr1 {}", regstr1);
@@ -233,8 +234,8 @@ mod tests {
 
         assert!(!regstr1.is_superset_states_corr(&stas));
 
-        let sta4 = SomeState::new(SomeBits::new(vec![4]));
-        let sta10 = SomeState::new(SomeBits::new(vec![10]));
+        let sta4 = SomeState::new(ur_bits.new_from_string("0x4")?);
+        let sta10 = SomeState::new(ur_bits.new_from_string("0xa")?);
         let stas2 = StateStoreCorr::new(vec![sta4, sta10]);
 
         println!("regstr1 {}", regstr1);
@@ -247,15 +248,16 @@ mod tests {
 
     #[test]
     fn test_distance_states_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let ur_bits = SomeBits::new(8);
+        let tmp_sta0 = SomeState::new(ur_bits.clone());
         let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
         regstr1.push(tmp_reg0.new_from_string("r0x00").expect("SNH"));
         regstr1.push(tmp_reg0.new_from_string("r1x1x").expect("SNH"));
 
-        let sta1 = SomeState::new(SomeBits::new(vec![1]));
-        let sta8 = SomeState::new(SomeBits::new(vec![8]));
+        let sta1 = SomeState::new(ur_bits.new_from_string("0x1")?);
+        let sta8 = SomeState::new(ur_bits.new_from_string("0x8")?);
         let stas = StateStoreCorr::new(vec![sta1, sta8]);
 
         let dist = regstr1.distance_states_corr(&stas);
@@ -267,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_is_superset_subset_of_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta0 = SomeState::new(SomeBits::new(8));
         let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
@@ -292,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_intersection_corr() -> Result<(), String> {
-        let tmp_sta0 = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta0 = SomeState::new(SomeBits::new(8));
         let tmp_reg0 = SomeRegion::new(vec![tmp_sta0.clone()]);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(2);

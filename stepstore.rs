@@ -317,9 +317,9 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);

@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_most_recent_result() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         let sta1 = tmp_sta.new_from_string("s0x1")?;
         let sta2 = tmp_sta.new_from_string("s0x2")?;
@@ -256,7 +256,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
 
@@ -279,7 +279,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
         let mut pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
@@ -313,7 +313,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::Unpredictable
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         // Test two different results but out of order.
         let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
@@ -342,7 +342,7 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x500")?]);
         rslt_str.add_result(tmp_sta.new_from_string("s0x501")?);

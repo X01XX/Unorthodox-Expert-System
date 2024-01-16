@@ -136,7 +136,7 @@ impl SomeMask {
 
     /// Return the number of bits used to express a SomeMask instance.
     pub fn num_bits(&self) -> usize {
-        self.bts.num_bits()
+        self.bts.num_bits
     }
 
     /// Return a formatted string.
@@ -224,14 +224,14 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(vec![0]));
+        let tmp_msk = SomeMask::new(SomeBits::new(8));
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::new(SomeBits::new(vec![0, 0]));
+        let tmp_msk = SomeMask::new(SomeBits::new(16));
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(vec![0]));
+        let tmp_msk = SomeMask::new(SomeBits::new(8));
 
         let msk1 = tmp_msk.new_from_string("m0b1010")?;
         let msk2 = tmp_msk.new_from_string("m0b1010")?;

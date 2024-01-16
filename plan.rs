@@ -372,9 +372,9 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn path_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
@@ -434,7 +434,7 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
 

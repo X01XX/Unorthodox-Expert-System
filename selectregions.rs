@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
 
         let srs = SelectRegions::new(
             RegionStoreCorr::new(vec![

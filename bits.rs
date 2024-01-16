@@ -8,7 +8,8 @@
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
 //! The integer type/size can be increased, change "u8", below, the format string literal "04b" in the formatted_string function.
-//!
+//!Dom 0 Adding square s0_0101 -0-> s0_0100
+
 //! Change the constants, below, as needed.
 //!
 
@@ -17,12 +18,6 @@ type Bitint = u8;
 
 /// The number of bits in an integer used by SomeBits.
 const NUM_BITS_PER_INT: usize = u8::BITS as usize;
-
-/// Mask for the highest bit in an integer.
-const INT_HIGH_BIT: Bitint = 1 << (NUM_BITS_PER_INT - 1);
-
-/// Mask for the highest nibble in an integer.
-const INT_HIGH_NIBBLE: Bitint = 15 << (NUM_BITS_PER_INT - 4);
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -50,37 +45,64 @@ impl fmt::Display for SomeBits {
 /// If there was only one domain, therefore state, this struct may be able to use an array
 /// instead of a vector.
 pub struct SomeBits {
+    pub num_bits: usize,
     pub ints: Vec<Bitint>,
 }
 
 impl SomeBits {
     /// Return a new-low SomeBits instance, given the number of integers.
-    pub fn new(ints: Vec<Bitint>) -> Self {
-        assert!(!ints.is_empty());
-        Self { ints }
+    pub fn new(num_bits: usize) -> Self {
+        assert!(num_bits > 0);
+
+        let num_ints = (num_bits as u32 / Bitint::BITS)
+            + if (num_bits as u32 % Bitint::BITS) > 0 {
+                1
+            } else {
+                0
+            };
+
+        Self {
+            num_bits,
+            ints: vec![0 as Bitint; num_ints as usize],
+        }
     }
 
     /// Create a SomeBits instance with integer(s) set to zero.
     pub fn new_low(&self) -> Self {
-        SomeBits {
-            ints: vec![0 as Bitint; self.num_ints()],
-        }
+        SomeBits::new(self.num_bits)
     }
 
     /// Create a SomeBits instance with integer(s) set to one.
     pub fn new_high(&self) -> Self {
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+
+        let num_ints = (self.num_bits as u32 / Bitint::BITS) + if adjust > 0 { 1 } else { 0 };
+
+        let mut ints = vec![Bitint::MAX; num_ints as usize];
+
+        if adjust > 0 {
+            ints[0] >>= Bitint::BITS - adjust;
+        }
+
         SomeBits {
-            ints: vec![Bitint::MAX; self.num_ints()],
+            num_bits: self.num_bits,
+            ints,
         }
     }
 
     /// Return a new bits instance, with a random value.
     pub fn new_random(&self) -> Self {
-        let mut ints = vec![0 as Bitint; self.num_ints()];
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+
+        let num_ints = (self.num_bits as u32 / Bitint::BITS) + if adjust > 0 { 1 } else { 0 };
+
+        let mut ints = vec![Bitint::MAX; num_ints as usize];
+
         for intx in ints.iter_mut() {
             *intx = rand::thread_rng().gen_range(0..Bitint::MAX)
         }
-        SomeBits { ints }
+
+        self.b_and(&self.new_high())
     }
 
     /// Return a bits instance from a string.
@@ -91,7 +113,8 @@ impl SomeBits {
     ///    println!("bts {}", &bts);
     /// } else {
     ///    panic!("Invalid bits string");
-    /// }
+    /// }Dom 0 Adding square s0_0101 -0-> s0_0100
+
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// Using multiple integers could allow for a number that is too big for
@@ -108,7 +131,9 @@ impl SomeBits {
                 if chr == "0" {
                     continue;
                 }
-                return Err(format!("String {str}, should start with 0?"));
+                return Err(format!(
+                    "bits::new_from_string: String {str}, should start with 0?"
+                ));
             }
 
             if inx == 1 {
@@ -118,7 +143,9 @@ impl SomeBits {
                     base = 16;
                     continue;
                 }
-                return Err(format!("String {str}, should start with 0b or 0x?"));
+                return Err(format!(
+                    "bits::new_from_string: String {str}, should start with 0b or 0x?"
+                ));
             }
 
             if chr == "_" {
@@ -126,24 +153,20 @@ impl SomeBits {
             }
 
             if base == 2 {
-                if bts.high_bit_nonzero() {
-                    return Err(format!("String {str}, too long?"));
-                }
-
                 if chr == "0" {
                     bts = bts.shift_left();
                 } else if chr == "1" {
                     bts = bts.push_1();
                 } else {
-                    return Err(format!("String {str}, invalid character?"));
+                    return Err(format!(
+                        "bits::new_from_string: String {str}, invalid character?"
+                    ));
                 }
             } else {
-                if bts.high_nibble_nonzero() {
-                    return Err(format!("String {str}, too long?"));
-                }
-
                 let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
-                    return Err(format!("String {str}, invalid character?"));
+                    return Err(format!(
+                        "bits::new_from_string: String {str}, invalid character?"
+                    ));
                 };
 
                 bts = bts.shift_left4();
@@ -151,6 +174,12 @@ impl SomeBits {
                 bts.ints[lsb] += numx;
             }
         } // next (inx, chr)
+
+        if bts.b_and(&bts.new_high()) != bts {
+            return Err(format!(
+                "bits::new_from_string: String {str}, Too many bits?"
+            ));
+        }
         Ok(bts)
     } // end new_from_string
 
@@ -194,135 +223,82 @@ impl SomeBits {
     /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
     /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
-        let num_ints = self.ints.len();
-
-        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-        if bit_num >= num_bits {
-            panic!("bit num too large");
-        }
+        assert!(bit_num < self.num_bits);
 
         let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
 
-        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+        let int_num = self.ints.len() - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
 
         self.ints[int_num] & (1 << bit_pos) > 0
     }
 
     /// Return the bitwise NOT of a SomeBits stuct.
     pub fn b_not(&self) -> Self {
-        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
-
-        for intx in &self.ints {
-            ary2.push(!intx);
-        }
-
-        Self { ints: ary2 }
+        self.b_xor(&self.new_high())
     }
 
     /// Return the bitwise AND of two SomeBits structs.
     pub fn b_and(&self, other: &Self) -> Self {
-        assert_eq!(self.num_ints(), other.num_ints());
+        assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
+        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ary2.push(x & y);
+            ints.push(x & y);
         }
 
-        Self { ints: ary2 }
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return the bitwise OR of two SomeBits structs.
     pub fn b_or(&self, other: &Self) -> Self {
-        assert_eq!(self.num_ints(), other.num_ints());
+        assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
+        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ary2.push(x | y);
+            ints.push(x | y);
         }
 
-        Self { ints: ary2 }
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return the bitwise XOR of two SomeBits structs.
     pub fn b_xor(&self, other: &Self) -> Self {
-        assert_eq!(self.num_ints(), other.num_ints());
+        assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ary2 = Vec::<Bitint>::with_capacity(self.ints.len());
+        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
         for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ary2.push(x ^ y);
+            ints.push(x ^ y);
         }
 
-        Self { ints: ary2 }
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return a copy of an instance, with a bit position changed.
     /// X to X-not for a specific bit.
     pub fn change_bit(&self, bit_num: usize) -> Self {
-        let num_ints = self.ints.len();
-
-        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-        if bit_num >= num_bits {
-            panic!("bit num too large");
-        }
+        assert!(bit_num < self.num_bits);
 
         let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
 
-        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+        let int_num = self.ints.len() - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
 
-        let mut ary2 = self.clone();
+        let mut ret_bits = self.clone();
 
-        ary2.ints[int_num] ^= (1 << bit_pos) as Bitint;
+        ret_bits.ints[int_num] ^= (1 << bit_pos) as Bitint;
 
-        ary2
-    }
-
-    /// Return a copy of an instance, with a bit position set to 1.
-    /// X to 1 for a specific bit.
-    pub fn set_bit_to_1(&self, bit_num: usize) -> Self {
-        let num_ints = self.ints.len();
-
-        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-        if bit_num >= num_bits {
-            panic!("bit num too large");
-        }
-
-        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
-
-        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
-
-        let mut ary2 = self.clone();
-
-        ary2.ints[int_num] |= (1 << bit_pos) as Bitint;
-
-        ary2
-    }
-
-    /// Return a copy of an instance, with a bit position set to 0.
-    /// X to 0, for a specific bit.
-    pub fn set_bit_to_0(&self, bit_num: usize) -> Self {
-        let num_ints = self.ints.len();
-
-        let num_bits = num_ints * NUM_BITS_PER_INT;
-
-        if bit_num >= num_bits {
-            panic!("bit num too large");
-        }
-
-        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
-
-        let int_num = num_ints - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
-
-        let mut ary2 = self.clone();
-
-        ary2.ints[int_num] &= !(1 << bit_pos) as Bitint;
-
-        ary2
+        ret_bits
     }
 
     /// Return Bits that are the same
@@ -347,12 +323,7 @@ impl SomeBits {
 
     /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
-        for intx in &self.ints {
-            if *intx != Bitint::MAX {
-                return false;
-            }
-        }
-        true
+        self == &self.new_high()
     }
 
     /// Return true if a Bits struct is a ones-subset of another.
@@ -416,36 +387,52 @@ impl SomeBits {
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant Bit value is lost.
     pub fn shift_left(&self) -> Self {
-        let mut ints2 = vec![0 as Bitint; self.num_ints()];
+        let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
 
         for int_inx in (0..self.ints.len()).rev() {
             let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
 
-            ints2[int_inx] = (self.ints[int_inx] << 1) + carry;
+            ints[int_inx] = (self.ints[int_inx] << 1) + carry;
 
             carry = next_carry;
         }
 
-        Self { ints: ints2 }
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+        if adjust > 0 {
+            ints[0] &= Bitint::MAX >> (Bitint::BITS - adjust);
+        }
+
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return a copy, shifted left by 4 bits.
     /// The Most Significant 4 bit value is lost.
     fn shift_left4(&self) -> Self {
-        let mut ints2 = vec![0 as Bitint; self.num_ints()];
+        let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
 
         for int_inx in (0..self.ints.len()).rev() {
             let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 4);
 
-            ints2[int_inx] = (self.ints[int_inx] << 4) + carry;
+            ints[int_inx] = (self.ints[int_inx] << 4) + carry;
             carry = next_carry;
         }
 
-        Self { ints: ints2 }
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+        if adjust > 0 {
+            assert!(ints[0] & (Bitint::MAX >> (Bitint::BITS - adjust)) == ints[0]);
+        }
+
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return the number of integers used in the given SomeBits struct.
@@ -453,44 +440,18 @@ impl SomeBits {
         self.ints.len()
     }
 
-    /// Return the number of bits in the given SomeBits struct.
-    pub fn num_bits(&self) -> usize {
-        self.ints.len() * NUM_BITS_PER_INT
-    }
-
-    /// Return true if the highest bit is nonzero.
-    /// This is used in the from_string functions to detect overflow
-    /// from the next shift-left operation.
-    fn high_bit_nonzero(&self) -> bool {
-        self.ints[0] & INT_HIGH_BIT > 0
-    }
-
-    /// Return true if the highest nibble is nonzero.
-    /// This is used in the from_string functions to detect overflow
-    /// from the next shift-left operation.
-    fn high_nibble_nonzero(&self) -> bool {
-        self.ints[0] & INT_HIGH_NIBBLE > 0
-    }
-
     /// Create a formatted string for the instance.
     fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
 
-        let nibbles_per_int = NUM_BITS_PER_INT / 4;
-        let mut fil = 0;
-        for intx in &self.ints {
-            let mut inty = *intx;
-            let mut nibbles = Vec::<Bitint>::with_capacity(nibbles_per_int);
-            for _ in 0..nibbles_per_int {
-                nibbles.push(inty & 15);
-                inty >>= 4;
+        for bit_num in (0..self.num_bits).rev() {
+            if self.is_bit_set(bit_num) {
+                astr.push('1');
+            } else {
+                astr.push('0');
             }
-            for nibx in nibbles.iter().rev() {
-                if fil == 1 {
-                    astr.push('_');
-                }
-                astr.push_str(&format!("{nibx:04b}"));
-                fil = 1;
+            if bit_num != 0 && bit_num % 4 == 0 {
+                astr.push('_');
             }
         }
         astr
@@ -501,25 +462,18 @@ impl SomeBits {
     pub fn str2(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
 
-        for intx in &self.ints {
-            astr.push(' ');
+        // Add a space under r prefix to region.
+        astr.push(' ');
 
-            let mut cnt = 0;
-            let mut cur_bit = INT_HIGH_BIT;
-
-            while cur_bit > 0 {
-                if cnt > 0 && cnt % 4 == 0 {
-                    // Adjust for underline character in bits display.
-                    astr.push(' ');
-                }
-                cnt += 1;
-
-                if (intx & cur_bit) == 0 {
-                    astr.push(' ');
-                } else {
-                    astr.push('v');
-                }
-                cur_bit >>= 1;
+        for num_bit in (0..self.num_bits).rev() {
+            if self.is_bit_set(num_bit) {
+                astr.push('v');
+            } else {
+                astr.push(' ');
+            }
+            // Add a space under the "_" separator.
+            if num_bit > 0 && (num_bit % 4) == 0 {
+                astr.push(' ');
             }
         }
         astr
@@ -541,8 +495,8 @@ impl BitsRef for SomeBits {
 /// Implement the trait StrLen for SomeBits.
 impl StrLen for SomeBits {
     fn strlen(&self) -> usize {
-        let items_len = NUM_BITS_PER_INT * self.ints.len();
-        let sep_len = self.ints.len() * (NUM_BITS_PER_INT / 4) - 1;
+        let items_len = self.num_bits;
+        let sep_len = (self.num_bits / 4) - 1;
         items_len + sep_len
     }
 }
@@ -555,14 +509,14 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let strrep = format!("{tmp_bts}");
         let len = strrep.len();
         let calc_len = tmp_bts.strlen();
         println!("str {strrep} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let strrep = format!("{tmp_bts}");
         let len = strrep.len();
         let calc_len = tmp_bts.strlen();
@@ -574,6 +528,7 @@ mod tests {
     #[test]
     fn new() -> Result<(), String> {
         let bitsx = SomeBits {
+            num_bits: 16,
             ints: vec![5 as Bitint, 4 as Bitint],
         };
         println!("bitsx: {bitsx}");
@@ -590,7 +545,7 @@ mod tests {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
         ];
 
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
 
         // Try 16 times.
         for _ in 0..16 {
@@ -662,7 +617,7 @@ mod tests {
     // Test b_eqv
     #[test]
     fn b_eqv() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let b1 = tmp_bts.new_from_string("0x5555")?;
         let b2 = tmp_bts.new_from_string("0xa675")?;
         let b3 = b1.b_eqv(&b2).b_and(&tmp_bts.new_from_string("0xfff")?);
@@ -676,32 +631,31 @@ mod tests {
     #[test]
     fn b_and() -> Result<(), String> {
         // 00
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let mut bitsx = tmp_bts.new_low();
         let mut bitsy = tmp_bts.new_low();
         let mut bitsz = bitsx.b_and(&bitsy);
-        println!("bitsz: {bitsz}");
+        println!("bitsz1: {bitsz}");
         assert!(bitsz.is_low());
 
         // 01
         bitsx = tmp_bts.new_low();
         bitsy = tmp_bts.new_high();
         bitsz = bitsx.b_and(&bitsy);
-        println!("bitsz: {bitsz}");
         assert!(bitsz.is_low());
 
         // 11
         bitsx = tmp_bts.new_high();
         bitsy = tmp_bts.new_high();
         bitsz = bitsx.b_and(&bitsy);
-        println!("bitsz: {bitsz}");
+        println!("bitsz3: {bitsz}");
         assert!(bitsz.is_high());
 
         // 10
         bitsx = tmp_bts.new_high();
         bitsy = tmp_bts.new_low();
         bitsz = bitsx.b_and(&bitsy);
-        println!("bitsz: {bitsz}");
+        println!("bitsz4: {bitsz}");
         assert!(bitsz.is_low());
 
         Ok(())
@@ -710,7 +664,7 @@ mod tests {
     // Test SomeBits::b_not
     #[test]
     fn b_not() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let mut bitsx = tmp_bts.new_low();
         let mut bitsz = bitsx.b_not();
         println!("bitsz: {bitsz}");
@@ -728,7 +682,7 @@ mod tests {
     #[test]
     fn b_or() -> Result<(), String> {
         // 00
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let mut bitsx = tmp_bts.new_low();
         let mut bitsy = tmp_bts.new_low();
         let mut bitsz = bitsx.b_or(&bitsy);
@@ -762,7 +716,7 @@ mod tests {
     // Test SomeBits::b_xor
     #[test]
     fn b_xor() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         // 00
         let mut bitsx = tmp_bts.new_low();
         let mut bitsy = tmp_bts.new_low();
@@ -797,18 +751,31 @@ mod tests {
     // Test change_bit functions.
     #[test]
     fn change_bits() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
-        let mut bits11 = SomeBits::new(vec![1, 1]);
+        let tmp_bts = SomeBits::new(9);
 
-        for inx in 0..NUM_BITS_PER_INT {
-            let bitsx = tmp_bts.change_bit(inx).change_bit(inx + NUM_BITS_PER_INT);
-            println!("bits11 {bits11} bitsx: {bitsx}");
-            assert!(bitsx == bits11);
-            let bitsy = bits11.change_bit(inx).change_bit(inx + NUM_BITS_PER_INT);
-            println!("bitsy {bitsy} tmp_bts: {tmp_bts}");
-            assert!(bitsy == tmp_bts);
-            bits11 = bits11.shift_left();
-        }
+        let bitsx = tmp_bts.change_bit(0);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_from_string("0x01")?);
+
+        let bitsx = tmp_bts.change_bit(1);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_from_string("0x02")?);
+
+        let bitsx = tmp_bts.change_bit(2);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_from_string("0x04")?);
+
+        let bitsx = tmp_bts.change_bit(3);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_from_string("0x08")?);
+
+        let bitsx = tmp_bts.change_bit(8);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_from_string("0x100")?);
+
+        let bitsx = bitsx.change_bit(8);
+        println!("bitsx: {bitsx}");
+        assert!(bitsx == tmp_bts.new_low());
 
         Ok(())
     }
@@ -816,7 +783,7 @@ mod tests {
     // Test SomeBits::distance
     #[test]
     fn distance() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0, 0]);
+        let tmp_bts = SomeBits::new(16);
         let dist = tmp_bts
             .new_from_string("0x0")?
             .distance(&tmp_bts.new_from_string("0x0")?);
@@ -838,29 +805,10 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::high_bit_nonzero
-    #[test]
-    fn high_bit_nonzero() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
-        let mut bitsx = tmp_bts.new_from_string("0x1")?;
-        println!("bitsx: {bitsx}");
-        assert!(!bitsx.high_bit_nonzero());
-
-        // Shift to left-most position.
-        for _ in 0..(NUM_BITS_PER_INT - 1) {
-            bitsx = bitsx.shift_left();
-        }
-
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.high_bit_nonzero());
-
-        Ok(())
-    }
-
     // Test SomeBits::is_bit_set
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x5aa5")?;
+        let bitsx = SomeBits::new(16).new_from_string("0x5aa5")?;
         println!("bitsx: {bitsx}");
         assert!(bitsx.is_bit_set(0));
         assert!(!bitsx.is_bit_set(1));
@@ -885,16 +833,24 @@ mod tests {
     // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
-        let mut bitsx = SomeBits::new(vec![1]);
+        let mut bitsx = SomeBits::new(8).new_from_string("0x")?;
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bitsy = bitsx.clone();
-
-        for _ in 0..(NUM_BITS_PER_INT - 1) {
-            bitsx = bitsx.shift_left().b_or(&bitsy);
+        for _ in 0..bitsx.num_bits {
+            bitsx = bitsx.push_1();
         }
         println!("bitsx: {bitsx}");
+        assert!(bitsx.is_high());
+
+        let mut bitsx = SomeBits::new(10).new_from_string("0x")?;
+        println!("bitsx2: {bitsx}");
+        assert!(!bitsx.is_high());
+
+        for _ in 0..bitsx.num_bits {
+            bitsx = bitsx.push_1();
+        }
+        println!("bitsx2: {bitsx}");
         assert!(bitsx.is_high());
 
         Ok(())
@@ -903,7 +859,7 @@ mod tests {
     // Test SomeBits::is_low
     #[test]
     fn is_low() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0xa5]);
+        let bitsx = SomeBits::new(16).new_from_string("0xa5")?;
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
@@ -911,7 +867,7 @@ mod tests {
         println!("bitsx: {bitsx}");
         assert!(bitsx.is_low());
 
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x2000")?;
+        let bitsx = SomeBits::new(16).new_from_string("0x2000")?;
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
@@ -925,7 +881,7 @@ mod tests {
     // Test SomeBits::is_subset_of
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]);
+        let bitsx = SomeBits::new(16);
         let bitsy = bitsx.new_from_string("0x0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_subset_ones_of(&bitsy));
@@ -953,7 +909,7 @@ mod tests {
     // Test SomeBits::is_superset_of
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]);
+        let bitsx = SomeBits::new(16);
         let bitsy = bitsx.new_from_string("0x0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_superset_ones_of(&bitsy));
@@ -982,7 +938,7 @@ mod tests {
     // Test SomeBits::num_one_bits
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x5555")?;
+        let bitsx = SomeBits::new(16).new_from_string("0x5555")?;
         println!("bitsx: {bitsx}");
         assert!(bitsx.num_one_bits() == 8);
 
@@ -996,7 +952,7 @@ mod tests {
     // Test SomeBits::push_1
     #[test]
     fn push_1() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x5555")?;
+        let bitsx = SomeBits::new(16).new_from_string("0x5555")?;
         let bitsy = bitsx.push_1();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsy == bitsx.new_from_string("0xaaab")?);
@@ -1006,30 +962,35 @@ mod tests {
 
     // Test SomeBits::shift_left
     #[test]
-    fn shift_left() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0xd555")?;
+    fn shift_left1() -> Result<(), String> {
+        let bitsx = SomeBits::new(16).new_from_string("0xd555")?;
         let bitsy = bitsx.shift_left();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy.b_and(&bitsx.new_from_string("0xffff")?) == bitsx.new_from_string("0xaaaa")?);
+        assert!(bitsy == bitsx.new_from_string("0xaaaa")?);
 
+        let bitsx = SomeBits::new(15).new_from_string("0x5555")?;
+        let bitsy = bitsx.shift_left();
+        println!("bitsx: {bitsx} bitsy: {bitsy}");
+        assert!(bitsy == bitsx.new_from_string("0x2aaa")?);
+        //assert!(1==2);
         Ok(())
     }
 
     // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0xf505")?;
+        let bitsx = SomeBits::new(16).new_from_string("0xf505")?;
         let bitsy = bitsx.shift_left4();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy.b_and(&bitsx.new_from_string("0xffff")?) == bitsx.new_from_string("0x5050")?);
 
+        assert!(bitsy == bitsx.new_from_string("0x5050")?);
         Ok(())
     }
 
     // Test SomeBits::split
     #[test]
     fn split() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]).new_from_string("0x5050")?;
+        let bitsx = SomeBits::new(16).new_from_string("0x5050")?;
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.new_from_string("0x5050")?.split();
@@ -1046,7 +1007,7 @@ mod tests {
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        let bitsx = SomeBits::new(vec![0, 0]);
+        let bitsx = SomeBits::new(16);
         let bitsy = bitsx.new_from_string("0x11")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(!bitsx.is_adjacent(&bitsy));

@@ -255,125 +255,80 @@ fn run_number_times(num_runs: usize) -> usize {
 fn domainstore_init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
-    dmxs.add_domain(1);
-    dmxs.add_domain(2);
+    dmxs.add_domain(5);
+    dmxs.add_domain(16);
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_11/XX/00/Xx")
+            .rule_from_string("XX_11/XX/00/Xx")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_00/XX/11/Xx")
+            .rule_from_string("XX_00/XX/11/Xx")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_XX/11/XX/10")
+            .rule_from_string("XX_XX/11/XX/10")
             .expect("SNH")]),
         RuleStore::new(vec![
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_11/00/10/XX")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_11/01/11/XX")
-                .expect("SNH"),
+            dmxs[0].rule_from_string("XX_11/00/10/XX").expect("SNH"),
+            dmxs[0].rule_from_string("XX_11/01/11/XX").expect("SNH"),
         ]),
         RuleStore::new(vec![
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_11/XX/10/00")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_11/Xx/11/00")
-                .expect("SNH"),
+            dmxs[0].rule_from_string("XX_11/XX/10/00").expect("SNH"),
+            dmxs[0].rule_from_string("XX_11/Xx/11/00").expect("SNH"),
         ]),
         RuleStore::new(vec![
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/00/00/Xx")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/00/01/XX")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/01/00/XX")
-                .expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/00/00/Xx").expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/00/01/XX").expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/01/00/XX").expect("SNH"),
         ]),
         RuleStore::new(vec![
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/XX/00/01")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/XX/01/00")
-                .expect("SNH"),
-            dmxs[0]
-                .rule_from_string("XX/XX/XX/XX_00/Xx/00/00")
-                .expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/XX/00/01").expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/XX/01/00").expect("SNH"),
+            dmxs[0].rule_from_string("XX_00/Xx/00/00").expect("SNH"),
         ]),
     ];
     dmxs[0].add_action(ruls0);
 
     let ruls1: Vec<RuleStore> = vec![
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_XX/Xx/11/XX")
+            .rule_from_string("XX_XX/Xx/11/XX")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_XX/XX/01/XX")
+            .rule_from_string("XX_XX/XX/01/XX")
             .expect("SNH")]),
     ];
     dmxs[0].add_action(ruls1);
 
     let ruls2: Vec<RuleStore> = vec![
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_XX/XX/10/XX")
+            .rule_from_string("XX_XX/XX/10/XX")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_XX/Xx/00/XX")
+            .rule_from_string("XX_XX/Xx/00/XX")
             .expect("SNH")]),
     ];
     dmxs[0].add_action(ruls2);
 
     let ruls3: Vec<RuleStore> = vec![
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/Xx_11/XX/XX/XX")
+            .rule_from_string("Xx_11/XX/XX/XX")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_01/XX/XX/XX")
+            .rule_from_string("XX_01/XX/XX/XX")
             .expect("SNH")]),
     ];
     dmxs[0].add_action(ruls3);
 
     let ruls4: Vec<RuleStore> = vec![
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/XX_10/XX/XX/XX")
+            .rule_from_string("XX_10/XX/XX/XX")
             .expect("SNH")]),
         RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/Xx_00/XX/XX/XX")
+            .rule_from_string("Xx_00/XX/XX/XX")
             .expect("SNH")]),
     ];
     dmxs[0].add_action(ruls4);
-
-    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("XX/XX/Xx/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
-    dmxs[0].add_action(ruls5);
-
-    let ruls6: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("XX/XX/XX/XX_Xx/Xx/XX/XX")
-        .expect("SNH")])];
-    dmxs[0].add_action(ruls6);
-
-    let ruls7: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("Xx/Xx/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
-    dmxs[0].add_action(ruls7);
-
-    let ruls8: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("XX/Xx/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
-    dmxs[0].add_action(ruls8);
-
-    let ruls9: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("XX/Xx/XX/XX_XX/XX/X1/X0")
-        .expect("SNH")])];
-    dmxs[0].add_action(ruls9);
 
     // Add actions 0 through 6 to domain 1.
     let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]

@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn check_subset_square() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 

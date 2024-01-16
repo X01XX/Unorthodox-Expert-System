@@ -2164,7 +2164,7 @@ mod tests {
     #[test]
     fn shared_symmetric_region() -> Result<(), String> {
         // Init action
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2227,7 +2227,7 @@ mod tests {
     #[test]
     fn delete_shared_symmetric_region() -> Result<(), String> {
         // Init action
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2282,7 +2282,7 @@ mod tests {
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
 
@@ -2322,7 +2322,7 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2372,7 +2372,7 @@ mod tests {
     // Test making a group from two Pn::Two squares.
     #[test]
     fn possible_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2409,7 +2409,7 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2441,7 +2441,7 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
@@ -2486,7 +2486,7 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let mut act0 = SomeAction::new(0, 0, vec![]);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);

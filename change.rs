@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn intersection() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(vec![0]);
+        let ur_bits = SomeBits::new(8);
         let ur_mask = SomeMask::new(ur_bits.clone());
 
         let cng1 = SomeChange {
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn union() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(vec![0]);
+        let ur_bits = SomeBits::new(8);
         let ur_mask = SomeMask::new(ur_bits.clone());
 
         let cng1 = SomeChange {
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn changes_wanted_unwanted_reverse() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(vec![0]);
+        let ur_bits = SomeBits::new(8);
         let ur_mask = SomeMask::new(ur_bits.clone());
 
         let wanted_changes = SomeChange {

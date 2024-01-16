@@ -352,7 +352,7 @@ mod tests {
     // Test multiple additions to a square, cycle through all pn and pnc values.
     #[test]
     fn cycle_through_pn_pnc_values() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101")?,
@@ -449,7 +449,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "self.state != other.state")]
     fn compatible_not_same() {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         let sqr1 = SomeSquare::new(&SomeSample::new(
             tmp_sta.new_from_string("s0b0101").unwrap(),
@@ -463,7 +463,7 @@ mod tests {
     // Test compatible Pn == One
     #[test]
     fn compatible_pn_one_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Test two squares with only one sample each.
         // Allow a true result for bootstrapping.
@@ -537,7 +537,7 @@ mod tests {
     // Test compatible Pn == One and Pn == two
     #[test]
     fn compatible_pn_one_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Create sqr1 pn 1 pnc f.
         let sqr1 = SomeSquare::new(&SomeSample::new(
@@ -648,7 +648,7 @@ mod tests {
     // Test compatible Pn == two
     #[test]
     fn compatible_pn_two_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Create sqr1 pn 2 pnc t.
         let mut sqr1 = SomeSquare::new(&SomeSample::new(
@@ -804,7 +804,7 @@ mod tests {
     // Test compatible Pn == Unpredictable, Pn == 1
     #[test]
     fn compatible_pn_u_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(&SomeSample::new(
@@ -852,7 +852,7 @@ mod tests {
     // Test compatible Pn == Unpredictable, Pn == 2
     #[test]
     fn compatible_pn_u_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(&SomeSample::new(
@@ -909,7 +909,7 @@ mod tests {
     // Test compatible Pn == Unpredictable, Pn == Unpredictable
     #[test]
     fn compatible_pn_u_u() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         // Create sqr1 pn U pnc T.
         let mut sqr1 = SomeSquare::new(&SomeSample::new(

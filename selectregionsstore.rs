@@ -498,8 +498,8 @@ mod tests {
 
     #[test]
     fn test_split_to_subsets() -> Result<(), String> {
-        let ur_reg1 = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
-        let ur_reg2 = SomeRegion::new(vec![SomeState::new(SomeBits::new(vec![0]))]);
+        let ur_reg1 = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
+        let ur_reg2 = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
 
         let mut srs = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(

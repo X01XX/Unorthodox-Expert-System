@@ -241,11 +241,11 @@ impl DomainStore {
 
     /// Add a Domain struct to the store.
     /// Add select regions after the last domain has been added.
-    pub fn add_domain(&mut self, num_ints: usize) {
+    pub fn add_domain(&mut self, num_bits: usize) {
         debug_assert!(self.select.is_empty());
 
         self.domains
-            .push(SomeDomain::new(self.domains.len(), num_ints));
+            .push(SomeDomain::new(self.domains.len(), num_bits));
     }
 
     /// Get needs for each Domain.
@@ -1448,7 +1448,7 @@ mod tests {
     fn avoidance1() -> Result<(), String> {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
@@ -1526,7 +1526,7 @@ mod tests {
     fn avoidance2() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
@@ -1604,7 +1604,7 @@ mod tests {
     fn avoidance3() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
@@ -1692,7 +1692,7 @@ mod tests {
     fn avoidance4() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
@@ -1759,7 +1759,7 @@ mod tests {
     fn avoidance5() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
@@ -1824,8 +1824,8 @@ mod tests {
         // Domain 0 uses 1 integer for bits.
         // Domain 1 uses 2 integers for bits.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
-        dmxs.add_domain(2);
+        dmxs.add_domain(8);
+        dmxs.add_domain(16);
 
         // Set state for domain 0, using 1 integer for bits.
         let init_state1 = dmxs[0].state_from_string("s0x12")?;
@@ -1850,7 +1850,7 @@ mod tests {
     fn avoidance6() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
 
         // Add actions.
         dmxs[0].add_action(vec![]);
@@ -1930,8 +1930,8 @@ mod tests {
     fn avoidance7() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
+        dmxs.add_domain(8);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2049,8 +2049,8 @@ mod tests {
     fn avoidance8() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
+        dmxs.add_domain(8);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2161,8 +2161,8 @@ mod tests {
     fn avoidance9() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
+        dmxs.add_domain(8);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2265,8 +2265,8 @@ mod tests {
     fn check_select() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
-        dmxs.add_domain(2);
+        dmxs.add_domain(8);
+        dmxs.add_domain(16);
 
         // Add action to domain 0.
         dmxs[0].add_action(vec![]);
@@ -2357,7 +2357,7 @@ mod tests {
     fn test_exit_select_needs() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         let neg_reg1 = dmxs[0].region_from_string_pad_x("rX1XX").expect("SNH");
@@ -2401,7 +2401,7 @@ mod tests {
     fn calc_select() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(1);
+        dmxs.add_domain(8);
 
         // Add action to domain 0.
         dmxs[0].add_action(vec![]);

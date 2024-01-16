@@ -111,7 +111,7 @@ impl SomeState {
 
     /// Return the number of bits used to represent a state.
     pub fn num_bits(&self) -> usize {
-        self.bts.num_bits()
+        self.bts.num_bits
     }
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
@@ -154,20 +154,6 @@ impl SomeState {
     pub fn change_bit(&self, num: usize) -> Self {
         Self {
             bts: self.bts.change_bit(num),
-        }
-    }
-
-    /// Return a copy of an instance, with a bit position set to 1.
-    pub fn set_bit_to_1(&self, num: usize) -> Self {
-        Self {
-            bts: self.bts.set_bit_to_1(num),
-        }
-    }
-
-    /// Return a copy of an instance, with a bit position set to 0.
-    pub fn set_bit_to_0(&self, num: usize) -> Self {
-        Self {
-            bts: self.bts.set_bit_to_0(num),
         }
     }
 
@@ -283,14 +269,14 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
@@ -302,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_is_between() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
         let sta2 = tmp_sta.new_from_string("s0b0010")?;
         let sta3 = tmp_sta.new_from_string("s0b0011")?;
         let sta5 = tmp_sta.new_from_string("s0b0101")?;
@@ -313,7 +299,7 @@ mod tests {
 
     #[test]
     fn distance() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0, 0]));
+        let tmp_sta = SomeState::new(SomeBits::new(16));
 
         let sta1 = tmp_sta.new_from_string("s0xabc4")?;
         let sta2 = tmp_sta.new_from_string("s0x5430")?;
@@ -327,7 +313,7 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(vec![0]));
+        let tmp_sta = SomeState::new(SomeBits::new(8));
 
         let sta1 = tmp_sta.new_from_string("s0b1010")?;
         let sta2 = tmp_sta.new_from_string("s0b1010")?;
@@ -345,7 +331,7 @@ mod tests {
     #[test]
     fn apply_changes() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let ur_bits = SomeBits::new(vec![0]);
+        let ur_bits = SomeBits::new(8);
         let ur_state = SomeState::new(ur_bits.clone());
         let ur_mask = SomeMask::new(ur_bits);
 

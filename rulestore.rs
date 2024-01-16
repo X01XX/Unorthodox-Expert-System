@@ -253,15 +253,9 @@ impl RuleStore {
     /// This is mostly useful in finding that a single rule is not compatible
     /// to a two-rule store, so its not neccessary to get the second sample/rule.
     pub fn subcompatible(&self, other: &RuleStore) -> bool {
-        println!("starting subcompatible");
+        //println!("starting subcompatible");
         assert!(self.len() == 2);
         assert!(other.len() == 1);
-
-        //println!(
-        //    "~&one {} two {}",
-        //    self[0].union(&other[0]).is_some(),
-        //    self[1].union(&other[0]).is_some()
-        //);
 
         self[0].union(&other[0]).is_some() ^ self[1].union(&other[0]).is_some()
     }
@@ -364,7 +358,7 @@ mod tests {
     // Test restrict_initial_region and initial_region
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
@@ -400,7 +394,7 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
@@ -475,7 +469,7 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
@@ -513,7 +507,7 @@ mod tests {
 
     #[test]
     fn is_superset_of_rule() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
@@ -552,7 +546,7 @@ mod tests {
 
     #[test]
     fn union() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(vec![0]);
+        let tmp_bts = SomeBits::new(8);
         let tmp_sta = SomeState::new(tmp_bts.clone());
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
