@@ -136,7 +136,7 @@ impl SomeMask {
 
     /// Return the number of bits used to express a SomeMask instance.
     pub fn num_bits(&self) -> usize {
-        self.bts.num_bits
+        self.bts.num_bits()
     }
 
     /// Return a formatted string.

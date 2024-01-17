@@ -45,7 +45,7 @@ impl fmt::Display for SomeBits {
 /// If there was only one domain, therefore state, this struct may be able to use an array
 /// instead of a vector.
 pub struct SomeBits {
-    pub num_bits: usize,
+    pub num_bits: u8,
     pub ints: Vec<Bitint>,
 }
 
@@ -62,14 +62,14 @@ impl SomeBits {
             };
 
         Self {
-            num_bits,
+            num_bits: num_bits as u8,
             ints: vec![0 as Bitint; num_ints as usize],
         }
     }
 
     /// Create a SomeBits instance with integer(s) set to zero.
     pub fn new_low(&self) -> Self {
-        SomeBits::new(self.num_bits)
+        SomeBits::new(self.num_bits as usize)
     }
 
     /// Create a SomeBits instance with integer(s) set to one.
@@ -103,6 +103,11 @@ impl SomeBits {
         }
 
         self.b_and(&self.new_high())
+    }
+
+    /// Return num_bits as usize to function in another module.
+    pub fn num_bits(&self) -> usize {
+        self.num_bits as usize
     }
 
     /// Return a bits instance from a string.
@@ -223,7 +228,7 @@ impl SomeBits {
     /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
     /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
-        assert!(bit_num < self.num_bits);
+        assert!(bit_num < self.num_bits as usize);
 
         let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
 
@@ -288,7 +293,7 @@ impl SomeBits {
     /// Return a copy of an instance, with a bit position changed.
     /// X to X-not for a specific bit.
     pub fn change_bit(&self, bit_num: usize) -> Self {
-        assert!(bit_num < self.num_bits);
+        assert!(bit_num < self.num_bits as usize);
 
         let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
 
@@ -444,7 +449,7 @@ impl SomeBits {
     fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
 
-        for bit_num in (0..self.num_bits).rev() {
+        for bit_num in (0..self.num_bits as usize).rev() {
             if self.is_bit_set(bit_num) {
                 astr.push('1');
             } else {
@@ -465,7 +470,7 @@ impl SomeBits {
         // Add a space under r prefix to region.
         astr.push(' ');
 
-        for num_bit in (0..self.num_bits).rev() {
+        for num_bit in (0..self.num_bits as usize).rev() {
             if self.is_bit_set(num_bit) {
                 astr.push('v');
             } else {
@@ -495,8 +500,8 @@ impl BitsRef for SomeBits {
 /// Implement the trait StrLen for SomeBits.
 impl StrLen for SomeBits {
     fn strlen(&self) -> usize {
-        let items_len = self.num_bits;
-        let sep_len = (self.num_bits / 4) - 1;
+        let items_len = self.num_bits as usize;
+        let sep_len = (items_len / 4) - 1;
         items_len + sep_len
     }
 }

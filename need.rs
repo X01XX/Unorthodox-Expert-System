@@ -67,6 +67,13 @@ pub enum SomeNeed {
         anchor: SomeState,
         priority: usize,
     },
+    /// Seek a sample in a region that contains no samples.
+    SampleInRegion {
+        dom_id: usize,
+        act_id: usize,
+        target_region: SomeRegion,
+        priority: usize,
+    },
     /// Seek a sample in a region that other groups do not cover.
     StateInRemainder {
         dom_id: usize,
@@ -114,6 +121,7 @@ impl SomeNeed {
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
+            Self::SampleInRegion { .. } => "SampleInRegion",
             Self::ToSelectRegion { .. } => "ToSelectRegion",
             Self::ExitSelectRegion { .. } => "ExitSelectRegion",
             Self::ExpandGroup { .. } => "ExpandGroup",
@@ -127,11 +135,12 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegion { priority, .. } => *priority += 300,
-            Self::ExpandGroup { priority, .. } => *priority += 400,
-            Self::ConfirmGroup { priority, .. } => *priority += 500,
+            Self::ConfirmGroup { priority, .. } => *priority += 400,
+            Self::ExpandGroup { priority, .. } => *priority += 500,
             Self::LimitGroup { priority, .. } => *priority += 600,
             Self::LimitGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
+            Self::SampleInRegion { priority, .. } => *priority += 850,
             Self::ToSelectRegion { priority, .. } => *priority += 900,
             // Some needs should have a higher priority number compared to ToSelectRegion.
             Self::StateInRemainder { priority, .. } => *priority = 1000,
@@ -153,6 +162,7 @@ impl SomeNeed {
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
             Self::StateNotInGroup { priority, .. } => *priority,
+            Self::SampleInRegion { priority, .. } => *priority,
             Self::ToSelectRegion { priority, .. } => *priority,
             // Some needs should have a higher priority number compared to ToSelectRegion.
             Self::StateInRemainder { priority, .. } => *priority,
@@ -196,6 +206,11 @@ impl SomeNeed {
                     return true;
                 }
             }
+            Self::SampleInRegion { target_region, .. } => {
+                if target_region.is_superset_of(cur_state) {
+                    return true;
+                }
+            }
             Self::ExpandGroup { target_region, .. } => {
                 if target_region.is_superset_of(cur_state) {
                     return true;
@@ -218,6 +233,7 @@ impl SomeNeed {
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
             Self::StateNotInGroup { act_id, .. } => *act_id,
+            Self::SampleInRegion { act_id, .. } => *act_id,
             Self::StateInRemainder { act_id, .. } => *act_id,
             _ => panic!(
                 "SomeNeed::act_id should not be called for the {} need.",
@@ -236,6 +252,7 @@ impl SomeNeed {
             Self::LimitGroupAdj { dom_id, .. } => *dom_id,
             Self::StateInRemainder { dom_id, .. } => *dom_id,
             Self::StateNotInGroup { dom_id, .. } => *dom_id,
+            Self::SampleInRegion { dom_id, .. } => *dom_id,
             Self::ExitSelectRegion { dom_id, .. } => *dom_id,
             _ => panic!(
                 "SomeNeed::dom_id should not be called for the {} need.",
@@ -294,6 +311,11 @@ impl SomeNeed {
                 *dom_id,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
+            Self::SampleInRegion {
+                dom_id,
+                target_region,
+                ..
+            } => TargetStore::new(vec![SomeTarget::new(*dom_id, target_region.clone())]),
             Self::ToSelectRegion { target_regions, .. } => {
                 let mut targ = TargetStore::with_capacity(target_regions.len());
                 for (dom_idx, targx) in target_regions.iter().enumerate() {
@@ -427,6 +449,16 @@ impl SomeNeed {
             } => {
                 format!(
                 "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state} not in a group)")
+            }
+            Self::SampleInRegion {
+                dom_id,
+                act_id,
+                target_region,
+                priority,
+            } => {
+                format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State in {target_region})"
+                )
             }
             Self::ToSelectRegion {
                 target_regions,

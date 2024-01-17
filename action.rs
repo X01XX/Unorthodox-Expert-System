@@ -801,65 +801,77 @@ impl SomeAction {
 
         // Check each group.
         for grpx in self.groups.iter() {
-            'next_regx: for regx in poss_regs.iter() {
+            for regx in poss_regs.iter() {
                 if !regx.is_superset_of(&grpx.region) || grpx.region == *regx {
                     continue;
                 }
 
                 let target_reg = regx.far_reg(&grpx.region);
-                let sqrs = self.squares.squares_in_reg(&target_reg);
 
-                if sqrs.is_empty() {
-                    //println!("Dom {} Act {} group {} may be expanded to {}?", self.dom_id, self.id, grpx.region, regx);
+                if let Some(sqrx) = self.squares.pick_a_square_in(&target_reg) {
+                    if sqrx.pnc {
+                        continue;
+                    }
                     let mut ndx = SomeNeed::ExpandGroup {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         group_region: grpx.region.clone(),
                         expand_region: regx.clone(),
-                        target_region: regx.far_reg(&grpx.region),
+                        target_region: SomeRegion::new(vec![sqrx.state.clone()]),
                         priority: 0,
                     };
                     ndx.set_priority();
                     ret_nds.push(ndx);
-                    continue 'next_regx;
+                    continue;
                 }
-
-                // Check for pnc square in target reg.
-                for sqrx in sqrs.iter() {
-                    if sqrx.pnc {
-                        continue 'next_regx;
-                    }
-                }
-
-                // Get squares with the maximum number of samples.
-                let mut max_rated = Vec::<&SomeSquare>::new();
-                let mut max_rate = 0;
-                for sqrx in sqrs.iter() {
-                    let rt = sqrx.rate();
-                    if rt > max_rate {
-                        max_rated = Vec::<&SomeSquare>::new();
-                        max_rate = rt;
-                    }
-                    if rt == max_rate {
-                        max_rated.push(sqrx);
-                    }
-                }
-                // Choose a maximum rated square.
-                let sqrx = max_rated[rand::thread_rng().gen_range(0..max_rated.len())];
-
                 //println!("Dom {} Act {} group {} may be expanded to {}?", self.dom_id, self.id, grpx.region, regx);
                 let mut ndx = SomeNeed::ExpandGroup {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     group_region: grpx.region.clone(),
                     expand_region: regx.clone(),
-                    target_region: SomeRegion::new(vec![sqrx.state.clone()]),
+                    target_region: regx.far_reg(&grpx.region),
                     priority: 0,
                 };
                 ndx.set_priority();
                 ret_nds.push(ndx);
             } // next regx
         } // next grpx
+
+        // Check each region.
+        'next_regx: for regx in poss_regs.iter() {
+            for grpx in self.groups.iter() {
+                if regx.intersects(&grpx.region) {
+                    continue 'next_regx;
+                }
+            }
+            // No groups in regx.
+            if let Some(sqrx) = self.squares.pick_a_square_in(regx) {
+                if sqrx.pnc {
+                    // Found pnc square?
+                } else {
+                    // Found square that needs more samples.
+                    let mut needx = SomeNeed::StateNotInGroup {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target_state: sqrx.state.clone(),
+                        priority: 0,
+                    };
+                    needx.set_priority();
+                    ret_nds.push(needx);
+                }
+            } else {
+                // No square in regx.
+                let mut needx = SomeNeed::SampleInRegion {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target_region: regx.clone(),
+                    priority: 0,
+                };
+                needx.set_priority();
+                ret_nds.push(needx);
+            }
+        }
 
         ret_nds
     }
@@ -1534,13 +1546,14 @@ impl SomeAction {
     ) -> SomeNeed {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", regx, grpx.region, grpx.rules, grpy.region, grpy.rules);
         // Check for any squares in the region
-        let sqrs_in = self.squares.squares_in_reg(regx);
-
-        if sqrs_in.is_empty() {
+        if let Some(sqrx) = self.squares.pick_a_square_in(regx) {
+            if sqrx.pnc {
+                panic!("pnc square found");
+            }
             let mut needx = SomeNeed::ContradictoryIntersection {
                 dom_id: self.dom_id,
                 act_id: self.id,
-                target_region: regx.clone(),
+                target_region: SomeRegion::new(vec![sqrx.state.clone()]),
                 group1: grpx.region.clone(),
                 ruls1: rulsx,
                 group2: grpy.region.clone(),
@@ -1551,41 +1564,10 @@ impl SomeAction {
             return needx;
         }
 
-        // Some samples have been taken in the region
-
-        // Find a square with the highest number of samples
-        // If any are pnc, panic.
-        let mut max_rslts = 0;
-        // change start
-        let mut stas_check = Vec::<&SomeState>::new();
-        for sqrz in &sqrs_in {
-            if sqrz.pnc {
-                panic!(
-                    "Square {} is pnc in contradictory intersection {}\n  of group {}\n and group {}",
-                    &sqrz, &regx, &grpx, &grpy
-                );
-            }
-
-            if sqrz.len_results() > max_rslts {
-                max_rslts = sqrz.len_results();
-                stas_check = Vec::<&SomeState>::new();
-            }
-
-            if sqrz.len_results() == max_rslts {
-                stas_check.push(&sqrz.state);
-            }
-        }
-
-        // Pick a square.
-        let mut inx = 0;
-        if stas_check.len() > 1 {
-            inx = rand::thread_rng().gen_range(0..stas_check.len());
-        }
-
         let mut needx = SomeNeed::ContradictoryIntersection {
             dom_id: self.dom_id,
             act_id: self.id,
-            target_region: SomeRegion::new(vec![stas_check[inx].clone()]),
+            target_region: regx.clone(),
             group1: grpx.region.clone(),
             ruls1: rulsx,
             group2: grpy.region.clone(),

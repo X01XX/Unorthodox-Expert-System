@@ -111,7 +111,7 @@ impl SomeState {
 
     /// Return the number of bits used to represent a state.
     pub fn num_bits(&self) -> usize {
-        self.bts.num_bits
+        self.bts.num_bits()
     }
 
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.

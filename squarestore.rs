@@ -6,6 +6,7 @@ use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -139,5 +140,41 @@ impl SquareStore {
         }
 
         rc_str
+    }
+
+    /// Check for squares in a region.
+    /// Return None if ther are none.
+    /// Return any square that is pnc.
+    /// Else retun a square with the maximum number of samples.
+    pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Option<&SomeSquare> {
+        let sqrs = self.squares_in_reg(target_reg);
+
+        if sqrs.is_empty() {
+            return None;
+        }
+
+        // Check for pnc square in target reg.
+        for sqrx in sqrs.iter() {
+            if sqrx.pnc {
+                return Some(sqrx);
+            }
+        }
+
+        // Get squares with the maximum number of samples.
+        let mut max_rated = Vec::<&SomeSquare>::new();
+        let mut max_rate = 0;
+
+        for sqrx in sqrs.iter() {
+            let rt = sqrx.rate();
+            if rt > max_rate {
+                max_rated = Vec::<&SomeSquare>::new();
+                max_rate = rt;
+            }
+            if rt == max_rate {
+                max_rated.push(sqrx);
+            }
+        }
+        // Choose a maximum rated square.
+        Some(max_rated[rand::thread_rng().gen_range(0..max_rated.len())])
     }
 } // end impl SquareStore
