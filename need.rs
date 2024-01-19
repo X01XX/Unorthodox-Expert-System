@@ -25,48 +25,6 @@ impl fmt::Display for SomeNeed {
 #[derive(Debug, Serialize, Deserialize)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
-    /// Housekeeping, add a group.
-    AddGroup {
-        group_region: SomeRegion,
-        rules: Option<RuleStore>,
-    },
-    /// Get an additional sample of a state, to confirm a group.
-    ConfirmGroup {
-        dom_id: usize,
-        act_id: usize,
-        target_state: SomeState,
-        grp_reg: SomeRegion,
-        priority: usize,
-    },
-    /// Sample a state to resolve a contradictory intersection of two groups.
-    ContradictoryIntersection {
-        dom_id: usize,
-        act_id: usize,
-        target_region: SomeRegion,
-        group1: SomeRegion,
-        ruls1: Option<RuleStore>,
-        group2: SomeRegion,
-        ruls2: Option<RuleStore>,
-        priority: usize,
-    },
-    /// Sample a state to limit a group.
-    LimitGroup {
-        dom_id: usize,
-        act_id: usize,
-        target_state: SomeState,
-        for_group: SomeRegion,
-        anchor: SomeState,
-        priority: usize,
-    },
-    /// Sample an adjacent state to limit a group.
-    LimitGroupAdj {
-        dom_id: usize,
-        act_id: usize,
-        target_state: SomeState,
-        for_group: SomeRegion,
-        anchor: SomeState,
-        priority: usize,
-    },
     /// Seek a sample in a region that contains no samples.
     SampleInRegion {
         dom_id: usize,
@@ -88,10 +46,56 @@ pub enum SomeNeed {
         target_state: SomeState,
         priority: usize,
     },
-    /// Move all current domain states to the corresponding regions of an SelectRegion.
-    ToSelectRegion {
-        target_regions: RegionStoreCorr,
+    /// Get an additional sample of a state, to confirm a group.
+    ConfirmGroup {
+        dom_id: usize,
+        act_id: usize,
+        target_state: SomeState,
         priority: usize,
+
+        grp_reg: SomeRegion,
+    },
+    /// Sample a state to resolve a contradictory intersection of two groups.
+    ContradictoryIntersection {
+        dom_id: usize,
+        act_id: usize,
+        target_region: SomeRegion,
+        priority: usize,
+
+        group1: SomeRegion,
+        ruls1: Option<RuleStore>,
+        group2: SomeRegion,
+        ruls2: Option<RuleStore>,
+    },
+    /// Sample a state to limit a group.
+    LimitGroup {
+        dom_id: usize,
+        act_id: usize,
+        target_state: SomeState,
+        priority: usize,
+
+        for_group: SomeRegion,
+        anchor: SomeState,
+    },
+    /// Sample an adjacent state to limit a group.
+    LimitGroupAdj {
+        dom_id: usize,
+        act_id: usize,
+        target_state: SomeState,
+        priority: usize,
+
+        for_group: SomeRegion,
+        anchor: SomeState,
+    },
+    /// Sample a state in a region to expand an existing group.
+    ExpandGroup {
+        dom_id: usize,
+        act_id: usize,
+        target_region: SomeRegion,
+        priority: usize,
+
+        group_region: SomeRegion,
+        expand_region: SomeRegion,
     },
     /// Move all current domain states from the corresponding regions of an OptmalRegion.
     ExitSelectRegion {
@@ -99,14 +103,15 @@ pub enum SomeNeed {
         target_region: SomeRegion,
         priority: usize,
     },
-    /// Sample a state in a region to expand an existing group.
-    ExpandGroup {
-        dom_id: usize,
-        act_id: usize,
-        group_region: SomeRegion,
-        expand_region: SomeRegion,
-        target_region: SomeRegion,
+    /// Move all current domain states to the corresponding regions of an SelectRegion.
+    ToSelectRegion {
+        target_regions: RegionStoreCorr,
         priority: usize,
+    },
+    /// Housekeeping, add a group.
+    AddGroup {
+        group_region: SomeRegion,
+        rules: Option<RuleStore>,
     },
 }
 

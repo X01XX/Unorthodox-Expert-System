@@ -196,9 +196,9 @@ impl SomeDomain {
         self.set_cur_state(asample.result.clone());
     }
 
-    /// Take an action with the current state.
-    pub fn take_action(&mut self, act_id: usize) {
-        let asample = self.actions.take_action(act_id, &self.cur_state);
+    /// Take an action with the current state, store the sample.
+    pub fn take_action_arbitrary(&mut self, act_id: usize) {
+        let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
 
@@ -233,7 +233,7 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
-            let asample = self.actions.take_action(stpx.act_id, &self.cur_state);
+            let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
             num_steps += 1;
 
             self.set_cur_state(asample.result.clone());
@@ -255,11 +255,14 @@ impl SomeDomain {
 
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
-                AltRuleHint::NoAlt {} => return Err("Step failed".to_string()),
+                AltRuleHint::NoAlt {} => {
+                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                    return Err("Unexpected result, step failed".to_string());
+                }
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
 
-                    let asample = self.actions.take_action(stpx.act_id, &self.cur_state);
+                    let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
                     num_steps += 1;
 
                     self.set_cur_state(asample.result.clone());
@@ -267,7 +270,8 @@ impl SomeDomain {
                     if stpx.result.is_superset_of(&self.cur_state) {
                         continue;
                     }
-                    return Err("Action retry failed".to_string());
+                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                    return Err("Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltRule { rule } => {
                     if rule.result_region().is_superset_of(&self.cur_state) {
@@ -281,7 +285,7 @@ impl SomeDomain {
                                     num_steps += num;
 
                                     let asample =
-                                        self.actions.take_action(stpx.act_id, &self.cur_state);
+                                        self.actions.take_action_step(stpx.act_id, &self.cur_state);
                                     num_steps += 1;
 
                                     self.set_cur_state(asample.result.clone());
@@ -289,15 +293,21 @@ impl SomeDomain {
                                     if stpx.result.is_superset_of(&self.cur_state) {
                                         continue;
                                     }
+                                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
                                     return Err("Action return/retry failed.".to_string());
                                 }
                                 Err(msg) => {
                                     return Err(msg);
                                 }
                             }
+                        } else {
+                            return Err(
+                                "No plan to return, and try again, found. Step failed".to_string()
+                            );
                         }
                     } else {
-                        return Err("Action plan to return/retry not found".to_string());
+                        self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                        return Err("Unexpected result, step failed".to_string());
                     }
                 }
             }
@@ -1237,14 +1247,14 @@ mod tests {
         dm0.add_action(ruls1);
 
         dm0.cur_state = dm0.state_from_string("s0b0101")?;
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
 
         println!("\ndm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1265,7 +1275,7 @@ mod tests {
         }
 
         // Reset current state to 5.
-        dm0.take_action(1);
+        dm0.take_action_arbitrary(1);
 
         let mut num_steps2 = 0;
 
@@ -1305,14 +1315,14 @@ mod tests {
         dm0.add_action(ruls1);
 
         dm0.cur_state = dm0.state_from_string("s0b0101")?;
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
-        dm0.take_action(0);
-        dm0.take_action(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
+        dm0.take_action_arbitrary(0);
+        dm0.take_action_arbitrary(1);
 
         println!("\n(1) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1336,7 +1346,7 @@ mod tests {
         println!("Acts: {}\n", dm0.actions);
 
         // Reset current state to 5.
-        dm0.take_action(1);
+        dm0.take_action_arbitrary(1);
 
         println!("\n(3) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);

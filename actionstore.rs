@@ -229,8 +229,19 @@ impl ActionStore {
 
     /// Take an action with the current state.
     /// Return a sample.
-    pub fn take_action(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        self.avec[act_id].take_action(cur_state)
+    pub fn take_action_step(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
+        self.avec[act_id].take_action_step(cur_state)
+    }
+
+    /// Take an action with the current state, store the sample.
+    /// Return a sample.
+    pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
+        self.avec[act_id].take_action_arbitrary(cur_state)
+    }
+
+    /// Eval an unexpected result from a step.
+    pub fn eval_unexpected_result(&mut self, act_id: usize, asample: &SomeSample) {
+        self.avec[act_id].eval_unexpected_result(asample)
     }
 } // end impl ActionStore
 

@@ -42,8 +42,10 @@ impl fmt::Display for SomeBits {
 /// This structure sets the type of integer.
 /// Each Domain sets the number of integers.
 /// The lowest significant bit is the right-most bit or the right-most integer.
-/// If there was only one domain, therefore state, this struct may be able to use an array
+/// If there was only one domain, this struct may be able to use an array
 /// instead of a vector.
+/// If there is more than one domain, it may be best practice to have a different
+/// number of bits for each.
 pub struct SomeBits {
     pub num_bits: u8,
     pub ints: Vec<Bitint>,
@@ -76,9 +78,7 @@ impl SomeBits {
     pub fn new_high(&self) -> Self {
         let adjust = self.num_bits as u32 % Bitint::BITS;
 
-        let num_ints = (self.num_bits as u32 / Bitint::BITS) + if adjust > 0 { 1 } else { 0 };
-
-        let mut ints = vec![Bitint::MAX; num_ints as usize];
+        let mut ints = vec![Bitint::MAX; self.ints.len()];
 
         if adjust > 0 {
             ints[0] >>= Bitint::BITS - adjust;
@@ -105,7 +105,7 @@ impl SomeBits {
         self.b_and(&self.new_high())
     }
 
-    /// Return num_bits as usize to function in another module.
+    /// Return number of bits as a usize, to functions in another module.
     pub fn num_bits(&self) -> usize {
         self.num_bits as usize
     }
@@ -308,6 +308,8 @@ impl SomeBits {
 
     /// Return Bits that are the same
     pub fn b_eqv(&self, other: &Self) -> Self {
+        assert_eq!(self.num_bits, other.num_bits);
+
         self.b_xor(other).b_not()
     }
 
@@ -333,11 +335,15 @@ impl SomeBits {
 
     /// Return true if a Bits struct is a ones-subset of another.
     pub fn is_subset_ones_of(&self, other: &Self) -> bool {
+        assert_eq!(self.num_bits, other.num_bits);
+
         *self == self.b_and(other)
     }
 
     /// Return true if a Bits struct is a ones-superset of another.
     pub fn is_superset_ones_of(&self, other: &Self) -> bool {
+        assert_eq!(self.num_bits, other.num_bits);
+
         *other == self.b_and(other)
     }
 
@@ -355,11 +361,15 @@ impl SomeBits {
     /// Return the number of bits that are different.
     /// This can be interpreted as how "far away" two bit patterns are.
     pub fn distance(&self, other: &Self) -> usize {
+        assert_eq!(self.num_bits, other.num_bits);
+
         self.b_xor(other).num_one_bits()
     }
 
     /// Return true if two bits instances are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
+        assert_eq!(self.num_bits, other.num_bits);
+
         self.b_xor(other).just_one_bit()
     }
 
@@ -511,6 +521,28 @@ mod tests {
     use super::*;
     use crate::tools;
     use rand::Rng;
+
+    // Changing Bitint will affect this test.
+    #[test]
+    fn new_high() -> Result<(), String> {
+        let ur_bts = SomeBits::new(7);
+        let high = ur_bts.new_high();
+        println!("high 7 {high}");
+        assert!(high.ints[0] == 127);
+
+        let ur_bts = SomeBits::new(8);
+        let high = ur_bts.new_high();
+        println!("high 8 {high}");
+        assert!(high.ints[0] == 255);
+
+        let ur_bts = SomeBits::new(9);
+        let high = ur_bts.new_high();
+        println!("high 9 {high}");
+        assert!(high.ints[0] == 1);
+        assert!(high.ints[1] == 255);
+
+        Ok(())
+    }
 
     #[test]
     fn test_strlen() -> Result<(), String> {

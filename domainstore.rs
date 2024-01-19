@@ -308,11 +308,6 @@ impl DomainStore {
         self.domains[self.needs[nd_inx].dom_id()].take_action_need(&self.needs[nd_inx]);
     }
 
-    /// Take an action.
-    pub fn take_action(&mut self, dmxi: usize, actx: usize) {
-        self.domains[dmxi].take_action(actx);
-    }
-
     /// Return a reference to the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         self.domains[dmxi].get_current_state()

@@ -53,6 +53,7 @@ use state::SomeState;
 mod domain;
 mod needstore;
 mod plan;
+use plan::SomePlan;
 mod pn;
 mod statestore;
 mod statestorecorr;
@@ -61,6 +62,7 @@ mod domainstore;
 mod step;
 mod stepstore;
 use domainstore::{DomainStore, InxPlan};
+use stepstore::StepStore;
 mod actioninterface;
 mod planstore;
 mod selectregions;
@@ -1099,7 +1101,62 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
             } else if dmxs.seek_state_in_region(dom_id, &goal_region) {
                 println!("\nChange to region succeeded");
             } else {
+                let cur_region = SomeRegion::new(vec![dmxs.cur_state(dom_id).clone()]);
                 println!("\nChange to region failed");
+                let cng_rule = cur_region.rule_to_region(&goal_region);
+                println!("Rule needed: {cng_rule}");
+
+                let required_change = cng_rule.change();
+
+                let steps_str: StepStore = dmxs[dom_id].actions.get_steps(&required_change, None);
+                if steps_str.is_not_empty() {
+                    println!("Steps found {steps_str}");
+                    let can_change = steps_str.aggregate_changes().expect("SNH");
+
+                    if required_change.is_subset_of(&can_change) {
+                        println!("All needed changes found in steps");
+                        if steps_str.len() > 1 {
+                            for inx in 0..(steps_str.len() - 1) {
+                                for iny in (inx + 1)..steps_str.len() {
+                                    if steps_str[inx]
+                                        .mutually_exclusive(&steps_str[iny], &required_change)
+                                    {
+                                        println!(
+                                            "Mutually exclusive steps {} {}",
+                                            steps_str[inx], steps_str[iny]
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        for stepx in steps_str.iter() {
+                            if let Some(plans2) =
+                                dmxs[dom_id].make_plans2(&cur_region, &stepx.initial, None)
+                            {
+                                println!("Plan(s) to get from {cur_region} to {}", stepx.initial);
+                                // delete dups.
+                                let mut plans = Vec::<SomePlan>::new();
+                                for planx in plans2 {
+                                    if tools::vec_contains(&plans, SomePlan::eq, &planx) {
+                                    } else {
+                                        plans.push(planx);
+                                    }
+                                }
+                                println!("{}", tools::vec_string(&plans));
+                            } else {
+                                println!("No plan to get from {cur_region} to {}", stepx.initial);
+                            }
+                        }
+                    } else {
+                        println!(
+                            "Wanted changes {} are not a subset of possible changes {}",
+                            required_change, can_change
+                        );
+                    }
+                } else {
+                    println!("No steps found");
+                }
+                pause_for_input("\nPress Enter to continue: ");
             }
             Ok(())
         }
@@ -1127,7 +1184,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 
     if cmd.len() == 2 {
         println!("Act {act_id} sample State {cur_state}");
-        dmx.take_action(act_id);
+        dmx.take_action_arbitrary(act_id);
         return Ok(());
     }
 
@@ -1142,7 +1199,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 
         println!("Act {act_id} sample State {a_state}");
         dmx.set_state(&a_state);
-        dmx.take_action(act_id);
+        dmx.take_action_arbitrary(act_id);
         return Ok(());
     }
 

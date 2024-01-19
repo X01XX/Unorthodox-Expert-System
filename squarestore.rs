@@ -146,17 +146,17 @@ impl SquareStore {
     /// Return None if ther are none.
     /// Return any square that is pnc.
     /// Else retun a square with the maximum number of samples.
-    pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Option<&SomeSquare> {
+    pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Result<Option<&SomeSquare>, String> {
         let sqrs = self.squares_in_reg(target_reg);
 
         if sqrs.is_empty() {
-            return None;
+            return Ok(None);
         }
 
         // Check for pnc square in target reg.
         for sqrx in sqrs.iter() {
             if sqrx.pnc {
-                return Some(sqrx);
+                return Err(format!("Square {} is pnc", sqrx));
             }
         }
 
@@ -175,6 +175,8 @@ impl SquareStore {
             }
         }
         // Choose a maximum rated square.
-        Some(max_rated[rand::thread_rng().gen_range(0..max_rated.len())])
+        Ok(Some(
+            max_rated[rand::thread_rng().gen_range(0..max_rated.len())],
+        ))
     }
 } // end impl SquareStore
