@@ -17,6 +17,12 @@ impl fmt::Display for SquareStore {
     }
 }
 
+/// Error enum for pick_a_square_in (for more samples)
+pub enum PickError {
+    NoSquares,
+    PncSquare,
+}
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Default)]
 pub struct SquareStore {
@@ -142,21 +148,19 @@ impl SquareStore {
         rc_str
     }
 
-    /// Check for squares in a region.
-    /// Return None if ther are none.
-    /// Return any square that is pnc.
-    /// Else retun a square with the maximum number of samples.
-    pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Result<Option<&SomeSquare>, String> {
+    /// Pick a square in a region, for seeking more samples.
+    /// Return a square with the maximum number of samples.
+    pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Result<&SomeSquare, PickError> {
         let sqrs = self.squares_in_reg(target_reg);
 
         if sqrs.is_empty() {
-            return Ok(None);
+            return Err(PickError::NoSquares);
         }
 
         // Check for pnc square in target reg.
         for sqrx in sqrs.iter() {
             if sqrx.pnc {
-                return Err(format!("Square {} is pnc", sqrx));
+                return Err(PickError::PncSquare);
             }
         }
 
@@ -175,8 +179,6 @@ impl SquareStore {
             }
         }
         // Choose a maximum rated square.
-        Ok(Some(
-            max_rated[rand::thread_rng().gen_range(0..max_rated.len())],
-        ))
+        Ok(max_rated[rand::thread_rng().gen_range(0..max_rated.len())])
     }
 } // end impl SquareStore

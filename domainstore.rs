@@ -519,7 +519,8 @@ impl DomainStore {
 
     /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
     fn rate_plans(&self, aplan: &PlanStore) -> isize {
-        self.select.rate_plans(aplan, &self.all_current_states())
+        self.select_negative
+            .rate_plans(aplan, &self.all_current_states())
     }
 
     /// Get plans to move to a goal region, choose a plan.
@@ -1394,10 +1395,8 @@ impl DomainStore {
                     &stepx.initial, &stepx.act_id, &stepx.group_reg
                 );
                 if inx > 0 {
-                    for sel_regx in self.select.iter() {
-                        if sel_regx.regions.is_superset_states_corr(&cur_states)
-                            && sel_regx.value() < 0
-                        {
+                    for sel_regx in self.select_negative.iter() {
+                        if sel_regx.regions.is_superset_states_corr(&cur_states) {
                             print!(" in {:+}", sel_regx);
                         }
                     }

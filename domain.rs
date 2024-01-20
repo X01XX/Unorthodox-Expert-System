@@ -766,8 +766,12 @@ impl SomeDomain {
     }
 
     /// Get aggregate changes for a domain.
-    pub fn aggregate_changes(&self) -> &Option<SomeChange> {
-        &self.actions.aggregate_changes
+    pub fn aggregate_changes(&self) -> Option<&SomeChange> {
+        if let Some(chgs) = &self.actions.aggregate_changes {
+            Some(chgs)
+        } else {
+            None
+        }
     }
 
     /// Return the total number of groups in all the actions.

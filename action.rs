@@ -24,7 +24,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
-use crate::squarestore::SquareStore;
+use crate::squarestore::{PickError, SquareStore};
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::{AltRuleHint, SomeStep};
@@ -809,35 +809,35 @@ impl SomeAction {
                     continue;
                 }
 
-                let target_reg = regx.far_reg(&grpx.region);
+                if let Some(regx_int) = regx.intersection(max_reg) {
+                    let target_reg = regx_int.far_reg(&grpx.region);
 
-                match self.squares.pick_a_square_in(&target_reg) {
-                    Ok(Some(sqrx)) => {
-                        let mut ndx = SomeNeed::ExpandGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            group_region: grpx.region.clone(),
-                            expand_region: regx.clone(),
-                            target_region: SomeRegion::new(vec![sqrx.state.clone()]),
-                            priority: 0,
-                        };
-                        ndx.set_priority();
-                        ret_nds.push(ndx);
-                    }
-                    Ok(None) => {
-                        let mut ndx = SomeNeed::ExpandGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            group_region: grpx.region.clone(),
-                            expand_region: regx.clone(),
-                            target_region: regx.far_reg(&grpx.region),
-                            priority: 0,
-                        };
-                        ndx.set_priority();
-                        ret_nds.push(ndx);
-                    }
-                    Err(errstr) => {
-                        println!("{errstr}");
+                    match self.squares.pick_a_square_in(&target_reg) {
+                        Ok(sqrx) => {
+                            let mut ndx = SomeNeed::ExpandGroup {
+                                dom_id: self.dom_id,
+                                act_id: self.id,
+                                group_region: grpx.region.clone(),
+                                expand_region: regx_int.clone(),
+                                target_region: SomeRegion::new(vec![sqrx.state.clone()]),
+                                priority: 0,
+                            };
+                            ndx.set_priority();
+                            ret_nds.push(ndx);
+                        }
+                        Err(PickError::NoSquares) => {
+                            let mut ndx = SomeNeed::ExpandGroup {
+                                dom_id: self.dom_id,
+                                act_id: self.id,
+                                group_region: grpx.region.clone(),
+                                expand_region: regx_int.clone(),
+                                target_region: regx_int.far_reg(&grpx.region),
+                                priority: 0,
+                            };
+                            ndx.set_priority();
+                            ret_nds.push(ndx);
+                        }
+                        Err(PickError::PncSquare) => (),
                     }
                 }
             } // next regx
@@ -852,7 +852,7 @@ impl SomeAction {
             }
             // No groups in regx.
             match self.squares.pick_a_square_in(regx) {
-                Ok(Some(sqrx)) => {
+                Ok(sqrx) => {
                     // Found square that needs more samples.
                     let mut needx = SomeNeed::StateNotInGroup {
                         dom_id: self.dom_id,
@@ -863,8 +863,7 @@ impl SomeAction {
                     needx.set_priority();
                     ret_nds.push(needx);
                 }
-                Ok(None) => {
-                    // No square in regx.
+                Err(PickError::NoSquares) => {
                     let mut needx = SomeNeed::SampleInRegion {
                         dom_id: self.dom_id,
                         act_id: self.id,
@@ -874,8 +873,8 @@ impl SomeAction {
                     needx.set_priority();
                     ret_nds.push(needx);
                 }
-                Err(errstr) => {
-                    println!("{errstr}");
+                Err(PickError::PncSquare) => {
+                    println!("Pnc square found in {regx} ?");
                 }
             }
         }
@@ -1554,7 +1553,7 @@ impl SomeAction {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", regx, grpx.region, grpx.rules, grpy.region, grpy.rules);
         // Check for any squares in the region
         match self.squares.pick_a_square_in(regx) {
-            Ok(Some(sqrx)) => {
+            Ok(sqrx) => {
                 let mut needx = SomeNeed::ContradictoryIntersection {
                     dom_id: self.dom_id,
                     act_id: self.id,
@@ -1568,7 +1567,7 @@ impl SomeAction {
                 needx.set_priority();
                 needx
             }
-            Ok(None) => {
+            Err(PickError::NoSquares) => {
                 let mut needx = SomeNeed::ContradictoryIntersection {
                     dom_id: self.dom_id,
                     act_id: self.id,
@@ -1582,8 +1581,8 @@ impl SomeAction {
                 needx.set_priority();
                 needx
             }
-            Err(errstr) => {
-                panic!("{errstr}");
+            Err(PickError::PncSquare) => {
+                panic!("Pnc square found in {regx} ?");
             }
         }
     } // end cont_int_region_need

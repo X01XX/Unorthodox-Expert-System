@@ -321,21 +321,14 @@ impl SomeRegion {
     /// far region within the superset region.
     pub fn far_reg(&self, other: &Self) -> Self {
         assert!(self.is_superset_of(other));
+        assert!(self != other);
 
-        let int_x_msk = self.x_mask();
+        let cng_mask = self.x_mask().bitwise_xor(&other.x_mask());
 
-        let ok_x_msk = other.x_mask();
-
-        assert!(ok_x_msk.is_subset_ones_of(&int_x_msk));
-
-        // Get bit(s) to use to calculate a far-sub-region in reg_int from ok_reg
-        // by changing reg_int X over ok_reg 1 to 0 over 1, or reg_int X over ok_reg 0 to 1 over 0
-        let cng_bits = int_x_msk.bitwise_and(&ok_x_msk.bitwise_not());
-
-        let state1 = other.state1().bitwise_xor(&cng_bits);
-        let state2 = other.state2().bitwise_xor(&cng_bits);
-
-        Self::new(vec![state1, state2])
+        SomeRegion::new(vec![
+            other.state1().bitwise_xor(&cng_mask),
+            other.state2().bitwise_xor(&cng_mask),
+        ])
     }
 
     /// Return true if a region is a subset on another region.

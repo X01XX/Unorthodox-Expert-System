@@ -1511,6 +1511,11 @@ fn usage() {
         "    ss <act num> <state> <result-state> - Sample State, for a given action, state and arbitrary result, for the CDD."
     );
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
+    println!(
+        "                               To find out more about why a need cannot be satisfied:"
+    );
+    println!("                               If needed, use the \"cd\" command, to display the need domain.");
+    println!("                               Then use this command, with the need target.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
