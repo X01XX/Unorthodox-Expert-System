@@ -30,7 +30,7 @@ pub struct SomeMask {
 /// Display trait for SomeMask
 impl fmt::Display for SomeMask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "m{}", self.formatted_string())
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -134,14 +134,9 @@ impl SomeMask {
             .collect()
     }
 
-    /// Return the number of bits used to express a SomeMask instance.
-    pub fn num_bits(&self) -> usize {
-        self.bts.num_bits()
-    }
-
     /// Return a formatted string.
-    fn formatted_string(&self) -> String {
-        self.bts.to_string()
+    pub fn formatted_string(&self) -> String {
+        format!("m{}", self.bts)
     }
 
     /// Create a formatted string to display under an instance,
@@ -232,6 +227,27 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_msk = SomeMask::new(SomeBits::new(16));
+        let strrep = format!("{tmp_msk}");
+        let len = strrep.len();
+        let calc_len = tmp_msk.strlen();
+        println!("str {tmp_msk} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_msk = SomeMask::new(SomeBits::new(6));
+        let strrep = format!("{tmp_msk}");
+        let len = strrep.len();
+        let calc_len = tmp_msk.strlen();
+        println!("str {tmp_msk} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_msk = SomeMask::new(SomeBits::new(5));
+        let strrep = format!("{tmp_msk}");
+        let len = strrep.len();
+        let calc_len = tmp_msk.strlen();
+        println!("str {tmp_msk} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_msk = SomeMask::new(SomeBits::new(4));
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();

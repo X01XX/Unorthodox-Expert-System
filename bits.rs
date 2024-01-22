@@ -510,9 +510,11 @@ impl BitsRef for SomeBits {
 /// Implement the trait StrLen for SomeBits.
 impl StrLen for SomeBits {
     fn strlen(&self) -> usize {
-        let items_len = self.num_bits as usize;
-        let sep_len = (items_len / 4) - 1;
-        items_len + sep_len
+        let num_bits = self.num_bits as usize;
+        let num_4 = num_bits / 4;
+        let extra = num_bits % 4;
+        let sep_len = num_4 - if extra > 0 { 0 } else { 1 };
+        num_bits + sep_len
     }
 }
 
@@ -559,6 +561,35 @@ mod tests {
         let calc_len = tmp_bts.strlen();
         println!("str {strrep} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
+
+        let tmp_bts = SomeBits::new(6);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_bts = SomeBits::new(5);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_bts = SomeBits::new(4);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_bts = SomeBits::new(3);
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
         Ok(())
     }
 

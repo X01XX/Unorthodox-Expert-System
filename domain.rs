@@ -14,7 +14,6 @@
 //! The boredom value is greater if the the current state is in multiple optimal regions (intersection).
 
 use crate::actionstore::ActionStore;
-use crate::bits::SomeBits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::need::SomeNeed;
@@ -121,13 +120,8 @@ pub struct SomeDomain {
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
-    pub fn new(dom_id: usize, num_bits: usize) -> Self {
-        debug_assert_ne!(num_bits, 0);
-        // Set up a domain instance with the correct value for num_ints
-        let ur_state = SomeState::new(SomeBits::new(num_bits));
-        let cur_state = ur_state.new_random();
-
-        let max_poss_region = SomeRegion::new(vec![ur_state.new_high(), ur_state.new_low()]);
+    pub fn new(dom_id: usize, cur_state: SomeState) -> Self {
+        let max_poss_region = SomeRegion::new(vec![cur_state.new_high(), cur_state.new_low()]);
         Self {
             id: dom_id,
             actions: ActionStore::new(vec![]),
@@ -137,11 +131,6 @@ impl SomeDomain {
         }
     }
 
-    /// Return the number of bits used in a domain.
-    pub fn num_bits(&self) -> usize {
-        self.cur_state.num_bits()
-    }
-
     /// Return a reference to the current, internal, state.
     pub fn get_current_state(&self) -> &SomeState {
         &self.cur_state
@@ -149,11 +138,6 @@ impl SomeDomain {
 
     /// Add a SomeAction instance to the store.
     pub fn add_action(&mut self, rules: Vec<RuleStore>) {
-        for rulesx in rules.iter() {
-            if rulesx.is_not_empty() {
-                assert!(self.num_bits() == rulesx[0].num_bits());
-            }
-        }
         self.actions.add_action(self.id, rules);
     }
 
@@ -1217,6 +1201,7 @@ impl SomeDomain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::SomeBits;
     use crate::domainstore::DomainStore;
 
     /// Return true if a need with a given type and target is in a NeedStore.
@@ -1237,7 +1222,7 @@ mod tests {
     #[test]
     fn alt_rule1() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
             dm0.rule_from_string("00/11/01/11").expect("SNH"),
@@ -1305,7 +1290,7 @@ mod tests {
     #[test]
     fn alt_rule2() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
             dm0.rule_from_string("00/11/00/10").expect("SNH"),
@@ -1381,7 +1366,7 @@ mod tests {
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(8);
+        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
         let dm0 = &mut dmxs[0];
 
         dm0.cur_state = dm0.state_from_string("s0b1")?;
@@ -1431,7 +1416,7 @@ mod tests {
         //let mut dm0 = SomeDomain::new(0, 8);
 
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(8);
+        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
         let dm0 = &mut dmxs[0];
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
@@ -1483,7 +1468,7 @@ mod tests {
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1541,7 +1526,7 @@ mod tests {
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1624,7 +1609,7 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1660,7 +1645,7 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1736,7 +1721,7 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1789,7 +1774,7 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1831,7 +1816,7 @@ mod tests {
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
-        let mut dm0 = SomeDomain::new(0, 16);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(16)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
@@ -1865,7 +1850,7 @@ mod tests {
         let act0: usize = 0;
 
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b0011")?;
         dm0.add_action(vec![]); // Act 0
 
@@ -1933,7 +1918,7 @@ mod tests {
     #[test]
     fn find_paths_through_regions() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, 8);
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
         dm0.cur_state = dm0.state_from_string("s0b1011")?;
         dm0.add_action(vec![]);
 

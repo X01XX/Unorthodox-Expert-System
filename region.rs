@@ -60,11 +60,6 @@ impl SomeRegion {
             return Self { states };
         }
 
-        // Sanity check.
-        for stax in states.iter() {
-            assert!(stax.num_bits() == states[0].num_bits());
-        }
-
         // Remove duplicate states, if any.
         // Could be the result of intersecting something like 000X and 00X1 = 0001.
         let mut remv = Vec::<usize>::new();
@@ -155,29 +150,27 @@ impl SomeRegion {
     /// x = (0, 1).
     /// XxXx = (1010, 0101).
     pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
-        self.new_from_string2(str, self.state1().to_mask().new_low())
+        self.new_from_string2(str, self.state1().new_low())
     }
 
     /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, positions that are omitted will be padded with Xs.
     pub fn new_from_string_pad_x(&self, str: &str) -> Result<Self, String> {
-        self.new_from_string2(str, self.state1().new_high().to_mask())
+        self.new_from_string2(str, self.state1().new_high())
     }
 
     /// Return a Region from a string and the number of integers to use.
     /// Left-most, consecutive, positions that are omitted will be padded with zeros,
     /// if msk_high is all zeros, Xs if msk_high is all ones.
-    fn new_from_string2(&self, str: &str, mut msk_high: SomeMask) -> Result<Self, String> {
-        let mut msk_low = msk_high.new_low();
-
-        let mut num_bits = 0;
+    fn new_from_string2(&self, str: &str, mut sta_high: SomeState) -> Result<Self, String> {
+        let mut sta_low = sta_high.new_low();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "r" {
                     continue;
                 } else if chr == "s" {
-                    let state_r = msk_low.to_state().new_from_string(str);
+                    let state_r = sta_low.new_from_string(str);
                     match state_r {
                         Ok(a_state) => {
                             return Ok(Self::new(vec![a_state]));
@@ -194,17 +187,17 @@ impl SomeRegion {
             }
 
             if chr == "0" {
-                msk_high = msk_high.shift_left();
-                msk_low = msk_low.shift_left();
+                sta_high.shift_left();
+                sta_low.shift_left();
             } else if chr == "1" {
-                msk_high = msk_high.push_1();
-                msk_low = msk_low.push_1();
+                sta_high.push_1();
+                sta_low.push_1();
             } else if chr == "X" {
-                msk_high = msk_high.push_1();
-                msk_low = msk_low.shift_left();
+                sta_high.push_1();
+                sta_low.shift_left();
             } else if chr == "x" {
-                msk_high = msk_high.shift_left();
-                msk_low = msk_low.push_1();
+                sta_high.shift_left();
+                sta_low.push_1();
             } else if chr == "_" {
                 continue;
             } else {
@@ -212,26 +205,29 @@ impl SomeRegion {
                     "Did not understand the string {str}, invalid character?"
                 ));
             }
-            num_bits += 1;
         } // end for ch
 
-        if num_bits > msk_high.num_bits() {
-            return Err(format!("String {str}, too long?"));
-        }
-
-        Ok(Self::new(vec![msk_high.to_state(), msk_low.to_state()]))
+        Ok(Self::new(vec![sta_high, sta_low]))
     } // end new_from_string
 
     /// Return a String representation of a Region.
     fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.strlen());
-        s1.push('r');
 
-        let num_bits = self.state1().num_bits();
+        let state1_str = &self.state1().formatted_string();
+        let state2_str = &self.state2().formatted_string();
 
-        for inx in (0..num_bits).rev() {
-            let b0 = self.state1().is_bit_set(inx);
-            let b1 = self.state2().is_bit_set(inx);
+        for (chr1, chr2) in state1_str.graphemes(true).zip(state2_str.graphemes(true)) {
+            if chr1 == "s" {
+                s1.push('r');
+                continue;
+            }
+            if chr1 == "_" {
+                s1.push('_');
+                continue;
+            }
+            let b0 = chr1 == "1";
+            let b1 = chr2 == "1";
 
             if b0 {
                 if b1 {
@@ -243,10 +239,6 @@ impl SomeRegion {
                 s1.push('x');
             } else {
                 s1.push('0');
-            }
-
-            if inx > 0 && inx % 4 == 0 {
-                s1.push('_');
             }
             // println!("a bit is: {} b0 set {} b1 set {} s1: {}", valb, b0, b1, s1);
         }
@@ -570,11 +562,6 @@ impl SomeRegion {
         self.edge_mask().is_low()
     }
 
-    /// Return the number of bits used to define a Region.
-    pub fn num_bits(&self) -> usize {
-        self.state1().num_bits()
-    }
-
     /// Return a rule for translating from a region to another region.
     /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
     /// 0->0 instead of 0->X), the second region.
@@ -789,10 +776,28 @@ mod tests {
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![
-            SomeState::new(SomeBits::new(8)),
-            SomeState::new(SomeBits::new(8)),
-        ]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(16))]);
+        let strrep = format!("{tmp_reg}");
+        let len = strrep.len();
+        let calc_len = tmp_reg.strlen();
+        println!("str {tmp_reg} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(6))]);
+        let strrep = format!("{tmp_reg}");
+        let len = strrep.len();
+        let calc_len = tmp_reg.strlen();
+        println!("str {tmp_reg} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(5))]);
+        let strrep = format!("{tmp_reg}");
+        let len = strrep.len();
+        let calc_len = tmp_reg.strlen();
+        println!("str {tmp_reg} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
@@ -1204,32 +1209,32 @@ mod tests {
 
         // Region >1 state, Region >1 state.
         let union = reg2a.union(&reg2b);
-        println!("{reg2a} distance {reg2b} is {union}");
+        println!("{reg2a} union {reg2b} is {union}");
         assert!(union == ur_reg.new_from_string("rxx0x11")?);
 
         // Region >1 state, Region =1 state.
         let union = reg2a.union(&reg1a);
-        println!("{reg2a} distance {reg1a} is {union}");
+        println!("{reg2a} union {reg1a} is {union}");
         assert!(union == ur_reg.new_from_string("rxx0xx1")?);
 
         // Region >1 state, state.
         let union = reg2a.union(&sta0);
-        println!("{reg2a} distance {sta0} is {union}");
+        println!("{reg2a} union {sta0} is {union}");
         assert!(union == ur_reg.new_from_string("rxx0xx1")?);
 
         // Region =1 state, Region =1 state.
         let union = reg1a.union(&reg1b);
-        println!("{reg1a} distance {reg1b} is {union}");
+        println!("{reg1a} union {reg1b} is {union}");
         assert!(union == ur_reg.new_from_string("r0xx1")?);
 
         // Region =1 state, Region >1 state.
         let union = reg1a.union(&reg2a);
-        println!("{reg1a} distance {reg2a} is {union}");
+        println!("{reg1a} union {reg2a} is {union}");
         assert!(union == ur_reg.new_from_string("rXX0xx1")?);
 
         // Region =1 state, state.
         let union = reg1a.union(&sta0);
-        println!("{reg1a} distance {sta0} is {union}");
+        println!("{reg1a} union {sta0} is {union}");
         assert!(union == ur_reg.new_from_string("r000x_0101")?);
 
         Ok(())

@@ -50,11 +50,6 @@ impl Eq for RuleStore {}
 impl RuleStore {
     /// Return a new, empty, RuleStore.
     pub fn new(avec: Vec<SomeRule>) -> Self {
-        if avec.len() > 1 {
-            for rulx in avec.iter() {
-                assert!(rulx.num_bits() == avec[0].num_bits());
-            }
-        }
         Self { avec }
     }
 

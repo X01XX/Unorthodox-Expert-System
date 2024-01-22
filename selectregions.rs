@@ -74,8 +74,6 @@ impl SelectRegions {
 
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
-        debug_assert!(self.is_similar_to(other));
-
         self.regions
             .intersection_corr(&other.regions)
             .map(|regs| Self::new(regs, self.pos + other.pos, self.neg + other.neg))
@@ -91,19 +89,6 @@ impl SelectRegions {
     /// Return the number of regions in a SelectRegions instance.
     pub fn len(&self) -> usize {
         self.regions.len()
-    }
-
-    /// Return true if two SelectRegions are similar.
-    pub fn is_similar_to(&self, other: &Self) -> bool {
-        if self.regions.len() != other.regions.len() {
-            return false;
-        }
-        for (regx, regy) in self.regions.iter().zip(other.regions.iter()) {
-            if regx.num_bits() != regy.num_bits() {
-                return false;
-            }
-        }
-        true
     }
 
     /// Add a Region.

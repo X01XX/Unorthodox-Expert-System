@@ -35,7 +35,7 @@ pub struct SomeState {
 /// Implement the fmt::Display Trait for a SomeState instance.
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "s{}", self.formatted_string())
+        write!(f, "{}", self.formatted_string())
     }
 }
 
@@ -109,11 +109,6 @@ impl SomeState {
         self.bts.is_bit_set(b)
     }
 
-    /// Return the number of bits used to represent a state.
-    pub fn num_bits(&self) -> usize {
-        self.bts.num_bits()
-    }
-
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         self.bts.is_adjacent(&other.bts)
@@ -125,8 +120,8 @@ impl SomeState {
     }
 
     /// Return a string used to represent a state.
-    fn formatted_string(&self) -> String {
-        self.bts.to_string()
+    pub fn formatted_string(&self) -> String {
+        format!("s{}", self.bts)
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
@@ -207,6 +202,16 @@ impl SomeState {
                 .bitwise_or(&self.bitwise_not().bitwise_and(&changes.b01)),
         )
     }
+
+    /// Push a 1 into the state.
+    pub fn push_1(&mut self) {
+        self.bts = self.bts.push_1();
+    }
+
+    /// Shift state left one position.
+    pub fn shift_left(&mut self) {
+        self.bts = self.bts.shift_left();
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.
@@ -277,6 +282,27 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_sta = SomeState::new(SomeBits::new(16));
+        let strrep = format!("{tmp_sta}");
+        let len = strrep.len();
+        let calc_len = tmp_sta.strlen();
+        println!("str {tmp_sta} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(6));
+        let strrep = format!("{tmp_sta}");
+        let len = strrep.len();
+        let calc_len = tmp_sta.strlen();
+        println!("str {tmp_sta} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(5));
+        let strrep = format!("{tmp_sta}");
+        let len = strrep.len();
+        let calc_len = tmp_sta.strlen();
+        println!("str {tmp_sta} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(4));
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();

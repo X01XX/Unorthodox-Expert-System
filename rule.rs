@@ -137,11 +137,6 @@ impl SomeRule {
         Ok(Self { b00, b01, b11, b10 })
     }
 
-    /// Return the number of bits used in a rule.
-    pub fn num_bits(&self) -> usize {
-        self.b00.num_bits()
-    }
-
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         let Some(tmprul) = self.intersection(other) else {
@@ -279,42 +274,51 @@ impl SomeRule {
     fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.strlen());
 
-        let num_bits = self.b00.num_bits();
+        let m00 = self.b00.formatted_string();
+        let m01 = self.b01.formatted_string();
+        let m11 = self.b11.formatted_string();
+        let m10 = self.b10.formatted_string();
 
-        for i in (0..num_bits).rev() {
-            let b00: bool = self.b00.is_bit_set(i);
-            let b01: bool = self.b01.is_bit_set(i);
-            let b11: bool = self.b11.is_bit_set(i);
-            let b10: bool = self.b10.is_bit_set(i);
-
-            if i != (num_bits - 1) {
-                if (i + 1) % 4 == 0 {
-                    strrc.push('_');
-                } else {
-                    strrc.push('/');
-                }
+        for (((c00, c01), c11), c10) in m00
+            .graphemes(true)
+            .zip(m01.graphemes(true))
+            .zip(m11.graphemes(true))
+            .zip(m10.graphemes(true))
+        {
+            if c00 == "m" {
+                continue;
+            }
+            if c00 == "_" {
+                strrc.pop();
+                strrc.push('_');
+                continue;
             }
 
+            let b00 = c00 == "1";
+            let b01 = c01 == "1";
+            let b11 = c11 == "1";
+            let b10 = c10 == "1";
+
             if b00 && !b01 && b11 && !b10 {
-                strrc.push_str("XX");
+                strrc.push_str("XX/");
             } else if b00 && !b01 && !b11 && b10 {
-                strrc.push_str("X0");
+                strrc.push_str("X0/");
             } else if !b00 && b01 && b11 && !b10 {
-                strrc.push_str("X1");
+                strrc.push_str("X1/");
             } else if !b00 && b01 && !b11 && b10 {
-                strrc.push_str("Xx");
+                strrc.push_str("Xx/");
             } else if b00 && !b01 && !b11 && !b10 {
-                strrc.push_str("00");
+                strrc.push_str("00/");
             } else if !b00 && !b01 && b11 && !b10 {
-                strrc.push_str("11");
+                strrc.push_str("11/");
             } else if !b00 && !b01 && !b11 && b10 {
-                strrc.push_str("10");
+                strrc.push_str("10/");
             } else if !b00 && b01 && !b11 && !b10 {
-                strrc.push_str("01");
+                strrc.push_str("01/");
             } else if b00 && b01 && !b11 && !b10 {
-                strrc.push_str("0X");
+                strrc.push_str("0X/");
             } else if !b00 && !b01 && b11 && b10 {
-                strrc.push_str("1X");
+                strrc.push_str("1X/");
             } else if !b00 && !b01 && !b11 && !b10 {
                 // Return a new Square instance
                 strrc.push_str("dc");
@@ -323,6 +327,7 @@ impl SomeRule {
             }
         } // next i
 
+        strrc.pop();
         strrc
     }
 
@@ -488,7 +493,15 @@ impl SomeRule {
 /// Implement the trait StrLen for SomeRule.
 impl StrLen for SomeRule {
     fn strlen(&self) -> usize {
-        (self.b00.num_bits() * 2) + (self.b00.num_bits() - 1)
+        let len1 = self.b00.strlen();
+        if len1 < 6 {
+            ((len1 - 1) * 3) - 1 // rightmost position is 2 chars.
+        } else {
+            let num4 = len1 / 5;
+            let mut extra = len1 % 5;
+            extra = extra.saturating_sub(1); // factor out the 'm' prefix.
+            (num4 * 4 * 3) + (extra * 3) - 1 // rightmost position is 2 chars.
+        }
     }
 }
 
@@ -741,6 +754,24 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_sta = SomeState::new(SomeBits::new(16));
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+
+        let strrep = format!("{tmp_rul}");
+        let len = strrep.len();
+        let calc_len = tmp_rul.strlen();
+        println!("str {tmp_rul} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(5));
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+
+        let strrep = format!("{tmp_rul}");
+        let len = strrep.len();
+        let calc_len = tmp_rul.strlen();
+        println!("str {tmp_rul} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_sta = SomeState::new(SomeBits::new(4));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");

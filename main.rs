@@ -29,6 +29,7 @@ use std::env;
 mod action;
 mod actionstore;
 mod bits;
+use crate::bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
@@ -257,8 +258,9 @@ fn run_number_times(num_runs: usize) -> usize {
 fn domainstore_init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
-    dmxs.add_domain(5);
-    dmxs.add_domain(16);
+
+    dmxs.add_domain(SomeState::new(SomeBits::new(5)).new_random());
+    dmxs.add_domain(SomeState::new(SomeBits::new(16)).new_random());
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![
