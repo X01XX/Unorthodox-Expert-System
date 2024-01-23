@@ -104,11 +104,6 @@ impl SomeState {
         Self::new(self.bts.new_high())
     }
 
-    /// Return true if a given bit in a state is set to one.
-    pub fn is_bit_set(&self, b: usize) -> bool {
-        self.bts.is_bit_set(b)
-    }
-
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         self.bts.is_adjacent(&other.bts)
@@ -142,13 +137,6 @@ impl SomeState {
     pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
         Self {
             bts: self.bts.b_xor(other.bitsref()),
-        }
-    }
-
-    /// Return a copy of an instance, with a bit position changed.
-    pub fn change_bit(&self, num: usize) -> Self {
-        Self {
-            bts: self.bts.change_bit(num),
         }
     }
 

@@ -68,11 +68,11 @@ impl ActionStore {
         // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
-        let max_reg_prev = self.max_agg_region(cur_state);
+        let max_reg_prev = self.reachable_region(cur_state);
 
         self.calc_aggregate_changes();
 
-        let max_reg = self.max_agg_region(cur_state);
+        let max_reg = self.reachable_region(cur_state);
 
         if max_reg != max_reg_prev {
             self.check_limited(&max_reg);
@@ -123,7 +123,7 @@ impl ActionStore {
 
     /// Return the expected maximum reachable region, based on the current state
     /// and known possible bit position changes.
-    pub fn max_agg_region(&self, cur_state: &SomeState) -> SomeRegion {
+    pub fn reachable_region(&self, cur_state: &SomeState) -> SomeRegion {
         if let Some(chgs) = &self.aggregate_changes {
             SomeRegion::new(vec![cur_state.clone(), cur_state.apply_changes(chgs)])
         } else {

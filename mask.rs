@@ -98,11 +98,6 @@ impl SomeMask {
         self.bts.is_high()
     }
 
-    /// Return true if a given bit position is one.
-    pub fn is_bit_set(&self, b: usize) -> bool {
-        self.bts.is_bit_set(b)
-    }
-
     /// Return true if a mask is a subset of a second mask.
     pub fn is_subset_ones_of(&self, other: &Self) -> bool {
         self.bts.is_subset_ones_of(&other.bts)

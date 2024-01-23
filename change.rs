@@ -66,11 +66,6 @@ impl SomeChange {
         }
     }
 
-    /// Return a mask of all bit positions that can change both ways.
-    pub fn bits_change_mask(&self) -> SomeMask {
-        self.b01.bitwise_and(&self.b10)
-    }
-
     /// Return the logical bitwise not of a change
     pub fn bitwise_not(&self) -> Self {
         Self {

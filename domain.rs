@@ -703,40 +703,33 @@ impl SomeDomain {
     } // end act_id_from_string
 
     /// Return the current maximum region that can be reached from the current state.
-    pub fn reachable_region(&self) -> Option<SomeRegion> {
-        self.actions.aggregate_changes.as_ref().map(|changes| {
-            SomeRegion::new(vec![
-                self.cur_state.clone(),
-                self.cur_state.bitwise_xor(&changes.bits_change_mask()),
-            ])
-        })
+    pub fn reachable_region(&self) -> SomeRegion {
+        self.actions.reachable_region(&self.cur_state)
     }
 
     /// Return regions not covered by existing groups.
     pub fn regions_not_covered(&self, act_id: usize) -> RegionStore {
         let mut ncov = RegionStore::new(vec![]);
 
-        if let Some(reachable) = self.reachable_region() {
-            ncov.push(reachable);
+        let reachable = self.reachable_region();
+        ncov.push(reachable);
 
-            for grpx in self.actions[act_id].groups.iter() {
-                ncov = ncov.subtract_item(&grpx.region);
-            }
+        for grpx in self.actions[act_id].groups.iter() {
+            ncov = ncov.subtract_item(&grpx.region);
         }
         ncov
     }
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_id: usize) -> Result<(), String> {
-        if let Some(max_region) = self.reachable_region() {
-            self.actions[act_id].display_anchor_info()?;
+        let max_region = self.reachable_region();
+        self.actions[act_id].display_anchor_info()?;
 
-            let whats_left = self.regions_not_covered(act_id);
-            println!(
-                "\nMaximum Region: {}, Regions not covered by a group: {}",
-                max_region, whats_left
-            );
-        };
+        let whats_left = self.regions_not_covered(act_id);
+        println!(
+            "\nMaximum Region: {}, Regions not covered by a group: {}",
+            max_region, whats_left
+        );
         Ok(())
     }
 
@@ -1376,23 +1369,31 @@ mod tests {
         dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0")?;
+        let s1 = dm0.state_from_string("s0b1")?;
+        let s2 = dm0.state_from_string("s0b10")?;
+        let s4 = dm0.state_from_string("s0b100")?;
+        let s7 = dm0.state_from_string("s0b0111")?;
+        let s8 = dm0.state_from_string("s0b1000")?;
+        let sb = dm0.state_from_string("s0b1011")?;
+        let sd = dm0.state_from_string("s0b1101")?;
+        let se = dm0.state_from_string("s0b1110")?;
         let sf = dm0.state_from_string("s0b1111")?;
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s0.change_bit(0)));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), sf.change_bit(0)));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se));
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s0.change_bit(1)));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sf.change_bit(1)));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd));
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s0.change_bit(2)));
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sf.change_bit(2)));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb));
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s0.change_bit(3)));
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), sf.change_bit(3))); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8));
+        dm0.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7)); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         let cur_state = dm0.state_from_string("s0b111")?;
@@ -1425,24 +1426,31 @@ mod tests {
         dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0")?;
-        let sf = dm0.state_from_string("s0b1111")?;
+        let s1 = dm0.state_from_string("s0b1")?;
+        let s2 = dm0.state_from_string("s0b10")?;
+        let s3 = dm0.state_from_string("s0b11")?;
+        let s4 = dm0.state_from_string("s0b100")?;
+        let s8 = dm0.state_from_string("s0b1000")?;
         let sb = dm0.state_from_string("s0b1011")?;
+        let sd = dm0.state_from_string("s0b1101")?;
+        let se = dm0.state_from_string("s0b1110")?;
+        let sf = dm0.state_from_string("s0b1111")?;
 
         // Create group for region XXXX->XXXx, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s0.change_bit(0)));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), sf.change_bit(0)));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se));
 
         // Create group for region XXXX->XXxX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s0.change_bit(1)));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sf.change_bit(1)));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd));
 
         // Create group for region XXXX-XxXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s0.change_bit(2)));
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sf.change_bit(2)));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf, sb.clone()));
 
         // Create group for region X0XX->x0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s0.change_bit(3)));
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(sb.clone(), sb.change_bit(3)));
+        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0, s8));
+        dm0.eval_sample_arbitrary(3, &SomeSample::new(sb, s3));
 
         println!("\nActs: {}", dm0.actions);
 
@@ -1821,12 +1829,15 @@ mod tests {
         dm0.add_action(vec![]);
 
         let s0 = dm0.state_from_string("s0b0001010010101000")?;
-        let s1 = dm0.state_from_string("s0b1111010110101011")?;
+        let s1 = dm0.state_from_string("s0b0001010010111000")?;
+
+        let s2 = dm0.state_from_string("s0b1111010110101011")?;
+        let s3 = dm0.state_from_string("s0b1111010110111011")?;
         // Region                          XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s0.change_bit(4)));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.change_bit(4)));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0, s1));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2, s3));
 
         println!("\nActs: {}", dm0.actions[0]);
         assert!(dm0.actions[0]

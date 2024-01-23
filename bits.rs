@@ -105,11 +105,6 @@ impl SomeBits {
         self.b_and(&self.new_high())
     }
 
-    /// Return number of bits as a usize, to functions in another module.
-    pub fn num_bits(&self) -> usize {
-        self.num_bits as usize
-    }
-
     /// Return a bits instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
     /// Underscore character is ignored.
@@ -227,7 +222,7 @@ impl SomeBits {
     /// Match the intuition of a hexidecimal representation.
     /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
     /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
-    pub fn is_bit_set(&self, bit_num: usize) -> bool {
+    fn is_bit_set(&self, bit_num: usize) -> bool {
         assert!(bit_num < self.num_bits as usize);
 
         let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
@@ -288,22 +283,6 @@ impl SomeBits {
             num_bits: self.num_bits,
             ints,
         }
-    }
-
-    /// Return a copy of an instance, with a bit position changed.
-    /// X to X-not for a specific bit.
-    pub fn change_bit(&self, bit_num: usize) -> Self {
-        assert!(bit_num < self.num_bits as usize);
-
-        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
-
-        let int_num = self.ints.len() - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
-
-        let mut ret_bits = self.clone();
-
-        ret_bits.ints[int_num] ^= (1 << bit_pos) as Bitint;
-
-        ret_bits
     }
 
     /// Return Bits that are the same
@@ -812,38 +791,6 @@ mod tests {
         bitsz = bitsx.b_xor(&bitsy);
         println!("bitsz: {bitsz}");
         assert!(bitsz.is_high());
-
-        Ok(())
-    }
-
-    // Test change_bit functions.
-    #[test]
-    fn change_bits() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(9);
-
-        let bitsx = tmp_bts.change_bit(0);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_from_string("0x01")?);
-
-        let bitsx = tmp_bts.change_bit(1);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_from_string("0x02")?);
-
-        let bitsx = tmp_bts.change_bit(2);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_from_string("0x04")?);
-
-        let bitsx = tmp_bts.change_bit(3);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_from_string("0x08")?);
-
-        let bitsx = tmp_bts.change_bit(8);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_from_string("0x100")?);
-
-        let bitsx = bitsx.change_bit(8);
-        println!("bitsx: {bitsx}");
-        assert!(bitsx == tmp_bts.new_low());
 
         Ok(())
     }
