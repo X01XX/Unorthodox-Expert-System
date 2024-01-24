@@ -214,8 +214,8 @@ impl SomeRegion {
     fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.strlen());
 
-        let state1_str = &self.state1().formatted_string();
-        let state2_str = &self.state2().formatted_string();
+        let state1_str = format!("{}", self.state1());
+        let state2_str = format!("{}", self.state2());
 
         for (chr1, chr2) in state1_str.graphemes(true).zip(state2_str.graphemes(true)) {
             if chr1 == "s" {

@@ -335,23 +335,23 @@ impl SelectRegionsStore {
             }
             // Delete consecutive negative rates on end.
             // The goal may be in a negative region.
-            while let Some(ratex) = domx_rates.last() {
-                if *ratex < 0 {
-                    domx_rates.pop();
-                } else {
-                    break;
-                }
-            }
+            //while let Some(ratex) = domx_rates.last() {
+            //    if *ratex < 0 {
+            //        domx_rates.pop();
+            //    } else {
+            //        break;
+            //    }
+            //}
             // Delete consecutive negative rates at beginning.
             // The initial region may be in a negative region.
-            domx_rates.reverse();
-            while let Some(ratex) = domx_rates.last() {
-                if *ratex < 0 {
-                    domx_rates.pop();
-                } else {
-                    break;
-                }
-            }
+            //domx_rates.reverse();
+            //while let Some(ratex) = domx_rates.last() {
+            //    if *ratex < 0 {
+            //        domx_rates.pop();
+            //    } else {
+            //        break;
+            //    }
+            // }
 
             if domx_rates.is_empty() {
             } else {

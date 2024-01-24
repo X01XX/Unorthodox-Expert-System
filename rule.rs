@@ -274,10 +274,10 @@ impl SomeRule {
     fn formatted_string(&self) -> String {
         let mut strrc = String::with_capacity(self.strlen());
 
-        let m00 = self.b00.formatted_string();
-        let m01 = self.b01.formatted_string();
-        let m11 = self.b11.formatted_string();
-        let m10 = self.b10.formatted_string();
+        let m00 = format!("{}", self.b00);
+        let m01 = format!("{}", self.b01);
+        let m11 = format!("{}", self.b11);
+        let m10 = format!("{}", self.b10);
 
         for (((c00, c01), c11), c10) in m00
             .graphemes(true)

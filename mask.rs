@@ -130,7 +130,7 @@ impl SomeMask {
     }
 
     /// Return a formatted string.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         format!("m{}", self.bts)
     }
 

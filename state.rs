@@ -115,7 +115,7 @@ impl SomeState {
     }
 
     /// Return a string used to represent a state.
-    pub fn formatted_string(&self) -> String {
+    fn formatted_string(&self) -> String {
         format!("s{}", self.bts)
     }
 

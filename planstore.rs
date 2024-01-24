@@ -34,6 +34,17 @@ impl PlanStore {
         self.avec.len()
     }
 
+    /// Return the number of the SomePlan vector, non-empty.
+    pub fn num_non_empty(&self) -> usize {
+        let mut cnt = 0;
+        for planx in self.avec.iter() {
+            if planx.is_not_empty() {
+                cnt += 1;
+            }
+        }
+        cnt
+    }
+
     /// Return true if the store does not contain at least one non-empty plan.
     pub fn is_empty(&self) -> bool {
         if self.avec.is_empty() {
