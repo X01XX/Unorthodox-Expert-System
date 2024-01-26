@@ -27,6 +27,21 @@ impl fmt::Display for SelectRegions {
     }
 }
 
+impl PartialEq for SelectRegions {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        for (regx, regy) in self.regions.iter().zip(other.regions.iter()) {
+            if regx != regy {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for SelectRegions {}
+
 #[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct SelectRegions {
@@ -104,6 +119,23 @@ impl SelectRegions {
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of_states(&self, stas: &StateStoreCorr) -> bool {
         self.regions.is_superset_states_corr(stas)
+    }
+
+    /// Return true if there is an intersection of corresponding regions, of two SelectRegions.
+    pub fn intersects(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
+        self.regions.intersects(&other.regions)
+    }
+
+    /// Set the positive value.
+    pub fn set_pos(&mut self, val: usize) {
+        self.pos = val;
+    }
+
+    /// Set the negative value;
+    pub fn set_neg(&mut self, val: usize) {
+        self.neg = val;
     }
 }
 

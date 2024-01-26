@@ -180,6 +180,70 @@ impl RegionStoreCorr {
 
         true
     }
+
+    /// Return self minus a given RegionStoreCorr.
+    pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
+        debug_assert!(self.len() == subtrahend.len());
+
+        let mut ret = Vec::<Self>::new();
+
+        // Check for no change.
+        if !self.intersects(subtrahend) {
+            ret.push(self.clone());
+            return ret;
+        }
+        // Check for superest.
+        if subtrahend.is_superset_of_corr(self) {
+            return ret;
+        }
+
+        for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
+            let xb_msk = regx.x_mask().bitwise_and(&regy.edge_mask());
+            if xb_msk.is_low() {
+                continue;
+            }
+            // At least one X over non-X bit found.
+
+            // Isolate each X over non-X bit.
+            let single_bits = xb_msk.split();
+
+            // Generate a new RegionStore for each isolated bit.
+            for sbitx in single_bits.iter() {
+                // Alter one X bit in self/regx to the opposite of the corresponding non-X bit in subtrahend/regy.
+                let regz = if sbitx.bitwise_and(regy.state1()).is_low() {
+                    // Other/regy bit is zero, in regy.state1 (and regy.state2, since its non-X).
+                    regx.set_to_ones(sbitx)
+                } else {
+                    regx.set_to_zeros(sbitx)
+                };
+
+                // Copy self, except for one region with one bit changed.
+                let mut one_result = Self::with_capacity(self.len());
+                for (iny, regm) in self.iter().enumerate() {
+                    if iny == inx {
+                        one_result.push(regz.clone());
+                    } else {
+                        one_result.push(regm.clone());
+                    }
+                }
+                // Save fragment to return.
+                ret.push(one_result);
+            }
+        }
+        ret
+    }
+
+    /// Return true if there is an intersection of corresponding regions.
+    pub fn intersects(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            if !x.intersects(y) {
+                return false;
+            }
+        }
+        true
+    }
 } // End impl RegionStoreCorr.
 
 impl Index<usize> for RegionStoreCorr {

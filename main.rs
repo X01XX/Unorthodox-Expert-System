@@ -631,9 +631,11 @@ fn command_loop(dmxs: &mut DomainStore) {
                 let ruls = dmx.all_rules();
                 loop {
                     if let Some(ref regx) = goal {
-                        let wanted_changes = SomeRegion::new(vec![cur_state.clone()])
-                            .rule_to_region(regx)
-                            .change();
+                        let wanted_changes = SomeRule::rule_region_to_region(
+                            &SomeRegion::new(vec![cur_state.clone()]),
+                            regx,
+                        )
+                        .change();
                         println!(
                             "Goal {}, Change needed {} (number bits {})",
                             regx,
@@ -721,8 +723,10 @@ fn command_loop(dmxs: &mut DomainStore) {
                                     ruly = rulx
                                         .restrict_for_changes(wanted_changes, None)
                                         .expect("SNH");
-                                    let to_rule = SomeRegion::new(vec![cur_state.clone()])
-                                        .rule_to_region(&ruly.initial_region());
+                                    let to_rule = SomeRule::rule_region_to_region(
+                                        &SomeRegion::new(vec![cur_state.clone()]),
+                                        &ruly.initial_region(),
+                                    );
 
                                     let agg_rule = to_rule.combine_pair(&ruly);
 
@@ -1004,13 +1008,11 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
                 return true;
             }
         }
-        SomeNeed::ExitSelectRegion {
-            dom_id,
-            target_region,
-            ..
-        } => {
-            if target_region.is_superset_of(&dmxs[*dom_id].cur_state) {
-                dmxs.set_boredom_limit();
+        SomeNeed::ExitSelectRegion { .. } => {
+            if dmxs.needs[nd_inx]
+                .target()
+                .is_superset_of_states(&dmxs.all_current_states())
+            {
                 return true;
             }
         }
@@ -1105,7 +1107,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
             } else {
                 let cur_region = SomeRegion::new(vec![dmxs.cur_state(dom_id).clone()]);
                 println!("\nChange to region failed");
-                let cng_rule = cur_region.rule_to_region(&goal_region);
+                let cng_rule = SomeRule::rule_region_to_region(&cur_region, &goal_region);
                 println!("Rule needed: {cng_rule}");
 
                 let required_change = cng_rule.change();

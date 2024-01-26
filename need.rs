@@ -97,10 +97,10 @@ pub enum SomeNeed {
         group_region: SomeRegion,
         expand_region: SomeRegion,
     },
-    /// Move all current domain states from the corresponding regions of an OptmalRegion.
+    /// Move all current domain states from the corresponding regions of a SelectRegion.
     ExitSelectRegion {
         dom_id: usize,
-        target_region: SomeRegion,
+        target_regions: RegionStoreCorr,
         priority: usize,
     },
     /// Move all current domain states to the corresponding regions of an SelectRegion.
@@ -328,13 +328,11 @@ impl SomeNeed {
                 }
                 targ
             }
-            Self::ExitSelectRegion {
-                dom_id,
-                target_region,
-                ..
-            } => {
-                let mut targ = TargetStore::with_capacity(1);
-                targ.push(SomeTarget::new(*dom_id, target_region.clone()));
+            Self::ExitSelectRegion { target_regions, .. } => {
+                let mut targ = TargetStore::with_capacity(target_regions.len());
+                for (dom_idx, targx) in target_regions.iter().enumerate() {
+                    targ.push(SomeTarget::new(dom_idx, targx.clone()));
+                }
                 targ
             }
             _ => panic!(
@@ -473,10 +471,10 @@ impl SomeNeed {
             }
             Self::ExitSelectRegion {
                 dom_id,
-                target_region,
+                target_regions,
                 priority,
             } => {
-                format!("N(Pri {priority} Exit Select Regions to domain {dom_id} {target_region})")
+                format!("N(Pri {priority} Exit Select Regions to domain {dom_id} {target_regions})")
             }
         } // end match
     }

@@ -6,7 +6,6 @@
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
-use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::tools::{self, not, StrLen};
 
@@ -562,47 +561,6 @@ impl SomeRegion {
         self.edge_mask().is_low()
     }
 
-    /// Return a rule for translating from a region to another region.
-    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
-    /// 0->0 instead of 0->X), the second region.
-    /// The minimum changes are sought, so X->x-not becomes X->X.
-    /// It can be thought that:
-    /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
-    /// or if in the other change may be unwanted.
-    /// For X->0, the change is optional, a 0 input will be no change.
-    /// For X->1, the change is optional, a 1 input will be no change.
-    /// Anything -> X, is a don't care.
-    pub fn rule_to_region(&self, to: &SomeRegion) -> SomeRule {
-        let self_x = self.x_mask();
-        let self_1 = self.ones_mask();
-        let self_0 = self.zeros_mask();
-
-        let to_x = to.x_mask();
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
-
-        let x_to_0 = self_x.bitwise_and(&to_0);
-        let x_to_1 = self_x.bitwise_and(&to_1);
-        let x_to_x = self_x.bitwise_and(&to_x);
-        let zero_to_x = self_0.bitwise_and(&to_x);
-        let one_to_x = self_1.bitwise_and(&to_x);
-
-        SomeRule {
-            b00: self_0
-                .bitwise_and(&to_0)
-                .bitwise_or(&x_to_0)
-                .bitwise_or(&x_to_x)
-                .bitwise_or(&zero_to_x),
-            b01: self_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
-            b11: self_1
-                .bitwise_and(&to_1)
-                .bitwise_or(&x_to_1)
-                .bitwise_or(&x_to_x)
-                .bitwise_or(&one_to_x),
-            b10: self_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
-        }
-    }
-
     /// Return the number of edges in a region.
     pub fn num_edges(&self) -> usize {
         self.edge_mask().num_one_bits()
@@ -715,6 +673,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
+    use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use rand::Rng;
 
@@ -1431,21 +1390,21 @@ mod tests {
 
         let reg1 = tmp_reg.new_from_string("r000")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = SomeRule::rule_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("00/01/00")?;
         assert!(rul1 == rul2);
 
         let reg1 = tmp_reg.new_from_string("r111")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = SomeRule::rule_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("10/11/11")?;
         assert!(rul1 == rul2);
 
         let reg1 = tmp_reg.new_from_string("rXXX")?;
         let reg2 = tmp_reg.new_from_string("r01X")?;
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = SomeRule::rule_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
         let rul2 = tmp_rul.new_from_string("X0/X1/XX")?;
         assert!(rul1 == rul2);
@@ -1453,7 +1412,7 @@ mod tests {
         // Test proper subset region.
         let reg1 = tmp_reg.new_from_string("r0011")?;
         let reg2 = tmp_reg.new_from_string("rx01x")?;
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = SomeRule::rule_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = tmp_rul.new_from_string("00/00/11/11")?;
         assert!(rul1 == rul2);
@@ -1461,7 +1420,7 @@ mod tests {
         // Test intersecting regions.
         let reg1 = tmp_reg.new_from_string("r010x")?;
         let reg2 = tmp_reg.new_from_string("rx1x1")?;
-        let rul1 = reg1.rule_to_region(&reg2);
+        let rul1 = SomeRule::rule_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = tmp_rul.new_from_string("00/11/00/X1")?;
         assert!(rul1 == rul2);

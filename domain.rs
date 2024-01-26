@@ -406,7 +406,7 @@ impl SomeDomain {
             let edges = goal_reg.edge_mask();
 
             // Get wanted changes.
-            let wanted_changes = from_reg.rule_to_region(goal_reg).change();
+            let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
 
             // Init minimum unwanted changes, and vector of step references.
             let mut min_unwanted = usize::MAX;
@@ -432,7 +432,7 @@ impl SomeDomain {
                     unwanted.number_changes()
                 } else {
                     // Asymmetrical chaining.
-                    let tmp_rul0 = from_reg.rule_to_region(&stepx.initial);
+                    let tmp_rul0 = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
                     let tmp_rul = tmp_rul0.combine_pair(&stepx.rule);
                     let unwanted = wanted_changes
                         .bitwise_not()
@@ -494,7 +494,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = from_reg.rule_to_region(to_reg).change();
+        let required_change = SomeRule::rule_region_to_region(from_reg, to_reg).change();
 
         let steps_str = self.get_steps(&required_change, None)?;
 
@@ -587,7 +587,7 @@ impl SomeDomain {
     ) -> Option<Vec<SomePlan>> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         // Figure the required change.
-        let required_change = from_reg.rule_to_region(goal_reg).change();
+        let required_change = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();

@@ -24,7 +24,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-//#[readonly::make]
+#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SomeRule {
     /// A mask for bit change 0->0
@@ -453,7 +453,8 @@ impl SomeRule {
         if self.result_region().intersects(&other.initial_region()) {
             return self.combine_pair(other);
         }
-        let rul_between = self.result_region().rule_to_region(&other.initial_region());
+        let rul_between =
+            Self::rule_region_to_region(&self.result_region(), &other.initial_region());
 
         self.combine_pair(&rul_between).combine_pair(other)
     }
@@ -487,6 +488,47 @@ impl SomeRule {
     /// Return a SomeChange instance.
     pub fn change(&self) -> SomeChange {
         SomeChange::new(self.b01.clone(), self.b10.clone())
+    }
+
+    /// Return a rule for translating from a region to another region.
+    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
+    /// 0->0 instead of 0->X), the second region.
+    /// The minimum changes are sought, so X->x-not becomes X->X.
+    /// It can be thought that:
+    /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
+    /// or if in the other change may be unwanted.
+    /// For X->0, the change is optional, a 0 input will be no change.
+    /// For X->1, the change is optional, a 1 input will be no change.
+    /// Anything -> X, is a don't care.
+    pub fn rule_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+        let from_x = from.x_mask();
+        let from_1 = from.ones_mask();
+        let from_0 = from.zeros_mask();
+
+        let to_x = to.x_mask();
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
+
+        let x_to_0 = from_x.bitwise_and(&to_0);
+        let x_to_1 = from_x.bitwise_and(&to_1);
+        let x_to_x = from_x.bitwise_and(&to_x);
+        let zero_to_x = from_0.bitwise_and(&to_x);
+        let one_to_x = from_1.bitwise_and(&to_x);
+
+        SomeRule {
+            b00: from_0
+                .bitwise_and(&to_0)
+                .bitwise_or(&x_to_0)
+                .bitwise_or(&x_to_x)
+                .bitwise_or(&zero_to_x),
+            b01: from_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
+            b11: from_1
+                .bitwise_and(&to_1)
+                .bitwise_or(&x_to_1)
+                .bitwise_or(&x_to_x)
+                .bitwise_or(&one_to_x),
+            b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
+        }
     }
 } // end impl SomeRule
 
@@ -549,9 +591,8 @@ mod tests {
         // Make a sequence rule, start to rul1 initial region, to rul1 result region.
         // Given the changes wanted, start to goal, it may not be worth it to translate to the rule
         // initial region.
-        let rul2 = start
-            .rule_to_region(&rul1.initial_region())
-            .combine_pair(&rul1);
+        let rul2 =
+            SomeRule::rule_region_to_region(&start, &rul1.initial_region()).combine_pair(&rul1);
         println!("rul2 {rul2}");
 
         // Figure start to goal, 0 -> 10X1, to contrast with rul2.
