@@ -65,6 +65,20 @@ impl RegionStoreCorr {
         !self.avec.is_empty()
     }
 
+    /// Return true if a RegionStoreCorr is between two others.
+    pub fn is_between(&self, other1: &Self, other2: &Self) -> bool {
+        for (rcx, (rcy, rcz)) in self.iter().zip(other1.iter().zip(other2.iter())) {
+            if rcx
+                .diff_mask(rcy)
+                .bitwise_and(&rcx.diff_mask(rcz))
+                .is_not_low()
+            {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
         self.avec.push(val);
@@ -77,7 +91,7 @@ impl RegionStoreCorr {
 
     /// Return True if a RegionStore is a superset of all corresponding states in a SomeState vector.
     /// Used in optimal regionstore calculations.
-    pub fn is_superset_states_corr(&self, stas: &StateStoreCorr) -> bool {
+    pub fn is_superset_states(&self, stas: &StateStoreCorr) -> bool {
         debug_assert!(self.len() == stas.len());
 
         for (x, y) in self.iter().zip(stas.iter()) {
@@ -92,7 +106,7 @@ impl RegionStoreCorr {
 
     /// Return true if RegionStore is a subset of another RegionStore.
     /// Used in optimal regionstore calculations.
-    pub fn is_subset_of_corr(&self, other: &Self) -> bool {
+    pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
@@ -105,7 +119,7 @@ impl RegionStoreCorr {
     }
 
     /// Return True if a RegionStore is a superset of another RSC.
-    pub fn is_superset_of_corr(&self, other: &Self) -> bool {
+    pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
@@ -119,7 +133,7 @@ impl RegionStoreCorr {
     }
 
     /// Return the intersection, if any, of two RegionStores.
-    pub fn intersection_corr(&self, other: &Self) -> Option<Self> {
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
 
         let mut ret = Self::with_capacity(self.len());
@@ -138,12 +152,12 @@ impl RegionStoreCorr {
     }
 
     /// Calculate the distance between a RegionStore and the current state.
-    pub fn distance_states_corr(&self, stas: &StateStoreCorr) -> usize {
+    pub fn distance_states(&self, stas: &StateStoreCorr) -> usize {
         debug_assert!(self.len() == stas.len());
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(stas.iter()) {
-            if x.is_superset_of(y) {
+            if x.intersects(y) {
             } else {
                 dist += x.distance(y);
             }
@@ -152,33 +166,19 @@ impl RegionStoreCorr {
         dist
     }
 
-    /// Add a RegionStore, removing subset (and equal) RegionStores.
-    /// Return true if the item was added.
-    pub fn vec_push_nosubs_corr(avec: &mut Vec<RegionStoreCorr>, item: RegionStoreCorr) -> bool {
-        // Check for supersets.
-        for itemx in avec.iter() {
-            if itemx.is_superset_of_corr(&item) {
-                return false;
+    /// Calculate the distance between two RegionStoreCorrs.
+    pub fn distance(&self, other: &Self) -> usize {
+        debug_assert!(self.len() == other.len());
+
+        let mut dist = 0;
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x.intersects(y) {
+            } else {
+                dist += x.distance(y);
             }
         }
 
-        // Identify supersets
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, regx) in avec.iter().enumerate() {
-            if regx.is_subset_of_corr(&item) {
-                rmvec.push(inx);
-            }
-        }
-
-        // Remove identified regions, in reverse (highest index) order
-        for inx in rmvec.iter().rev() {
-            tools::remove_unordered(avec, *inx);
-        }
-
-        avec.push(item);
-
-        true
+        dist
     }
 
     /// Return self minus a given RegionStoreCorr.
@@ -193,7 +193,7 @@ impl RegionStoreCorr {
             return ret;
         }
         // Check for superest.
-        if subtrahend.is_superset_of_corr(self) {
+        if subtrahend.is_superset_of(self) {
             return ret;
         }
 
@@ -243,6 +243,16 @@ impl RegionStoreCorr {
             }
         }
         true
+    }
+
+    /// Translate regions to within another.
+    pub fn translate_to(&self, other: &Self) -> Self {
+        let mut ret_regs = Self::new(vec![]);
+
+        for (regx, regy) in self.iter().zip(other.iter()) {
+            ret_regs.push(regx.translate_to(regy));
+        }
+        ret_regs
     }
 } // End impl RegionStoreCorr.
 
@@ -296,7 +306,7 @@ mod tests {
         println!("regstr1 {}", regstr1);
         println!("stas    {}", stas);
 
-        assert!(!regstr1.is_superset_states_corr(&stas));
+        assert!(!regstr1.is_superset_states(&stas));
 
         let sta4 = SomeState::new(ur_bits.new_from_string("0x4")?);
         let sta10 = SomeState::new(ur_bits.new_from_string("0xa")?);
@@ -305,7 +315,7 @@ mod tests {
         println!("regstr1 {}", regstr1);
         println!("stas2   {}", stas2);
 
-        assert!(regstr1.is_superset_states_corr(&stas2));
+        assert!(regstr1.is_superset_states(&stas2));
 
         Ok(())
     }
@@ -324,7 +334,7 @@ mod tests {
         let sta8 = SomeState::new(ur_bits.new_from_string("0x8")?);
         let stas = StateStoreCorr::new(vec![sta1, sta8]);
 
-        let dist = regstr1.distance_states_corr(&stas);
+        let dist = regstr1.distance_states(&stas);
         println!("Distance = {dist}");
 
         assert!(dist == 2);
@@ -347,11 +357,11 @@ mod tests {
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
 
-        assert!(regstr1.is_superset_of_corr(&regstr2));
-        assert!(!regstr2.is_superset_of_corr(&regstr1));
+        assert!(regstr1.is_superset_of(&regstr2));
+        assert!(!regstr2.is_superset_of(&regstr1));
 
-        assert!(!regstr1.is_subset_of_corr(&regstr2));
-        assert!(regstr2.is_subset_of_corr(&regstr1));
+        assert!(!regstr1.is_subset_of(&regstr2));
+        assert!(regstr2.is_subset_of(&regstr1));
 
         Ok(())
     }
@@ -369,7 +379,7 @@ mod tests {
         regstr2.push(tmp_reg0.new_from_string("rx1x1").expect("SNH"));
         regstr2.push(tmp_reg0.new_from_string("r1xx1").expect("SNH"));
 
-        let intreg = regstr1.intersection_corr(&regstr2).expect("SNH");
+        let intreg = regstr1.intersection(&regstr2).expect("SNH");
         println!("int part {}", intreg);
 
         assert!(

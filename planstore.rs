@@ -2,6 +2,8 @@
 
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
+use crate::regionstorecorr::RegionStoreCorr;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -32,17 +34,6 @@ impl PlanStore {
     /// Return the length of the SomePlan vector.
     pub fn len(&self) -> usize {
         self.avec.len()
-    }
-
-    /// Return the number of the SomePlan vector, non-empty.
-    pub fn num_non_empty(&self) -> usize {
-        let mut cnt = 0;
-        for planx in self.avec.iter() {
-            if planx.is_not_empty() {
-                cnt += 1;
-            }
-        }
-        cnt
     }
 
     /// Return true if the store does not contain at least one non-empty plan.
@@ -126,7 +117,7 @@ impl PlanStore {
     fn formatted_string(&self) -> String {
         let mut flg = 0;
 
-        let mut rc_str = String::new();
+        let mut rc_str = String::with_capacity(self.strlen());
 
         rc_str.push_str("\n(");
 
@@ -165,11 +156,125 @@ impl PlanStore {
         }
         false
     }
+
+    /// Return the result_region of a Planstore.
+    pub fn result_regions(&self, current: &RegionStoreCorr) -> RegionStoreCorr {
+        let mut ret_regs = current.clone();
+        for planx in self.avec.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            if *planx.initial_region() == ret_regs[planx.dom_id] {
+                ret_regs[planx.dom_id] = planx.result_region().clone();
+            } else {
+                panic!("{} ne {}", planx.initial_region(), ret_regs[planx.dom_id]);
+            }
+        }
+        ret_regs
+    }
+
+    /// Validate a PlanStore, given start and goal regions.
+    pub fn validate(&self, start_regs: &RegionStoreCorr, goal_regs: &RegionStoreCorr) -> bool {
+        let mut cur_regs = start_regs.clone();
+        for planx in self.avec.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            let dom_id = planx.dom_id;
+            for stepx in planx.iter() {
+                if stepx.initial.intersects(&cur_regs[dom_id]) {
+                    cur_regs[dom_id] = stepx.rule.result_from(&cur_regs[dom_id]);
+                } else {
+                    println!("Validate (1)");
+                    println!("Plans: {self}");
+                    println!("start    {start_regs}");
+                    println!("goal     {goal_regs}");
+                    println!("cur_regs {cur_regs}");
+                    println!("sub plan {planx}");
+                    return false;
+                }
+            }
+        }
+        if goal_regs.intersects(&cur_regs) {
+            true
+        } else {
+            println!("Validate (2)");
+            println!("Plans: {self}");
+            println!("start    {start_regs}");
+            println!("goal     {goal_regs}");
+            println!("cur_regs {cur_regs}");
+            false
+        }
+    }
 } // end impl PlanStore
 
 impl Index<usize> for PlanStore {
     type Output = SomePlan;
     fn index(&self, i: usize) -> &SomePlan {
         &self.avec[i]
+    }
+}
+
+/// Implement the trait StrLen for SomePlan.
+impl StrLen for PlanStore {
+    fn strlen(&self) -> usize {
+        let mut cnt = 2; // parens
+        for (inx, planx) in self.avec.iter().enumerate() {
+            if inx == 0 {
+                cnt += 1; // newline
+            } else {
+                cnt += 3; // comma newline space
+            }
+            cnt += planx.strlen();
+        }
+        cnt
+    }
+}
+
+impl IntoIterator for PlanStore {
+    type Item = SomePlan;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.avec.into_iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bits::SomeBits;
+    use crate::rule::SomeRule;
+    use crate::sample::SomeSample;
+    use crate::state::SomeState;
+    use crate::step::{AltRuleHint, SomeStep};
+
+    #[test]
+    fn test_strlen() -> Result<(), String> {
+        let tmp_sta = SomeState::new(SomeBits::new(8));
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
+
+        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
+
+        let mut plnstr = PlanStore::new(vec![tmp_pln]);
+        let fstr = plnstr.formatted_string();
+        let sb = plnstr.strlen();
+        println!("{}", plnstr);
+        if fstr.len() != sb {
+            return Err(format!("str {} NE calced {}", fstr.len(), sb));
+        }
+
+        plnstr.push(SomePlan::new(0, vec![tmp_stp.clone()]));
+        let fstr = plnstr.formatted_string();
+        let sb = plnstr.strlen();
+        println!("{}", plnstr);
+        if fstr.len() != sb {
+            return Err(format!("str {} NE calced {}", fstr.len(), sb));
+        }
+
+        //assert!(1 == 2);
+        Ok(())
     }
 }

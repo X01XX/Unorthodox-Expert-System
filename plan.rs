@@ -17,6 +17,7 @@
 //! sample the current state.
 
 use crate::region::SomeRegion;
+use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::tools::StrLen;
@@ -328,17 +329,18 @@ impl SomePlan {
         &self[self.len() - 1].result
     }
 
-    /// Return the region encompassed by the path of a plan.
-    pub fn path_region(&self) -> Option<SomeRegion> {
-        if self.is_empty() {
-            return None;
+    /// Return the result state of a plan that contains at least one step.
+    pub fn result_state(&self, astate: &SomeState) -> SomeState {
+        assert!(self.is_not_empty());
+        let mut ret_state = astate.clone();
+        for stepx in self.iter() {
+            if stepx.initial.is_superset_of(&ret_state) {
+                ret_state = stepx.rule.result_state(&ret_state);
+            } else {
+                panic!("plan problem! plan {self} step {stepx} state {ret_state}");
+            }
         }
-
-        let mut ret_reg = self.initial_region().clone();
-        for stpx in self.iter() {
-            ret_reg = ret_reg.union(&stpx.result);
-        }
-        Some(ret_reg)
+        ret_state
     }
 
     /// Return a String representation of SomePlan.
@@ -391,41 +393,6 @@ mod tests {
         let calc_len = tmp_pln.strlen();
         println!("str {tmp_pln} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
-
-        Ok(())
-    }
-
-    #[test]
-    fn path_region() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(8);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-
-        let planx = SomePlan::new(0, vec![]);
-        if let Some(regx) = planx.path_region() {
-            return Err(format!("Empty plan returns a region {}?", regx));
-        }
-
-        let step0 = SomeStep::new(
-            0,
-            tmp_rul.new_from_string("00/01/01/11")?,
-            AltRuleHint::NoAlt {},
-            tmp_reg.new_from_string("rXXXX")?,
-        ); // 1 -> 7
-        let step1 = SomeStep::new(
-            0,
-            tmp_rul.new_from_string("01/11/10/11")?,
-            AltRuleHint::NoAlt {},
-            tmp_reg.new_from_string("rXXXX")?,
-        ); // 7 -> D
-        let planx = SomePlan::new(0, vec![step0, step1]);
-        println!("plan: {planx}");
-        let Some(regx) = planx.path_region() else {
-            panic!("Plan region is None?");
-        };
-        println!("Plan region: {regx}");
-        assert!(regx == tmp_reg.new_from_string("rXXX1")?);
 
         Ok(())
     }

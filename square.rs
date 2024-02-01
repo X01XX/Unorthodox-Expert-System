@@ -81,6 +81,9 @@ impl SomeSquare {
         let sav_pn = self.pn;
         let sav_pnc = self.pnc;
 
+        if self.num_results() > 100 {
+            panic!("Square: {self}, too many results {}?", self.num_results());
+        }
         self.pn = self.results.add_result(asample.result.clone());
         self.pnc = self.calc_pnc();
 

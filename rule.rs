@@ -211,6 +211,23 @@ impl SomeRule {
         SomeRegion::new(vec![st_high, st_low])
     }
 
+    /// Return the result state of a rule.
+    pub fn result_state(&self, astate: &SomeState) -> SomeState {
+        assert!(self.initial_region().is_superset_of(astate));
+
+        let sta_cng1 = astate.bitwise_and(&self.b10);
+        let sta_cng0 = astate.bitwise_not().bitwise_and(&self.b01);
+
+        astate.bitwise_xor(&sta_cng1.bitwise_or(&sta_cng0))
+    }
+
+    /// Return result from an input region.
+    pub fn result_from(&self, regx: &SomeRegion) -> SomeRegion {
+        assert!(self.initial_region().intersects(regx));
+
+        self.restrict_initial_region(regx).result_region()
+    }
+
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {

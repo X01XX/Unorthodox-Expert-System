@@ -2,7 +2,6 @@
 
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
-use crate::region::SomeRegion;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::selectregions::SelectRegions;
 use crate::statestorecorr::StateStoreCorr;
@@ -70,7 +69,7 @@ impl SelectRegionsStore {
         // Identify subsets.
         let mut del = Vec::<usize>::new();
         for (inx, regstx) in self.regionstores.iter().enumerate() {
-            if regstx.regions.is_subset_of_corr(&select.regions) {
+            if regstx.regions.is_subset_of(&select.regions) {
                 del.push(inx);
             }
         }
@@ -91,7 +90,7 @@ impl SelectRegionsStore {
         // Identify supersets.
         let mut del = Vec::<usize>::new();
         for (inx, regstx) in self.regionstores.iter().enumerate() {
-            if regstx.regions.is_superset_of_corr(&select.regions) {
+            if regstx.regions.is_superset_of(&select.regions) {
                 del.push(inx);
             }
         }
@@ -133,7 +132,7 @@ impl SelectRegionsStore {
         let mut times_visited: usize = 0;
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
-            if regsx.regions.is_superset_of_corr(regs) {
+            if regsx.regions.is_superset_of(regs) {
                 value += regsx.value();
                 times_visited += regsx.times_visited;
             }
@@ -145,14 +144,14 @@ impl SelectRegionsStore {
     pub fn not_supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| !regsx.regions.is_superset_states_corr(stas))
+            .filter(|regsx| !regsx.regions.is_superset_states(stas))
             .collect()
     }
 
     /// Return true if any SelectRegion is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &StateStoreCorr) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states_corr(stas) {
+            if regsx.regions.is_superset_states(stas) {
                 return true;
             }
         }
@@ -163,7 +162,7 @@ impl SelectRegionsStore {
     pub fn value_supersets_of_states(&self, stas: &StateStoreCorr) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states_corr(stas) && regsx.value() < 0 {
+            if regsx.regions.is_superset_states(stas) && regsx.value() < 0 {
                 val += regsx.value();
             }
         }
@@ -173,7 +172,7 @@ impl SelectRegionsStore {
     /// Return true if any SelectRegion is a region superset of another..
     pub fn any_supersets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_of_corr(&other.regions) {
+            if regsx.regions.is_superset_of(&other.regions) {
                 return true;
             }
         }
@@ -183,7 +182,7 @@ impl SelectRegionsStore {
     /// Return true if any SelectRegion is a region subset of another.
     pub fn any_subsets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_subset_of_corr(&other.regions) {
+            if regsx.regions.is_subset_of(&other.regions) {
                 return true;
             }
         }
@@ -228,7 +227,7 @@ impl SelectRegionsStore {
     pub fn supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
-            .filter(|regsx| regsx.regions.is_superset_states_corr(stas))
+            .filter(|regsx| regsx.regions.is_superset_states(stas))
             .collect()
     }
 
@@ -258,10 +257,6 @@ impl SelectRegionsStore {
     /// Return the sum of all negative select regions values a plan goes through.
     /// This ignores the select regions a plan starts, or end, in.
     pub fn rate_plan(&self, aplan: &SomePlan, current_states: &StateStoreCorr) -> isize {
-        if aplan.len() < 2 {
-            return 0;
-        }
-
         // Create a mutable state ref vector.
         let mut all_states = current_states.clone();
 
@@ -271,7 +266,6 @@ impl SelectRegionsStore {
         let mut rates = Vec::<isize>::with_capacity(aplan.len());
 
         for stepx in aplan.iter() {
-            all_states[dom_id] = stepx.initial.state1().clone();
             let valx = self.value_supersets_of_states(&all_states);
             // Print violations.
             //for selx in self.regionstores.iter() {
@@ -279,29 +273,10 @@ impl SelectRegionsStore {
             //        println!("step {} of {} violates {} at {}", stepx, aplan, selx, SomeState::vec_ref_string(&all_states));
             //    }
             //}
-
             rates.push(valx);
+            all_states[dom_id] = stepx.initial.state1().clone();
         }
-
-        // Delete consecutive negative rates on end.
-        // The goal may be in a negative region.
-        while let Some(ratex) = rates.last() {
-            if *ratex < 0 {
-                rates.pop();
-            } else {
-                break;
-            }
-        }
-        // Delete consecutive negative rates at beginning.
-        // The initial region may be in a negative region.
-        rates.reverse();
-        while let Some(ratex) = rates.last() {
-            if *ratex < 0 {
-                rates.pop();
-            } else {
-                break;
-            }
-        }
+        rates.push(self.value_supersets_of_states(&all_states));
 
         if rates.is_empty() {
             return 0;
@@ -312,23 +287,19 @@ impl SelectRegionsStore {
     /// Return the sum of all select negative regions values a plan goes through.
     /// This ignores the select regions a plan starts, or ends, in.
     pub fn rate_plans(&self, plans: &PlanStore, current_states: &StateStoreCorr) -> isize {
+        //println!("selectregionsstore::rate_plans");
         if plans.is_empty() {
             return 0;
         }
 
         // Store rate for each step, per domain.
-        let mut rates = Vec::<Vec<isize>>::with_capacity(current_states.len());
-        for _ in 0..current_states.len() {
-            rates.push(vec![]);
-        }
+        let mut rate: isize = 0;
 
         // Create mutable current_states vector.
-        let mut all_states = StateStoreCorr::with_capacity(current_states.len());
-        for statex in current_states.iter() {
-            all_states.push(statex.clone());
-        }
+        let mut all_states = current_states.clone();
 
         // Rate each plan.
+        rate += self.value_supersets_of_states(&all_states);
         for planx in plans.iter() {
             if planx.is_empty() {
                 continue;
@@ -336,53 +307,18 @@ impl SelectRegionsStore {
 
             // Check that plan starts in the right state.
             let start = planx.initial_region();
-            if *start.state1() != all_states[planx.dom_id]
-                || *start.state2() != all_states[planx.dom_id]
-            {
-                panic!("plans not in sync!");
-            }
-            // Add rate for each setp.
-            for stepx in planx.iter() {
-                all_states[planx.dom_id] = stepx.initial.state1().clone();
-                let valx = self.value_supersets_of_states(&all_states);
-                rates[planx.dom_id].push(valx);
-            }
-            all_states[planx.dom_id] = planx.result_region().state1().clone();
-        }
-
-        // Init rate to return.
-        let mut rate: isize = 0;
-
-        // Calc rate for each domain.
-        for domx_rates in rates.iter_mut() {
-            if domx_rates.is_empty() {
-                continue;
-            }
-            // Delete consecutive negative rates on end.
-            // The goal may be in a negative region.
-            //while let Some(ratex) = domx_rates.last() {
-            //    if *ratex < 0 {
-            //        domx_rates.pop();
-            //    } else {
-            //        break;
-            //    }
-            //}
-            // Delete consecutive negative rates at beginning.
-            // The initial region may be in a negative region.
-            //domx_rates.reverse();
-            //while let Some(ratex) = domx_rates.last() {
-            //    if *ratex < 0 {
-            //        domx_rates.pop();
-            //    } else {
-            //        break;
-            //    }
-            // }
-
-            if domx_rates.is_empty() {
+            if start.is_superset_of(&all_states[planx.dom_id]) {
             } else {
-                rate += domx_rates.iter().sum::<isize>()
+                panic!("plans {} not in sync! cur {}", plans, current_states);
+            }
+            // Add rate for each step.
+            for stepx in planx.iter() {
+                all_states[planx.dom_id] = stepx.rule.result_state(&all_states[planx.dom_id]);
+                rate += self.value_supersets_of_states(&all_states);
             }
         }
+
+        //println!("selectregionsstore::rate_plans: returning {rate}");
         rate
     }
 
@@ -394,16 +330,6 @@ impl SelectRegionsStore {
     /// Pop the last item.
     pub fn pop(&mut self) -> Option<SelectRegions> {
         self.regionstores.pop()
-    }
-
-    /// Return true if there is any intersection with a given domain region.
-    pub fn any_intersection_dom(&self, dom_id: usize, regx: &SomeRegion) -> bool {
-        for selx in self.iter() {
-            if selx.regions[dom_id].intersects(regx) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Subtract a SelectRegions.
@@ -424,13 +350,6 @@ impl SelectRegionsStore {
                 ret_str.push_nosubs(regy.clone());
             }
         } // next regy
-
-        //println!(
-        //    "subtract {} from {} giving {}",
-        //    subtrahend.regions,
-        //    self.regions(),
-        //    ret_str.regions()
-        //);
 
         ret_str
     }

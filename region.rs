@@ -610,6 +610,24 @@ impl SomeRegion {
     pub fn len(&self) -> usize {
         self.states.len()
     }
+
+    /// Translate one region into another.
+    pub fn translate_to(&self, other: &Self) -> Self {
+        // Calc self bit position masks.
+        let self_x = self.x_mask();
+        let self_1 = self.ones_mask();
+        let self_0 = self.zeros_mask();
+
+        // Calc other bit position masks.
+        let other_1 = other.ones_mask();
+        let other_0 = other.zeros_mask();
+
+        // Calc needed changes.
+        let to_0 = self_x.bitwise_or(&self_1).bitwise_and(&other_0);
+        let to_1 = self_x.bitwise_or(&self_0).bitwise_and(&other_1);
+
+        self.set_to_ones(&to_1).set_to_zeros(&to_0)
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -678,14 +696,30 @@ mod tests {
     use rand::Rng;
 
     #[test]
+    fn translate_to() -> Result<(), String> {
+        let ur_bits = SomeBits::new(7);
+        let ur_region = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
+
+        let reg1 = ur_region.new_from_string("rXX0101X")?;
+        let reg2 = ur_region.new_from_string("r100110X")?;
+
+        let reg3 = reg1.translate_to(&reg2);
+        println!("reg3 {reg3}");
+        if reg3 != ur_region.new_from_string("r100110X")? {
+            return Err(format!("{reg3} ??"));
+        }
+        Ok(())
+    }
+
+    #[test]
     fn shared_symmetric_region() -> Result<(), String> {
         let ur_bits = SomeBits::new(8);
         let ur_region = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
 
-        let reg1 = ur_region.new_from_string("rX101").expect("SNH");
-        let reg2 = ur_region.new_from_string("rX111").expect("SNH");
-        let reg3 = ur_region.new_from_string("r0X10").expect("SNH");
-        let reg4 = ur_region.new_from_string("r011X").expect("SNH");
+        let reg1 = ur_region.new_from_string("rX101")?;
+        let reg2 = ur_region.new_from_string("rX111")?;
+        let reg3 = ur_region.new_from_string("r0X10")?;
+        let reg4 = ur_region.new_from_string("r011X")?;
 
         if let Some(result) = reg1.shared_symmetric_region(&reg2) {
             println!("result {result}");
@@ -714,14 +748,14 @@ mod tests {
         let ur_bits = SomeBits::new(8);
         let ur_region = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
 
-        let reg1 = ur_region.new_from_string_pad_x("r10XX_X101").expect("SNH");
+        let reg1 = ur_region.new_from_string_pad_x("r10XX_X101")?;
 
         let comp1 = reg1.complement();
         println!("comp1: {}", comp1);
 
         assert!(comp1.len() == 5);
-        assert!(comp1.contains(&ur_region.new_from_string("r0xxx_xxxx").expect("SNH")));
-        assert!(comp1.contains(&ur_region.new_from_string("rxxxx_xx1x").expect("SNH")));
+        assert!(comp1.contains(&ur_region.new_from_string("r0xxx_xxxx")?));
+        assert!(comp1.contains(&ur_region.new_from_string("rxxxx_xx1x")?));
 
         Ok(())
     }

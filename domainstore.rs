@@ -7,7 +7,6 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
@@ -129,54 +128,6 @@ impl DomainStore {
         self.select.push_nosubs(selx);
     }
 
-    /// Calculate non-negative regions for a domain, given all current states.
-    /// Regions in a negative SelectRegions have an AND relationship, so the states of other domains
-    /// need to be considered.
-    /// If the current state is in a negative SelectRegions,
-    /// and the select region for the given domain is the maximum region, the result will be empty,
-    /// implying the need to change the state of another domain.
-    ///
-    /// The assume argument indicates the need to assume a given domain number is in a SelectRegions region.
-    fn calc_non_negative_regions(
-        &self,
-        dom_id: usize,
-        cur_states: &StateStoreCorr,
-        assume: Option<usize>,
-    ) -> RegionStore {
-        let mut non_neg_regs = RegionStore::new(vec![self[dom_id].max_poss_region.clone()]);
-
-        'next_selx: for (sel_num, selx) in self.select_negative.iter().enumerate() {
-            // Check if any other domain is out of the SelectRegions.
-            for (inx, regx) in selx.regions.iter().enumerate() {
-                if inx == dom_id {
-                    continue;
-                }
-                if let Some(iny) = assume {
-                    if inx == iny {
-                        continue;
-                    }
-                }
-                if !regx.is_superset_of(&cur_states[inx]) {
-                    continue 'next_selx;
-                }
-            } // next inx, regx
-
-            // If the region for the given domain is the maximum region, done.
-            // Changing the current state of another domain might solve this, in the above code.
-            if selx.regions[dom_id].all_x() {
-                return RegionStore::new(vec![]);
-            }
-            // Calc complement, intersection.
-            if let Some(comps) = self[dom_id].get_complement(sel_num) {
-                non_neg_regs = non_neg_regs.intersection(comps);
-            } else {
-                panic!("SNH");
-            }
-        } // next selx
-
-        non_neg_regs
-    }
-
     /// Calculate parts of select regions, in case of any overlaps.
     pub fn calc_select(&mut self) {
         if self.select.is_empty() {
@@ -187,16 +138,6 @@ impl DomainStore {
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
-        //for inx in 0..(self.select.len() - 1) {
-        //    for iny in (inx + 1)..self.select.len() {
-        //        if self.select[inx].pos > 0 && self.select[iny].neg > 0 ||
-        //           self.select[inx].neg > 0 && self.select[iny].pos > 0 {
-        //               if self.select[inx].intersects(&self.select[iny]) {
-        //                   println!("{} intersects {}", self.select[inx], self.select[iny]);
-        //               }
-        //        }
-        //    }
-        //}
 
         // Init negative and positive stores.
         for selx in self.select.iter() {
@@ -212,13 +153,6 @@ impl DomainStore {
 
         //println!("\nSubset Regions:");
         for sely in subsets.into_iter() {
-            //println!(
-            //    "  {} pos {} neg {} = {:+}",
-            //    sely,
-            //    sely.pos,
-            //    sely.neg,
-            //    sely.pos as isize - sely.neg as isize
-            //);
             match sely.pos.cmp(&sely.neg) {
                 Ordering::Greater => {
                     //println!("  {} pos {} neg {} = {:+}", sely, sely.pos, sely.neg, sely.pos - sely.neg);
@@ -236,41 +170,10 @@ impl DomainStore {
         for selx in self.select_negative.iter() {
             println!("  {}", selx);
         }
-        //for sely in self.select_negative.iter() {
-        //    for selx in self.select.iter() {
-        //        if selx.pos > 0 {
-        //            if selx.intersects(sely) {
-        //                println!("{sely} intersects primary {selx}");
-        //            }
-        //        }
-        //    }
-        //}
 
         println!("\nPositive Select Regions:");
         for selx in self.select_positive.iter() {
             println!("  {}", selx);
-        }
-        //for sely in self.select_positive.iter() {
-        //    for selx in self.select.iter() {
-        //        if selx.neg > 0 {
-        //            if selx.intersects(sely) {
-        //                println!("{sely} intersects {selx}");
-        //            }
-        //        }
-        //    }
-        //}
-
-        // Add complement calculation to each domain.
-        // There is a potential problem with HashMap used with SomeRegion:PartialEq, so
-        // use SelectRegions number which should not be changed later.
-        let mut comps = Vec::<(usize, usize, SomeRegion)>::new();
-        for (sel_num, selx) in self.select_negative.iter().enumerate() {
-            for (dom_id, regx) in selx.regions.iter().enumerate() {
-                comps.push((sel_num, dom_id, regx.clone()));
-            }
-        }
-        for (sel_num, dom_id, regx) in comps.iter() {
-            self[*dom_id].add_complement(*sel_num, regx);
         }
 
         // Calc non-negative regions.
@@ -281,11 +184,6 @@ impl DomainStore {
         println!("\nNon negative select Regions:");
         for selx in self.select_non_negative.iter() {
             println!("  {}", selx);
-            //for sely in self.select.iter() {
-            //    if selx.intersects(sely) {
-            //        println!("{selx} intersects primary {sely}");
-            //    }
-            //}
         }
     }
 
@@ -331,6 +229,15 @@ impl DomainStore {
         self.needs = needs;
 
         self.evaluate_needs();
+    }
+
+    /// Return the number of steps in a vector of PlanStores.
+    pub fn number_steps(&self, plns: &Option<PlanStore>) -> usize {
+        if let Some(planx) = plns {
+            planx.number_steps()
+        } else {
+            0
+        }
     }
 
     /// Run a PlanStore.
@@ -457,27 +364,19 @@ impl DomainStore {
 
             // Separate needs that can be done, or not.
             // Find maximum rate.
-            let mut max_rate = isize::MIN;
             for mut ndsinx in ndsinx_plan {
                 if let Some(aplan) = &ndsinx.plans {
                     ndsinx.rate = self.rate_plans(aplan);
-                    if ndsinx.rate > max_rate {
-                        max_rate = ndsinx.rate;
-                    }
                     self.can_do.push(ndsinx);
                 } else {
                     self.cant_do.push(ndsinx.inx);
                 }
             }
 
-            // Return if max rate is non-negative.
-            if max_rate >= 0 {
-                if self.can_do.len() == 1 {
-                    println!(", found 1 need that can be done.");
-                } else {
-                    println!(", found {} needs that can be done.", self.can_do.len());
-                }
-                return;
+            if self.can_do.len() == 1 {
+                println!(", found 1 need that can be done.");
+            } else {
+                println!(", found {} needs that can be done.", self.can_do.len());
             }
 
             // println!(" max_rate = {max_rate}");
@@ -492,6 +391,16 @@ impl DomainStore {
             // Check if negative regions can be avoided.
             //for ndinx in self.can_do.iter_mut() {
             for ndinx in 0..self.can_do.len() {
+                let Some(planx) = &self.can_do[ndinx].plans else {
+                    continue;
+                };
+
+                let max_rate = self.rate_plans(planx);
+
+                if max_rate >= 0 {
+                    continue;
+                }
+
                 // Form goal region corresponding
                 let mut goal_regs = RegionStoreCorr::with_capacity(start_regs.len());
                 for (dom_inx, domx) in self.domains.iter().enumerate() {
@@ -506,40 +415,35 @@ impl DomainStore {
                 }
 
                 if let Some(planx) = self.avoid_negative_select_regions(&start_regs, &goal_regs) {
-                    let rate = self
-                        .select_negative
-                        .rate_plans(&planx, &self.all_current_states());
+                    let rate = self.rate_plans(&planx);
                     //println!(" new rate {rate}");
                     if rate > max_rate {
                         println!(
-                            "\nFor plan {}/{}, {} to {}, better plan found {}/{}",
-                            self.can_do[ndinx].plans.as_ref().expect("SNH").str_terse(),
+                            "\nFor plan {}/{}, {} to {}, better plan found\n         {}/{}",
+                            self.plans_str_terse(&self.can_do[ndinx].plans),
                             max_rate,
                             start_regs,
                             goal_regs,
                             planx.str_terse(),
                             rate
                         );
-                        println!("First plan:");
-                        self.print_plan_detail(self.can_do[ndinx].plans.as_ref().expect("SNH"));
-                        println!("A better plan");
+                        println!("\nFirst plan:");
+                        self.print_plans_detail_opt(&self.can_do[ndinx].plans);
+                        println!("\nA better plan");
                         self.print_plan_detail(&planx);
 
                         self.can_do[ndinx].plans = Some(planx);
                         self.can_do[ndinx].rate = rate;
                     } else {
-                        println!(
-                            "\nFor plan {}/{}, better plan NOT found",
-                            self.can_do[ndinx].plans.as_ref().expect("SNH").str_terse(),
-                            max_rate,
-                        );
+                        //println!(
+                        //   "\nFor plan {}/{}, better plan NOT found",
+                        //    self.plans_str_terse(&self.can_do[ndinx].plans),
+                        //    max_rate,
+                        //);
                     }
                 }
             }
 
-            //for inxplnx in can_do {
-            //    self.can_do.push(inxplnx);
-            //}
             if self.can_do.len() == 1 {
                 println!(", found 1 need that can be done.");
             } else {
@@ -569,16 +473,83 @@ impl DomainStore {
         Some(plans_per_target)
     }
 
+    pub fn make_plans2(
+        &self,
+        from: &RegionStoreCorr,
+        goal: &RegionStoreCorr,
+        within: Option<&RegionStoreCorr>,
+    ) -> Option<PlanStore> {
+        //println!("domainstore: make_plans2: from {from} goal {goal}");
+
+        let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(from.len()));
+
+        if let Some(within_regs) = within {
+            // Find a plan for each target.
+            for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
+                if regy.is_superset_of(regx) {
+                    plans_per_target.push(SomePlan::new(dom_id, vec![]));
+                } else {
+                    // Try making plans.
+                    let mut plans =
+                        self.get_plans2(dom_id, regx, regy, Some(&within_regs[dom_id]))?; // return None if any target cannot be reached.
+                    let inx = self.choose_a_plan(&plans);
+                    plans_per_target.push(plans.swap_remove(inx));
+                }
+            } // next optx
+        } else {
+            for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
+                if regy.is_superset_of(regx) {
+                    plans_per_target.push(SomePlan::new(dom_id, vec![]));
+                } else {
+                    // Try making plans.
+                    let mut plans = self.get_plans2(dom_id, regx, regy, None)?; // return None if any target cannot be reached.
+                    let inx = self.choose_a_plan(&plans);
+                    plans_per_target.push(plans.swap_remove(inx));
+                }
+            } // next optx
+        }
+
+        //println!("domainstore: make_plans2: from {from} goal {goal} returning {plans_per_target}");
+        assert!(plans_per_target.validate(from, goal));
+        Some(plans_per_target)
+    }
+
     /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
-    fn rate_plans(&self, aplan: &PlanStore) -> isize {
-        self.select_negative
-            .rate_plans(aplan, &self.all_current_states())
+    fn rate_plans(&self, plans: &PlanStore) -> isize {
+        self.rate_plans2(plans, &self.all_current_states())
+    }
+
+    /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
+    fn rate_plans2(&self, plans: &PlanStore, states: &StateStoreCorr) -> isize {
+        let mut cnt = 0;
+        let mut cur_states = states.clone();
+        for planx in plans.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            //println!("rate of one {}", self.select_negative.rate_plan(planx, &cur_states));
+            cnt += self.select.rate_plan(planx, &cur_states);
+            cur_states[planx.dom_id] = planx.result_state(&cur_states[planx.dom_id]);
+        }
+        cnt
     }
 
     /// Get plans to move to a goal region, choose a plan.
     pub fn get_plans(&self, dom_id: usize, goal_region: &SomeRegion) -> Option<Vec<SomePlan>> {
         //println!("domainstore: get_plans: dom {dom_id} goal {goal_region}");
         self.domains[dom_id].make_plans(goal_region)
+    }
+
+    /// Get plans to move to a goal region, choose a plan.
+    pub fn get_plans2(
+        &self,
+        dom_id: usize,
+        from_region: &SomeRegion,
+        goal_region: &SomeRegion,
+        within: Option<&SomeRegion>,
+    ) -> Option<Vec<SomePlan>> {
+        //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
+        self.domains[dom_id].make_plans2(from_region, goal_region, within)
     }
 
     /// Choose a plan from a vector of plans, for a need.
@@ -664,14 +635,14 @@ impl DomainStore {
         // Find the shortest plan length, within maximum rate plans.
         let min_plan_len: usize = max_rate_inxplans
             .iter()
-            .map(|inx| self.can_do[*inx].plans.as_ref().unwrap().number_steps())
+            .map(|inx| self.number_steps(&self.can_do[*inx].plans))
             .min()
             .unwrap();
 
         // Make selection of shortest plans.
         let min_len_inxplans: Vec<usize> = max_rate_inxplans
             .into_iter()
-            .filter(|inx| self.can_do[*inx].plans.as_ref().unwrap().number_steps() == min_plan_len)
+            .filter(|inx| self.number_steps(&self.can_do[*inx].plans) == min_plan_len)
             .collect();
 
         //println!("choose_need: min len {min_plan_len} number plans {}", min_len_inxplans.len());
@@ -691,7 +662,7 @@ impl DomainStore {
             "\nNeed chosen: {:2} {} {}",
             min_len_inxplans[cd2_inx],
             ndx,
-            itmx.plans.as_ref().unwrap().str_terse()
+            self.plans_str_terse(&itmx.plans)
         );
 
         min_len_inxplans[cd2_inx]
@@ -739,7 +710,7 @@ impl DomainStore {
 
         // Get the select regions the current state is in.
         for optregs in self.select.iter_mut() {
-            if optregs.regions.is_superset_states_corr(&all_states) {
+            if optregs.regions.is_superset_states(&all_states) {
                 optregs.inc_times_visited();
             }
         }
@@ -755,7 +726,7 @@ impl DomainStore {
         for optregs in self.select.iter() {
             if optregs
                 .regions
-                .is_superset_states_corr(&self.all_current_states())
+                .is_superset_states(&self.all_current_states())
             {
                 ret = true;
                 boredom_limit += optregs.value();
@@ -983,7 +954,7 @@ impl DomainStore {
                         "{:2} {} {}/{:+}",
                         inx,
                         self.needs[ndplnx.inx],
-                        ndplnx.plans.as_ref().unwrap().str_terse(),
+                        self.plans_str_terse(&ndplnx.plans),
                         ndplnx.rate,
                     );
                 } else {
@@ -991,7 +962,7 @@ impl DomainStore {
                         "{:2} {} {}",
                         inx,
                         self.needs[ndplnx.inx],
-                        ndplnx.plans.as_ref().unwrap().str_terse(),
+                        self.plans_str_terse(&ndplnx.plans),
                     );
                 }
             } // next ndplnx
@@ -1067,125 +1038,6 @@ impl DomainStore {
             }
         }
     }
-
-    // Find traps to further progess from start to goal.
-    // Return traps, vec![(dom_id, vec![SelectRegions index, ...])]
-    fn find_a_trap(
-        &self,
-        start_regs: &RegionStoreCorr,
-        goal_regs: &RegionStoreCorr,
-    ) -> Option<(usize, Vec<usize>)> {
-        if self.len() == 1 {
-            return None;
-        }
-
-        // Find negative SelectRegions affecting the change, and how they affect the change.
-        // Assuming all actions change one bit at a time.
-        // F surrounded by 7, D, E and B, cannot be reached using 1-bit change actions.
-
-        // Union of the start and goal region, per domain.
-        let mut unions = Vec::<SomeRegion>::with_capacity(self.len());
-
-        // SelectRegions that have only one region that is not a superset of a start region.
-        // (domain index, SelectRegion index)
-        let mut traps = Vec::<(usize, usize)>::new();
-
-        // Init memory, per domain.
-        for dom_id in 0..self.len() {
-            unions.push(start_regs[dom_id].union(&goal_regs[dom_id]));
-        }
-
-        // Load info, per SelectRegions.
-        for (inx, selx) in self.select_negative.iter().enumerate() {
-            for dom_id in 0..self.len() {
-                if start_regs[dom_id] == goal_regs[dom_id] {
-                    continue;
-                }
-
-                if !selx.regions[dom_id].intersects(&unions[dom_id]) {
-                    continue;
-                }
-
-                if selx.regions[dom_id].is_superset_of(&start_regs[dom_id]) {
-                    continue;
-                }
-
-                // Check if all other domains have current states in the SelectRegions.
-                let mut all_other_in = true;
-                for (iny, regx) in selx.regions.iter().enumerate() {
-                    if iny == dom_id {
-                        continue;
-                    }
-                    if regx.is_superset_of(&start_regs[iny]) {
-                    } else {
-                        all_other_in = false;
-                        break;
-                    }
-                }
-                if all_other_in {
-                    traps.push((dom_id, inx));
-                }
-            } // next dom_id
-        } // next inx, selx
-
-        // Check for no traps.
-        if traps.is_empty() {
-            return None;
-        }
-
-        // Get all domain numbers in a trap.
-        let mut dom_ids = Vec::<usize>::new();
-        for trapx in traps.iter() {
-            if dom_ids.contains(&trapx.0) {
-            } else {
-                dom_ids.push(trapx.0);
-            }
-        }
-
-        // Aggregate SelectRegions for each domain.
-        let mut traps2 = Vec::<(usize, Vec<usize>)>::with_capacity(dom_ids.len());
-        for dom_id in dom_ids.iter() {
-            let mut sel_inxs = Vec::<usize>::new();
-            for (dom, sel_inx) in traps.iter() {
-                if dom == dom_id {
-                    sel_inxs.push(*sel_inx);
-                }
-            }
-            traps2.push((*dom_id, sel_inxs));
-        }
-
-        // Try each trap.
-        let mut rp1 = tools::RandomPick::new(traps2.len());
-        while let Some(trap_inx) = rp1.pick() {
-            let (dom_id, sel_inxs) = &traps2[trap_inx];
-
-            let mut comp = RegionStore::new(vec![self[*dom_id].max_poss_region.clone()]);
-            for sely in sel_inxs.iter() {
-                comp =
-                    comp.intersection(&self.select_negative[*sely].regions[*dom_id].complement());
-            }
-
-            let paths = self[*dom_id].find_paths_through_regions(
-                &start_regs[*dom_id],
-                &goal_regs[*dom_id],
-                &comp,
-            );
-
-            if paths.is_empty() {
-                //println!(
-                //    "found trap, domain {} start {} goal {}",
-                //    dom_id, start_regs[*dom_id], goal_regs[*dom_id]
-                //);
-                //for selx in sel_inxs.iter() {
-                //    println!("   {}", self.select_negative[*selx]);
-                //}
-                // Cannot get around trap, return trap details.
-                return Some((*dom_id, sel_inxs.to_vec()));
-            }
-        }
-        None
-    }
-
     /// Like Real Life, formulate a direct plan,
     /// notice there are some negative aspects,
     /// then try to form a plan that avoids the negative.
@@ -1194,210 +1046,411 @@ impl DomainStore {
         start_regs: &RegionStoreCorr,
         goal_regs: &RegionStoreCorr,
     ) -> Option<PlanStore> {
-        //println!("avoid_negative_select_regions: starting: start {start_regs} goal: {goal_regs}");
+        //println!(
+        //    "avoid_negative_select_regions_new: starting: start {start_regs} goal: {goal_regs}"
+        //);
         assert!(start_regs.len() == self.len());
         assert!(goal_regs.len() == self.len());
 
-        // Check if currently in, or going to, a negative region.
-        for selx in self.select_negative.iter() {
-            if selx.regions.is_superset_of_corr(start_regs)
-                || selx.regions.is_superset_of_corr(goal_regs)
-            {
-                return None;
-            }
+        // Check if no plans are needed.
+        if start_regs.intersects(goal_regs) {
+            //println!("No plan needed (1)");
+            return None;
         }
 
-        let mut first_plans = PlanStore::new(vec![]);
-
-        let mut cur_start = start_regs.clone();
-
-        for _ in 0..4 {
-            if let Some((dom_id, sel_inxs)) = self.find_a_trap(&cur_start, goal_regs) {
-                println!("\nfound trap dom {} sel_inxs {:?}", dom_id, sel_inxs);
-
-                // Find fix, else fail.
-
-                // See if other domains can change to disarm the trap.
-                'next_dom: for domx in 0..self.len() {
-                    if domx == dom_id {
-                        continue;
-                    }
-                    let mut comp = RegionStore::new(vec![self[domx].max_poss_region.clone()]);
-                    for sely in sel_inxs.iter() {
-                        comp = comp
-                            .intersection(&self.select_negative[*sely].regions[domx].complement());
-                    }
-                    // Find closest complement regions.
-                    let mut min_dist = usize::MAX;
-                    for compx in comp.iter() {
-                        if compx.distance(&cur_start[domx]) < min_dist {
-                            min_dist = compx.distance(&cur_start[domx]);
-                        }
-                    }
-                    // Add closest complement regions.
-                    let mut closest = vec![];
-                    for compx in comp.iter() {
-                        if compx.distance(&cur_start[domx]) == min_dist {
-                            closest.push(compx.clone());
-                        }
-                    }
-
-                    for compx in closest.iter() {
-                        if let Some(mut plans) =
-                            self[domx].make_plans2(&cur_start[domx], compx, None)
-                        {
-                            // Alter cur_start, add to PlanStore.
-                            let rslt = plans[0].result_region().clone();
-                            cur_start[domx] = rslt;
-                            first_plans.push(plans.swap_remove(0));
-
-                            break 'next_dom;
-                        }
-                    }
-                } // next domx
-            } else {
-                // No more traps
+        // Check if this function is needed.
+        let mut not_needed = true;
+        for selx in self.select_negative.iter() {
+            if selx.regions.is_between(start_regs, goal_regs) {
+                not_needed = false;
                 break;
             }
-        } // end while
-        if first_plans.is_not_empty() {
-            if let Some(next_plans) = self.avoid_negative_select_regions2(&cur_start, goal_regs) {
-                first_plans.append(next_plans);
-                return Some(first_plans);
-            } else {
-                return None;
+        }
+        if not_needed {
+            //println!("No plan needed (2)");
+            return None;
+        }
+
+        let mut plans = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| self.avoid_negative_select_regions2(start_regs, goal_regs))
+            .collect::<Vec<PlanStore>>();
+
+        if plans.is_empty() {
+            //println!("No plan needed (3)");
+            return None;
+        }
+
+        // Find the highest rated plans.
+        let mut max_rate = isize::MIN;
+        let mut inxs = Vec::<usize>::new();
+        for (inx, planx) in plans.iter().enumerate() {
+            let rate = self.rate_plans(planx);
+            if rate > max_rate {
+                max_rate = rate;
+                inxs = Vec::<usize>::new();
+            }
+            if rate == max_rate {
+                inxs.push(inx);
             }
         }
-        self.avoid_negative_select_regions2(start_regs, goal_regs)
+
+        Some(plans.remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]))
     }
 
-    /// Return plans for a change from start to goal,
-    /// without checking for traps.
+    /// Return plans for a change from start to goal
     fn avoid_negative_select_regions2(
         &self,
         start_regs: &RegionStoreCorr,
         goal_regs: &RegionStoreCorr,
     ) -> Option<PlanStore> {
-        //println!("avoid_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}");
+        //println!(
+        //    "avoid_negative_select_regions2_new: starting: start {start_regs} goal: {goal_regs}"
+        //);
+        //println!(
+        //    "select_non_negative regions = {}",
+        //    self.select_non_negative.len()
+        //);
 
-        // Outcome may depend on the order of the domains checked, so try a number of times.
-
-        'try_again: for _ in 0..(self.len() * 2) {
-            let mut start_states = StateStoreCorr::with_capacity(self.len());
-            for regx in start_regs.iter() {
-                start_states.push(regx.state1().clone());
-            }
-
-            let mut ret_plans = PlanStore::new(vec![]);
-
-            // Split domains based on the goal being in a SelectRegions part, or not.
-            let mut sr_out = vec![];
-            let mut sr_in = vec![];
-            for (dom_id, regx) in goal_regs.iter().enumerate() {
-                if self.select_negative.any_intersection_dom(dom_id, regx) {
-                    sr_in.push(dom_id);
-                } else {
-                    sr_out.push(dom_id);
-                }
-            }
-
-            if sr_out.is_empty() {
-            } else {
-                let mut options = tools::RandomPick::new(sr_out.len());
-
-                while let Some(sr_out_inx) = options.pick() {
-                    let dom_id = sr_out[sr_out_inx];
-
-                    if goal_regs[dom_id].is_superset_of(&start_regs[dom_id]) {
-                        continue;
-                    }
-
-                    if let Some(aplan) = self.avoid_negative_select_regions2_dom(
-                        dom_id,
-                        &start_regs[dom_id],
-                        &goal_regs[dom_id],
-                        &start_states,
-                    ) {
-                        if aplan.is_not_empty() {
-                            start_states[dom_id] = aplan.result_region().state1().clone();
-                            ret_plans.push(aplan);
-                        }
-                    } else {
-                        continue 'try_again;
-                    }
-                }
-            }
-
-            if sr_in.is_empty() {
-            } else {
-                let mut options = tools::RandomPick::new(sr_in.len());
-
-                while let Some(sr_in_inx) = options.pick() {
-                    let dom_id = sr_in[sr_in_inx];
-
-                    if goal_regs[dom_id].is_superset_of(&start_regs[dom_id]) {
-                        continue;
-                    }
-
-                    // Generate new all_states.
-                    let mut start_states_ref = Vec::<&SomeState>::with_capacity(self.len());
-                    for stax in start_states.iter() {
-                        start_states_ref.push(stax);
-                    }
-
-                    if let Some(aplan) = self.avoid_negative_select_regions2_dom(
-                        dom_id,
-                        &start_regs[dom_id],
-                        &goal_regs[dom_id],
-                        &start_states,
-                    ) {
-                        if aplan.is_not_empty() {
-                            start_states_ref[dom_id] = aplan.result_region().state1();
-                            ret_plans.push(aplan);
-                        }
-                    } else {
-                        continue 'try_again;
-                    }
-                }
-            }
-
-            if ret_plans.is_empty() {
-                continue 'try_again;
-            }
-            return Some(ret_plans);
+        // Check no plan needed.
+        if goal_regs.is_superset_of(start_regs) {
+            //println!("goal {goal_regs} is superset of start {start_regs}");
+            return None;
         }
-        None
+
+        // Check if start_regs and goal_regs are in the same non-negative region.
+        for selx in self.select_non_negative.iter() {
+            if selx.regions.is_superset_of(start_regs) && selx.regions.is_superset_of(goal_regs) {
+                //println!("{} and {} are in {}", start_regs, goal_regs, selx.regions);
+                if let Some(plans) = self.make_plans2(start_regs, goal_regs, Some(&selx.regions)) {
+                    //println!("returning PlanStore {plans}");
+                    assert!(plans.validate(start_regs, goal_regs));
+                    return Some(plans);
+                } else {
+                    return None;
+                }
+            }
+        }
+
+        let mut ret_plan_store = PlanStore::new(vec![]);
+
+        // Init current start.
+        let mut cur_start = start_regs.clone();
+
+        // Check if start regs are currently in a negative region.
+        let mut in_negative = false;
+        for selx in self.select_negative.iter() {
+            if selx.regions.is_superset_of(start_regs) {
+                in_negative = true;
+                break;
+            }
+        }
+
+        // Make plan to move start to a non-negative region, if needed.
+        if in_negative {
+            let mut min_distance = usize::MAX;
+            let mut targets = Vec::<&SelectRegions>::new();
+            for regsx in self.select_non_negative.iter() {
+                let dist = start_regs.distance(&regsx.regions);
+                if dist < min_distance {
+                    min_distance = dist;
+                    targets = Vec::<&SelectRegions>::new();
+                }
+                if dist == min_distance {
+                    targets.push(regsx);
+                }
+            } // next regsx
+            if targets.is_empty() {
+                return None;
+            }
+            let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
+
+            if let Some(plans) = self.make_plans2(&cur_start, &near_pos_regs.regions, None) {
+                cur_start = start_regs.clone();
+                for planx in plans.iter() {
+                    if planx.is_not_empty() {
+                        cur_start[planx.dom_id] = planx.result_region().clone();
+                    }
+                }
+                //println!("First plan {}", plans);
+                ret_plan_store.append(plans);
+                //println!("cur_start {cur_start}");
+            } else {
+                return None;
+            }
+        } // end in_negative.
+
+        // Now, use local cur_start, instead of argument start_regs.
+
+        // Init last PlanStore, may end up being empty.
+        let mut last_plan_store = PlanStore::new(vec![]);
+
+        // Init current goal.
+        let mut cur_goal = goal_regs.clone();
+
+        // Check if goal regs are in a negative region.
+        let mut in_negative = false;
+        for selx in self.select_negative.iter() {
+            if selx.regions.is_superset_of(goal_regs) {
+                in_negative = true;
+                break;
+            }
+        }
+
+        // Make plan to move goal from a non-negative region, if needed.
+        if in_negative {
+            let mut min_distance = usize::MAX;
+            let mut targets = Vec::<&SelectRegions>::new();
+            for regsx in self.select_non_negative.iter() {
+                let dist = goal_regs.distance(&regsx.regions);
+                if dist < min_distance {
+                    min_distance = dist;
+                    targets = Vec::<&SelectRegions>::new();
+                }
+                if dist == min_distance {
+                    targets.push(regsx);
+                }
+            } // next regsx
+            if targets.is_empty() {
+                return None;
+            }
+            let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
+
+            let goal_regs_pos = cur_goal.translate_to(&near_pos_regs.regions);
+
+            if let Some(plans) = self.make_plans2(&goal_regs_pos, &cur_goal, None) {
+                last_plan_store = plans;
+                cur_goal = goal_regs.clone();
+                for planx in last_plan_store.iter() {
+                    if planx.is_not_empty() {
+                        cur_goal[planx.dom_id] = planx.initial_region().clone();
+                    }
+                }
+                //println!("Last plan {}", last_plan_store);
+                //println!("cur_goal {cur_goal}");
+            } else {
+                return None;
+            }
+        } // end in_negative.
+
+        // Check no further plan needed.
+        if cur_goal.is_superset_of(&cur_start) {
+            if last_plan_store.is_not_empty() {
+                ret_plan_store.append(last_plan_store);
+            }
+            //println!("returning PlanStore {}", tools::vec_string(&ret_plan_store));
+            assert!(ret_plan_store.validate(start_regs, goal_regs));
+            return Some(ret_plan_store);
+        }
+
+        // Check if cur_start and cur_goal are in the same non-negative region.
+        for selx in self.select_non_negative.iter() {
+            if selx.regions.is_superset_of(&cur_start) && selx.regions.is_superset_of(&cur_goal) {
+                //println!("{} and {} are in {}", cur_start, cur_goal, selx.regions);
+                let plans = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))?;
+                //println!("returning PlanStore {plans}");
+                ret_plan_store.append(plans);
+                if last_plan_store.is_not_empty() {
+                    ret_plan_store.append(last_plan_store);
+                }
+                assert!(ret_plan_store.validate(start_regs, goal_regs));
+                return Some(ret_plan_store);
+            }
+        }
+
+        // Now, use local cur_goal, instead of argument goal_regs.
+        let mut mid_paths = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| self.avoid_negative_select_regions3(&cur_start, &cur_goal))
+            .collect::<Vec<Vec<&RegionStoreCorr>>>();
+
+        if mid_paths.is_empty() {
+            return None;
+        }
+
+        let pathx = mid_paths.remove(rand::thread_rng().gen_range(0..mid_paths.len()));
+
+        let mut cur_regs = RegionStoreCorr::new(vec![]);
+        for regx in cur_start.iter() {
+            cur_regs.push((*regx).clone());
+        }
+        let mut mid_plans = PlanStore::new(vec![]);
+        for inx in 1..(pathx.len() - 1) {
+            if let Some(intx) = pathx[inx].intersection(pathx[inx + 1]) {
+                //println!("{} intersects {} at {}", pathx[inx], pathx[inx + 1], intx);
+                if let Some(plans) = self.make_plans2(&cur_regs, &intx, Some(pathx[inx])) {
+                    //println!("  mid plans {}", plans);
+                    cur_regs = plans.result_regions(&cur_regs);
+                    //println!("cur_regs {cur_regs}");
+                    mid_plans.append(plans);
+                } else {
+                    return None;
+                }
+            } else {
+                panic!("{} does not intersect {} ?", pathx[inx], pathx[inx + 1]);
+            }
+        }
+        if mid_plans.is_empty() {
+            return None;
+        }
+
+        ret_plan_store.append(mid_plans);
+
+        // Add last_plan_store. if needed.
+        if last_plan_store.is_not_empty() {
+            ret_plan_store.append(last_plan_store);
+        }
+
+        //println!("returning PlanStore {}", tools::vec_string(&ret_plan_store));
+        assert!(ret_plan_store.validate(start_regs, goal_regs));
+        Some(ret_plan_store)
     } // end avoid_negative_select_regions2
 
-    fn avoid_negative_select_regions2_dom(
-        &self,
-        dom_id: usize,
-        start_reg: &SomeRegion,
-        goal_reg: &SomeRegion,
-        start_states: &StateStoreCorr,
-    ) -> Option<SomePlan> {
-        //println!("avoid_negative_select_regions2_dom: dom: {} start {} goal {}", dom_id, start_reg, goal_reg);
+    fn avoid_negative_select_regions3<'a>(
+        &'a self,
+        cur_start: &'a RegionStoreCorr,
+        cur_goal: &'a RegionStoreCorr,
+    ) -> Option<Vec<&RegionStoreCorr>> {
+        // Init start intersections vector.
+        let mut start_ints = Vec::<&RegionStoreCorr>::new();
+        start_ints.push(cur_start);
 
-        let non_neg = self.calc_non_negative_regions(dom_id, start_states, Some(dom_id));
-        //let non_neg = &self.select_non_negative;
+        // Get first non-negative SelectRegions that intersects the start.
+        let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
 
-        if non_neg.is_empty() {
-            //println!("    No non neg found");
+        while let Some(inx) = randpick.pick() {
+            let selx = &self.select_non_negative[inx];
+
+            if selx.regions.is_superset_of(cur_start) {
+                start_ints.push(&selx.regions);
+                break;
+            }
+        }
+        if start_ints.len() == 1 {
             return None;
         }
 
-        // Find plans that avoid negative regions.
-        let mut dom_plans = self[dom_id].plan_paths_through_regions(start_reg, goal_reg, &non_neg);
-        if dom_plans.is_empty() {
+        // Init goal intersections vector.
+        let mut goal_ints = Vec::<&RegionStoreCorr>::new();
+        goal_ints.push(cur_goal);
+
+        // Get first non-negative SelectRegions that intersects the goal.
+        let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
+
+        while let Some(inx) = randpick.pick() {
+            let selx = &self.select_non_negative[inx];
+
+            if selx.regions.is_superset_of(cur_goal) {
+                goal_ints.push(&selx.regions);
+                break;
+            }
+        }
+        if goal_ints.len() == 1 {
             return None;
         }
 
-        let inx = self.choose_a_plan(&dom_plans);
+        // Build up start and goal vectors, until the is an intersection between them, or
+        // no more intersections.
+        loop {
+            // Check last start_ints item against goal_ints.
+            let start_last = start_ints.last()?;
+            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+            for regs_gx in goal_ints.iter() {
+                if regs_gx.intersects(start_last) {
+                } else {
+                    tmp_path.push(regs_gx);
+                    continue;
+                }
 
-        assert!(goal_reg.is_superset_of(dom_plans[inx].result_region()));
+                if std::ptr::eq(*regs_gx, *start_last) {
+                } else {
+                    start_ints.push(regs_gx);
+                }
+                for regs_tx in tmp_path.iter().rev() {
+                    start_ints.push(regs_tx);
+                }
+                //println!("path 1 {}", tools::vec_ref_string(&start_ints));
+                return Some(start_ints);
+            }
 
-        Some(dom_plans.swap_remove(inx))
-    } // end avoid_negative_select_regions2_dom
+            // Check last goal_ints item against start_ints.
+            let goal_last = goal_ints.last()?;
+            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+            for regs_sx in start_ints.iter() {
+                if regs_sx.intersects(goal_last) {
+                } else {
+                    tmp_path.push(regs_sx);
+                    continue;
+                }
+
+                if std::ptr::eq(regs_sx, goal_last) {
+                } else {
+                    tmp_path.push(regs_sx);
+                }
+                for regs_gx in goal_ints.iter().rev() {
+                    tmp_path.push(regs_gx);
+                }
+                //println!("path 2 {}", tools::vec_ref_string(&tmp_path));
+                return Some(tmp_path);
+            }
+
+            // Get next layer of intersections for start_ints.
+            let mut start_added = false;
+            let start_last = &start_ints.last()?;
+            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
+
+            while let Some(inx) = randpick.pick() {
+                let selx = &self.select_non_negative[inx];
+
+                if start_last.intersects(&selx.regions) {
+                } else {
+                    continue;
+                }
+
+                //println!("  {} does intersect {}", selx.regions, start_last);
+                if tools::vec_contains_ref(&start_ints, &selx.regions) {
+                    //println!("  {} is in start_ints", selx.regions);
+                    continue;
+                }
+
+                if selx.regions.is_superset_of(cur_start) {
+                    continue;
+                }
+
+                start_ints.push(&selx.regions);
+                start_added = true;
+                break;
+            } // next pick.
+
+            // Get next layer of intersections for goal_ints.
+            let mut goal_added = false;
+            let goal_last = &goal_ints.last()?;
+            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
+
+            while let Some(inx) = randpick.pick() {
+                let selx = &self.select_non_negative[inx];
+
+                if goal_last.intersects(&selx.regions) {
+                } else {
+                    continue;
+                }
+                if tools::vec_contains_ref(&goal_ints, &selx.regions) {
+                    continue;
+                }
+                if selx.regions.is_superset_of(cur_goal) {
+                    continue;
+                }
+                goal_ints.push(&selx.regions);
+                goal_added = true;
+                break;
+            } // next pick.
+
+            if start_added || goal_added {
+            } else {
+                return None;
+            }
+        } // end loop
+    } // end avoid_negative_select_regions3
 
     /// Return a String representation of a DomainStore.
     fn formatted_string(&self) -> String {
@@ -1433,8 +1486,41 @@ impl DomainStore {
     }
 
     /// Print a plan step-by-step, indicating changes.
+    pub fn print_plans_detail_opt(&self, plans: &Option<PlanStore>) {
+        if let Some(plansx) = plans {
+            self.print_plan_detail(plansx);
+        } else {
+            println!("()");
+        }
+    }
+
+    /// Print a plan step-by-step, indicating changes.
     pub fn print_plan_detail(&self, plan_str: &PlanStore) {
-        let mut cur_states = self.all_current_states();
+        self.print_plan_detail2(plan_str, &self.all_current_states());
+    }
+
+    /// Print a plan step-by-step, indicating changes.
+    pub fn print_plan_detail2(&self, plan_str: &PlanStore, states: &StateStoreCorr) {
+        let mut cur_states = states.clone();
+
+        // Check start states.
+        let mut start_in = false;
+        for sel_regx in self.select.iter() {
+            if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
+                start_in = true;
+                break;
+            }
+        }
+
+        if start_in {
+            print!("\nStart {} in", states);
+            for sel_regx in self.select.iter() {
+                if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
+                    print!(" in {:+}", sel_regx);
+                }
+            }
+            println!(" ");
+        }
 
         for planx in plan_str.iter() {
             if planx.is_empty() {
@@ -1443,131 +1529,33 @@ impl DomainStore {
 
             println!("\nDomain: {}, Plan:", planx.dom_id);
 
-            for (inx, stepx) in planx.iter().enumerate() {
+            let mut last_dom_id = 0;
+            for stepx in planx.iter() {
                 let df = stepx.initial.diff_mask(&stepx.result);
                 print!(
                     "{} Action {:02} Group {} ",
                     &stepx.initial, &stepx.act_id, &stepx.group_reg
                 );
-                if inx > 0 {
-                    for sel_regx in self.select_negative.iter() {
-                        if sel_regx.regions.is_superset_states_corr(&cur_states) {
-                            print!(" in {:+}", sel_regx);
-                        }
+                for sel_regx in self.select.iter() {
+                    if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
+                        print!(" in {:+}", sel_regx);
                     }
                 }
                 println!("\n{}", df.str2());
 
                 cur_states[planx.dom_id] = stepx.result.state1().clone();
-            } // next steps
-            println!("{}", planx.result_region());
+
+                last_dom_id = planx.dom_id;
+            } // next stepsn
+            print!("{}", cur_states[last_dom_id]);
+
+            for sel_regx in self.select.iter() {
+                if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
+                    print!(" in {:+}", sel_regx);
+                }
+            }
+            println!(" ");
         } // next planx
-    }
-
-    /// Testing...
-    /// For plans for more than one domain,
-    /// Where running each in order results it a negative rating,
-    /// try splitting up the steps, like
-    /// Domain 1, step 1.  Domain 3, step 1. Domain 1, step 2. Domain 2, step 1.  ....
-    /// Do in a way similar to a random depth-first search.
-    pub fn try_plans_step_by_step(&self, plans: &PlanStore) -> Option<PlanStore> {
-        let mut work_vec: Vec<Vec<SomePlan>> = vec![];
-
-        // Check for to few, non-empty plans.
-        if plans.num_non_empty() < 2 {
-            println!("Returning None");
-            return None;
-        }
-
-        let base_rate = self.rate_plans(plans);
-        println!("Base rate {base_rate}");
-        if base_rate >= 0 {
-            println!("Returning None");
-            return None;
-        }
-
-        let mut num_choices = 0;
-        for planx in plans.iter() {
-            let mut vecy = Vec::<SomePlan>::with_capacity(planx.len());
-            for stepx in planx.iter() {
-                vecy.push(SomePlan::new(planx.dom_id, vec![stepx.clone()]));
-                num_choices += 1;
-            }
-            if vecy.is_empty() {
-            } else {
-                work_vec.push(vecy);
-            }
-        }
-
-        //println!("work_vec {:?} num_choices {num_choices}", work_vec);
-
-        let mut plan_tuples = (0..5)
-            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(|_| self.try_plans_step_by_step2(&work_vec, base_rate, num_choices))
-            .collect::<Vec<(isize, PlanStore)>>();
-        println!("num returned {}", plan_tuples.len());
-
-        if plan_tuples.is_empty() {
-            println!("Returning None");
-            return None;
-        }
-
-        // Look for max rate plans.
-        let mut max_rate = base_rate;
-        let mut inx = 0;
-
-        for (num, (rate, _plans)) in plan_tuples.iter().enumerate() {
-            if *rate > max_rate {
-                max_rate = *rate;
-                inx = num;
-            }
-        }
-
-        println!("Returning {} rate {}", plan_tuples[inx].1, max_rate);
-
-        Some(plan_tuples.remove(inx).1)
-    }
-    /// Try a random depth-first series of single-step plans, looking for a better rate.
-    fn try_plans_step_by_step2(
-        &self,
-        work_vec: &Vec<Vec<SomePlan>>,
-        base_rate: isize,
-        num_choices: usize,
-    ) -> Option<(isize, PlanStore)> {
-        let mut work_vec2 = Vec::<Vec<&SomePlan>>::with_capacity(work_vec.len());
-        for vecx in work_vec.iter() {
-            let mut vecy = Vec::<&SomePlan>::with_capacity(vecx.len());
-            for planx in vecx.iter() {
-                vecy.push(planx);
-            }
-            work_vec2.push(vecy);
-        }
-        //println!("work_vec2 {:?}", work_vec2);
-
-        let mut seq = PlanStore::new(Vec::<SomePlan>::with_capacity(num_choices));
-
-        while !work_vec2.is_empty() {
-            let opt_next = if work_vec.len() > 1 {
-                rand::thread_rng().gen_range(0..work_vec2.len())
-            } else {
-                0
-            };
-
-            let choice = work_vec2[opt_next].remove(0);
-
-            if work_vec2[opt_next].is_empty() {
-                work_vec2.remove(opt_next);
-            }
-            //println!("opt_next {opt_next} work_vec2 {:?} choice {choice}", work_vec2);
-
-            seq.push(choice.clone());
-            if self.rate_plans(&seq) <= base_rate {
-                return None;
-            }
-        }
-        let rate = self.rate_plans(&seq);
-        //println!("plans {} rate {}", seq, rate);
-        Some((rate, seq))
     }
 
     /// Return the maximum possible regions.
@@ -1577,6 +1565,15 @@ impl DomainStore {
             ret_regs.push(domx.max_poss_region.clone());
         }
         ret_regs
+    }
+
+    /// Return a terse string representing a Option vector of PlanStores.
+    pub fn plans_str_terse(&self, plans: &Option<PlanStore>) -> String {
+        if let Some(plansx) = plans {
+            plansx.str_terse()
+        } else {
+            "([])".to_string()
+        }
     }
 } // end impl DomainStore
 
@@ -1597,16 +1594,14 @@ impl IndexMut<usize> for DomainStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-    use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
-    use crate::target::SomeTarget;
 
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StateStoreCorr) -> usize {
         select
             .regionstores
             .iter()
-            .map(|regsx| usize::from(regsx.regions.is_superset_states_corr(stas)))
+            .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
             .sum()
     }
 
@@ -1642,7 +1637,7 @@ mod tests {
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
-        // Set up action to change the third bit.
+        // Set up action to change the fourth bit.
         domx.add_action(vec![]);
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
@@ -1651,11 +1646,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r01X1").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("r01X1")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("rX101").expect("SNH"));
+        regstr2.push(dmxs[0].region_from_string_pad_x("rX101")?);
         dmxs.add_select(SelectRegions::new(regstr2, 0, 2));
         dmxs.calc_select();
 
@@ -1676,11 +1671,7 @@ mod tests {
                 "Plan found: {} start {start_region} goal {goal_region}",
                 planx
             );
-            assert!(
-                dmxs.select
-                    .rate_plans(&planx, &StateStoreCorr::new(vec![state1]))
-                    == 0
-            );
+            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
 
             return Ok(());
         }
@@ -1720,7 +1711,7 @@ mod tests {
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
-        // Set up action to change the third bit.
+        // Set up action to change the fourth bit.
         domx.add_action(vec![]);
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
@@ -1729,11 +1720,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r0101").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("r0101")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("r1001").expect("SNH"));
+        regstr2.push(dmxs[0].region_from_string_pad_x("r1001")?);
         dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
         dmxs.calc_select();
 
@@ -1750,15 +1741,9 @@ mod tests {
         dmxs[0].get_needs(); // set aggregate changes
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
-            let rate = dmxs
-                .select
-                .rate_plans(&planx, &StateStoreCorr::new(vec![state1.clone()]));
+            let rate = dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1.clone()]));
             println!("Plan found: {} rate: {}", planx, rate);
-            assert!(
-                dmxs.select
-                    .rate_plans(&planx, &StateStoreCorr::new(vec![state1]))
-                    == 0
-            );
+            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
             //assert!(1 == 2);
             return Ok(());
         }
@@ -1798,7 +1783,7 @@ mod tests {
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
-        // Set up action to change the third bit.
+        // Set up action to change the fourth bit.
         domx.add_action(vec![]);
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
@@ -1807,23 +1792,23 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r0x00").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("r0x00")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("rx100").expect("SNH"));
+        regstr2.push(dmxs[0].region_from_string_pad_x("rx100")?);
         dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
 
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
-        regstr3.push(dmxs[0].region_from_string_pad_x("r01x1").expect("SNH"));
+        regstr3.push(dmxs[0].region_from_string_pad_x("r01x1")?);
         dmxs.add_select(SelectRegions::new(regstr3, 0, 1));
 
         let mut regstr4 = RegionStoreCorr::with_capacity(1);
-        regstr4.push(dmxs[0].region_from_string_pad_x("r10x1").expect("SNH"));
+        regstr4.push(dmxs[0].region_from_string_pad_x("r10x1")?);
         dmxs.add_select(SelectRegions::new(regstr4, 0, 1));
 
         let mut regstr5 = RegionStoreCorr::with_capacity(1);
-        regstr5.push(dmxs[0].region_from_string_pad_x("r101x").expect("SNH"));
+        regstr5.push(dmxs[0].region_from_string_pad_x("r101x")?);
         dmxs.add_select(SelectRegions::new(regstr5, 0, 1));
         dmxs.calc_select();
 
@@ -1841,11 +1826,7 @@ mod tests {
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             println!("Plan found: {}", planx);
-            assert!(
-                dmxs.select
-                    .rate_plans(&planx, &StateStoreCorr::new(vec![state1]))
-                    == 0
-            );
+            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
             //assert!(1 == 2);
             return Ok(());
         }
@@ -1886,7 +1867,7 @@ mod tests {
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
-        // Set up action to change the third bit.
+        // Set up action to change the fourth bit.
         domx.add_action(vec![]);
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
@@ -1895,11 +1876,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r01xx").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("r10xx").expect("SNH"));
+        regstr2.push(dmxs[0].region_from_string_pad_x("r10xx")?);
         dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
         dmxs.calc_select();
 
@@ -1953,7 +1934,7 @@ mod tests {
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
 
-        // Set up action to change the third bit.
+        // Set up action to change the fourth bit.
         domx.add_action(vec![]);
         let s8 = domx.state_from_string("s0b1000")?;
         let s7 = domx.state_from_string("s0b0111")?;
@@ -1962,7 +1943,7 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("rxx0x").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("rxx0x")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
         dmxs.calc_select();
 
@@ -1979,9 +1960,12 @@ mod tests {
         dmxs[0].get_needs(); // set aggregate changes
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
-            println!("Plan found: {}", planx);
-            return Err(format!("Plan found ?"));
+            println!("Plan found: {} rate {}", planx, dmxs.rate_plans(&planx));
+            planx.str_terse();
+        } else {
+            return Err(format!("No plan ?"));
         }
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2059,16 +2043,16 @@ mod tests {
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
         let mut regstr0 = RegionStoreCorr::with_capacity(1);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r1100").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r1100")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r1011").expect("SNH"));
+        regstr1.push(dmxs[0].region_from_string_pad_x("r1011")?);
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
         dmxs.calc_select();
 
-        let s0 = dmxs[0].state_from_string("s0b0000").expect("SNH");
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
         dmxs[0].set_state(&s0);
 
         let sd = dmxs[0].state_from_string("s0b1101")?;
@@ -2081,11 +2065,10 @@ mod tests {
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             print!("Plans {}", plans);
-            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &all_states);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
-            assert!(plans.len() == 1);
         } else {
             return Err(format!("No plan found?"));
         }
@@ -2146,37 +2129,37 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Set select region.
-        let max_region = dmxs[1].region_from_string_pad_x("rxxxx").expect("SNH");
+        let max_region = dmxs[1].region_from_string_pad_x("rxxxx")?;
 
         // Set up dom 0 negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01x1").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r01x1")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("rx101").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("rx101")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         // Set up dom 1 negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(dmxs[1].region_from_string_pad_x("r011x").expect("SNH"));
+        regstr0.push(dmxs[1].region_from_string_pad_x("r011x")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(dmxs[1].region_from_string_pad_x("rx111").expect("SNH"));
+        regstr0.push(dmxs[1].region_from_string_pad_x("rx111")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s0 = dmxs[0].state_from_string("s0x0").expect("SNH");
+        let s0 = dmxs[0].state_from_string("s0x0")?;
         dmxs[0].set_state(&s0);
 
-        let s1 = dmxs[1].state_from_string("s0x1").expect("SNH");
+        let s1 = dmxs[1].state_from_string("s0x1")?;
         dmxs[1].set_state(&s1);
 
         let sf = dmxs[0].state_from_string("s0xf")?;
@@ -2199,11 +2182,11 @@ mod tests {
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             print!("Plans {}", plans);
-            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            assert!(plans.is_not_empty());
+            let rate = dmxs.rate_plans2(&plans, &all_states);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
-            assert!(plans.len() == 2);
         } else {
             return Err(format!("No plan found?"));
         }
@@ -2266,22 +2249,22 @@ mod tests {
 
         // Set up negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r00xx").expect("SNH"));
-        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r00xx")?);
+        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r11xx").expect("SNH"));
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r11xx")?);
+        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s5 = dmxs[0].state_from_string("s0b0101").expect("SNH");
+        let s5 = dmxs[0].state_from_string("s0b0101")?;
         dmxs[0].set_state(&s5);
 
-        let s7 = dmxs[1].state_from_string("s0b0111").expect("SNH");
+        let s7 = dmxs[1].state_from_string("s0b0111")?;
         dmxs[1].set_state(&s7);
 
         let start_regions = RegionStoreCorr::new(vec![
@@ -2304,19 +2287,18 @@ mod tests {
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_regions, &goal_regions) {
             print!("Plans {}", plans);
-            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &all_states);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
-            assert!(plans.len() == 3);
-            // Domain 1, move 7 out of negative select regions.
-            assert!(plans[0].dom_id == 1);
-            // Domain 0, move 5 to 9.
-            assert!(plans[1].dom_id == 0);
-            // Domain 1, move state from the first step, back to 7.
-            assert!(plans[2].dom_id == 1);
-            assert!(plans.dom_result(0, &goal_regions[0]));
-            assert!(plans.dom_result(1, &goal_regions[1]));
+            let mut cur_states = dmxs.all_current_states();
+            for planx in plans.iter() {
+                if planx.is_empty() {
+                    continue;
+                }
+                cur_states[planx.dom_id] = planx.result_state(&cur_states[planx.dom_id]);
+            }
+            assert!(goal_regions.is_superset_states(&cur_states));
         } else {
             return Err(format!("No plan found?"));
         }
@@ -2378,22 +2360,22 @@ mod tests {
 
         // Set up negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r000x").expect("SNH"));
-        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r000x")?);
+        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r11x1").expect("SNH"));
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx").expect("SNH"));
+        regstr0.push(dmxs[0].region_from_string_pad_x("r11x1")?);
+        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s5 = dmxs[0].state_from_string("s0b0101").expect("SNH");
+        let s5 = dmxs[0].state_from_string("s0b0101")?;
         dmxs[0].set_state(&s5);
 
-        let s7 = dmxs[1].state_from_string("s0b0111").expect("SNH");
+        let s7 = dmxs[1].state_from_string("s0b0111")?;
         dmxs[1].set_state(&s7);
 
         let start_regions = RegionStoreCorr::new(vec![
@@ -2416,7 +2398,7 @@ mod tests {
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_regions, &goal_regions) {
             print!("Plans {}", plans);
-            let rate = dmxs.select.rate_plans(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &all_states);
             print!(", rate {}", rate);
             println!(" ");
             //assert!(rate == 0);
@@ -2425,182 +2407,6 @@ mod tests {
         } else {
             return Err(format!("No plan found?"));
         }
-        Ok(())
-    }
-
-    #[test]
-    /// Test case using two domains, where running plans traverses a negative region.
-    /// Domain 0, 1 -> D.
-    /// Domain 1, F -> 3.
-    fn avoidance10() -> Result<(), String> {
-        // Init DomainStore, Domains.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-
-        // Set up domain 0, action 0, action response and groups.
-        let act0 = 0;
-
-        let cng0: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/XX/Xx")
-            .expect("SNH")])];
-
-        dmxs[0].add_action(cng0);
-        let s0 = dmxs[0].state_from_string("s0b0000")?;
-        dmxs[0].set_cur_state(s0.clone());
-        dmxs[0].take_action_arbitrary(act0);
-        let sf = dmxs[0].state_from_string("s0b1111")?;
-        dmxs[0].set_cur_state(sf.clone());
-        dmxs[0].take_action_arbitrary(act0);
-
-        // Set up domain 0, action 1, action response and groups.
-        let act1 = 1;
-
-        let cng1: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/XX/Xx/XX")
-            .expect("SNH")])];
-
-        dmxs[0].add_action(cng1);
-        dmxs[0].set_cur_state(s0.clone());
-        dmxs[0].take_action_arbitrary(act1);
-        dmxs[0].set_cur_state(sf.clone());
-        dmxs[0].take_action_arbitrary(act1);
-
-        // Set up domain 0, action 2, action response and groups.
-        let act2 = 2;
-
-        let cng2: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX/Xx/XX/XX")
-            .expect("SNH")])];
-
-        dmxs[0].add_action(cng2);
-        dmxs[0].set_cur_state(s0.clone());
-        dmxs[0].take_action_arbitrary(act2);
-        dmxs[0].set_cur_state(sf.clone());
-        dmxs[0].take_action_arbitrary(act2);
-
-        // Set up domain 0, action 3, action response and groups.
-        let act3 = 3;
-
-        let cng3: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-            .rule_from_string("Xx/XX/XX/XX")
-            .expect("SNH")])];
-
-        dmxs[0].add_action(cng3);
-        dmxs[0].set_cur_state(s0.clone());
-        dmxs[0].take_action_arbitrary(act3);
-        dmxs[0].set_cur_state(sf.clone());
-        dmxs[0].take_action_arbitrary(act3);
-
-        // Set up domain 1 actions.
-
-        // Set up domain 1, action 0, action response and groups.
-        let act0 = 0;
-
-        let cng0: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/XX/XX/Xx")
-            .expect("SNH")])];
-
-        dmxs[1].add_action(cng0);
-        let s0 = dmxs[1].state_from_string("s0b0000")?;
-        dmxs[1].set_cur_state(s0.clone());
-        dmxs[1].take_action_arbitrary(act0);
-        let sf = dmxs[1].state_from_string("s0b1111")?;
-        dmxs[1].set_cur_state(sf.clone());
-        dmxs[1].take_action_arbitrary(act0);
-
-        // Set up domain 1, action 1, action response and groups.
-        let act1 = 1;
-
-        let cng1: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/XX/Xx/XX")
-            .expect("SNH")])];
-
-        dmxs[1].add_action(cng1);
-        dmxs[1].set_cur_state(s0.clone());
-        dmxs[1].take_action_arbitrary(act1);
-        dmxs[1].set_cur_state(sf.clone());
-        dmxs[1].take_action_arbitrary(act1);
-
-        // Set up domain 1, action 2, action response and groups.
-        let act2 = 2;
-
-        let cng2: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/Xx/XX/XX")
-            .expect("SNH")])];
-
-        dmxs[1].add_action(cng2);
-        dmxs[1].set_cur_state(s0.clone());
-        dmxs[1].take_action_arbitrary(act2);
-        dmxs[1].set_cur_state(sf.clone());
-        dmxs[1].take_action_arbitrary(act2);
-
-        // Set up domain 1, action 3, action response and groups.
-        let act3 = 3;
-
-        let cng3: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-            .rule_from_string("Xx/XX/XX/XX")
-            .expect("SNH")])];
-
-        dmxs[1].add_action(cng3);
-        dmxs[1].set_cur_state(s0.clone());
-        dmxs[1].take_action_arbitrary(act3);
-        dmxs[1].set_cur_state(sf.clone());
-        dmxs[1].take_action_arbitrary(act3);
-
-        println!("\nActions {}\n", dmxs[0].actions);
-        println!("\nActions {}\n", dmxs[1].actions);
-
-        // Set up negative regions.
-        let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r00xx").expect("SNH"));
-        regstr0.push(dmxs[0].region_from_string_pad_x("r00xx").expect("SNH"));
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
-
-        let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r11xx").expect("SNH"));
-        regstr1.push(dmxs[0].region_from_string_pad_x("r11xx").expect("SNH"));
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
-
-        // Calc non-negative RegionSores.
-        dmxs.calc_select();
-
-        // Set domain 0 current state.
-        let s1 = dmxs[0].state_from_string("s0b0001")?;
-        let sd = dmxs[0].state_from_string("s0b1101")?;
-        dmxs[0].set_state(&s1);
-
-        // Set domain 1 current state.
-        let s3 = dmxs[1].state_from_string("s0b0011")?;
-        let sf = dmxs[1].state_from_string("s0b1111")?;
-        dmxs[1].set_state(&sf);
-
-        let targets = TargetStore::new(vec![
-            SomeTarget::new(0, SomeRegion::new(vec![sd.clone()])),
-            SomeTarget::new(1, SomeRegion::new(vec![s3.clone()])),
-        ]);
-
-        if let Some(plans) = dmxs.make_plans(&targets) {
-            println!("Number plans {}", plans.len());
-            for planx in plans.iter() {
-                println!("plan {}", planx);
-            }
-            let rate = dmxs.rate_plans(&plans);
-            if rate < 0 {
-                println!("rate {rate}");
-                if let Some(plans) = dmxs.try_plans_step_by_step(&plans) {
-                    dmxs.run_plan_store(&plans);
-                    assert!(dmxs[0].cur_state == sd);
-                    assert!(dmxs[1].cur_state == s3);
-                } else {
-                    return Err("Secondary plans not found".to_string());
-                }
-            }
-        } else {
-            return Err("Initial plans not found".to_string());
-        }
-
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2703,7 +2509,7 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(8)));
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let neg_reg1 = dmxs[0].region_from_string_pad_x("rX1XX").expect("SNH");
+        let neg_reg1 = dmxs[0].region_from_string_pad_x("rX1XX")?;
 
         regstr1.push(neg_reg1.clone());
 
@@ -2711,7 +2517,7 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let neg_reg2 = dmxs[0].region_from_string_pad_x("r1XX1").expect("SNH");
+        let neg_reg2 = dmxs[0].region_from_string_pad_x("r1XX1")?;
         regstr1.push(neg_reg2.clone());
 
         // Add select regionstores.

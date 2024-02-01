@@ -701,12 +701,13 @@ impl SomeAction {
                 let mut needx = SomeNeed::ConfirmGroup {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_state: grpx.region.state1().clone(),
+                    target_state: sqrx.state.clone(),
                     grp_reg: grpx.region.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
                 ret_nds.push(needx);
+                //println!("ConfirmGroup: (1) sqr {sqrx}");
             }
 
             // If this is a one-state group ..
@@ -724,6 +725,7 @@ impl SomeAction {
                     //}
                     continue;
                 }
+                //println!("ConfirmGroup: (2) sqr {sqrx}");
             }
 
             let mut needx = SomeNeed::ConfirmGroup {
@@ -814,6 +816,7 @@ impl SomeAction {
 
                     match self.squares.pick_a_square_in(&target_reg) {
                         Ok(sqrx) => {
+                            //println!("ExpandGroup: sqr {sqrx}");
                             let mut ndx = SomeNeed::ExpandGroup {
                                 dom_id: self.dom_id,
                                 act_id: self.id,
@@ -826,6 +829,7 @@ impl SomeAction {
                             ret_nds.push(ndx);
                         }
                         Err(PickError::NoSquares) => {
+                            //println!("ExpandGroup: no sqr found");
                             let mut ndx = SomeNeed::ExpandGroup {
                                 dom_id: self.dom_id,
                                 act_id: self.id,

@@ -90,7 +90,7 @@ impl SelectRegions {
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         self.regions
-            .intersection_corr(&other.regions)
+            .intersection(&other.regions)
             .map(|regs| Self::new(regs, self.pos + other.pos, self.neg + other.neg))
     }
 
@@ -98,7 +98,7 @@ impl SelectRegions {
     pub fn distance_states(&self, stas: &StateStoreCorr) -> usize {
         debug_assert!(self.len() == stas.len());
 
-        self.regions.distance_states_corr(stas)
+        self.regions.distance_states(stas)
     }
 
     /// Return the number of regions in a SelectRegions instance.
@@ -113,12 +113,12 @@ impl SelectRegions {
 
     /// Return true if a SelectRegions is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        self.regions.is_subset_of_corr(&other.regions)
+        self.regions.is_subset_of(&other.regions)
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of_states(&self, stas: &StateStoreCorr) -> bool {
-        self.regions.is_superset_states_corr(stas)
+        self.regions.is_superset_states(stas)
     }
 
     /// Return true if there is an intersection of corresponding regions, of two SelectRegions.

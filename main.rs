@@ -1037,16 +1037,11 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
             } else {
                 let nd_inx = dmxs.can_do[n_num].inx;
 
-                let plans = &dmxs.can_do[n_num]
-                    .plans
-                    .as_ref()
-                    .expect("Any need in the can_do vector should have a non-None plan");
-
                 println!(
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
                     dmxs.needs[nd_inx],
-                    plans.str_terse()
+                    dmxs.plans_str_terse(&dmxs.can_do[n_num].plans)
                 );
 
                 match dmxs.needs[nd_inx] {
