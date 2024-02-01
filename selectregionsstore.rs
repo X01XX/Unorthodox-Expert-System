@@ -1,7 +1,6 @@
 //! Implement a struct of SelectRegionStore.
 
 use crate::plan::SomePlan;
-use crate::planstore::PlanStore;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::selectregions::SelectRegions;
 use crate::statestorecorr::StateStoreCorr;
@@ -282,44 +281,6 @@ impl SelectRegionsStore {
             return 0;
         }
         rates.iter().sum()
-    }
-
-    /// Return the sum of all select negative regions values a plan goes through.
-    /// This ignores the select regions a plan starts, or ends, in.
-    pub fn rate_plans(&self, plans: &PlanStore, current_states: &StateStoreCorr) -> isize {
-        //println!("selectregionsstore::rate_plans");
-        if plans.is_empty() {
-            return 0;
-        }
-
-        // Store rate for each step, per domain.
-        let mut rate: isize = 0;
-
-        // Create mutable current_states vector.
-        let mut all_states = current_states.clone();
-
-        // Rate each plan.
-        rate += self.value_supersets_of_states(&all_states);
-        for planx in plans.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-
-            // Check that plan starts in the right state.
-            let start = planx.initial_region();
-            if start.is_superset_of(&all_states[planx.dom_id]) {
-            } else {
-                panic!("plans {} not in sync! cur {}", plans, current_states);
-            }
-            // Add rate for each step.
-            for stepx in planx.iter() {
-                all_states[planx.dom_id] = stepx.rule.result_state(&all_states[planx.dom_id]);
-                rate += self.value_supersets_of_states(&all_states);
-            }
-        }
-
-        //println!("selectregionsstore::rate_plans: returning {rate}");
-        rate
     }
 
     /// Append from another store.

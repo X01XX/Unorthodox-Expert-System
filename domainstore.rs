@@ -429,17 +429,12 @@ impl DomainStore {
                         );
                         println!("\nFirst plan:");
                         self.print_plans_detail_opt(&self.can_do[ndinx].plans);
-                        println!("\nA better plan");
+                        println!("\nA better plan:");
                         self.print_plan_detail(&planx);
+                        println!(" ");
 
                         self.can_do[ndinx].plans = Some(planx);
                         self.can_do[ndinx].rate = rate;
-                    } else {
-                        //println!(
-                        //   "\nFor plan {}/{}, better plan NOT found",
-                        //    self.plans_str_terse(&self.can_do[ndinx].plans),
-                        //    max_rate,
-                        //);
                     }
                 }
             }
@@ -519,19 +514,27 @@ impl DomainStore {
         self.rate_plans2(plans, &self.all_current_states())
     }
 
-    /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
+    /// Return a rate for a set of plans, based on the sum of values of negative select regions the plan passes through.
+    /// This ignores the select regions a plan starts, or ends, in.
+    /// A square in a region can exit the region to an adjacent square by changing one bit.
+    /// A square adjacent to a region can enter the region by changing one bit.
     fn rate_plans2(&self, plans: &PlanStore, states: &StateStoreCorr) -> isize {
-        let mut cnt = 0;
+        // Store rate for each step.
+        let mut rates = Vec::<isize>::with_capacity(plans.number_steps());
+
         let mut cur_states = states.clone();
+        // Skip start value of negative SelectRegions.
         for planx in plans.iter() {
             if planx.is_empty() {
                 continue;
             }
-            //println!("rate of one {}", self.select_negative.rate_plan(planx, &cur_states));
-            cnt += self.select.rate_plan(planx, &cur_states);
-            cur_states[planx.dom_id] = planx.result_state(&cur_states[planx.dom_id]);
+            for stepx in planx.iter() {
+                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
+                rates.push(self.select.value_supersets_of_states(&cur_states));
+            }
         }
-        cnt
+        rates.pop(); // lose end value of negative SelectRegions.
+        rates.iter().sum()
     }
 
     /// Get plans to move to a goal region, choose a plan.
@@ -1503,58 +1506,33 @@ impl DomainStore {
     pub fn print_plan_detail2(&self, plan_str: &PlanStore, states: &StateStoreCorr) {
         let mut cur_states = states.clone();
 
-        // Check start states.
-        let mut start_in = false;
-        for sel_regx in self.select.iter() {
-            if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                start_in = true;
-                break;
-            }
-        }
-
-        if start_in {
-            print!("\nStart {} in", states);
-            for sel_regx in self.select.iter() {
-                if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                    print!(" in {:+}", sel_regx);
-                }
-            }
-            println!(" ");
-        }
-
+        let mut step_num = 0;
         for planx in plan_str.iter() {
             if planx.is_empty() {
                 continue;
             }
 
-            println!("\nDomain: {}, Plan:", planx.dom_id);
-
-            let mut last_dom_id = 0;
+            println!("\n  Domain: {}, Plan:", planx.dom_id);
             for stepx in planx.iter() {
                 let df = stepx.initial.diff_mask(&stepx.result);
                 print!(
-                    "{} Action {:02} Group {} ",
+                    "    {} Action {:02} Group {} ",
                     &stepx.initial, &stepx.act_id, &stepx.group_reg
                 );
-                for sel_regx in self.select.iter() {
-                    if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                        print!(" in {:+}", sel_regx);
+                if step_num > 0 {
+                    for sel_regx in self.select.iter() {
+                        if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states)
+                        {
+                            print!(" in {:+}", sel_regx);
+                        }
                     }
                 }
-                println!("\n{}", df.str2());
 
-                cur_states[planx.dom_id] = stepx.result.state1().clone();
-
-                last_dom_id = planx.dom_id;
-            } // next stepsn
-            print!("{}", cur_states[last_dom_id]);
-
-            for sel_regx in self.select.iter() {
-                if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                    print!(" in {:+}", sel_regx);
-                }
-            }
-            println!(" ");
+                println!("\n    {}", df.str2());
+                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
+                step_num += 1;
+            } // next stepsx
+            println!("    {}", cur_states[planx.dom_id]);
         } // next planx
     }
 

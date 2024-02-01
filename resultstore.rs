@@ -132,7 +132,7 @@ impl ResultStore {
         self.num_results += 1;
 
         //if self.num_results >= 100 {
-            // increase, if needed, up to usize::MAX.
+        // increase, if needed, up to usize::MAX.
         //    panic!("To many samples of {self}");
         //}
 
