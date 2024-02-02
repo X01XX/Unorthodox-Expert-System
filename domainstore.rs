@@ -450,11 +450,18 @@ impl DomainStore {
         //println!("domainstore: make_plans: {}", targets);
         debug_assert!(targets.is_not_empty());
 
-        self.make_plans2(
-            &self.all_current_regions(),
-            &self.targetstore_to_regionstorecorr(targets),
-            None,
-        )
+        let from = self.all_current_regions();
+        let goal = self.targetstore_to_regionstorecorr(targets);
+
+        let mut plans = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| self.make_plans2(&from, &goal, None))
+            .collect::<Vec<PlanStore>>();
+
+        if plans.is_empty() {
+            return None;
+        }
+        Some(plans.remove(self.choose_a_plan(&plans)))
     }
 
     /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
@@ -478,8 +485,8 @@ impl DomainStore {
                     // Try making plans.
                     let mut plans =
                         self.get_plans(dom_id, regx, regy, Some(&within_regs[dom_id]))?; // return None if any target cannot be reached.
-                    let inx = self.choose_a_plan(&plans);
-                    plans_per_target.push(plans.swap_remove(inx));
+                    plans_per_target
+                        .push(plans.swap_remove(rand::thread_rng().gen_range(0..plans.len())));
                 }
             } // next optx
         } else {
@@ -489,8 +496,8 @@ impl DomainStore {
                 } else {
                     // Try making plans.
                     let mut plans = self.get_plans(dom_id, regx, regy, None)?; // return None if any target cannot be reached.
-                    let inx = self.choose_a_plan(&plans);
-                    plans_per_target.push(plans.swap_remove(inx));
+                    plans_per_target
+                        .push(plans.swap_remove(rand::thread_rng().gen_range(0..plans.len())));
                 }
             } // next optx
         }
@@ -543,7 +550,7 @@ impl DomainStore {
 
     /// Choose a plan from a vector of plans, for a need.
     /// Return index of plan chosen.
-    pub fn choose_a_plan(&self, plans: &[SomePlan]) -> usize {
+    pub fn choose_a_plan(&self, plans: &[PlanStore]) -> usize {
         assert!(!plans.is_empty());
 
         // No choice to be made.
@@ -553,10 +560,9 @@ impl DomainStore {
 
         // Gather plan rate data.
         let mut rates = Vec::<isize>::with_capacity(plans.len());
-        let current_states = self.all_current_states();
 
         for planx in plans.iter() {
-            rates.push(self.select_negative.rate_plan(planx, &current_states));
+            rates.push(self.rate_plans(planx));
         }
         let max_rate = rates.iter().max().unwrap();
 
