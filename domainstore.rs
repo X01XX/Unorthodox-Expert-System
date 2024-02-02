@@ -439,35 +439,26 @@ impl DomainStore {
                 }
             }
 
-            if self.can_do.len() == 1 {
-                println!(", found 1 need that can be done.");
-            } else {
-                println!(", found {} needs that can be done.", self.can_do.len());
-            }
             return;
         } // End loop
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
-    /// Return an Option PlanStore, to go from the current state to the region of each target.
+    /// Return an Option PlanStore, to go from the current states to the region of each target.
     /// Return None if any one of the targets cannot be satisfied.
     pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
         //println!("domainstore: make_plans: {}", targets);
         debug_assert!(targets.is_not_empty());
 
-        let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(targets.len()));
-
-        // Find a plan for each target.
-        for targx in targets.iter() {
-            // Try making plans.
-            let mut plans = self.get_plans(targx.dom_id, &targx.region)?; // return None if any target cannot be reached.
-            let inx = self.choose_a_plan(&plans);
-            plans_per_target.push(plans.swap_remove(inx));
-        } // next optx
-
-        Some(plans_per_target)
+        self.make_plans2(
+            &self.all_current_regions(),
+            &self.targetstore_to_regionstorecorr(targets),
+            None,
+        )
     }
 
+    /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     pub fn make_plans2(
         &self,
         from: &RegionStoreCorr,
@@ -486,7 +477,7 @@ impl DomainStore {
                 } else {
                     // Try making plans.
                     let mut plans =
-                        self.get_plans2(dom_id, regx, regy, Some(&within_regs[dom_id]))?; // return None if any target cannot be reached.
+                        self.get_plans(dom_id, regx, regy, Some(&within_regs[dom_id]))?; // return None if any target cannot be reached.
                     let inx = self.choose_a_plan(&plans);
                     plans_per_target.push(plans.swap_remove(inx));
                 }
@@ -497,7 +488,7 @@ impl DomainStore {
                     plans_per_target.push(SomePlan::new(dom_id, vec![]));
                 } else {
                     // Try making plans.
-                    let mut plans = self.get_plans2(dom_id, regx, regy, None)?; // return None if any target cannot be reached.
+                    let mut plans = self.get_plans(dom_id, regx, regy, None)?; // return None if any target cannot be reached.
                     let inx = self.choose_a_plan(&plans);
                     plans_per_target.push(plans.swap_remove(inx));
                 }
@@ -538,13 +529,8 @@ impl DomainStore {
     }
 
     /// Get plans to move to a goal region, choose a plan.
-    pub fn get_plans(&self, dom_id: usize, goal_region: &SomeRegion) -> Option<Vec<SomePlan>> {
-        //println!("domainstore: get_plans: dom {dom_id} goal {goal_region}");
-        self.domains[dom_id].make_plans(goal_region)
-    }
-
-    /// Get plans to move to a goal region, choose a plan.
-    pub fn get_plans2(
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    pub fn get_plans(
         &self,
         dom_id: usize,
         from_region: &SomeRegion,
@@ -704,6 +690,17 @@ impl DomainStore {
         }
 
         all_states
+    }
+
+    /// Return a vector of domain current state references, as regions, in domain number order.
+    pub fn all_current_regions(&self) -> RegionStoreCorr {
+        let mut all_regions = RegionStoreCorr::with_capacity(self.len());
+
+        for domx in self.domains.iter() {
+            all_regions.push(SomeRegion::new(vec![domx.get_current_state().clone()]));
+        }
+
+        all_regions
     }
 
     /// Update counters for times_visited.
@@ -1028,7 +1025,11 @@ impl DomainStore {
             return true;
         }
 
-        let Some(plans) = self.get_plans(dom_id, goal_region) else {
+        let from = self.all_current_regions();
+        let mut goal = from.clone();
+        goal[dom_id] = goal_region.clone();
+
+        let Some(plans) = self.make_plans2(&from, &goal, None) else {
             return false;
         };
 
@@ -1309,6 +1310,9 @@ impl DomainStore {
         Some(ret_plan_store)
     } // end avoid_negative_select_regions2
 
+    /// Return a series of intersecting, non-negative SelectRegions, to
+    /// guide a path between start and goal, without passing through any
+    /// negative SelectRegions.
     fn avoid_negative_select_regions3<'a>(
         &'a self,
         cur_start: &'a RegionStoreCorr,
@@ -1553,6 +1557,26 @@ impl DomainStore {
             "([])".to_string()
         }
     }
+
+    /// Convert a TargetStore to a RegionsStoreCorr.
+    pub fn targetstore_to_regionstorecorr(&self, targ: &TargetStore) -> RegionStoreCorr {
+        let mut regs = RegionStoreCorr::new(vec![]);
+        for dom_id in 0..self.len() {
+            let mut dom_targ: Option<&SomeRegion> = None;
+            for targx in targ.iter() {
+                if targx.dom_id == dom_id {
+                    dom_targ = Some(&targx.region);
+                    break;
+                }
+            }
+            if let Some(regx) = dom_targ {
+                regs.push(regx.clone());
+            } else {
+                regs.push(SomeRegion::new(vec![self[dom_id].cur_state.clone()]));
+            }
+        }
+        regs
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -1573,6 +1597,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::sample::SomeSample;
+    use crate::target::SomeTarget;
 
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StateStoreCorr) -> usize {
@@ -1581,6 +1606,47 @@ mod tests {
             .iter()
             .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
             .sum()
+    }
+
+    #[test]
+    fn test_conversion() -> Result<(), String> {
+        // Init DomainStore. Domain.
+        let mut dmxs = DomainStore::new();
+        // Set up first domain.
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        let s5 = dmxs[0].state_from_string("s0b0101")?;
+        dmxs[0].set_state(&s5);
+
+        // Set up second domain.
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        let sf = dmxs[0].state_from_string("s0b1111")?;
+        dmxs[0].set_state(&sf);
+
+        let mut targs = TargetStore::new(vec![]);
+        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
+        println!("rsc from empty Targetstore: {rsc}");
+        assert!(rsc.len() == 2);
+        assert!(format!("{rsc}") == "[r1111, r0000]");
+
+        targs.push(SomeTarget::new(
+            1,
+            SomeRegion::new(vec![s5.clone(), sf.clone()]),
+        ));
+        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
+        println!("rsc from Targetstore with region from domain 1: {rsc}");
+        assert!(rsc.len() == 2);
+        assert!(format!("{rsc}") == "[r1111, rx1x1]");
+
+        targs.push(SomeTarget::new(
+            0,
+            SomeRegion::new(vec![s5.clone(), dmxs[0].state_from_string("s0b0100")?]),
+        ));
+        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
+        println!("rsc from Targetstore with region from domain 1, 0: {rsc}");
+        assert!(rsc.len() == 2);
+        assert!(format!("{rsc}") == "[r010X, rx1x1]");
+
+        Ok(())
     }
 
     #[test]

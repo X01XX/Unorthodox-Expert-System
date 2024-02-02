@@ -18,8 +18,8 @@ impl fmt::Display for RegionStoreCorr {
 }
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+/// A vector of regions, corresponding to domains.
 pub struct RegionStoreCorr {
-    /// A vector of regions.
     pub avec: Vec<SomeRegion>,
 }
 

@@ -6,7 +6,7 @@ use std::fmt;
 
 impl fmt::Display for SomeTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "T:{}{}", &self.dom_id, &self.region)
+        write!(f, "T:{}, {}", &self.dom_id, &self.region)
     }
 }
 

@@ -41,6 +41,11 @@ impl TargetStore {
 
     /// Add a target to the vector.
     pub fn push(&mut self, val: SomeTarget) {
+        for targx in self.iter() {
+            if targx.dom_id == val.dom_id {
+                panic!("target with dup dom_id");
+            }
+        }
         self.avec.push(val);
     }
 

@@ -557,6 +557,7 @@ impl SomeDomain {
     }
 
     /// Make a plan to change from a region to another region.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     pub fn make_plans2(
         &self,
         from_reg: &SomeRegion,
@@ -564,6 +565,10 @@ impl SomeDomain {
         within: Option<&SomeRegion>,
     ) -> Option<Vec<SomePlan>> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
+        if goal_reg.is_superset_of(from_reg) {
+            return Some(vec![SomePlan::new(self.id, vec![])]);
+        }
+
         // Figure the required change.
         let required_change = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
 
@@ -975,7 +980,7 @@ mod tests {
         dm0.set_state(&cur_state);
         let toreg = dm0.region_from_string("r1000")?;
 
-        if dmxs.get_plans(0, &toreg).is_some() {
+        if dmxs[0].make_plans(&toreg).is_some() {
         } else {
             return Err(String::from("No plan found to r1000?"));
         }
@@ -1038,7 +1043,7 @@ mod tests {
         dm0.set_state(&s7);
         let toreg = dm0.region_from_string("r1100")?;
 
-        if let Some(plans) = &mut dmxs.get_plans(0, &toreg) {
+        if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
             println!("plan: {}", tools::vec_string(&plans));
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
