@@ -564,6 +564,8 @@ impl DomainStore {
         for planx in plans.iter() {
             rates.push(self.rate_plans(planx));
         }
+
+        // Get max rate.
         let max_rate = rates.iter().max().unwrap();
 
         // Find plans with the max rate.
@@ -574,14 +576,15 @@ impl DomainStore {
             }
         }
 
+        // No further choice to be made.
         if max_rate_plans.len() == 1 {
             return max_rate_plans[0];
         }
 
         // Gather length data.
         let mut lengths = Vec::<usize>::with_capacity(max_rate_plans.len());
-        for inx in 0..max_rate_plans.len() {
-            lengths.push(plans[max_rate_plans[inx]].len());
+        for inx in max_rate_plans.iter() {
+            lengths.push(plans[*inx].number_steps());
         }
         let min_len = lengths.iter().min().unwrap();
 
@@ -593,6 +596,7 @@ impl DomainStore {
             }
         }
 
+        // No further choice to be made.
         if min_len_plans.len() == 1 {
             return min_len_plans[0];
         }
@@ -1602,7 +1606,9 @@ impl IndexMut<usize> for DomainStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+    use crate::rule::SomeRule;
     use crate::sample::SomeSample;
+    use crate::step::{AltRuleHint, SomeStep};
     use crate::target::SomeTarget;
 
     /// Return the number of supersets of a StateStore
@@ -1612,6 +1618,111 @@ mod tests {
             .iter()
             .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
             .sum()
+    }
+
+    #[test]
+    fn choose_a_plan() -> Result<(), String> {
+        let ur_bits = SomeBits::new(4);
+
+        let sta2 = SomeState::new(ur_bits.new_from_string("0x2")?);
+        let sta7 = SomeState::new(ur_bits.new_from_string("0x7")?);
+        let sta9 = SomeState::new(ur_bits.new_from_string("0x9")?);
+        let stab = SomeState::new(ur_bits.new_from_string("0xb")?);
+        let staf = SomeState::new(ur_bits.new_from_string("0xf")?);
+
+        let grp_reg = SomeRegion::new(vec![sta2.clone()]);
+
+        let stp27 = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(sta2.clone(), sta7.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+        let stp7f = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(sta7.clone(), staf.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+        let stp29 = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(sta2.clone(), sta9.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+        let stp2b = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(sta2.clone(), stab.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+        let stp9b = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(sta9.clone(), stab.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+        let stpbf = SomeStep::new(
+            0,
+            SomeRule::new(&SomeSample::new(stab.clone(), staf.clone())),
+            AltRuleHint::NoAlt {},
+            grp_reg.clone(),
+        );
+
+        // Init DomainStore. Domain.
+        let mut dmxs = DomainStore::new();
+        // Set up first domain.
+        dmxs.add_domain(sta2.clone());
+
+        // Set select region.
+        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        regstr1.push(dmxs[0].region_from_string("r01XX")?);
+        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+
+        // Do SelectRegion calculations.
+        dmxs.calc_select();
+
+        // Make plan 2->7->F (rate -1)
+        let plnstr1 = PlanStore::new(vec![SomePlan::new(0, vec![stp27, stp7f])]);
+        assert!(dmxs.rate_plans(&plnstr1) == -1);
+
+        // Make plan 2->9->b->f (rate 0)
+        let plnstr2 = PlanStore::new(vec![(SomePlan::new(0, vec![stp29, stp9b, stpbf.clone()]))]);
+        assert!(dmxs.rate_plans(&plnstr2) == 0);
+
+        // Make plan 2->B->F (rate 0)
+        let plnstr3 = PlanStore::new(vec![(SomePlan::new(0, vec![stp2b, stpbf]))]);
+        assert!(dmxs.rate_plans(&plnstr3) == 0);
+
+        let inx = dmxs.choose_a_plan(&vec![plnstr1.clone(), plnstr2.clone(), plnstr3.clone()]);
+        println!("inx = {inx}");
+        assert!(inx == 2);
+
+        let inx = dmxs.choose_a_plan(&vec![plnstr3.clone(), plnstr2.clone(), plnstr1.clone()]);
+        println!("inx = {inx}");
+        assert!(inx == 0);
+
+        let inx = dmxs.choose_a_plan(&vec![plnstr1.clone(), plnstr3.clone(), plnstr2.clone()]);
+        println!("inx = {inx}");
+        assert!(inx == 1);
+
+        let inx = dmxs.choose_a_plan(&vec![plnstr3.clone(), plnstr1.clone(), plnstr2.clone()]);
+        println!("inx = {inx}");
+        assert!(inx == 0);
+
+        let inx = dmxs.choose_a_plan(&vec![
+            plnstr3.clone(),
+            plnstr1.clone(),
+            plnstr1,
+            plnstr2.clone(),
+            plnstr2,
+            plnstr3,
+        ]);
+        println!("inx = {inx}");
+        assert!(inx == 0 || inx == 5);
+
+        //assert!(1 == 2);
+        Ok(())
     }
 
     #[test]

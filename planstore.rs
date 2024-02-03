@@ -67,6 +67,9 @@ impl PlanStore {
 
     /// Add a plan to the vector.
     pub fn push(&mut self, planx: SomePlan) {
+        if planx.is_empty() {
+            return;
+        }
         // Verify a domain plan that is split into parts.
         if let Some(inx) = self.last_dom(planx.dom_id) {
             assert!(self[inx].result_region() == planx.initial_region());
@@ -88,9 +91,7 @@ impl PlanStore {
     pub fn str_terse(&self) -> String {
         let mut rc_str = String::new();
 
-        if self.avec.len() > 1 {
-            rc_str.push('(');
-        }
+        rc_str.push('(');
 
         for (inx, planx) in self.avec.iter().enumerate() {
             if inx > 0 {
@@ -98,9 +99,8 @@ impl PlanStore {
             }
             rc_str.push_str(&planx.str_terse());
         }
-        if self.avec.len() > 1 {
-            rc_str.push(')');
-        }
+        rc_str.push(')');
+
         rc_str
     }
 
