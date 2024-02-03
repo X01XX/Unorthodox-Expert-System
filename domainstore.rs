@@ -548,11 +548,23 @@ impl DomainStore {
         self.domains[dom_id].make_plans2(from_region, goal_region, within)
     }
 
-    /// Choose a plan from a vector of plans, for a need.
+    /// Choose a plan from a vector of PlanStores, for a need.
     /// Return index of plan chosen.
     pub fn choose_a_plan(&self, plans: &[PlanStore]) -> usize {
         assert!(!plans.is_empty());
 
+        // Assemble a vector of references.
+        let mut ref_vec = Vec::<&PlanStore>::with_capacity(plans.len());
+        for planx in plans.iter() {
+            ref_vec.push(planx);
+        }
+
+        self.choose_a_plan2(&ref_vec)
+    }
+
+    /// Choose a plan from a vector of PlanStare references, for a need.
+    /// Return index of plan chosen.
+    pub fn choose_a_plan2(&self, plans: &[&PlanStore]) -> usize {
         // No choice to be made.
         if plans.len() == 1 {
             return 0;
@@ -613,58 +625,29 @@ impl DomainStore {
     /// Scan needs, by priority, to see what need can be satisfied by a plan.
     ///
     /// Return an index to the can_do vector.
-    pub fn choose_need(&self) -> usize {
+    pub fn choose_a_need(&self) -> usize {
         assert!(!self.can_do.is_empty());
+        //println!("choose_a_need: number InxPlans {}", can_do.len());
 
-        //println!("choose_need: number InxPlans {}", can_do.len());
+        let mut ref_vec = Vec::<&PlanStore>::with_capacity(self.can_do.len());
+        for inxplanx in self.can_do.iter() {
+            if let Some(planx) = &inxplanx.plans {
+                ref_vec.push(planx);
+            } else {
+                panic!("SNH");
+            }
+        }
 
-        // Find least negative plan rate.
-        let max_rate: isize = self
-            .can_do
-            .iter()
-            .map(|inxplanx| inxplanx.rate)
-            .max()
-            .unwrap();
-
-        // Make selection of max_rate plans.
-        let max_rate_inxplans: Vec<usize> = (0..self.can_do.len())
-            .filter(|inx| self.can_do[*inx].rate == max_rate)
-            .collect();
-
-        // Find the shortest plan length, within maximum rate plans.
-        let min_plan_len: usize = max_rate_inxplans
-            .iter()
-            .map(|inx| self.number_steps(&self.can_do[*inx].plans))
-            .min()
-            .unwrap();
-
-        // Make selection of shortest plans.
-        let min_len_inxplans: Vec<usize> = max_rate_inxplans
-            .into_iter()
-            .filter(|inx| self.number_steps(&self.can_do[*inx].plans) == min_plan_len)
-            .collect();
-
-        //println!("choose_need: min len {min_plan_len} number plans {}", min_len_inxplans.len());
-
-        assert!(!min_len_inxplans.is_empty());
-
-        // Take a random choice
-        let cd2_inx = rand::thread_rng().gen_range(0..min_len_inxplans.len());
-        //println!("inx2 = {}  can_do2 = {}", inx2, can_do2[inx2]);
-
-        let itmx = &self.can_do[min_len_inxplans[cd2_inx]];
-        //println!("itmx.inx = {}", itmx.inx);
-
-        let ndx = &self.needs[itmx.inx]; // get need using tuple index
+        let inx = self.choose_a_plan2(&ref_vec);
 
         println!(
             "\nNeed chosen: {:2} {} {}",
-            min_len_inxplans[cd2_inx],
-            ndx,
-            self.plans_str_terse(&itmx.plans)
+            inx,
+            self.needs[self.can_do[inx].inx],
+            self.plans_str_terse(&self.can_do[inx].plans)
         );
 
-        min_len_inxplans[cd2_inx]
+        self.choose_a_plan2(&ref_vec)
     } // end choose_need
 
     /// Get a domain number from a string.

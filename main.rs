@@ -910,7 +910,7 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
 fn do_any_need(dmxs: &mut DomainStore) {
-    let np_inx = dmxs.choose_need();
+    let np_inx = dmxs.choose_a_need();
 
     if do_a_need(dmxs, dmxs.can_do[np_inx].clone()) {
         println!("Need satisfied");
