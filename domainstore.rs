@@ -38,7 +38,7 @@ pub struct InxPlan {
     /// Index to a need in a NeedStore.
     pub inx: usize,
     /// Plan to satisfy need, may be empty if the current state satisfies the need, or None.
-    pub plans: Option<PlanStore>,
+    pub plans: PlanStore,
     /// Rate based on the select regions a plan passes through.
     pub rate: isize,
 }
@@ -332,28 +332,31 @@ impl DomainStore {
             print!("Priority {cur_pri}");
 
             // Test all slice needs for plans.
-            let ndsinx_plan = (cur_pri_start..cur_pri_end)
+            let inx_plan = (cur_pri_start..cur_pri_end)
                 .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
                 .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[nd_inx].target())))
-                .map(|plnstr| InxPlan {
-                    inx: plnstr.0,
-                    plans: plnstr.1,
-                    rate: 0,
-                })
-                .collect::<Vec<InxPlan>>();
+                .collect::<Vec<(usize, Option<PlanStore>)>>();
 
             // See if any plans have been found.
-            let mut none_found = true;
-            for ndsinx in ndsinx_plan.iter() {
-                if ndsinx.plans.is_some() {
-                    none_found = false;
-                    break;
+            let mut cant = Vec::<usize>::new();
+            let mut can = Vec::<InxPlan>::new();
+
+            for (inx, planx) in inx_plan {
+                if let Some(plany) = planx {
+                    let ratex = self.rate_plans(&plany);
+                    can.push(InxPlan {
+                        inx,
+                        plans: plany,
+                        rate: ratex,
+                    });
+                } else {
+                    cant.push(inx);
                 }
             }
-            if none_found {
+            if can.is_empty() {
                 println!(", none.");
                 if cur_pri_end == needs_len || cur_pri > select_priority {
-                    self.cant_do = (0..self.needs.len()).collect();
+                    self.cant_do = cant;
                     return;
                 }
 
@@ -362,80 +365,59 @@ impl DomainStore {
                 continue;
             }
 
-            // Separate needs that can be done, or not.
-            // Find maximum rate.
-            for mut ndsinx in ndsinx_plan {
-                if let Some(aplan) = &ndsinx.plans {
-                    ndsinx.rate = self.rate_plans(aplan);
-                    self.can_do.push(ndsinx);
-                } else {
-                    self.cant_do.push(ndsinx.inx);
-                }
-            }
-
-            if self.can_do.len() == 1 {
+            if can.len() == 1 {
                 println!(", found 1 need that can be done.");
             } else {
-                println!(", found {} needs that can be done.", self.can_do.len());
+                println!(", found {} needs that can be done.", can.len());
             }
 
-            // println!(" max_rate = {max_rate}");
-
-            // Form start region corresponding.
-            //let all_states = self.all_current_states();
-            let mut start_regs = RegionStoreCorr::with_capacity(self.len());
-            for domx in self.domains.iter() {
-                start_regs.push(SomeRegion::new(vec![domx.cur_state.clone()]));
-            }
+            // Form start regions corresponding to domains.
+            let start_regs = self.all_current_regions();
 
             // Check if negative regions can be avoided.
-            //for ndinx in self.can_do.iter_mut() {
-            for ndinx in 0..self.can_do.len() {
-                let Some(planx) = &self.can_do[ndinx].plans else {
-                    continue;
-                };
+            for ndinx in can {
+                //let Some(planx) = &self.can_do[ndinx].plans else {
+                //    continue;
+                //};
 
-                let max_rate = self.rate_plans(planx);
-
-                if max_rate >= 0 {
+                if ndinx.rate >= 0 {
+                    self.can_do.push(ndinx);
                     continue;
                 }
 
                 // Form goal region corresponding
-                let mut goal_regs = RegionStoreCorr::with_capacity(start_regs.len());
-                for (dom_inx, domx) in self.domains.iter().enumerate() {
-                    if let Some(regt) = self.needs[self.can_do[ndinx].inx]
-                        .target()
-                        .target_region(dom_inx)
-                    {
-                        goal_regs.push(regt.clone());
-                    } else {
-                        goal_regs.push(SomeRegion::new(vec![domx.cur_state.clone()]));
-                    }
-                }
+                let goal_regs =
+                    self.targetstore_to_regionstorecorr(&self.needs[ndinx.inx].target());
 
                 if let Some(planx) = self.avoid_negative_select_regions(&start_regs, &goal_regs) {
                     let rate = self.rate_plans(&planx);
                     //println!(" new rate {rate}");
-                    if rate > max_rate {
+                    if rate > ndinx.rate {
                         println!(
                             "\nFor plan {}/{}, {} to {}, better plan found\n         {}/{}",
-                            self.plans_str_terse(&self.can_do[ndinx].plans),
-                            max_rate,
+                            ndinx.plans.str_terse(),
+                            ndinx.rate,
                             start_regs,
                             goal_regs,
                             planx.str_terse(),
                             rate
                         );
                         println!("\nFirst plan:");
-                        self.print_plans_detail_opt(&self.can_do[ndinx].plans);
+                        self.print_plan_detail(&ndinx.plans);
                         println!("\nA better plan:");
                         self.print_plan_detail(&planx);
                         println!(" ");
 
-                        self.can_do[ndinx].plans = Some(planx);
-                        self.can_do[ndinx].rate = rate;
+                        self.can_do.push(InxPlan {
+                            inx: ndinx.inx,
+                            plans: planx,
+                            rate,
+                        });
+                    } else {
+                        self.can_do.push(ndinx);
                     }
+                } else {
+                    self.can_do.push(ndinx);
                 }
             }
 
@@ -631,11 +613,7 @@ impl DomainStore {
 
         let mut ref_vec = Vec::<&PlanStore>::with_capacity(self.can_do.len());
         for inxplanx in self.can_do.iter() {
-            if let Some(planx) = &inxplanx.plans {
-                ref_vec.push(planx);
-            } else {
-                panic!("SNH");
-            }
+            ref_vec.push(&inxplanx.plans);
         }
 
         let inx = self.choose_a_plan2(&ref_vec);
@@ -644,7 +622,7 @@ impl DomainStore {
             "\nNeed chosen: {:2} {} {}",
             inx,
             self.needs[self.can_do[inx].inx],
-            self.plans_str_terse(&self.can_do[inx].plans)
+            self.can_do[inx].plans.str_terse()
         );
 
         self.choose_a_plan2(&ref_vec)
@@ -947,7 +925,7 @@ impl DomainStore {
                         "{:2} {} {}/{:+}",
                         inx,
                         self.needs[ndplnx.inx],
-                        self.plans_str_terse(&ndplnx.plans),
+                        ndplnx.plans.str_terse(),
                         ndplnx.rate,
                     );
                 } else {
@@ -955,7 +933,7 @@ impl DomainStore {
                         "{:2} {} {}",
                         inx,
                         self.needs[ndplnx.inx],
-                        self.plans_str_terse(&ndplnx.plans),
+                        ndplnx.plans.str_terse(),
                     );
                 }
             } // next ndplnx
@@ -1486,15 +1464,6 @@ impl DomainStore {
     }
 
     /// Print a plan step-by-step, indicating changes.
-    pub fn print_plans_detail_opt(&self, plans: &Option<PlanStore>) {
-        if let Some(plansx) = plans {
-            self.print_plan_detail(plansx);
-        } else {
-            println!("()");
-        }
-    }
-
-    /// Print a plan step-by-step, indicating changes.
     pub fn print_plan_detail(&self, plan_str: &PlanStore) {
         self.print_plan_detail2(plan_str, &self.all_current_states());
     }
@@ -1540,15 +1509,6 @@ impl DomainStore {
             ret_regs.push(domx.max_poss_region.clone());
         }
         ret_regs
-    }
-
-    /// Return a terse string representing a Option vector of PlanStores.
-    pub fn plans_str_terse(&self, plans: &Option<PlanStore>) -> String {
-        if let Some(plansx) = plans {
-            plansx.str_terse()
-        } else {
-            "([])".to_string()
-        }
     }
 
     /// Convert a TargetStore to a RegionsStoreCorr.

@@ -925,10 +925,7 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
                 let ndx = &dmxs.needs[dmxs.can_do[n_num].inx];
-                let pln = &dmxs.can_do[n_num]
-                    .plans
-                    .as_ref()
-                    .expect("Any need in the can_do vector should have a non-None plan");
+                let pln = &dmxs.can_do[n_num].plans;
 
                 println!("\n{} Need: {}", n_num, ndx);
                 match ndx {
@@ -980,18 +977,16 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     // Run the plan, allow for one failure.
-    if let Some(plans) = &inx_pln.plans {
-        if !dmxs.run_plan_store(plans) {
-            print!("Run plan failed, ");
-            if let Some(plans2) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
-                println!("try again with {}", plans2);
-                if !dmxs.run_plan_store(&plans2) {
-                    println!("Unexpected result, giving up.");
-                    return false;
-                }
-            } else {
-                println!("unexpected result, new path to goal not found.");
+    if !dmxs.run_plan_store(&inx_pln.plans) {
+        print!("Run plan failed, ");
+        if let Some(plans2) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
+            println!("try again with {}", plans2);
+            if !dmxs.run_plan_store(&plans2) {
+                println!("Unexpected result, giving up.");
+                return false;
             }
+        } else {
+            println!("unexpected result, new path to goal not found.");
         }
     }
 
@@ -1041,7 +1036,7 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
                     dmxs.needs[nd_inx],
-                    dmxs.plans_str_terse(&dmxs.can_do[n_num].plans)
+                    dmxs.can_do[n_num].plans.str_terse()
                 );
 
                 match dmxs.needs[nd_inx] {
