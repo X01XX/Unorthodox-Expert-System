@@ -435,26 +435,37 @@ impl DomainStore {
         let from = self.all_current_regions();
         let goal = self.targetstore_to_regionstorecorr(targets);
 
-        let mut plans = (0..6)
-            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(|_| self.make_plans2(&from, &goal, None))
-            .collect::<Vec<PlanStore>>();
-
-        if plans.is_empty() {
-            return None;
-        }
-        Some(plans.remove(self.choose_a_plan(&plans)))
+        self.make_plans2(&from, &goal, None)
     }
 
-    /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
-    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    /// Use parallel processing to get plans.
     pub fn make_plans2(
         &self,
         from: &RegionStoreCorr,
         goal: &RegionStoreCorr,
         within: Option<&RegionStoreCorr>,
     ) -> Option<PlanStore> {
-        //println!("domainstore: make_plans2: from {from} goal {goal}");
+        let mut plans = (0..2)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| self.make_plans3(from, goal, within))
+            .collect::<Vec<PlanStore>>();
+
+        if plans.is_empty() {
+            return None;
+        }
+
+        Some(plans.remove(self.choose_a_plan(&plans, from)))
+    }
+
+    /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    pub fn make_plans3(
+        &self,
+        from: &RegionStoreCorr,
+        goal: &RegionStoreCorr,
+        within: Option<&RegionStoreCorr>,
+    ) -> Option<PlanStore> {
+        //println!("domainstore: make_plans3: from {from} goal {goal}");
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(from.len()));
 
@@ -484,33 +495,33 @@ impl DomainStore {
             } // next optx
         }
 
-        //println!("domainstore: make_plans2: from {from} goal {goal} returning {plans_per_target}");
+        //println!("domainstore: make_plans3: from {from} goal {goal} returning {plans_per_target}");
         assert!(plans_per_target.validate(from, goal));
         Some(plans_per_target)
     }
 
     /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
     fn rate_plans(&self, plans: &PlanStore) -> isize {
-        self.rate_plans2(plans, &self.all_current_states())
+        self.rate_plans2(plans, &self.all_current_regions())
     }
 
     /// Return a rate for a set of plans, based on the sum of values of negative select regions the plan passes through.
     /// This ignores the select regions a plan starts, or ends, in.
     /// A square in a region can exit the region to an adjacent square by changing one bit.
     /// A square adjacent to a region can enter the region by changing one bit.
-    fn rate_plans2(&self, plans: &PlanStore, states: &StateStoreCorr) -> isize {
+    fn rate_plans2(&self, plans: &PlanStore, regions: &RegionStoreCorr) -> isize {
         // Store rate for each step.
         let mut rates = Vec::<isize>::with_capacity(plans.number_steps());
 
-        let mut cur_states = states.clone();
+        let mut cur_regions = regions.clone();
         // Skip start value of negative SelectRegions.
         for planx in plans.iter() {
             if planx.is_empty() {
                 continue;
             }
             for stepx in planx.iter() {
-                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
-                rates.push(self.select.value_supersets_of_states(&cur_states));
+                cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
+                rates.push(self.select.value_intersections_of(&cur_regions));
             }
         }
         rates.pop(); // lose end value of negative SelectRegions.
@@ -530,23 +541,17 @@ impl DomainStore {
         self.domains[dom_id].make_plans2(from_region, goal_region, within)
     }
 
-    /// Choose a plan from a vector of PlanStores, for a need.
+    /// Choose a plan from a vector of PlanStare references, for vector of PlanStores.
     /// Return index of plan chosen.
-    pub fn choose_a_plan(&self, plans: &[PlanStore]) -> usize {
-        assert!(!plans.is_empty());
-
-        // Assemble a vector of references.
-        let mut ref_vec = Vec::<&PlanStore>::with_capacity(plans.len());
-        for planx in plans.iter() {
-            ref_vec.push(planx);
-        }
-
-        self.choose_a_plan2(&ref_vec)
+    pub fn choose_a_plan(&self, plans: &[PlanStore], start_regs: &RegionStoreCorr) -> usize {
+        self.choose_a_plan2(&tools::ref_vec(plans), start_regs)
     }
 
-    /// Choose a plan from a vector of PlanStare references, for a need.
+    /// Choose a plan from a vector of PlanStare references, for vector of PlanStore references.
     /// Return index of plan chosen.
-    pub fn choose_a_plan2(&self, plans: &[&PlanStore]) -> usize {
+    pub fn choose_a_plan2(&self, plans: &[&PlanStore], start_regs: &RegionStoreCorr) -> usize {
+        assert!(!plans.is_empty());
+
         // No choice to be made.
         if plans.len() == 1 {
             return 0;
@@ -556,7 +561,7 @@ impl DomainStore {
         let mut rates = Vec::<isize>::with_capacity(plans.len());
 
         for planx in plans.iter() {
-            rates.push(self.rate_plans(planx));
+            rates.push(self.rate_plans2(planx, start_regs));
         }
 
         // Get max rate.
@@ -608,7 +613,6 @@ impl DomainStore {
     ///
     /// Return an index to the can_do vector.
     pub fn choose_a_need(&self) -> usize {
-        assert!(!self.can_do.is_empty());
         //println!("choose_a_need: number InxPlans {}", can_do.len());
 
         let mut ref_vec = Vec::<&PlanStore>::with_capacity(self.can_do.len());
@@ -616,7 +620,7 @@ impl DomainStore {
             ref_vec.push(&inxplanx.plans);
         }
 
-        let inx = self.choose_a_plan2(&ref_vec);
+        let inx = self.choose_a_plan2(&ref_vec, &self.all_current_regions());
 
         println!(
             "\nNeed chosen: {:2} {} {}",
@@ -625,7 +629,7 @@ impl DomainStore {
             self.can_do[inx].plans.str_terse()
         );
 
-        self.choose_a_plan2(&ref_vec)
+        inx
     } // end choose_need
 
     /// Get a domain number from a string.
@@ -1060,7 +1064,7 @@ impl DomainStore {
         let mut max_rate = isize::MIN;
         let mut inxs = Vec::<usize>::new();
         for (inx, planx) in plans.iter().enumerate() {
-            let rate = self.rate_plans(planx);
+            let rate = self.rate_plans2(planx, start_regs);
             if rate > max_rate {
                 max_rate = rate;
                 inxs = Vec::<usize>::new();
@@ -1637,32 +1641,44 @@ mod tests {
         let plnstr3 = PlanStore::new(vec![(SomePlan::new(0, vec![stp2b, stpbf]))]);
         assert!(dmxs.rate_plans(&plnstr3) == 0);
 
-        let inx = dmxs.choose_a_plan(&vec![plnstr1.clone(), plnstr2.clone(), plnstr3.clone()]);
+        let start_regs = dmxs.all_current_regions();
+
+        let inx = dmxs.choose_a_plan2(&vec![&plnstr1, &plnstr2, &plnstr3], &start_regs);
         println!("inx = {inx}");
         assert!(inx == 2);
 
-        let inx = dmxs.choose_a_plan(&vec![plnstr3.clone(), plnstr2.clone(), plnstr1.clone()]);
+        let inx = dmxs.choose_a_plan2(&vec![&plnstr3, &plnstr2.clone(), &plnstr1], &start_regs);
         println!("inx = {inx}");
         assert!(inx == 0);
 
-        let inx = dmxs.choose_a_plan(&vec![plnstr1.clone(), plnstr3.clone(), plnstr2.clone()]);
+        let inx = dmxs.choose_a_plan2(&vec![&plnstr1, &plnstr3, &plnstr2], &start_regs);
         println!("inx = {inx}");
         assert!(inx == 1);
 
-        let inx = dmxs.choose_a_plan(&vec![plnstr3.clone(), plnstr1.clone(), plnstr2.clone()]);
+        let inx = dmxs.choose_a_plan2(&vec![&plnstr3, &plnstr1, &plnstr2], &start_regs);
         println!("inx = {inx}");
         assert!(inx == 0);
 
-        let inx = dmxs.choose_a_plan(&vec![
-            plnstr3.clone(),
-            plnstr1.clone(),
-            plnstr1,
-            plnstr2.clone(),
-            plnstr2,
-            plnstr3,
-        ]);
-        println!("inx = {inx}");
-        assert!(inx == 0 || inx == 5);
+        // Check for random choice of two possible plans.
+        let mut zero = false;
+        let mut five = false;
+        let plan_vec = vec![&plnstr3, &plnstr1, &plnstr1, &plnstr2, &plnstr2, &plnstr3];
+        for _ in 0..100 {
+            let inx = dmxs.choose_a_plan2(&plan_vec, &start_regs);
+            println!("inx = {inx}");
+            if inx == 0 {
+                zero = true;
+                if five {
+                    break;
+                }
+            } else if inx == 5 {
+                five = true;
+                if zero {
+                    break;
+                }
+            }
+        }
+        assert!(zero && five);
 
         //assert!(1 == 2);
         Ok(())
@@ -1775,8 +1791,8 @@ mod tests {
                 "Plan found: {} start {start_region} goal {goal_region}",
                 planx
             );
-            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
-
+            assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
+            //assert!(1 == 2);
             return Ok(());
         }
         Err("No plan found?".to_string())
@@ -1845,9 +1861,12 @@ mod tests {
         dmxs[0].get_needs(); // set aggregate changes
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
-            let rate = dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1.clone()]));
+            let rate = dmxs.rate_plans2(
+                &planx,
+                &RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]),
+            );
             println!("Plan found: {} rate: {}", planx, rate);
-            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
+            assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
             //assert!(1 == 2);
             return Ok(());
         }
@@ -1930,7 +1949,7 @@ mod tests {
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             println!("Plan found: {}", planx);
-            assert!(dmxs.rate_plans2(&planx, &StateStoreCorr::new(vec![state1])) == 0);
+            assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
             //assert!(1 == 2);
             return Ok(());
         }
@@ -2164,12 +2183,10 @@ mod tests {
         let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![s0.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
-        let all_states = dmxs.all_current_states();
-
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             print!("Plans {}", plans);
-            let rate = dmxs.rate_plans2(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &start_region);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
@@ -2281,13 +2298,11 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("\nActions {}\n", dmxs[1].actions);
 
-        let all_states = dmxs.all_current_states();
-
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             print!("Plans {}", plans);
             assert!(plans.is_not_empty());
-            let rate = dmxs.rate_plans2(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &start_region);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
@@ -2386,12 +2401,10 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("\nActions {}\n", dmxs[1].actions);
 
-        let all_states = dmxs.all_current_states();
-
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_regions, &goal_regions) {
             print!("Plans {}", plans);
-            let rate = dmxs.rate_plans2(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &start_regions);
             print!(", rate {}", rate);
             println!(" ");
             assert!(rate == 0);
@@ -2497,12 +2510,10 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
         println!("\nActions {}\n", dmxs[1].actions);
 
-        let all_states = dmxs.all_current_states();
-
         // Try making plans.
         if let Some(plans) = dmxs.avoid_negative_select_regions(&start_regions, &goal_regions) {
             print!("Plans {}", plans);
-            let rate = dmxs.rate_plans2(&plans, &all_states);
+            let rate = dmxs.rate_plans2(&plans, &start_regions);
             print!(", rate {}", rate);
             println!(" ");
             //assert!(rate == 0);

@@ -168,6 +168,28 @@ impl SelectRegionsStore {
         val
     }
 
+    /// Return the aggregate value of negative select regions the current regions are in.
+    pub fn _value_supersets_of(&self, regs: &RegionStoreCorr) -> isize {
+        let mut val: isize = 0;
+        for regsx in &self.regionstores {
+            if regsx.value() < 0 && regsx.regions.is_superset_of(regs) {
+                val += regsx.value();
+            }
+        }
+        val
+    }
+
+    /// Return the aggregate value of negative select regions the current regions intersect.
+    pub fn value_intersections_of(&self, regs: &RegionStoreCorr) -> isize {
+        let mut val: isize = 0;
+        for regsx in &self.regionstores {
+            if regsx.value() < 0 && regsx.regions.intersects(regs) {
+                val += regsx.value();
+            }
+        }
+        val
+    }
+
     /// Return true if any SelectRegion is a region superset of another..
     pub fn any_supersets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {

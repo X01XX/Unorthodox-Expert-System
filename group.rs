@@ -129,7 +129,9 @@ impl SomeGroup {
                 if self.limited {
                     rc_str.push_str(&format!(", limited using {sta1}"));
                     if let Some(anchor_mask) = &self.anchor_mask {
-                        rc_str.push_str(&format!(" adj mask {}", anchor_mask));
+                        if anchor_mask.is_not_low() {
+                            rc_str.push_str(&format!(" adj mask {}", anchor_mask));
+                        }
                     }
                 } else {
                     rc_str.push_str(&format!(", limiting using {sta1}"));
