@@ -454,7 +454,7 @@ impl DomainStore {
             return None;
         }
 
-        Some(plans.remove(self.choose_a_plan(&plans, from)))
+        Some(plans.swap_remove(self.choose_a_plan(&plans, from)))
     }
 
     /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
@@ -1074,7 +1074,7 @@ impl DomainStore {
             }
         }
 
-        Some(plans.remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]))
+        Some(plans.swap_remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]))
     }
 
     /// Return plans for a change from start to goal
@@ -1099,9 +1099,13 @@ impl DomainStore {
 
         // Check if start_regs and goal_regs are in the same non-negative region.
         for selx in self.select_non_negative.iter() {
-            if selx.regions.is_superset_of(start_regs) && selx.regions.is_superset_of(goal_regs) {
+            if selx.regions.is_superset_of(start_regs) && selx.regions.intersects(goal_regs) {
                 //println!("{} and {} are in {}", start_regs, goal_regs, selx.regions);
-                if let Some(plans) = self.make_plans2(start_regs, goal_regs, Some(&selx.regions)) {
+                if let Some(plans) = self.make_plans2(
+                    start_regs,
+                    &selx.regions.intersection(goal_regs)?,
+                    Some(&selx.regions),
+                ) {
                     //println!("returning PlanStore {plans}");
                     assert!(plans.validate(start_regs, goal_regs));
                     return Some(plans);
@@ -1125,8 +1129,10 @@ impl DomainStore {
             }
         }
 
-        // Make plan to move start to a non-negative region, if needed.
+        // Make plan to move start to a non-negative SelectRegion, if needed.
+        // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
         if in_negative {
+            // Find closest non-negative SelectRegions, if any.
             let mut min_distance = usize::MAX;
             let mut targets = Vec::<&SelectRegions>::new();
             for regsx in self.select_non_negative.iter() {
@@ -1142,9 +1148,12 @@ impl DomainStore {
             if targets.is_empty() {
                 return None;
             }
+            // Choose a close non-negative SelectRegion to move to.
             let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
 
+            // Try to plan move to the selected SelectRegion.
             if let Some(plans) = self.make_plans2(&cur_start, &near_pos_regs.regions, None) {
+                // Adjust new start regions.
                 cur_start = start_regs.clone();
                 for planx in plans.iter() {
                     if planx.is_not_empty() {
@@ -1167,7 +1176,7 @@ impl DomainStore {
         // Init current goal.
         let mut cur_goal = goal_regs.clone();
 
-        // Check if goal regs are in a negative region.
+        // Check if goal_regs are in a negative SelectRegion.
         let mut in_negative = false;
         for selx in self.select_negative.iter() {
             if selx.regions.is_superset_of(goal_regs) {
@@ -1178,6 +1187,7 @@ impl DomainStore {
 
         // Make plan to move goal from a non-negative region, if needed.
         if in_negative {
+            // Find closest non-negative SelectRegions, if any.
             let mut min_distance = usize::MAX;
             let mut targets = Vec::<&SelectRegions>::new();
             for regsx in self.select_non_negative.iter() {
@@ -1193,12 +1203,18 @@ impl DomainStore {
             if targets.is_empty() {
                 return None;
             }
+            // Choose a close non-negative SelectRegion to move to.
             let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
 
+            // Calc closest regions in the chosen SelectRegion, congruent to the goal_regs.
             let goal_regs_pos = cur_goal.translate_to(&near_pos_regs.regions);
 
+            // Try to plan move to from the selected SelectRegion, to the goal.
             if let Some(plans) = self.make_plans2(&goal_regs_pos, &cur_goal, None) {
+                // Save plans to goal.
                 last_plan_store = plans;
+
+                // Adjust goal_regs.
                 cur_goal = goal_regs.clone();
                 for planx in last_plan_store.iter() {
                     if planx.is_not_empty() {
@@ -1212,7 +1228,7 @@ impl DomainStore {
             }
         } // end in_negative.
 
-        // Check no further plan needed.
+        // Check if no further plan needed.
         if cur_goal.is_superset_of(&cur_start) {
             if last_plan_store.is_not_empty() {
                 ret_plan_store.append(last_plan_store);
@@ -1238,6 +1254,8 @@ impl DomainStore {
         }
 
         // Now, use local cur_goal, instead of argument goal_regs.
+
+        // Try generating multiple paths.
         let mut mid_paths = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| self.avoid_negative_select_regions3(&cur_start, &cur_goal))
@@ -1247,12 +1265,11 @@ impl DomainStore {
             return None;
         }
 
-        let pathx = mid_paths.remove(rand::thread_rng().gen_range(0..mid_paths.len()));
+        // Randomly choose a possible path.
+        let pathx = mid_paths.swap_remove(rand::thread_rng().gen_range(0..mid_paths.len()));
 
-        let mut cur_regs = RegionStoreCorr::new(vec![]);
-        for regx in cur_start.iter() {
-            cur_regs.push((*regx).clone());
-        }
+        let mut cur_regs = cur_start.clone(); // Borrow checker thinks the above map is still in force?
+
         let mut mid_plans = PlanStore::new(vec![]);
         for inx in 1..(pathx.len() - 1) {
             if let Some(intx) = pathx[inx].intersection(pathx[inx + 1]) {
@@ -1273,6 +1290,7 @@ impl DomainStore {
             return None;
         }
 
+        // Add mid_plans to existing start_plan_store, if any.
         ret_plan_store.append(mid_plans);
 
         // Add last_plan_store. if needed.
@@ -1297,9 +1315,8 @@ impl DomainStore {
         let mut start_ints = Vec::<&RegionStoreCorr>::new();
         start_ints.push(cur_start);
 
-        // Get first non-negative SelectRegions that intersects the start.
+        // Randomly pick non-negative SelectRegions, to find one that is a superset of cur_start.
         let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
-
         while let Some(inx) = randpick.pick() {
             let selx = &self.select_non_negative[inx];
 
@@ -1316,9 +1333,8 @@ impl DomainStore {
         let mut goal_ints = Vec::<&RegionStoreCorr>::new();
         goal_ints.push(cur_goal);
 
-        // Get first non-negative SelectRegions that intersects the goal.
+        // Randomly pick non-negative SelectRegions, to find one that is a superset of cur_goal.
         let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
-
         while let Some(inx) = randpick.pick() {
             let selx = &self.select_non_negative[inx];
 
@@ -1334,20 +1350,27 @@ impl DomainStore {
         // Build up start and goal vectors, until the is an intersection between them, or
         // no more intersections.
         loop {
-            // Check last start_ints item against goal_ints.
+            // Check the last start_ints item against all goal_ints.
             let start_last = start_ints.last()?;
+
+            // Keep track of goal items traversed, in case an intersection is found.
             let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+
             for regs_gx in goal_ints.iter() {
                 if regs_gx.intersects(start_last) {
                 } else {
+                    // If no intersection is found, the iter will exit, without returning a result.
                     tmp_path.push(regs_gx);
                     continue;
                 }
+                // Use current start_ints vector as the return vector.
 
+                // Avoid two consecutive, equal, RegionStoreCorrs.
                 if std::ptr::eq(*regs_gx, *start_last) {
                 } else {
                     start_ints.push(regs_gx);
                 }
+                // Unwind successive goal path items.
                 for regs_tx in tmp_path.iter().rev() {
                     start_ints.push(regs_tx);
                 }
@@ -1355,20 +1378,26 @@ impl DomainStore {
                 return Some(start_ints);
             }
 
-            // Check last goal_ints item against start_ints.
+            // Check the last goal_ints item against all start_ints.
             let goal_last = goal_ints.last()?;
+
+            // Save RegionStoreCorrs traversed, to use if/when an intersection is found.
             let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+
             for regs_sx in start_ints.iter() {
                 if regs_sx.intersects(goal_last) {
                 } else {
+                    // If no intersection is found, the iter will exit, without returning a result.
+                    // tmp_path will be a waste.
                     tmp_path.push(regs_sx);
                     continue;
                 }
-
+                // Avoid two consecutive, equal, RegionStoreCorrs.
                 if std::ptr::eq(regs_sx, goal_last) {
                 } else {
                     tmp_path.push(regs_sx);
                 }
+                // Unwind successive goal path RegionStoreCorrs.
                 for regs_gx in goal_ints.iter().rev() {
                     tmp_path.push(regs_gx);
                 }
@@ -1379,22 +1408,23 @@ impl DomainStore {
             // Get next layer of intersections for start_ints.
             let mut start_added = false;
             let start_last = &start_ints.last()?;
-            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
 
+            // Randomly pick possible SelectRegions to test.
+            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
             while let Some(inx) = randpick.pick() {
                 let selx = &self.select_non_negative[inx];
 
+                // A new RegionStoreCorr must intersect the last one in the vector.
                 if start_last.intersects(&selx.regions) {
                 } else {
                     continue;
                 }
-
-                //println!("  {} does intersect {}", selx.regions, start_last);
+                // Avoid duplicating a vector item.
                 if tools::vec_contains_ref(&start_ints, &selx.regions) {
-                    //println!("  {} is in start_ints", selx.regions);
                     continue;
                 }
-
+                // Avoid the case of multiple RegionStoreCorrs intersecting the start RegionStoreCorr,
+                // one has already been chosen.
                 if selx.regions.is_superset_of(cur_start) {
                     continue;
                 }
@@ -1407,26 +1437,33 @@ impl DomainStore {
             // Get next layer of intersections for goal_ints.
             let mut goal_added = false;
             let goal_last = &goal_ints.last()?;
-            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
 
+            // Randomly pick possible SelectRegions to test.
+            let mut randpick = tools::RandomPick::new(self.select_non_negative.len());
             while let Some(inx) = randpick.pick() {
                 let selx = &self.select_non_negative[inx];
 
+                // A new RegionStoreCorr must intersect the last one in the vector.
                 if goal_last.intersects(&selx.regions) {
                 } else {
                     continue;
                 }
+                // Avoid duplicating a vector item.
                 if tools::vec_contains_ref(&goal_ints, &selx.regions) {
                     continue;
                 }
+                // Avoid the case of multiple RegionStoreCorrs intersecting the goal RegionStoreCorr,
+                // one has already been chosen.
                 if selx.regions.is_superset_of(cur_goal) {
                     continue;
                 }
+
                 goal_ints.push(&selx.regions);
                 goal_added = true;
                 break;
             } // next pick.
 
+            // Check if done, with no result.
             if start_added || goal_added {
             } else {
                 return None;

@@ -133,11 +133,6 @@ impl PlanStore {
         rc_str
     }
 
-    /// Do swap_remove for a PlanStore.
-    pub fn swap_remove(&mut self, inx: usize) -> SomePlan {
-        self.avec.swap_remove(inx)
-    }
-
     /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
         self.avec.append(&mut other.avec);

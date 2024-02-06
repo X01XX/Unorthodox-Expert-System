@@ -109,11 +109,6 @@ impl RegionStore {
         self.avec.contains(reg)
     }
 
-    /// Implement swap-remove function for RegionStore.
-    pub fn swap_remove(&mut self, inx: usize) -> SomeRegion {
-        self.avec.swap_remove(inx)
-    }
-
     /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
         // Check for supersets.
