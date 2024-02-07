@@ -57,10 +57,10 @@ pub struct DomainStore {
     /// Zero, or more, select regions that may have poitive, or negative, value.
     /// They may overlap.
     pub select: SelectRegionsStore,
-    /// Positive regions, not overlapped by negative >= value regions.
+    /// Positive region fragments, not overlapped by negative >= value regions.
     /// These tend to be goals.
     pub select_positive: SelectRegionsStore,
-    /// Negative regions, value regions.
+    /// Negative region fragments, value regions.
     /// These tend to be places to avoid in planning a path to a goal.
     pub select_negative: SelectRegionsStore,
     /// Non-negative, may be positive, regions.
@@ -73,6 +73,9 @@ pub struct DomainStore {
     pub cant_do: Vec<usize>,
     /// The current step number.
     pub step_num: usize,
+    /// Save the maximum positive fragment value.
+    /// Used to calculate the ToSelectRegion need priority.
+    pub max_pos_value: usize,
 }
 
 impl DomainStore {
@@ -91,6 +94,7 @@ impl DomainStore {
             can_do: Vec::<InxPlan>::new(),
             cant_do: Vec::<usize>::new(),
             step_num: 0,
+            max_pos_value: 0,
         }
     }
 
@@ -156,6 +160,9 @@ impl DomainStore {
             match sely.pos.cmp(&sely.neg) {
                 Ordering::Greater => {
                     //println!("  {} pos {} neg {} = {:+}", sely, sely.pos, sely.neg, sely.pos - sely.neg);
+                    if sely.value().unsigned_abs() > self.max_pos_value {
+                        self.max_pos_value = sely.value().unsigned_abs();
+                    }
                     self.select_positive.push_nosups(sely);
                 }
                 Ordering::Less => {
@@ -175,6 +182,7 @@ impl DomainStore {
         for selx in self.select_positive.iter() {
             println!("  {}", selx);
         }
+        // println!("max_pos_value {}", self.max_pos_value);
 
         // Calc non-negative regions.
         let max_select =
@@ -303,9 +311,12 @@ impl DomainStore {
             .any_supersets_of_states(&self.all_current_states());
 
         let select_priority = if in_select && self.boredom < self.boredom_limit {
+            // Make fake need, to get priority.
             let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: RegionStoreCorr::with_capacity(1),
                 priority: 0,
+                times_visited: 0,
+                value: 0,
             };
             needx.set_priority();
             needx.priority()
@@ -614,6 +625,7 @@ impl DomainStore {
     /// Return an index to the can_do vector.
     pub fn choose_a_need(&self) -> usize {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
+        assert!(!self.can_do.is_empty());
 
         let mut ref_vec = Vec::<&PlanStore>::with_capacity(self.can_do.len());
         for inxplanx in self.can_do.iter() {
@@ -684,7 +696,7 @@ impl DomainStore {
         let all_states = self.all_current_states();
 
         // Get the select regions the current state is in.
-        for optregs in self.select.iter_mut() {
+        for optregs in self.select_positive.iter_mut() {
             if optregs.regions.is_superset_states(&all_states) {
                 optregs.inc_times_visited();
             }
@@ -830,23 +842,12 @@ impl DomainStore {
         let mut ret_str = NeedStore::with_capacity(notsups.len());
 
         for nsupx in notsups.iter() {
-            // Calc priority addon, to weight the priority by distance and value of the region.
-            let (value, times_visited) = self.select.rate_regions(&nsupx.regions);
-            if value < 0 {
-                continue;
-            }
-            let val2: usize = value as usize;
-
-            let mut adjust = nsupx.distance_states(all_states) + (times_visited / 2);
-            if val2 < adjust {
-                adjust -= val2;
-            } else {
-                adjust = 0;
-            };
-
+            let adjust = (self.max_pos_value - nsupx.pos) + nsupx.times_visited;
             let mut needx = SomeNeed::ToSelectRegion {
                 target_regions: (nsupx.regions.clone()),
                 priority: adjust,
+                times_visited: nsupx.times_visited,
+                value: nsupx.pos,
             };
             needx.set_priority();
             ret_str.push(needx);
@@ -874,9 +875,19 @@ impl DomainStore {
         // Calc current status.
         let mut in_str = String::new();
         let all_states = self.all_current_states();
-        let select_supersets = self.select.supersets_of_states(&all_states);
         let mut in_pos = false;
         let mut in_neg = false;
+
+        let select_supersets = self.select_positive.supersets_of_states(&all_states);
+        for optx in select_supersets.iter() {
+            in_str += &format!("in {} ", optx);
+            match optx.value().cmp(&0) {
+                Ordering::Less => in_neg = true,
+                Ordering::Greater => in_pos = true,
+                _ => (),
+            }
+        }
+        let select_supersets = self.select_negative.supersets_of_states(&all_states);
         for optx in select_supersets.iter() {
             in_str += &format!("in {} ", optx);
             match optx.value().cmp(&0) {
@@ -2731,7 +2742,7 @@ mod tests {
         for selx in dmxs.select_positive.iter() {
             println!("  {selx}, {:+}", selx.value());
         }
-        assert!(dmxs.select_positive.len() == 5);
+        assert!(dmxs.select_positive.len() == 6);
 
         println!("\nNegative select:");
         for selx in dmxs.select_negative.iter() {

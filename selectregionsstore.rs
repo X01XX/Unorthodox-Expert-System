@@ -358,58 +358,40 @@ impl SelectRegionsStore {
             return self.clone();
         }
 
-        // Get first level ints.
-        let mut tmp_ints = Self::new(vec![]);
-
-        // Check each possible pair.
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                assert!(self[inx] != self[iny]); // Check for dups.
-
-                if let Some(regx) = self[inx].intersection(&self[iny]) {
-                    tmp_ints.push_nosubs(regx);
-                }
-            }
-        }
-
-        if tmp_ints.is_empty() {
-            return self.clone();
-        }
-        let mut remainder = self.subtract(&tmp_ints);
+        let mut remainder = self.clone();
 
         loop {
             // Get first level ints.
-            let mut next_ints = Self::new(vec![]);
+            let mut tmp_ints = Self::new(vec![]);
 
             // Check each possible pair.
-            for inx in 0..(tmp_ints.len() - 1) {
-                for iny in (inx + 1)..tmp_ints.len() {
-                    if let Some(regx) = tmp_ints[inx].intersection(&tmp_ints[iny]) {
-                        next_ints.push_nosups(regx);
+            for inx in 0..(remainder.len() - 1) {
+                for iny in (inx + 1)..remainder.len() {
+                    if let Some(regx) = remainder[inx].intersection(&remainder[iny]) {
+                        tmp_ints.push_nosups(regx);
                     }
                 } // next iny
             } // next inx
 
-            if next_ints.is_empty() {
-                remainder.append(tmp_ints);
-                // Set values.
-                for selx in remainder.iter_mut() {
-                    selx.set_pos(0);
-                    selx.set_neg(0);
-                    for origx in self.iter() {
-                        if selx.is_subset_of(origx) {
-                            selx.set_pos(selx.pos + origx.pos);
-                            selx.set_neg(selx.neg + origx.neg);
-                        }
-                    }
-                }
-                return remainder;
+            if tmp_ints.is_empty() {
+                break;
             }
-
-            let remain2 = tmp_ints.subtract(&next_ints);
-            remainder.append(remain2);
-            tmp_ints = next_ints;
+            remainder = remainder.subtract(&tmp_ints);
+            remainder.append(tmp_ints);
         } // end loop
+
+        // Set values.
+        for selx in remainder.iter_mut() {
+            selx.set_pos(0);
+            selx.set_neg(0);
+            for origx in self.iter() {
+                if selx.is_subset_of(origx) {
+                    selx.set_pos(selx.pos + origx.pos);
+                    selx.set_neg(selx.neg + origx.neg);
+                }
+            }
+        }
+        remainder
     }
 } // End impl SelectRegionsStore
 
@@ -482,8 +464,8 @@ mod tests {
         srs1.push(regstr2);
 
         let frags = srs1.split_by_intersections();
-        println!("fragments of {srs1} are {frags}");
-        assert!(frags.len() == 9);
+        println!("fragments of {srs1} are {frags} len {}", frags.len());
+        assert!(frags.len() == 31);
 
         // Check for non-subset intersections.
         for selx in frags.iter() {
@@ -514,8 +496,8 @@ mod tests {
         srs1.push(regstr3);
 
         let frags = srs1.split_by_intersections();
-        println!("fragments of {srs1} are {frags}");
-        assert!(frags.len() == 6);
+        println!("fragments of {srs1} are {frags} len {}", frags.len());
+        assert!(frags.len() == 8);
 
         // Check for non-subset intersections.
         for selx in frags.iter() {

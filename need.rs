@@ -107,6 +107,8 @@ pub enum SomeNeed {
     ToSelectRegion {
         target_regions: RegionStoreCorr,
         priority: usize,
+        times_visited: usize,
+        value: usize,
     },
     /// Housekeeping, add a group.
     AddGroup {
@@ -466,8 +468,10 @@ impl SomeNeed {
             Self::ToSelectRegion {
                 target_regions,
                 priority,
+                times_visited,
+                value,
             } => {
-                format!("N(Pri {priority} To Select Regions {target_regions})")
+                format!("N(Pri {priority} To Select Regions {target_regions}, value {value}, times visited: {times_visited})")
             }
             Self::ExitSelectRegion {
                 dom_id,
