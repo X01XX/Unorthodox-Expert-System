@@ -78,17 +78,15 @@ impl ActionStore {
             self.check_limited(&max_reg);
         }
 
-        let mut needs = NeedStore::new(Vec::<SomeNeed>::new());
-
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|actx| actx.get_needs(cur_state, dom_id, &max_reg))
             .collect::<Vec<NeedStore>>();
 
-        // Consolidate need into one NeedStore.
-        //let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
-
+        // Consolidate needs into one NeedStore.
+        let num_items = vecx.iter().map(|ndsx| ndsx.len()).sum();
+        let mut needs = NeedStore::new(Vec::<SomeNeed>::with_capacity(num_items));
         for needx in vecx {
             needs.append(needx);
         }

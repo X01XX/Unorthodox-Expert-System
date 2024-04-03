@@ -288,7 +288,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         steps_str: &StepStore,
-        steps_by_change_vov: &Vec<Vec<&SomeStep>>,
+        steps_by_change_vov: &[Vec<&SomeStep>],
         depth: usize,
     ) -> Option<SomePlan> {
         if let Some(plan1) = self.random_depth_first_search2(
@@ -319,7 +319,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         steps_str: &StepStore,
-        steps_by_change_vov: &Vec<Vec<&SomeStep>>,
+        steps_by_change_vov: &[Vec<&SomeStep>],
         depth: usize,
     ) -> Option<SomePlan> {
         // println!("random_depth_first_search2: from {} to {} depth {}", from_reg, goal_reg, depth);
@@ -601,7 +601,7 @@ impl SomeDomain {
             return None;
         }
 
-        //println!("make_plans2 returns {}", tools::vec_string(&plans));
+        //println!("dom {} make_plans2 returns {}", self.num, tools::vec_string(&plans));
         Some(plans)
     } // end make plan
 

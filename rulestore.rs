@@ -234,7 +234,80 @@ impl RuleStore {
                 return Some(Self::new(vec![rul0.unwrap(), rul1.unwrap()]));
             }
 
-            // Must be orderb = true.
+            // Must be orderb == true.
+            return Some(Self::new(vec![rul2.unwrap(), rul3.unwrap()]));
+        } // end if self.len() == 2
+
+        panic!("unexpected RuleStore length");
+    }
+
+    /// Return a valid union, if possible, by restricting
+    /// the initial region as needed to get rid of 0/X and 1/X bit
+    /// positions.
+    pub fn parsed_union(&self, other: &Self) -> Option<Self> {
+        //println!("\nrulestore union {} and {}", self, other);
+        assert!(!self.is_empty() && !other.is_empty());
+
+        if self.len() != other.len() {
+            //println!("\nrulestore union: returns None");
+            return None;
+        }
+
+        if self.len() == 1 {
+            let rulx = self.avec[0].parsed_union(&other.avec[0])?;
+            return Some(Self::new(vec![rulx]));
+        }
+
+        if self.len() == 2 {
+            let mut ordera = true;
+
+            let rul0 = self.avec[0].parsed_union(&other.avec[0]);
+            let rul1 = self.avec[1].parsed_union(&other.avec[1]);
+
+            if let Some(ref rulx) = rul0 {
+                if let Some(ref ruly) = rul1 {
+                    if rulx.initial_region() != ruly.initial_region() {
+                        ordera = false;
+                    }
+                } else {
+                    ordera = false;
+                }
+            } else {
+                ordera = false;
+            }
+
+            let mut orderb = true;
+
+            let rul2 = self.avec[0].parsed_union(&other.avec[1]);
+            let rul3 = self.avec[1].parsed_union(&other.avec[0]);
+
+            if let Some(ref rulx) = rul2 {
+                if let Some(ref ruly) = rul3 {
+                    if rulx.initial_region() != ruly.initial_region() {
+                        orderb = false;
+                    }
+                } else {
+                    orderb = false;
+                }
+            } else {
+                orderb = false;
+            }
+
+            // For any Pn::Two RuleStore, there must be at least one single-bit position of 0->1 and 0->0 alternating result,
+            // or a 1->0 and 1->1 alternating result.
+            //
+            // To join two Pn::Two RuleStores in one of two possible sequences, there must be at least one matching initial single-bit position
+            // with an alternating result.
+            if ordera == orderb {
+                // Both true or both false.
+                return None;
+            }
+
+            if ordera {
+                return Some(Self::new(vec![rul0.unwrap(), rul1.unwrap()]));
+            }
+
+            // Must be orderb == true.
             return Some(Self::new(vec![rul2.unwrap(), rul3.unwrap()]));
         } // end if self.len() == 2
 

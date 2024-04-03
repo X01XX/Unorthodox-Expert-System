@@ -121,6 +121,11 @@ impl SelectRegions {
         self.regions.is_superset_states(stas)
     }
 
+    /// Return true if a SelectRegions is a superset of a vector of state refs.
+    pub fn is_superset_of(&self, regs: &RegionStoreCorr) -> bool {
+        self.regions.is_superset_of(regs)
+    }
+
     /// Return true if there is an intersection of corresponding regions, of two SelectRegions.
     pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());

@@ -196,7 +196,7 @@ impl StepStore {
 } // end impl StepStore
 
 /// Return true if any single-bit change step vector pairs are all mutually exclusive
-fn any_mutually_exclusive_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> bool {
+fn any_mutually_exclusive_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> bool {
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("any_mutually_exclusive_changes checking {:?} and {:?}", by_change[inx], by_change[iny]);
@@ -232,7 +232,7 @@ fn all_mutually_exclusive_changes(
 
 /// Return a vector of descending indices, of step vectors that should be done later
 /// than at least one other step vector.
-fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec<usize> {
+fn do_later_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> Vec<usize> {
     let mut inxs = Vec::<usize>::new();
 
     // Generate a vector of indices of changes that should be done later.
@@ -264,8 +264,8 @@ fn do_later_changes(by_change: &Vec<Vec<&SomeStep>>, wanted: &SomeChange) -> Vec
 /// Return true if the order of all steps in step vector arg one will reuire a
 /// wanted bit change to be reversed in order to do any step in step vector arg two.
 fn step_vecs_sequence_reverses_change(
-    vec_x: &Vec<&SomeStep>,
-    vec_y: &Vec<&SomeStep>,
+    vec_x: &[&SomeStep],
+    vec_y: &[&SomeStep],
     wanted: &SomeChange,
 ) -> bool {
     assert!(!vec_x.is_empty());

@@ -260,23 +260,22 @@ impl SomeRegion {
     }
 
     /// Return the intersection of two regions.
-    /// Check regions for intersection first.
-    /// Strangely, the intersection of two adjacent regions produces
-    /// most of an overlapping part, except for a 0/1 pair that needs to be changed
-    /// to X.
-    pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
-        if !self.intersects(other) {
-            return None;
-        }
-        if self.one_state() {
-            Some(Self::new(vec![self.first_state().clone()]))
-        } else if other.one_state() {
-            Some(Self::new(vec![other.first_state().clone()]))
-        } else {
-            let state1 = self.high_state().bitwise_and(&other.high_state());
-            let state2 = self.low_state().bitwise_or(&other.low_state());
-            Some(Self::new(vec![state1, state2]))
-        }
+    ///
+    /// In most cases, you should check that the regions intersect before calling this.
+    ///
+    /// The region definition does not allow a null bit position, the logic
+    /// happens to turn 0/1 and 1/0 bit positions into X.
+    ///
+    ///     The intersection of two adjacent regions produces a region
+    ///     overlapping both, which may wholly encompass none, one, or both, regions.
+    ///
+    ///     The intersection of two regions different by more than one bit,
+    ///     forms a bridge between them, which may wholly encompass none, one, or both, regions.
+    ///
+    pub fn intersection(&self, other: &impl AccessStates) -> Self {
+        let state1 = self.high_state().bitwise_and(&other.high_state());
+        let state2 = self.low_state().bitwise_or(&other.low_state());
+        Self::new(vec![state1, state2])
     }
 
     /// Return a Mask of zero positions.
@@ -441,15 +440,16 @@ impl SomeRegion {
     }
 
     /// Given a region, and a second region, return the
-    /// first region - the second
+    /// first region minus the second
     pub fn subtract(&self, other: &impl AccessStates) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
         // If no intersection, return self.
-        let Some(reg_int) = self.intersection(other) else {
-            ret_vec.push(self.clone());
-            return ret_vec;
-        };
+        if not(self.intersects(other)) {
+            return vec![self.clone()];
+        }
+
+        let reg_int = self.intersection(other);
 
         // If other is a superset, return empty vector.
         if reg_int == *self {
@@ -572,20 +572,13 @@ impl SomeRegion {
         if not(self.is_adjacent(other)) {
             return None;
         }
-        let x1 = self.x_mask();
-        let x2 = other.x_mask();
-        // Regions must have at last one position of X/non-x.
-        if x1 == x2 || x1.is_superset_ones_of(&x2) || x2.is_superset_ones_of(&x1) {
+        let regx = self.intersection(other);
+
+        if regx.is_superset_of(self) || regx.is_superset_of(other) {
             return None;
         }
-        // Get dif mask.
-        let diff = self.diff_mask(other);
 
-        // Prepare the regions to make a valid intersection.
-        let reg1 = self.set_to_x(&diff);
-        let reg2 = other.set_to_x(&diff);
-
-        reg1.intersection(&reg2)
+        Some(regx)
     }
 
     /// Return the result of applying a change to a region.
@@ -1029,17 +1022,32 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
 
-        let reg0 = tmp_reg.new_from_string("rX10X10X")?;
-        let reg1 = tmp_reg.new_from_string("r0XX110X")?;
+        // Test normal intersection.
+        let reg0 = tmp_reg.new_from_string("rX10X")?;
+        let reg1 = tmp_reg.new_from_string("r110X")?;
 
-        if let Some(reg_int) = reg0.intersection(&reg1) {
-            println!("Intersection of {reg0} and {reg1} is {reg_int}");
-            assert!(reg_int == tmp_reg.new_from_string("r010110X")?);
-        } else {
-            return Err(format!("{reg0} does not intersect {reg1}?"));
-        }
+        let reg_int = reg0.intersection(&reg1);
+        println!("Intersection of {reg0} and {reg1} is {reg_int}");
+        assert!(reg_int == tmp_reg.new_from_string("r110X")?);
+
+        // Test adjacent "intersection"
+        let reg0 = tmp_reg.new_from_string("rX10X")?;
+        let reg1 = tmp_reg.new_from_string("r0X11")?;
+
+        let reg_int = reg0.intersection(&reg1);
+        println!("Intersection of {reg0} and {reg1} is {reg_int}");
+        assert!(reg_int == tmp_reg.new_from_string("r01x1")?);
+
+        // Test non-adjacent "intersection"
+        let reg0 = tmp_reg.new_from_string("rX101")?;
+        let reg1 = tmp_reg.new_from_string("r0X10")?;
+
+        let reg_int = reg0.intersection(&reg1);
+        println!("Intersection of {reg0} and {reg1} is {reg_int}");
+        assert!(reg_int == tmp_reg.new_from_string("r01xx")?);
+
         Ok(())
     }
 

@@ -16,7 +16,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools::{not, StrLen};
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -167,6 +167,42 @@ impl SomeRule {
             .is_high()
     }
 
+    /// Return a valid union, if possible, by restricting
+    /// the initial region as needed to get rid of 0/X and 1/X bit
+    /// positions.
+    /// XX + X0 -> 00, XX + X1 -> 11.
+    /// Xx + X0 -> 10, Xx + X1 -> 01.
+    /// X0 + 01 -> 10, X0 + 11 -> 00.
+    /// X1 + 00 -> 11, X1 + 10 -> 01.
+    /// XX + 01 -> 11, XX + 10 -> 00.
+    /// Xx + 00 -> 10, Xx + 11 -> 01.
+    pub fn parsed_union(&self, other: &Self) -> Option<Self> {
+        let rule2 = Self {
+            b00: self.b00.bitwise_or(&other.b00),
+            b01: self.b01.bitwise_or(&other.b01),
+            b11: self.b11.bitwise_or(&other.b11),
+            b10: self.b10.bitwise_or(&other.b10),
+        };
+        if rule2.is_valid_union() {
+            return Some(rule2);
+        }
+
+        // Pare down rule.
+        let zeros_mask = rule2.b00.bitwise_and(&rule2.b01).bitwise_not();
+        let ones_mask = rule2.b11.bitwise_and(&rule2.b10).bitwise_not();
+
+        let rule3 = Self {
+            b00: rule2.b00.bitwise_and(&zeros_mask),
+            b01: rule2.b01.bitwise_and(&zeros_mask),
+            b11: rule2.b11.bitwise_and(&ones_mask),
+            b10: rule2.b10.bitwise_and(&ones_mask),
+        };
+        if rule3.is_valid_intersection() {
+            return Some(rule3);
+        }
+        None
+    }
+
     /// Return a logical OR of two rules. The result may be invalid.
     pub fn union(&self, other: &Self) -> Option<Self> {
         let ret_rule = Self {
@@ -249,9 +285,10 @@ impl SomeRule {
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let init_reg = self.initial_region();
 
-        let Some(reg_int) = regx.intersection(&init_reg) else {
+        if not(regx.intersects(&init_reg)) {
             panic!("{regx} does not intersect rule initial region {init_reg}");
         };
+        let reg_int = regx.intersection(&init_reg);
 
         let zeros = reg_int.low_state().bitwise_not().to_mask();
         let ones = reg_int.high_state().to_mask();
@@ -272,9 +309,10 @@ impl SomeRule {
 
         let rslt_reg = self.result_region();
 
-        let Some(reg_int) = regx.intersection(&rslt_reg) else {
+        if not(regx.intersects(&rslt_reg)) {
             panic!("{regx} does not intersect rule result region {rslt_reg}");
         };
+        let reg_int = regx.intersection(&rslt_reg);
 
         let zeros = reg_int.low_state().bitwise_not().to_mask();
         let ones = reg_int.high_state().to_mask();
@@ -337,8 +375,7 @@ impl SomeRule {
             } else if !b00 && !b01 && b11 && b10 {
                 strrc.push_str("1X/");
             } else if !b00 && !b01 && !b11 && !b10 {
-                // Return a new Square instance
-                strrc.push_str("dc");
+                strrc.push_str("dc/");
             } else {
                 strrc.push_str("**");
             }
@@ -387,7 +424,10 @@ impl SomeRule {
             // Restrict rule initial region, if needed.
             if regx.is_superset_of(&p_reg) {
             } else {
-                p_reg = p_reg.intersection(regx)?;
+                if not(p_reg.intersects(regx)) {
+                    return None;
+                }
+                p_reg = p_reg.intersection(regx);
                 rulex = rulex.restrict_initial_region(regx);
             }
             // Check result is within limit.
@@ -577,6 +617,33 @@ impl AccessChanges for SomeRule {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn test_parsed_union() -> Result<(), String> {
+        let ur_bits = SomeBits::new(6);
+        let ur_sta = SomeState::new(ur_bits.clone());
+        let ur_rul = SomeRule::new(&SomeSample::new(ur_sta.clone(), ur_sta.clone()));
+
+        let rul1 = ur_rul.new_from_string("XX/XX/Xx/Xx/X0/X0")?;
+        let rul2 = ur_rul.new_from_string("X0/X1/X0/X1/01/11")?;
+        if let Some(rint) = rul1.parsed_union(&rul2) {
+            println!("{} int {} = {}", rul1, rul2, rint);
+            assert!(rint == ur_rul.new_from_string("00/11/10/01/10/00")?);
+        } else {
+            return Err(format!("{} int {} is None?", rul1, rul2));
+        }
+
+        let rul1 = ur_rul.new_from_string("X1/X1/XX/XX/Xx/Xx")?;
+        let rul2 = ur_rul.new_from_string("00/10/01/10/00/11")?;
+        if let Some(rint) = rul1.parsed_union(&rul2) {
+            println!("{} int {} = {}", rul1, rul2, rint);
+            assert!(rint == ur_rul.new_from_string("11/01/11/00/10/01")?);
+        } else {
+            return Err(format!("{} int {} is None?", rul1, rul2));
+        }
+
+        Ok(())
+    }
 
     #[test]
     fn test_wanted_unwanted() -> Result<(), String> {

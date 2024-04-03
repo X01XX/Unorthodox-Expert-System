@@ -20,7 +20,7 @@ use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
-use crate::tools::StrLen;
+use crate::tools::{not, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -163,7 +163,14 @@ impl SomePlan {
         }
 
         // Restrict the StepStores, forward and backward.
-        let regx = self.result_region().intersection(other.initial_region())?;
+        let reg1 = self.result_region();
+        let reg2 = other.initial_region();
+
+        if not(reg1.intersects(reg2)) {
+            return None;
+        }
+
+        let regx = reg1.intersection(reg2);
 
         let mut steps1 = self.restrict_result_region(&regx)?;
 

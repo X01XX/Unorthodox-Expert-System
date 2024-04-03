@@ -140,9 +140,7 @@ impl RegionStoreCorr {
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.intersects(y) {
-                if let Some(reg_int) = x.intersection(y) {
-                    ret.push(reg_int);
-                }
+                ret.push(x.intersection(y));
             } else {
                 return None;
             }

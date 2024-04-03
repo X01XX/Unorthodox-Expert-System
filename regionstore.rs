@@ -234,7 +234,7 @@ impl RegionStore {
         for regx in self.avec.iter() {
             for regy in other.iter() {
                 if regx.intersects(regy) {
-                    ret.push_nosubs(regx.intersection(regy).unwrap());
+                    ret.push_nosubs(regx.intersection(regy));
                 }
             }
         }
@@ -253,8 +253,8 @@ impl RegionStore {
         // Check each possible pair.
         for inx in 0..(self.len() - 1) {
             for iny in (inx + 1)..self.len() {
-                if let Some(regx) = self[inx].intersection(&self[iny]) {
-                    tmp_ints.push_nosups(regx);
+                if self[inx].intersects(&self[iny]) {
+                    tmp_ints.push_nosups(self[inx].intersection(&self[iny]));
                 }
             }
         }
@@ -271,8 +271,8 @@ impl RegionStore {
             // Check each possible pair.
             for inx in 0..(tmp_ints.len() - 1) {
                 for iny in (inx + 1)..tmp_ints.len() {
-                    if let Some(regx) = tmp_ints[inx].intersection(&tmp_ints[iny]) {
-                        next_ints.push_nosups(regx);
+                    if tmp_ints[inx].intersects(&tmp_ints[iny]) {
+                        next_ints.push_nosups(tmp_ints[inx].intersection(&tmp_ints[iny]));
                     }
                 } // next iny
             } // next inx

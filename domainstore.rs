@@ -627,10 +627,11 @@ impl DomainStore {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
         assert!(!self.can_do.is_empty());
 
-        let mut ref_vec = Vec::<&PlanStore>::with_capacity(self.can_do.len());
-        for inxplanx in self.can_do.iter() {
-            ref_vec.push(&inxplanx.plans);
-        }
+        let ref_vec = self
+            .can_do
+            .iter()
+            .map(|inxplanx| &inxplanx.plans)
+            .collect::<Vec<&PlanStore>>();
 
         let inx = self.choose_a_plan2(&ref_vec, &self.all_current_regions());
 
@@ -756,17 +757,13 @@ impl DomainStore {
             println!("], is subset of a negative region. ");
 
             for dom_id in 0..self.len() {
-                //let non_negs = self._calc_non_negative_regions(dom_id, &all_states, None);
-                //let non_negs = &self.select_non_negative;
-
                 // Find closest non-negative region distance.
-                let mut min_dist = usize::MAX;
-                for regsx in self.select_non_negative.iter() {
-                    let dist = regsx.distance_states(&all_states);
-                    if dist < min_dist {
-                        min_dist = dist;
-                    }
-                }
+                let min_dist = self
+                    .select_non_negative
+                    .iter()
+                    .map(|regsx| regsx.distance_states(&all_states))
+                    .min()
+                    .unwrap();
 
                 // Process closest non-negative regions.
                 for regsx in self.select_non_negative.iter() {
@@ -1088,7 +1085,7 @@ impl DomainStore {
         Some(plans.swap_remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]))
     }
 
-    /// Return plans for a change from start to goal
+    /// Return plans for a change from start to goal.
     fn avoid_negative_select_regions2(
         &self,
         start_regs: &RegionStoreCorr,

@@ -1232,7 +1232,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 /// Display anchors, rating, and adjacent squares, for an action.
 /// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
 /// should equal the sum of the first two number of the rating.
-fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
     let dmx = &mut dmxs[dom_id];
 
@@ -1253,7 +1253,7 @@ fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result
 }
 
 /// Do print-squares command.
-fn do_print_select_regions(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_print_select_regions(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String> {
     if cmd.len() != 1 {
         return Err("No arguments needed for the psr command".to_string());
     }
