@@ -666,7 +666,7 @@ impl SomeDomain {
 
     /// Return a SomeMask instance from a string.
     /// Left-most, consecutive, zeros can be omitted.
-    pub fn mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
+    pub fn _mask_from_string(&self, str: &str) -> Result<SomeMask, String> {
         self.cur_state.to_mask().new_from_string(str)
     }
 

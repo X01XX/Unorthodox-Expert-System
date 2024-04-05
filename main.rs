@@ -933,6 +933,10 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                         //println!("\n{}", pln.str2());
                         dmxs.print_plan_detail(pln);
                     }
+                    SomeNeed::ExitSelectRegion { .. } => {
+                        //println!("\n{}", pln.str2());
+                        dmxs.print_plan_detail(pln);
+                    }
                     _ => {
                         if ndx.satisfied_by(dmxs[ndx.dom_id()].get_current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");

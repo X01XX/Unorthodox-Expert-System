@@ -139,7 +139,7 @@ impl PlanStore {
     }
 
     /// Return true if the last plan for a domain is the given region.
-    pub fn dom_result(&self, dom_id: usize, regx: &SomeRegion) -> bool {
+    pub fn _dom_result(&self, dom_id: usize, regx: &SomeRegion) -> bool {
         let mut rslt: Option<&SomeRegion> = None;
         for planx in self.iter() {
             if planx.dom_id == dom_id && planx.is_not_empty() {

@@ -67,7 +67,7 @@ impl StateStore {
     }
 
     /// Return states not in a given region.
-    pub fn not_in_reg(&self, not_reg: &SomeRegion) -> Self {
+    pub fn _not_in_reg(&self, not_reg: &SomeRegion) -> Self {
         let mut ret_stas = Self::new(vec![]);
 
         for stax in self.avec.iter() {

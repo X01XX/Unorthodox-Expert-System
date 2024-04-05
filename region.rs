@@ -557,7 +557,7 @@ impl SomeRegion {
     }
 
     /// Return true if a region is all X.
-    pub fn all_x(&self) -> bool {
+    pub fn _all_x(&self) -> bool {
         self.edge_mask().is_low()
     }
 

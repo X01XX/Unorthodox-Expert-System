@@ -111,7 +111,7 @@ impl DomainStore {
         }
 
         // Do not allow dups.
-        if self.select.any_equal_regions(&selx) {
+        if self.select.contains(&selx) {
             println!("Equal select regions found");
             return;
         }
@@ -527,7 +527,7 @@ impl DomainStore {
             }
             for stepx in planx.iter() {
                 cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
-                rates.push(self.select.value_intersections_of(&cur_regions));
+                rates.push(self.select.rate_regions(&cur_regions));
             }
         }
         rates.pop(); // lose end value of negative SelectRegions.
@@ -734,50 +734,38 @@ impl DomainStore {
         }
 
         // Get all domain current states vector.
-        let all_states = self.all_current_states();
+        let all_regs = self.all_current_regions();
 
-        // Check if current state is in a negative select state.
-        // Since SelectRegions have a Boolean AND relationship, only
-        // changing in one non-negative region, in one domain, is needed.
-        if self.select_negative.any_supersets_of_states(&all_states) {
+        let rate = self.select.rate_regions(&all_regs);
+
+        // Check if current state rate is negative.
+        if rate < 0 {
             self.boredom = 0;
             self.boredom_limit = 0;
 
             let mut ndstr = NeedStore::new(vec![]);
 
             print!("all_states: [");
-            for stax in all_states.iter() {
-                print!(" {}", stax);
+            for regx in all_regs.iter() {
+                print!(" {}", regx.state1());
             }
             println!("], is subset of a negative region. ");
 
-            for dom_id in 0..self.len() {
-                // Find closest non-negative region distance.
-                let min_dist = self
-                    .select_non_negative
-                    .iter()
-                    .map(|regsx| regsx.distance_states(&all_states))
-                    .min()
-                    .unwrap();
+            if let Some(near_nn_regs) = self.closest_non_negative_regions(&all_regs) {
 
                 // Process closest non-negative regions.
-                for regsx in self.select_non_negative.iter() {
-                    if regsx.distance_states(&all_states) == min_dist {
-                        let mut needx = SomeNeed::ExitSelectRegion {
-                            dom_id,
-                            target_regions: regsx.regions.clone(),
-                            priority: 0,
-                        };
-                        needx.set_priority();
-                        ndstr.push(needx);
-                    }
-                }
-            } // next dom_id
-            return Some(ndstr);
+                let mut needx = SomeNeed::ExitSelectRegion {
+                        target_regions: near_nn_regs.clone(),
+                        priority: 0,
+                    };
+                needx.set_priority();
+                ndstr.push(needx);
+                return Some(ndstr);
+            }
         }
 
         // Check current status within a select region, or not.
-        if self.select_positive.any_supersets_of_states(&all_states) {
+        if rate > 0 {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
                 return None;
@@ -787,7 +775,7 @@ impl DomainStore {
             self.boredom_limit = 0;
         }
 
-        self.select_goal_needs(&all_states)
+        self.select_goal_needs(&all_regs)
     }
 
     /// Return a vector of aggregate change references, per domain.
@@ -802,10 +790,10 @@ impl DomainStore {
     }
 
     /// Return a need for moving to an select region.
-    fn select_goal_needs(&self, all_states: &StateStoreCorr) -> Option<NeedStore> {
+    fn select_goal_needs(&self, goal_regs: &RegionStoreCorr) -> Option<NeedStore> {
         //println!("domainstore: select_goal_needs");
         // Get regions the current state is not in.
-        let mut notsups = self.select_positive.not_supersets_of_states(all_states);
+        let mut notsups = self.select_positive.not_supersets_of(goal_regs);
 
         // If the current state is not in at least one select region, return None.
         if notsups.is_empty() {
@@ -875,20 +863,12 @@ impl DomainStore {
         let select_supersets = self.select_positive.supersets_of_states(&all_states);
         for optx in select_supersets.iter() {
             in_str += &format!("in {} ", optx);
-            match optx.value.cmp(&0) {
-                Ordering::Less => in_neg = true,
-                Ordering::Greater => in_pos = true,
-                _ => (),
-            }
+            in_pos = true;
         }
         let select_supersets = self.select_negative.supersets_of_states(&all_states);
         for optx in select_supersets.iter() {
             in_str += &format!("in {} ", optx);
-            match optx.value.cmp(&0) {
-                Ordering::Less => in_neg = true,
-                Ordering::Greater => in_pos = true,
-                _ => (),
-            }
+            in_neg = true;
         }
 
         let status = if in_pos && in_neg {
@@ -1082,6 +1062,31 @@ impl DomainStore {
         Some(plans.swap_remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]))
     }
 
+    /// Return the nearest non-negative regions.
+    pub fn closest_non_negative_regions(
+        &self,
+        from_regs: &RegionStoreCorr,
+    ) -> Option<&RegionStoreCorr> {
+        // Find closest non-negative SelectRegions, if any.
+        let mut min_distance = usize::MAX;
+        let mut targets = Vec::<&SelectRegions>::new();
+        for regsx in self.select_non_negative.iter() {
+            let dist = from_regs.distance(&regsx.regions);
+            if dist < min_distance {
+                min_distance = dist;
+                targets = Vec::<&SelectRegions>::new();
+            }
+            if dist == min_distance {
+                targets.push(regsx);
+            }
+        } // next regsx
+        if targets.is_empty() {
+            return None;
+        }
+        // Choose a close non-negative SelectRegion to move to.
+        Some(&targets[rand::thread_rng().gen_range(0..targets.len())].regions)
+    }
+
     /// Return plans for a change from start to goal.
     fn avoid_negative_select_regions2(
         &self,
@@ -1125,52 +1130,23 @@ impl DomainStore {
         // Init current start.
         let mut cur_start = start_regs.clone();
 
-        // Check if start regs are currently in a negative region.
-        let mut in_negative = false;
-        for selx in self.select_negative.iter() {
-            if selx.regions.is_superset_of(start_regs) {
-                in_negative = true;
-                break;
-            }
-        }
-
         // Make plan to move start to a non-negative SelectRegion, if needed.
         // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
-        if in_negative {
+        if self.select.rate_regions(start_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let mut min_distance = usize::MAX;
-            let mut targets = Vec::<&SelectRegions>::new();
-            for regsx in self.select_non_negative.iter() {
-                let dist = start_regs.distance(&regsx.regions);
-                if dist < min_distance {
-                    min_distance = dist;
-                    targets = Vec::<&SelectRegions>::new();
-                }
-                if dist == min_distance {
-                    targets.push(regsx);
-                }
-            } // next regsx
-            if targets.is_empty() {
-                return None;
-            }
-            // Choose a close non-negative SelectRegion to move to.
-            let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
+            let near_nn_regs = self.closest_non_negative_regions(start_regs)?;
 
             // Try to plan move to the selected SelectRegion.
-            if let Some(plans) = self.make_plans2(&cur_start, &near_pos_regs.regions, None) {
-                // Adjust new start regions.
-                cur_start = start_regs.clone();
-                for planx in plans.iter() {
-                    if planx.is_not_empty() {
-                        cur_start[planx.dom_id] = planx.result_region().clone();
-                    }
+            let plans = self.make_plans2(&cur_start, near_nn_regs, None)?;
+            // Adjust new start regions.
+            //cur_start = start_regs.clone();
+            for planx in plans.iter() {
+                if planx.is_not_empty() {
+                    cur_start[planx.dom_id] = planx.result_region().clone();
                 }
-                //println!("First plan {}", plans);
-                ret_plan_store.append(plans);
-                //println!("cur_start {cur_start}");
-            } else {
-                return None;
             }
+            //println!("First plan {}", plans);
+            ret_plan_store.append(plans);
         } // end in_negative.
 
         // Now, use local cur_start, instead of argument start_regs.
@@ -1181,56 +1157,22 @@ impl DomainStore {
         // Init current goal.
         let mut cur_goal = goal_regs.clone();
 
-        // Check if goal_regs are in a negative SelectRegion.
-        let mut in_negative = false;
-        for selx in self.select_negative.iter() {
-            if selx.regions.is_superset_of(goal_regs) {
-                in_negative = true;
-                break;
-            }
-        }
-
         // Make plan to move goal from a non-negative region, if needed.
-        if in_negative {
+        if self.select.rate_regions(goal_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let mut min_distance = usize::MAX;
-            let mut targets = Vec::<&SelectRegions>::new();
-            for regsx in self.select_non_negative.iter() {
-                let dist = goal_regs.distance(&regsx.regions);
-                if dist < min_distance {
-                    min_distance = dist;
-                    targets = Vec::<&SelectRegions>::new();
-                }
-                if dist == min_distance {
-                    targets.push(regsx);
-                }
-            } // next regsx
-            if targets.is_empty() {
-                return None;
-            }
-            // Choose a close non-negative SelectRegion to move to.
-            let near_pos_regs = targets[rand::thread_rng().gen_range(0..targets.len())];
+            let near_nn_regs = self.closest_non_negative_regions(goal_regs)?;
 
             // Calc closest regions in the chosen SelectRegion, congruent to the goal_regs.
-            let goal_regs_pos = cur_goal.translate_to(&near_pos_regs.regions);
+            let goal_regs_nn = cur_goal.translate_to(near_nn_regs);
 
             // Try to plan move to from the selected SelectRegion, to the goal.
-            if let Some(plans) = self.make_plans2(&goal_regs_pos, &cur_goal, None) {
-                // Save plans to goal.
-                last_plan_store = plans;
+            let plans = self.make_plans2(&goal_regs_nn, &cur_goal, None)?;
+            // Save plans to goal.
+            last_plan_store = plans;
 
-                // Adjust goal_regs.
-                cur_goal = goal_regs.clone();
-                for planx in last_plan_store.iter() {
-                    if planx.is_not_empty() {
-                        cur_goal[planx.dom_id] = planx.initial_region().clone();
-                    }
-                }
-                //println!("Last plan {}", last_plan_store);
-                //println!("cur_goal {cur_goal}");
-            } else {
-                return None;
-            }
+            // Adjust goal_regs.
+            cur_goal = goal_regs_nn;
+            //println!("Last plan {}", last_plan_store);
         } // end in_negative.
 
         // Check if no further plan needed.
@@ -1238,7 +1180,6 @@ impl DomainStore {
             if last_plan_store.is_not_empty() {
                 ret_plan_store.append(last_plan_store);
             }
-            //println!("returning PlanStore {}", tools::vec_string(&ret_plan_store));
             assert!(ret_plan_store.validate(start_regs, goal_regs));
             return Some(ret_plan_store);
         }
@@ -2690,7 +2631,7 @@ mod tests {
         // Get exit needs.
         if let Some(nds) = dmxs.check_select() {
             println!("needs len {} {}", nds.len(), nds);
-            assert!(nds.len() == 2);
+            assert!(nds.len() == 1);
             println!("needs: {}", nds);
             for ndsx in nds.iter() {
                 assert!(!neg_reg1.intersects(&ndsx.target()[0].region));

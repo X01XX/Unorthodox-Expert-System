@@ -1,6 +1,5 @@
 //! Implement a struct of SelectRegionStore.
 
-use crate::plan::SomePlan;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::selectregions::SelectRegions;
 use crate::statestorecorr::StateStoreCorr;
@@ -100,7 +99,7 @@ impl SelectRegionsStore {
                 // print!(", del inx {}", inx);
             }
         }
-        println!(" ");
+        // println!(" ");
         // Remove subsets, highest indicies first.
         for inx in del.iter().rev() {
             tools::remove_unordered(&mut self.regionstores, *inx);
@@ -142,7 +141,15 @@ impl SelectRegionsStore {
             .collect()
     }
 
-    /// Return true if any SelectRegion is a superset of a StateStore.
+    /// Return a Vector of SelectRegions not supersets of a given RegionStoreCorr.
+    pub fn not_supersets_of(&self, regs: &RegionStoreCorr) -> Vec<&SelectRegions> {
+        self.regionstores
+            .iter()
+            .filter(|regsx| !regsx.regions.is_superset_of(regs))
+            .collect()
+    }
+
+    /// Return true if any SelectRegions is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &StateStoreCorr) -> bool {
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_states(stas) {
@@ -150,17 +157,6 @@ impl SelectRegionsStore {
             }
         }
         false
-    }
-
-    /// Return the aggregate value SelectRegions the current states are in.
-    pub fn rate_states(&self, stas: &StateStoreCorr) -> isize {
-        let mut val: isize = 0;
-        for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states(stas) {
-                val += regsx.value;
-            }
-        }
-        val
     }
 
     /// Return the sum of values of SelectRegions that are superset of a given RegionStoreCorr.
@@ -174,19 +170,19 @@ impl SelectRegionsStore {
         value
     }
 
-    /// Return the aggregate value of negative select regions the current regions intersect.
-    pub fn value_intersections_of(&self, regs: &RegionStoreCorr) -> isize {
-        let mut val: isize = 0;
-        for regsx in &self.regionstores {
-            if regsx.value < 0 && regsx.regions.intersects(regs) {
-                val += regsx.value;
+    /// Return the sum of values of SelectRegions that are superset of a given StateStoreCorr.
+    pub fn rate_states(&self, states: &StateStoreCorr) -> isize {
+        let mut value: isize = 0;
+        for regsx in self.regionstores.iter() {
+            if regsx.regions.is_superset_states(states) {
+                value += regsx.value;
             }
         }
-        val
+        value
     }
 
     /// Return true if any SelectRegion is a region superset of another..
-    pub fn any_supersets_of(&self, other: &SelectRegions) -> bool {
+    fn any_supersets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_of(&other.regions) {
                 return true;
@@ -196,19 +192,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if any SelectRegion is a region subset of another.
-    pub fn any_subsets_of(&self, other: &SelectRegions) -> bool {
+    fn any_subsets_of(&self, other: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
             if regsx.regions.is_subset_of(&other.regions) {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Return true if any SelectRegion has regions equal to another.
-    pub fn any_equal_regions(&self, other: &SelectRegions) -> bool {
-        for regsx in &self.regionstores {
-            if regsx.regions == other.regions {
                 return true;
             }
         }
@@ -261,33 +247,13 @@ impl SelectRegionsStore {
     }
 
     /// Return true if an equal RegionStoreCorr is already in the SelectRegionsStore.
-    fn contains(&self, selx: &SelectRegions) -> bool {
+    pub fn contains(&self, selx: &SelectRegions) -> bool {
         for regstrx in &self.regionstores {
             if regstrx.regions == selx.regions {
                 return true;
             }
         }
         false
-    }
-
-    /// Return the sum of all negative select regions values a plan goes through.
-    /// This ignores the select regions a plan starts, or end, in.
-    pub fn rate_plan(&self, aplan: &SomePlan, current_states: &StateStoreCorr) -> isize {
-        // Create a mutable state ref vector.
-        let mut all_states = current_states.clone();
-
-        let dom_id = aplan.dom_id;
-
-        // Store rate for each step.
-        let mut ret_rate = 0;
-
-        for stepx in aplan.iter() {
-            let valx = self.rate_states(&all_states);
-            ret_rate += valx;
-            all_states[dom_id] = stepx.initial.state1().clone();
-        }
-
-        ret_rate
     }
 
     /// Append from another store.
@@ -382,13 +348,7 @@ impl SelectRegionsStore {
                         // Prosses an intersection that passes check.
                         if int_ok {
                             regs_int.set_value(int_value);
-                            //println!(
-                            //    "{} int {} = {}, ext {}",
-                            //    remainders[inx],
-                            //    remainders[iny],
-                            //    regs_int,
-                            //    regs_int.extent()
-                            //);
+
                             if min_int.is_none() {
                                 min_extent = regs_int.extent();
                                 min_int = Some(regs_int);
@@ -405,20 +365,16 @@ impl SelectRegionsStore {
             } // next inx
 
             if min_int.is_none() {
-                //println!("No int found");
                 break;
             } else if let Some(min_intx) = min_int {
-                //println!("found int {}, ext {}", min_intx, min_extent);
                 remainders = remainders.subtract_selectregions(&min_intx);
                 ints.push(min_intx);
-                //println!("New remainders: {}", remainders);
             }
         } // end loop
 
         // Combine remainders and intersections,
         // remove zero-value SelectRegions.
         let mut ret_srs = SelectRegionsStore::new(vec![]);
-        //println!("ints {}", ints);
 
         for selx in remainders.into_iter() {
             if selx.value != 0 {
@@ -431,7 +387,6 @@ impl SelectRegionsStore {
             }
         }
 
-        //println!("Returning: {}", ret_srs);
         ret_srs
     }
 } // End impl SelectRegionsStore

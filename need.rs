@@ -99,7 +99,6 @@ pub enum SomeNeed {
     },
     /// Move all current domain states from the corresponding regions of a SelectRegion.
     ExitSelectRegion {
-        dom_id: usize,
         target_regions: RegionStoreCorr,
         priority: usize,
     },
@@ -260,7 +259,6 @@ impl SomeNeed {
             Self::StateInRemainder { dom_id, .. } => *dom_id,
             Self::StateNotInGroup { dom_id, .. } => *dom_id,
             Self::SampleInRegion { dom_id, .. } => *dom_id,
-            Self::ExitSelectRegion { dom_id, .. } => *dom_id,
             _ => panic!(
                 "SomeNeed::dom_id should not be called for the {} need.",
                 self.name()
@@ -474,11 +472,10 @@ impl SomeNeed {
                 format!("N(Pri {priority} To Select Regions {target_regions}, value {value}, times visited: {times_visited})")
             }
             Self::ExitSelectRegion {
-                dom_id,
                 target_regions,
                 priority,
             } => {
-                format!("N(Pri {priority} Exit Select Regions to domain {dom_id} {target_regions})")
+                format!("N(Pri {priority} Exit Select Regions to {target_regions})")
             }
         } // end match
     }
