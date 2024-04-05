@@ -252,6 +252,15 @@ impl RegionStoreCorr {
         }
         ret_regs
     }
+
+    /// Return the number of squares encompassed by a RegionStoreCorr.
+    pub fn extent(&self) -> usize {
+        let mut ext = 0;
+        for regx in self.iter() {
+            ext += regx.extent();
+        }
+        ext
+    }
 } // End impl RegionStoreCorr.
 
 impl Index<usize> for RegionStoreCorr {

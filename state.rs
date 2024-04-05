@@ -200,6 +200,11 @@ impl SomeState {
     pub fn shift_left(&mut self) {
         self.bts = self.bts.shift_left();
     }
+
+    /// Return the number of bits used to describe a state.
+    pub fn num_bits(&self) -> u8 {
+        self.bts.num_bits
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.

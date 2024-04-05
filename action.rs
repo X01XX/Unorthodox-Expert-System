@@ -1404,9 +1404,8 @@ impl SomeAction {
         nds
     } // end group_pair_needs
 
-    /// Check two intersecting groups for needs.
-    /// Possibly combining two groups.
-    /// Possibly checking for a contradictatory intersection.
+    /// Check two intersecting groups for
+    /// a contradictatory intersection.
     pub fn group_pair_intersection_needs(
         &self,
         grpx: &SomeGroup,
@@ -1475,7 +1474,7 @@ impl SomeAction {
             // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
             let ok_reg = rulsxy.initial_region();
 
-            // To avoid subtraction, and maybe having a number of regions, use the far sub-region
+            // To test all bits that may be a problem.
             let far_reg = reg_int.far_reg(&ok_reg);
 
             // Calc rules for far region.

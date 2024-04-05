@@ -17,8 +17,8 @@ use std::ops::Index;
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.to_string();
-        if self.pos > 0 || self.neg > 0 {
-            str.push_str(&format!(", positive: {}, negative: {}", self.pos, self.neg));
+        if self.value != 0 {
+            str.push_str(&format!(", value: {}", self.value));
         }
         if self.times_visited > 0 {
             str.push_str(&format!(", times visited {}", self.times_visited));
@@ -47,15 +47,11 @@ impl Eq for SelectRegions {}
 pub struct SelectRegions {
     /// Regions, in domain order, describing the requirements for an select state.
     /// If the regions are all X, except for one, then it affects only one domain.
-    /// Otherwise, it affects a combination of two, or more, domains.
+    /// Otherwise, it affects a combination of domains where the corsponding region is not all X.
     pub regions: RegionStoreCorr,
     /// A value for being in the select state.
-    /// A Positive value is, so far, given to a goal state.
-    pub pos: usize,
-    /// A negative value is, so far, given to a plan that passes through the regions,
-    /// not counting the beginning and end state.
-    pub neg: usize,
-    /// A cond of the number of time a SelectRegion has been visited due to satisfying a need.
+    pub value: isize,
+    /// The number of times a SelectRegion has been visited due to satisfying a SelectRegion need.
     pub times_visited: usize,
 }
 
@@ -68,18 +64,12 @@ impl Index<usize> for SelectRegions {
 
 impl SelectRegions {
     /// Return a new SelectRegions instance.
-    pub fn new(regions: RegionStoreCorr, pos: usize, neg: usize) -> Self {
+    pub fn new(regions: RegionStoreCorr, value: isize) -> Self {
         Self {
             regions,
-            pos,
-            neg,
+            value,
             times_visited: 0,
         }
-    }
-
-    /// Return the aggregate value of a n instance.
-    pub fn value(&self) -> isize {
-        self.pos as isize - self.neg as isize
     }
 
     /// Increment times visited.
@@ -91,7 +81,7 @@ impl SelectRegions {
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         self.regions
             .intersection(&other.regions)
-            .map(|regs| Self::new(regs, self.pos + other.pos, self.neg + other.neg))
+            .map(|regs| Self::new(regs, self.value + other.value))
     }
 
     /// Calculate the distance between a SelectRegions and a vector of states.
@@ -122,8 +112,8 @@ impl SelectRegions {
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
-    pub fn is_superset_of(&self, regs: &RegionStoreCorr) -> bool {
-        self.regions.is_superset_of(regs)
+    pub fn is_superset_of(&self, other: &Self) -> bool {
+        self.regions.is_superset_of(&other.regions)
     }
 
     /// Return true if there is an intersection of corresponding regions, of two SelectRegions.
@@ -134,13 +124,33 @@ impl SelectRegions {
     }
 
     /// Set the positive value.
-    pub fn set_pos(&mut self, val: usize) {
-        self.pos = val;
+    pub fn set_value(&mut self, val: isize) {
+        self.value = val;
     }
 
-    /// Set the negative value;
-    pub fn set_neg(&mut self, val: usize) {
-        self.neg = val;
+    /// Subtract a SelectRegions.
+    pub fn subtract(&self, other: &SelectRegions) -> Vec<Self> {
+        // println!("subtract {other} from {self}");
+
+        let mut ret_vec = vec![];
+
+        if other.is_superset_of(self) {
+            return ret_vec;
+        } else if other.intersects(self) {
+            let regs = self.regions.subtract(&other.regions);
+            for regz in regs {
+                ret_vec.push(SelectRegions::new(regz, self.value));
+            }
+        } else {
+            return vec![self.clone()];
+        }
+
+        ret_vec
+    }
+
+    /// Return the number of squares encompassed by a SelectRegions.
+    pub fn extent(&self) -> usize {
+        self.regions.extent()
     }
 }
 
@@ -149,8 +159,8 @@ impl StrLen for SelectRegions {
     fn strlen(&self) -> usize {
         // Regions
         let mut ret = self.regions.strlen();
-        if self.pos > 0 || self.neg > 0 {
-            ret += 24 + format!("{}", self.pos).len() + format!("{}", self.neg).len();
+        if self.value != 0 {
+            ret += 9 + format!("{}", self.value).len();
         }
         if self.times_visited > 0 {
             ret += 16 + format!("{}", self.times_visited).len();
@@ -175,7 +185,6 @@ mod tests {
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
             0,
-            0,
         );
 
         let rslt = format!("{}", srs);
@@ -188,8 +197,7 @@ mod tests {
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
-            1,
-            20,
+            -19,
         );
 
         let rslt = format!("{}", srs);
@@ -201,7 +209,6 @@ mod tests {
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
-            0,
             0,
         );
         srs.times_visited = 1;
@@ -215,8 +222,7 @@ mod tests {
                 ur_reg.new_from_string("r0xx1").expect("SNH"),
                 ur_reg.new_from_string("r0x1x").expect("SNH"),
             ]),
-            0,
-            5,
+            -5,
         );
         srs.times_visited = 11;
 

@@ -73,9 +73,9 @@ pub struct DomainStore {
     pub cant_do: Vec<usize>,
     /// The current step number.
     pub step_num: usize,
-    /// Save the maximum positive fragment value.
+    /// Save the maximum fragment value.
     /// Used to calculate the ToSelectRegion need priority.
-    pub max_pos_value: usize,
+    pub max_pos_value: isize,
 }
 
 impl DomainStore {
@@ -106,7 +106,7 @@ impl DomainStore {
         debug_assert!(selx.len() == self.domains.len());
 
         // Require some aggregate value.
-        if selx.pos == selx.neg {
+        if selx.value == 0 {
             return;
         }
 
@@ -116,17 +116,12 @@ impl DomainStore {
             return;
         }
 
-        // Check that each select region matches the corresponding domain region size.
-        // Check that at least one region has at least one non-x bit.
-        let mut allx = true;
-        for selx in selx.regions.iter() {
-            if allx && !selx.all_x() {
-                allx = false;
+        // Check that each select region matches the corresponding domain number bits.
+        for (sely, domx) in selx.regions.iter().zip(self.domains.iter()) {
+            if sely.num_bits() == domx.cur_state.num_bits() {
+            } else {
+                return;
             }
-        }
-
-        if allx {
-            return;
         }
 
         self.select.push_nosubs(selx);
@@ -144,30 +139,30 @@ impl DomainStore {
         }
 
         // Init negative and positive stores.
-        for selx in self.select.iter() {
-            match selx.pos.cmp(&selx.neg) {
-                Ordering::Greater => self.select_positive.push_nosubs(selx.clone()),
-                Ordering::Less => self.select_negative.push_nosubs(selx.clone()),
-                _ => (),
-            }
-        }
+        //        for selx in self.select.iter() {
+        //            match selx.value.cmp(&0) {
+        //                Ordering::Greater => self.select_positive.push_nosubs(selx.clone()),
+        //                Ordering::Less => self.select_negative.push_nosubs(selx.clone()),
+        //                _ => (),
+        //            }
+        //        }
 
-        // Get subset intersection regions.
-        let subsets = self.select.split_by_intersections();
+        // Get fragments due to different-value intersections.
+        let fragments = self.select.split_by_intersections();
 
-        //println!("\nSubset Regions:");
-        for sely in subsets.into_iter() {
-            match sely.pos.cmp(&sely.neg) {
+        //println!("\nFragment Regions:");
+        for sely in fragments.into_iter() {
+            match sely.value.cmp(&0) {
                 Ordering::Greater => {
                     //println!("  {} pos {} neg {} = {:+}", sely, sely.pos, sely.neg, sely.pos - sely.neg);
-                    if sely.value().unsigned_abs() > self.max_pos_value {
-                        self.max_pos_value = sely.value().unsigned_abs();
+                    if sely.value > self.max_pos_value {
+                        self.max_pos_value = sely.value;
                     }
-                    self.select_positive.push_nosups(sely);
+                    self.select_positive.push(sely);
                 }
                 Ordering::Less => {
                     //println!("  {} pos {} neg {} = {}", sely, sely.pos, sely.neg, sely.pos - sely.neg);
-                    self.select_negative.push_nosups(sely);
+                    self.select_negative.push(sely);
                 }
                 _ => (),
             }
@@ -182,16 +177,16 @@ impl DomainStore {
         for selx in self.select_positive.iter() {
             println!("  {}", selx);
         }
-        // println!("max_pos_value {}", self.max_pos_value);
+        //println!("max_pos_value {}", self.max_pos_value);
 
         // Calc non-negative regions.
         let max_select =
-            SelectRegionsStore::new(vec![SelectRegions::new(self.maximum_regions(), 0, 0)]);
+            SelectRegionsStore::new(vec![SelectRegions::new(self.maximum_regions(), 0)]);
         self.select_non_negative = max_select.subtract(&self.select_negative);
 
         println!("\nNon negative select Regions:");
         for selx in self.select_non_negative.iter() {
-            println!("  {}", selx);
+            println!("  {}", selx,);
         }
     }
 
@@ -717,7 +712,7 @@ impl DomainStore {
                 .is_superset_states(&self.all_current_states())
             {
                 ret = true;
-                boredom_limit += optregs.value();
+                boredom_limit += optregs.value;
             }
         }
         if boredom_limit > 0 {
@@ -821,7 +816,7 @@ impl DomainStore {
         // Remove negative, and zero, value regions.
         let mut inxs = Vec::<usize>::with_capacity(notsups.len());
         for (inx, nsupx) in notsups.iter().enumerate() {
-            if nsupx.value() < 1 {
+            if nsupx.value < 1 {
                 inxs.push(inx);
             }
         }
@@ -839,15 +834,17 @@ impl DomainStore {
         let mut ret_str = NeedStore::with_capacity(notsups.len());
 
         for nsupx in notsups.iter() {
-            let adjust = (self.max_pos_value - nsupx.pos) + nsupx.times_visited;
-            let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: (nsupx.regions.clone()),
-                priority: adjust,
-                times_visited: nsupx.times_visited,
-                value: nsupx.pos,
-            };
-            needx.set_priority();
-            ret_str.push(needx);
+            if nsupx.value > 0 {
+                let adjust = (self.max_pos_value + nsupx.value) + nsupx.times_visited as isize;
+                let mut needx = SomeNeed::ToSelectRegion {
+                    target_regions: (nsupx.regions.clone()),
+                    priority: adjust as usize,
+                    times_visited: nsupx.times_visited,
+                    value: nsupx.value as usize,
+                };
+                needx.set_priority();
+                ret_str.push(needx);
+            }
         }
         Some(ret_str)
     }
@@ -878,7 +875,7 @@ impl DomainStore {
         let select_supersets = self.select_positive.supersets_of_states(&all_states);
         for optx in select_supersets.iter() {
             in_str += &format!("in {} ", optx);
-            match optx.value().cmp(&0) {
+            match optx.value.cmp(&0) {
                 Ordering::Less => in_neg = true,
                 Ordering::Greater => in_pos = true,
                 _ => (),
@@ -887,7 +884,7 @@ impl DomainStore {
         let select_supersets = self.select_negative.supersets_of_states(&all_states);
         for optx in select_supersets.iter() {
             in_str += &format!("in {} ", optx);
-            match optx.value().cmp(&0) {
+            match optx.value.cmp(&0) {
                 Ordering::Less => in_neg = true,
                 Ordering::Greater => in_pos = true,
                 _ => (),
@@ -1536,8 +1533,7 @@ impl DomainStore {
                 );
                 if step_num > 0 {
                     for sel_regx in self.select.iter() {
-                        if sel_regx.value() < 0 && sel_regx.regions.is_superset_states(&cur_states)
-                        {
+                        if sel_regx.value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
                             print!(" in {:+}", sel_regx);
                         }
                     }
@@ -1669,7 +1665,7 @@ mod tests {
         // Set select region.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string("r01XX")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         // Do SelectRegion calculations.
         dmxs.calc_select();
@@ -1812,11 +1808,11 @@ mod tests {
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("r01X1")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(dmxs[0].region_from_string_pad_x("rX101")?);
-        dmxs.add_select(SelectRegions::new(regstr2, 0, 2));
+        dmxs.add_select(SelectRegions::new(regstr2, -2));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -1886,11 +1882,11 @@ mod tests {
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("r0101")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(dmxs[0].region_from_string_pad_x("r1001")?);
-        dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -1961,23 +1957,23 @@ mod tests {
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("r0x00")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(dmxs[0].region_from_string_pad_x("rx100")?);
-        dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr2, -1));
 
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
         regstr3.push(dmxs[0].region_from_string_pad_x("r01x1")?);
-        dmxs.add_select(SelectRegions::new(regstr3, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr3, -1));
 
         let mut regstr4 = RegionStoreCorr::with_capacity(1);
         regstr4.push(dmxs[0].region_from_string_pad_x("r10x1")?);
-        dmxs.add_select(SelectRegions::new(regstr4, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr4, -1));
 
         let mut regstr5 = RegionStoreCorr::with_capacity(1);
         regstr5.push(dmxs[0].region_from_string_pad_x("r101x")?);
-        dmxs.add_select(SelectRegions::new(regstr5, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr5, -1));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2045,11 +2041,11 @@ mod tests {
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("r01xx")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
         regstr2.push(dmxs[0].region_from_string_pad_x("r10xx")?);
-        dmxs.add_select(SelectRegions::new(regstr2, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2112,7 +2108,7 @@ mod tests {
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("rxx0x")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2212,12 +2208,12 @@ mod tests {
         // Set up dom 0 00XX dependent on dom 1 01XX.
         let mut regstr0 = RegionStoreCorr::with_capacity(1);
         regstr0.push(dmxs[0].region_from_string_pad_x("r1100")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         regstr1.push(dmxs[0].region_from_string_pad_x("r1011")?);
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
         let s0 = dmxs[0].state_from_string("s0b0000")?;
@@ -2301,23 +2297,23 @@ mod tests {
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("r01x1")?);
         regstr0.push(max_region.clone());
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("rx101")?);
         regstr0.push(max_region.clone());
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 1 negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
         regstr0.push(dmxs[1].region_from_string_pad_x("r011x")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
         regstr0.push(dmxs[1].region_from_string_pad_x("rx111")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2415,12 +2411,12 @@ mod tests {
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("r00xx")?);
         regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("r11xx")?);
         regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2524,12 +2520,12 @@ mod tests {
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("r000x")?);
         regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(dmxs[0].region_from_string_pad_x("r11x1")?);
         regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
-        dmxs.add_select(SelectRegions::new(regstr0, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2601,10 +2597,10 @@ mod tests {
         regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add select region stores.
-        dmxs.add_select(SelectRegions::new(regstr1, 1, 0));
-        dmxs.add_select(SelectRegions::new(regstr2, 1, 0));
-        dmxs.add_select(SelectRegions::new(regstr3, 1, 0));
-        dmxs.add_select(SelectRegions::new(regstr4, 1, 0));
+        dmxs.add_select(SelectRegions::new(regstr1, 1));
+        dmxs.add_select(SelectRegions::new(regstr2, 1));
+        dmxs.add_select(SelectRegions::new(regstr3, 1));
+        dmxs.add_select(SelectRegions::new(regstr4, 1));
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2674,14 +2670,14 @@ mod tests {
         regstr1.push(neg_reg1.clone());
 
         // Add select regionstores.
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
         let neg_reg2 = dmxs[0].region_from_string_pad_x("r1XX1")?;
         regstr1.push(neg_reg2.clone());
 
         // Add select regionstores.
-        dmxs.add_select(SelectRegions::new(regstr1, 0, 1));
+        dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         // Set state for domain 0, using 1 integer for bits.
         let state1 = dmxs[0].state_from_string("s0xd")?;
@@ -2729,22 +2725,13 @@ mod tests {
         regstr4.push(dmxs[0].region_from_string("r10x0")?);
 
         // Add select region stores.
-        dmxs.add_select(SelectRegions::new(regstr1, 4, 0));
-        dmxs.add_select(SelectRegions::new(regstr2, 0, 2));
-        dmxs.add_select(SelectRegions::new(regstr3, 0, 4));
-        dmxs.add_select(SelectRegions::new(regstr4, 0, 5));
+        dmxs.add_select(SelectRegions::new(regstr1, 4));
+        dmxs.add_select(SelectRegions::new(regstr2, -2));
+        dmxs.add_select(SelectRegions::new(regstr3, -4));
+        dmxs.add_select(SelectRegions::new(regstr4, -5));
         dmxs.calc_select();
 
-        println!("\nPositive select:");
-        for selx in dmxs.select_positive.iter() {
-            println!("  {selx}, {:+}", selx.value());
-        }
-        assert!(dmxs.select_positive.len() == 6);
-
-        println!("\nNegative select:");
-        for selx in dmxs.select_negative.iter() {
-            println!("  {selx}, {}", selx.value());
-        }
+        assert!(dmxs.select_positive.len() == 5);
         assert!(dmxs.select_negative.len() == 4);
 
         Ok(())

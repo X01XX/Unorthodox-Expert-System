@@ -407,7 +407,7 @@ impl SomeRegion {
     }
 
     /// Return a region with masked bit positions set to X.
-    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+    pub fn _set_to_x(&self, msk: &SomeMask) -> Self {
         let state1 = self.state1().bitwise_or(msk);
         let state2 = self.state2().bitwise_and(&msk.bitwise_not());
 
@@ -566,6 +566,11 @@ impl SomeRegion {
         self.edge_mask().num_one_bits()
     }
 
+    /// Return the number of squares encompassed by a region.
+    pub fn extent(&self) -> usize {
+        2usize.pow(self.x_mask().num_one_bits() as u32)
+    }
+
     /// Return the shared symmetric region between two regions, if any.
     pub fn shared_symmetric_region(&self, other: &Self) -> Option<SomeRegion> {
         // Regions must be adjacent.
@@ -620,6 +625,11 @@ impl SomeRegion {
         let to_1 = self_x.bitwise_or(&self_0).bitwise_and(&other_1);
 
         self.set_to_ones(&to_1).set_to_zeros(&to_0)
+    }
+
+    /// Retun the number of bits used to describe region states.
+    pub fn num_bits(&self) -> u8 {
+        self.states[0].num_bits()
     }
 } // end impl SomeRegion
 

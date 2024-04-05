@@ -54,8 +54,12 @@ impl SelectRegionsStore {
 
     /// Add a SelectRegionsStore.
     pub fn push(&mut self, select: SelectRegions) {
+        //print!("{} push {}", self, select);
         if !self.contains(&select) {
             self.regionstores.push(select);
+            //println!(", not contains, pushed");
+        } else {
+            // println!(", contains, NOT pushed");
         }
     }
 
@@ -82,8 +86,10 @@ impl SelectRegionsStore {
 
     /// Add a SelectRegionsStore, deleting supersets.
     pub fn push_nosups(&mut self, select: SelectRegions) {
+        //print!("{} push {}", self, select);
         // Don't add a superset.
         if self.any_subsets_of(&select) {
+            //println!(", exit 1");
             return;
         }
         // Identify supersets.
@@ -91,8 +97,10 @@ impl SelectRegionsStore {
         for (inx, regstx) in self.regionstores.iter().enumerate() {
             if regstx.regions.is_superset_of(&select.regions) {
                 del.push(inx);
+                // print!(", del inx {}", inx);
             }
         }
+        println!(" ");
         // Remove subsets, highest indicies first.
         for inx in del.iter().rev() {
             tools::remove_unordered(&mut self.regionstores, *inx);
@@ -126,19 +134,6 @@ impl SelectRegionsStore {
         self.regionstores.iter_mut()
     }
 
-    /// Return the sum of values and times visited of Select Regions thaot are superset of a given RegionStoreCorr.
-    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> (isize, usize) {
-        let mut times_visited: usize = 0;
-        let mut value: isize = 0;
-        for regsx in self.regionstores.iter() {
-            if regsx.regions.is_superset_of(regs) {
-                value += regsx.value();
-                times_visited += regsx.times_visited;
-            }
-        }
-        (value, times_visited)
-    }
-
     /// Return a Vector of SelectRegions not supersets of a given StateStore.
     pub fn not_supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
@@ -157,34 +152,34 @@ impl SelectRegionsStore {
         false
     }
 
-    /// Return the aggregate value of negative select regions the current states are in.
-    pub fn value_supersets_of_states(&self, stas: &StateStoreCorr) -> isize {
+    /// Return the aggregate value SelectRegions the current states are in.
+    pub fn rate_states(&self, stas: &StateStoreCorr) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_states(stas) && regsx.value() < 0 {
-                val += regsx.value();
+            if regsx.regions.is_superset_states(stas) {
+                val += regsx.value;
             }
         }
         val
     }
 
-    /// Return the aggregate value of negative select regions the current regions are in.
-    pub fn _value_supersets_of(&self, regs: &RegionStoreCorr) -> isize {
-        let mut val: isize = 0;
-        for regsx in &self.regionstores {
-            if regsx.value() < 0 && regsx.regions.is_superset_of(regs) {
-                val += regsx.value();
+    /// Return the sum of values of SelectRegions that are superset of a given RegionStoreCorr.
+    pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
+        let mut value: isize = 0;
+        for regsx in self.regionstores.iter() {
+            if regsx.regions.is_superset_of(regs) {
+                value += regsx.value;
             }
         }
-        val
+        value
     }
 
     /// Return the aggregate value of negative select regions the current regions intersect.
     pub fn value_intersections_of(&self, regs: &RegionStoreCorr) -> isize {
         let mut val: isize = 0;
         for regsx in &self.regionstores {
-            if regsx.value() < 0 && regsx.regions.intersects(regs) {
-                val += regsx.value();
+            if regsx.value < 0 && regsx.regions.intersects(regs) {
+                val += regsx.value;
             }
         }
         val
@@ -284,25 +279,15 @@ impl SelectRegionsStore {
         let dom_id = aplan.dom_id;
 
         // Store rate for each step.
-        let mut rates = Vec::<isize>::with_capacity(aplan.len());
+        let mut ret_rate = 0;
 
         for stepx in aplan.iter() {
-            let valx = self.value_supersets_of_states(&all_states);
-            // Print violations.
-            //for selx in self.regionstores.iter() {
-            //    if selx.regions.is_superset_states(&all_states) {
-            //        println!("step {} of {} violates {} at {}", stepx, aplan, selx, SomeState::vec_ref_string(&all_states));
-            //    }
-            //}
-            rates.push(valx);
+            let valx = self.rate_states(&all_states);
+            ret_rate += valx;
             all_states[dom_id] = stepx.initial.state1().clone();
         }
-        rates.push(self.value_supersets_of_states(&all_states));
 
-        if rates.is_empty() {
-            return 0;
-        }
-        rates.iter().sum()
+        ret_rate
     }
 
     /// Append from another store.
@@ -327,7 +312,7 @@ impl SelectRegionsStore {
                     continue;
                 }
                 for regz in regy.regions.subtract(&subtrahend.regions) {
-                    ret_str.push_nosubs(SelectRegions::new(regz, regy.pos, regy.neg));
+                    ret_str.push_nosubs(SelectRegions::new(regz, regy.value));
                 }
             } else {
                 ret_str.push_nosubs(regy.clone());
@@ -358,40 +343,96 @@ impl SelectRegionsStore {
             return self.clone();
         }
 
-        let mut remainder = self.clone();
+        let mut remainders = self.clone();
+        let mut ints = SelectRegionsStore::new(vec![]);
+
+        let mut min_int: Option<SelectRegions>;
+        let mut min_extent: usize;
 
         loop {
-            // Get first level ints.
-            let mut tmp_ints = Self::new(vec![]);
+            min_int = None;
+            min_extent = usize::MAX;
 
             // Check each possible pair.
-            for inx in 0..(remainder.len() - 1) {
-                for iny in (inx + 1)..remainder.len() {
-                    if let Some(regx) = remainder[inx].intersection(&remainder[iny]) {
-                        tmp_ints.push_nosups(regx);
+            for inx in 0..(remainders.len() - 1) {
+                for iny in (inx + 1)..remainders.len() {
+                    if remainders[iny].value == remainders[inx].value {
+                        continue;
+                    }
+                    if let Some(mut regs_int) = remainders[iny].intersection(&remainders[inx]) {
+                        //println!("{} int {} = {}, ext {}", remainders[inx], remainders[iny], regs_int, regs_int.extent());
+
+                        if ints.contains(&regs_int) {
+                            continue;
+                        }
+
+                        // Check if intersection is a subset of any intersecting SelectRegionsStore.
+                        let mut int_ok = true;
+                        let mut int_value = 0;
+                        for selx in self.iter() {
+                            if selx.intersects(&regs_int) {
+                                if selx.is_superset_of(&regs_int) {
+                                    int_value += selx.value;
+                                } else {
+                                    int_ok = false;
+                                    break;
+                                }
+                            }
+                        }
+                        // Prosses an intersection that passes check.
+                        if int_ok {
+                            regs_int.set_value(int_value);
+                            //println!(
+                            //    "{} int {} = {}, ext {}",
+                            //    remainders[inx],
+                            //    remainders[iny],
+                            //    regs_int,
+                            //    regs_int.extent()
+                            //);
+                            if min_int.is_none() {
+                                min_extent = regs_int.extent();
+                                min_int = Some(regs_int);
+                            } else {
+                                let tmp_extent = regs_int.extent();
+                                if tmp_extent < min_extent {
+                                    min_extent = tmp_extent;
+                                    min_int = Some(regs_int);
+                                }
+                            }
+                        }
                     }
                 } // next iny
             } // next inx
 
-            if tmp_ints.is_empty() {
+            if min_int.is_none() {
+                //println!("No int found");
                 break;
+            } else if let Some(min_intx) = min_int {
+                //println!("found int {}, ext {}", min_intx, min_extent);
+                remainders = remainders.subtract_selectregions(&min_intx);
+                ints.push(min_intx);
+                //println!("New remainders: {}", remainders);
             }
-            remainder = remainder.subtract(&tmp_ints);
-            remainder.append(tmp_ints);
         } // end loop
 
-        // Set values.
-        for selx in remainder.iter_mut() {
-            selx.set_pos(0);
-            selx.set_neg(0);
-            for origx in self.iter() {
-                if selx.is_subset_of(origx) {
-                    selx.set_pos(selx.pos + origx.pos);
-                    selx.set_neg(selx.neg + origx.neg);
-                }
+        // Combine remainders and intersections,
+        // remove zero-value SelectRegions.
+        let mut ret_srs = SelectRegionsStore::new(vec![]);
+        //println!("ints {}", ints);
+
+        for selx in remainders.into_iter() {
+            if selx.value != 0 {
+                ret_srs.push(selx);
             }
         }
-        remainder
+        for selx in ints.into_iter() {
+            if selx.value != 0 {
+                ret_srs.push(selx);
+            }
+        }
+
+        //println!("Returning: {}", ret_srs);
+        ret_srs
     }
 } // End impl SelectRegionsStore
 
@@ -433,12 +474,12 @@ mod tests {
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = ur_reg.new_from_string("r0xx1").expect("SNH");
         let reg1b = ur_reg.new_from_string("r1x1x").expect("SNH");
-        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a, reg1b]), 0, 0);
+        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a, reg1b]), 1);
         srs1.push(regstr1);
 
         let reg2a = ur_reg.new_from_string("r1x0x").expect("SNH");
         let reg2b = ur_reg.new_from_string("r0x0x").expect("SNH");
-        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a, reg2b]), 0, 0);
+        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a, reg2b]), 2);
         srs1.push(regstr2);
 
         let frags = srs1.split_by_intersections();
@@ -448,24 +489,18 @@ mod tests {
         // Try one level of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = ur_reg.new_from_string("r0x0x").expect("SNH");
-        let regstr1 = SelectRegions::new(
-            RegionStoreCorr::new(vec![reg1a.clone(), reg1a.clone()]),
-            0,
-            0,
-        );
+        let regstr1 =
+            SelectRegions::new(RegionStoreCorr::new(vec![reg1a.clone(), reg1a.clone()]), 1);
         srs1.push(regstr1);
 
         let reg2a = ur_reg.new_from_string("rx1x1").expect("SNH");
-        let regstr2 = SelectRegions::new(
-            RegionStoreCorr::new(vec![reg2a.clone(), reg2a.clone()]),
-            0,
-            0,
-        );
+        let regstr2 =
+            SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone(), reg2a.clone()]), 2);
         srs1.push(regstr2);
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
-        assert!(frags.len() == 31);
+        assert!(frags.len() == 9);
 
         // Check for non-subset intersections.
         for selx in frags.iter() {
@@ -484,20 +519,20 @@ mod tests {
         // Try two levels of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = ur_reg.new_from_string("r0x0x").expect("SNH");
-        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a.clone()]), 0, 0);
+        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a.clone()]), 1);
         srs1.push(regstr1);
 
         let reg2a = ur_reg.new_from_string("rx1x1").expect("SNH");
-        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), 0, 0);
+        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), 2);
         srs1.push(regstr2);
 
         let reg3a = ur_reg.new_from_string("rx10x").expect("SNH");
-        let regstr3 = SelectRegions::new(RegionStoreCorr::new(vec![reg3a.clone()]), 0, 0);
+        let regstr3 = SelectRegions::new(RegionStoreCorr::new(vec![reg3a.clone()]), 3);
         srs1.push(regstr3);
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
-        assert!(frags.len() == 8);
+        assert!(frags.len() == 6);
 
         // Check for non-subset intersections.
         for selx in frags.iter() {
@@ -525,14 +560,12 @@ mod tests {
         let regstr1 = SelectRegions::new(
             RegionStoreCorr::new(vec![ur_reg1.new_from_string("rxx0x").expect("SNH")]),
             0,
-            0,
         );
         srs1.push(regstr1.clone());
 
         let mut srs2 = SelectRegionsStore::new(vec![]);
         let regstr2 = SelectRegions::new(
             RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx1x1").expect("SNH")]),
-            0,
             0,
         );
         srs2.push(regstr2.clone());
@@ -550,14 +583,12 @@ mod tests {
             if srs3.contains(&SelectRegions::new(
                 RegionStoreCorr::new(vec![ur_reg1.new_from_string("rxx00").expect("SNH")]),
                 0,
-                0,
             )) {
             } else {
                 return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
             }
             if srs3.contains(&SelectRegions::new(
                 RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx00x").expect("SNH")]),
-                0,
                 0,
             )) {
             } else {
@@ -578,7 +609,6 @@ mod tests {
             if srs3.contains(&SelectRegions::new(
                 RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx111").expect("SNH")]),
                 0,
-                0,
             )) {
             } else {
                 return Err(format!("{} - {} = {} ?", srs2, regstr1, srs3));
@@ -589,7 +619,6 @@ mod tests {
         let mut srs3 = SelectRegionsStore::new(vec![]);
         let regstr3 = SelectRegions::new(
             RegionStoreCorr::new(vec![ur_reg1.new_from_string("rx101").expect("SNH")]),
-            0,
             0,
         );
         srs3.push(regstr3.clone());
@@ -615,7 +644,6 @@ mod tests {
                 ur_reg1.new_from_string("r01xx").expect("SNH"),
             ]),
             0,
-            0,
         );
         srs1.push(regstr1.clone());
 
@@ -625,7 +653,6 @@ mod tests {
                 ur_reg1.new_from_string("rx1x1").expect("SNH"),
                 ur_reg1.new_from_string("rxx11").expect("SNH"),
             ]),
-            0,
             0,
         );
         srs2.push(regstr2.clone());
@@ -647,7 +674,6 @@ mod tests {
                     ur_reg1.new_from_string("r01xx").expect("SNH"),
                 ]),
                 0,
-                0,
             );
 
             if srs3.contains(&sr_tmp1) {
@@ -660,7 +686,6 @@ mod tests {
                     ur_reg1.new_from_string("rx00x").expect("SNH"),
                     ur_reg1.new_from_string("r01xx").expect("SNH"),
                 ]),
-                0,
                 0,
             );
 
@@ -675,7 +700,6 @@ mod tests {
                     ur_reg1.new_from_string("r01x0").expect("SNH"),
                 ]),
                 0,
-                0,
             );
 
             if srs3.contains(&sr_tmp3) {
@@ -688,7 +712,6 @@ mod tests {
                     ur_reg1.new_from_string("rxx0x").expect("SNH"),
                     ur_reg1.new_from_string("r010x").expect("SNH"),
                 ]),
-                0,
                 0,
             );
 
