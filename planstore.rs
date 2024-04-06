@@ -65,14 +65,31 @@ impl PlanStore {
     }
 
     /// Add a plan to the vector.
+    /// The plan should be linkable with a previously existing plan.
     pub fn push(&mut self, planx: SomePlan) {
         if planx.is_empty() {
             return;
         }
+
+        // Check if successive plans of the sawe domain can be combined.
+        if self.len() > 0 {
+            let inx = self.len() - 1;
+            if self.avec[inx].dom_id == planx.dom_id {
+                self.avec[inx] = self.avec[inx].link(&planx).unwrap();
+                return;
+            }
+        }
+
         // Verify a domain plan that is split into parts.
         if let Some(inx) = self.last_dom(planx.dom_id) {
+            if self[inx].result_region() == planx.initial_region() {
+            } else if self[inx].result_region().is_subset_of(planx.initial_region()) {
+                self.avec.push(planx.restrict_initial_region(self[inx].result_region()).unwrap());
+                return;
+            }
             assert!(self[inx].result_region() == planx.initial_region());
         }
+
         self.avec.push(planx);
     }
 
@@ -132,9 +149,11 @@ impl PlanStore {
         rc_str
     }
 
-    /// Extend a StepStore by emptying another StepStore.
-    pub fn append(&mut self, mut other: Self) {
-        self.avec.append(&mut other.avec);
+    /// Extend a StepStore by pushing another StepStore.
+    pub fn append(&mut self, other: Self) {
+        for planx in other.avec {
+            self.push(planx);
+        }
     }
 
     /// Return the result of the last plan for a domain, if any.
