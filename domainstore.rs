@@ -512,7 +512,7 @@ impl DomainStore {
     }
 
     /// Return a rate for a set of plans, based on the sum of values of negative select regions the plan passes through.
-    /// This ignores the select regions a plan starts, or ends, in.
+    /// This ignores the select regions a plan starts in.
     /// A square in a region can exit the region to an adjacent square by changing one bit.
     /// A square adjacent to a region can enter the region by changing one bit.
     fn rate_plans2(&self, plans: &PlanStore, regions: &RegionStoreCorr) -> isize {
@@ -530,7 +530,6 @@ impl DomainStore {
                 rates.push(self.select.rate_regions(&cur_regions));
             }
         }
-        rates.pop(); // lose end value of negative SelectRegions.
         rates.iter().sum()
     }
 
@@ -752,12 +751,11 @@ impl DomainStore {
             println!("], is subset of a negative region. ");
 
             if let Some(near_nn_regs) = self.closest_non_negative_regions(&all_regs) {
-
                 // Process closest non-negative regions.
                 let mut needx = SomeNeed::ExitSelectRegion {
-                        target_regions: near_nn_regs.clone(),
-                        priority: 0,
-                    };
+                    target_regions: near_nn_regs.clone(),
+                    priority: 0,
+                };
                 needx.set_priority();
                 ndstr.push(needx);
                 return Some(ndstr);
@@ -823,7 +821,7 @@ impl DomainStore {
 
         for nsupx in notsups.iter() {
             if nsupx.value > 0 {
-                let adjust = (self.max_pos_value + nsupx.value) + nsupx.times_visited as isize;
+                let adjust = (self.max_pos_value - nsupx.value) + nsupx.times_visited as isize;
                 let mut needx = SomeNeed::ToSelectRegion {
                     target_regions: (nsupx.regions.clone()),
                     priority: adjust as usize,

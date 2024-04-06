@@ -26,7 +26,6 @@ pub struct PlanStore {
 impl PlanStore {
     /// Return a new PlanStore instance.
     /// If more than one plan, plans will be run in order.
-    /// If more than one plan, plans are in domain order, but that is not enforced.
     pub fn new(avec: Vec<SomePlan>) -> Self {
         Self { avec }
     }
