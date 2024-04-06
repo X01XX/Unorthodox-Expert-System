@@ -41,6 +41,10 @@ pub struct InxPlan {
     pub plans: PlanStore,
     /// Rate based on the select regions a plan passes through.
     pub rate: isize,
+    /// Number bits different between start and end.
+    pub desired_num_bits_changed: usize,
+    /// Number bits changed, step by step.
+    pub process_num_bits_changed: usize,
 }
 
 #[readonly::make]
@@ -350,10 +354,16 @@ impl DomainStore {
             for (inx, planx) in inx_plan {
                 if let Some(plany) = planx {
                     let ratex = self.rate_plans(&plany);
+                    let cur_regs = self.all_current_regions();
+                    let desired_num_bits_changed =
+                        cur_regs.num_different_bits(&plany.result_regions(&cur_regs));
+                    let process_num_bits_changed = plany.num_bits_changed();
                     can.push(InxPlan {
                         inx,
                         plans: plany,
                         rate: ratex,
+                        desired_num_bits_changed,
+                        process_num_bits_changed,
                     });
                 } else {
                     cant.push(inx);
@@ -414,10 +424,16 @@ impl DomainStore {
                         self.print_plan_detail(&planx);
                         println!(" ");
 
+                        let cur_regs = self.all_current_regions();
+                        let desired_num_bits_changed =
+                            cur_regs.num_different_bits(&planx.result_regions(&cur_regs));
+                        let process_num_bits_changed = planx.num_bits_changed();
                         self.can_do.push(InxPlan {
                             inx: ndinx.inx,
                             plans: planx,
                             rate,
+                            desired_num_bits_changed,
+                            process_num_bits_changed,
                         });
                     } else {
                         self.can_do.push(ndinx);
@@ -907,12 +923,14 @@ impl DomainStore {
             println!("\nNeeds that can be done:");
 
             for (inx, ndplnx) in self.can_do.iter().enumerate() {
-                if ndplnx.rate != 0 {
+                if ndplnx.desired_num_bits_changed != 0 {
                     println!(
-                        "{:2} {} {}/{:+}",
+                        "{:2} {} {}/{}/{}/{:+}",
                         inx,
                         self.needs[ndplnx.inx],
                         ndplnx.plans.str_terse(),
+                        ndplnx.desired_num_bits_changed,
+                        ndplnx.process_num_bits_changed,
                         ndplnx.rate,
                     );
                 } else {
@@ -1237,9 +1255,11 @@ impl DomainStore {
         // Add mid_plans to existing start_plan_store, if any.
         ret_plan_store.append(mid_plans);
 
-        // Add last_plan_store. if needed.
+        // Add last_plan_store, if needed.
+        // Last_plan_store plans may begin with a region containing 0, 1, or more, X bit positions.
         if last_plan_store.is_not_empty() {
-            ret_plan_store.append(last_plan_store);
+            // println!("PlanStore linking {ret_plan_store} to {last_plan_store}");
+            return Some(ret_plan_store.link(&last_plan_store));
         }
 
         //println!("returning PlanStore {}", tools::vec_string(&ret_plan_store));

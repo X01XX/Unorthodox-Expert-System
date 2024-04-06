@@ -113,6 +113,11 @@ impl SomeStep {
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
+
+    /// Return the number of bits changed in a step.
+    pub fn num_bits_changed(&self) -> usize {
+        self.rule.num_bits_changed()
+    }
 } // end impl SomeStep
 
 /// Implement the trait StrLen for SomeStep.

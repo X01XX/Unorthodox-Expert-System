@@ -354,6 +354,15 @@ impl SomePlan {
     fn formatted_string(&self) -> String {
         format!("{} P:{}", self.steps, self.dom_id)
     }
+
+    /// Return the number of bits changed through each step of a plan.
+    pub fn num_bits_changed(&self) -> usize {
+        let mut ret_num = 0;
+        for stepx in self.iter() {
+            ret_num += stepx.num_bits_changed();
+        }
+        ret_num
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {

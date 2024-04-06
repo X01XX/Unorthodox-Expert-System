@@ -261,6 +261,15 @@ impl RegionStoreCorr {
         }
         ext
     }
+
+    /// Return the number of bits different between two RegionStoreCorr.
+    pub fn num_different_bits(&self, other: &Self) -> usize {
+        let mut ret_num = 0;
+        for (regx, regy) in self.iter().zip(other.iter()) {
+            ret_num += regx.diff_mask(regy).num_one_bits();
+        }
+        ret_num
+    }
 } // End impl RegionStoreCorr.
 
 impl Index<usize> for RegionStoreCorr {

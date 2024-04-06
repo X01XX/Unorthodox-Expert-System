@@ -137,18 +137,28 @@ impl PlanStore {
         self.avec.append(&mut other.avec);
     }
 
-    /// Return true if the last plan for a domain is the given region.
-    pub fn _dom_result(&self, dom_id: usize, regx: &SomeRegion) -> bool {
+    /// Return the result of the last plan for a domain, if any.
+    pub fn domain_result(&self, dom_id: usize) -> Option<&SomeRegion> {
         let mut rslt: Option<&SomeRegion> = None;
+
         for planx in self.iter() {
             if planx.dom_id == dom_id && planx.is_not_empty() {
                 rslt = Some(planx.result_region());
             }
         }
-        if let Some(regy) = rslt {
-            return regy == regx;
+        rslt
+    }
+
+    /// Return number bits changed running plans in store.
+    pub fn num_bits_changed(&self) -> usize {
+        let mut ret_num = 0;
+        for planx in self.avec.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            ret_num += planx.num_bits_changed();
         }
-        false
+        ret_num
     }
 
     /// Return the result_region of a Planstore.
@@ -199,6 +209,24 @@ impl PlanStore {
             println!("cur_regs {cur_regs}");
             false
         }
+    }
+
+    /// Link two Planstores.
+    pub fn link(&self, other: &Self) -> Self {
+        let mut ret_plans = self.clone();
+
+        for planx in other.avec.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            if let Some(regx) = ret_plans.domain_result(planx.dom_id) {
+                ret_plans.push(planx.restrict_initial_region(regx).unwrap());
+            } else {
+                ret_plans.push(planx.clone());
+            }
+        }
+
+        ret_plans
     }
 } // end impl PlanStore
 

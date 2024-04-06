@@ -1531,8 +1531,10 @@ fn usage() {
     println!(
         "\n    \"P:0[]\" means Plan: Domain 0. The current state can be used to satisfy the need."
     );
-    println!("    \"P:1[2,3]/+5\" means Plan: Domain 1. Run action 2, then action 3, to change the current state to satisfy the need.");
-    println!("    Regions the plan passes through have an aggregate rating of positive 5.");
+    println!("\n    \"P:1[2,3]/1/2/+5\" means Plan: Domain 1. Run action 2, then action 3, to change the current state to satisfy the need.");
+    println!("    The number of desired bit changes is 1.");
+    println!("    The number of bit changes in the plan that cause the desired bit changes is 2.");
+    println!("    The regions the plan passes through have an aggregate rating of positive 5.");
     println!("\n    Once the current state is correct, most (but not all) needs require an additional action to get a sample.");
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");

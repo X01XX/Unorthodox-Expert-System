@@ -587,6 +587,11 @@ impl SomeRule {
             b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
         }
     }
+
+    /// Return the number of bits changed in a rule.
+    pub fn num_bits_changed(&self) -> usize {
+        self.b01.bitwise_or(&self.b10).num_one_bits()
+    }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
