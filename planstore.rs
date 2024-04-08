@@ -71,20 +71,28 @@ impl PlanStore {
             return;
         }
 
-        // Check if successive plans of the sawe domain can be combined.
-        if self.len() > 0 {
+        // Check if successive plans of the same domain can be combined.
+        if !self.is_empty() {
             let inx = self.len() - 1;
             if self.avec[inx].dom_id == planx.dom_id {
-                self.avec[inx] = self.avec[inx].link(&planx).unwrap();
-                return;
+                if let Some(plany) = self.avec[inx].link(&planx) {
+                    self.avec[inx] = plany;
+                    return;
+                } else {
+                    panic!("plan {} not linked to {}", self.avec[inx], planx);
+                }
             }
         }
 
         // Verify a domain plan that is split into parts.
         if let Some(inx) = self.last_dom(planx.dom_id) {
             if self[inx].result_region() == planx.initial_region() {
-            } else if self[inx].result_region().is_subset_of(planx.initial_region()) {
-                self.avec.push(planx.restrict_initial_region(self[inx].result_region()).unwrap());
+            } else if self[inx].result_region().intersects(planx.initial_region()) {
+                self.avec.push(
+                    planx
+                        .restrict_initial_region(self[inx].result_region())
+                        .unwrap(),
+                );
                 return;
             }
             assert!(self[inx].result_region() == planx.initial_region());
@@ -180,15 +188,47 @@ impl PlanStore {
         ret_num
     }
 
-    /// Return the result_region of a Planstore.
-    pub fn result_regions(&self, current: &RegionStoreCorr) -> RegionStoreCorr {
-        let mut ret_regs = current.clone();
+    /// Return the result regions of a Planstore.
+    /// The current regions should intersect the plan initial regions,
+    /// and will be a default region in case a PlanStore does not have a plan for
+    /// a domain.
+    pub fn result_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
+        let mut ret_regs = default.clone();
         for planx in self.avec.iter() {
             if planx.is_empty() {
                 continue;
             }
-            if *planx.initial_region() == ret_regs[planx.dom_id] {
-                ret_regs[planx.dom_id] = planx.result_region().clone();
+            if planx.initial_region().intersects(&ret_regs[planx.dom_id]) {
+                let reg_int = planx.initial_region().intersection(&ret_regs[planx.dom_id]);
+                ret_regs[planx.dom_id] = planx
+                    .restrict_initial_region(&reg_int)
+                    .unwrap()
+                    .result_region()
+                    .clone();
+            } else {
+                panic!(
+                    "{} not int {}",
+                    planx.initial_region(),
+                    ret_regs[planx.dom_id]
+                );
+            }
+        }
+        ret_regs
+    }
+
+    /// Return the initial_regions of a Planstore.
+    /// The current regions should intersect the plan initial regions,
+    /// and will be a default region in case a PlanStore does not have a plan for
+    /// a domain.
+    pub fn initial_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
+        let mut ret_regs = default.clone();
+        for planx in self.avec.iter() {
+            if planx.is_empty() {
+                continue;
+            }
+            if planx.initial_region().intersects(&ret_regs[planx.dom_id]) {
+                ret_regs[planx.dom_id] =
+                    planx.initial_region().intersection(&ret_regs[planx.dom_id]);
             } else {
                 panic!("{} ne {}", planx.initial_region(), ret_regs[planx.dom_id]);
             }
@@ -218,7 +258,7 @@ impl PlanStore {
                 }
             }
         }
-        if goal_regs.intersects(&cur_regs) {
+        if goal_regs.is_superset_of(&cur_regs) {
             true
         } else {
             println!("Validate (2)");
@@ -239,7 +279,11 @@ impl PlanStore {
                 continue;
             }
             if let Some(regx) = ret_plans.domain_result(planx.dom_id) {
-                ret_plans.push(planx.restrict_initial_region(regx).unwrap());
+                if let Some(plany) = planx.restrict_initial_region(regx) {
+                    ret_plans.push(plany);
+                } else {
+                    panic!("Restrict {} to {} ?", planx, regx);
+                }
             } else {
                 ret_plans.push(planx.clone());
             }

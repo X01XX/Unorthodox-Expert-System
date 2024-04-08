@@ -1110,7 +1110,7 @@ impl DomainStore {
         goal_regs: &RegionStoreCorr,
     ) -> Option<PlanStore> {
         //println!(
-        //    "avoid_negative_select_regions2_new: starting: start {start_regs} goal: {goal_regs}"
+        //    "avoid_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}"
         //);
         //println!(
         //    "select_non_negative regions = {}",
@@ -1120,7 +1120,7 @@ impl DomainStore {
         // Check no plan needed.
         if goal_regs.is_superset_of(start_regs) {
             //println!("goal {goal_regs} is superset of start {start_regs}");
-            return None;
+            return Some(PlanStore::new(vec![]));
         }
 
         // Check if start_regs and goal_regs are in the same non-negative region.
@@ -1136,6 +1136,7 @@ impl DomainStore {
                     assert!(plans.validate(start_regs, goal_regs));
                     return Some(plans);
                 } else {
+                    //println!("Returning None (1)");
                     return None;
                 }
             }
@@ -1145,24 +1146,35 @@ impl DomainStore {
 
         // Init current start.
         let mut cur_start = start_regs.clone();
+        //println!("cur_start: {}", cur_start);
 
         // Make plan to move start to a non-negative SelectRegion, if needed.
         // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
-        if self.select.rate_regions(start_regs) < 0 {
+        if self.select.rate_regions(&cur_start) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let near_nn_regs = self.closest_non_negative_regions(start_regs)?;
-
+            let Some(near_nn_regs) = self.closest_non_negative_regions(start_regs) else {
+                //println!("Returning None (3)");
+                return None;
+            };
             // Try to plan move to the selected SelectRegion.
-            let plans = self.make_plans2(&cur_start, near_nn_regs, None)?;
+            let Some(plans) = self.make_plans2(&cur_start, near_nn_regs, None) else {
+                //println!("Returning None (4)");
+                return None;
+            };
+
             // Adjust new start regions.
-            //cur_start = start_regs.clone();
-            for planx in plans.iter() {
-                if planx.is_not_empty() {
-                    cur_start[planx.dom_id] = planx.result_region().clone();
-                }
-            }
+            //println!("cur_start changing from {} to {}", cur_start, plans.result_regions(&cur_start));
+            cur_start = plans.result_regions(&cur_start);
+
             //println!("First plan {}", plans);
-            ret_plan_store.append(plans);
+
+            if plans.result_regions(start_regs).is_subset_of(goal_regs) {
+                //println!("return1 {plans}");
+                assert!(plans.validate(start_regs, goal_regs));
+                return Some(plans);
+            }
+
+            ret_plan_store = plans;
         } // end in_negative.
 
         // Now, use local cur_start, instead of argument start_regs.
@@ -1176,26 +1188,46 @@ impl DomainStore {
         // Make plan to move goal from a non-negative region, if needed.
         if self.select.rate_regions(goal_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let near_nn_regs = self.closest_non_negative_regions(goal_regs)?;
+            let Some(near_nn_regs) = self.closest_non_negative_regions(goal_regs) else {
+                //println!("Returning None (5)");
+                return None;
+            };
 
             // Calc closest regions in the chosen SelectRegion, congruent to the goal_regs.
             let goal_regs_nn = cur_goal.translate_to(near_nn_regs);
 
             // Try to plan move to from the selected SelectRegion, to the goal.
-            let plans = self.make_plans2(&goal_regs_nn, &cur_goal, None)?;
+            let Some(plans) = self.make_plans2(&goal_regs_nn, &cur_goal, None) else {
+                // println!("Returning None (6)");
+                return None;
+            };
+
+            // Check if done.
+            let last_plan_store_initial_regions = last_plan_store.initial_regions(&goal_regs_nn);
+            if cur_start.intersects(&last_plan_store_initial_regions) {
+                ret_plan_store.append(plans);
+                //println!("return (2) {ret_plan_store}");
+                assert!(ret_plan_store.validate(start_regs, goal_regs));
+                return Some(ret_plan_store);
+            }
+
             // Save plans to goal.
             last_plan_store = plans;
 
             // Adjust goal_regs.
+            // println!("cur goal changing from {} to {}", cur_goal, goal_regs_nn);
             cur_goal = goal_regs_nn;
             //println!("Last plan {}", last_plan_store);
         } // end in_negative.
 
         // Check if no further plan needed.
-        if cur_goal.is_superset_of(&cur_start) {
+        if cur_start.is_subset_of(&cur_goal) {
+            //println!("ret_plan_store {ret_plan_store}");
+            // println!("last_plan_store {last_plan_store}");
             if last_plan_store.is_not_empty() {
                 ret_plan_store.append(last_plan_store);
             }
+            //println!("new ret_plan_store {ret_plan_store}");
             assert!(ret_plan_store.validate(start_regs, goal_regs));
             return Some(ret_plan_store);
         }
@@ -1204,12 +1236,53 @@ impl DomainStore {
         for selx in self.select_non_negative.iter() {
             if selx.regions.is_superset_of(&cur_start) && selx.regions.is_superset_of(&cur_goal) {
                 //println!("{} and {} are in {}", cur_start, cur_goal, selx.regions);
-                let plans = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))?;
-                //println!("returning PlanStore {plans}");
+                let Some(plans) = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))
+                else {
+                    //println!("Returning None (7)");
+                    return None;
+                };
+                //println!("plans {plans}");
+                // println!("ret_plan_store {ret_plan_store}");
                 ret_plan_store.append(plans);
-                if last_plan_store.is_not_empty() {
-                    ret_plan_store.append(last_plan_store);
+                // println!("ret_plan_store + plans {ret_plan_store}");
+
+                let ret_plan_store_result_regions = ret_plan_store.result_regions(start_regs);
+
+                if ret_plan_store_result_regions.is_superset_of(goal_regs) {
+                    //println!("Returning (5): {ret_plan_store}");
+                    return Some(ret_plan_store);
                 }
+
+                if last_plan_store.is_empty() {
+                    //  println!("Returning None (8)");
+                    return None;
+                }
+
+                let last_plan_initial_regions = last_plan_store.initial_regions(&selx.regions);
+
+                if ret_plan_store_result_regions.intersects(&last_plan_initial_regions) {
+                    ret_plan_store.append(last_plan_store);
+                    //println!("Returning (6): {ret_plan_store}");
+                    return Some(ret_plan_store);
+                }
+
+                let Some(plans) = self.make_plans2(
+                    &ret_plan_store_result_regions,
+                    &last_plan_initial_regions,
+                    Some(&selx.regions),
+                ) else {
+                    //println!("Returning None (7)");
+                    return None;
+                };
+                //println!("plans {plans}");
+                //println!("ret_plan_store {ret_plan_store}");
+                ret_plan_store.append(plans);
+                // println!("ret_plan_store + plans {ret_plan_store}");
+
+                //println!("last_plan_store {last_plan_store}");
+                ret_plan_store.append(last_plan_store);
+
+                //println!("ret_plan_store final {ret_plan_store}");
                 assert!(ret_plan_store.validate(start_regs, goal_regs));
                 return Some(ret_plan_store);
             }
@@ -1224,6 +1297,7 @@ impl DomainStore {
             .collect::<Vec<Vec<&RegionStoreCorr>>>();
 
         if mid_paths.is_empty() {
+            //println!("no mid plan found");
             return None;
         }
 
@@ -1249,8 +1323,10 @@ impl DomainStore {
             }
         }
         if mid_plans.is_empty() {
+            //println!("Returning None (2)");
             return None;
         }
+        //println!("mid plan: {mid_plans}");
 
         // Add mid_plans to existing start_plan_store, if any.
         ret_plan_store.append(mid_plans);
