@@ -423,11 +423,6 @@ impl SomeAction {
             // Overlapping groups that form a contradictory intersection.
             nds.append(self.group_pair_needs());
 
-            // Check for expand needs.
-            if nds.is_empty() {
-                nds.append(self.expand_groups_needs(max_reg));
-            }
-
             // Check for squares in-one-group needs
             if let Some(ndx) = self.limit_groups_needs(max_reg) {
                 nds.append(ndx);
@@ -707,152 +702,6 @@ impl SomeAction {
 
         ret_nds
     } // end confirm_group_needs
-
-    /// Return group expansion needs.
-    /// Based on dissimilar groups.
-    pub fn expand_groups_needs(&mut self, max_reg: &SomeRegion) -> NeedStore {
-        let mut ret_nds = NeedStore::new(vec![]);
-
-        if self.groups.len() < 2 {
-            return ret_nds;
-        }
-
-        // Storage for non-intersecting, dissimilar group regions.
-        let mut pairs = Vec::<(&SomeRegion, &SomeRegion)>::new();
-
-        for inx in 0..(self.groups.len() - 1) {
-            let grpx = &self.groups[inx];
-            if grpx.region.intersects(max_reg) {
-            } else {
-                continue;
-            }
-
-            for iny in (inx + 1)..self.groups.len() {
-                let grpy = &self.groups[iny];
-
-                if grpy.region.intersects(max_reg) {
-                } else {
-                    continue;
-                }
-
-                if grpx.region.intersects(&grpy.region) {
-                    continue;
-                }
-
-                if grpy.pn != grpx.pn {
-                    pairs.push((&grpx.region, &grpy.region));
-                } else if grpy.pn == Pn::Unpredictable {
-                    continue;
-                } else if let Some(xrules) = &grpx.rules {
-                    if let Some(yrules) = &grpy.rules {
-                        if xrules.union(yrules).is_none() {
-                            pairs.push((&grpx.region, &grpy.region));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Init initial possible regions.
-        let mut poss_regs = RegionStore::new(vec![max_reg.clone()]);
-
-        // Add each pair compliment.
-        for pairx in pairs.iter() {
-            poss_regs = poss_regs.intersection(
-                &pairx
-                    .0
-                    .complement_in(max_reg)
-                    .union(&pairx.1.complement_in(max_reg)),
-            );
-        }
-
-        //println!("Possible regions: {}", poss_regs);
-
-        // Analyze results.
-
-        // Check each group.
-        for grpx in self.groups.iter() {
-            for regx in poss_regs.iter() {
-                if !regx.is_superset_of(&grpx.region) || grpx.region == *regx {
-                    continue;
-                }
-
-                if not(regx.intersects(max_reg)) {
-                    continue;
-                }
-                let regx_int = regx.intersection(max_reg);
-                let target_reg = regx_int.far_reg(&grpx.region);
-
-                match self.squares.pick_a_square_in(&target_reg) {
-                    Ok(sqrx) => {
-                        //println!("ExpandGroup: sqr {sqrx}");
-                        let mut ndx = SomeNeed::ExpandGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            group_region: grpx.region.clone(),
-                            expand_region: regx_int.clone(),
-                            target_region: SomeRegion::new(vec![sqrx.state.clone()]),
-                            priority: 0,
-                        };
-                        ndx.set_priority();
-                        ret_nds.push(ndx);
-                    }
-                    Err(PickError::NoSquares) => {
-                        //println!("ExpandGroup: no sqr found");
-                        let mut ndx = SomeNeed::ExpandGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            group_region: grpx.region.clone(),
-                            expand_region: regx_int.clone(),
-                            target_region: regx_int.far_reg(&grpx.region),
-                            priority: 0,
-                        };
-                        ndx.set_priority();
-                        ret_nds.push(ndx);
-                    }
-                    Err(PickError::PncSquare) => (),
-                }
-            } // next regx
-        } // next grpx
-
-        // Check each region.
-        'next_regx: for regx in poss_regs.iter() {
-            for grpx in self.groups.iter() {
-                if regx.intersects(&grpx.region) {
-                    continue 'next_regx;
-                }
-            }
-            // No groups in regx.
-            match self.squares.pick_a_square_in(regx) {
-                Ok(sqrx) => {
-                    // Found square that needs more samples.
-                    let mut needx = SomeNeed::StateNotInGroup {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target_state: sqrx.state.clone(),
-                        priority: 0,
-                    };
-                    needx.set_priority();
-                    ret_nds.push(needx);
-                }
-                Err(PickError::NoSquares) => {
-                    let mut needx = SomeNeed::SampleInRegion {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target_region: regx.clone(),
-                        priority: 0,
-                    };
-                    needx.set_priority();
-                    ret_nds.push(needx);
-                }
-                Err(PickError::PncSquare) => {
-                    println!("Pnc square found in {regx} ?");
-                }
-            }
-        }
-
-        ret_nds
-    }
 
     /// Check for squares-in-one-group (anchor) needs.
     ///
@@ -1886,22 +1735,42 @@ impl SomeAction {
         let asample = self.take_action_arbitrary(cur_state);
 
         // Additional processing for selected kinds of need
-        if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
-            // The sample could have invalidated the group.
-            if let Some(grpx) = self.groups.find_mut(grp_reg) {
-                if !grpx.pnc {
-                    let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
-                    if grp_reg.len() == 1 {
-                        if sqr1.pnc {
-                            grpx.set_pnc(self.dom_id, self.id);
-                        }
-                    } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
-                        if sqr1.pnc && sqr2.pnc {
-                            grpx.set_pnc(self.dom_id, self.id);
+        match ndx {
+            SomeNeed::ConfirmGroup { grp_reg, .. } => {
+                // The sample could have invalidated the group.
+                if let Some(grpx) = self.groups.find_mut(grp_reg) {
+                    if !grpx.pnc {
+                        let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
+                        if grp_reg.len() == 1 {
+                            if sqr1.pnc {
+                                grpx.set_pnc(self.dom_id, self.id);
+                            }
+                        } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
+                            if sqr1.pnc && sqr2.pnc {
+                                grpx.set_pnc(self.dom_id, self.id);
+                            }
                         }
                     }
                 }
             }
+            SomeNeed::StateInRemainder { dom_id, .. } => {
+                if not(self.groups.any_superset_of(cur_state)) {
+                    let sqr1 = self.squares.find(cur_state).expect("SNH");
+                    if sqr1.pnc {
+                        self.check_remainder = true;
+                        self.groups.push_nosubs(
+                            SomeGroup::new(
+                                SomeRegion::new(vec![cur_state.clone()]),
+                                sqr1.rules.clone(),
+                                true,
+                            ),
+                            *dom_id,
+                            self.id,
+                        );
+                    }
+                }
+            }
+            _ => {}
         }
 
         asample
@@ -1930,24 +1799,20 @@ impl SomeAction {
 
         let asample = SomeSample::new(cur_state.clone(), astate);
 
-        self.update_square(&asample);
-
-        asample
-    }
-
-    /// Update a square with a new sample, if it exists.
-    pub fn update_square(&mut self, asample: &SomeSample) {
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(&asample.initial) {
-            sqrx.add_sample(asample);
+            if sqrx.add_sample(&asample) {
+                self.groups.check_square(sqrx, self.dom_id, self.id);
+            }
         } else {
             for sqrx in self.memory.iter_mut() {
                 if sqrx.state == asample.initial {
-                    sqrx.add_sample(asample);
+                    sqrx.add_sample(&asample);
                     break;
                 }
             }
         }
+        asample
     }
 
     /// Check an unexpected step result.

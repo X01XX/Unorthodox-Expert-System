@@ -137,24 +137,14 @@ impl DomainStore {
             return;
         }
 
-        println!("\nSelect Regions:");
+        println!("\nSelect Regions ({}):", self.select.len());
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
 
-        // Init negative and positive stores.
-        //        for selx in self.select.iter() {
-        //            match selx.value.cmp(&0) {
-        //                Ordering::Greater => self.select_positive.push_nosubs(selx.clone()),
-        //                Ordering::Less => self.select_negative.push_nosubs(selx.clone()),
-        //                _ => (),
-        //            }
-        //        }
-
         // Get fragments due to different-value intersections.
         let fragments = self.select.split_by_intersections();
 
-        //println!("\nFragment Regions:");
         for sely in fragments.into_iter() {
             match sely.value.cmp(&0) {
                 Ordering::Greater => {
@@ -172,26 +162,38 @@ impl DomainStore {
             }
         }
 
-        println!("\nNegative Select Regions:");
+        println!(
+            "\nNegative SRs, split by different-value intersections ({}):",
+            self.select_negative.len()
+        );
         for selx in self.select_negative.iter() {
             println!("  {}", selx);
         }
+        println!("  To avoid in rule-paths.");
+        println!("  To exit if the current state is within one.");
 
-        println!("\nPositive Select Regions:");
+        println!(
+            "\nPositive SRs, split by different-value intersections ({}):",
+            self.select_positive.len()
+        );
         for selx in self.select_positive.iter() {
             println!("  {}", selx);
         }
-        //println!("max_pos_value {}", self.max_pos_value);
+        println!("  To seek, when no other needs can be done.");
 
         // Calc non-negative regions.
         let max_select =
             SelectRegionsStore::new(vec![SelectRegions::new(self.maximum_regions(), 0)]);
         self.select_non_negative = max_select.subtract(&self.select_negative);
 
-        println!("\nNon negative select Regions:");
+        println!(
+            "\nNon-negative SRs, maximum SR minus negative SRs ({}):",
+            self.select_non_negative.len()
+        );
         for selx in self.select_non_negative.iter() {
             println!("  {}", selx,);
         }
+        println!("  To seek when exiting a negative SR the current state is in.");
     }
 
     /// Add a Domain struct to the store.
@@ -467,7 +469,16 @@ impl DomainStore {
         goal: &RegionStoreCorr,
         within: Option<&RegionStoreCorr>,
     ) -> Option<PlanStore> {
-        let mut plans = (0..2)
+        //if let Some(path) = within {
+        //    println!("make_plans2: from {from} to {goal} within {path}");
+        //} else {
+        //    println!("make_plans2: from {from} to {goal}");
+        //}
+
+        if from.is_subset_of(goal) {
+            return Some(PlanStore::new(vec![]));
+        }
+        let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| self.make_plans3(from, goal, within))
             .collect::<Vec<PlanStore>>();
@@ -1112,31 +1123,23 @@ impl DomainStore {
         //println!(
         //    "avoid_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}"
         //);
-        //println!(
-        //    "select_non_negative regions = {}",
-        //    self.select_non_negative.len()
-        //);
 
         // Check no plan needed.
         if goal_regs.is_superset_of(start_regs) {
-            //println!("goal {goal_regs} is superset of start {start_regs}");
             return Some(PlanStore::new(vec![]));
         }
 
         // Check if start_regs and goal_regs are in the same non-negative region.
         for selx in self.select_non_negative.iter() {
             if selx.regions.is_superset_of(start_regs) && selx.regions.intersects(goal_regs) {
-                //println!("{} and {} are in {}", start_regs, goal_regs, selx.regions);
                 if let Some(plans) = self.make_plans2(
                     start_regs,
                     &selx.regions.intersection(goal_regs)?,
                     Some(&selx.regions),
                 ) {
-                    //println!("returning PlanStore {plans}");
                     assert!(plans.validate(start_regs, goal_regs));
                     return Some(plans);
                 } else {
-                    //println!("Returning None (1)");
                     return None;
                 }
             }
@@ -1146,30 +1149,19 @@ impl DomainStore {
 
         // Init current start.
         let mut cur_start = start_regs.clone();
-        //println!("cur_start: {}", cur_start);
 
         // Make plan to move start to a non-negative SelectRegion, if needed.
         // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
         if self.select.rate_regions(&cur_start) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let Some(near_nn_regs) = self.closest_non_negative_regions(start_regs) else {
-                //println!("Returning None (3)");
-                return None;
-            };
+            let near_nn_regs = self.closest_non_negative_regions(&cur_start)?;
             // Try to plan move to the selected SelectRegion.
-            let Some(plans) = self.make_plans2(&cur_start, near_nn_regs, None) else {
-                //println!("Returning None (4)");
-                return None;
-            };
+            let plans = self.make_plans2(&cur_start, near_nn_regs, None)?;
 
             // Adjust new start regions.
-            //println!("cur_start changing from {} to {}", cur_start, plans.result_regions(&cur_start));
-            cur_start = plans.result_regions(&cur_start);
-
-            //println!("First plan {}", plans);
+            cur_start = plans.result_regions(start_regs);
 
             if plans.result_regions(start_regs).is_subset_of(goal_regs) {
-                //println!("return1 {plans}");
                 assert!(plans.validate(start_regs, goal_regs));
                 return Some(plans);
             }
@@ -1188,25 +1180,17 @@ impl DomainStore {
         // Make plan to move goal from a non-negative region, if needed.
         if self.select.rate_regions(goal_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
-            let Some(near_nn_regs) = self.closest_non_negative_regions(goal_regs) else {
-                //println!("Returning None (5)");
-                return None;
-            };
+            let near_nn_regs = self.closest_non_negative_regions(goal_regs)?;
 
             // Calc closest regions in the chosen SelectRegion, congruent to the goal_regs.
             let goal_regs_nn = cur_goal.translate_to(near_nn_regs);
 
             // Try to plan move to from the selected SelectRegion, to the goal.
-            let Some(plans) = self.make_plans2(&goal_regs_nn, &cur_goal, None) else {
-                // println!("Returning None (6)");
-                return None;
-            };
+            let plans = self.make_plans2(&goal_regs_nn, &cur_goal, None)?;
 
             // Check if done.
-            let last_plan_store_initial_regions = last_plan_store.initial_regions(&goal_regs_nn);
-            if cur_start.intersects(&last_plan_store_initial_regions) {
+            if cur_start.intersects(goal_regs) {
                 ret_plan_store.append(plans);
-                //println!("return (2) {ret_plan_store}");
                 assert!(ret_plan_store.validate(start_regs, goal_regs));
                 return Some(ret_plan_store);
             }
@@ -1215,19 +1199,21 @@ impl DomainStore {
             last_plan_store = plans;
 
             // Adjust goal_regs.
-            // println!("cur goal changing from {} to {}", cur_goal, goal_regs_nn);
             cur_goal = goal_regs_nn;
-            //println!("Last plan {}", last_plan_store);
         } // end in_negative.
 
         // Check if no further plan needed.
         if cur_start.is_subset_of(&cur_goal) {
-            //println!("ret_plan_store {ret_plan_store}");
-            // println!("last_plan_store {last_plan_store}");
             if last_plan_store.is_not_empty() {
-                ret_plan_store.append(last_plan_store);
+                if let Some(ret_plan_store2) =
+                    self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+                {
+                    assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                    return Some(ret_plan_store2);
+                } else {
+                    return None;
+                }
             }
-            //println!("new ret_plan_store {ret_plan_store}");
             assert!(ret_plan_store.validate(start_regs, goal_regs));
             return Some(ret_plan_store);
         }
@@ -1235,56 +1221,29 @@ impl DomainStore {
         // Check if cur_start and cur_goal are in the same non-negative region.
         for selx in self.select_non_negative.iter() {
             if selx.regions.is_superset_of(&cur_start) && selx.regions.is_superset_of(&cur_goal) {
-                //println!("{} and {} are in {}", cur_start, cur_goal, selx.regions);
-                let Some(plans) = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))
-                else {
-                    //println!("Returning None (7)");
-                    return None;
-                };
-                //println!("plans {plans}");
-                // println!("ret_plan_store {ret_plan_store}");
+                let plans = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))?;
+
                 ret_plan_store.append(plans);
-                // println!("ret_plan_store + plans {ret_plan_store}");
 
                 let ret_plan_store_result_regions = ret_plan_store.result_regions(start_regs);
 
-                if ret_plan_store_result_regions.is_superset_of(goal_regs) {
-                    //println!("Returning (5): {ret_plan_store}");
+                if goal_regs.is_superset_of(&ret_plan_store_result_regions) {
+                    assert!(ret_plan_store.validate(start_regs, goal_regs));
                     return Some(ret_plan_store);
                 }
 
                 if last_plan_store.is_empty() {
-                    //  println!("Returning None (8)");
                     return None;
                 }
 
-                let last_plan_initial_regions = last_plan_store.initial_regions(&selx.regions);
-
-                if ret_plan_store_result_regions.intersects(&last_plan_initial_regions) {
-                    ret_plan_store.append(last_plan_store);
-                    //println!("Returning (6): {ret_plan_store}");
-                    return Some(ret_plan_store);
+                if let Some(ret_plan_store2) =
+                    self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+                {
+                    assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                    return Some(ret_plan_store2);
                 }
-
-                let Some(plans) = self.make_plans2(
-                    &ret_plan_store_result_regions,
-                    &last_plan_initial_regions,
-                    Some(&selx.regions),
-                ) else {
-                    //println!("Returning None (7)");
-                    return None;
-                };
-                //println!("plans {plans}");
-                //println!("ret_plan_store {ret_plan_store}");
-                ret_plan_store.append(plans);
-                // println!("ret_plan_store + plans {ret_plan_store}");
-
-                //println!("last_plan_store {last_plan_store}");
-                ret_plan_store.append(last_plan_store);
-
-                //println!("ret_plan_store final {ret_plan_store}");
-                assert!(ret_plan_store.validate(start_regs, goal_regs));
-                return Some(ret_plan_store);
+                println!("avoid_negative_select_regions2: returning (16): None");
+                return None;
             }
         }
 
@@ -1297,7 +1256,6 @@ impl DomainStore {
             .collect::<Vec<Vec<&RegionStoreCorr>>>();
 
         if mid_paths.is_empty() {
-            //println!("no mid plan found");
             return None;
         }
 
@@ -1307,26 +1265,21 @@ impl DomainStore {
         let mut cur_regs = cur_start.clone(); // Borrow checker thinks the above map is still in force?
 
         let mut mid_plans = PlanStore::new(vec![]);
-        for inx in 1..(pathx.len() - 1) {
+        for inx in 0..(pathx.len() - 1) {
             if let Some(intx) = pathx[inx].intersection(pathx[inx + 1]) {
-                //println!("{} intersects {} at {}", pathx[inx], pathx[inx + 1], intx);
                 if let Some(plans) = self.make_plans2(&cur_regs, &intx, Some(pathx[inx])) {
-                    //println!("  mid plans {}", plans);
                     cur_regs = plans.result_regions(&cur_regs);
-                    //println!("cur_regs {cur_regs}");
                     mid_plans.append(plans);
                 } else {
                     return None;
                 }
             } else {
-                panic!("{} does not intersect {} ?", pathx[inx], pathx[inx + 1]);
+                return None;
             }
         }
         if mid_plans.is_empty() {
-            //println!("Returning None (2)");
             return None;
         }
-        //println!("mid plan: {mid_plans}");
 
         // Add mid_plans to existing start_plan_store, if any.
         ret_plan_store.append(mid_plans);
@@ -1334,14 +1287,60 @@ impl DomainStore {
         // Add last_plan_store, if needed.
         // Last_plan_store plans may begin with a region containing 0, 1, or more, X bit positions.
         if last_plan_store.is_not_empty() {
-            // println!("PlanStore linking {ret_plan_store} to {last_plan_store}");
-            return Some(ret_plan_store.link(&last_plan_store));
+            if let Some(ret_plan_store2) =
+                self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+            {
+                assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                return Some(ret_plan_store2);
+            };
+            return None;
         }
 
-        //println!("returning PlanStore {}", tools::vec_string(&ret_plan_store));
         assert!(ret_plan_store.validate(start_regs, goal_regs));
         Some(ret_plan_store)
     } // end avoid_negative_select_regions2
+
+    /// Link two PlanStores together.
+    /// Link two PlanStores together.
+    /// It may be necessary to generate plans between corresponding
+    /// domains.
+    fn link_two_planstores(
+        &self,
+        first: &PlanStore,
+        second: &PlanStore,
+        default: &RegionStoreCorr,
+    ) -> Option<PlanStore> {
+        let first_result_regions = first.result_regions(default);
+
+        let second_initial_regions = second.initial_regions(default);
+
+        if first_result_regions.intersects(&second_initial_regions) {
+            if let Some(ret_store) = first.link(second) {
+                //println!("Link_two_planstores: Returning: {ret_store}");
+                return Some(ret_store);
+            } else {
+                //println!("Link_two_planstores: Returning: None");
+                return None;
+            }
+        }
+
+        if let Some(plans) = self.make_plans2(
+            &first_result_regions,
+            &second_initial_regions,
+            Some(default),
+        ) {
+            //println!("linking 3 plans: {},  {},  {}", first, plans, second);
+
+            if let Some(ret_store1) = first.link(&plans) {
+                if let Some(ret_store2) = ret_store1.link(second) {
+                    //println!("Link_two_planstores: Returning: {ret_store2}");
+                    return Some(ret_store2);
+                }
+            }
+        }
+        //println!("Link_two_planstores: Returning: None");
+        None
+    }
 
     /// Return a series of intersecting, non-negative SelectRegions, to
     /// guide a path between start and goal, without passing through any

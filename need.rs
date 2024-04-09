@@ -87,16 +87,6 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
     },
-    /// Sample a state in a region to expand an existing group.
-    ExpandGroup {
-        dom_id: usize,
-        act_id: usize,
-        target_region: SomeRegion,
-        priority: usize,
-
-        group_region: SomeRegion,
-        expand_region: SomeRegion,
-    },
     /// Move all current domain states from the corresponding regions of a SelectRegion.
     ExitSelectRegion {
         target_regions: RegionStoreCorr,
@@ -130,7 +120,6 @@ impl SomeNeed {
             Self::SampleInRegion { .. } => "SampleInRegion",
             Self::ToSelectRegion { .. } => "ToSelectRegion",
             Self::ExitSelectRegion { .. } => "ExitSelectRegion",
-            Self::ExpandGroup { .. } => "ExpandGroup",
         }
     }
 
@@ -142,7 +131,6 @@ impl SomeNeed {
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegion { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
-            Self::ExpandGroup { priority, .. } => *priority += 500,
             Self::LimitGroup { priority, .. } => *priority += 600,
             Self::LimitGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
@@ -163,7 +151,6 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority,
             Self::ExitSelectRegion { priority, .. } => *priority,
-            Self::ExpandGroup { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
@@ -217,11 +204,6 @@ impl SomeNeed {
                     return true;
                 }
             }
-            Self::ExpandGroup { target_region, .. } => {
-                if target_region.is_superset_of(cur_state) {
-                    return true;
-                }
-            }
             _ => panic!(
                 "SomeNeed::satisfied_by should not be called for the {} need.",
                 self.name()
@@ -234,7 +216,6 @@ impl SomeNeed {
     pub fn act_id(&self) -> usize {
         match self {
             Self::ConfirmGroup { act_id, .. } => *act_id,
-            Self::ExpandGroup { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
@@ -252,7 +233,6 @@ impl SomeNeed {
     pub fn dom_id(&self) -> usize {
         match self {
             Self::ConfirmGroup { dom_id, .. } => *dom_id,
-            Self::ExpandGroup { dom_id, .. } => *dom_id,
             Self::ContradictoryIntersection { dom_id, .. } => *dom_id,
             Self::LimitGroup { dom_id, .. } => *dom_id,
             Self::LimitGroupAdj { dom_id, .. } => *dom_id,
@@ -277,11 +257,6 @@ impl SomeNeed {
                 *dom_id,
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
-            Self::ExpandGroup {
-                dom_id,
-                target_region,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(*dom_id, target_region.clone())]),
             Self::ContradictoryIntersection {
                 dom_id,
                 target_region,
@@ -365,23 +340,6 @@ impl SomeNeed {
             } => {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target_state} to confirm group {grp_reg})")
-            }
-            Self::ExpandGroup {
-                dom_id,
-                act_id,
-                group_region,
-                expand_region,
-                target_region,
-                priority,
-                ..
-            } => {
-                if target_region.x_mask().is_low() {
-                    format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target_region} to expand group {group_region} to {expand_region})")
-                } else {
-                    format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {target_region} to expand group {group_region} to {expand_region})")
-                }
             }
             Self::ContradictoryIntersection {
                 dom_id,

@@ -70,6 +70,7 @@ impl PlanStore {
         if planx.is_empty() {
             return;
         }
+        //println!("planstore:push for {} push {}", self, planx);
 
         // Check if successive plans of the same domain can be combined.
         if !self.is_empty() {
@@ -95,10 +96,12 @@ impl PlanStore {
                 );
                 return;
             }
+            //println!("checking {} and {}", self[inx].result_region(), planx.initial_region());
             assert!(self[inx].result_region() == planx.initial_region());
         }
 
         self.avec.push(planx);
+        //println!("new planstore {self}");
     }
 
     /// Return a vector iterator.
@@ -198,20 +201,7 @@ impl PlanStore {
             if planx.is_empty() {
                 continue;
             }
-            if planx.initial_region().intersects(&ret_regs[planx.dom_id]) {
-                let reg_int = planx.initial_region().intersection(&ret_regs[planx.dom_id]);
-                ret_regs[planx.dom_id] = planx
-                    .restrict_initial_region(&reg_int)
-                    .unwrap()
-                    .result_region()
-                    .clone();
-            } else {
-                panic!(
-                    "{} not int {}",
-                    planx.initial_region(),
-                    ret_regs[planx.dom_id]
-                );
-            }
+            ret_regs[planx.dom_id] = planx.result_region().clone();
         }
         ret_regs
     }
@@ -226,12 +216,7 @@ impl PlanStore {
             if planx.is_empty() {
                 continue;
             }
-            if planx.initial_region().intersects(&ret_regs[planx.dom_id]) {
-                ret_regs[planx.dom_id] =
-                    planx.initial_region().intersection(&ret_regs[planx.dom_id]);
-            } else {
-                panic!("{} ne {}", planx.initial_region(), ret_regs[planx.dom_id]);
-            }
+            ret_regs[planx.dom_id] = planx.initial_region().clone();
         }
         ret_regs
     }
@@ -271,7 +256,7 @@ impl PlanStore {
     }
 
     /// Link two Planstores.
-    pub fn link(&self, other: &Self) -> Self {
+    pub fn link(&self, other: &Self) -> Option<Self> {
         let mut ret_plans = self.clone();
 
         for planx in other.avec.iter() {
@@ -282,14 +267,14 @@ impl PlanStore {
                 if let Some(plany) = planx.restrict_initial_region(regx) {
                     ret_plans.push(plany);
                 } else {
-                    panic!("Restrict {} to {} ?", planx, regx);
+                    return None;
                 }
             } else {
                 ret_plans.push(planx.clone());
             }
         }
 
-        ret_plans
+        Some(ret_plans)
     }
 } // end impl PlanStore
 
