@@ -614,6 +614,9 @@ impl SomeAction {
                         if *keyx == grpx.region.state_far_from(stay) {
                             continue 'next_sqr;
                         }
+                        if keyx.is_adjacent(stay) {
+                            continue 'next_sqr;
+                        }
                     }
                 } else if let Some(stay) = &grpx.anchor {
                     if keyx.is_adjacent(stay) {
@@ -1206,6 +1209,43 @@ impl SomeAction {
             };
             needx.set_priority();
             ret_nds.push(needx);
+        }
+
+        // Check for internal adjacent squares.
+        // They may invalidate the group.
+        let edge_msks: Vec<SomeMask> = regx.x_mask().split();
+
+        for mskx in edge_msks {
+            let adj_sta = anchor_sta.bitwise_xor(&mskx);
+
+            if let Some(adj_sqr) = self.squares.find(&adj_sta) {
+                if adj_sqr.pnc {
+                } else {
+                    // Get another sample of adjacent square.
+                    let mut needx = SomeNeed::LimitGroupAdj {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        anchor: anchor_sta.clone(),
+                        target_state: adj_sta,
+                        for_group: regx.clone(),
+                        priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                    };
+                    needx.set_priority();
+                    nds_grp.push(needx);
+                }
+            } else {
+                // Get first sample of adjacent square.
+                let mut needx = SomeNeed::LimitGroupAdj {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    anchor: anchor_sta.clone(),
+                    target_state: adj_sta,
+                    for_group: regx.clone(),
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                };
+                needx.set_priority();
+                nds_grp.push(needx);
+            }
         }
 
         //println!("limit_group_needs: returning {}", &ret_nds);
