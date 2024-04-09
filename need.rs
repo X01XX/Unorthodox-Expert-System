@@ -390,8 +390,13 @@ impl SomeNeed {
                 priority,
                 ..
             } => {
-                format!(
+                if for_group.is_superset_of(target_state) {
+                    format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to confirm group {for_group})")
+                } else {
+                    format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
+                }
             }
             Self::StateInRemainder {
                 dom_id,

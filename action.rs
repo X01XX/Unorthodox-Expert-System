@@ -1172,7 +1172,6 @@ impl SomeAction {
         }
 
         // Process far state, after the anchor and adjacent, external, checks have been made.
-        // Instead of checking every adjacent square internal to the group.
 
         // Group is non-X, so no far state
         if regx.len() == 1 {
@@ -1183,7 +1182,6 @@ impl SomeAction {
 
         if let Some(sqrf) = self.squares.find(&sta_far) {
             if sqrf.pnc {
-                return None;
             } else {
                 // Get additional samples of the far state.
                 let mut needx = SomeNeed::LimitGroup {
