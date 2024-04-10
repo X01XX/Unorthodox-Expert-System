@@ -902,6 +902,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Those regions that cannot be discarded, that therefore <i>define</i> the solution, have at least one square that is not overlapped by any other region (before discarding regions), therefore at least one square that is only in one region.
     </p>
     <p>
+    I call such a square an <i>anchor</i> square.
+    </p>
+    <p>
  What causes a square to be only in one region?
             </p>
         <p class="indent1">
@@ -1035,6 +1038,17 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <td>A</td>
     </tr>
  </table> 
+
+   <h4>Confirming a region</h4>
+ <p>
+ If there is any subdivision of a limited region, it will make a square within the region, adjacent to the anchor square, dissimilar.
+ </p>
+ <p>
+ So all squares adjacent to an anchor square need to be sampled. Their number is equal the number of bits used to define the square.
+ </p>
+ <p>
+ This process is more efficient, squares sampled vs squares encompassed, for larger regions.
+ </p>
    <h3>Possible Regions for a square</h3>
    <table class="indent1">
  <caption>Square 0 and two dissimilar squares, 7 and D</caption>
@@ -1881,7 +1895,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <h3>Limiting an Optimistic Union</h3>
     <p class="indent1">
-    For any region, a square that is only in that region may be used to limit the region.  I call that square an <i>anchor</i>.
+    For any region, a square that is only in that region may be used to limit the region, its <i>anchor</i> square.
     </p>
     <p class="indent1">
     When looking for samples of squares adjacent to a given anchor, outside of a region, there is the issue of what squares are reachable.
@@ -2471,7 +2485,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 12/24/2023</p>
+   <p>Web page Started: 10/20/2010, last changed: 04/10/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
