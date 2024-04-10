@@ -1049,19 +1049,6 @@ impl DomainStore {
             return None;
         }
 
-        // Check if this function is needed.
-        let mut not_needed = true;
-        for selx in self.select_negative.iter() {
-            if selx.regions.is_between(start_regs, goal_regs) {
-                not_needed = false;
-                break;
-            }
-        }
-        if not_needed {
-            //println!("No plan needed (2)");
-            return None;
-        }
-
         let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| self.avoid_negative_select_regions2(start_regs, goal_regs))
@@ -1552,7 +1539,6 @@ impl DomainStore {
     pub fn print_plan_detail2(&self, plan_str: &PlanStore, states: &StateStoreCorr) {
         let mut cur_states = states.clone();
 
-        let mut step_num = 0;
         for planx in plan_str.iter() {
             if planx.is_empty() {
                 continue;
@@ -1562,20 +1548,18 @@ impl DomainStore {
             for stepx in planx.iter() {
                 let df = stepx.initial.diff_mask(&stepx.result);
                 print!(
-                    "    {} Action {:02} Group {} ",
-                    &stepx.initial, &stepx.act_id, &stepx.group_reg
+                    "    {} Action {:02} -> {}",
+                    &stepx.initial, &stepx.act_id, stepx.result
                 );
-                if step_num > 0 {
-                    for sel_regx in self.select.iter() {
-                        if sel_regx.value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                            print!(" in {:+}", sel_regx);
-                        }
+                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
+
+                for sel_regx in self.select.iter() {
+                    if sel_regx.regions.is_superset_states(&cur_states) {
+                        print!(" in {:+}", sel_regx);
                     }
                 }
 
                 println!("\n    {}", df.str2());
-                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
-                step_num += 1;
             } // next stepsx
             println!("    {}", cur_states[planx.dom_id]);
         } // next planx

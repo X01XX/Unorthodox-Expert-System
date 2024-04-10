@@ -77,13 +77,21 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
     },
-    /// Sample an adjacent state to limit a group.
+    /// Sample a external state adjacent to a group anchor, to limit the group.
     LimitGroupAdj {
         dom_id: usize,
         act_id: usize,
         target_state: SomeState,
         priority: usize,
-
+        for_group: SomeRegion,
+        anchor: SomeState,
+    },
+    /// Sample a internal state adjacent to a group anchor, to confirm the group.
+    ConfirmGroupAdj {
+        dom_id: usize,
+        act_id: usize,
+        target_state: SomeState,
+        priority: usize,
         for_group: SomeRegion,
         anchor: SomeState,
     },
@@ -115,6 +123,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
+            Self::ConfirmGroupAdj { .. } => "ConfirmGroupAdj",
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
             Self::SampleInRegion { .. } => "SampleInRegion",
@@ -131,8 +140,9 @@ impl SomeNeed {
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegion { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
-            Self::LimitGroup { priority, .. } => *priority += 600,
-            Self::LimitGroupAdj { priority, .. } => *priority += 700,
+            Self::LimitGroup { priority, .. } => *priority += 500,
+            Self::LimitGroupAdj { priority, .. } => *priority += 600,
+            Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::SampleInRegion { priority, .. } => *priority += 850,
             Self::ToSelectRegion { priority, .. } => *priority += 900,
@@ -154,6 +164,7 @@ impl SomeNeed {
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
+            Self::ConfirmGroupAdj { priority, .. } => *priority,
             Self::StateNotInGroup { priority, .. } => *priority,
             Self::SampleInRegion { priority, .. } => *priority,
             Self::ToSelectRegion { priority, .. } => *priority,
@@ -189,6 +200,11 @@ impl SomeNeed {
                     return true;
                 }
             }
+            Self::ConfirmGroupAdj { target_state, .. } => {
+                if cur_state == target_state {
+                    return true;
+                }
+            }
             Self::StateInRemainder { target_region, .. } => {
                 if target_region.is_superset_of(cur_state) {
                     return true;
@@ -219,6 +235,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
+            Self::ConfirmGroupAdj { act_id, .. } => *act_id,
             Self::StateNotInGroup { act_id, .. } => *act_id,
             Self::SampleInRegion { act_id, .. } => *act_id,
             Self::StateInRemainder { act_id, .. } => *act_id,
@@ -236,6 +253,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { dom_id, .. } => *dom_id,
             Self::LimitGroup { dom_id, .. } => *dom_id,
             Self::LimitGroupAdj { dom_id, .. } => *dom_id,
+            Self::ConfirmGroupAdj { dom_id, .. } => *dom_id,
             Self::StateInRemainder { dom_id, .. } => *dom_id,
             Self::StateNotInGroup { dom_id, .. } => *dom_id,
             Self::SampleInRegion { dom_id, .. } => *dom_id,
@@ -271,6 +289,14 @@ impl SomeNeed {
                 SomeRegion::new(vec![target_state.clone()]),
             )]),
             Self::LimitGroupAdj {
+                dom_id,
+                target_state,
+                ..
+            } => TargetStore::new(vec![SomeTarget::new(
+                *dom_id,
+                SomeRegion::new(vec![target_state.clone()]),
+            )]),
+            Self::ConfirmGroupAdj {
                 dom_id,
                 target_state,
                 ..
@@ -390,13 +416,20 @@ impl SomeNeed {
                 priority,
                 ..
             } => {
-                if for_group.is_superset_of(target_state) {
-                    format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to confirm group {for_group})")
-                } else {
-                    format!(
+                format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to limit group {for_group})")
-                }
+            }
+            Self::ConfirmGroupAdj {
+                dom_id,
+                act_id,
+                target_state,
+                for_group,
+                anchor,
+                priority,
+                ..
+            } => {
+                format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target_state}, adj to {anchor} to confirm group {for_group})")
             }
             Self::StateInRemainder {
                 dom_id,

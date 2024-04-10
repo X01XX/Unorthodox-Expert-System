@@ -1220,7 +1220,7 @@ impl SomeAction {
                 if adj_sqr.pnc {
                 } else {
                     // Get another sample of adjacent square.
-                    let mut needx = SomeNeed::LimitGroupAdj {
+                    let mut needx = SomeNeed::ConfirmGroupAdj {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         anchor: anchor_sta.clone(),
@@ -1233,7 +1233,7 @@ impl SomeAction {
                 }
             } else {
                 // Get first sample of adjacent square.
-                let mut needx = SomeNeed::LimitGroupAdj {
+                let mut needx = SomeNeed::ConfirmGroupAdj {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor_sta.clone(),

@@ -519,6 +519,8 @@ fn command_loop(dmxs: &mut DomainStore) {
                             println!("{error}");
                         }
                     }
+                } else {
+                    println!("Too many args for the aj command.");
                 }
             }
             "cd" => match do_change_domain(dmxs, &cmd) {
@@ -897,6 +899,10 @@ fn command_loop(dmxs: &mut DomainStore) {
 
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 2 {
+        return Err("Exactly one number argument is needed for the cd command.".to_string());
+    }
     // Get domain number from string
     match dmxs.domain_id_from_string(cmd[1]) {
         Ok(d_id) => {
@@ -919,6 +925,10 @@ fn do_any_need(dmxs: &mut DomainStore) {
 
 /// Print details of a given plan
 fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 2 {
+        return Err("Exactly one need-number argument is needed for the ppd command.".to_string());
+    }
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
             if n_num >= dmxs.can_do.len() {
@@ -1027,6 +1037,11 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
 /// Try to satisfy a need chosen by the user.
 fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 2 {
+        return Err("Exactly one need-number argument is needed for the dn command.".to_string());
+    }
+
     let dom_id = dmxs.current_domain;
 
     match cmd[1].parse::<usize>() {
@@ -1067,8 +1082,11 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
 
 /// Do a change-state command.
 fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 2 {
+        return Err("Exactly one state argument is needed for the cs command.".to_string());
+    }
     // Get state from string
-
     match dmxs.state_from_string(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
@@ -1081,6 +1099,10 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
 
 /// Do to-region command.
 fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 2 {
+        return Err("Exactly one region argument is needed for the to command.".to_string());
+    }
     let dom_id = dmxs.current_domain;
     let dmx = &mut dmxs[dom_id];
 
@@ -1170,7 +1192,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
     let cur_state = dmx.get_current_state();
 
     if cmd.len() == 1 {
-        return Err(format!("Did not understand {cmd:?}"));
+        return Err("Action number is needed for the ss command.".to_string());
     }
 
     let act_id = match dmx.act_id_from_string(cmd[1]) {
@@ -1539,7 +1561,7 @@ fn usage() {
     println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
     println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
     println!("    will get things moving again.");
-    println!("\n    After no more needs can be done, select region seeking logic will be used.  If there is more than one select");
+    println!("\n    After no more RUST_BACKTRACE=1needs can be done, select region seeking logic will be used.  If there is more than one select");
     println!("    region, repeatedly pressing enter will increase the boredom duration, after the value of the select regions");
     println!("    the current state is in, a different select region will be sought.");
 }
