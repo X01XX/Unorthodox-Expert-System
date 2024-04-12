@@ -56,9 +56,6 @@ impl SelectRegionsStore {
         //print!("{} push {}", self, select);
         if !self.contains(&select) {
             self.regionstores.push(select);
-            //println!(", not contains, pushed");
-        } else {
-            // println!(", contains, NOT pushed");
         }
     }
 
@@ -88,7 +85,6 @@ impl SelectRegionsStore {
         //print!("{} push {}", self, select);
         // Don't add a superset.
         if self.any_subsets_of(&select) {
-            //println!(", exit 1");
             return;
         }
         // Identify supersets.
@@ -96,10 +92,8 @@ impl SelectRegionsStore {
         for (inx, regstx) in self.regionstores.iter().enumerate() {
             if regstx.regions.is_superset_of(&select.regions) {
                 del.push(inx);
-                // print!(", del inx {}", inx);
             }
         }
-        // println!(" ");
         // Remove subsets, highest indicies first.
         for inx in del.iter().rev() {
             tools::remove_unordered(&mut self.regionstores, *inx);

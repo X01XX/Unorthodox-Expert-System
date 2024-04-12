@@ -106,17 +106,18 @@ impl DomainStore {
     /// [1x0x, x101] = Domain 0, 1x0x, AND domain 1, x101.
     /// [1x0x, xxxx],
     /// [xxxx, x101] (two additions) = Domain 0, 1x0x, OR domain 1, x101.
+    /// The SR value cannot be zero.
+    /// Duplicates are not allowed.
     pub fn add_select(&mut self, selx: SelectRegions) {
-        debug_assert!(selx.len() == self.domains.len());
-
         // Require some aggregate value.
         if selx.value == 0 {
+            println!("add_select: {} SR value zero, skipped.", selx);
             return;
         }
 
         // Do not allow dups.
         if self.select.contains(&selx) {
-            println!("Equal select regions found");
+            println!("add_select: {} Equal select region found, skipped.", selx);
             return;
         }
 
@@ -141,6 +142,7 @@ impl DomainStore {
         for selx in self.select.iter() {
             println!("  {}", selx);
         }
+        println!("  Initial setup.");
 
         // Get fragments due to different-value intersections.
         let fragments = self.select.split_by_intersections();
@@ -163,7 +165,7 @@ impl DomainStore {
         }
 
         println!(
-            "\nNegative SRs, split by different-value intersections ({}):",
+            "\nNegative SR fragments, negative SRs split by different-value intersections ({}):",
             self.select_negative.len()
         );
         for selx in self.select_negative.iter() {
@@ -173,7 +175,7 @@ impl DomainStore {
         println!("  To exit if the current state is within one.");
 
         println!(
-            "\nPositive SRs, split by different-value intersections ({}):",
+            "\nPositive SR fragments, Positive SRs split by different-value intersections ({}):",
             self.select_positive.len()
         );
         for selx in self.select_positive.iter() {
@@ -187,7 +189,7 @@ impl DomainStore {
         self.select_non_negative = max_select.subtract(&self.select_negative);
 
         println!(
-            "\nNon-negative SRs, maximum SR minus negative SRs ({}):",
+            "\nNon-negative SRs, maximum regions minus negative SRs ({}):",
             self.select_non_negative.len()
         );
         for selx in self.select_non_negative.iter() {

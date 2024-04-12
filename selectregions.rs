@@ -18,7 +18,7 @@ impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.to_string();
         if self.value != 0 {
-            str.push_str(&format!(", value: {}", self.value));
+            str.push_str(&format!(", value: {:+}", self.value));
         }
         if self.times_visited > 0 {
             str.push_str(&format!(", times visited {}", self.times_visited));
