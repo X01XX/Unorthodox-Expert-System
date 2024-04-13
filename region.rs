@@ -556,11 +556,6 @@ impl SomeRegion {
         ret
     }
 
-    /// Return true if a region is all X.
-    pub fn _all_x(&self) -> bool {
-        self.edge_mask().is_low()
-    }
-
     /// Return the number of edges in a region.
     pub fn num_edges(&self) -> usize {
         self.edge_mask().num_one_bits()

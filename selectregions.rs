@@ -128,7 +128,8 @@ impl SelectRegions {
         self.value = val;
     }
 
-    /// Subtract a SelectRegions.
+    /// Subtract a SelectRegions from another.
+    /// Fragments, it any, retain the same value.
     pub fn subtract(&self, other: &SelectRegions) -> Vec<Self> {
         // println!("subtract {other} from {self}");
 

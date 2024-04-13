@@ -303,85 +303,64 @@ impl SelectRegionsStore {
             return self.clone();
         }
 
-        let mut remainders = self.clone();
-        let mut ints = SelectRegionsStore::new(vec![]);
-
-        let mut min_int: Option<SelectRegions>;
-        let mut min_extent: usize;
+        let mut final_remainders = Self::new(vec![]);
+        let mut cur_remainders = self.clone();
 
         loop {
-            min_int = None;
-            min_extent = usize::MAX;
+            // Find the remainders of each SelectRegions minus others.
+            let mut cycle_remainders = Self::new(vec![]);
+            let mut cycle_ints = Self::new(vec![]);
 
-            // Check each possible pair.
-            for inx in 0..(remainders.len() - 1) {
-                for iny in (inx + 1)..remainders.len() {
-                    if remainders[iny].value == remainders[inx].value {
-                        continue;
+            for (inx, selx) in cur_remainders.iter().enumerate() {
+                let mut remx = Self::new(vec![selx.clone()]);
+                for (iny, sely) in cur_remainders.iter().enumerate() {
+                    if iny != inx && remx.any_intersection_of(sely) {
+                        remx = remx.subtract_selectregions(sely);
                     }
-                    if let Some(mut regs_int) = remainders[iny].intersection(&remainders[inx]) {
-                        //println!("{} int {} = {}, ext {}", remainders[inx], remainders[iny], regs_int, regs_int.extent());
+                }
 
-                        if ints.contains(&regs_int) {
-                            continue;
-                        }
+                let ints = Self::new(vec![selx.clone()]).subtract(&remx);
+                //println!("Rem of {} is {} ints {}", selx, remx, ints);
 
-                        // Check if intersection is a subset of any intersecting SelectRegionsStore.
-                        let mut int_ok = true;
-                        let mut int_value = 0;
-                        for selx in self.iter() {
-                            if selx.intersects(&regs_int) {
-                                if selx.is_superset_of(&regs_int) {
-                                    int_value += selx.value;
-                                } else {
-                                    int_ok = false;
-                                    break;
-                                }
-                            }
-                        }
-                        // Prosses an intersection that passes check.
-                        if int_ok {
-                            regs_int.set_value(int_value);
+                // Add to cycle_remainders.
+                for selz in remx.into_iter() {
+                    cycle_remainders.push(selz);
+                }
 
-                            if min_int.is_none() {
-                                min_extent = regs_int.extent();
-                                min_int = Some(regs_int);
-                            } else {
-                                let tmp_extent = regs_int.extent();
-                                if tmp_extent < min_extent {
-                                    min_extent = tmp_extent;
-                                    min_int = Some(regs_int);
-                                }
-                            }
-                        }
-                    }
-                } // next iny
-            } // next inx
+                // Add to cycle_ints.
+                for selz in ints.into_iter() {
+                    cycle_ints.push_nosubs(selz);
+                }
+            } // end for
 
-            if min_int.is_none() {
-                break;
-            } else if let Some(min_intx) = min_int {
-                remainders = remainders.subtract_selectregions(&min_intx);
-                ints.push(min_intx);
+            //println!("cycle remainders: {}", cycle_remainders);
+            //println!("cycle_ints: {}", cycle_ints);
+
+            for selz in cycle_remainders.into_iter() {
+                final_remainders.push_nosubs(selz);
             }
+            if cycle_ints.len() < 2 {
+                if cycle_ints.len() == 1 {
+                    final_remainders.push(cycle_ints[0].clone());
+                }
+                break;
+            }
+
+            // Set up next cycle.
+            cur_remainders = cycle_ints;
         } // end loop
 
-        // Combine remainders and intersections,
-        // remove zero-value SelectRegions.
-        let mut ret_srs = SelectRegionsStore::new(vec![]);
-
-        for selx in remainders.into_iter() {
-            if selx.value != 0 {
-                ret_srs.push(selx);
+        //println!("final remainders: {}", final_remainders);
+        for selx in final_remainders.iter_mut() {
+            let mut val = 0;
+            for sely in self.iter() {
+                if sely.is_superset_of(selx) {
+                    val += sely.value;
+                }
             }
+            selx.set_value(val);
         }
-        for selx in ints.into_iter() {
-            if selx.value != 0 {
-                ret_srs.push(selx);
-            }
-        }
-
-        ret_srs
+        final_remainders
     }
 } // End impl SelectRegionsStore
 
@@ -498,6 +477,82 @@ mod tests {
         assert!(dif.is_empty());
 
         //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn split_by_intersections2() -> Result<(), String> {
+        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
+
+        // Try three levels of intersection.
+        let mut srs1 = SelectRegionsStore::new(vec![]);
+        let reg1a = ur_reg.new_from_string("r0xxx").expect("SNH");
+        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a.clone()]), 4);
+        srs1.push(regstr1);
+
+        let reg2a = ur_reg.new_from_string("rxx1x").expect("SNH");
+        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), 4);
+        srs1.push(regstr2);
+
+        let reg3a = ur_reg.new_from_string("rx1x1").expect("SNH");
+        let regstr3 = SelectRegions::new(RegionStoreCorr::new(vec![reg3a.clone()]), 2);
+        srs1.push(regstr3);
+
+        let frags = srs1.split_by_intersections();
+        println!("fragments of {srs1} are {frags} len {}", frags.len());
+        assert!(frags.len() == 10);
+
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r0x00").expect("SNH")]),
+            4,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r000x").expect("SNH")]),
+            4,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r1x10").expect("SNH")]),
+            4,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r101x").expect("SNH")]),
+            4,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r1101").expect("SNH")]),
+            2,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r0101").expect("SNH")]),
+            6,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r0x10").expect("SNH")]),
+            8,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r001x").expect("SNH")]),
+            8,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r1111").expect("SNH")]),
+            6,
+        );
+        assert!(frags.contains(&selx));
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![ur_reg.new_from_string("r0111").expect("SNH")]),
+            10,
+        );
+        assert!(frags.contains(&selx));
+
         Ok(())
     }
 
