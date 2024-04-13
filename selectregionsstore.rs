@@ -312,19 +312,22 @@ impl SelectRegionsStore {
             let mut cycle_ints = Self::new(vec![]);
 
             for (inx, selx) in cur_remainders.iter().enumerate() {
+                // Init selx remainders store.
                 let mut remx = Self::new(vec![selx.clone()]);
+
+                // Subtract anything that intersects selx.
                 for (iny, sely) in cur_remainders.iter().enumerate() {
                     if iny != inx && remx.any_intersection_of(sely) {
                         remx = remx.subtract_selectregions(sely);
                     }
                 }
 
+                // Aggregate intersections is selx subtract remainders.
                 let ints = Self::new(vec![selx.clone()]).subtract(&remx);
-                //println!("Rem of {} is {} ints {}", selx, remx, ints);
 
                 // Add to cycle_remainders.
                 for selz in remx.into_iter() {
-                    cycle_remainders.push(selz);
+                    cycle_remainders.push_nosubs(selz);
                 }
 
                 // Add to cycle_ints.
@@ -341,7 +344,7 @@ impl SelectRegionsStore {
             }
             if cycle_ints.len() < 2 {
                 if cycle_ints.len() == 1 {
-                    final_remainders.push(cycle_ints[0].clone());
+                    final_remainders.push_nosubs(cycle_ints[0].clone());
                 }
                 break;
             }
