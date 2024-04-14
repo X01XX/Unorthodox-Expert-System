@@ -334,6 +334,11 @@ fn domainstore_init() -> DomainStore {
     ];
     dmxs[0].add_action(ruls4);
 
+    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
+        .rule_from_string("XX_XX/XX/XX/XX")
+        .expect("SNH")])];
+    dmxs[0].add_action(ruls5);
+
     // Add actions 0 through 6 to domain 1.
     let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
         .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX")

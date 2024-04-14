@@ -592,6 +592,11 @@ impl SomeRule {
     pub fn num_bits_changed(&self) -> usize {
         self.b01.bitwise_or(&self.b10).num_one_bits()
     }
+
+    /// Return true if a rule causes change.
+    pub fn cause_change(&self) -> bool {
+        !(self.b10.is_low() && self.b01.is_low())
+    }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.

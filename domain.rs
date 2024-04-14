@@ -1233,26 +1233,21 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(8)));
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
         dm0.cur_state = dm0.state_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
         let max_reg = dm0.region_from_string("rXXXX")?;
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        let s04 = dm0.state_from_string("s0b00000100")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s04.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s04.clone()));
+        let s04 = dm0.state_from_string("s0b0100")?;
+        let s02 = dm0.state_from_string("s0b0010")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
 
-        let sf9 = dm0.state_from_string("s0b11111001")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), sf9.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), sf9.clone()));
-
-        println!("dm0 {}", dm0.actions[0]);
-
-        // Set group pnc
-        let grp_reg = dm0.region_from_string("rXXXX_XX0X")?;
-        println!("dm0 {}", dm0.actions[0]);
+        let sf9 = dm0.state_from_string("s0b1001")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
 
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&max_reg) else {
             return Err("No needs?".to_string());
@@ -1260,13 +1255,30 @@ mod tests {
         println!("dm0 {}", dm0.actions[0]);
         println!("Needs: {}", nds1);
 
-        assert!(dm0.actions[0]
+        let grp_reg = dm0.region_from_string("rXX0X")?;
+        let Some(anchor_sta) = &dm0.actions[0]
             .groups
             .find(&grp_reg)
             .as_ref()
             .expect("SNH")
             .anchor
-            .is_some());
+        else {
+            return Err("limit_groups_needs anchor not set".to_string());
+        };
+
+        println!("anchor is {}", anchor_sta);
+
+        if *anchor_sta == dm0.state_from_string("s0b1001")? {
+            // limiting square for anchor 9 is B.
+            let s0b = dm0.state_from_string("s0b1011")?;
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
+        } else {
+            // Limiting square for anchor 4 is 6.
+            let s06 = dm0.state_from_string("s0b0110")?;
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
+        }
 
         println!("dm0 {}", dm0.actions[0]);
 
@@ -1274,22 +1286,9 @@ mod tests {
             return Err("limit_groups_needs returns None?".to_string());
         };
 
-        println!("needs are {}", nds2);
-        let s06 = dm0.state_from_string("s0b00000110")?;
-        assert!(contains_similar_need(
-            &nds2,
-            "LimitGroupAdj",
-            &SomeRegion::new(vec![s06.clone()])
-        ));
-
-        let s02 = dm0.state_from_string("s0b00000010")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s02.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s02.clone()));
-
-        // Set limited flag for first group.
-        dm0.actions[0].limit_groups_needs(&max_reg);
-
         println!("dm0 {}", dm0.actions[0]);
+
+        println!("needs are {}", nds2);
 
         let grpx = dm0.actions[0].groups.find(&grp_reg).expect("SNH");
         assert!(grpx.limited);

@@ -290,6 +290,14 @@ impl SomeGroup {
     pub fn num_edges(&self) -> usize {
         self.region.num_edges()
     }
+
+    /// Return true if a group's rules cause a change.
+    pub fn rules_cause_change(&self) -> bool {
+        match &self.rules {
+            Some(rules) => rules.rules_cause_change(),
+            None => false,
+        }
+    }
 } // end impl SomeGroup
 
 /// Implement the trait AccessStates for SomeGroup.

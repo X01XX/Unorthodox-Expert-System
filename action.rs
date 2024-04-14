@@ -1209,11 +1209,20 @@ impl SomeAction {
             ret_nds.push(needx);
         }
 
-        // Check for internal adjacent squares.
-        // They may invalidate the group.
-        let edge_msks: Vec<SomeMask> = regx.x_mask().split();
+        // If a group causes change, confirmation will be in the use of the group's rules.
+        let grpx = self.groups.find(regx)?;
+        if grpx.rules_cause_change() {
+            if ret_nds.is_empty() {
+                return None;
+            } else {
+                return Some(ret_nds);
+            }
+        }
 
-        for mskx in edge_msks {
+        // Confirm a group by checking for internal adjacent squares.
+        let x_msks: Vec<SomeMask> = regx.x_mask().split();
+
+        for mskx in x_msks {
             let adj_sta = anchor_sta.bitwise_xor(&mskx);
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
@@ -1229,7 +1238,7 @@ impl SomeAction {
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
                     needx.set_priority();
-                    nds_grp.push(needx);
+                    ret_nds.push(needx);
                 }
             } else {
                 // Get first sample of adjacent square.
@@ -1242,7 +1251,7 @@ impl SomeAction {
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
                 needx.set_priority();
-                nds_grp.push(needx);
+                ret_nds.push(needx);
             }
         }
 
