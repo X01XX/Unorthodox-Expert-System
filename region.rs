@@ -532,7 +532,7 @@ impl SomeRegion {
     }
 
     /// Return the complement of a region, within a given region.
-    pub fn complement_in(&self, max_reg: &SomeRegion) -> RegionStore {
+    pub fn _complement_in(&self, max_reg: &SomeRegion) -> RegionStore {
         assert!(self.intersects(max_reg));
 
         let nonxbits = self.edge_mask().bitwise_and(&max_reg.x_mask()).split();

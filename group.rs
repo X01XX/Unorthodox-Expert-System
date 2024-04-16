@@ -271,30 +271,30 @@ impl SomeGroup {
         }
     }
 
-    // Return true if a group region is a superset of a given group/region/square/state.
+    /// Return true if a group region is a superset of a given group/region/square/state.
     pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         self.region.is_superset_of(other)
     }
 
-    // Return true if a group region is a subset of a given group/region/square/state.
+    /// Return true if a group region is a subset of a given group/region/square/state.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
         self.region.is_subset_of(other)
     }
 
-    // Return true if a group region intersects another group/region/square/state.
+    /// Return true if a group region intersects another group/region/square/state.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
         self.region.intersects(other)
     }
 
-    // Return the number of edges in a group region.
+    /// Return the number of edges in a group region.
     pub fn num_edges(&self) -> usize {
         self.region.num_edges()
     }
 
-    /// Return true if a group's rules cause a change.
-    pub fn rules_cause_change(&self) -> bool {
+    /// Return true if a group's rules cause predictable change.
+    pub fn causes_predictable_change(&self) -> bool {
         match &self.rules {
-            Some(rules) => rules.rules_cause_change(),
+            Some(rules) => rules.causes_predictable_change(),
             None => false,
         }
     }

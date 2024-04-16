@@ -97,7 +97,8 @@ impl NeedStore {
         rc_str.push(']');
         rc_str
     }
-    // Return true if a kind of state is in the NeedStore.
+
+    /// Return true if a kind of state is in the NeedStore.
     pub fn kind_is_in(&self, name: &str) -> bool {
         for needx in &self.avec {
             if needx.name() == name {

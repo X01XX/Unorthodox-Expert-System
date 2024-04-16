@@ -1,5 +1,5 @@
 //! The StateStoreCorr struct. A vector of SomeState structs,
-//! corresponding to the damainstore vector.
+//! corresponding to the domainstore vector.
 //! States will use the same number of bits as the corresponding domain,
 //! which may be different from other states in the vector.
 use crate::state::SomeState;

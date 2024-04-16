@@ -128,7 +128,7 @@ impl SelectRegionsStore {
     }
 
     /// Return a Vector of SelectRegions not supersets of a given StateStore.
-    pub fn not_supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
+    pub fn _not_supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
         self.regionstores
             .iter()
             .filter(|regsx| !regsx.regions.is_superset_states(stas))
@@ -165,7 +165,7 @@ impl SelectRegionsStore {
     }
 
     /// Return the sum of values of SelectRegions that are superset of a given StateStoreCorr.
-    pub fn rate_states(&self, states: &StateStoreCorr) -> isize {
+    pub fn _rate_states(&self, states: &StateStoreCorr) -> isize {
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
             if regsx.regions.is_superset_states(states) {

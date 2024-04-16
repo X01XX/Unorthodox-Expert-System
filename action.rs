@@ -1209,9 +1209,9 @@ impl SomeAction {
             ret_nds.push(needx);
         }
 
-        // If a group causes change, confirmation will be in the use of the group's rules.
+        // If a group causes predictable change, confirmation will be in the use of the group's rules.
         let grpx = self.groups.find(regx)?;
-        if grpx.rules_cause_change() {
+        if grpx.causes_predictable_change() {
             if ret_nds.is_empty() {
                 return None;
             } else {

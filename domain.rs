@@ -348,17 +348,15 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for single-bit change with only one avialable step.
-        // So run initial -(plan 1)> only-available-step -(plan 2)> goal.
-        // This is like identifying an absolute requirement, a single point of failure, for a solution path.
+        // Check for single-bit change that is between the from region and goal region,
+        // not intersecting either.
         let mut asym_steps = Vec::<&SomeStep>::new();
 
         for vecx in steps_by_change_vov.iter() {
-            if vecx.len() == 1
-                && !vecx[0].initial.is_superset_of(from_reg)
-                && !vecx[0].result.intersects(goal_reg)
-            {
-                asym_steps.push(vecx[0]);
+            for stepx in vecx.iter() {
+                if !stepx.initial.is_superset_of(from_reg) && !stepx.result.intersects(goal_reg) {
+                    asym_steps.push(stepx);
+                }
             }
         }
 
@@ -371,72 +369,11 @@ impl SomeDomain {
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
-        // Randomly choose a wanted single-bit change.
-        let setx = rand::thread_rng().gen_range(0..steps_by_change_vov.len());
+        // Randomly choose a wanted single-bit change vector.
+        let bitx = &steps_by_change_vov[rand::thread_rng().gen_range(0..steps_by_change_vov.len())];
 
-        let stinx = if steps_by_change_vov[setx].len() == 1 {
-            0
-        } else {
-            // Find minimum half-path number of unwanted changes.
-            // The other half of the path will necessarily reverse the unwanted changes.
-
-            // Get mask of changes we care about.
-            let edges = goal_reg.edge_mask();
-
-            // Get wanted changes.
-            let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
-
-            // Init minimum unwanted changes, and vector of step references.
-            let mut min_unwanted = usize::MAX;
-            let mut max_unwanted = 0;
-            let mut min_steps = Vec::<usize>::new();
-
-            for (inx, stepx) in steps_by_change_vov[setx].iter().enumerate() {
-                let tmp_min = if stepx.initial.intersects(from_reg) {
-                    // Forward chaining
-                    let tmp_rul = stepx.rule.restrict_initial_region(from_reg);
-                    let unwanted = wanted_changes
-                        .bitwise_not()
-                        .intersection(&tmp_rul)
-                        .bitwise_and(&edges);
-                    unwanted.number_changes()
-                } else if stepx.result.intersects(goal_reg) {
-                    // Backward chaining.
-                    let tmp_rul = stepx.rule.restrict_result_region(goal_reg);
-                    let unwanted = wanted_changes
-                        .bitwise_not()
-                        .intersection(&tmp_rul)
-                        .bitwise_and(&edges);
-                    unwanted.number_changes()
-                } else {
-                    // Asymmetrical chaining.
-                    let tmp_rul0 = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
-                    let tmp_rul = tmp_rul0.combine_pair(&stepx.rule);
-                    let unwanted = wanted_changes
-                        .bitwise_not()
-                        .intersection(&tmp_rul)
-                        .bitwise_and(&edges);
-                    unwanted.number_changes()
-                };
-                if tmp_min < min_unwanted {
-                    min_unwanted = tmp_min;
-                    min_steps = Vec::<usize>::new();
-                }
-                if tmp_min == min_unwanted {
-                    min_steps.push(inx);
-                }
-                if tmp_min > max_unwanted {
-                    max_unwanted = tmp_min;
-                }
-            }
-            //println!("number steps {}, max unwanted {}, min unwanted = {} number min {}",
-            //    steps_by_change_vov[setx].len(), max_unwanted, min_unwanted, min_steps.len());
-
-            min_steps[rand::thread_rng().gen_range(0..min_steps.len())]
-        };
-
-        // Randomly choose a step.
-        let stepx = steps_by_change_vov[setx][stinx];
+        // Randomly choose a step within the single-bit vector.
+        let stepx = bitx[rand::thread_rng().gen_range(0..bitx.len())];
 
         // Process a forward chaining step.
         if stepx.initial.intersects(from_reg) {
@@ -447,17 +384,12 @@ impl SomeDomain {
             return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
         }
 
-        // Process a backward chaining step.
-        if stepx.result.intersects(goal_reg) {
-            let stepy = stepx.restrict_result_region(goal_reg);
+        // Must be a backward chaining step.
+        let stepy = stepx.restrict_result_region(goal_reg);
 
-            let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
+        let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
 
-            return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
-        }
-
-        // Must be an asymmetric step.
-        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1)
+        plan_to_step.link(&SomePlan::new(self.id, vec![stepy]))
     } // end random_depth_first_search2
 
     /// Return possible plan to change state between two regions.

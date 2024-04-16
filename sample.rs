@@ -9,7 +9,9 @@ use std::fmt;
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SomeSample {
+    // Initial state of the sample.
     pub initial: SomeState,
+    // State after running an action.
     pub result: SomeState,
 }
 

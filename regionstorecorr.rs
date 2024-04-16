@@ -1,4 +1,4 @@
-//! The RegionStoreCorr truct, a vector of SomeRegions, corresponding to domains in a vector.
+//! The RegionStoreCorr struct, a vector of SomeRegions, corresponding to domains in a vector.
 //! Each region will have a number of bits equal to the bits used by the corresponding
 //! domain, not necessarily the same as other regions in the vector.
 

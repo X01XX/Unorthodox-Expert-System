@@ -8,8 +8,7 @@
 //!   and proceeds to the left, as in standard integer bit-position reckoning.
 //!
 //! The integer type/size can be increased, change "u8", below, the format string literal "04b" in the formatted_string function.
-//!Dom 0 Adding square s0_0101 -0-> s0_0100
-
+//!
 //! Change the constants, below, as needed.
 //!
 
@@ -113,8 +112,8 @@ impl SomeBits {
     ///    println!("bts {}", &bts);
     /// } else {
     ///    panic!("Invalid bits string");
-    /// }Dom 0 Adding square s0_0101 -0-> s0_0100
-
+    /// }
+    ///
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// Using multiple integers could allow for a number that is too big for

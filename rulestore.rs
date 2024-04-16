@@ -408,12 +408,12 @@ impl RuleStore {
         self.avec[0].initial_region()
     }
 
-    /// Return true if a RuleStore's rules causes a change.
-    pub fn rules_cause_change(&self) -> bool {
+    /// Return true if a RuleStore's rules causes predictable change.
+    pub fn causes_predictable_change(&self) -> bool {
         if self.len() > 1 {
             return true;
         }
-        self[0].cause_change()
+        self[0].cause_predictable_change()
     }
 } // end impl RuleStore
 

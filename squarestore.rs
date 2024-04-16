@@ -1,4 +1,4 @@
-//! The SquareStore struct.  A HashMap of SomeSquare structs.
+//! The SquareStore struct.  A HashMap of SomeSquare structs, the key in the state field.
 
 use crate::pn::Pn;
 use crate::region::SomeRegion;
