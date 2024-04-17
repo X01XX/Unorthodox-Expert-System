@@ -310,9 +310,8 @@ impl SomeDomain {
     ///
     /// This may be called from random_depth_first_search, or may be recursively called to make a sub-plan.
     ///
-    /// If any needed bit changes are only possible through Asymmetric Chaining, randomly choose a step and recurse.
-    ///
-    /// Otherwise, randomly choose a step and do Forward Chaining, Backward Chaining, or Asymmetric Chaining.
+    /// Randomly choose any Asymmetric Chaining step, otherwise randomly choose a step that will be
+    /// forward or backward chaining.
     ///
     fn random_depth_first_search2(
         &self,
@@ -348,32 +347,62 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for single-bit change that is between the from region and goal region,
+        // Check for single-bit changes, where all steps are between the from region and goal region,
         // not intersecting either.
-        let mut asym_steps = Vec::<&SomeStep>::new();
+        //
+        // This indicates that a, possibly significant, deviation from a straight-forward
+        // rule-path is required.
+        let mut asym_only_changes = Vec::<usize>::new();
 
-        for vecx in steps_by_change_vov.iter() {
+        for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
+            let mut all = true;
             for stepx in vecx.iter() {
-                if !stepx.initial.is_superset_of(from_reg) && !stepx.result.intersects(goal_reg) {
-                    asym_steps.push(stepx);
+                if stepx.initial.intersects(from_reg) || stepx.result.intersects(goal_reg) {
+                    all = false;
+                    break;
                 }
+            }
+            if all {
+                asym_only_changes.push(inx);
             }
         }
 
         // Check if any forced asymmetrical single-bit changes have been found.
-        if asym_steps.is_empty() {
+        if asym_only_changes.is_empty() {
         } else {
             // Randomly choose a step.
-            let stepx = asym_steps[rand::thread_rng().gen_range(0..asym_steps.len())];
+            let bit_changex =
+                &steps_by_change_vov[rand::thread_rng().gen_range(0..asym_only_changes.len())];
+
+            let stepx = bit_changex[rand::thread_rng().gen_range(0..bit_changex.len())];
 
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
-        // Randomly choose a wanted single-bit change vector.
-        let bitx = &steps_by_change_vov[rand::thread_rng().gen_range(0..steps_by_change_vov.len())];
+        // Asymmetric chaining not required.
 
-        // Randomly choose a step within the single-bit vector.
-        let stepx = bitx[rand::thread_rng().gen_range(0..bitx.len())];
+        // Randomly choose a wanted single-bit change vector.
+        let bit_changex =
+            &steps_by_change_vov[rand::thread_rng().gen_range(0..steps_by_change_vov.len())];
+
+        // Randomly choose a step within the single-bit-change vector,
+        // that intersects the from-region or the goal-region.
+        // There should be at least one, based on the logic above.
+        let stepx = if bit_changex.len() == 1 {
+            bit_changex[0]
+        } else {
+            let mut rand_inx = tools::RandomPick::new(bit_changex.len());
+            let mut iny = 0;
+            while let Some(inx) = rand_inx.pick() {
+                if bit_changex[inx].initial.intersects(from_reg)
+                    || bit_changex[inx].result.intersects(goal_reg)
+                {
+                    iny = inx;
+                    break;
+                }
+            }
+            bit_changex[iny]
+        };
 
         // Process a forward chaining step.
         if stepx.initial.intersects(from_reg) {
