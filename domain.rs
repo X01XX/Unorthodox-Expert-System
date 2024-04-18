@@ -310,8 +310,9 @@ impl SomeDomain {
     ///
     /// This may be called from random_depth_first_search, or may be recursively called to make a sub-plan.
     ///
-    /// Randomly choose any Asymmetric Chaining step, otherwise randomly choose a step that will be
-    /// forward or backward chaining.
+    /// If a possible bit-change only has Asymmetric Chaining steps, randomly choose one to use.
+    ///
+    /// Otherwise, randomly choose a forward or backward chaining step.
     ///
     fn random_depth_first_search2(
         &self,
@@ -347,7 +348,7 @@ impl SomeDomain {
             return None;
         }
 
-        // Check for single-bit changes, where all steps are between the from region and goal region,
+        // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
         //
         // This indicates that a, possibly significant, deviation from a straight-forward
@@ -371,8 +372,9 @@ impl SomeDomain {
         if asym_only_changes.is_empty() {
         } else {
             // Randomly choose a step.
-            let bit_changex =
-                &steps_by_change_vov[rand::thread_rng().gen_range(0..asym_only_changes.len())];
+            let inx = asym_only_changes[rand::thread_rng().gen_range(0..asym_only_changes.len())];
+
+            let bit_changex = &steps_by_change_vov[inx];
 
             let stepx = bit_changex[rand::thread_rng().gen_range(0..bit_changex.len())];
 
@@ -392,16 +394,18 @@ impl SomeDomain {
             bit_changex[0]
         } else {
             let mut rand_inx = tools::RandomPick::new(bit_changex.len());
-            let mut iny = 0;
+            let mut iny: Option<usize> = None;
+
             while let Some(inx) = rand_inx.pick() {
                 if bit_changex[inx].initial.intersects(from_reg)
                     || bit_changex[inx].result.intersects(goal_reg)
                 {
-                    iny = inx;
+                    iny = Some(inx);
                     break;
                 }
             }
-            bit_changex[iny]
+            let inz = iny.unwrap();
+            bit_changex[inz]
         };
 
         // Process a forward chaining step.
@@ -467,10 +471,13 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
     ) -> Option<SomePlan> {
-        // println!("asymmetric_chaining: from {} to {} depth {}", from_reg, goal_reg, depth);
+        // println!("asymmetric_chaining: from: {} to: {} step: {} depth: {}", from_reg, goal_reg, stepx, depth);
         if depth == 0 {
             return None;
         }
+
+        debug_assert!(!stepx.initial.intersects(from_reg));
+        debug_assert!(!stepx.result.intersects(goal_reg));
 
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
             let to_step_plan = self.plan_steps_between(from_reg, &stepx.initial, depth - 1)?;

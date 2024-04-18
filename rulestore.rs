@@ -413,7 +413,7 @@ impl RuleStore {
         if self.len() > 1 {
             return true;
         }
-        self[0].cause_predictable_change()
+        self[0].causes_predictable_change()
     }
 } // end impl RuleStore
 

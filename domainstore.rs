@@ -546,7 +546,7 @@ impl DomainStore {
     /// A square adjacent to a region can enter the region by changing one bit.
     fn rate_plans2(&self, plans: &PlanStore, regions: &RegionStoreCorr) -> isize {
         // Store rate for each step.
-        let mut rates = Vec::<isize>::with_capacity(plans.number_steps());
+        let mut rates = 0;
 
         let mut cur_regions = regions.clone();
         // Skip start value of negative SelectRegions.
@@ -556,10 +556,10 @@ impl DomainStore {
             }
             for stepx in planx.iter() {
                 cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
-                rates.push(self.select.rate_regions(&cur_regions));
+                rates += self.select_negative.rate_regions(&cur_regions);
             }
         }
-        rates.iter().sum()
+        rates
     }
 
     /// Get plans to move to a goal region, choose a plan.
@@ -764,7 +764,7 @@ impl DomainStore {
         // Get all domain current states vector.
         let all_regs = self.all_current_regions();
 
-        let rate = self.select.rate_regions(&all_regs);
+        let rate = self.select_negative.rate_regions(&all_regs);
 
         // Check if current state rate is negative.
         if rate < 0 {
@@ -792,6 +792,7 @@ impl DomainStore {
         }
 
         // Check current status within a select region, or not.
+        let rate = self.select_positive.rate_regions(&all_regs);
         if rate > 0 {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
@@ -1141,7 +1142,7 @@ impl DomainStore {
 
         // Make plan to move start to a non-negative SelectRegion, if needed.
         // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
-        if self.select.rate_regions(&cur_start) < 0 {
+        if self.select_negative.rate_regions(&cur_start) < 0 {
             // Find closest non-negative SelectRegions, if any.
             let near_nn_regs = self.closest_non_negative_regions(&cur_start)?;
             // Try to plan move to the selected SelectRegion.
@@ -1167,7 +1168,7 @@ impl DomainStore {
         let mut cur_goal = goal_regs.clone();
 
         // Make plan to move goal from a non-negative region, if needed.
-        if self.select.rate_regions(goal_regs) < 0 {
+        if self.select_negative.rate_regions(goal_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
             let near_nn_regs = self.closest_non_negative_regions(goal_regs)?;
 
@@ -1556,7 +1557,7 @@ impl DomainStore {
                 cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
 
                 for sel_regx in self.select.iter() {
-                    if sel_regx.regions.is_superset_states(&cur_states) {
+                    if sel_regx.value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
                         print!(" in {:+}", sel_regx);
                     }
                 }

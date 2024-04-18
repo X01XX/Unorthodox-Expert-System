@@ -981,7 +981,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
         }
         SomeNeed::ExitSelectRegion { .. } => {
-            //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
+            //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
         }
         _ => {
             let nd_dom = dmxs.needs[nd_inx].dom_id();
