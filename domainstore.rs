@@ -186,6 +186,7 @@ impl DomainStore {
         // Calc non-negative regions.
         let max_select =
             SelectRegionsStore::new(vec![SelectRegions::new(self.maximum_regions(), 0)]);
+
         self.select_non_negative = max_select.subtract(&self.select_negative);
 
         println!(
@@ -556,7 +557,7 @@ impl DomainStore {
             }
             for stepx in planx.iter() {
                 cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
-                rates += self.select_negative.rate_regions(&cur_regions);
+                rates += self.select.rate_by_negative_regions(&cur_regions);
             }
         }
         rates
@@ -764,7 +765,7 @@ impl DomainStore {
         // Get all domain current states vector.
         let all_regs = self.all_current_regions();
 
-        let rate = self.select_negative.rate_regions(&all_regs);
+        let rate = self.select.rate_regions(&all_regs);
 
         // Check if current state rate is negative.
         if rate < 0 {
@@ -792,7 +793,7 @@ impl DomainStore {
         }
 
         // Check current status within a select region, or not.
-        let rate = self.select_positive.rate_regions(&all_regs);
+        let rate = self.select.rate_regions(&all_regs);
         if rate > 0 {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
@@ -888,15 +889,15 @@ impl DomainStore {
         let mut in_pos = false;
         let mut in_neg = false;
 
-        let select_supersets = self.select_positive.supersets_of_states(&all_states);
-        for optx in select_supersets.iter() {
-            in_str += &format!("in {} ", optx);
-            in_pos = true;
-        }
-        let select_supersets = self.select_negative.supersets_of_states(&all_states);
-        for optx in select_supersets.iter() {
-            in_str += &format!("in {} ", optx);
-            in_neg = true;
+        for selx in self.select.iter() {
+            if selx.is_superset_of_states(&all_states) {
+                in_str += &format!("in {} ", selx);
+                if selx.value > 0 {
+                    in_pos = true;
+                } else {
+                    in_neg = true;
+                }
+            }
         }
 
         let status = if in_pos && in_neg {
@@ -1142,7 +1143,7 @@ impl DomainStore {
 
         // Make plan to move start to a non-negative SelectRegion, if needed.
         // Only a one-bit change should be needed, unless there are overlapping negative SelectRegions.
-        if self.select_negative.rate_regions(&cur_start) < 0 {
+        if self.select.rate_regions(&cur_start) < 0 {
             // Find closest non-negative SelectRegions, if any.
             let near_nn_regs = self.closest_non_negative_regions(&cur_start)?;
             // Try to plan move to the selected SelectRegion.
@@ -1168,7 +1169,7 @@ impl DomainStore {
         let mut cur_goal = goal_regs.clone();
 
         // Make plan to move goal from a non-negative region, if needed.
-        if self.select_negative.rate_regions(goal_regs) < 0 {
+        if self.select.rate_regions(goal_regs) < 0 {
             // Find closest non-negative SelectRegions, if any.
             let near_nn_regs = self.closest_non_negative_regions(goal_regs)?;
 

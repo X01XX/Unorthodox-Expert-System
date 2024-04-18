@@ -164,6 +164,17 @@ impl SelectRegionsStore {
         value
     }
 
+    /// Return the sum of values of negative SelectRegions that are superset of a given RegionStoreCorr.
+    pub fn rate_by_negative_regions(&self, regs: &RegionStoreCorr) -> isize {
+        let mut value: isize = 0;
+        for regsx in self.regionstores.iter() {
+            if regsx.value < 0 && regsx.regions.is_superset_of(regs) {
+                value += regsx.value;
+            }
+        }
+        value
+    }
+
     /// Return the sum of values of SelectRegions that are superset of a given StateStoreCorr.
     pub fn _rate_states(&self, states: &StateStoreCorr) -> isize {
         let mut value: isize = 0;
