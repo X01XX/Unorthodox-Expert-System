@@ -57,13 +57,13 @@ impl SomeMask {
     /// Return a Mask from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(msk) = SomeMask::from_string(1, "m0101")) {
+    /// if let Ok(msk) = SomeMask-instance.new_from_string("m0101")) {
     ///    println!("Mask {}", msk);
     /// } else {
     ///    panic!("Invalid Mask");
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
+    pub fn _new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut rest = String::new();
 
         for (inx, chr) in str.graphemes(true).enumerate() {
@@ -77,7 +77,36 @@ impl SomeMask {
             rest.push_str(chr);
         }
 
-        match self.bts.new_from_string(&rest) {
+        match self.bts._new_from_string(&rest) {
+            Ok(bts) => Ok(Self { bts }),
+            Err(error) => Err(error),
+        }
+    } // end new_from_string
+
+    /// Return a Mask from a string.
+    /// All characters must be specified.
+    ///
+    /// if let Ok(msk) = SomeMask::new_from_string("m0b0101")) {
+    ///    println!("Mask {}", msk);
+    /// } else {
+    ///    panic!("Invalid Mask");
+    /// }
+    /// A prefix of "m0x" can be used to specify hexadecimal characters.
+    pub fn new_from_string(str: &str) -> Result<Self, String> {
+        let mut bit_chars = String::new();
+
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "m" || chr == "M" {
+                    continue;
+                }
+                return Err("Initial character should be m".to_string());
+            }
+
+            bit_chars.push_str(chr);
+        }
+
+        match SomeBits::new_from_string(&bit_chars) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }
@@ -254,14 +283,12 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(8));
-
-        let msk1 = tmp_msk.new_from_string("m0b1010")?;
-        let msk2 = tmp_msk.new_from_string("m0b1010")?;
+        let msk1 = SomeMask::new_from_string("m0b1010")?;
+        let msk2 = SomeMask::new_from_string("m0b1010")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = tmp_msk.new_from_string("m0b1001")?;
+        let msk3 = SomeMask::new_from_string("m0b1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 

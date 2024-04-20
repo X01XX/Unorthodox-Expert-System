@@ -173,17 +173,13 @@ impl StrLen for SelectRegions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
-    use crate::state::SomeState;
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let ur_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
-
         let srs = SelectRegions::new(
             RegionStoreCorr::new(vec![
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-                ur_reg.new_from_string("r0x1x").expect("SNH"),
+                SomeRegion::new_from_string("r0xx1").expect("SNH"),
+                SomeRegion::new_from_string("r0x1x").expect("SNH"),
             ]),
             0,
         );
@@ -195,8 +191,8 @@ mod tests {
 
         let srs = SelectRegions::new(
             RegionStoreCorr::new(vec![
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-                ur_reg.new_from_string("r0x1x").expect("SNH"),
+                SomeRegion::new_from_string("r0xx1").expect("SNH"),
+                SomeRegion::new_from_string("r0x1x").expect("SNH"),
             ]),
             -19,
         );
@@ -207,8 +203,8 @@ mod tests {
 
         let mut srs = SelectRegions::new(
             RegionStoreCorr::new(vec![
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-                ur_reg.new_from_string("r0x1x").expect("SNH"),
+                SomeRegion::new_from_string("r0xx1").expect("SNH"),
+                SomeRegion::new_from_string("r0x1x").expect("SNH"),
             ]),
             0,
         );
@@ -220,8 +216,8 @@ mod tests {
 
         let mut srs = SelectRegions::new(
             RegionStoreCorr::new(vec![
-                ur_reg.new_from_string("r0xx1").expect("SNH"),
-                ur_reg.new_from_string("r0x1x").expect("SNH"),
+                SomeRegion::new_from_string("r0xx1").expect("SNH"),
+                SomeRegion::new_from_string("r0x1x").expect("SNH"),
             ]),
             -5,
         );
@@ -231,7 +227,6 @@ mod tests {
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

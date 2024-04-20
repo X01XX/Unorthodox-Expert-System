@@ -385,52 +385,28 @@ fn domainstore_init() -> DomainStore {
 
     // Load optimal regions
     let mut regstr1 = RegionStoreCorr::with_capacity(2);
-    regstr1.push(dmxs[0].region_from_string_pad_x("r0x0x").expect("SNH"));
-    regstr1.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XX1X_1XXX_XXXX")
-            .expect("SNH"),
-    );
+    regstr1.push(SomeRegion::new_from_string("rx0x0x").expect("SNH"));
+    regstr1.push(SomeRegion::new_from_string("rXXXX_XX1X_1XXX_XXXX").expect("SNH"));
 
     let mut regstr2 = RegionStoreCorr::with_capacity(2);
-    regstr2.push(dmxs[0].region_from_string_pad_x("r0xx1").expect("SNH"));
-    regstr2.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XXX1_1XXX_XXXX")
-            .expect("SNH"),
-    );
+    regstr2.push(SomeRegion::new_from_string("rx0xx1").expect("SNH"));
+    regstr2.push(SomeRegion::new_from_string("rXXXX_XXX1_1XXX_XXXX").expect("SNH"));
 
     let mut regstr3 = RegionStoreCorr::with_capacity(2);
-    regstr3.push(dmxs[0].region_from_string_pad_x("rx1x1").expect("SNH"));
-    regstr3.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XX00_0XXX_XXXX")
-            .expect("SNH"),
-    );
+    regstr3.push(SomeRegion::new_from_string("rxx1x1").expect("SNH"));
+    regstr3.push(SomeRegion::new_from_string("rXXXX_XX00_0XXX_XXXX").expect("SNH"));
 
     let mut regstr4 = RegionStoreCorr::with_capacity(2);
-    regstr4.push(dmxs[0].region_from_string_pad_x("r1110").expect("SNH"));
-    regstr4.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XXX0_0XXX_XXXX")
-            .expect("SNH"),
-    );
+    regstr4.push(SomeRegion::new_from_string("rx1110").expect("SNH"));
+    regstr4.push(SomeRegion::new_from_string("rXXXX_XXX0_0XXX_XXXX").expect("SNH"));
 
     let mut regstr5 = RegionStoreCorr::with_capacity(2);
-    regstr5.push(dmxs[0].region_from_string_pad_x("rXX00").expect("SNH"));
-    regstr5.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XXx1_0xXX_XXXX")
-            .expect("SNH"),
-    );
+    regstr5.push(SomeRegion::new_from_string("rxXX00").expect("SNH"));
+    regstr5.push(SomeRegion::new_from_string("rXXXX_XXx1_0xXX_XXXX").expect("SNH"));
 
     let mut regstr6 = RegionStoreCorr::with_capacity(2);
-    regstr6.push(dmxs[0].region_from_string_pad_x("rX10X").expect("SNH"));
-    regstr6.push(
-        dmxs[1]
-            .region_from_string_pad_x("rXXXX_XX1x_x0XX_XXXX")
-            .expect("SNH"),
-    );
+    regstr6.push(SomeRegion::new_from_string("rxX10X").expect("SNH"));
+    regstr6.push(SomeRegion::new_from_string("rXXXX_XX1x_x0XX_XXXX").expect("SNH"));
 
     // Add select regionstores.
     dmxs.add_select(SelectRegions::new(regstr1, 3));
@@ -621,14 +597,18 @@ fn command_loop(dmxs: &mut DomainStore) {
                 let mut cur_state = dmx.cur_state.clone();
 
                 if cmd.len() > 1 {
-                    if let Ok(regx) = dmx.region_from_string(cmd[1]) {
-                        if regx.is_superset_of(&cur_state) {
-                            println!("Current state is already in the goal");
-                            return;
+                    if let Ok(regx) = SomeRegion::new_from_string(cmd[1]) {
+                        if regx.num_bits() == dmx.cur_state.num_bits() {
+                            if regx.is_superset_of(&cur_state) {
+                                println!("Current state is already in the goal");
+                                return;
+                            } else {
+                                goal = Some(regx);
+                                println!("A *  after a rule indicates at least one needed change.");
+                                println!("A *- after a rule indicates at least one additional uneeded change.");
+                            }
                         } else {
-                            goal = Some(regx);
-                            println!("A *  after a rule indicates at least one needed change.");
-                            println!("A *- after a rule indicates at least one additional uneeded change.");
+                            println!("Invalid number of bits is region string");
                         }
                     } else {
                         println!("Unable to convert string {} into a region", cmd[1]);
@@ -1114,79 +1094,78 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     let cur_state = dmx.get_current_state();
 
     // Get region from string
-    match dmx.region_from_string(cmd[1]) {
-        Ok(goal_region) => {
-            println!("\nChange Current_state {cur_state} to region {goal_region}");
-            if goal_region.is_superset_of(cur_state) {
-                println!(
-                    "\nCurrent_state {} is already in region {}",
-                    dmx.get_current_state(),
-                    goal_region
-                );
-            } else if dmxs.seek_state_in_region(dom_id, &goal_region) {
-                println!("\nChange to region succeeded");
-            } else {
-                let cur_region = SomeRegion::new(vec![dmxs.cur_state(dom_id).clone()]);
-                println!("\nChange to region failed");
-                let cng_rule = SomeRule::rule_region_to_region(&cur_region, &goal_region);
-                println!("Rule needed: {cng_rule}");
+    let goal_region = SomeRegion::new_from_string(cmd[1])?;
 
-                let required_change = cng_rule.change();
+    if goal_region.num_bits() != dmx.cur_state.num_bits() {
+        return Err("Invalid number of bits in region string".to_string());
+    }
 
-                let steps_str: StepStore = dmxs[dom_id].actions.get_steps(&required_change, None);
-                if steps_str.is_not_empty() {
-                    println!("Steps found {steps_str}");
-                    let can_change = steps_str.aggregate_changes().expect("SNH");
+    println!("\nChange Current_state {cur_state} to region {goal_region}");
+    if goal_region.is_superset_of(cur_state) {
+        println!(
+            "\nCurrent_state {} is already in region {}",
+            dmx.cur_state, goal_region
+        );
+    } else if dmxs.seek_state_in_region(dom_id, &goal_region) {
+        println!("\nChange to region succeeded");
+    } else {
+        let cur_region = SomeRegion::new(vec![dmxs.cur_state(dom_id).clone()]);
+        println!("\nChange to region failed");
+        let cng_rule = SomeRule::rule_region_to_region(&cur_region, &goal_region);
+        println!("Rule needed: {cng_rule}");
 
-                    if required_change.is_subset_of(&can_change) {
-                        println!("All needed changes found in steps");
-                        if steps_str.len() > 1 {
-                            for inx in 0..(steps_str.len() - 1) {
-                                for iny in (inx + 1)..steps_str.len() {
-                                    if steps_str[inx]
-                                        .mutually_exclusive(&steps_str[iny], &required_change)
-                                    {
-                                        println!(
-                                            "Mutually exclusive steps {} {}",
-                                            steps_str[inx], steps_str[iny]
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                        for stepx in steps_str.iter() {
-                            if let Some(plans2) =
-                                dmxs[dom_id].make_plans2(&cur_region, &stepx.initial, None)
+        let required_change = cng_rule.change();
+
+        let steps_str: StepStore = dmxs[dom_id].actions.get_steps(&required_change, None);
+        if steps_str.is_not_empty() {
+            println!("Steps found {steps_str}");
+            let can_change = steps_str.aggregate_changes().expect("SNH");
+
+            if required_change.is_subset_of(&can_change) {
+                println!("All needed changes found in steps");
+                if steps_str.len() > 1 {
+                    for inx in 0..(steps_str.len() - 1) {
+                        for iny in (inx + 1)..steps_str.len() {
+                            if steps_str[inx].mutually_exclusive(&steps_str[iny], &required_change)
                             {
-                                println!("Plan(s) to get from {cur_region} to {}", stepx.initial);
-                                // delete dups.
-                                let mut plans = Vec::<SomePlan>::new();
-                                for planx in plans2 {
-                                    if tools::vec_contains(&plans, SomePlan::eq, &planx) {
-                                    } else {
-                                        plans.push(planx);
-                                    }
-                                }
-                                println!("{}", tools::vec_string(&plans));
-                            } else {
-                                println!("No plan to get from {cur_region} to {}", stepx.initial);
+                                println!(
+                                    "Mutually exclusive steps {} {}",
+                                    steps_str[inx], steps_str[iny]
+                                );
                             }
                         }
-                    } else {
-                        println!(
-                            "Wanted changes {} are not a subset of possible changes {}",
-                            required_change, can_change
-                        );
                     }
-                } else {
-                    println!("No steps found");
                 }
-                pause_for_input("\nPress Enter to continue: ");
+                for stepx in steps_str.iter() {
+                    if let Some(plans2) =
+                        dmxs[dom_id].make_plans2(&cur_region, &stepx.initial, None)
+                    {
+                        println!("Plan(s) to get from {cur_region} to {}", stepx.initial);
+                        // delete dups.
+                        let mut plans = Vec::<SomePlan>::new();
+                        for planx in plans2 {
+                            if tools::vec_contains(&plans, SomePlan::eq, &planx) {
+                            } else {
+                                plans.push(planx);
+                            }
+                        }
+                        println!("{}", tools::vec_string(&plans));
+                    } else {
+                        println!("No plan to get from {cur_region} to {}", stepx.initial);
+                    }
+                }
+            } else {
+                println!(
+                    "Wanted changes {} are not a subset of possible changes {}",
+                    required_change, can_change
+                );
             }
-            Ok(())
+        } else {
+            println!("No steps found");
         }
-        Err(error) => Err(error),
-    } // end match region_r
+        pause_for_input("\nPress Enter to continue: ");
+    }
+    Ok(())
 }
 
 /// Do sample-state command.
@@ -1321,13 +1300,12 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
     }
 
     if cmd.len() == 3 {
-        // Get region
-        let aregion = match dmx.region_from_string(cmd[2]) {
-            Ok(aregion) => aregion,
-            Err(error) => {
-                return Err(error);
-            }
-        };
+        // Get region from command.
+        let aregion = SomeRegion::new_from_string(cmd[2])?;
+
+        if aregion.num_bits() != dmx.cur_state.num_bits() {
+            return Err("Invalid number of bits in region.".to_string());
+        }
 
         println!("Squares of Action {act_id} in region {aregion} are:\n");
 
@@ -1441,12 +1419,11 @@ fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), 
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = match dmx.region_from_string(cmd[2]) {
-        Ok(aregion) => aregion,
-        Err(error) => {
-            return Err(error);
-        }
-    };
+    let aregion = SomeRegion::new_from_string(cmd[2])?;
+
+    if aregion.num_bits() != dmx.cur_state.num_bits() {
+        return Err("Invalid number of bits in region given".to_string());
+    }
 
     dmx.display_group_anchor_info(act_id, &aregion)
 }
@@ -1474,12 +1451,11 @@ fn do_print_group_defining_squares_command(
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = match dmx.region_from_string(cmd[2]) {
-        Ok(aregion) => aregion,
-        Err(error) => {
-            return Err(error);
-        }
-    };
+    let aregion = SomeRegion::new_from_string(cmd[2])?;
+
+    if aregion.num_bits() != dmx.cur_state.num_bits() {
+        return Err("Invalid number of bits in region given".to_string());
+    }
 
     if let Some(grpx) = dmx.actions[act_id].groups.find(&aregion) {
         for stax in grpx.region.states.iter() {
@@ -1544,10 +1520,10 @@ fn usage() {
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, where such a need exists.");
-    println!("\n    A state starts with an 's0b' or 's0x', followed by zero, or more, digits.");
-    println!("\n    A region starts with an 'r' character, followed by zero, or more, zero, one, X or x characters.");
-    println!("    A trailing \"+\" indicates the region is formed by more than two states.");
-    println!("\n    A region, or state, may contain the separator '_', which will be ignored. Leading zeros can be omitted.");
+    println!("\n    A state starts with an 's0b' or 's0x', followed by one, or more, digits.");
+    println!("\n    A region starts with an 'r' character, followed by one, or more, zero, one, X or x characters.");
+    println!("    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.");
+    println!("\n    A region, or state, may contain the separator '_', which will be ignored. All bit positions must be specified.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");

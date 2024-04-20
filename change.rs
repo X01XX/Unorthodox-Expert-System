@@ -7,6 +7,7 @@ use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+/// A struct to indicate 1->0 and 0->1 changes.
 pub struct SomeChange {
     /// A Mask for 0->1 changes.
     pub b01: SomeMask,
@@ -132,8 +133,11 @@ impl SomeChange {
     }
 } // end impl SomeChange
 
+/// Allow different types, containing 0->1 and 1->0 masks, to interact.
 pub trait AccessChanges {
+    /// Return a reference to the 0->1 mask.
     fn b01(&self) -> &SomeMask;
+    /// Return a reference to the 1->0 mask.
     fn b10(&self) -> &SomeMask;
 }
 
@@ -149,25 +153,22 @@ impl AccessChanges for SomeChange {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     #[test]
     fn intersection() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(8);
-        let ur_mask = SomeMask::new(ur_bits.clone());
 
         let cng1 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1010")?,
-            b10: ur_mask.new_from_string("m0b1010")?,
+            b01: SomeMask::new_from_string("m0b1010")?,
+            b10: SomeMask::new_from_string("m0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1001")?,
-            b10: ur_mask.new_from_string("m0b0110")?,
+            b01: SomeMask::new_from_string("m0b1001")?,
+            b10: SomeMask::new_from_string("m0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1000")?,
-            b10: ur_mask.new_from_string("m0b0010")?,
+            b01: SomeMask::new_from_string("m0b1000")?,
+            b10: SomeMask::new_from_string("m0b0010")?,
         };
         let cng4 = cng1.intersection(&cng2);
         println!("cng4 {cng4}");
@@ -180,20 +181,18 @@ mod tests {
     #[test]
     fn union() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(8);
-        let ur_mask = SomeMask::new(ur_bits.clone());
 
         let cng1 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1010")?,
-            b10: ur_mask.new_from_string("m0b1010")?,
+            b01: SomeMask::new_from_string("m0b1010")?,
+            b10: SomeMask::new_from_string("m0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1001")?,
-            b10: ur_mask.new_from_string("m0b0110")?,
+            b01: SomeMask::new_from_string("m0b1001")?,
+            b10: SomeMask::new_from_string("m0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: ur_mask.new_from_string("m0b1011")?,
-            b10: ur_mask.new_from_string("m0b1110")?,
+            b01: SomeMask::new_from_string("m0b1011")?,
+            b10: SomeMask::new_from_string("m0b1110")?,
         };
         let cng4 = cng1.union(&cng2);
         println!("cng4 {cng4}");
@@ -206,18 +205,16 @@ mod tests {
     #[test]
     fn changes_wanted_unwanted_reverse() -> Result<(), String> {
         // Create a mask that uses one integer for bits.
-        let ur_bits = SomeBits::new(8);
-        let ur_mask = SomeMask::new(ur_bits.clone());
 
         let wanted_changes = SomeChange {
-            b01: ur_mask.new_from_string("m0b1010")?,
-            b10: ur_mask.new_from_string("m0b0100")?,
+            b01: SomeMask::new_from_string("m0b1010")?,
+            b10: SomeMask::new_from_string("m0b0100")?,
         };
         println!("wanted_changes    {wanted_changes}");
 
         let available_changes = SomeChange {
-            b01: ur_mask.new_from_string("m0b1001")?,
-            b10: ur_mask.new_from_string("m0b1100")?,
+            b01: SomeMask::new_from_string("m0b1001")?,
+            b10: SomeMask::new_from_string("m0b1100")?,
         };
         println!("available_changes {available_changes}");
 
@@ -226,8 +223,8 @@ mod tests {
         assert!(
             possible_changes
                 == SomeChange {
-                    b01: ur_mask.new_from_string("m0b1000")?,
-                    b10: ur_mask.new_from_string("m0b0100")?
+                    b01: SomeMask::new_from_string("m0b1000")?,
+                    b10: SomeMask::new_from_string("m0b0100")?
                 }
         );
 
@@ -236,8 +233,8 @@ mod tests {
         assert!(
             unwanted_changes
                 == SomeChange {
-                    b01: ur_mask.new_from_string("m0b0001")?,
-                    b10: ur_mask.new_from_string("m0b1000")?
+                    b01: SomeMask::new_from_string("m0b0001")?,
+                    b10: SomeMask::new_from_string("m0b1000")?
                 }
         );
 
@@ -246,8 +243,8 @@ mod tests {
         assert!(
             reverse_changes
                 == SomeChange {
-                    b01: ur_mask.new_from_string("m0b1000")?,
-                    b10: ur_mask.new_from_string("m0b0001")?
+                    b01: SomeMask::new_from_string("m0b1000")?,
+                    b10: SomeMask::new_from_string("m0b0001")?
                 }
         );
 

@@ -24,12 +24,14 @@ impl fmt::Display for GroupStore {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
+/// A vector of SomeGroup structs, SomeGroup-specific functions,
+/// and aggregate changes allowed by the structs that are predictable.
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub avec: Vec<SomeGroup>,
     /// Changes possible for all groups.
     pub aggregate_changes: Option<SomeChange>,
-    /// Changes possible were recently updated.
+    /// An indicator that the changes possible were recently updated.
     pub agg_chgs_updated: bool,
 }
 

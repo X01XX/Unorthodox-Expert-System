@@ -146,9 +146,9 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let ur_bits = SomeBits::new(8);
+        let ur_bits = SomeBits::new(4);
         let tmp_sta = SomeState::new(ur_bits.clone());
-        let tmp_sta2 = SomeState::new(ur_bits.new_from_string("0x2")?);
+        let tmp_sta2 = SomeState::new(SomeBits::new_from_string("0x2")?);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta2.clone()));
         let tmp_reg = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
         let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, tmp_reg.clone());

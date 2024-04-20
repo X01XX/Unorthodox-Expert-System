@@ -16,8 +16,13 @@ use std::collections::HashMap;
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
 pub struct ActionInterface {
-    /// Store states and most-recent change step. Only used for the demonstration action dom0_act0.
+    /// Store states and most-recent change step.
+    /// Only used for the demonstration action dom0_act0, to allow
+    /// testing of two-result and three-result (unpredictable) regions.
     pub ahash: HashMap<SomeState, usize>,
+    /// Rules to use to accomplish the action.
+    /// The parent action uses sampling and logic to get closer and closer
+    /// to a similar rule definition.
     pub rules: Vec<RuleStore>,
 }
 

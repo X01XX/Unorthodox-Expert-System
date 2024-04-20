@@ -48,13 +48,13 @@ impl SomeState {
     /// Return a State from a string.
     /// Left-most, consecutive, zeros can be omitted.
     ///
-    /// if let Ok(sta) = SomeState::new_from_string(1, "s0b0101")) {
+    /// if let Ok(sta) = SomeState-instance.new_from_string("s0b0101")) {
     ///    println!("State {sta}");
     /// } else {
     ///    panic!("Invalid State");
     /// }
     /// A prefix of "s0x" can be used to specify hexadecimal characters.
-    pub fn new_from_string(&self, str: &str) -> Result<Self, String> {
+    pub fn _new_from_string(&self, str: &str) -> Result<Self, String> {
         let mut rest = String::new();
 
         let mut leading_zero = false;
@@ -81,7 +81,37 @@ impl SomeState {
         } else {
             rest = "0b".to_owned() + &rest;
         }
-        match self.bts.new_from_string(&rest) {
+        match self.bts._new_from_string(&rest) {
+            Ok(bts) => Ok(Self { bts }),
+            Err(error) => Err(error),
+        }
+    } // end new_from_string
+
+    /// Return a State from a string.
+    /// Each bit must be specified.
+    ///
+    /// if let Ok(sta) = SomeState::new_from_string("s0b0101")) {
+    ///    println!("State {sta}");
+    /// } else {
+    ///    panic!("Invalid State");
+    /// }
+    /// A prefix of "s0x" can be used to specify hexadecimal characters.
+    pub fn new_from_string(str: &str) -> Result<Self, String> {
+        let mut bit_chars = String::new();
+
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "s" || chr == "S" {
+                    continue;
+                }
+                return Err(format!(
+                    "Did not understand the string {str}, first character?"
+                ));
+            }
+            bit_chars.push_str(chr);
+        }
+
+        match SomeBits::new_from_string(&bit_chars) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }
@@ -307,10 +337,9 @@ mod tests {
 
     #[test]
     fn test_is_between() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let sta2 = tmp_sta.new_from_string("s0b0010")?;
-        let sta3 = tmp_sta.new_from_string("s0b0011")?;
-        let sta5 = tmp_sta.new_from_string("s0b0101")?;
+        let sta2 = SomeState::new_from_string("s0b0010")?;
+        let sta3 = SomeState::new_from_string("s0b0011")?;
+        let sta5 = SomeState::new_from_string("s0b0101")?;
         assert!(sta3.is_between(&sta2, &sta5));
         assert!(!sta5.is_between(&sta2, &sta3));
         Ok(())
@@ -318,10 +347,8 @@ mod tests {
 
     #[test]
     fn distance() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-
-        let sta1 = tmp_sta.new_from_string("s0xabc4")?;
-        let sta2 = tmp_sta.new_from_string("s0x5430")?;
+        let sta1 = SomeState::new_from_string("s0xabc4")?;
+        let sta2 = SomeState::new_from_string("s0x5430")?;
 
         let dist = sta1.distance(&sta2);
         println!("sta1 {sta1}");
@@ -332,15 +359,13 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-
-        let sta1 = tmp_sta.new_from_string("s0b1010")?;
-        let sta2 = tmp_sta.new_from_string("s0b1010")?;
+        let sta1 = SomeState::new_from_string("s0b1010")?;
+        let sta2 = SomeState::new_from_string("s0b1010")?;
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
         assert!(sta1 == sta2);
 
-        let sta3 = tmp_sta.new_from_string("s0b1001")?;
+        let sta3 = SomeState::new_from_string("s0b1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
 
@@ -350,21 +375,18 @@ mod tests {
     #[test]
     fn apply_changes() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let ur_bits = SomeBits::new(8);
-        let ur_state = SomeState::new(ur_bits.clone());
-        let ur_mask = SomeMask::new(ur_bits);
 
         let wanted_changes = SomeChange::new(
-            ur_mask.new_from_string("m0b1100")?,
-            ur_mask.new_from_string("m0b0011")?,
+            SomeMask::new_from_string("m0b1100")?,
+            SomeMask::new_from_string("m0b0011")?,
         );
         println!("wanted_changes    {wanted_changes}");
 
-        let sta1 = ur_state.new_from_string("s0011")?;
+        let sta1 = SomeState::new_from_string("s0b0011")?;
         let sta2 = sta1.apply_changes(&wanted_changes);
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
-        assert!(sta2 == ur_state.new_from_string("s1100")?);
+        assert!(sta2 == SomeState::new_from_string("s0b1100")?);
 
         Ok(())
     }

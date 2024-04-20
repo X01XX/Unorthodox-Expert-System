@@ -1,7 +1,7 @@
-//! The SomeGroup struct, which represents a group of two compatible Squares.
+//! The SomeGroup struct.
 //!
-//! This represents a group of two squares, that are
-//! mutually compatible, as are any squares between them.
+//! This represents a group of one, or more, squares, that are
+//! mutually compatible, as (presumably) are any squares between them.
 
 use crate::mask::SomeMask;
 use crate::pn::Pn;
@@ -26,26 +26,24 @@ impl fmt::Display for SomeGroup {
 /// A group formed by two squares.
 /// Squares in between are compatible or not sampled.
 pub struct SomeGroup {
-    /// Region the group covers.  Formed by two Pn-equal squares.
+    /// Region the group covers.  Formed by one, or more, Pn-equal squares.
     /// All squares sampled in between should be compatable.
-    /// [SomeRegion].state1 and .state2 are keys to the squares that formed the region.
-    /// [SomeRegion].state1 and .state2 may be equal, that is only one square makes the region.
-    /// If the squares are Pn::One, they may need more samples.
     pub region: SomeRegion,
     /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
     pub pn: Pn,
     /// Pnc indicator, the boolean And of the two squares pnc values.
+    /// If true, each square forming the region has been sampled enough to
+    /// become confident that the changes seen are predictable, or unpredictable.
     pub pnc: bool,
-    /// Rules formed by two squares.  Will be None for Pn::Unpredictable.
+    /// Rules formed by the squares.  Will be None for Pn::Unpredictable.
     pub rules: Option<RuleStore>,
     /// Set to true when a state only in the group has all adjacent states outside
     /// of the group region checked.
-    /// When some external adjacent states are checked, but some are unreachable, hard to reach,
-    /// or no longer reachable, the group may represent something speculative.
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
     /// Maskof  adjacent squares used to limit a group.
+    /// This will be the region edge mask, limited by bit changes of available rules.
     pub anchor_mask: Option<SomeMask>,
 }
 
@@ -337,22 +335,17 @@ impl AccessStates for SomeGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-
-        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
-        let regx = tmp_reg.new_from_string("r1xx0")?;
+        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
+        let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), true);
 
-        let initial = tmp_sta.new_from_string("s0b1100")?;
-        let result = tmp_sta.new_from_string("s0b0100")?;
+        let initial = SomeState::new_from_string("s0b1100")?;
+        let result = SomeState::new_from_string("s0b0100")?;
 
         if !grpx.check_sample(&SomeSample::new(initial, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
@@ -363,23 +356,19 @@ mod tests {
 
     #[test]
     fn check_subset_square() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-
         // Test if sqrx.pn > self.pn
-        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
-        let regx = tmp_reg.new_from_string("r1xx0")?;
+        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
+        let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), true); // Pn::One, pnc == true.
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b1100")?,
-            tmp_sta.new_from_string("s0b0100")?,
+            SomeState::new_from_string("s0b1100")?,
+            SomeState::new_from_string("s0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            tmp_sta.new_from_string("s0b0101")?,
+            SomeState::new_from_string("s0b0101")?,
         )); // Pn::Two, pnc == false.
 
         if grpx.check_square(&sqrx) {
@@ -388,21 +377,21 @@ mod tests {
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
         let rules = RuleStore::new(vec![
-            tmp_rul.new_from_string("10/x1/x0/00")?,
-            tmp_rul.new_from_string("10/x1/x0/01")?,
+            SomeRule::new_from_string("10/x1/x0/00")?,
+            SomeRule::new_from_string("10/x1/x0/01")?,
         ]);
 
-        let regx = tmp_reg.new_from_string("r1xx0")?;
+        let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), true); // Pn::Two, pnc == true.
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b1100")?,
-            tmp_sta.new_from_string("s0b0100")?,
+            SomeState::new_from_string("s0b1100")?,
+            SomeState::new_from_string("s0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            tmp_sta.new_from_string("s0b0100")?,
+            SomeState::new_from_string("s0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
         if grpx.check_square(&sqrx) {
@@ -412,13 +401,13 @@ mod tests {
         // Test if self.pn == Pn::Unpredictable
         let rules = None;
 
-        let regx = tmp_reg.new_from_string("r1xx0")?;
+        let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, rules, true);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b1100")?,
-            tmp_sta.new_from_string("s0b0100")?,
+            SomeState::new_from_string("s0b1100")?,
+            SomeState::new_from_string("s0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -426,15 +415,15 @@ mod tests {
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let rules = RuleStore::new(vec![tmp_rul.new_from_string("10/x1/x0/00")?]);
+        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
 
-        let regx = tmp_reg.new_from_string("r1xx0")?;
+        let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), true);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b1100")?,
-            tmp_sta.new_from_string("s0b0100")?,
+            SomeState::new_from_string("s0b1100")?,
+            SomeState::new_from_string("s0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -442,8 +431,8 @@ mod tests {
         }
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            tmp_sta.new_from_string("s0b1100")?,
-            tmp_sta.new_from_string("s0b0101")?,
+            SomeState::new_from_string("s0b1100")?,
+            SomeState::new_from_string("s0b0101")?,
         ));
 
         if grpx.check_square(&sqrx) {

@@ -30,9 +30,14 @@ impl fmt::Display for ActionStore {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
+/// A vector of SomeAction structs, and SomeAction-specific functions.
 pub struct ActionStore {
     /// A vector of SomeAction structs
     pub avec: Vec<SomeAction>,
+    /// A summary of all currently possible group-defined bit changes.
+    /// This is used to limit needs under some circumstances.
+    /// For example, a bit changes from zero to one, but no reverse change
+    /// has been sampled.
     pub aggregate_changes: Option<SomeChange>,
 }
 

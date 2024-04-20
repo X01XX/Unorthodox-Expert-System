@@ -1,8 +1,8 @@
 //! The Plan struct.
 //!
-//! A StepStore is zero, or more, steps that may not be related.
+//! A plan with zero, or more, steps, in a given domain.
 //!
-//! A Plan uses a StepStore but enforces relatedness,
+//! A Plan uses a StepStore, but enforces relatedness,
 //! where the result of one step is equal to the initial region
 //! of the next step.
 //!
@@ -13,7 +13,7 @@
 //! This is often a "pre-positioning", to change the current state to a state where a sample
 //! is needed.  The final sample taken is not part of the plan, at least so far.
 //!
-//! An empty plan means that the current state satisfies the need the plan is for, just
+//! An empty plan means that the domain current state satisfies the need the plan is for, just
 //! sample the current state.
 
 use crate::region::SomeRegion;
@@ -61,8 +61,9 @@ impl Eq for SomePlan {}
 
 #[readonly::make]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A struct containing a domain id and steps.
 pub struct SomePlan {
-    /// Domain indicator
+    /// Domain indicator.
     pub dom_id: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
@@ -417,16 +418,12 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(8);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        let reg1 = tmp_reg.new_from_string("r0x0x")?;
-        let reg2 = tmp_reg.new_from_string("r0x1x")?;
-        let reg3 = tmp_reg.new_from_string("r1x1x")?;
-        let reg4 = tmp_reg.new_from_string("r111x")?;
-        let reg5 = tmp_reg.new_from_string("r101x")?;
-        let reg6 = tmp_reg.new_from_string("r000x")?;
+        let reg1 = SomeRegion::new_from_string("r0x0x")?;
+        let reg2 = SomeRegion::new_from_string("r0x1x")?;
+        let reg3 = SomeRegion::new_from_string("r1x1x")?;
+        let reg4 = SomeRegion::new_from_string("r111x")?;
+        let reg5 = SomeRegion::new_from_string("r101x")?;
+        let reg6 = SomeRegion::new_from_string("r000x")?;
 
         let step1 = SomeStep::new(
             0,
@@ -465,7 +462,7 @@ mod tests {
         println!("stp3 {}", stp_str3);
         assert!(stp_str3.len() == 4);
 
-        assert!(*stp_str3.initial_region() == tmp_reg.new_from_string("r010x")?);
+        assert!(*stp_str3.initial_region() == SomeRegion::new_from_string("r010x")?);
 
         assert!(*stp_str3.result_region() == reg6);
 
@@ -474,15 +471,11 @@ mod tests {
 
     #[test]
     fn shortcuts() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(8);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.clone()]);
-
-        let reg0 = tmp_reg.new_from_string("r0000")?;
-        let reg1 = tmp_reg.new_from_string("r0001")?;
-        let reg3 = tmp_reg.new_from_string("r0011")?;
-        let reg5 = tmp_reg.new_from_string("r0101")?;
-        let reg7 = tmp_reg.new_from_string("r0111")?;
+        let reg0 = SomeRegion::new_from_string("r0000")?;
+        let reg1 = SomeRegion::new_from_string("r0001")?;
+        let reg3 = SomeRegion::new_from_string("r0011")?;
+        let reg5 = SomeRegion::new_from_string("r0101")?;
+        let reg7 = SomeRegion::new_from_string("r0111")?;
 
         let step1 = SomeStep::new(
             0,

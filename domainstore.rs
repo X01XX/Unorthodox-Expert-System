@@ -1,4 +1,5 @@
-//! The DomainStore struct, a vector of SomeDomain structs.
+//! The DomainStore struct, a vector of SomeDomain structs,
+//! and values/methods that manage the domains.
 
 use crate::change::SomeChange;
 use crate::domain::SomeDomain;
@@ -49,16 +50,24 @@ pub struct InxPlan {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Default)]
+/// A vector of SomeDomain structs, and SomeDomain-specifc functions.
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
     pub domains: Vec<SomeDomain>,
+
     /// Domain displayed to user.
     pub current_domain: usize,
+    /// The current step number of a user session.
+    pub step_num: usize,
+
     /// A counter to indicate the number of steps the current state is in the same select region.
+    /// When no more rule-testing needs can be done.
     pub boredom: usize,
     /// A limit for becomming bored, then moving to another select state.
+    /// When no more rule-testing needs can be done.
     pub boredom_limit: usize,
-    /// Zero, or more, select regions that may have poitive, or negative, value.
+
+    /// Zero, or more, select regions that may have a positive, or negative, value.
     /// They may overlap.
     pub select: SelectRegionsStore,
     /// Positive region fragments, not overlapped by negative >= value regions.
@@ -67,16 +76,16 @@ pub struct DomainStore {
     /// Negative region fragments, value regions.
     /// These tend to be places to avoid in planning a path to a goal.
     pub select_negative: SelectRegionsStore,
-    /// Non-negative, may be positive, regions.
+    /// Non-negative, may be, or overlap, positive, regions.
     pub select_non_negative: SelectRegionsStore,
-    /// Save the results of the last run of get_needs.
+
+    /// Use to save the results of the last run of get_needs.
     pub needs: NeedStore,
-    /// Vector of InxPlans for selected needs, where a plan was calculated.
+    /// A vector of InxPlans for selected needs, where a plan could be calculated.
     pub can_do: Vec<InxPlan>,
     /// Vector of indicies for selected needs, where a plan could not be calculated.
     pub cant_do: Vec<usize>,
-    /// The current step number.
-    pub step_num: usize,
+
     /// Save the maximum fragment value.
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
@@ -1632,13 +1641,11 @@ mod tests {
 
     #[test]
     fn choose_a_plan() -> Result<(), String> {
-        let ur_bits = SomeBits::new(4);
-
-        let sta2 = SomeState::new(ur_bits.new_from_string("0x2")?);
-        let sta7 = SomeState::new(ur_bits.new_from_string("0x7")?);
-        let sta9 = SomeState::new(ur_bits.new_from_string("0x9")?);
-        let stab = SomeState::new(ur_bits.new_from_string("0xb")?);
-        let staf = SomeState::new(ur_bits.new_from_string("0xf")?);
+        let sta2 = SomeState::new(SomeBits::new_from_string("0x2")?);
+        let sta7 = SomeState::new(SomeBits::new_from_string("0x7")?);
+        let sta9 = SomeState::new(SomeBits::new_from_string("0x9")?);
+        let stab = SomeState::new(SomeBits::new_from_string("0xb")?);
+        let staf = SomeState::new(SomeBits::new_from_string("0xf")?);
 
         let grp_reg = SomeRegion::new(vec![sta2.clone()]);
 
@@ -1686,7 +1693,7 @@ mod tests {
 
         // Set select region.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string("r01XX")?);
+        regstr1.push(SomeRegion::new_from_string("r01XX")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         // Do SelectRegion calculations.
@@ -1743,7 +1750,6 @@ mod tests {
         }
         assert!(zero && five);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1793,22 +1799,22 @@ mod tests {
     fn avoidance1() -> Result<(), String> {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
-        let s0 = domx.state_from_string("s0b0")?;
+        let s0 = domx.state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        let s1 = domx.state_from_string("s0b1")?;
+        let s1 = domx.state_from_string("s0b0001")?;
         let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
         domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let s2 = domx.state_from_string("s0b10")?;
+        let s2 = domx.state_from_string("s0b0010")?;
         let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
         domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
@@ -1829,11 +1835,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r01X1")?);
+        regstr1.push(SomeRegion::new_from_string("r01X1")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("rX101")?);
+        regstr2.push(SomeRegion::new_from_string("rX101")?);
         dmxs.add_select(SelectRegions::new(regstr2, -2));
         dmxs.calc_select();
 
@@ -1867,29 +1873,29 @@ mod tests {
     fn avoidance2() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
-        let s0 = domx.state_from_string("s0b0")?;
+        let s0 = domx.state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        let s1 = domx.state_from_string("s0b1")?;
+        let s1 = domx.state_from_string("s0b0001")?;
         let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
         domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let s2 = domx.state_from_string("s0b10")?;
+        let s2 = domx.state_from_string("s0b0010")?;
         let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
         domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
-        let s4 = domx.state_from_string("s0b100")?;
+        let s4 = domx.state_from_string("s0b0100")?;
         let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
@@ -1903,11 +1909,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r0101")?);
+        regstr1.push(SomeRegion::new_from_string("r0101")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("r1001")?);
+        regstr2.push(SomeRegion::new_from_string("r1001")?);
         dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
@@ -1930,7 +1936,7 @@ mod tests {
             );
             println!("Plan found: {} rate: {}", planx, rate);
             assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
-            //assert!(1 == 2);
+
             return Ok(());
         }
         Err("No plan found?".to_string())
@@ -1942,29 +1948,29 @@ mod tests {
     fn avoidance3() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
-        let s0 = domx.state_from_string("s0b0")?;
+        let s0 = domx.state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        let s1 = domx.state_from_string("s0b1")?;
+        let s1 = domx.state_from_string("s0b0001")?;
         let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
         domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let s2 = domx.state_from_string("s0b10")?;
+        let s2 = domx.state_from_string("s0b0010")?;
         let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
         domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
-        let s4 = domx.state_from_string("s0b100")?;
+        let s4 = domx.state_from_string("s0b0100")?;
         let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
@@ -1978,23 +1984,23 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r0x00")?);
+        regstr1.push(SomeRegion::new_from_string("r0x00")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("rx100")?);
+        regstr2.push(SomeRegion::new_from_string("rx100")?);
         dmxs.add_select(SelectRegions::new(regstr2, -1));
 
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
-        regstr3.push(dmxs[0].region_from_string_pad_x("r01x1")?);
+        regstr3.push(SomeRegion::new_from_string("r01x1")?);
         dmxs.add_select(SelectRegions::new(regstr3, -1));
 
         let mut regstr4 = RegionStoreCorr::with_capacity(1);
-        regstr4.push(dmxs[0].region_from_string_pad_x("r10x1")?);
+        regstr4.push(SomeRegion::new_from_string("r10x1")?);
         dmxs.add_select(SelectRegions::new(regstr4, -1));
 
         let mut regstr5 = RegionStoreCorr::with_capacity(1);
-        regstr5.push(dmxs[0].region_from_string_pad_x("r101x")?);
+        regstr5.push(SomeRegion::new_from_string("r101x")?);
         dmxs.add_select(SelectRegions::new(regstr5, -1));
         dmxs.calc_select();
 
@@ -2013,7 +2019,6 @@ mod tests {
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             println!("Plan found: {}", planx);
             assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
-            //assert!(1 == 2);
             return Ok(());
         }
 
@@ -2026,29 +2031,29 @@ mod tests {
     fn avoidance4() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
-        let s0 = domx.state_from_string("s0b0")?;
+        let s0 = domx.state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        let s1 = domx.state_from_string("s0b1")?;
+        let s1 = domx.state_from_string("s0b0001")?;
         let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
         domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let s2 = domx.state_from_string("s0b10")?;
+        let s2 = domx.state_from_string("s0b0010")?;
         let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
         domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
-        let s4 = domx.state_from_string("s0b100")?;
+        let s4 = domx.state_from_string("s0b0100")?;
         let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
@@ -2062,11 +2067,11 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r01xx")?);
+        regstr1.push(SomeRegion::new_from_string("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string_pad_x("r10xx")?);
+        regstr2.push(SomeRegion::new_from_string("r10xx")?);
         dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
@@ -2093,29 +2098,29 @@ mod tests {
     fn avoidance5() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
         let sf = domx.state_from_string("s0b1111")?;
-        let s0 = domx.state_from_string("s0b0")?;
+        let s0 = domx.state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        let s1 = domx.state_from_string("s0b1")?;
+        let s1 = domx.state_from_string("s0b0001")?;
         let se = domx.state_from_string("s0b1110")?;
         domx.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1.clone()));
         domx.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let s2 = domx.state_from_string("s0b10")?;
+        let s2 = domx.state_from_string("s0b0010")?;
         let sd = domx.state_from_string("s0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2.clone()));
         domx.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd.clone()));
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
-        let s4 = domx.state_from_string("s0b100")?;
+        let s4 = domx.state_from_string("s0b0100")?;
         let sb = domx.state_from_string("s0b1011")?;
         domx.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4.clone()));
         domx.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb.clone()));
@@ -2129,7 +2134,7 @@ mod tests {
 
         // Set select regions.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("rxx0x")?);
+        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -2151,7 +2156,6 @@ mod tests {
         } else {
             return Err(format!("No plan ?"));
         }
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2187,7 +2191,7 @@ mod tests {
     fn avoidance6() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         // Add actions.
         dmxs[0].add_action(vec![]);
@@ -2196,7 +2200,7 @@ mod tests {
         dmxs[0].add_action(vec![]);
 
         let sf = dmxs[0].state_from_string("s0b1111")?;
-        let s0 = dmxs[0].state_from_string("s0b0")?;
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b0001")?;
@@ -2229,12 +2233,12 @@ mod tests {
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
         let mut regstr0 = RegionStoreCorr::with_capacity(1);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r1100")?);
+        regstr0.push(SomeRegion::new_from_string("r1100")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string_pad_x("r1011")?);
+        regstr1.push(SomeRegion::new_from_string("r1011")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -2264,8 +2268,8 @@ mod tests {
     fn avoidance7() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2278,7 +2282,7 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         let sf = dmxs[0].state_from_string("s0b1111")?;
-        let s0 = dmxs[0].state_from_string("s0b0")?;
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b0001")?;
@@ -2313,28 +2317,28 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7.clone()));
 
         // Set select region.
-        let max_region = dmxs[1].region_from_string_pad_x("rxxxx")?;
+        let max_region = SomeRegion::new_from_string("rxxxx")?;
 
         // Set up dom 0 negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01x1")?);
+        regstr0.push(SomeRegion::new_from_string("r01x1")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("rx101")?);
+        regstr0.push(SomeRegion::new_from_string("rx101")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 1 negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(dmxs[1].region_from_string_pad_x("r011x")?);
+        regstr0.push(SomeRegion::new_from_string("r011x")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(dmxs[1].region_from_string_pad_x("rx111")?);
+        regstr0.push(SomeRegion::new_from_string("rx111")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2381,8 +2385,8 @@ mod tests {
     fn avoidance8() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2395,7 +2399,7 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         let sf = dmxs[0].state_from_string("s0b1111")?;
-        let s0 = dmxs[0].state_from_string("s0b0")?;
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b0001")?;
@@ -2431,13 +2435,13 @@ mod tests {
 
         // Set up negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r00xx")?);
-        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
+        regstr0.push(SomeRegion::new_from_string("r00xx")?);
+        regstr0.push(SomeRegion::new_from_string("rxx11")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r11xx")?);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
+        regstr0.push(SomeRegion::new_from_string("r11xx")?);
+        regstr0.push(SomeRegion::new_from_string("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2490,8 +2494,8 @@ mod tests {
     fn avoidance9() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2504,7 +2508,7 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         let sf = dmxs[0].state_from_string("s0b1111")?;
-        let s0 = dmxs[0].state_from_string("s0b0")?;
+        let s0 = dmxs[0].state_from_string("s0b0000")?;
 
         // Set up action to change the first bit.
         let s1 = dmxs[0].state_from_string("s0b0001")?;
@@ -2540,13 +2544,13 @@ mod tests {
 
         // Set up negative regions.
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r000x")?);
-        regstr0.push(dmxs[0].region_from_string_pad_x("rxx11")?);
+        regstr0.push(SomeRegion::new_from_string("r000x")?);
+        regstr0.push(SomeRegion::new_from_string("rxx11")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionStoreCorr::with_capacity(2);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r11x1")?);
-        regstr0.push(dmxs[0].region_from_string_pad_x("r01xx")?);
+        regstr0.push(SomeRegion::new_from_string("r11x1")?);
+        regstr0.push(SomeRegion::new_from_string("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2579,9 +2583,6 @@ mod tests {
             let rate = dmxs.rate_plans2(&plans, &start_regions);
             print!(", rate {}", rate);
             println!(" ");
-            //assert!(rate == 0);
-            //assert!(plans.len() == 1);
-            //assert!(plans.dom_result(0, &goal_regions[0]));
         } else {
             return Err(format!("No plan found?"));
         }
@@ -2603,20 +2604,20 @@ mod tests {
 
         // Load select regions
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(dmxs[0].region_from_string("r0x0x")?);
-        regstr1.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr1.push(SomeRegion::new_from_string("r00000x0x")?);
+        regstr1.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(dmxs[0].region_from_string("r0xx1")?);
-        regstr2.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr2.push(SomeRegion::new_from_string("r00000xx1")?);
+        regstr2.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr3 = RegionStoreCorr::with_capacity(2);
-        regstr3.push(dmxs[0].region_from_string("rx1x1")?);
-        regstr3.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr3.push(SomeRegion::new_from_string("r0000x1x1")?);
+        regstr3.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr4 = RegionStoreCorr::with_capacity(2);
-        regstr4.push(dmxs[0].region_from_string("r1110")?);
-        regstr4.push(dmxs[1].region_from_string("rXXXXXX10_1XXX_XXXX")?);
+        regstr4.push(SomeRegion::new_from_string("r00001110")?);
+        regstr4.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 1));
@@ -2684,10 +2685,10 @@ mod tests {
     fn test_exit_select_needs() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let neg_reg1 = dmxs[0].region_from_string_pad_x("rX1XX")?;
+        let neg_reg1 = SomeRegion::new_from_string("rX1XX")?;
 
         regstr1.push(neg_reg1.clone());
 
@@ -2695,7 +2696,7 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        let neg_reg2 = dmxs[0].region_from_string_pad_x("r1XX1")?;
+        let neg_reg2 = SomeRegion::new_from_string("r1XX1")?;
         regstr1.push(neg_reg2.clone());
 
         // Add select regionstores.
@@ -2728,23 +2729,23 @@ mod tests {
     fn calc_select() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
         // Add action to domain 0.
         dmxs[0].add_action(vec![]);
 
         // Load select regions
         let mut regstr1 = RegionStoreCorr::with_capacity(1);
-        regstr1.push(dmxs[0].region_from_string("rxx0x")?);
+        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);
-        regstr2.push(dmxs[0].region_from_string("r00x1")?);
+        regstr2.push(SomeRegion::new_from_string("r00x1")?);
 
         let mut regstr3 = RegionStoreCorr::with_capacity(1);
-        regstr3.push(dmxs[0].region_from_string("r11x1")?);
+        regstr3.push(SomeRegion::new_from_string("r11x1")?);
 
         let mut regstr4 = RegionStoreCorr::with_capacity(1);
-        regstr4.push(dmxs[0].region_from_string("r10x0")?);
+        regstr4.push(SomeRegion::new_from_string("r10x0")?);
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 4));

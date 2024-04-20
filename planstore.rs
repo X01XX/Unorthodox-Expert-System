@@ -1,4 +1,4 @@
-//! The PlanStore struct, a vector of SomePlan structs.
+//! The PlanStore struct, a vector of SomePlan struct instances.
 
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
@@ -18,6 +18,14 @@ impl fmt::Display for PlanStore {
 
 #[readonly::make]
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
+/// A vector of SomePlan struct instances.
+/// When the plans in a planstore are run, each plan will be for a domain,
+/// and run in the order they appear in the vector.
+/// For some situations, the creator of the PlanStore may split a domain plan and intermingle
+/// it with other domain plans.  This is due to the Boolen AND relationship of
+/// domain positions in the SelectRegions struct, and some combinations of domain positions
+/// have positive, or negative, values. This is like moving different Chess pieces, at different times,
+/// to reach a desired position, without a major mess-up inbetween.
 pub struct PlanStore {
     /// A vector of SomePlan instances.
     pub avec: Vec<SomePlan>,
@@ -344,7 +352,6 @@ mod tests {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

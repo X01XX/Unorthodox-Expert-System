@@ -189,21 +189,18 @@ impl ResultStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     #[test]
     fn test_most_recent_result() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-
-        let sta1 = tmp_sta.new_from_string("s0x1")?;
-        let sta2 = tmp_sta.new_from_string("s0x2")?;
-        let sta3 = tmp_sta.new_from_string("s0x3")?;
-        let sta4 = tmp_sta.new_from_string("s0x4")?;
-        let sta5 = tmp_sta.new_from_string("s0x5")?;
-        let sta6 = tmp_sta.new_from_string("s0x6")?;
-        let sta7 = tmp_sta.new_from_string("s0x7")?;
-        let sta8 = tmp_sta.new_from_string("s0x8")?;
-        let sta9 = tmp_sta.new_from_string("s0x9")?;
+        let sta1 = SomeState::new_from_string("s0x1")?;
+        let sta2 = SomeState::new_from_string("s0x2")?;
+        let sta3 = SomeState::new_from_string("s0x3")?;
+        let sta4 = SomeState::new_from_string("s0x4")?;
+        let sta5 = SomeState::new_from_string("s0x5")?;
+        let sta6 = SomeState::new_from_string("s0x6")?;
+        let sta7 = SomeState::new_from_string("s0x7")?;
+        let sta8 = SomeState::new_from_string("s0x8")?;
+        let sta9 = SomeState::new_from_string("s0x9")?;
 
         let mut rslt_str = ResultStore::new(vec![sta1.clone()]);
         let mrr = rslt_str.most_recent_result();
@@ -256,17 +253,15 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string("s0x505")?]);
 
-        let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
-
-        let pn = rslt_str.add_result(tmp_sta.new_from_string("s0x505")?);
+        let pn = rslt_str.add_result(SomeState::new_from_string("s0x505")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::One);
 
         // Test additional adds.
         for _ in 0..8 {
-            let pn = rslt_str.add_result(tmp_sta.new_from_string("s0x505")?);
+            let pn = rslt_str.add_result(SomeState::new_from_string("s0x505")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::One);
         }
@@ -279,28 +274,26 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-
-        let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
-        let mut pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string("s0x505")?]);
+        let mut pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(tmp_sta.new_from_string("s0x505")?);
+        pn = rslt_str.add_result(SomeState::new_from_string("s0x505")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
+        pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
         // Test additional adds.
         for _ in 0..4 {
-            pn = rslt_str.add_result(tmp_sta.new_from_string("s0x505")?);
+            pn = rslt_str.add_result(SomeState::new_from_string("s0x505")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::Two);
 
-            pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
+            pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::Two);
         }
@@ -313,26 +306,24 @@ mod tests {
     // Test ResultStore::add_result for Pn::Unpredictable
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-
         // Test two different results but out of order.
-        let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
-        let mut pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string("s0x505")?]);
+        let mut pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?);
 
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?); // two results, but out of order
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Unpredictable);
 
         // Test three different results.
-        rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x505")?]);
-        pn = rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
+        rslt_str = ResultStore::new(vec![SomeState::new_from_string("s0x505")?]);
+        pn = rslt_str.add_result(SomeState::new_from_string("s0x504")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(tmp_sta.new_from_string("s0x502")?); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::new_from_string("s0x502")?); // two results, but out of order
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Unpredictable);
 
@@ -342,20 +333,18 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-
-        let mut rslt_str = ResultStore::new(vec![tmp_sta.new_from_string("s0x500")?]);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x501")?);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x502")?);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x503")?);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x504")?);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x505")?);
-        rslt_str.add_result(tmp_sta.new_from_string("s0x506")?);
+        let mut rslt_str = ResultStore::new(vec![SomeState::new_from_string("s0x500")?]);
+        rslt_str.add_result(SomeState::new_from_string("s0x501")?);
+        rslt_str.add_result(SomeState::new_from_string("s0x502")?);
+        rslt_str.add_result(SomeState::new_from_string("s0x503")?);
+        rslt_str.add_result(SomeState::new_from_string("s0x504")?);
+        rslt_str.add_result(SomeState::new_from_string("s0x505")?);
+        rslt_str.add_result(SomeState::new_from_string("s0x506")?);
 
         println!("results: {rslt_str}");
-        assert!(*rslt_str.first() == tmp_sta.new_from_string("s0x504")?);
-        assert!(*rslt_str.second() == tmp_sta.new_from_string("s0x505")?);
-        assert!(*rslt_str.most_recent_result() == tmp_sta.new_from_string("s0x506")?);
+        assert!(*rslt_str.first() == SomeState::new_from_string("s0x504")?);
+        assert!(*rslt_str.second() == SomeState::new_from_string("s0x505")?);
+        assert!(*rslt_str.most_recent_result() == SomeState::new_from_string("s0x506")?);
 
         Ok(())
     }

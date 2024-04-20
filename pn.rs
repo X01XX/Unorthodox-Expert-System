@@ -57,6 +57,7 @@ impl PartialOrd for Pn {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Debug)]
+/// enum for one result, two result (in order), and greater results (unpredictable).
 pub enum Pn {
     /// Only one result for a state.
     One,
