@@ -13,6 +13,7 @@ use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::statestorecorr::StateStoreCorr;
+use crate::step::AltRuleHint::AltRule;
 use crate::targetstore::TargetStore;
 use crate::tools;
 
@@ -556,7 +557,7 @@ impl DomainStore {
     /// A square adjacent to a region can enter the region by changing one bit.
     fn rate_plans2(&self, plans: &PlanStore, regions: &RegionStoreCorr) -> isize {
         // Store rate for each step.
-        let mut rates = 0;
+        let mut rate = 0;
 
         let mut cur_regions = regions.clone();
         // Skip start value of negative SelectRegions.
@@ -566,10 +567,13 @@ impl DomainStore {
             }
             for stepx in planx.iter() {
                 cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
-                rates += self.select.rate_by_negative_regions(&cur_regions);
+                rate += self.select.rate_by_negative_regions(&cur_regions);
+                if let AltRule { .. } = &stepx.alt_rule {
+                    rate -= 1
+                }
             }
         }
-        rates
+        rate
     }
 
     /// Get plans to move to a goal region, choose a plan.
@@ -1565,6 +1569,10 @@ impl DomainStore {
                     &stepx.initial, &stepx.act_id, stepx.result
                 );
                 cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
+
+                if let AltRule { .. } = &stepx.alt_rule {
+                    print!(" Alt_rule: -1");
+                }
 
                 for sel_regx in self.select.iter() {
                     if sel_regx.value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
