@@ -1489,9 +1489,9 @@ impl SomeAction {
 
             if grpx.pn == Pn::One {
                 // Find bit changes that are desired
-                if let Some(rulx) =
-                    grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange, within)
-                {
+                let rulsx =
+                    grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange, within);
+                for rulx in rulsx.into_iter() {
                     stps.push(SomeStep::new(
                         self.id,
                         rulx,
@@ -1503,88 +1503,80 @@ impl SomeAction {
             }
 
             if grpx.pn == Pn::Two {
-                // Get restricted region for needed changes.
-                let mut parsed_region: Option<SomeRegion> = None;
-                for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                    let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
-                        continue;
-                    };
-                    parsed_region = Some(rulx.initial_region());
-                }
+                // Get restricted regions for needed changes.
 
-                // Check if any rule has no changes, so a state could be sampled once, or twice, to get the desired change.
-                let mut one_no_change = false;
-                if let Some(regx) = parsed_region {
-                    for ruly in grpx.rules.as_ref().expect("SNH").iter() {
-                        let rulx = ruly.restrict_initial_region(&regx);
-                        if rulx.b01.is_low() && rulx.b10.is_low() {
-                            one_no_change = true;
-                            break;
-                        }
-                    }
-                }
+                let stps2 = self.get_steps2(0, 1, grpx, achange, within);
+                stps.append(stps2);
 
-                if let Some(rules) = &grpx.rules {
-                    for (inx, ruly) in rules.iter().enumerate() {
-                        let Some(rulx) = ruly.restrict_for_changes(achange, within) else {
-                            continue;
-                        };
-
-                        // See if an existing square is ready to produce the desired result
-                        let i_reg = rulx.initial_region();
-                        let sqrs = self.squares.squares_in_reg(&i_reg);
-
-                        let mut found = false;
-                        for sqrx in &sqrs {
-                            // Will include at least one bit change desired, but maybe others.
-                            let expected_result = rulx.result_from_initial_state(&sqrx.state);
-
-                            // If a Pn::Two squares last result is not equal to what is wanted,
-                            // the next result should be.
-                            if *sqrx.most_recent_result() != expected_result {
-                                let stpx = SomeStep::new(
-                                    self.id,
-                                    rulx.restrict_initial_region(&SomeRegion::new(vec![sqrx
-                                        .state
-                                        .clone()])),
-                                    AltRuleHint::NoAlt {},
-                                    grpx.region.clone(),
-                                );
-                                stps.push(stpx);
-                                found = true;
-                            } // end if
-                        } // next sqrx
-
-                        if !found {
-                            if one_no_change {
-                                stps.push(SomeStep::new(
-                                    self.id,
-                                    rulx,
-                                    AltRuleHint::AltNoChange {},
-                                    grpx.region.clone(),
-                                ));
-                            } else {
-                                let alt_rule = if inx == 0 {
-                                    rules[1].clone()
-                                } else {
-                                    rules[0].clone()
-                                };
-                                stps.push(SomeStep::new(
-                                    self.id,
-                                    rulx,
-                                    AltRuleHint::AltRule { rule: alt_rule },
-                                    grpx.region.clone(),
-                                ));
-                            }
-                        }
-                    } // next ruly
-                }
+                let stps2 = self.get_steps2(1, 0, grpx, achange, within);
+                stps.append(stps2);
             } // end Pn::Two
         } // next grpx
 
         // println!("Steps: {}", stps);
         stps
     } // end get_steps
+
+    /// Processing for Pn::Two rules.
+    fn get_steps2(
+        &self,
+        inx: usize,
+        iny: usize,
+        grpx: &SomeGroup,
+        achange: &SomeChange,
+        within: Option<&SomeRegion>,
+    ) -> StepStore {
+        let mut stps = StepStore::new(vec![]);
+
+        let rulsx = grpx.rules.as_ref().expect("SNH")[inx].restrict_for_changes(achange, within);
+
+        for rulx in rulsx.into_iter() {
+            // Check if other rule has no changes, so a state could be sampled once, or twice, to get the desired change.
+            let ruly = &grpx.rules.as_ref().expect("SNH")[iny];
+
+            let ruly2 = ruly.restrict_initial_region(&rulx.initial_region());
+
+            if ruly2.b01.is_low() && ruly2.b10.is_low() {
+                stps.push(SomeStep::new(
+                    self.id,
+                    rulx,
+                    AltRuleHint::AltNoChange {},
+                    grpx.region.clone(),
+                ));
+                continue;
+            }
+
+            // See if an existing square is ready to produce the desired result
+            let i_reg = rulx.initial_region();
+            let sqrs = self.squares.squares_in_reg(&i_reg);
+
+            for sqrx in &sqrs {
+                // Will include at least one bit change desired, but maybe others.
+                let expected_result = rulx.result_from_initial_state(&sqrx.state);
+
+                // If a Pn::Two squares last result is not equal to what is wanted,
+                // the next result should be.
+                if *sqrx.most_recent_result() != expected_result {
+                    let stpx = SomeStep::new(
+                        self.id,
+                        rulx.restrict_initial_region(&SomeRegion::new(vec![sqrx.state.clone()])),
+                        AltRuleHint::NoAlt {},
+                        grpx.region.clone(),
+                    );
+                    stps.push(stpx);
+                } // end if
+            } // next sqrx
+
+            stps.push(SomeStep::new(
+                self.id,
+                rulx,
+                AltRuleHint::AltRule { rule: ruly2 },
+                grpx.region.clone(),
+            ));
+        } // next rulx
+
+        stps
+    }
 
     /// Find groups that can be formed by a given square, and other similar squares, that is not currently in a group.
     fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> Vec<SomeGroup> {

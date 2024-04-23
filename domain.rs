@@ -445,7 +445,10 @@ impl SomeDomain {
 
         let required_change = SomeRule::rule_region_to_region(from_reg, to_reg).change();
 
-        let steps_str = self.get_steps(&required_change, None)?;
+        let steps_str = self.get_steps(&required_change, None);
+        if steps_str.is_empty() {
+            return None;
+        }
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
 
@@ -550,7 +553,10 @@ impl SomeDomain {
         let num_depth = 4 * required_change.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let steps_str = self.get_steps(&required_change, within)?;
+        let steps_str = self.get_steps(&required_change, within);
+        if steps_str.is_empty() {
+            return None;
+        }
 
         // Get vector of steps for each bit change.
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
@@ -588,26 +594,28 @@ impl SomeDomain {
     ///
     /// If all steps found, in aggregate, cannot change all bits needed, return None.
     ///
-    fn get_steps(
+    pub fn get_steps(
         &self,
         required_change: &SomeChange,
         within: Option<&SomeRegion>,
-    ) -> Option<StepStore> {
+    ) -> StepStore {
         // Check if changes are possible.
 
         // Get a vector of steps (from rules) that make part of the needed changes.
         let steps_str: StepStore = self.actions.get_steps(required_change, within);
 
         // Check that the steps roughly encompass all needed changes, else return None.
-        let can_change = steps_str.aggregate_changes()?;
+        let Some(can_change) = steps_str.aggregate_changes() else {
+            return StepStore::new(vec![]);
+        };
 
         if required_change.is_subset_of(&can_change) {
         } else {
             //println!("get_steps: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", required_change, can_change);
-            return None;
+            return StepStore::new(vec![]);
         }
 
-        Some(steps_str)
+        steps_str
     }
 
     /// Return a Region from a string.

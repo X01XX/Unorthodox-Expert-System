@@ -197,6 +197,7 @@ impl StepStore {
 
 /// Return true if any single-bit change step vector pairs are all mutually exclusive
 fn any_mutually_exclusive_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> bool {
+    debug_assert!(wanted.is_not_low());
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("any_mutually_exclusive_changes checking {:?} and {:?}", by_change[inx], by_change[iny]);
@@ -241,12 +242,12 @@ fn do_later_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> Vec<us
             if iny == inx {
                 continue;
             }
-            if step_vecs_sequence_reverses_change(&by_change[inx], &by_change[iny], wanted)
+            if step_vecs_sequence_blocks_changes(&by_change[inx], &by_change[iny], wanted)
                 && !inxs.contains(&inx)
             {
                 inxs.push(inx);
             }
-            if step_vecs_sequence_reverses_change(&by_change[iny], &by_change[inx], wanted)
+            if step_vecs_sequence_blocks_changes(&by_change[iny], &by_change[inx], wanted)
                 && !inxs.contains(&iny)
             {
                 inxs.push(iny);
@@ -261,9 +262,9 @@ fn do_later_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> Vec<us
     inxs
 }
 
-/// Return true if the order of all steps in step vector arg one will reuire a
+/// Return true if the order of all steps in step vector arg one will require a
 /// wanted bit change to be reversed in order to do any step in step vector arg two.
-fn step_vecs_sequence_reverses_change(
+fn step_vecs_sequence_blocks_changes(
     vec_x: &[&SomeStep],
     vec_y: &[&SomeStep],
     wanted: &SomeChange,
@@ -275,7 +276,7 @@ fn step_vecs_sequence_reverses_change(
             if std::ptr::eq(refx, refy) {
                 return false;
             }
-            if !refx.rule.sequence_reverses_change(&refy.rule, wanted) {
+            if !refx.rule.sequence_blocks_changes(&refy.rule, wanted) {
                 return false;
             }
         } //next refy

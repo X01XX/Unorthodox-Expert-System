@@ -424,6 +424,15 @@ impl Index<usize> for RuleStore {
     }
 }
 
+impl IntoIterator for RuleStore {
+    type Item = SomeRule;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.avec.into_iter()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

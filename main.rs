@@ -71,7 +71,6 @@ use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
 mod targetstore;
-use crate::change::SomeChange;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::rule::SomeRule;
 
@@ -81,7 +80,6 @@ extern crate rand;
 use std::fs::File;
 use std::path::Path;
 use std::process;
-use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 /// Get and react to arguments given.
@@ -590,290 +588,37 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "rx" => {
-                // Check for, and process an argument to the rx command.
-                let mut goal: Option<SomeRegion> = None;
-                let mut dif: Option<SomeChange> = None;
-                let dmx = &dmxs.domains[dmxs.current_domain];
-                let mut cur_state = dmx.cur_state.clone();
+                for inx in dmxs.cant_do.iter() {
+                    let needx: &SomeNeed = &dmxs.needs[*inx];
+                    let targetstorex = needx.target();
+                    let targetx = &targetstorex[0];
+                    let domx = &dmxs.domains[needx.dom_id()];
 
-                if cmd.len() > 1 {
-                    if let Ok(regx) = SomeRegion::new_from_string(cmd[1]) {
-                        if regx.num_bits() == dmx.cur_state.num_bits() {
-                            if regx.is_superset_of(&cur_state) {
-                                println!("Current state is already in the goal");
-                                return;
-                            } else {
-                                goal = Some(regx);
-                                println!("A *  after a rule indicates at least one needed change.");
-                                println!("A *- after a rule indicates at least one additional uneeded change.");
-                            }
-                        } else {
-                            println!("Invalid number of bits is region string");
-                        }
-                    } else {
-                        println!("Unable to convert string {} into a region", cmd[1]);
+                    let wanted =
+                        SomeRule::rule_state_to_region(&domx.cur_state, &targetx.region).change();
+                    println!("need {needx} needed changes {wanted}");
+
+                    let steps = domx.get_steps(&wanted, None);
+                    if steps.is_empty() {
+                        println!("Steps found do not encompass all needed changes");
+                        continue;
                     }
-                }
-                let mut stack = Vec::<(SomeState, (usize, &SomeRule), SomeState)>::new();
-                let ruls = dmx.all_rules();
-                loop {
-                    if let Some(ref regx) = goal {
-                        let wanted_changes = SomeRule::rule_region_to_region(
-                            &SomeRegion::new(vec![cur_state.clone()]),
-                            regx,
-                        )
-                        .change();
-                        println!(
-                            "Goal {}, Change needed {} (number bits {})",
-                            regx,
-                            wanted_changes,
-                            wanted_changes.number_changes()
-                        );
-                        dif = Some(wanted_changes);
-                    }
+                    println!("steps {}", steps);
+                    // Chack each pair of rules.
+                    for inx in 0..(steps.len() - 1) {
+                        let stpx = &steps[inx];
+                        for iny in (inx + 1)..steps.len() {
+                            let stpy = &steps[iny];
 
-                    // Print Stack.
-                    if stack.is_empty() {
-                        println!("Stack: empty\n");
-                    } else {
-                        println!("Stack:");
-                        for (inx, (cur_sta, rulx, nxt_sta)) in stack.iter().enumerate() {
-                            println!(
-                                "  {:2} {} {} -{}-> {}",
-                                inx, cur_sta, rulx.1, rulx.0, nxt_sta
-                            );
-                        }
-                        println!(" ");
-                    }
-
-                    // Check if a goal is given and achieved.
-                    let mut show_rules = true;
-                    if let Some(ref regx) = goal {
-                        if regx.is_superset_of(&cur_state) {
-                            show_rules = false;
-                        }
-                    }
-
-                    // A list of valid indicies for later display and validation.
-                    let mut valid_indexes = Vec::<usize>::new();
-                    if show_rules {
-                        println!("{} rules", ruls.len());
-
-                        // Get rules that make a needed change, but cannot be used with the current state.
-                        // Save a list of valid indicies for later display.
-                        let mut future_numbers = Vec::<usize>::new();
-                        if let Some(ref wanted_changes) = &dif {
-                            for (inx, (_act_id, rulx)) in ruls.iter().enumerate() {
-                                if !rulx.initial_region().is_superset_of(&cur_state)
-                                    && wanted_changes.intersection(*rulx).is_not_low()
-                                {
-                                    future_numbers.push(inx);
-                                }
-                            }
-                        }
-
-                        // Get rules that make a change to the current state.
-                        for (inx, (_act_id, rulx)) in ruls.iter().enumerate() {
-                            // If rule can be applied to the state..
-                            if rulx.initial_region().is_superset_of(&cur_state) {
-                                // Calc the result state is different from the current state.
-                                let next_state = rulx.result_from_initial_state(&cur_state);
-                                if next_state != cur_state {
-                                    // Check for dup state in the stack.
-                                    let mut not_dup = true;
-                                    for (cur_sta, _rulx, nxt_sta) in stack.iter() {
-                                        if next_state == *cur_sta || next_state == *nxt_sta {
-                                            not_dup = false;
-                                        }
-                                    }
-                                    // If no dup state found in the stack, add the index.
-                                    if not_dup {
-                                        valid_indexes.push(inx);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Display future options, if any.
-                        if future_numbers.is_empty() {
-                        } else {
-                            println!("Possible future options, containing a needed change:");
-                            let goal_reg = goal.as_ref().expect("SNH");
-                            let edge_mask = goal_reg.edge_mask();
-
-                            for inx in future_numbers.iter() {
-                                let (act_id, rulx) = ruls[*inx];
-                                let mut ruly = rulx.clone();
-
-                                let mut suffix = String::from(" ");
-                                if let Some(wanted_changes) = &dif {
-                                    ruly = rulx
-                                        .restrict_for_changes(wanted_changes, None)
-                                        .expect("SNH");
-                                    let to_rule = SomeRule::rule_region_to_region(
-                                        &SomeRegion::new(vec![cur_state.clone()]),
-                                        &ruly.initial_region(),
-                                    );
-
-                                    let agg_rule = to_rule.combine_pair(&ruly);
-
-                                    let wanted_bit_changes = wanted_changes.intersection(&agg_rule);
-
-                                    let unwanted_bit_changes = wanted_changes
-                                        .bitwise_not()
-                                        .intersection(&agg_rule)
-                                        .bitwise_and(&edge_mask);
-
-                                    if wanted_bit_changes.is_not_low() {
-                                        suffix += &format!("wanted {}", wanted_bit_changes);
-                                    }
-                                    if unwanted_bit_changes.is_not_low() {
-                                        suffix += &format!(" unwanted {}", unwanted_bit_changes);
-                                    }
-                                }
+                            if stpx.rule.mutually_exclusive(&stpy.rule, &wanted) {
                                 println!(
-                                    "  {:2} {} {} -{}-> {} {suffix}",
-                                    inx,
-                                    ruly.initial_region(),
-                                    ruly,
-                                    act_id,
-                                    ruly.result_region(),
+                                    "rule {} is mutually eckclusive rule {}",
+                                    stpx.rule, stpy.rule
                                 );
                             }
-                            println!(" ");
-                        }
-
-                        // Display current options.
-                        if valid_indexes.is_empty() {
-                            println!("Current options: None");
-                        } else {
-                            println!("Current options:");
-                            for inx in valid_indexes.iter() {
-                                let (act_id, rulx) = ruls[*inx];
-
-                                // Calc result of applying the rule.
-                                let result = rulx.result_from_initial_state(&cur_state);
-
-                                let ruly = rulx.restrict_initial_region(&SomeRegion::new(vec![
-                                    cur_state.clone(),
-                                ]));
-
-                                // If there is a change needed for a goal.
-                                if let Some(ref wanted_changes) = dif {
-                                    // Init string for display of links.
-                                    let mut suffix = String::new();
-                                    // Init vector for link indicies.
-                                    let mut link_indexes = Vec::<usize>::new();
-                                    // Look for possible links.
-                                    for inf in future_numbers.iter() {
-                                        // Get rule info.
-                                        let (_act_idf, rulf) = ruls[*inf];
-
-                                        // If possible future rule can be linked.
-                                        if rulf.initial_region().is_superset_of(&result) {
-                                            // Restrict rule to filter out changes that will not apply to the linked result state.
-                                            let ruly = rulf.restrict_initial_region(
-                                                &SomeRegion::new(vec![result.clone()]),
-                                            );
-                                            if wanted_changes.intersection(&ruly).is_low() {
-                                            } else {
-                                                // There is a change caused by the rule, calc next state.
-                                                let next_state =
-                                                    ruly.result_from_initial_state(&result);
-                                                // Check for dup state, in stack.
-                                                let mut not_dup = true;
-                                                for (cur_sta, _rulx, nxt_sta) in stack.iter() {
-                                                    if next_state == *cur_sta
-                                                        || next_state == *nxt_sta
-                                                    {
-                                                        not_dup = false;
-                                                    }
-                                                }
-                                                // If no dup state in stack, add possible link.
-                                                if not_dup {
-                                                    link_indexes.push(*inf);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    // Generate suffix for rule display, if needed.
-                                    if link_indexes.is_empty() {
-                                    } else {
-                                        suffix = format!(" Links to {:?}, above", link_indexes);
-                                    }
-
-                                    // Check if a wanted change occurs.
-                                    if wanted_changes.intersection(&ruly).is_low() {
-                                        println!(
-                                            "  {:2} {} -{}-> {} {}",
-                                            inx, cur_state, act_id, result, suffix,
-                                        );
-                                    } else if wanted_changes.intersection(&ruly) != ruly.change() {
-                                        // Check for uneeded change.
-                                        println!(
-                                            "  {:2} {} -{}-> {} *- {}",
-                                            inx, cur_state, act_id, result, suffix,
-                                        );
-                                    } else {
-                                        // There is a needed change.
-                                        println!(
-                                            "  {:2} {} -{}-> {} * {}",
-                                            inx, cur_state, act_id, result, suffix,
-                                        );
-                                    }
-                                } else {
-                                    // No goal was given.
-                                    println!("  {:2} {} -{}-> {}", inx, cur_state, act_id, result);
-                                }
-                            }
                         }
                     }
-
-                    // Get user input.
-                    let mut cmd2 = Vec::<&str>::with_capacity(10);
-                    let guess2 = pause_for_input(
-                        "\nType a number, from options, above, pop, clear, or q to quit: ",
-                    );
-
-                    // Process user input.
-                    for word in guess2.split_whitespace() {
-                        cmd2.push(word);
-                    }
-                    if cmd2.is_empty() {
-                        continue;
-                    }
-                    if cmd2[0] == "q" {
-                        return;
-                    }
-                    if cmd2[0] == "pop" {
-                        if let Some((new_state, _rulx, _old_state)) = stack.pop() {
-                            cur_state = new_state;
-                        }
-                        continue;
-                    }
-                    if cmd2[0] == "clear" {
-                        while !stack.is_empty() {
-                            if let Some((new_state, _rulx, _old_state)) = stack.pop() {
-                                cur_state = new_state;
-                            }
-                        }
-                        continue;
-                    }
-                    match usize::from_str(cmd2[0]) {
-                        Ok(rul_num) => {
-                            if !valid_indexes.contains(&rul_num) {
-                                println!("Number not matched");
-                            } else {
-                                let new_state =
-                                    ruls[rul_num].1.result_from_initial_state(&cur_state);
-
-                                stack.push((cur_state.clone(), ruls[rul_num], new_state.clone()));
-                                cur_state = new_state;
-                            }
-                        }
-                        _ => println!("Did not understand number"),
-                    }
-                } // end loop
+                }
             }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");

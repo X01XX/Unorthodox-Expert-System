@@ -569,7 +569,7 @@ impl DomainStore {
                 cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
                 rate += self.select.rate_by_negative_regions(&cur_regions);
                 if let AltRule { .. } = &stepx.alt_rule {
-                    rate -= 1
+                    rate -= 1;
                 }
             }
         }

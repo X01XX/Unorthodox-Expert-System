@@ -126,11 +126,6 @@ impl SomeChange {
 
         strrc
     }
-
-    /// Return a mask of bit positions that can change.
-    pub fn change_mask(&self) -> SomeMask {
-        self.b01.bitwise_and(&self.b10)
-    }
 } // end impl SomeChange
 
 /// Allow different types, containing 0->1 and 1->0 masks, to interact.
@@ -198,55 +193,6 @@ mod tests {
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
-
-        Ok(())
-    }
-
-    #[test]
-    fn changes_wanted_unwanted_reverse() -> Result<(), String> {
-        // Create a mask that uses one integer for bits.
-
-        let wanted_changes = SomeChange {
-            b01: SomeMask::new_from_string("m0b1010")?,
-            b10: SomeMask::new_from_string("m0b0100")?,
-        };
-        println!("wanted_changes    {wanted_changes}");
-
-        let available_changes = SomeChange {
-            b01: SomeMask::new_from_string("m0b1001")?,
-            b10: SomeMask::new_from_string("m0b1100")?,
-        };
-        println!("available_changes {available_changes}");
-
-        let possible_changes = wanted_changes.intersection(&available_changes);
-        println!("possible_changes  {possible_changes}");
-        assert!(
-            possible_changes
-                == SomeChange {
-                    b01: SomeMask::new_from_string("m0b1000")?,
-                    b10: SomeMask::new_from_string("m0b0100")?
-                }
-        );
-
-        let unwanted_changes = possible_changes.difference(&available_changes);
-        println!("unwanted_changes  {unwanted_changes}");
-        assert!(
-            unwanted_changes
-                == SomeChange {
-                    b01: SomeMask::new_from_string("m0b0001")?,
-                    b10: SomeMask::new_from_string("m0b1000")?
-                }
-        );
-
-        let reverse_changes = unwanted_changes.reverse();
-        println!("reverse_changes   {reverse_changes}");
-        assert!(
-            reverse_changes
-                == SomeChange {
-                    b01: SomeMask::new_from_string("m0b1000")?,
-                    b10: SomeMask::new_from_string("m0b0001")?
-                }
-        );
 
         Ok(())
     }
