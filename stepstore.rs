@@ -193,6 +193,19 @@ impl StepStore {
 
         Some(steps_by_change_vov)
     }
+
+    /// Return a count of the number of steps that have a gven change.
+    pub fn number_with_change(&self, achange: &SomeChange) -> usize {
+        let mut cnt = 0;
+        for stepx in &self.avec {
+            if stepx.rule.b01.is_superset_ones_of(&achange.b01)
+                && stepx.rule.b10.is_superset_ones_of(&achange.b10)
+            {
+                cnt += 1;
+            }
+        }
+        cnt
+    }
 } // end impl StepStore
 
 /// Return true if any single-bit change step vector pairs are all mutually exclusive

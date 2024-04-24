@@ -39,6 +39,7 @@ use need::SomeNeed;
 mod region;
 use region::SomeRegion;
 mod change;
+use crate::change::SomeChange;
 mod regionstore;
 mod regionstorecorr;
 mod resultstore;
@@ -52,6 +53,7 @@ mod state;
 use sample::SomeSample;
 use state::SomeState;
 mod domain;
+use crate::domain::SomeDomain;
 mod needstore;
 mod plan;
 use plan::SomePlan;
@@ -593,31 +595,8 @@ fn command_loop(dmxs: &mut DomainStore) {
                     let targetstorex = needx.target();
                     let targetx = &targetstorex[0];
                     let domx = &dmxs.domains[needx.dom_id()];
-
-                    let wanted =
-                        SomeRule::rule_state_to_region(&domx.cur_state, &targetx.region).change();
-                    println!("need {needx} needed changes {wanted}");
-
-                    let steps = domx.get_steps(&wanted, None);
-                    if steps.is_empty() {
-                        println!("Steps found do not encompass all needed changes");
-                        continue;
-                    }
-                    println!("steps {}", steps);
-                    // Chack each pair of rules.
-                    for inx in 0..(steps.len() - 1) {
-                        let stpx = &steps[inx];
-                        for iny in (inx + 1)..steps.len() {
-                            let stpy = &steps[iny];
-
-                            if stpx.rule.mutually_exclusive(&stpy.rule, &wanted) {
-                                println!(
-                                    "rule {} is mutually eckclusive rule {}",
-                                    stpx.rule, stpy.rule
-                                );
-                            }
-                        }
-                    }
+                    println!("\nNeed: {needx}");
+                    eval_path(domx, &domx.cur_state, &targetx.region, &String::from("  "));
                 }
             }
             _ => {
@@ -626,6 +605,100 @@ fn command_loop(dmxs: &mut DomainStore) {
         };
     } // end loop
 } // end command_loop
+
+/// Evaluate a path to figure out what the difficulty is.
+fn eval_path(
+    domx: &SomeDomain,
+    from: &SomeState,
+    target_region: &SomeRegion,
+    prefix: &str,
+) -> Option<SomeState> {
+    let mut prefix = prefix.to_string();
+    prefix.push_str("  ");
+
+    let wanted = SomeRule::rule_state_to_region(&domx.cur_state, target_region).change();
+
+    if target_region.is_superset_of(from) {
+        println!(
+            "{prefix} from {from} to {target_region} change needed {wanted}, target satisfied"
+        );
+        return Some(from.clone());
+    }
+
+    println!("\n{prefix} from {from} to {target_region} change needed {wanted}");
+
+    let steps = domx.get_steps(&wanted, None);
+    if steps.is_empty() {
+        println!("{prefix} Steps to encompass all needed changes, not found");
+        return None;
+    }
+
+    println!("{prefix} steps {}", steps);
+    // Chack each pair of rules for being mutually exclusive.
+    for inx in 0..(steps.len() - 1) {
+        let stpx = &steps[inx];
+
+        for iny in (inx + 1)..steps.len() {
+            let stpy = &steps[iny];
+
+            if stpx.rule.mutually_exclusive(&stpy.rule, &wanted) {
+                print!(
+                    "{prefix} rule {} is mutually exclusive rule {}",
+                    stpx.rule, stpy.rule
+                );
+
+                let wantx01 = stpx.rule.b01.bitwise_and(&wanted.b01);
+                let num_wantx01 =
+                    steps.number_with_change(&SomeChange::new(wantx01.clone(), wantx01.new_low()));
+
+                let wantx10 = stpx.rule.b10.bitwise_and(&wanted.b10);
+                let num_wantx10 =
+                    steps.number_with_change(&SomeChange::new(wantx10.clone(), wantx10.new_low()));
+
+                let wanty01 = stpy.rule.b01.bitwise_and(&wanted.b01);
+                let num_wanty01 =
+                    steps.number_with_change(&SomeChange::new(wanty01.clone(), wanty01.new_low()));
+
+                let wanty10 = stpy.rule.b10.bitwise_and(&wanted.b10);
+                let num_wanty10 =
+                    steps.number_with_change(&SomeChange::new(wanty10.clone(), wanty10.new_low()));
+
+                if (num_wantx01 == 1 || num_wantx10 == 1) && (num_wanty01 == 1 || num_wanty10 == 1)
+                {
+                    println!(" single-source change blocked");
+                    return None;
+                } else {
+                    println!(" ");
+                }
+            }
+        } // iny
+    } // next inx
+
+    // Check each step.
+    for stepx in steps.iter() {
+        if stepx.initial.is_superset_of(from) {
+            let next_sta = stepx.rule.result_from_initial_state(from);
+            if target_region.is_superset_of(&next_sta) {
+                println!("{prefix} State {next_sta} satisfies target");
+                return None;
+            } else {
+                eval_path(domx, &next_sta, target_region, &prefix);
+            }
+        } else if let Some(next_sta) = eval_path(domx, from, &stepx.initial, &prefix) {
+            let next_sta = stepx.rule.result_from_initial_state(&next_sta);
+            if target_region.is_superset_of(&next_sta) {
+                println!("{prefix} State {next_sta} satisfies target");
+                return None;
+            } else {
+                eval_path(domx, &next_sta, target_region, &prefix);
+            }
+            eval_path(domx, &next_sta, target_region, &prefix);
+        } else {
+            println!("{prefix} path to step not found");
+        }
+    }
+    None
+}
 
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {

@@ -517,15 +517,23 @@ impl SomeRule {
 
         debug_assert!(wanted.is_not_low());
 
-        let msk01 = self.b01.bitwise_and(&other.b11).bitwise_and(&wanted.b01);
-        if msk01.is_not_low() {
+        let msk01 = self.b01.bitwise_and(&wanted.b01);
+
+        let msk01_11 = msk01.bitwise_and(&other.b11); // Matches 1->1, X->1 and X->X.
+
+        if msk01_11.is_not_low() {
             return false;
         }
 
-        let msk10 = self.b10.bitwise_and(&other.b00).bitwise_and(&wanted.b10);
-        if msk10.is_not_low() {
+        let msk10 = self.b10.bitwise_and(&wanted.b10);
+
+        let msk10_00 = msk10.bitwise_and(&other.b00); // Matches 0->0, X->0 and X->X.
+
+        if msk10_00.is_not_low() {
             return false;
         }
+
+        debug_assert!(msk01.is_not_low() || msk10.is_not_low()); // Target rule must have at least one wanted change.
 
         true
     }
@@ -827,57 +835,59 @@ mod tests {
     }
 
     #[test]
-    fn mutually_exclusive() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(4);
-        let tmp_msk = SomeMask::new(tmp_bts.clone());
-
-        // The results of rules, (10 vs 01) do not intersect the initial regions (00, 00).
-        // Running either rule precludes running the other.
-        let rul1 = SomeRule::new_from_string("00/00/01/00")?;
-        let rul2 = SomeRule::new_from_string("00/00/00/01")?;
-        let chg1 = SomeChange::new(SomeMask::new_from_string("m0b0011")?, tmp_msk.new_low());
-        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
-        assert!(rul1.mutually_exclusive(&rul2, &chg1));
-
-        // The results of rules (10, 01) intersect one of the initial regions (00, 10),
-        // so one rul1 should be run before rul2.
-        let rul1 = SomeRule::new_from_string("00/00/01/00")?;
-        let rul2 = SomeRule::new_from_string("00/00/10/01")?;
-        let chg1 = SomeChange::new(SomeMask::new_from_string("m0b0011")?, tmp_msk.new_low());
-        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
-        assert!(rul1.mutually_exclusive(&rul2, &chg1));
-
-        // The results of rules (1X, X0) intersects both of the initial regions (XX, XX),
-        // so either rule can be run before the other.
-        let rul1 = SomeRule::new_from_string("xx/xx/x1/xx")?;
-        let rul2 = SomeRule::new_from_string("xx/xx/xx/x0")?;
-        let chg1 = SomeChange::new(SomeMask::new_from_string("m0b0011")?, tmp_msk.new_low());
-        println!("rul1: {rul1} rul2: {rul2} chg1: {chg1}");
-        assert!(!rul1.mutually_exclusive(&rul2, &chg1));
-
-        Ok(())
-    }
-
-    #[test]
     fn sequence_blocks_changes() -> Result<(), String> {
-        let tmp_bts = SomeBits::new(4);
-        let tmp_msk = SomeMask::new(tmp_bts.clone());
+        // All possible change pass-through conditions can be tested at once.
+        let rul1 = SomeRule::new_from_string("01/01/01/10/10/10")?;
+        let rul2 = SomeRule::new_from_string("11/X1/XX/00/X0/XX")?;
+        let msk1 = SomeMask::new_from_string("m0b111111")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        // The results of rules (10, 01) intersect one of the initial regions (00, 10),
-        // so one rul1 should be run before rul2.
-        let rul1 = SomeRule::new_from_string("00/00/01/00")?;
-        let rul2 = SomeRule::new_from_string("00/00/10/01")?;
-        let rul3 = SomeRule::new_from_string("xx/xx/xx/xx")?;
-        let chg1 = SomeChange::new(SomeMask::new_from_string("m0b0011")?, tmp_msk.new_low());
-        let chg2 = SomeChange::new(tmp_msk.new_low(), SomeMask::new_from_string("m0b0011")?);
-        println!("rul1: {rul1} rul2: {rul2} rul3: {rul3} chg1: {chg1}");
+        // Change non pass-through conditions must be tested one-by-one.
 
-        println!("1->2 {}", rul1.sequence_blocks_changes(&rul2, &chg1));
-        println!("2->1 {}", rul2.sequence_blocks_changes(&rul1, &chg1));
+        // Test 0->1 non pass-through conditions.
+        let rul1 = SomeRule::new_from_string("01")?;
+        let rul2 = SomeRule::new_from_string("10")?;
+        let msk1 = SomeMask::new_from_string("m0b1")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
-        assert!(rul2.sequence_blocks_changes(&rul1, &chg2));
-        assert!(!rul1.sequence_blocks_changes(&rul3, &chg1));
-        assert!(!rul2.sequence_blocks_changes(&rul3, &chg1));
+
+        let rul2 = SomeRule::new_from_string("00")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("01")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("X0")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("Xx")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        // Test 1->0 non pass-through conditions.
+        let rul1 = SomeRule::new_from_string("10")?;
+        let rul2 = SomeRule::new_from_string("01")?;
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("11")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("10")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("X1")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+
+        let rul2 = SomeRule::new_from_string("Xx")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         Ok(())
     }
