@@ -359,6 +359,8 @@ impl SomeDomain {
         //
         // This indicates that a, possibly significant, deviation from a straight-forward
         // rule-path is required.
+        //
+        // Storage for indicies of step vectors.
         let mut asym_only_changes = Vec::<usize>::new();
 
         for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
@@ -377,42 +379,109 @@ impl SomeDomain {
         // Check if any forced asymmetrical single-bit changes have been found.
         if asym_only_changes.is_empty() {
         } else {
-            // Randomly choose a step.
-            let inx = asym_only_changes[rand::thread_rng().gen_range(0..asym_only_changes.len())];
+            // Storage for steps, vector index, step index within vector, wanted - unwanted changes.
+            let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-            let bit_changex = &steps_by_change_vov[inx];
+            let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
 
-            let stepx = bit_changex[rand::thread_rng().gen_range(0..bit_changex.len())];
+            let wanted_changes_invert = wanted_changes.bitwise_not();
 
+            for inx in asym_only_changes.iter() {
+                for (iny, stepx) in steps_by_change_vov[*inx].iter().enumerate() {
+                    let rule_to = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
+
+                    let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+
+                    let step_changes = aggregate_rule.change();
+
+                    let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
+
+                    let step_num_unwanted_changes = step_unwanted_changes.number_changes();
+
+                    let step_num_wanted_changes =
+                        step_changes.intersection(&wanted_changes).number_changes();
+
+                    //println!("From {from_reg} To {goal_reg} step rule: {}->{} agg rule {}->{} num wanted changes {num_wanted_changes} step num wanted {step_num_wanted_changes} step num unwanted {step_num_unwanted_changes}",
+                    //    stepx.rule.initial_region(), stepx.rule.result_region(),
+                    //    aggregate_rule.initial_region(), aggregate_rule.result_region());
+
+                    // Save ratio info.
+                    // Ratio is wanted - unwanted.
+                    ratios.push((
+                        *inx,
+                        iny,
+                        step_num_wanted_changes as isize - step_num_unwanted_changes as isize,
+                    ));
+                }
+            }
+            //println!("ratios1: {ratios:?}");
+            // Order by descending ratio.
+            ratios.sort_by(|a, b| (b.2).partial_cmp(&a.2).unwrap());
+            // println!("ratios: {ratios:?}");
+            let mut num_same_ratios = 1;
+            for (_inx, _iny, ratio) in ratios.iter().skip(1) {
+                if *ratio == ratios[0].2 {
+                    num_same_ratios += 1;
+                } else {
+                    break;
+                }
+            }
+            let inx = rand::thread_rng().gen_range(0..num_same_ratios);
+            //println!("inx {inx} of 0..{num_same_ratios}");
+            let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1);
         }
 
         // Asymmetric chaining not required.
 
-        // Randomly choose a wanted single-bit change vector.
-        let bit_changex =
-            &steps_by_change_vov[rand::thread_rng().gen_range(0..steps_by_change_vov.len())];
+        // Calc unwanted - unwanted changes for each possible step.
+        let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-        // Randomly choose a step within the single-bit-change vector,
-        // that intersects the from-region or the goal-region.
-        // There should be at least one, based on the logic above.
-        let stepx = if bit_changex.len() == 1 {
-            bit_changex[0]
-        } else {
-            let mut rand_inx = tools::RandomPick::new(bit_changex.len());
-            let mut iny: Option<usize> = None;
+        let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
 
-            while let Some(inx) = rand_inx.pick() {
-                if bit_changex[inx].initial.intersects(from_reg)
-                    || bit_changex[inx].result.intersects(goal_reg)
-                {
-                    iny = Some(inx);
-                    break;
-                }
+        let wanted_changes_invert = wanted_changes.bitwise_not();
+
+        for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
+            for (iny, stepx) in step_vecx.iter().enumerate() {
+                let rule_to = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
+                let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+
+                let step_changes = aggregate_rule.change();
+
+                let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
+
+                let step_num_unwanted_changes = step_unwanted_changes.number_changes();
+
+                let step_num_wanted_changes =
+                    step_changes.intersection(&wanted_changes).number_changes();
+
+                //println!("From {from_reg} To {goal_reg} step rule: {}->{} agg rule {}->{} num wanted changes {num_wanted_changes} step num wanted {step_num_wanted_changes} step num unwanted {step_num_unwanted_changes}",
+                //    stepx.rule.initial_region(), stepx.rule.result_region(),
+                //    aggregate_rule.initial_region(), aggregate_rule.result_region());
+
+                // Save ratio info.
+                // Ratio is wanted - unwanted.
+                ratios.push((
+                    inx,
+                    iny,
+                    step_num_wanted_changes as isize - step_num_unwanted_changes as isize,
+                ));
+            } // next iny, stepx
+        } // next inx, step_vecx
+
+        ratios.sort_by(|a, b| (b.2).partial_cmp(&a.2).unwrap());
+
+        let mut num_same_ratios = 1;
+        for (_inx, _iny, ratio) in ratios.iter().skip(1) {
+            if *ratio == ratios[0].2 {
+                num_same_ratios += 1;
+            } else {
+                break;
             }
-            let inz = iny.unwrap();
-            bit_changex[inz]
-        };
+        }
+        let inx = rand::thread_rng().gen_range(0..num_same_ratios);
+
+        let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
 
         // Process a forward chaining step.
         if stepx.initial.intersects(from_reg) {
@@ -423,12 +492,17 @@ impl SomeDomain {
             return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
         }
 
-        // Must be a backward chaining step.
-        let stepy = stepx.restrict_result_region(goal_reg);
+        // Process backward chaining step.
+        if stepx.result.intersects(goal_reg) {
+            let stepy = stepx.restrict_result_region(goal_reg);
 
-        let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
+            let plan_to_step = self.plan_steps_between(from_reg, &stepy.initial, depth - 1)?;
 
-        plan_to_step.link(&SomePlan::new(self.id, vec![stepy]))
+            return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
+        }
+
+        // Must be an asymmetric step.
+        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1)
     } // end random_depth_first_search2
 
     /// Return possible plan to change state between two regions.

@@ -65,19 +65,6 @@ impl StateStore {
         }
         ret_stas
     }
-
-    /// Return states not in a given region.
-    pub fn _not_in_reg(&self, not_reg: &SomeRegion) -> Self {
-        let mut ret_stas = Self::new(vec![]);
-
-        for stax in self.avec.iter() {
-            if not_reg.is_subset_of(stax) {
-            } else {
-                ret_stas.push(stax.clone());
-            }
-        }
-        ret_stas
-    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

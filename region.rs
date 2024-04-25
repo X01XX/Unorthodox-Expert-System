@@ -389,14 +389,6 @@ impl SomeRegion {
         Self::new(vec![state1, state2])
     }
 
-    /// Return a region with masked bit positions set to X.
-    pub fn _set_to_x(&self, msk: &SomeMask) -> Self {
-        let state1 = self.state1().bitwise_or(msk);
-        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
-
-        Self::new(vec![state1, state2])
-    }
-
     /// Return the distance from a region to a region/state.
     pub fn distance(&self, other: &impl AccessStates) -> usize {
         self.diff_mask(other).num_one_bits()

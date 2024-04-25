@@ -33,6 +33,7 @@ use crate::bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
+use crate::mask::SomeMask;
 mod need;
 mod tools;
 use need::SomeNeed;
@@ -647,24 +648,89 @@ fn eval_path(
                     stpx.rule, stpy.rule
                 );
 
-                let wantx01 = stpx.rule.b01.bitwise_and(&wanted.b01);
-                let num_wantx01 =
-                    steps.number_with_change(&SomeChange::new(wantx01.clone(), wantx01.new_low()));
+                // Get stpx wanted changes, blunted by stpy, check if any are only in one step.
+                let wantx01 = stpx
+                    .rule
+                    .b01
+                    .bitwise_and(&wanted.b01)
+                    .bitwise_and(&stpy.rule.b11.bitwise_not());
+                let mut wantx01_blk = false;
+                if wantx01.is_not_low() {
+                    let single_bit_changes: Vec<SomeMask> = wantx01.split();
 
-                let wantx10 = stpx.rule.b10.bitwise_and(&wanted.b10);
-                let num_wantx10 =
-                    steps.number_with_change(&SomeChange::new(wantx10.clone(), wantx10.new_low()));
+                    for bitx in single_bit_changes.iter() {
+                        if steps
+                            .number_with_change(&SomeChange::new(bitx.clone(), wantx01.new_low()))
+                            == 1
+                        {
+                            wantx01_blk = true;
+                            break;
+                        }
+                    }
+                }
 
-                let wanty01 = stpy.rule.b01.bitwise_and(&wanted.b01);
-                let num_wanty01 =
-                    steps.number_with_change(&SomeChange::new(wanty01.clone(), wanty01.new_low()));
+                let wantx10 = stpx
+                    .rule
+                    .b10
+                    .bitwise_and(&wanted.b10)
+                    .bitwise_and(&stpy.rule.b00.bitwise_not());
+                let mut wantx10_blk = false;
+                if wantx10.is_not_low() {
+                    let single_bit_changes: Vec<SomeMask> = wantx10.split();
 
-                let wanty10 = stpy.rule.b10.bitwise_and(&wanted.b10);
-                let num_wanty10 =
-                    steps.number_with_change(&SomeChange::new(wanty10.clone(), wanty10.new_low()));
+                    for bitx in single_bit_changes.iter() {
+                        if steps
+                            .number_with_change(&SomeChange::new(wantx10.new_low(), bitx.clone()))
+                            == 1
+                        {
+                            wantx10_blk = true;
+                            break;
+                        }
+                    }
+                }
 
-                if (num_wantx01 == 1 || num_wantx10 == 1) && (num_wanty01 == 1 || num_wanty10 == 1)
-                {
+                // Get stpy wanted changes, blunted by stpx, check if any are only in one step.
+                let wanty01 = stpy
+                    .rule
+                    .b01
+                    .bitwise_and(&wanted.b01)
+                    .bitwise_and(&stpx.rule.b11.bitwise_not());
+                let mut wanty01_blk = false;
+                if wanty01.is_not_low() {
+                    let single_bit_changes: Vec<SomeMask> = wanty01.split();
+
+                    for bity in single_bit_changes.iter() {
+                        if steps
+                            .number_with_change(&SomeChange::new(bity.clone(), wanty01.new_low()))
+                            == 1
+                        {
+                            wanty01_blk = true;
+                            break;
+                        }
+                    }
+                }
+
+                let wanty10 = stpy
+                    .rule
+                    .b10
+                    .bitwise_and(&wanted.b10)
+                    .bitwise_and(&stpx.rule.b00.bitwise_not());
+                let mut wanty10_blk = false;
+                if wanty10.is_not_low() {
+                    let single_bit_changes: Vec<SomeMask> = wanty10.split();
+
+                    for bity in single_bit_changes.iter() {
+                        if steps
+                            .number_with_change(&SomeChange::new(wanty10.new_low(), bity.clone()))
+                            == 1
+                        {
+                            wanty10_blk = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (wantx01_blk || wantx10_blk) && (wanty01_blk || wanty10_blk) {
                     println!(" single-source change blocked");
                     return None;
                 } else {

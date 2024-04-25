@@ -622,6 +622,45 @@ impl SomeRule {
     pub fn causes_predictable_change(&self) -> bool {
         !(self.b10.is_low() && self.b01.is_low())
     }
+
+    /// Combine two rules in sequence.
+    /// The result region of the first rule is not required to intersect the initial region of the second rule.
+    /// Changes in the first rule may be reversed in the second rule.
+    pub fn combine_sequence(&self, other: &Self) -> Self {
+        if self.result_region().intersects(&other.initial_region()) {
+            return self.combine_pair(other);
+        }
+        let rul_between =
+            Self::rule_region_to_region(&self.result_region(), &other.initial_region());
+
+        self.combine_pair(&rul_between).combine_pair(other)
+    }
+
+    /// Combine two rules.
+    /// The result region of the first rule must intersect the initial region of the second rule.
+    /// Changes in the first rule may be reversed in the second rule.
+    pub fn combine_pair(&self, other: &Self) -> Self {
+        assert!(self.result_region().intersects(&other.initial_region()));
+
+        Self {
+            b00: self
+                .b00
+                .bitwise_and(&other.b00)
+                .bitwise_or(&self.b01.bitwise_and(&other.b10)),
+            b01: self
+                .b01
+                .bitwise_and(&other.b11)
+                .bitwise_or(&self.b00.bitwise_and(&other.b01)),
+            b11: self
+                .b11
+                .bitwise_and(&other.b11)
+                .bitwise_or(&self.b10.bitwise_and(&other.b01)),
+            b10: self
+                .b10
+                .bitwise_and(&other.b00)
+                .bitwise_or(&self.b11.bitwise_and(&other.b10)),
+        }
+    }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
@@ -1025,6 +1064,114 @@ mod tests {
         };
         println!("rul3 = {rul3}");
         assert!(rul3 == SomeRule::new_from_string("00/01/x0/Xx/xx")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn combine_sequence() -> Result<(), String> {
+        // Test C->9, 9->A implied, A->F = C->F
+        let rul1 = SomeRule::new_from_string("11/10/00/01")?;
+        let rul2 = SomeRule::new_from_string("11/01/11/01")?;
+        let rul3 = rul1.combine_sequence(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+        let rul4 = SomeRule::new_from_string("11/11/01/01")?;
+        assert!(rul3 == rul4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn combine_pair() -> Result<(), String> {
+        // Test 0->0
+        let rul1 = SomeRule::new_from_string("00/00/00/00/00/00")?;
+        let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("00/01/00/01/00/01")?;
+        assert!(rul3 == rul4);
+
+        // Test 0->1
+        let rul1 = SomeRule::new_from_string("01/01/01/01/01/01")?;
+        let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("01/00/00/01/01/00")?;
+        assert!(rul3 == rul4);
+
+        // Test 1->1
+        let rul1 = SomeRule::new_from_string("11/11/11/11/11/11")?;
+        let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("11/10/10/11/11/10")?;
+        assert!(rul3 == rul4);
+
+        // Test 1->0
+        let rul1 = SomeRule::new_from_string("10/10/10/10/10/10")?;
+        let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("10/11/10/11/10/11")?;
+        assert!(rul3 == rul4);
+
+        // Test X->0
+        let rul1 = SomeRule::new_from_string("X0/X0/X0/X0/X0/X0")?;
+        let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("X0/X1/X0/X1/X0/X1")?;
+        assert!(rul3 == rul4);
+
+        // Test X->1
+        let rul1 = SomeRule::new_from_string("X1/X1/X1/X1/X1/X1")?;
+        let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("X1/X0/X0/X1/X1/X0")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->X
+        let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        assert!(rul3 == rul4);
+
+        // Test X->x
+        let rul1 = SomeRule::new_from_string("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
+        let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_pair(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_from_string("01/00/10/11/X0/X1/Xx/XX")?;
+        assert!(rul3 == rul4);
 
         Ok(())
     }
