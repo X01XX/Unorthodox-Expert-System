@@ -67,7 +67,7 @@ impl StepStore {
     }
 
     /// Reverse the order of steps in a StepStore.
-    pub fn reverse(&mut self) {
+    pub fn reverse_order(&mut self) {
         self.avec.reverse();
     }
 

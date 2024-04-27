@@ -351,6 +351,25 @@ impl SomeBits {
         }
     }
 
+    /// Return the bitwise AND-NOT of two SomeBits structs.
+    /// Assuming the self instance is valid, taking the invert of
+    /// the other will not accidentally introduce one bits outside of
+    /// the allowed number of bits.
+    pub fn b_and_not(&self, other: &Self) -> Self {
+        assert_eq!(self.num_bits, other.num_bits);
+
+        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
+
+        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
+            ints.push(x & !y);
+        }
+
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
+    }
+
     /// Return the bitwise OR of two SomeBits structs.
     pub fn b_or(&self, other: &Self) -> Self {
         assert_eq!(self.num_bits, other.num_bits);

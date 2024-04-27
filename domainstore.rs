@@ -387,7 +387,7 @@ impl DomainStore {
             if can.is_empty() {
                 println!(", none.");
                 if cur_pri_end == needs_len || cur_pri > select_priority {
-                    self.cant_do = cant;
+                    self.cant_do = (0..self.needs.len()).collect();
                     return;
                 }
 
@@ -1022,30 +1022,6 @@ impl DomainStore {
         self.print_can_do();
     }
 
-    /// Change the current state to be within a given region.
-    /// Return True if the change succeeds.
-    pub fn seek_state_in_region(&mut self, dom_id: usize, goal_region: &SomeRegion) -> bool {
-        if goal_region.is_superset_of(&self.domains[dom_id].cur_state) {
-            return true;
-        }
-
-        let from = self.all_current_regions();
-        let mut goal = from.clone();
-        goal[dom_id] = goal_region.clone();
-
-        let Some(plans) = self.make_plans2(&from, &goal, None) else {
-            return false;
-        };
-
-        // Do a plan
-        match self.run_plan(&plans[rand::thread_rng().gen_range(0..plans.len())]) {
-            Ok(_) => true,
-            Err(msg) => {
-                println!("{}", msg);
-                false
-            }
-        }
-    }
     /// Like Real Life, formulate a direct plan,
     /// notice there are some negative aspects,
     /// then try to form a plan that avoids the negative.

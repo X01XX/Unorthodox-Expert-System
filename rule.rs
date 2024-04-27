@@ -539,8 +539,26 @@ impl SomeRule {
     }
 
     /// Return a SomeChange instance.
-    pub fn change(&self) -> SomeChange {
+    pub fn _change(&self) -> SomeChange {
         SomeChange::new(self.b01.clone(), self.b10.clone())
+    }
+
+    /// Return a SomeChange instance.
+    pub fn to_change(&self) -> SomeChange {
+        SomeChange::new(self.b01.clone(), self.b10.clone())
+    }
+
+    /// Return true if any bits are set
+    pub fn changes_not_low(&self) -> bool {
+        self.b01.is_not_low() || self.b10.is_not_low()
+    }
+
+    /// Return true if no bits are set
+    pub fn changes_are_low(&self) -> bool {
+        if !self.b01.is_low() {
+            return false;
+        }
+        self.b10.is_low()
     }
 
     /// Return a rule for translating from a region to another region.
@@ -553,7 +571,7 @@ impl SomeRule {
     /// For X->0, the change is optional, a 0 input will be no change.
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
-    pub fn rule_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+    pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         let from_x = from.x_mask();
         let from_1 = from.ones_mask();
         let from_0 = from.zeros_mask();
@@ -594,7 +612,7 @@ impl SomeRule {
     /// For X->0, the change is optional, a 0 input will be no change.
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
-    pub fn rule_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
+    pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
         let from_1 = from.to_mask();
         let from_0 = from.bitwise_not().to_mask();
 
@@ -631,7 +649,7 @@ impl SomeRule {
             return self.combine_pair(other);
         }
         let rul_between =
-            Self::rule_region_to_region(&self.result_region(), &other.initial_region());
+            Self::new_region_to_region(&self.result_region(), &other.initial_region());
 
         self.combine_pair(&rul_between).combine_pair(other)
     }

@@ -1,6 +1,8 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
 use crate::mask::SomeMask;
+use crate::region::SomeRegion;
+use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -56,14 +58,6 @@ impl SomeChange {
         Self {
             b01: self.b01.bitwise_xor(other.b01()),
             b10: self.b10.bitwise_xor(other.b10()),
-        }
-    }
-
-    /// Return a change that will reverse a given change.
-    pub fn reverse(&self) -> Self {
-        Self {
-            b01: self.b10().clone(),
-            b10: self.b01().clone(),
         }
     }
 
@@ -125,6 +119,46 @@ impl SomeChange {
         }
 
         strrc
+    }
+
+    /// Return a change for translating from a region to another region.
+    pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
+        let from_x = from.x_mask();
+        let from_1 = from.ones_mask();
+        let from_0 = from.zeros_mask();
+
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
+
+        let x_to_0 = from_x.bitwise_and(&to_0);
+        let x_to_1 = from_x.bitwise_and(&to_1);
+
+        SomeChange {
+            b01: from_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
+            b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
+        }
+    }
+
+    /// Return a change for translating from a state to a region.
+    pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
+        let from_1 = from.to_mask();
+        let from_0 = from.bitwise_not().to_mask();
+
+        let to_1 = to.ones_mask();
+        let to_0 = to.zeros_mask();
+
+        SomeChange {
+            b01: from_0.bitwise_and(&to_1),
+            b10: from_1.bitwise_and(&to_0),
+        }
+    }
+
+    /// Return the intersection of the invert of the argument.
+    pub fn and_not(&self, other: &Self) -> Self {
+        SomeChange {
+            b01: self.b01.bitwise_and_not(&other.b01),
+            b10: self.b10.bitwise_and_not(&other.b10),
+        }
     }
 } // end impl SomeChange
 

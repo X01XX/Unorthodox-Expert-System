@@ -349,7 +349,7 @@ impl SomeDomain {
 
                     if verbose {
                         println!(
-                            "    use final step {}",
+                            "    use one step {}",
                             stepy.restrict_initial_region(from_reg)
                         );
                     }
@@ -395,17 +395,17 @@ impl SomeDomain {
             // Storage for steps, vector index, step index within vector, wanted - unwanted changes.
             let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-            let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
+            let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
 
             let wanted_changes_invert = wanted_changes.bitwise_not();
 
             for inx in asym_only_changes.iter() {
                 for (iny, stepx) in steps_by_change_vov[*inx].iter().enumerate() {
-                    let rule_to = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
+                    let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
                     let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
 
-                    let step_changes = aggregate_rule.change();
+                    let step_changes = aggregate_rule.to_change();
 
                     let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
 
@@ -429,7 +429,8 @@ impl SomeDomain {
             }
             //println!("ratios1: {ratios:?}");
             // Order by descending ratio.
-            ratios.sort_by(|a, b| (b.2).partial_cmp(&a.2).unwrap());
+            ratios
+                .sort_by(|(_, _, ratio_a), (_, _, ratio_b)| ratio_b.partial_cmp(ratio_a).unwrap());
             // println!("ratios: {ratios:?}");
             let mut num_same_ratios = 1;
             for (_inx, _iny, ratio) in ratios.iter().skip(1) {
@@ -453,18 +454,18 @@ impl SomeDomain {
         // Calc unwanted - unwanted changes for each possible step.
         let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-        let wanted_changes = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
+        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
 
-        let wanted_changes_invert = wanted_changes.bitwise_not();
+        //let wanted_changes_invert = wanted_changes.bitwise_not();
 
         for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
             for (iny, stepx) in step_vecx.iter().enumerate() {
-                let rule_to = SomeRule::rule_region_to_region(from_reg, &stepx.initial);
-                let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+                let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-                let step_changes = aggregate_rule.change();
+                let step_changes = rule_to.combine_sequence(&stepx.rule).to_change();
 
-                let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
+                // let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
+                let step_unwanted_changes = step_changes.and_not(&wanted_changes);
 
                 let step_num_unwanted_changes = step_unwanted_changes.number_changes();
 
@@ -485,7 +486,7 @@ impl SomeDomain {
             } // next iny, stepx
         } // next inx, step_vecx
 
-        ratios.sort_by(|a, b| (b.2).partial_cmp(&a.2).unwrap());
+        ratios.sort_by(|(_, _, ratio_a), (_, _, ratio_b)| ratio_b.partial_cmp(ratio_a).unwrap());
 
         let mut num_same_ratios = 1;
         for (_inx, _iny, ratio) in ratios.iter().skip(1) {
@@ -550,7 +551,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = SomeRule::rule_region_to_region(from_reg, to_reg).change();
+        let required_change = SomeChange::new_region_to_region(from_reg, to_reg);
 
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
@@ -660,7 +661,7 @@ impl SomeDomain {
         }
 
         // Figure the required change.
-        let required_change = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
+        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();
@@ -728,7 +729,7 @@ impl SomeDomain {
         }
 
         // Figure the required change.
-        let required_change = SomeRule::rule_region_to_region(from_reg, goal_reg).change();
+        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();

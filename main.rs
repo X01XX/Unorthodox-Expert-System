@@ -74,7 +74,6 @@ mod selectregionsstore;
 mod target;
 mod targetstore;
 use crate::regionstorecorr::RegionStoreCorr;
-use crate::rule::SomeRule;
 
 use std::io;
 use std::io::{Read, Write};
@@ -616,7 +615,7 @@ fn eval_path(
     let mut prefix = prefix.to_string();
     prefix.push_str("  ");
 
-    let wanted = SomeRule::rule_state_to_region(&domx.cur_state, target_region).change();
+    let wanted = SomeChange::new_state_to_region(&domx.cur_state, target_region);
 
     if target_region.is_superset_of(from) {
         println!(

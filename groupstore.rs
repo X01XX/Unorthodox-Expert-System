@@ -63,7 +63,7 @@ impl GroupStore {
                 if let Some(changes) = &self.aggregate_changes {
                     self.aggregate_changes = Some(changes.union(rulx));
                 } else {
-                    self.aggregate_changes = Some(rulx.change());
+                    self.aggregate_changes = Some(rulx.to_change());
                 }
             }
         }
@@ -419,15 +419,15 @@ impl GroupStore {
         for grpx in self.avec.iter() {
             if let Some(rules) = &grpx.rules {
                 if rules.len() == 1 {
-                    if rules[0].change().is_not_low() {
+                    if rules[0].changes_not_low() {
                         ret.push(&rules[0]);
                     }
                     continue;
                 }
-                if rules[0].change().is_low() && rules[1].change().is_not_low() {
+                if rules[0].changes_are_low() && rules[1].changes_not_low() {
                     ret.push(&rules[1]);
                 }
-                if rules[0].change().is_not_low() && rules[1].change().is_low() {
+                if rules[0].changes_not_low() && rules[1].changes_are_low() {
                     ret.push(&rules[0]);
                 }
             }

@@ -183,6 +183,13 @@ impl SomeMask {
         }
     }
 
+    /// Return a SomeMask instance, representing a bitwise And of a mask and the invert of another instance that supports the BitsRef Trait.
+    pub fn bitwise_and_not(&self, other: &impl BitsRef) -> Self {
+        Self {
+            bts: self.bts.b_and_not(other.bitsref()),
+        }
+    }
+
     /// Return a SomeMask instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
         Self {

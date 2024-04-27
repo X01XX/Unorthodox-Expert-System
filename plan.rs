@@ -103,7 +103,7 @@ impl SomePlan {
         } //next inx
 
         if steps.len() > 1 {
-            steps.reverse();
+            steps.reverse_order();
         }
 
         Some(Self {
@@ -427,13 +427,13 @@ mod tests {
 
         let step1 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg1, &reg2),
+            SomeRule::new_region_to_region(&reg1, &reg2),
             AltRuleHint::NoAlt {},
             reg1.clone(),
         );
         let step2 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg2, &reg3),
+            SomeRule::new_region_to_region(&reg2, &reg3),
             AltRuleHint::NoAlt {},
             reg2.clone(),
         );
@@ -441,13 +441,13 @@ mod tests {
 
         let step4 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg4, &reg5),
+            SomeRule::new_region_to_region(&reg4, &reg5),
             AltRuleHint::NoAlt {},
             reg4.clone(),
         );
         let step5 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg5, &reg6),
+            SomeRule::new_region_to_region(&reg5, &reg6),
             AltRuleHint::NoAlt {},
             reg5.clone(),
         );
@@ -479,35 +479,35 @@ mod tests {
 
         let step1 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg1, &reg3),
+            SomeRule::new_region_to_region(&reg1, &reg3),
             AltRuleHint::NoAlt {},
             reg1.clone(),
         );
 
         let step2 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg3, &reg7),
+            SomeRule::new_region_to_region(&reg3, &reg7),
             AltRuleHint::NoAlt {},
             reg3.clone(),
         );
 
         let step3 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg7, &reg5),
+            SomeRule::new_region_to_region(&reg7, &reg5),
             AltRuleHint::NoAlt {},
             reg7.clone(),
         );
 
         let step4 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg5, &reg1),
+            SomeRule::new_region_to_region(&reg5, &reg1),
             AltRuleHint::NoAlt {},
             reg5.clone(),
         );
 
         let step5 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg1, &reg0),
+            SomeRule::new_region_to_region(&reg1, &reg0),
             AltRuleHint::NoAlt {},
             reg5.clone(),
         );
@@ -539,14 +539,14 @@ mod tests {
 
         let step1 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg1, &reg3),
+            SomeRule::new_region_to_region(&reg1, &reg3),
             AltRuleHint::NoAlt {},
             reg1.clone(),
         );
 
         let step2 = SomeStep::new(
             0,
-            SomeRule::rule_region_to_region(&reg3, &reg7),
+            SomeRule::new_region_to_region(&reg3, &reg7),
             AltRuleHint::NoAlt {},
             reg3.clone(),
         );
