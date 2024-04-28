@@ -265,7 +265,7 @@ impl SomeRegion {
     pub fn zeros_mask(&self) -> SomeMask {
         self.state1()
             .bitwise_not()
-            .bitwise_and(&self.state2().bitwise_not())
+            .bitwise_and_not(self.state2())
             .to_mask()
     }
 
@@ -375,8 +375,8 @@ impl SomeRegion {
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-        let state1 = self.state1().bitwise_and(&msk.bitwise_not());
-        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
+        let state1 = self.state1().bitwise_and_not(msk);
+        let state2 = self.state2().bitwise_and_not(msk);
 
         Self::new(vec![state1, state2])
     }
@@ -509,14 +509,14 @@ impl SomeRegion {
     }
 
     /// Return the result of applying a change to a region.
-    pub fn apply_changes(&self, chgs: &SomeChange) -> SomeRegion {
+    pub fn _apply_changes(&self, chgs: &SomeChange) -> SomeRegion {
         let state1 = self.state1();
         let state2 = self.state2();
         SomeRegion::new(vec![
             state1.bitwise_xor(
                 &state1
                     .bitwise_and(&chgs.b10)
-                    .bitwise_or(&state1.bitwise_not().bitwise_and(&chgs.b01)),
+                    .bitwise_or(&chgs.b01.bitwise_and_not(state1)),
             ),
             state2.bitwise_xor(
                 &state2
@@ -1285,25 +1285,6 @@ mod tests {
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = SomeRule::new_from_string("00/11/00/X1")?;
         assert!(rul1 == rul2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn apply_changes() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-
-        let wanted_changes = SomeChange::new(
-            SomeMask::new_from_string("m0b1100")?,
-            SomeMask::new_from_string("m0b0011")?,
-        );
-        println!("wanted_changes    {wanted_changes}");
-
-        let reg1 = SomeRegion::new_from_string("r0011")?;
-        let reg2 = reg1.apply_changes(&wanted_changes);
-
-        println!("Reg1 {reg1} changed by {wanted_changes} is {reg2}");
-        assert!(reg2 == SomeRegion::new_from_string("r1100")?);
 
         Ok(())
     }

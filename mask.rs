@@ -55,35 +55,6 @@ impl SomeMask {
     }
 
     /// Return a Mask from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    ///
-    /// if let Ok(msk) = SomeMask-instance.new_from_string("m0101")) {
-    ///    println!("Mask {}", msk);
-    /// } else {
-    ///    panic!("Invalid Mask");
-    /// }
-    /// A prefix of "m0x" can be used to specify hexadecimal characters.
-    pub fn _new_from_string(&self, str: &str) -> Result<Self, String> {
-        let mut rest = String::new();
-
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "m" || chr == "M" {
-                    continue;
-                }
-                return Err("Initial character should be m".to_string());
-            }
-
-            rest.push_str(chr);
-        }
-
-        match self.bts._new_from_string(&rest) {
-            Ok(bts) => Ok(Self { bts }),
-            Err(error) => Err(error),
-        }
-    } // end new_from_string
-
-    /// Return a Mask from a string.
     /// All characters must be specified.
     ///
     /// if let Ok(msk) = SomeMask::new_from_string("m0b0101")) {

@@ -154,7 +154,7 @@ impl SomeChange {
     }
 
     /// Return the intersection of the invert of the argument.
-    pub fn and_not(&self, other: &Self) -> Self {
+    pub fn bitwise_and_not(&self, other: &Self) -> Self {
         SomeChange {
             b01: self.b01.bitwise_and_not(&other.b01),
             b10: self.b10.bitwise_and_not(&other.b10),

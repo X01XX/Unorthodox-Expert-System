@@ -651,7 +651,7 @@ fn eval_path(
                     .rule
                     .b01
                     .bitwise_and(&wanted.b01)
-                    .bitwise_and(&stpy.rule.b11.bitwise_not());
+                    .bitwise_and_not(&stpy.rule.b11);
                 let mut wantx01_blk = false;
                 if wantx01.is_not_low() {
                     let single_bit_changes: Vec<SomeMask> = wantx01.split();
@@ -671,7 +671,7 @@ fn eval_path(
                     .rule
                     .b10
                     .bitwise_and(&wanted.b10)
-                    .bitwise_and(&stpy.rule.b00.bitwise_not());
+                    .bitwise_and_not(&stpy.rule.b00);
                 let mut wantx10_blk = false;
                 if wantx10.is_not_low() {
                     let single_bit_changes: Vec<SomeMask> = wantx10.split();
@@ -692,7 +692,7 @@ fn eval_path(
                     .rule
                     .b01
                     .bitwise_and(&wanted.b01)
-                    .bitwise_and(&stpx.rule.b11.bitwise_not());
+                    .bitwise_and_not(&stpx.rule.b11);
                 let mut wanty01_blk = false;
                 if wanty01.is_not_low() {
                     let single_bit_changes: Vec<SomeMask> = wanty01.split();
@@ -712,7 +712,7 @@ fn eval_path(
                     .rule
                     .b10
                     .bitwise_and(&wanted.b10)
-                    .bitwise_and(&stpx.rule.b00.bitwise_not());
+                    .bitwise_and_not(&stpx.rule.b00);
                 let mut wanty10_blk = false;
                 if wanty10.is_not_low() {
                     let single_bit_changes: Vec<SomeMask> = wanty10.split();

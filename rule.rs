@@ -50,7 +50,7 @@ impl SomeRule {
             b00: smpl
                 .initial
                 .bitwise_not()
-                .bitwise_and(&smpl.result.bitwise_not())
+                .bitwise_and_not(&smpl.result)
                 .to_mask(),
             b01: smpl
                 .initial
@@ -58,10 +58,7 @@ impl SomeRule {
                 .bitwise_and(&smpl.result)
                 .to_mask(),
             b11: smpl.initial.bitwise_and(&smpl.result).to_mask(),
-            b10: smpl
-                .initial
-                .bitwise_and(&smpl.result.bitwise_not())
-                .to_mask(),
+            b10: smpl.initial.bitwise_and_not(&smpl.result).to_mask(),
         }
     }
 
@@ -256,7 +253,7 @@ impl SomeRule {
         assert!(self.initial_region().is_superset_of(astate));
 
         let sta_cng1 = astate.bitwise_and(&self.b10);
-        let sta_cng0 = astate.bitwise_not().bitwise_and(&self.b01);
+        let sta_cng0 = self.b01.bitwise_and_not(astate);
 
         astate.bitwise_xor(&sta_cng1.bitwise_or(&sta_cng0))
     }
@@ -278,7 +275,7 @@ impl SomeRule {
         };
         let toggle: SomeMask = self
             .b01
-            .bitwise_and(&sta.bitwise_not())
+            .bitwise_and_not(sta)
             .bitwise_or(&self.b10.bitwise_and(sta));
         sta.bitwise_xor(&toggle)
     }

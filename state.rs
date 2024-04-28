@@ -235,6 +235,13 @@ impl SomeState {
     pub fn num_bits(&self) -> u8 {
         self.bts.num_bits
     }
+
+    /// Return a SomeMask instance, representing a bitwise And-not of a mask and the invert of another instance that supports the BitsRef Trait.
+    pub fn bitwise_and_not(&self, other: &impl BitsRef) -> Self {
+        Self {
+            bts: self.bts.b_and_not(other.bitsref()),
+        }
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.

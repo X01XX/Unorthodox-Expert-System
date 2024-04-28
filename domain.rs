@@ -397,7 +397,7 @@ impl SomeDomain {
 
             let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
 
-            let wanted_changes_invert = wanted_changes.bitwise_not();
+            //let wanted_changes_invert = wanted_changes.bitwise_not();
 
             for inx in asym_only_changes.iter() {
                 for (iny, stepx) in steps_by_change_vov[*inx].iter().enumerate() {
@@ -407,7 +407,7 @@ impl SomeDomain {
 
                     let step_changes = aggregate_rule.to_change();
 
-                    let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
+                    let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
 
                     let step_num_unwanted_changes = step_unwanted_changes.number_changes();
 
@@ -456,16 +456,13 @@ impl SomeDomain {
 
         let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
 
-        //let wanted_changes_invert = wanted_changes.bitwise_not();
-
         for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
             for (iny, stepx) in step_vecx.iter().enumerate() {
                 let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
                 let step_changes = rule_to.combine_sequence(&stepx.rule).to_change();
 
-                // let step_unwanted_changes = step_changes.intersection(&wanted_changes_invert);
-                let step_unwanted_changes = step_changes.and_not(&wanted_changes);
+                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
 
                 let step_num_unwanted_changes = step_unwanted_changes.number_changes();
 
