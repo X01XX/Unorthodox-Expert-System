@@ -217,7 +217,7 @@ impl SomeState {
         self.bitwise_xor(
             &self
                 .bitwise_and(&changes.b10)
-                .bitwise_or(&self.bitwise_not().bitwise_and(&changes.b01)),
+                .bitwise_or(&changes.b01.bitwise_and_not(self)),
         )
     }
 

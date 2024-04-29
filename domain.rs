@@ -397,8 +397,6 @@ impl SomeDomain {
 
             let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
 
-            //let wanted_changes_invert = wanted_changes.bitwise_not();
-
             for inx in asym_only_changes.iter() {
                 for (iny, stepx) in steps_by_change_vov[*inx].iter().enumerate() {
                     let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
@@ -1304,6 +1302,7 @@ mod tests {
 
         // Satisfy one need.
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
 
         let nds3 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds3);
@@ -1315,6 +1314,7 @@ mod tests {
         ));
 
         // Satisfy second need.
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
 
         let nds4 = dm0.actions[0].confirm_group_needs();
@@ -1382,8 +1382,10 @@ mod tests {
         let s02 = dm0.state_from_string("s0b0010")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
 
         let sf9 = dm0.state_from_string("s0b1001")?;
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
 
@@ -1411,9 +1413,11 @@ mod tests {
             let s0b = dm0.state_from_string("s0b1011")?;
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
         } else {
             // Limiting square for anchor 4 is 6.
             let s06 = dm0.state_from_string("s0b0110")?;
+            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
         }
@@ -1475,18 +1479,28 @@ mod tests {
         println!("\nActs: {}", dm0.actions[0]);
 
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
             println!("\nActs: {}", dm0.actions[0]);
-
-            if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-                dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone())); // pn=1, pnc condition
-                assert!(!dm0.actions[0].groups.find(&rx1x1).is_some());
-            } else {
-                return Err(String::from("Group rx1x1 deleted too soon?"));
-            }
         } else {
             return Err(String::from("Group rx1x1 was not formed by two squares?"));
         }
+
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+        } else {
+            return Err(String::from("Group rx1x1 deleted too soon?"));
+        }
+
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+        } else {
+            return Err(String::from("Group rx1x1 deleted too soon?"));
+        }
+
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+            return Err(String::from("Group rx1x1 not deleted?"));
+        }
+
         Ok(())
     } // end group_pn_2_union_then_invalidation
 
@@ -1520,6 +1534,11 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), s4.clone()));
 
         println!("\n1 Acts: {}", dm0.actions[0]);
+        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
+
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        println!("\n2 Acts: {}", dm0.actions[0]);
+
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
@@ -1590,6 +1609,8 @@ mod tests {
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
 
         // Confirm groups.
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
 

@@ -129,12 +129,12 @@ impl ResultStore {
             self.astore[self.num_results % MAX_RESULTS] = st;
         }
 
-        self.num_results += 1;
+        // Wrap around, probably not needed.
+        // if self.num_results == usize::MAX {
+        //    self.num_results = 3;
+        // }
 
-        //if self.num_results >= 100 {
-        // increase, if needed, up to usize::MAX.
-        //    panic!("To many samples of {self}");
-        //}
+        self.num_results += 1;
 
         self.calc_pn()
     }

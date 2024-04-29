@@ -52,11 +52,7 @@ impl SomeRule {
                 .bitwise_not()
                 .bitwise_and_not(&smpl.result)
                 .to_mask(),
-            b01: smpl
-                .initial
-                .bitwise_not()
-                .bitwise_and(&smpl.result)
-                .to_mask(),
+            b01: smpl.result.bitwise_and_not(&smpl.initial).to_mask(),
             b11: smpl.initial.bitwise_and(&smpl.result).to_mask(),
             b10: smpl.initial.bitwise_and_not(&smpl.result).to_mask(),
         }
@@ -189,15 +185,16 @@ impl SomeRule {
         }
 
         // Pare down rule.
-        let zeros_mask = rule2.b00.bitwise_and(&rule2.b01).bitwise_not();
-        let ones_mask = rule2.b11.bitwise_and(&rule2.b10).bitwise_not();
+        let not_zero_x_mask = rule2.b00.bitwise_and(&rule2.b01).bitwise_not();
+        let not_one_x_mask = rule2.b11.bitwise_and(&rule2.b10).bitwise_not();
 
         let rule3 = Self {
-            b00: rule2.b00.bitwise_and(&zeros_mask),
-            b01: rule2.b01.bitwise_and(&zeros_mask),
-            b11: rule2.b11.bitwise_and(&ones_mask),
-            b10: rule2.b10.bitwise_and(&ones_mask),
+            b00: rule2.b00.bitwise_and(&not_zero_x_mask),
+            b01: rule2.b01.bitwise_and(&not_zero_x_mask),
+            b11: rule2.b11.bitwise_and(&not_one_x_mask),
+            b10: rule2.b10.bitwise_and(&not_one_x_mask),
         };
+        // Check for any null bit positions.
         if rule3.is_valid_intersection() {
             return Some(rule3);
         }
@@ -435,8 +432,8 @@ impl SomeRule {
 
         // Get rule initial region.
         let init_reg = s_rule.initial_region();
-        let init_reg_zeros = init_reg.zeros_mask();
-        let init_reg_ones = init_reg.ones_mask();
+        let init_reg_zeros = init_reg.edge_zeros_mask();
+        let init_reg_ones = init_reg.edge_ones_mask();
         let init_reg_xs = init_reg.x_mask();
 
         if change_needed.b01.is_not_low() {
@@ -570,12 +567,12 @@ impl SomeRule {
     /// Anything -> X, is a don't care.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         let from_x = from.x_mask();
-        let from_1 = from.ones_mask();
-        let from_0 = from.zeros_mask();
+        let from_1 = from.edge_ones_mask();
+        let from_0 = from.edge_zeros_mask();
 
         let to_x = to.x_mask();
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
+        let to_1 = to.edge_ones_mask();
+        let to_0 = to.edge_zeros_mask();
 
         let x_to_0 = from_x.bitwise_and(&to_0);
         let x_to_1 = from_x.bitwise_and(&to_1);
@@ -610,21 +607,20 @@ impl SomeRule {
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
-        let from_1 = from.to_mask();
-        let from_0 = from.bitwise_not().to_mask();
+        let from_0 = from.bitwise_not();
 
         let to_x = to.x_mask();
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
+        let to_1 = to.edge_ones_mask();
+        let to_0 = to.edge_zeros_mask();
 
-        let zero_to_x = from_0.bitwise_and(&to_x);
-        let one_to_x = from_1.bitwise_and(&to_x);
+        let zero_to_x = to_x.bitwise_and(&from_0);
+        let one_to_x = to_x.bitwise_and(from);
 
         SomeRule {
-            b00: from_0.bitwise_and(&to_0).bitwise_or(&zero_to_x),
-            b01: from_0.bitwise_and(&to_1),
-            b11: from_1.bitwise_and(&to_1).bitwise_or(&one_to_x),
-            b10: from_1.bitwise_and(&to_0),
+            b00: to_0.bitwise_and(&from_0).bitwise_or(&zero_to_x),
+            b01: to_1.bitwise_and(&from_0),
+            b11: to_1.bitwise_and(from).bitwise_or(&one_to_x),
+            b10: to_0.bitwise_and(from),
         }
     }
 

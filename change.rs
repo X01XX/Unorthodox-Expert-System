@@ -124,11 +124,11 @@ impl SomeChange {
     /// Return a change for translating from a region to another region.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
         let from_x = from.x_mask();
-        let from_1 = from.ones_mask();
-        let from_0 = from.zeros_mask();
+        let from_1 = from.edge_ones_mask();
+        let from_0 = from.edge_zeros_mask();
 
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
+        let to_1 = to.edge_ones_mask();
+        let to_0 = to.edge_zeros_mask();
 
         let x_to_0 = from_x.bitwise_and(&to_0);
         let x_to_1 = from_x.bitwise_and(&to_1);
@@ -141,15 +141,14 @@ impl SomeChange {
 
     /// Return a change for translating from a state to a region.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
-        let from_1 = from.to_mask();
-        let from_0 = from.bitwise_not().to_mask();
+        let from_0 = from.bitwise_not();
 
-        let to_1 = to.ones_mask();
-        let to_0 = to.zeros_mask();
+        let to_1 = to.edge_ones_mask();
+        let to_0 = to.edge_zeros_mask();
 
         SomeChange {
-            b01: from_0.bitwise_and(&to_1),
-            b10: from_1.bitwise_and(&to_0),
+            b01: to_1.bitwise_and(&from_0),
+            b10: to_0.bitwise_and(from),
         }
     }
 

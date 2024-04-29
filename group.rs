@@ -394,6 +394,11 @@ mod tests {
             SomeState::new_from_string("s0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
+        sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            SomeState::new_from_string("s0b0100")?,
+        )); // pn = Pn::One, pnc = true.
+
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
         }

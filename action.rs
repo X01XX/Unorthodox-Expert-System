@@ -2094,6 +2094,8 @@ mod tests {
         act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
 
         // Set up divider squares.
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()));
@@ -2102,6 +2104,8 @@ mod tests {
 
         // Set up 111X group.
         // The shared symetric group will be 11X1.
+        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));

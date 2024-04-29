@@ -262,7 +262,7 @@ impl SomeRegion {
     }
 
     /// Return a Mask of zero positions.
-    pub fn zeros_mask(&self) -> SomeMask {
+    pub fn edge_zeros_mask(&self) -> SomeMask {
         self.state1()
             .bitwise_not()
             .bitwise_and_not(self.state2())
@@ -270,7 +270,7 @@ impl SomeRegion {
     }
 
     /// Return a Mask of one positions.
-    pub fn ones_mask(&self) -> SomeMask {
+    pub fn edge_ones_mask(&self) -> SomeMask {
         self.state1().bitwise_and(self.state2()).to_mask()
     }
 
@@ -521,7 +521,7 @@ impl SomeRegion {
             state2.bitwise_xor(
                 &state2
                     .bitwise_and(&chgs.b10)
-                    .bitwise_or(&state2.bitwise_not().bitwise_and(&chgs.b01)),
+                    .bitwise_or(&chgs.b01.bitwise_and_not(state2)),
             ),
         ])
     }
@@ -535,12 +535,12 @@ impl SomeRegion {
     pub fn translate_to(&self, other: &Self) -> Self {
         // Calc self bit position masks.
         let self_x = self.x_mask();
-        let self_1 = self.ones_mask();
-        let self_0 = self.zeros_mask();
+        let self_1 = self.edge_ones_mask();
+        let self_0 = self.edge_zeros_mask();
 
         // Calc other bit position masks.
-        let other_1 = other.ones_mask();
-        let other_0 = other.zeros_mask();
+        let other_1 = other.edge_ones_mask();
+        let other_0 = other.edge_zeros_mask();
 
         // Calc needed changes.
         let to_0 = self_x.bitwise_or(&self_1).bitwise_and(&other_0);
@@ -939,10 +939,10 @@ mod tests {
     }
 
     #[test]
-    fn zeros_mask() -> Result<(), String> {
+    fn edge_zeros_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string("r00XX0101")?;
-        let m1 = reg0.zeros_mask();
-        println!("zeros_mask is {m1}");
+        let m1 = reg0.edge_zeros_mask();
+        println!("edge_zeros_mask is {m1}");
         assert!(
             m1.bitwise_and(&SomeBits::new_from_string("0xff")?)
                 == SomeMask::new_from_string("m0b11001010")?
@@ -951,10 +951,10 @@ mod tests {
     }
 
     #[test]
-    fn ones_mask() -> Result<(), String> {
+    fn edge_ones_mask() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string("r00XX0101")?;
-        let m1 = reg0.ones_mask();
-        println!("ones_mask is {m1}");
+        let m1 = reg0.edge_ones_mask();
+        println!("edge_ones_mask is {m1}");
         assert!(m1 == SomeMask::new_from_string("m0b00000101")?);
         Ok(())
     }

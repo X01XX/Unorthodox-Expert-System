@@ -259,7 +259,7 @@ impl SomeSquare {
             return true;
         }
 
-        if self.pn == Pn::One && self.results.len() > 1 {
+        if self.pn == Pn::One && self.results.len() > 2 {
             return true;
         }
 
@@ -362,6 +362,12 @@ mod tests {
         assert!(!sqrx.pnc);
 
         // Second result, same as the first.
+        let changed = sqrx.add_sample(&SomeSample::new(
+            sqrx.state.clone(),
+            SomeState::new_from_string("s0b0101")?,
+        ));
+        assert!(!changed);
+        // Third result, same as the first.
         let changed = sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
             SomeState::new_from_string("s0b0101")?,
@@ -592,6 +598,12 @@ mod tests {
             sqr4.state.clone(),
             SomeState::new_from_string("s0b0101")?,
         ));
+
+        sqr4.add_sample(&SomeSample::new(
+            sqr4.state.clone(),
+            SomeState::new_from_string("s0b0101")?,
+        ));
+
         println!("sqr4: {sqr4}");
         println!("sqr2: {sqr2}");
 
@@ -825,6 +837,10 @@ mod tests {
         assert!(rslt == None);
 
         // Make sqr2 pnc == true.
+        sqr2.add_sample(&SomeSample::new(
+            sqr2.state.clone(),
+            SomeState::new_from_string("s0b0101")?,
+        ));
         sqr2.add_sample(&SomeSample::new(
             sqr2.state.clone(),
             SomeState::new_from_string("s0b0101")?,
