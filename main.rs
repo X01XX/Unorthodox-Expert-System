@@ -633,14 +633,14 @@ fn eval_path(
     }
 
     println!("{prefix} steps {}", steps);
-    // Chack each pair of rules for being mutually exclusive.
+    // Check each pair of rules for being mutually exclusive.
     for inx in 0..(steps.len() - 1) {
         let stpx = &steps[inx];
 
         for iny in (inx + 1)..steps.len() {
             let stpy = &steps[iny];
 
-            if stpx.rule.mutually_exclusive(&stpy.rule, &wanted) {
+            if stpx.mutually_exclusive(stpy, &wanted) {
                 print!(
                     "{prefix} rule {} is mutually exclusive rule {}",
                     stpx.rule, stpy.rule

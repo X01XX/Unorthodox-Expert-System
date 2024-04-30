@@ -1312,6 +1312,7 @@ impl SomeAction {
         //  "groups_pair_intersection_needs {} {} and {} {}",
         //  &grpx.region, grpx.pn, grpy.region, grpy.pn
         //);
+        assert!(grpx.region.intersects(&grpy.region));
 
         let mut nds = NeedStore::new(vec![]);
 

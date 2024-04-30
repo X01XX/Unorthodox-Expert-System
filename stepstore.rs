@@ -289,7 +289,7 @@ fn step_vecs_sequence_blocks_changes(
             if std::ptr::eq(refx, refy) {
                 return false;
             }
-            if !refx.rule.sequence_blocks_changes(&refy.rule, wanted) {
+            if !refx.sequence_blocks_changes(refy, wanted) {
                 return false;
             }
         } //next refy

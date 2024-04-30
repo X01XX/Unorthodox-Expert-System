@@ -111,10 +111,20 @@ impl SomeStep {
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-        debug_assert!(wanted.is_not_low());
+        // Groups that chang more than one bit may end up being compared.
+        if self.group_reg == other.group_reg {
+            return false;
+        }
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 
+    pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
+        // Groups that chang more than one bit may end up being compared.
+        if self.group_reg == other.group_reg {
+            return false;
+        }
+        self.rule.sequence_blocks_changes(&other.rule, wanted)
+    }
     /// Return the number of bits changed in a step.
     pub fn num_bits_changed(&self) -> usize {
         self.rule.num_bits_changed()

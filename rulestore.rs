@@ -231,11 +231,11 @@ impl RuleStore {
             }
 
             if ordera {
-                return Some(Self::new(vec![rul0.unwrap(), rul1.unwrap()]));
+                return Some(Self::new(vec![rul0.expect("SNH"), rul1.expect("SNH")]));
             }
 
             // Must be orderb == true.
-            return Some(Self::new(vec![rul2.unwrap(), rul3.unwrap()]));
+            return Some(Self::new(vec![rul2.expect("SNH"), rul3.expect("SNH")]));
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");
@@ -304,11 +304,11 @@ impl RuleStore {
             }
 
             if ordera {
-                return Some(Self::new(vec![rul0.unwrap(), rul1.unwrap()]));
+                return Some(Self::new(vec![rul0.expect("SNH"), rul1.expect("SNH")]));
             }
 
             // Must be orderb == true.
-            return Some(Self::new(vec![rul2.unwrap(), rul3.unwrap()]));
+            return Some(Self::new(vec![rul2.expect("SNH"), rul3.expect("SNH")]));
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");

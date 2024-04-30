@@ -128,7 +128,7 @@ impl SomeRegion {
 
     /// Return a reference to the last state.
     pub fn state2(&self) -> &SomeState {
-        self.states.last().unwrap()
+        self.states.last().expect("SNH")
     }
 
     /// Return a Region from a string and the number of integers to use.
