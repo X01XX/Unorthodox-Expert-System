@@ -33,14 +33,13 @@ use crate::bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
-use crate::mask::SomeMask;
 mod need;
 mod tools;
 use need::SomeNeed;
 mod region;
 use region::SomeRegion;
 mod change;
-use crate::change::SomeChange;
+use change::SomeChange;
 mod regionstore;
 mod regionstorecorr;
 mod resultstore;
@@ -54,7 +53,6 @@ mod state;
 use sample::SomeSample;
 use state::SomeState;
 mod domain;
-use crate::domain::SomeDomain;
 mod needstore;
 mod plan;
 mod pn;
@@ -588,181 +586,12 @@ fn command_loop(dmxs: &mut DomainStore) {
                     println!("{error}");
                 }
             },
-            "rx" => {
-                for inx in dmxs.cant_do.iter() {
-                    let needx: &SomeNeed = &dmxs.needs[*inx];
-                    let targetstorex = needx.target();
-                    let targetx = &targetstorex[0];
-                    let domx = &dmxs.domains[needx.dom_id()];
-                    println!("\nNeed: {needx}");
-                    eval_path(domx, &domx.cur_state, &targetx.region, &String::from("  "));
-                }
-            }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
             }
         };
     } // end loop
 } // end command_loop
-
-/// Evaluate a path to figure out what the difficulty is.
-fn eval_path(
-    domx: &SomeDomain,
-    from: &SomeState,
-    target_region: &SomeRegion,
-    prefix: &str,
-) -> Option<SomeState> {
-    let mut prefix = prefix.to_string();
-    prefix.push_str("  ");
-
-    let wanted = SomeChange::new_state_to_region(&domx.cur_state, target_region);
-
-    if target_region.is_superset_of(from) {
-        println!(
-            "{prefix} from {from} to {target_region} change needed {wanted}, target satisfied"
-        );
-        return Some(from.clone());
-    }
-
-    println!("\n{prefix} from {from} to {target_region} change needed {wanted}");
-
-    let steps = domx.get_steps(&wanted, None);
-    if steps.is_empty() {
-        println!("{prefix} Steps to encompass all needed changes, not found");
-        return None;
-    }
-
-    println!("{prefix} steps {}", steps);
-    // Check each pair of rules for being mutually exclusive.
-    for inx in 0..(steps.len() - 1) {
-        let stpx = &steps[inx];
-
-        for iny in (inx + 1)..steps.len() {
-            let stpy = &steps[iny];
-
-            if stpx.mutually_exclusive(stpy, &wanted) {
-                print!(
-                    "{prefix} rule {} is mutually exclusive rule {}",
-                    stpx.rule, stpy.rule
-                );
-
-                // Get stpx wanted changes, blunted by stpy, check if any are only in one step.
-                let wantx01 = stpx
-                    .rule
-                    .b01
-                    .bitwise_and(&wanted.b01)
-                    .bitwise_and_not(&stpy.rule.b11);
-                let mut wantx01_blk = false;
-                if wantx01.is_not_low() {
-                    let single_bit_changes: Vec<SomeMask> = wantx01.split();
-
-                    for bitx in single_bit_changes.iter() {
-                        if steps
-                            .number_with_change(&SomeChange::new(bitx.clone(), wantx01.new_low()))
-                            == 1
-                        {
-                            wantx01_blk = true;
-                            break;
-                        }
-                    }
-                }
-
-                let wantx10 = stpx
-                    .rule
-                    .b10
-                    .bitwise_and(&wanted.b10)
-                    .bitwise_and_not(&stpy.rule.b00);
-                let mut wantx10_blk = false;
-                if wantx10.is_not_low() {
-                    let single_bit_changes: Vec<SomeMask> = wantx10.split();
-
-                    for bitx in single_bit_changes.iter() {
-                        if steps
-                            .number_with_change(&SomeChange::new(wantx10.new_low(), bitx.clone()))
-                            == 1
-                        {
-                            wantx10_blk = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Get stpy wanted changes, blunted by stpx, check if any are only in one step.
-                let wanty01 = stpy
-                    .rule
-                    .b01
-                    .bitwise_and(&wanted.b01)
-                    .bitwise_and_not(&stpx.rule.b11);
-                let mut wanty01_blk = false;
-                if wanty01.is_not_low() {
-                    let single_bit_changes: Vec<SomeMask> = wanty01.split();
-
-                    for bity in single_bit_changes.iter() {
-                        if steps
-                            .number_with_change(&SomeChange::new(bity.clone(), wanty01.new_low()))
-                            == 1
-                        {
-                            wanty01_blk = true;
-                            break;
-                        }
-                    }
-                }
-
-                let wanty10 = stpy
-                    .rule
-                    .b10
-                    .bitwise_and(&wanted.b10)
-                    .bitwise_and_not(&stpx.rule.b00);
-                let mut wanty10_blk = false;
-                if wanty10.is_not_low() {
-                    let single_bit_changes: Vec<SomeMask> = wanty10.split();
-
-                    for bity in single_bit_changes.iter() {
-                        if steps
-                            .number_with_change(&SomeChange::new(wanty10.new_low(), bity.clone()))
-                            == 1
-                        {
-                            wanty10_blk = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (wantx01_blk || wantx10_blk) && (wanty01_blk || wanty10_blk) {
-                    println!(" single-source change blocked");
-                    return None;
-                } else {
-                    println!(" ");
-                }
-            }
-        } // iny
-    } // next inx
-
-    // Check each step.
-    for stepx in steps.iter() {
-        if stepx.initial.is_superset_of(from) {
-            let next_sta = stepx.rule.result_from_initial_state(from);
-            if target_region.is_superset_of(&next_sta) {
-                println!("{prefix} State {next_sta} satisfies target");
-                return None;
-            } else {
-                eval_path(domx, &next_sta, target_region, &prefix);
-            }
-        } else if let Some(next_sta) = eval_path(domx, from, &stepx.initial, &prefix) {
-            let next_sta = stepx.rule.result_from_initial_state(&next_sta);
-            if target_region.is_superset_of(&next_sta) {
-                println!("{prefix} State {next_sta} satisfies target");
-                return None;
-            } else {
-                eval_path(domx, &next_sta, target_region, &prefix);
-            }
-            eval_path(domx, &next_sta, target_region, &prefix);
-        } else {
-            println!("{prefix} path to step not found");
-        }
-    }
-    None
-}
 
 /// Change the domain to a number given by user.
 fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
@@ -979,10 +808,18 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     let goal_region = SomeRegion::new_from_string(cmd[1])?;
 
     if goal_region.num_bits() != dmx.cur_state.num_bits() {
-        return Err("Invalid number of bits in region string".to_string());
+        return Err(
+            "Invalid number of bits in region string, need to change displayed domain?".to_string(),
+        );
     }
 
-    println!("\nChange Current_state {cur_state} to region {goal_region}");
+    let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
+    println!(
+        "\nChange Current_state {cur_state} to region {goal_region} num bit changes needed {} {}",
+        needed_change.number_changes(),
+        needed_change
+    );
+
     if goal_region.is_superset_of(cur_state) {
         println!(
             "\nCurrent_state {} is already in region {}",
@@ -993,7 +830,6 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     let cur_region = SomeRegion::new(vec![cur_state.clone()]);
 
-    println!("\nmaking plan:");
     if let Some(planx) = dmxs[dom_id].make_one_plan(&cur_region, &goal_region) {
         let plnstr = PlanStore::new(vec![planx]);
         dmxs.print_plan_detail(&plnstr);

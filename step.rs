@@ -54,6 +54,7 @@ impl SomeStep {
         let initial = rule.initial_region();
 
         let result = rule.result_region();
+
         Self {
             act_id,
             initial,
@@ -111,7 +112,7 @@ impl SomeStep {
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // Groups that chang more than one bit may end up being compared.
+        // Groups that change more than one bit may end up being compared.
         if self.group_reg == other.group_reg {
             return false;
         }
@@ -119,7 +120,7 @@ impl SomeStep {
     }
 
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // Groups that chang more than one bit may end up being compared.
+        // Groups that change more than one bit may end up being compared.
         if self.group_reg == other.group_reg {
             return false;
         }

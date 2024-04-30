@@ -332,7 +332,10 @@ impl SomeDomain {
         verbose: bool,
     ) -> Option<SomePlan> {
         if verbose {
-            println!("\ndepth_first_search2: from {} to {}", from_reg, goal_reg);
+            println!(
+                "\ndomain::depth_first_search2: from {} to {}",
+                from_reg, goal_reg
+            );
         }
 
         // Check if one step makes the required change, the end point of any search.
@@ -349,7 +352,7 @@ impl SomeDomain {
 
                     if verbose {
                         println!(
-                            "    use one step {}",
+                            "\n    use one step {}",
                             stepy.restrict_initial_region(from_reg)
                         );
                     }
@@ -442,7 +445,21 @@ impl SomeDomain {
             //println!("inx {inx} of 0..{num_same_ratios}");
             let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
             if verbose {
-                println!("    use asymmetric step {}", stepx);
+                println!("\n    use asymmetric step {}", stepx);
+
+                let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+
+                let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+
+                let step_changes = aggregate_rule.to_change();
+
+                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+
+                println!(
+                    "    wanted changes {} unwanted_changes {}",
+                    wanted_changes.intersection(&step_changes),
+                    step_unwanted_changes
+                );
             }
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose);
         }
@@ -500,8 +517,17 @@ impl SomeDomain {
             let stepy = stepx.restrict_initial_region(from_reg);
             if verbose {
                 println!(
-                    "    use forward chaining step {}",
+                    "\n    use forward chaining step {}",
                     stepy.restrict_initial_region(from_reg)
+                );
+                let step_changes = stepy.rule.to_change();
+
+                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+
+                println!(
+                    "    wanted changes {} unwanted_changes {}",
+                    wanted_changes.intersection(&step_changes),
+                    step_unwanted_changes
                 );
             }
             let plan_to_goal =
@@ -516,8 +542,17 @@ impl SomeDomain {
 
             if verbose {
                 println!(
-                    "    use backward chaining step {}",
+                    "\n    use backward chaining step {}",
                     stepy.restrict_result_region(goal_reg)
+                );
+                let step_changes = stepy.rule.to_change();
+
+                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+
+                println!(
+                    "    wanted changes {} unwanted_changes {}",
+                    wanted_changes.intersection(&step_changes),
+                    step_unwanted_changes
                 );
             }
             let plan_to_step =
@@ -529,6 +564,20 @@ impl SomeDomain {
         // Must be an asymmetric step.
         if verbose {
             println!("    use asymmetric step {}", stepx);
+
+            let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+
+            let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+
+            let step_changes = aggregate_rule.to_change();
+
+            let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+
+            println!(
+                "    wanted changes {} unwanted_changes {}",
+                wanted_changes.intersection(&step_changes),
+                step_unwanted_changes
+            );
         }
         self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose)
     } // end random_depth_first_search2
@@ -541,7 +590,12 @@ impl SomeDomain {
         depth: usize,
         verbose: bool,
     ) -> Option<SomePlan> {
-        // println!("plan_steps_between: from {} to {} depth {}", from_reg, to_reg, depth);
+        if verbose {
+            println!(
+                "\ndomain::plan_steps_between: from {} to {} depth {}",
+                from_reg, to_reg, depth
+            );
+        }
         if depth == 0 {
             return None;
         }
@@ -550,6 +604,9 @@ impl SomeDomain {
 
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
+            if verbose {
+                println!("\nRules covering all needed bit changes {required_change} not found");
+            }
             return None;
         }
 
@@ -585,7 +642,12 @@ impl SomeDomain {
         depth: usize,
         verbose: bool,
     ) -> Option<SomePlan> {
-        // println!("asymmetric_chaining: from: {} to: {} step: {} depth: {}", from_reg, goal_reg, stepx, depth);
+        if verbose {
+            println!(
+                "\ndomain::asymmetric_chaining: from: {} to step: {} to goal {} depth: {}",
+                from_reg, stepx, goal_reg, depth
+            );
+        }
         if depth == 0 {
             return None;
         }
@@ -732,7 +794,7 @@ impl SomeDomain {
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&required_change, within);
         if steps_str.is_empty() {
-            println!("Rules covering all needed bit changes {required_change} not found");
+            println!("\nRules covering all needed bit changes {required_change} not found");
             return None;
         }
 

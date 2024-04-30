@@ -231,9 +231,6 @@ fn all_mutually_exclusive_changes(
 ) -> bool {
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
-            if std::ptr::eq(refx, refy) {
-                return false;
-            }
             if refx.mutually_exclusive(refy, wanted) {
                 //println!("all_mutually_exclusive_changes step {} mutually exclusive to step {}", refx, refy);
             } else {
@@ -286,9 +283,6 @@ fn step_vecs_sequence_blocks_changes(
     assert!(!vec_y.is_empty());
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
-            if std::ptr::eq(refx, refy) {
-                return false;
-            }
             if !refx.sequence_blocks_changes(refy, wanted) {
                 return false;
             }

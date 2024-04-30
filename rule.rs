@@ -242,7 +242,13 @@ impl SomeRule {
         let st_high = self.b11.bitwise_or(&self.b01).to_state();
         let st_low = self.b00.bitwise_or(&self.b10).bitwise_not().to_state();
 
-        SomeRegion::new(vec![st_high, st_low])
+        // Change X->x positions to indicate a change, instead of appearing as X->X.
+        let x_xnot_mask = self.b01.bitwise_and(&self.b10);
+
+        SomeRegion::new(vec![
+            st_high.bitwise_and_not(&x_xnot_mask),
+            st_low.bitwise_or(&x_xnot_mask),
+        ])
     }
 
     /// Return the result state of a rule.
@@ -816,6 +822,14 @@ mod tests {
         } else {
             return Err("Regions should form a union".to_string());
         }
+
+        let rulx = SomeRule::new_from_string("XX/Xx/X0/X1_00/01/11/10")?;
+        println!("initial region {}", rulx.initial_region());
+        assert!(rulx.initial_region() == SomeRegion::new_from_string("rXXXX0011")?);
+
+        println!("result region {}", rulx.result_region());
+        // Check result formatted string, to differentiate between X->X and X->x.
+        assert!(format!("{}", rulx.result_region()) == "rXx01_0110");
 
         Ok(())
     }
