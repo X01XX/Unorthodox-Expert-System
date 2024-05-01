@@ -272,8 +272,8 @@ fn do_later_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> Vec<us
     inxs
 }
 
-/// Return true if the order of all steps in step vector arg one will require a
-/// wanted bit change to be reversed in order to do any step in step vector arg two.
+/// Return true if the order of all steps in step vector arg one will
+/// fail to pass through all wanted changes.
 fn step_vecs_sequence_blocks_changes(
     vec_x: &[&SomeStep],
     vec_y: &[&SomeStep],

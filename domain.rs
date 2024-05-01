@@ -356,7 +356,6 @@ impl SomeDomain {
                             stepy.restrict_initial_region(from_reg)
                         );
                     }
-                    //println!("random_depth_first_search2: suc 1 Found one step {} to go from {} to {}", stepy, from_reg, goal_reg);
                     return Some(SomePlan::new(self.id, vec![stepz]));
                 }
             }
@@ -376,7 +375,7 @@ impl SomeDomain {
         // This indicates that a, possibly significant, deviation from a straight-forward
         // rule-path is required.
         //
-        // Storage for indicies of step vectors.
+        // Storage for indicies of asymmetric-only step vectors.
         let mut asym_only_changes = Vec::<usize>::new();
 
         for (inx, vecx) in steps_by_change_vov.iter().enumerate() {
@@ -392,43 +391,46 @@ impl SomeDomain {
             }
         }
 
+        // Calc wanted, and unwanted, changes.
+        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
+
+        // Calc 0->0 , 1->1 bit positions, where change is not wanted.
+        let not_wanted_changes = SomeChange::new(
+            from_reg
+                .edge_zeros_mask()
+                .bitwise_and(&goal_reg.edge_zeros_mask()),
+            from_reg
+                .edge_ones_mask()
+                .bitwise_and(&goal_reg.edge_ones_mask()),
+        );
+
         // Check if any forced asymmetrical single-bit changes have been found.
         if asym_only_changes.is_empty() {
         } else {
             // Storage for steps, vector index, step index within vector, wanted - unwanted changes.
             let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-            let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
-
-            for inx in asym_only_changes.iter() {
-                for (iny, stepx) in steps_by_change_vov[*inx].iter().enumerate() {
+            for inx in asym_only_changes {
+                for (iny, stepx) in steps_by_change_vov[inx].iter().enumerate() {
                     let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-                    let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
+                    let rulx = rule_to.combine_pair(&stepx.rule);
 
-                    let step_changes = aggregate_rule.to_change();
-
-                    let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
-
-                    let step_num_unwanted_changes = step_unwanted_changes.number_changes();
+                    let step_num_unwanted_changes =
+                        not_wanted_changes.intersection(&rulx).number_changes();
 
                     let step_num_wanted_changes =
-                        step_changes.intersection(&wanted_changes).number_changes();
-
-                    //println!("From {from_reg} To {goal_reg} step rule: {}->{} agg rule {}->{} num wanted changes {num_wanted_changes} step num wanted {step_num_wanted_changes} step num unwanted {step_num_unwanted_changes}",
-                    //    stepx.rule.initial_region(), stepx.rule.result_region(),
-                    //    aggregate_rule.initial_region(), aggregate_rule.result_region());
+                        wanted_changes.intersection(&rulx).number_changes();
 
                     // Save ratio info.
                     // Ratio is wanted - unwanted.
                     ratios.push((
-                        *inx,
+                        inx,
                         iny,
                         step_num_wanted_changes as isize - step_num_unwanted_changes as isize,
                     ));
                 }
             }
-            //println!("ratios1: {ratios:?}");
             // Order by descending ratio.
             ratios
                 .sort_by(|(_, _, ratio_a), (_, _, ratio_b)| ratio_b.partial_cmp(ratio_a).unwrap());
@@ -449,47 +451,47 @@ impl SomeDomain {
 
                 let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-                let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
-
-                let step_changes = aggregate_rule.to_change();
-
-                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+                let rulx = rule_to.combine_pair(&stepx.rule);
 
                 println!(
                     "    wanted changes {} unwanted_changes {}",
-                    wanted_changes.intersection(&step_changes),
-                    step_unwanted_changes
+                    wanted_changes.intersection(&rulx),
+                    not_wanted_changes.intersection(&rulx),
                 );
             }
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose);
         }
 
-        // Asymmetric chaining not required.
+        // Asymmetric chaining is not required.
 
         // Calc unwanted - unwanted changes for each possible step.
         let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
-        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
-
         for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
             for (iny, stepx) in step_vecx.iter().enumerate() {
-                let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+                let (step_num_wanted_changes, step_num_unwanted_changes) =
+                    if from_reg.intersects(&stepx.initial) {
+                        let rulx = stepx.rule.restrict_initial_region(from_reg);
+                        (
+                            wanted_changes.intersection(&rulx).number_changes(),
+                            not_wanted_changes.intersection(&rulx).number_changes(),
+                        )
+                    } else if goal_reg.intersects(&stepx.result) {
+                        let rulx = stepx.rule.restrict_result_region(goal_reg);
+                        (
+                            wanted_changes.intersection(&rulx).number_changes(),
+                            not_wanted_changes.intersection(&rulx).number_changes(),
+                        )
+                    } else {
+                        let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+                        let rulx = rule_to.combine_pair(&stepx.rule);
+                        (
+                            wanted_changes.intersection(&rulx).number_changes(),
+                            not_wanted_changes.intersection(&rulx).number_changes(),
+                        )
+                    };
 
-                let step_changes = rule_to.combine_sequence(&stepx.rule).to_change();
-
-                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
-
-                let step_num_unwanted_changes = step_unwanted_changes.number_changes();
-
-                let step_num_wanted_changes =
-                    step_changes.intersection(&wanted_changes).number_changes();
-
-                //println!("From {from_reg} To {goal_reg} step rule: {}->{} agg rule {}->{} num wanted changes {num_wanted_changes} step num wanted {step_num_wanted_changes} step num unwanted {step_num_unwanted_changes}",
-                //    stepx.rule.initial_region(), stepx.rule.result_region(),
-                //    aggregate_rule.initial_region(), aggregate_rule.result_region());
-
-                // Save ratio info.
-                // Ratio is wanted - unwanted.
+                // Save ratio info, step vector index, step within vecter index, num wanted changes - num unwanted changes.
                 ratios.push((
                     inx,
                     iny,
@@ -516,18 +518,11 @@ impl SomeDomain {
         if stepx.initial.intersects(from_reg) {
             let stepy = stepx.restrict_initial_region(from_reg);
             if verbose {
-                println!(
-                    "\n    use forward chaining step {}",
-                    stepy.restrict_initial_region(from_reg)
-                );
-                let step_changes = stepy.rule.to_change();
-
-                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
-
+                println!("\n    use forward chaining step {}", stepy);
                 println!(
                     "    wanted changes {} unwanted_changes {}",
-                    wanted_changes.intersection(&step_changes),
-                    step_unwanted_changes
+                    wanted_changes.intersection(&stepy.rule),
+                    not_wanted_changes.intersection(&stepy.rule)
                 );
             }
             let plan_to_goal =
@@ -541,18 +536,11 @@ impl SomeDomain {
             let stepy = stepx.restrict_result_region(goal_reg);
 
             if verbose {
-                println!(
-                    "\n    use backward chaining step {}",
-                    stepy.restrict_result_region(goal_reg)
-                );
-                let step_changes = stepy.rule.to_change();
-
-                let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
-
+                println!("\n    use backward chaining step {}", stepy);
                 println!(
                     "    wanted changes {} unwanted_changes {}",
-                    wanted_changes.intersection(&step_changes),
-                    step_unwanted_changes
+                    wanted_changes.intersection(&stepy.rule),
+                    not_wanted_changes.intersection(&stepy.rule)
                 );
             }
             let plan_to_step =
@@ -567,20 +555,16 @@ impl SomeDomain {
 
             let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-            let aggregate_rule = rule_to.combine_sequence(&stepx.rule);
-
-            let step_changes = aggregate_rule.to_change();
-
-            let step_unwanted_changes = step_changes.bitwise_and_not(&wanted_changes);
+            let rulx = rule_to.combine_pair(&stepx.rule);
 
             println!(
                 "    wanted changes {} unwanted_changes {}",
-                wanted_changes.intersection(&step_changes),
-                step_unwanted_changes
+                wanted_changes.intersection(&rulx),
+                not_wanted_changes.intersection(&rulx)
             );
         }
         self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose)
-    } // end random_depth_first_search2
+    } // end depth_first_search2
 
     /// Return possible plan to change state between two regions.
     fn plan_steps_between(
