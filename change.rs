@@ -133,14 +133,9 @@ impl SomeChange {
 
     /// Return a change for translating from a state to a region.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
-        let from_0 = from.bitwise_not();
-
-        let to_1 = to.edge_ones_mask();
-        let to_0 = to.edge_zeros_mask();
-
         SomeChange {
-            b01: to_1.bitwise_and(&from_0),
-            b10: to_0.bitwise_and(from),
+            b01: to.edge_ones_mask().bitwise_and_not(from),
+            b10: to.edge_zeros_mask().bitwise_and(from),
         }
     }
 

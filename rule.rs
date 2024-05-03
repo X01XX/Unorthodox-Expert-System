@@ -429,11 +429,6 @@ impl SomeRule {
             } else {
                 return ret_rules;
             }
-            if s_rule.result_region().intersects(restrict) {
-                s_rule = s_rule.restrict_result_region(restrict);
-            } else {
-                return ret_rules;
-            }
         }
 
         // Get rule initial region.
@@ -643,7 +638,7 @@ impl SomeRule {
     /// Combine two rules in sequence.
     /// The result region of the first rule is not required to intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
-    pub fn combine_sequence(&self, other: &Self) -> Self {
+    pub fn _combine_sequence(&self, other: &Self) -> Self {
         if self.result_region().intersects(&other.initial_region()) {
             return self.combine_pair(other);
         }
@@ -1034,12 +1029,10 @@ mod tests {
 
         let within = SomeRegion::new_from_string("rx1")?;
 
-        let rul5 = rul1.restrict_for_changes(&chg1, Some(&within));
-        if rul5.is_empty() {
-        } else {
-            println!("rul5 ? {}", tools::vec_string(&rul5));
-            panic!("rul5 restriction should not succeed");
-        };
+        let ruls5 = rul1.restrict_for_changes(&chg1, Some(&within));
+
+        assert!(ruls5.len() == 1);
+        assert!(ruls5[0] == SomeRule::new_from_string("01/10")?);
 
         Ok(())
     }
@@ -1089,19 +1082,6 @@ mod tests {
         };
         println!("rul3 = {rul3}");
         assert!(rul3 == SomeRule::new_from_string("00/01/x0/Xx/xx")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn combine_sequence() -> Result<(), String> {
-        // Test C->9, 9->A implied, A->F = C->F
-        let rul1 = SomeRule::new_from_string("11/10/00/01")?;
-        let rul2 = SomeRule::new_from_string("11/01/11/01")?;
-        let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
-        let rul4 = SomeRule::new_from_string("11/11/01/01")?;
-        assert!(rul3 == rul4);
 
         Ok(())
     }

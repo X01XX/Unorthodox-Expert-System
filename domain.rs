@@ -369,6 +369,21 @@ impl SomeDomain {
             return None;
         }
 
+        // Calc wanted, and unwanted, changes.
+        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
+
+        // For 0->0, the change 0->1 is not wanted.
+        // For 1->1, the change 1->0 is not wanted.
+        // Any change is Ok for X bit positions in the goal.
+        let not_wanted_changes = SomeChange::new(
+            from_reg
+                .edge_zeros_mask()
+                .bitwise_and(&goal_reg.edge_zeros_mask()),
+            from_reg
+                .edge_ones_mask()
+                .bitwise_and(&goal_reg.edge_ones_mask()),
+        );
+
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
         //
@@ -390,19 +405,6 @@ impl SomeDomain {
                 asym_only_changes.push(inx);
             }
         }
-
-        // Calc wanted, and unwanted, changes.
-        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
-
-        // Calc 0->0 , 1->1 bit positions, where change is not wanted.
-        let not_wanted_changes = SomeChange::new(
-            from_reg
-                .edge_zeros_mask()
-                .bitwise_and(&goal_reg.edge_zeros_mask()),
-            from_reg
-                .edge_ones_mask()
-                .bitwise_and(&goal_reg.edge_ones_mask()),
-        );
 
         // Check if any forced asymmetrical single-bit changes have been found.
         if asym_only_changes.is_empty() {
@@ -799,7 +801,7 @@ impl SomeDomain {
 
     /// Get steps that may allow a change to be made.
     ///
-    /// Steps that make at least one of the needed changes are extracted from domain actions.
+    /// Steps that make at least one of the needed bit changes are extracted from domain actions.
     ///
     /// A rule that changes X->x will be pruned to make a step that changes 0->1 or 1->0 depending
     /// on the change needed. X->0 will be pruned to 1->0.  X->1 will be pruned to 0->1.

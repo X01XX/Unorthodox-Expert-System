@@ -444,16 +444,6 @@ impl GroupStore {
     pub fn is_not_empty(&self) -> bool {
         !self.avec.is_empty()
     }
-
-    /// Return true if a state is in a Pn::Unpredictable group.
-    pub fn state_in_pnu(&self, stax: &SomeState) -> bool {
-        for grpx in &self.avec {
-            if grpx.pn == Pn::Unpredictable && grpx.is_superset_of(stax) {
-                return true;
-            }
-        }
-        false
-    }
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

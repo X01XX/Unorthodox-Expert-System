@@ -119,16 +119,22 @@ impl StepStore {
 
         // Add step index numbers to the return vector.
         for stepx in &self.avec {
+            let edge_mask = stepx.initial.edge_mask();
+
             // Check for matching b01 changes
             for (inx, b01x) in b01.iter().enumerate() {
-                if stepx.rule.b01.bitwise_and(b01x).is_not_low() {
+                if stepx.rule.b01.bitwise_and(b01x).is_not_low()
+                    && b01x.bitwise_and(&edge_mask).is_not_low()
+                {
                     ret_vec[inx].push(stepx);
                 }
             } // next b01x
 
             // Check for matching b10 changes
             for (inx, b10x) in b10.iter().enumerate() {
-                if stepx.rule.b10.bitwise_and(b10x).is_not_low() {
+                if stepx.rule.b10.bitwise_and(b10x).is_not_low()
+                    && b10x.bitwise_and(&edge_mask).is_not_low()
+                {
                     ret_vec[inx + b01_len].push(stepx);
                 }
             } // next b01x
@@ -174,6 +180,7 @@ impl StepStore {
         // These may be low-level rules, but at least they have some sense of where they are going!
 
         // Check if any pair of single-bit change, all steps in vectors, are mutually exclusive.
+        // So one change can be made, but not the other.
         if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
             //println!("get_steps_by_bit_change: mutually exclusive change rules found");
             return None;
@@ -192,19 +199,6 @@ impl StepStore {
         }
 
         Some(steps_by_change_vov)
-    }
-
-    /// Return a count of the number of steps that have a gven change.
-    pub fn number_with_change(&self, achange: &SomeChange) -> usize {
-        let mut cnt = 0;
-        for stepx in &self.avec {
-            if stepx.rule.b01.is_superset_ones_of(&achange.b01)
-                && stepx.rule.b10.is_superset_ones_of(&achange.b10)
-            {
-                cnt += 1;
-            }
-        }
-        cnt
     }
 } // end impl StepStore
 

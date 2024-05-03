@@ -1466,7 +1466,7 @@ impl SomeAction {
         let mut stps = StepStore::new(vec![]);
 
         for grpx in self.groups.iter() {
-            if grpx.pn == Pn::Unpredictable {
+            if !grpx.causes_predictable_change() {
                 continue;
             }
 

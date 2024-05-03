@@ -1174,7 +1174,7 @@ mod tests {
         let bitsx = SomeBits::new_from_string("0x5050")?;
         println!("bitsx: {bitsx}");
 
-        let avec: Vec<SomeBits> = SomeBits::new_from_string("0x5050")?.split();
+        let avec: Vec<SomeBits> = bitsx.split();
         println!("split bits: {}", tools::vec_string(&avec));
 
         assert!(avec.len() == 4);
@@ -1182,6 +1182,22 @@ mod tests {
         assert!(avec.contains(&SomeBits::new_from_string("0x1000")?));
         assert!(avec.contains(&SomeBits::new_from_string("0x0040")?));
         assert!(avec.contains(&SomeBits::new_from_string("0x0010")?));
+
+        let bitsx = SomeBits::new_from_string("0x010")?;
+        println!("bitsx: {bitsx}");
+
+        let avec: Vec<SomeBits> = bitsx.split();
+        println!("split bits: {}", tools::vec_string(&avec));
+
+        assert!(avec.len() == 1);
+
+        let bitsx = SomeBits::new_from_string("0x00")?;
+        println!("bitsx: {bitsx}");
+
+        let avec: Vec<SomeBits> = bitsx.split();
+        println!("split bits: {}", tools::vec_string(&avec));
+
+        assert!(avec.is_empty());
 
         Ok(())
     }
