@@ -207,6 +207,7 @@ impl DomainStore {
             println!("  {}", selx,);
         }
         println!("  To seek when exiting a negative SR the current state is in.");
+        println!("  Used to find a rule-path that crosses fewer negative SRs.");
     }
 
     /// Add a Domain struct to the store.

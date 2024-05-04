@@ -197,28 +197,32 @@ impl SomeBits {
         // Check for invalid prefix or characters.
         // Set base value, 2 or 16.
         let mut num_bits = 0;
-        let mut base = 2;
+        let mut base = 2; // default base.
+
+        let mut base_specified = false;
 
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "0" {
                     continue;
+                } else {
+                    break;
                 }
-                return Err(format!(
-                    "SomeBits::new_from_string: String {str}, should start with 0?"
-                ));
             }
-
             if inx == 1 {
                 if chr == "b" || chr == "B" {
-                    continue;
+                    base_specified = true;
                 } else if chr == "x" || chr == "X" {
+                    base_specified = true;
                     base = 16;
-                    continue;
                 }
-                return Err(format!(
-                    "SomeBits::new_from_string: String {str}, should start with 0b or 0x?"
-                ));
+                break;
+            }
+        }
+
+        for (inx, chr) in str.graphemes(true).enumerate() {
+            if inx < 2 && base_specified {
+                continue;
             }
 
             if chr == "_" {
