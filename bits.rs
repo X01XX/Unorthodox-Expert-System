@@ -180,7 +180,8 @@ impl SomeBits {
     /// Return a bits instance from a string.
     /// All bits needed must be specified.
     /// Underscore character is ignored.
-    /// A prefix, 0b or 0x, must be provided.
+    /// A prefix, 0b or 0x, may be provided.
+    /// Base 2 is assumed, unless a "0x" prefix is given, or a digit 2-F is used.
     ///
     /// if let Ok(bts) = SomeBits::new_from_string("0b0101")) {
     ///    println!("bts {}", &bts);
@@ -220,6 +221,26 @@ impl SomeBits {
             }
         }
 
+        // Check base-unspecified string for a base 16 digit.
+        if !base_specified {
+            for chr in str.graphemes(true) {
+                if chr == "_" {
+                    continue;
+                }
+                let Ok(digit) = Bitint::from_str_radix(chr, 16) else {
+                    return Err(format!(
+                        "SomeBits::new_from_string: String {str}, invalid character?"
+                    ));
+                };
+                if digit > 1 {
+                    base = 16;
+                    break;
+                }
+            }
+        }
+
+        // Calc the number of bits given.
+        // Check for invalid digits.
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx < 2 && base_specified {
                 continue;
@@ -258,9 +279,9 @@ impl SomeBits {
         // Get index of the least significant (last) integer.
         let lsb_inx = bts.num_ints() - 1;
 
-        // Process bit characters.
+        // Translate digits into bits.
         for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx < 2 {
+            if inx < 2 && base_specified {
                 continue;
             }
 
@@ -790,18 +811,30 @@ mod tests {
         let bits2 = SomeBits::new_from_string("0x5_3")?;
         assert!(bits2.num_bits == 8);
 
-        // Test starting with non-zero.
-        if let Ok(_bits3) = SomeBits::new_from_string("1102") {
+        // Test no base, hexadecimal digits.
+        if let Ok(bits3) = SomeBits::new_from_string("1102") {
+            if bits3.num_bits != 16 {
+                return Err(format!(
+                "SomeBits::new_from_string: Did not translate 1102?"
+                ));
+            }
+        } else {
             return Err(format!(
-                "SomeBits::new_from_string2: Starting with non-zero not detected?"
-            ));
+                "SomeBits::new_from_string: Did not translate 1102?"
+                ));
         }
 
-        // Test no second character b or x, after initial zero.
-        if let Ok(_bits3) = SomeBits::new_from_string("0102") {
+        // Test no base, binary digits.
+        if let Ok(bits3) = SomeBits::new_from_string("1101") {
+            if bits3.num_bits != 4 {
+                return Err(format!(
+                "SomeBits::new_from_string: Did not translate 1101?"
+                ));
+            }
+        } else {
             return Err(format!(
-                "SomeBits::new_from_string2: bad second character not detected?"
-            ));
+                "SomeBits::new_from_string: Did not translate 1101?"
+                ));
         }
 
         // Test invalid binary character.
