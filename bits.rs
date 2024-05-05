@@ -100,84 +100,6 @@ impl SomeBits {
     }
 
     /// Return a bits instance from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    /// Underscore character is ignored.
-    ///
-    /// if let Ok(bts) = SomeBits-instance.new_from_string("0b0101")) {
-    ///    println!("bts {}", &bts);
-    /// } else {
-    ///    panic!("Invalid bits string");
-    /// }
-    ///
-    /// A prefix of "0x" can be used to specify hexadecimal characters.
-    ///
-    /// Using multiple integers could allow for a number that is too big for
-    /// the standard methods of converting a string to an integer.
-    pub fn _new_from_string(&self, str: &str) -> Result<Self, String> {
-        let mut bts = self.new_low();
-
-        let mut base = 2;
-
-        let lsb = self.num_ints() - 1;
-
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "0" {
-                    continue;
-                }
-                return Err(format!(
-                    "bits::new_from_string: String {str}, should start with 0?"
-                ));
-            }
-
-            if inx == 1 {
-                if chr == "b" || chr == "B" {
-                    continue;
-                } else if chr == "x" || chr == "X" {
-                    base = 16;
-                    continue;
-                }
-                return Err(format!(
-                    "bits::new_from_string: String {str}, should start with 0b or 0x?"
-                ));
-            }
-
-            if chr == "_" {
-                continue;
-            }
-
-            if base == 2 {
-                if chr == "0" {
-                    bts = bts.shift_left();
-                } else if chr == "1" {
-                    bts = bts.push_1();
-                } else {
-                    return Err(format!(
-                        "bits::new_from_string: String {str}, invalid character?"
-                    ));
-                }
-            } else {
-                let Ok(numx) = Bitint::from_str_radix(chr, 16) else {
-                    return Err(format!(
-                        "bits::new_from_string: String {str}, invalid character?"
-                    ));
-                };
-
-                bts = bts.shift_left4();
-
-                bts.ints[lsb] += numx;
-            }
-        } // next (inx, chr)
-
-        if bts.b_and(&bts.new_high()) != bts {
-            return Err(format!(
-                "bits::new_from_string: String {str}, Too many bits?"
-            ));
-        }
-        Ok(bts)
-    } // end new_from_string
-
-    /// Return a bits instance from a string.
     /// All bits needed must be specified.
     /// Underscore character is ignored.
     /// A prefix, 0b or 0x, may be provided.
@@ -802,7 +724,7 @@ mod tests {
     }
 
     #[test]
-    fn new_from_string2() -> Result<(), String> {
+    fn test_new_from_string() -> Result<(), String> {
         // Test 0b prefix, and underscore.
         let bits1 = SomeBits::new_from_string("0b10_10")?;
         assert!(bits1.num_bits == 4);
@@ -815,26 +737,26 @@ mod tests {
         if let Ok(bits3) = SomeBits::new_from_string("1102") {
             if bits3.num_bits != 16 {
                 return Err(format!(
-                "SomeBits::new_from_string: Did not translate 1102?"
+                    "SomeBits::new_from_string: Did not translate 1102?"
                 ));
             }
         } else {
             return Err(format!(
                 "SomeBits::new_from_string: Did not translate 1102?"
-                ));
+            ));
         }
 
         // Test no base, binary digits.
         if let Ok(bits3) = SomeBits::new_from_string("1101") {
             if bits3.num_bits != 4 {
                 return Err(format!(
-                "SomeBits::new_from_string: Did not translate 1101?"
+                    "SomeBits::new_from_string: Did not translate 1101?"
                 ));
             }
         } else {
             return Err(format!(
                 "SomeBits::new_from_string: Did not translate 1101?"
-                ));
+            ));
         }
 
         // Test invalid binary character.

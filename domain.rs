@@ -32,7 +32,6 @@ use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::str::FromStr;
 
 impl fmt::Display for PathStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -153,6 +152,9 @@ impl SomeDomain {
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
+        if act_id >= self.actions.len() {
+            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
+        }
         self.actions.eval_sample_arbitrary(act_id, smpl);
         self.set_cur_state(smpl.result.clone());
     }
@@ -166,6 +168,9 @@ impl SomeDomain {
 
     /// Take an action with the current state, store the sample.
     pub fn take_action_arbitrary(&mut self, act_id: usize) {
+        if act_id >= self.actions.len() {
+            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
+        }
         let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
@@ -832,45 +837,6 @@ impl SomeDomain {
         steps_str
     }
 
-    /// Return a Region from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    //    pub fn region_from_string(&self, str: &str) -> Result<SomeRegion, String> {
-    //        self.max_poss_region.new_from_string(str)
-    //    } // end region_from_string
-
-    /// Return a SomeRegion instance from a string.
-    /// Left-most, consecutive, ommitted zeros are assumed tobe X.
-    //    pub fn region_from_string_pad_x(&self, str: &str) -> Result<SomeRegion, String> {
-    //        self.max_poss_region.new_from_string_pad_x(str)
-    //    }
-
-    /// Return a SomeState instance from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    pub fn state_from_string(&self, str: &str) -> Result<SomeState, String> {
-        self.cur_state._new_from_string(str)
-    }
-
-    /// Return a SomeRule instance from a string.
-    /// Left-most, consecutive, 00s can be omitted.
-    pub fn rule_from_string(&self, str: &str) -> Result<SomeRule, String> {
-        SomeRule::new_from_string(str)
-    }
-
-    /// Return a Action number from a string with a format that the parse method can understand.
-    /// Left-most, consecutive, zeros can be omitted.
-    /// Returns an error if the string is bad or no action exists of that number.
-    pub fn act_id_from_string(&self, str_num: &str) -> Result<usize, String> {
-        match usize::from_str(str_num) {
-            Ok(act_id) => {
-                if act_id >= self.actions.len() {
-                    return Err(format!("Action number too large {act_id}"));
-                }
-                Ok(act_id)
-            }
-            Err(error) => Err(format!("\nDid not understand action number, {error}")),
-        }
-    } // end act_id_from_string
-
     /// Return the current maximum region that can be reached from the current state.
     pub fn reachable_region(&self) -> SomeRegion {
         self.actions.reachable_region(&self.cur_state)
@@ -878,6 +844,10 @@ impl SomeDomain {
 
     /// Return regions not covered by existing groups.
     pub fn regions_not_covered(&self, act_id: usize) -> RegionStore {
+        if act_id >= self.actions.len() {
+            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
+        }
+
         let mut ncov = RegionStore::new(vec![]);
 
         let reachable = self.reachable_region();
@@ -891,6 +861,10 @@ impl SomeDomain {
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_id: usize) -> Result<(), String> {
+        if act_id >= self.actions.len() {
+            return Err(format!("Domain: {}, invalid action ID {act_id}.", self.id));
+        }
+
         let max_region = self.reachable_region();
         self.actions[act_id].display_anchor_info()?;
 
@@ -908,6 +882,9 @@ impl SomeDomain {
         act_id: usize,
         aregion: &SomeRegion,
     ) -> Result<(), String> {
+        if act_id >= self.actions.len() {
+            return Err(format!("Domain: {}, invalid action ID {act_id}.", self.id));
+        }
         self.actions[act_id].display_group_anchor_info(aregion)
     }
 
@@ -955,6 +932,11 @@ impl SomeDomain {
     pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
         self.actions.all_rules()
     }
+
+    /// Retucn the number of bits used in a domain.
+    pub fn num_bits(&self) -> usize {
+        self.cur_state.num_bits()
+    }
 } // end impl SomeDomain
 
 #[cfg(test)]
@@ -984,17 +966,18 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
-            dm0.rule_from_string("00/11/01/11").expect("SNH"),
-            dm0.rule_from_string("00/11/00/10").expect("SNH"),
+            SomeRule::new_from_string("00/11/01/11").expect("SNH"),
+            SomeRule::new_from_string("00/11/00/10").expect("SNH"),
         ])];
         dm0.add_action(ruls0);
 
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![dm0
-            .rule_from_string("00/11/x0/x1")
-            .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "00/11/x0/x1",
+        )
+        .expect("SNH")])];
         dm0.add_action(ruls1);
 
-        dm0.cur_state = dm0.state_from_string("s0b0101")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0101")?;
         dm0.take_action_arbitrary(0);
         dm0.take_action_arbitrary(1);
         dm0.take_action_arbitrary(0);
@@ -1052,17 +1035,18 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
-            dm0.rule_from_string("00/11/00/10").expect("SNH"),
-            dm0.rule_from_string("00/11/00/11").expect("SNH"),
+            SomeRule::new_from_string("00/11/00/10").expect("SNH"),
+            SomeRule::new_from_string("00/11/00/11").expect("SNH"),
         ])];
         dm0.add_action(ruls0);
 
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![dm0
-            .rule_from_string("00/11/x0/x1")
-            .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "00/11/x0/x1",
+        )
+        .expect("SNH")])];
         dm0.add_action(ruls1);
 
-        dm0.cur_state = dm0.state_from_string("s0b0101")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0101")?;
         dm0.take_action_arbitrary(0);
         dm0.take_action_arbitrary(1);
         dm0.take_action_arbitrary(0);
@@ -1128,22 +1112,22 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let dm0 = &mut dmxs[0];
 
-        dm0.cur_state = dm0.state_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
 
-        let s0 = dm0.state_from_string("s0b0000")?;
-        let s1 = dm0.state_from_string("s0b0001")?;
-        let s2 = dm0.state_from_string("s0b0010")?;
-        let s4 = dm0.state_from_string("s0b0100")?;
-        let s7 = dm0.state_from_string("s0b0111")?;
-        let s8 = dm0.state_from_string("s0b1000")?;
-        let sb = dm0.state_from_string("s0b1011")?;
-        let sd = dm0.state_from_string("s0b1101")?;
-        let se = dm0.state_from_string("s0b1110")?;
-        let sf = dm0.state_from_string("s0b1111")?;
+        let s0 = SomeState::new_from_string("s0b0000")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
+        let s2 = SomeState::new_from_string("s0b0010")?;
+        let s4 = SomeState::new_from_string("s0b0100")?;
+        let s7 = SomeState::new_from_string("s0b0111")?;
+        let s8 = SomeState::new_from_string("s0b1000")?;
+        let sb = SomeState::new_from_string("s0b1011")?;
+        let sd = SomeState::new_from_string("s0b1101")?;
+        let se = SomeState::new_from_string("s0b1110")?;
+        let sf = SomeState::new_from_string("s0b1111")?;
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
@@ -1162,7 +1146,7 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7)); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        let cur_state = dm0.state_from_string("s0b0111")?;
+        let cur_state = SomeState::new_from_string("s0b0111")?;
         dm0.set_state(&cur_state);
         let toreg = SomeRegion::new_from_string("r1000")?;
 
@@ -1183,22 +1167,22 @@ mod tests {
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let dm0 = &mut dmxs[0];
-        dm0.cur_state = dm0.state_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
 
-        let s0 = dm0.state_from_string("s0b0000")?;
-        let s1 = dm0.state_from_string("s0b0001")?;
-        let s2 = dm0.state_from_string("s0b0010")?;
-        let s3 = dm0.state_from_string("s0b0011")?;
-        let s4 = dm0.state_from_string("s0b0100")?;
-        let s8 = dm0.state_from_string("s0b1000")?;
-        let sb = dm0.state_from_string("s0b1011")?;
-        let sd = dm0.state_from_string("s0b1101")?;
-        let se = dm0.state_from_string("s0b1110")?;
-        let sf = dm0.state_from_string("s0b1111")?;
+        let s0 = SomeState::new_from_string("s0b0000")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
+        let s2 = SomeState::new_from_string("s0b0010")?;
+        let s3 = SomeState::new_from_string("s0b0011")?;
+        let s4 = SomeState::new_from_string("s0b0100")?;
+        let s8 = SomeState::new_from_string("s0b1000")?;
+        let sb = SomeState::new_from_string("s0b1011")?;
+        let sd = SomeState::new_from_string("s0b1101")?;
+        let se = SomeState::new_from_string("s0b1110")?;
+        let sf = SomeState::new_from_string("s0b1111")?;
 
         // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
@@ -1223,7 +1207,7 @@ mod tests {
         // Get plan for 7 to C
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
-        let s7 = dm0.state_from_string("s0x07")?;
+        let s7 = SomeState::new_from_string("s0x7")?;
         dm0.set_state(&s7);
         let toreg = SomeRegion::new_from_string("r1100")?;
 
@@ -1241,7 +1225,7 @@ mod tests {
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
@@ -1256,7 +1240,7 @@ mod tests {
         ));
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s0b0001")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
 
         println!("\nActs: {}", &dm0.actions[0]);
@@ -1267,10 +1251,10 @@ mod tests {
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
-        let s1 = dm0.state_from_string("s0b0001")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
         dm0.eval_sample_arbitrary(
             0,
-            &SomeSample::new(s1.clone(), dm0.state_from_string("s0b0000")?),
+            &SomeSample::new(s1.clone(), SomeState::new_from_string("s0b0000")?),
         );
 
         println!("\nActs: {}", dm0.actions[0]);
@@ -1299,7 +1283,7 @@ mod tests {
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
@@ -1314,7 +1298,7 @@ mod tests {
         ));
 
         // Create group for one sample
-        let s1 = dm0.state_from_string("s0b0001")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
 
         println!("\nActs: {}", dm0.actions[0]);
@@ -1324,7 +1308,7 @@ mod tests {
             .is_some());
 
         // Expand group
-        let s2 = dm0.state_from_string("s0b0010")?;
+        let s2 = SomeState::new_from_string("s0b0010")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
 
         println!("\nActs: {}", dm0.actions[0]);
@@ -1384,13 +1368,13 @@ mod tests {
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
-        let s00 = dm0.state_from_string("s0b0000")?;
-        let s01 = dm0.state_from_string("s0b0001")?;
-        let s06 = dm0.state_from_string("s0b0110")?;
-        let s0d = dm0.state_from_string("s0b1101")?;
+        let s00 = SomeState::new_from_string("s0b0000")?;
+        let s01 = SomeState::new_from_string("s0b0001")?;
+        let s06 = SomeState::new_from_string("s0b0110")?;
+        let s0d = SomeState::new_from_string("s0b1101")?;
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s00.clone(), s01.clone()));
@@ -1420,19 +1404,19 @@ mod tests {
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        let s04 = dm0.state_from_string("s0b0100")?;
-        let s02 = dm0.state_from_string("s0b0010")?;
+        let s04 = SomeState::new_from_string("s0b0100")?;
+        let s02 = SomeState::new_from_string("s0b0010")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
 
-        let sf9 = dm0.state_from_string("s0b1001")?;
+        let sf9 = SomeState::new_from_string("s0b1001")?;
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
         dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
@@ -1456,15 +1440,15 @@ mod tests {
 
         println!("anchor is {}", anchor_sta);
 
-        if *anchor_sta == dm0.state_from_string("s0b1001")? {
+        if *anchor_sta == SomeState::new_from_string("s0b1001")? {
             // limiting square for anchor 9 is B.
-            let s0b = dm0.state_from_string("s0b1011")?;
+            let s0b = SomeState::new_from_string("s0b1011")?;
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
         } else {
             // Limiting square for anchor 4 is 6.
-            let s06 = dm0.state_from_string("s0b0110")?;
+            let s06 = SomeState::new_from_string("s0b0110")?;
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
             dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
@@ -1499,18 +1483,18 @@ mod tests {
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
-        let s5 = dm0.state_from_string("s0b0101")?;
+        let s5 = SomeState::new_from_string("s0b0101")?;
 
-        let s4 = dm0.state_from_string("s0b0100")?;
+        let s4 = SomeState::new_from_string("s0b0100")?;
 
-        let sf = dm0.state_from_string("s0b1111")?;
+        let sf = SomeState::new_from_string("s0b1111")?;
 
-        let se = dm0.state_from_string("s0b1110")?;
+        let se = SomeState::new_from_string("s0b1110")?;
 
-        let s7 = dm0.state_from_string("s0b0111")?;
+        let s7 = SomeState::new_from_string("s0b0111")?;
 
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
 
@@ -1562,14 +1546,14 @@ mod tests {
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
-        let s5 = dm0.state_from_string("s0b0101")?;
-        let s4 = dm0.state_from_string("s0b0100")?;
-        let sf = dm0.state_from_string("s0b1111")?;
-        let se = dm0.state_from_string("s0b1110")?;
-        let s7 = dm0.state_from_string("s0b0111")?;
+        let s5 = SomeState::new_from_string("s0b0101")?;
+        let s4 = SomeState::new_from_string("s0b0100")?;
+        let sf = SomeState::new_from_string("s0b1111")?;
+        let se = SomeState::new_from_string("s0b1110")?;
+        let s7 = SomeState::new_from_string("s0b0111")?;
 
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
 
@@ -1609,14 +1593,14 @@ mod tests {
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(16)));
-        dm0.cur_state = dm0.state_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b1")?;
         dm0.add_action(vec![]);
 
-        let s0 = dm0.state_from_string("s0b0001010010101000")?;
-        let s1 = dm0.state_from_string("s0b0001010010111000")?;
+        let s0 = SomeState::new_from_string("s0b0001010010101000")?;
+        let s1 = SomeState::new_from_string("s0b0001010010111000")?;
 
-        let s2 = dm0.state_from_string("s0b1111010110101011")?;
-        let s3 = dm0.state_from_string("s0b1111010110111011")?;
+        let s2 = SomeState::new_from_string("s0b1111010110101011")?;
+        let s3 = SomeState::new_from_string("s0b1111010110111011")?;
         // Region                          XXX1010X101010XX.
 
         // Create group for region XXX1010X101010XX.
@@ -1646,11 +1630,11 @@ mod tests {
 
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = dm0.state_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
         dm0.add_action(vec![]); // Act 0
 
-        let s0d = dm0.state_from_string("s0b1101")?;
-        let s0f = dm0.state_from_string("s0b1111")?;
+        let s0d = SomeState::new_from_string("s0b1101")?;
+        let s0f = SomeState::new_from_string("s0b1111")?;
 
         // Start groups.
         dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));

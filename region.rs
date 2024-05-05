@@ -3,7 +3,6 @@
 //! Uses one, or more, states to represent a region.
 //!
 
-use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::tools::{self, not, StrLen};
@@ -508,24 +507,6 @@ impl SomeRegion {
         Some(regx)
     }
 
-    /// Return the result of applying a change to a region.
-    pub fn _apply_changes(&self, chgs: &SomeChange) -> SomeRegion {
-        let state1 = self.state1();
-        let state2 = self.state2();
-        SomeRegion::new(vec![
-            state1.bitwise_xor(
-                &state1
-                    .bitwise_and(&chgs.b10)
-                    .bitwise_or(&chgs.b01.bitwise_and_not(state1)),
-            ),
-            state2.bitwise_xor(
-                &state2
-                    .bitwise_and(&chgs.b10)
-                    .bitwise_or(&chgs.b01.bitwise_and_not(state2)),
-            ),
-        ])
-    }
-
     /// Return the number of states defining the region.
     pub fn len(&self) -> usize {
         self.states.len()
@@ -550,7 +531,7 @@ impl SomeRegion {
     }
 
     /// Retun the number of bits used to describe region states.
-    pub fn num_bits(&self) -> u8 {
+    pub fn num_bits(&self) -> usize {
         self.states[0].num_bits()
     }
 } // end impl SomeRegion

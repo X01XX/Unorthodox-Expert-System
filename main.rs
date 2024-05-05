@@ -44,6 +44,7 @@ mod regionstore;
 mod regionstorecorr;
 mod resultstore;
 mod rule;
+use crate::rule::SomeRule;
 mod rulestore;
 use rulestore::RuleStore;
 mod sample;
@@ -261,122 +262,132 @@ fn domainstore_init() -> DomainStore {
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_11/XX/00/Xx")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_00/XX/11/Xx")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_XX/11/XX/10")
-            .expect("SNH")]),
         RuleStore::new(vec![
-            dmxs[0].rule_from_string("XX_11/00/10/XX").expect("SNH"),
-            dmxs[0].rule_from_string("XX_11/01/11/XX").expect("SNH"),
+            SomeRule::new_from_string("XX_11/XX/00/Xx").expect("SNH")
         ]),
         RuleStore::new(vec![
-            dmxs[0].rule_from_string("XX_11/XX/10/00").expect("SNH"),
-            dmxs[0].rule_from_string("XX_11/Xx/11/00").expect("SNH"),
+            SomeRule::new_from_string("XX_00/XX/11/Xx").expect("SNH")
         ]),
         RuleStore::new(vec![
-            dmxs[0].rule_from_string("XX_00/00/00/Xx").expect("SNH"),
-            dmxs[0].rule_from_string("XX_00/00/01/XX").expect("SNH"),
-            dmxs[0].rule_from_string("XX_00/01/00/XX").expect("SNH"),
+            SomeRule::new_from_string("XX_XX/11/XX/10").expect("SNH")
         ]),
         RuleStore::new(vec![
-            dmxs[0].rule_from_string("XX_00/XX/00/01").expect("SNH"),
-            dmxs[0].rule_from_string("XX_00/XX/01/00").expect("SNH"),
-            dmxs[0].rule_from_string("XX_00/Xx/00/00").expect("SNH"),
+            SomeRule::new_from_string("XX_11/00/10/XX").expect("SNH"),
+            SomeRule::new_from_string("XX_11/01/11/XX").expect("SNH"),
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_11/XX/10/00").expect("SNH"),
+            SomeRule::new_from_string("XX_11/Xx/11/00").expect("SNH"),
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_00/00/00/Xx").expect("SNH"),
+            SomeRule::new_from_string("XX_00/00/01/XX").expect("SNH"),
+            SomeRule::new_from_string("XX_00/01/00/XX").expect("SNH"),
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_00/XX/00/01").expect("SNH"),
+            SomeRule::new_from_string("XX_00/XX/01/00").expect("SNH"),
+            SomeRule::new_from_string("XX_00/Xx/00/00").expect("SNH"),
         ]),
     ];
     dmxs[0].add_action(ruls0);
 
     let ruls1: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_XX/Xx/11/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_XX/XX/01/XX")
-            .expect("SNH")]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_XX/Xx/11/XX").expect("SNH")
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_XX/XX/01/XX").expect("SNH")
+        ]),
     ];
     dmxs[0].add_action(ruls1);
 
     let ruls2: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_XX/XX/10/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_XX/Xx/00/XX")
-            .expect("SNH")]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_XX/XX/10/XX").expect("SNH")
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_XX/Xx/00/XX").expect("SNH")
+        ]),
     ];
     dmxs[0].add_action(ruls2);
 
     let ruls3: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("Xx_11/XX/XX/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_01/XX/XX/XX")
-            .expect("SNH")]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("Xx_11/XX/XX/XX").expect("SNH")
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_01/XX/XX/XX").expect("SNH")
+        ]),
     ];
     dmxs[0].add_action(ruls3);
 
     let ruls4: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("XX_10/XX/XX/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[0]
-            .rule_from_string("Xx_00/XX/XX/XX")
-            .expect("SNH")]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("XX_10/XX/XX/XX").expect("SNH")
+        ]),
+        RuleStore::new(vec![
+            SomeRule::new_from_string("Xx_00/XX/XX/XX").expect("SNH")
+        ]),
     ];
     dmxs[0].add_action(ruls4);
 
-    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[0]
-        .rule_from_string("XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[0].add_action(ruls5);
 
     // Add actions 0 through 6 to domain 1.
-    let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls0);
 
-    let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls1);
 
-    let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls2);
 
-    let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls3);
 
-    let ruls4: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls4: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls4);
 
-    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![dmxs[1]
-        .rule_from_string("XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX")
-        .expect("SNH")])];
+    let ruls5: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+        "XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX",
+    )
+    .expect("SNH")])];
     dmxs[1].add_action(ruls5);
 
     let ruls6: Vec<RuleStore> = vec![
-        RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX")
-            .expect("SNH")]),
-        RuleStore::new(vec![dmxs[1]
-            .rule_from_string("XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX")
-            .expect("SNH")]),
+        RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX",
+        )
+        .expect("SNH")]),
+        RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX",
+        )
+        .expect("SNH")]),
+        RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX",
+        )
+        .expect("SNH")]),
     ];
     dmxs[1].add_action(ruls6);
 
@@ -783,7 +794,7 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
         return Err("Exactly one state argument is needed for the cs command.".to_string());
     }
     // Get state from string
-    match dmxs.state_from_string(cmd[1]) {
+    match SomeState::new_from_string(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
             dmxs.set_state(&a_state);
@@ -799,13 +810,18 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     if cmd.len() != 2 {
         return Err("Exactly one region argument is needed for the to command.".to_string());
     }
-    let dom_id = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_id];
-
-    let cur_state = dmx.get_current_state();
 
     // Get region from string
     let goal_region = SomeRegion::new_from_string(cmd[1])?;
+
+    let dom_id = dmxs.current_domain;
+    let dmx = &mut dmxs[dom_id];
+
+    if goal_region.num_bits() != dmx.num_bits() {
+        return Err("Region does not have the same number of bits as the CCD.".to_string());
+    }
+
+    let cur_state = dmx.get_current_state();
 
     if goal_region.num_bits() != dmx.cur_state.num_bits() {
         return Err(
@@ -846,36 +862,42 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
 /// Do sample-state command.
 fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_id = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_id];
-
-    let cur_state = dmx.get_current_state();
-
     if cmd.len() == 1 {
         return Err("Action number is needed for the ss command.".to_string());
     }
 
-    let act_id = match dmx.act_id_from_string(cmd[1]) {
+    let act_id = match cmd[1].parse::<usize>() {
         Ok(act_id) => act_id,
         Err(error) => {
-            return Err(error);
+            return Err(error.to_string());
         }
     };
 
     if cmd.len() == 2 {
-        println!("Act {act_id} sample State {cur_state}");
+        let dom_id = dmxs.current_domain;
+        let dmx = &mut dmxs[dom_id];
+
+        println!("Act {act_id} sample curent state.");
         dmx.take_action_arbitrary(act_id);
         return Ok(());
     }
 
     if cmd.len() == 3 {
         // Get state from string
-        let a_state = match dmx.state_from_string(cmd[2]) {
+        let a_state = match SomeState::new_from_string(cmd[2]) {
             Ok(a_state) => a_state,
             Err(error) => {
                 return Err(error);
             }
         };
+
+        let dom_id = dmxs.current_domain;
+
+        let dmx = &mut dmxs[dom_id];
+
+        if a_state.num_bits() != dmx.num_bits() {
+            return Err("State does not have the same number of bits as the CCD.".to_string());
+        }
 
         println!("Act {act_id} sample State {a_state}");
         dmx.set_state(&a_state);
@@ -891,7 +913,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         // e.g. ss  0  s0b1010  s0b1111
 
         // Get i-state from string
-        let i_state = match dmx.state_from_string(cmd[2]) {
+        let i_state = match SomeState::new_from_string(cmd[2]) {
             Ok(i_state) => i_state,
             Err(error) => {
                 return Err(error);
@@ -899,12 +921,23 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         };
 
         // Get r-state from string
-        let r_state = match dmx.state_from_string(cmd[3]) {
+        let r_state = match SomeState::new_from_string(cmd[3]) {
             Ok(r_state) => r_state,
             Err(error) => {
                 return Err(error);
             }
         };
+
+        if i_state.num_bits() != r_state.num_bits() {
+            return Err("States do not have the same number of bits.".to_string());
+        }
+
+        let dom_id = dmxs.current_domain;
+        let dmx = &mut dmxs[dom_id];
+
+        if i_state.num_bits() != dmx.num_bits() {
+            return Err("States do not have the same number of bits as the CCD.".to_string());
+        }
 
         println!("Act {act_id} take sample {i_state} -> {r_state}");
         let smpl = SomeSample::new(i_state, r_state);
@@ -920,17 +953,16 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 /// should equal the sum of the first two number of the rating.
 fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_id];
 
     if cmd.len() == 1 {
         return Err("Need to supply an action number".to_string());
     }
 
     // Get action number
-    let act_id = match dmx.act_id_from_string(cmd[1]) {
+    let act_id = match cmd[1].parse::<usize>() {
         Ok(act_id) => act_id,
         Err(error) => {
-            return Err(error);
+            return Err(error.to_string());
         }
     };
 
@@ -960,12 +992,17 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
     }
 
     // Get action number
-    let act_id = match dmx.act_id_from_string(cmd[1]) {
+    let act_id = match cmd[1].parse::<usize>() {
         Ok(act_id) => act_id,
         Err(error) => {
-            return Err(error);
+            return Err(error.to_string());
         }
     };
+
+    if act_id < dmx.actions.len() {
+    } else {
+        return Err(format!("Invalid action ID for domain {dom_id}"));
+    }
 
     if cmd.len() == 2 {
         println!(
@@ -1084,10 +1121,10 @@ fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), 
     }
 
     // Get action number
-    let act_id = match dmx.act_id_from_string(cmd[1]) {
+    let act_id = match cmd[1].parse::<usize>() {
         Ok(act_id) => act_id,
         Err(error) => {
-            return Err(error);
+            return Err(error.to_string());
         }
     };
 
@@ -1116,10 +1153,10 @@ fn do_print_group_defining_squares_command(
     }
 
     // Get action number
-    let act_id = match dmx.act_id_from_string(cmd[1]) {
+    let act_id = match cmd[1].parse::<usize>() {
         Ok(act_id) => act_id,
         Err(error) => {
-            return Err(error);
+            return Err(error.to_string());
         }
     };
 
@@ -1170,7 +1207,7 @@ fn usage() {
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
     println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");
     println!("                               the current state scrolls off screen, this might be useful.");
-    println!("    fsd <path>               - File Store Data.");
+    println!("\n    fsd <path>               - File Store Data.");
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
@@ -1181,7 +1218,6 @@ fn usage() {
     );
     println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    rx <region>              - Experiment with rules of the CDD and it's current state. Esp. when a need cannot be satisfied.");
     println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
     println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
     println!(

@@ -46,48 +46,6 @@ impl SomeState {
     }
 
     /// Return a State from a string.
-    /// Left-most, consecutive, zeros can be omitted.
-    ///
-    /// if let Ok(sta) = SomeState-instance.new_from_string("s0b0101")) {
-    ///    println!("State {sta}");
-    /// } else {
-    ///    panic!("Invalid State");
-    /// }
-    /// A prefix of "s0x" can be used to specify hexadecimal characters.
-    pub fn _new_from_string(&self, str: &str) -> Result<Self, String> {
-        let mut rest = String::new();
-
-        let mut leading_zero = false;
-        let mut base_indicator = false;
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "s" || chr == "S" {
-                    continue;
-                }
-                return Err(format!(
-                    "Did not understand the string {str}, first character?"
-                ));
-            }
-            if inx == 1 && chr == "0" {
-                leading_zero = true;
-            }
-            if inx == 2 && (chr == "b" || chr == "x") {
-                base_indicator = true;
-            }
-            rest.push_str(chr);
-        }
-
-        if leading_zero && base_indicator {
-        } else {
-            rest = "0b".to_owned() + &rest;
-        }
-        match self.bts._new_from_string(&rest) {
-            Ok(bts) => Ok(Self { bts }),
-            Err(error) => Err(error),
-        }
-    } // end new_from_string
-
-    /// Return a State from a string.
     /// Each bit must be specified.
     ///
     /// if let Ok(sta) = SomeState::new_from_string("s0b0101")) {
@@ -232,8 +190,8 @@ impl SomeState {
     }
 
     /// Return the number of bits used to describe a state.
-    pub fn num_bits(&self) -> u8 {
-        self.bts.num_bits
+    pub fn num_bits(&self) -> usize {
+        self.bts.num_bits as usize
     }
 
     /// Return a SomeMask instance, representing a bitwise And-not of a mask and the invert of another instance that supports the BitsRef Trait.

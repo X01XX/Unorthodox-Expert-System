@@ -534,11 +534,6 @@ impl SomeRule {
     }
 
     /// Return a SomeChange instance.
-    pub fn _change(&self) -> SomeChange {
-        SomeChange::new(self.b01.clone(), self.b10.clone())
-    }
-
-    /// Return a SomeChange instance.
     pub fn to_change(&self) -> SomeChange {
         SomeChange::new(self.b01.clone(), self.b10.clone())
     }
@@ -633,19 +628,6 @@ impl SomeRule {
     /// Return true if a rule causes predictable change.
     pub fn causes_predictable_change(&self) -> bool {
         !(self.b10.is_low() && self.b01.is_low())
-    }
-
-    /// Combine two rules in sequence.
-    /// The result region of the first rule is not required to intersect the initial region of the second rule.
-    /// Changes in the first rule may be reversed in the second rule.
-    pub fn _combine_sequence(&self, other: &Self) -> Self {
-        if self.result_region().intersects(&other.initial_region()) {
-            return self.combine_pair(other);
-        }
-        let rul_between =
-            Self::new_region_to_region(&self.result_region(), &other.initial_region());
-
-        self.combine_pair(&rul_between).combine_pair(other)
     }
 
     /// Combine two rules.
