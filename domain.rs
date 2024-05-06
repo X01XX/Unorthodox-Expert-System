@@ -333,10 +333,7 @@ impl SomeDomain {
         verbose: bool,
     ) -> Option<SomePlan> {
         if verbose {
-            println!(
-                "\ndomain::depth_first_search2: from {} to {}",
-                from_reg, goal_reg
-            );
+            println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
         }
 
         // Check if one step makes the required change, the end point of any search.
@@ -584,6 +581,9 @@ impl SomeDomain {
             );
         }
         if depth == 0 {
+            if verbose {
+                println!("\n    depth limit exceeded.");
+            }
             return None;
         }
 
@@ -592,7 +592,7 @@ impl SomeDomain {
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
             if verbose {
-                println!("\nRules covering all needed bit changes {required_change} not found");
+                println!("\n    rules covering all needed bit changes {required_change} not found");
             }
             return None;
         }
@@ -636,6 +636,9 @@ impl SomeDomain {
             );
         }
         if depth == 0 {
+            if verbose {
+                println!("\n    depth limit exceeded.");
+            }
             return None;
         }
 
@@ -669,6 +672,9 @@ impl SomeDomain {
         };
 
         // Try linking two plans together with the step.
+        if verbose {
+            println!("\n    linking plan {to_step_plan} step {stepy} plan {from_step_plan}");
+        }
         to_step_plan
             .link(&SomePlan::new(self.id, vec![stepy]))?
             .link(&from_step_plan)
