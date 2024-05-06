@@ -797,7 +797,7 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
     match SomeState::new_from_string(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
-            dmxs.set_state(&a_state);
+            dmxs.set_cur_state(a_state);
             Ok(())
         }
         Err(error) => Err(format!("\nDid not understand state, {error}")),
@@ -900,7 +900,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         }
 
         println!("Act {act_id} sample State {a_state}");
-        dmx.set_state(&a_state);
+        dmx.set_cur_state(a_state);
         dmx.take_action_arbitrary(act_id);
         return Ok(());
     }

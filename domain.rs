@@ -177,12 +177,8 @@ impl SomeDomain {
 
     /// Set the current state field.
     pub fn set_cur_state(&mut self, stax: SomeState) {
+        assert!(self.cur_state.num_bits() == stax.num_bits());
         self.cur_state = stax;
-    }
-
-    /// Set current state field, without affecting memory.
-    pub fn set_state(&mut self, new_state: &SomeState) {
-        self.cur_state = new_state.clone();
     }
 
     /// Run a plan, return true if it runs to completion.
@@ -1147,7 +1143,7 @@ mod tests {
 
         // Get plan for 7 to 8
         let cur_state = SomeState::new_from_string("s0b0111")?;
-        dm0.set_state(&cur_state);
+        dm0.set_cur_state(cur_state);
         let toreg = SomeRegion::new_from_string("r1000")?;
 
         if dmxs[0].make_plans(&toreg).is_some() {
@@ -1208,7 +1204,7 @@ mod tests {
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
         let s7 = SomeState::new_from_string("s0x7")?;
-        dm0.set_state(&s7);
+        dm0.set_cur_state(s7);
         let toreg = SomeRegion::new_from_string("r1100")?;
 
         if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
@@ -1404,7 +1400,7 @@ mod tests {
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
@@ -1546,7 +1542,7 @@ mod tests {
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
         let s5 = SomeState::new_from_string("s0b0101")?;
@@ -1593,7 +1589,7 @@ mod tests {
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(16)));
-        dm0.cur_state = SomeState::new_from_string("s0b1")?;
+        dm0.cur_state = SomeState::new_from_string("s0b0000000000000001")?;
         dm0.add_action(vec![]);
 
         let s0 = SomeState::new_from_string("s0b0001010010101000")?;

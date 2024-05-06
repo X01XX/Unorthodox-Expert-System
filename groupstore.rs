@@ -434,16 +434,6 @@ impl GroupStore {
         }
         ret
     }
-
-    /// Return true if the store is empty.
-    pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
-    }
-
-    /// Return true if the store is not empty.
-    pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
-    }
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

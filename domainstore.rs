@@ -702,11 +702,6 @@ impl DomainStore {
         self.domains.len()
     }
 
-    /// Return true if the store is empty
-    pub fn is_empty(&self) -> bool {
-        self.domains.is_empty()
-    }
-
     /// Return a vector of domain current state references, in domain number order.
     pub fn all_current_states(&self) -> StateStoreCorr {
         let mut all_states = StateStoreCorr::with_capacity(self.len());
@@ -982,9 +977,9 @@ impl DomainStore {
     }
 
     // Set the current state field, of the current domain.
-    pub fn set_state(&mut self, new_state: &SomeState) {
+    pub fn set_cur_state(&mut self, new_state: SomeState) {
         let dmx = self.current_domain;
-        self[dmx].set_state(new_state)
+        self[dmx].set_cur_state(new_state)
     }
 
     /// Generate and display domain and needs.
@@ -1738,12 +1733,12 @@ mod tests {
         // Set up first domain.
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let s5 = SomeState::new_from_string("s0b0101")?;
-        dmxs[0].set_state(&s5);
+        dmxs[0].set_cur_state(s5.clone());
 
         // Set up second domain.
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let sf = SomeState::new_from_string("s0b1111")?;
-        dmxs[0].set_state(&sf);
+        dmxs[0].set_cur_state(sf.clone());
 
         let mut targs = TargetStore::new(vec![]);
         let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
@@ -1823,7 +1818,7 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
@@ -1897,7 +1892,7 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
@@ -1984,7 +1979,7 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
@@ -2055,7 +2050,7 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
@@ -2118,7 +2113,7 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
@@ -2148,11 +2143,11 @@ mod tests {
 
         // Set state for domain 0, using 1 integer for bits.
         let init_state1 = SomeState::new_from_string("s0x12")?;
-        dmxs[0].set_state(&init_state1);
+        dmxs[0].set_cur_state(init_state1.clone());
 
         // Set state for domain 1, using 2 integers for bits.
         let init_state2 = SomeState::new_from_string("s0xabcd")?;
-        dmxs[1].set_state(&init_state2);
+        dmxs[1].set_cur_state(init_state2.clone());
 
         let all_states = dmxs.all_current_states();
         println!("all states {}", all_states);
@@ -2221,7 +2216,7 @@ mod tests {
         dmxs.calc_select();
 
         let s0 = SomeState::new_from_string("s0b0000")?;
-        dmxs[0].set_state(&s0);
+        dmxs[0].set_cur_state(s0.clone());
 
         let sd = SomeState::new_from_string("s0b1101")?;
 
@@ -2323,10 +2318,10 @@ mod tests {
         dmxs.calc_select();
 
         let s0 = SomeState::new_from_string("s0x0")?;
-        dmxs[0].set_state(&s0);
+        dmxs[0].set_cur_state(s0.clone());
 
         let s1 = SomeState::new_from_string("s0x1")?;
-        dmxs[1].set_state(&s1);
+        dmxs[1].set_cur_state(s1.clone());
 
         let sf = SomeState::new_from_string("s0xf")?;
         let se = SomeState::new_from_string("s0xe")?;
@@ -2426,10 +2421,10 @@ mod tests {
         dmxs.calc_select();
 
         let s5 = SomeState::new_from_string("s0b0101")?;
-        dmxs[0].set_state(&s5);
+        dmxs[0].set_cur_state(s5.clone());
 
         let s7 = SomeState::new_from_string("s0b0111")?;
-        dmxs[1].set_state(&s7);
+        dmxs[1].set_cur_state(s7.clone());
 
         let start_regions = RegionStoreCorr::new(vec![
             SomeRegion::new(vec![s5.clone()]),
@@ -2535,10 +2530,10 @@ mod tests {
         dmxs.calc_select();
 
         let s5 = SomeState::new_from_string("s0b0101")?;
-        dmxs[0].set_state(&s5);
+        dmxs[0].set_cur_state(s5.clone());
 
         let s7 = SomeState::new_from_string("s0b0111")?;
-        dmxs[1].set_state(&s7);
+        dmxs[1].set_cur_state(s7.clone());
 
         let start_regions = RegionStoreCorr::new(vec![
             SomeRegion::new(vec![s5.clone()]),
@@ -2606,11 +2601,11 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x12")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::new_from_string("s0xabcd")?;
-        dmxs[1].set_state(&state2);
+        dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
         dmxs.boredom_limit = 0;
@@ -2630,11 +2625,11 @@ mod tests {
 
         // Set state for domain 0.
         let state1 = SomeState::new_from_string("s0x05")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::new_from_string("s0xa28d")?;
-        dmxs[1].set_state(&state2);
+        dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
         dmxs.boredom_limit = 2;
@@ -2682,7 +2677,7 @@ mod tests {
 
         // Set state for domain 0, using 1 integer for bits.
         let state1 = SomeState::new_from_string("s0xd")?;
-        dmxs[0].set_state(&state1);
+        dmxs[0].set_cur_state(state1.clone());
 
         // Finish select regions setup.
         dmxs.calc_select();
