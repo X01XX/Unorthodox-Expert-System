@@ -116,9 +116,7 @@ impl SomeBits {
     /// Using multiple integers to represent a SomeBits struct could allow for
     /// a number that is too big for the standard methods of converting a string to an integer.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
-        // Count number bits needed.
-        // Check for invalid prefix or characters.
-        // Set base value, 2 or 16.
+        // Set base value, if given.
         let mut num_bits = 0;
         let mut base = 2; // default base.
 
@@ -151,7 +149,7 @@ impl SomeBits {
                 }
                 let Ok(digit) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid character?"
+                        "SomeBits::new_from_string: String {str}, invalid character {chr}?"
                     ));
                 };
                 if digit > 1 {
@@ -162,7 +160,6 @@ impl SomeBits {
         }
 
         // Calc the number of bits given.
-        // Check for invalid digits.
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx < 2 && base_specified {
                 continue;
@@ -173,18 +170,8 @@ impl SomeBits {
             }
 
             if base == 2 {
-                let Ok(_) = Bitint::from_str_radix(chr, 2) else {
-                    return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid character?"
-                    ));
-                };
                 num_bits += 1;
             } else {
-                let Ok(_) = Bitint::from_str_radix(chr, 16) else {
-                    return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid character?"
-                    ));
-                };
                 num_bits += 4;
             }
         } // next inx, chr
@@ -202,6 +189,7 @@ impl SomeBits {
         let lsb_inx = bts.num_ints() - 1;
 
         // Translate digits into bits.
+        // Check for invalid bits.
         for (inx, chr) in str.graphemes(true).enumerate() {
             if inx < 2 && base_specified {
                 continue;
@@ -213,15 +201,22 @@ impl SomeBits {
 
             if base == 2 {
                 bts = bts.shift_left();
-                if chr == "1" {
+                if chr == "0" {
+                } else if chr == "1" {
                     bts.ints[lsb_inx] += 1;
+                } else {
+                    return Err(format!(
+                        "SomeBits::new_from_string: String {str}, invalid character {chr}?"
+                    ));
                 }
-            } else {
-                let numx = Bitint::from_str_radix(chr, 16).unwrap();
-
+            } else if let Ok(numx) = Bitint::from_str_radix(chr, 16) {
                 bts = bts.shift_left4();
 
                 bts.ints[lsb_inx] += numx;
+            } else {
+                return Err(format!(
+                    "SomeBits::new_from_string: String {str}, invalid character {chr}?"
+                ));
             }
         } // next (inx, chr)
 

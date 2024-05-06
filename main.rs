@@ -818,16 +818,14 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     let dmx = &mut dmxs[dom_id];
 
     if goal_region.num_bits() != dmx.num_bits() {
-        return Err("Region does not have the same number of bits as the CCD.".to_string());
+        return Err(format!(
+            "Region does not have the same number of bits, {}, as the CCD, {}.",
+            goal_region.num_bits(),
+            dmx.num_bits()
+        ));
     }
 
     let cur_state = dmx.get_current_state();
-
-    if goal_region.num_bits() != dmx.cur_state.num_bits() {
-        return Err(
-            "Invalid number of bits in region string, need to change displayed domain?".to_string(),
-        );
-    }
 
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(
