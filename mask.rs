@@ -64,19 +64,28 @@ impl SomeMask {
     /// }
     /// A prefix of "m0x" can be used to specify hexadecimal characters.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
+        // Check the first character.
+        if let Some(char0) = str.graphemes(true).nth(0) {
+            if char0 == "m" || char0 == "M" {
+            } else {
+                return Err(
+                    "SomeMask::new_from_string: Initial character should be m or M".to_string(),
+                );
+            }
+        } else {
+            return Err(format!(
+                "SomeMask::new_from_string: String {str}, no valid character?"
+            ));
+        }
+
+        // Copy not-first characters to a buffer, since we can't get a reference to the second character.
         let mut bit_chars = String::new();
 
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "m" || chr == "M" {
-                    continue;
-                }
-                return Err("Initial character should be m".to_string());
-            }
-
+        for chr in str.graphemes(true).skip(1) {
             bit_chars.push_str(chr);
         }
 
+        // Create the result from the not-first characters.
         match SomeBits::new_from_string(&bit_chars) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),

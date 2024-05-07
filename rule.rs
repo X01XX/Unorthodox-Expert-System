@@ -62,18 +62,31 @@ impl SomeRule {
     /// Al bit positions must be specified.
     /// like SomeRule::new_from_string("00/01/11/10/XX/xx/Xx/xX/X0/X1")
     pub fn new_from_string(rep: &str) -> Result<Self, String> {
+        // Check for empty string.
+        if rep.is_empty() {
+            return Err(format!(
+                "SomeRule::new_from_string: No bit positions specified in {}",
+                &rep
+            ));
+        }
+
+        // Initialize new mask strings.
         let mut b00 = String::from("m0b");
         let mut b01 = String::from("m0b");
         let mut b11 = String::from("m0b");
         let mut b10 = String::from("m0b");
 
+        // Gather bit position tokens as pairs of valid characters.
         let mut token = String::with_capacity(2);
 
         for bt in rep.graphemes(true) {
             if bt == "/" || bt == "_" {
                 continue;
             }
+            // Add character to token.
             token.push_str(bt);
+
+            // Process finished token.
             if token.len() == 2 {
                 if token == "00" {
                     b00.push('1');
@@ -116,16 +129,24 @@ impl SomeRule {
                     b11.push('1');
                     b10.push('0');
                 } else {
-                    return Err(format!("unrecognized token {}", &token));
+                    return Err(format!(
+                        "SomeRule::new_from_string: Unrecognized token {}",
+                        &token
+                    ));
                 }
                 token.clear();
             }
         }
+        // Check for unfinished token.
         if token.is_empty() {
         } else {
-            return Err(format!("Did not understand token {}", &token));
+            return Err(format!(
+                "SomeRule::new_from_string: Did not understand token {}",
+                &token
+            ));
         }
 
+        // Get mask instances from bit strings.
         let b00 = SomeMask::new_from_string(&b00)?;
         let b01 = SomeMask::new_from_string(&b01)?;
         let b11 = SomeMask::new_from_string(&b11)?;

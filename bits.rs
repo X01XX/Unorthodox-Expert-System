@@ -122,23 +122,22 @@ impl SomeBits {
 
         let mut base_specified = false;
 
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "0" {
-                    continue;
-                } else {
-                    break;
+        // Check the first one, or two, characters.
+        if let Some(char0) = str.graphemes(true).nth(0) {
+            if char0 == "0" {
+                if let Some(char1) = str.graphemes(true).nth(1) {
+                    if char1 == "b" || char1 == "B" {
+                        base_specified = true;
+                    } else if char1 == "x" || char1 == "X" {
+                        base_specified = true;
+                        base = 16;
+                    }
                 }
             }
-            if inx == 1 {
-                if chr == "b" || chr == "B" {
-                    base_specified = true;
-                } else if chr == "x" || chr == "X" {
-                    base_specified = true;
-                    base = 16;
-                }
-                break;
-            }
+        } else {
+            return Err(format!(
+                "SomeBits::new_from_string: String {str}, no valid character?"
+            ));
         }
 
         // Check base-unspecified string for a base 16 digit.
@@ -161,7 +160,7 @@ impl SomeBits {
 
         // Calc the number of bits given.
         for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx < 2 && base_specified {
+            if base_specified && inx < 2 {
                 continue;
             }
 
@@ -191,7 +190,7 @@ impl SomeBits {
         // Translate digits into bits.
         // Check for invalid bits.
         for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx < 2 && base_specified {
+            if base_specified && inx < 2 {
                 continue;
             }
 

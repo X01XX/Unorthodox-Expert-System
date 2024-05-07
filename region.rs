@@ -147,35 +147,43 @@ impl SomeRegion {
     /// x = (0, 1).
     /// XxXx = (1010, 0101).
     pub fn new_from_string(str: &str) -> Result<Self, String> {
-        let mut b1 = String::from("s0b");
-        let mut b2 = String::from("s0b");
-
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "r" {
-                    continue;
-                } else if chr == "s" {
-                    let stax = SomeState::new_from_string(str)?;
-                    return Ok(SomeRegion::new(vec![stax]));
-                } else {
-                    return Err(format!(
-                        "Did not understand the string {str}, first character?"
-                    ));
-                }
+        // Check the first character.
+        if let Some(char0) = str.graphemes(true).nth(0) {
+            if char0 == "r" || char0 == "R" {
+            } else if char0 == "s" || char0 == "S" {
+                // Create a region from a single state.
+                // An advantage is that hexadecimal digits can be used if there are no X-bit positions.
+                let stax = SomeState::new_from_string(str)?;
+                return Ok(SomeRegion::new(vec![stax]));
+            } else {
+                return Err(
+                    "SomeRegion::new_from_string: Initial character should be r or R, s or S"
+                        .to_string(),
+                );
             }
+        } else {
+            return Err(format!(
+                "SomeRegion::new_from_string: String {str}, no valid character?"
+            ));
+        }
 
+        // Translate the region string into two state strings.
+        let mut b_high = String::from("s0b");
+        let mut b_low = String::from("s0b");
+
+        for chr in str.graphemes(true).skip(1) {
             if chr == "0" {
-                b1.push('0');
-                b2.push('0');
+                b_high.push('0');
+                b_low.push('0');
             } else if chr == "1" {
-                b1.push('1');
-                b2.push('1');
+                b_high.push('1');
+                b_low.push('1');
             } else if chr == "X" {
-                b1.push('1');
-                b2.push('0');
+                b_high.push('1');
+                b_low.push('0');
             } else if chr == "x" {
-                b1.push('0');
-                b2.push('1');
+                b_high.push('0');
+                b_low.push('1');
             } else if chr == "_" {
                 continue;
             } else {
@@ -183,11 +191,13 @@ impl SomeRegion {
                     "Did not understand the string {str}, invalid character?"
                 ));
             }
-        } // end for ch
+        } // end for chr
 
-        let sta_high = SomeState::new_from_string(&b1)?;
-        let sta_low = SomeState::new_from_string(&b2)?;
+        // Translate state strings to state instances.
+        let sta_high = SomeState::new_from_string(&b_high)?;
+        let sta_low = SomeState::new_from_string(&b_low)?;
 
+        // Return region from states.
         Ok(Self::new(vec![sta_high, sta_low]))
     } // end new_from_string2
 
