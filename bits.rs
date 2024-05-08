@@ -40,7 +40,7 @@ impl fmt::Display for SomeBits {
 pub struct SomeBits {
     /// Number of bits that are active.  So the first integer in the vector
     /// may use one, or more bits.
-    pub num_bits: u8,
+    pub num_bits: Bitint,
     /// A vector of one, or more, unsigned integers.
     pub ints: Vec<Bitint>,
 }

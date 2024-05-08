@@ -69,15 +69,8 @@ impl SomeState {
             ));
         }
 
-        // Copy not-first characters to a buffer, since we can't get a reference to the second character.
-        let mut bit_chars = String::new();
-
-        for chr in str.graphemes(true).skip(1) {
-            bit_chars.push_str(chr);
-        }
-
         // Create the result from the not-first characters.
-        match SomeBits::new_from_string(&bit_chars) {
+        match SomeBits::new_from_string(&str.to_string()[1..]) {
             Ok(bts) => Ok(Self { bts }),
             Err(error) => Err(error),
         }

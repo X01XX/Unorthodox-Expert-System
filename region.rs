@@ -241,13 +241,11 @@ impl SomeRegion {
 
     /// Return true if a region and a region/state are adjacent.
     pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
-        //println!("is_adjacent");
         self.diff_mask(other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
-        //println!("intersects");
         self.diff_mask(other).is_low()
     }
 
