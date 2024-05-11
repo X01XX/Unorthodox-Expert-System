@@ -393,8 +393,7 @@ mod tests {
     fn test_strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, tmp_reg);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
 
@@ -429,13 +428,13 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg1, &reg2),
             AltRuleHint::NoAlt {},
-            reg1.clone(),
+            1,
         );
         let step2 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg2, &reg3),
             AltRuleHint::NoAlt {},
-            reg2.clone(),
+            2,
         );
         let stp_str1 = SomePlan::new(0, vec![step1, step2]);
 
@@ -443,13 +442,13 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg4, &reg5),
             AltRuleHint::NoAlt {},
-            reg4.clone(),
+            4,
         );
         let step5 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg5, &reg6),
             AltRuleHint::NoAlt {},
-            reg5.clone(),
+            5,
         );
         let stp_str2 = SomePlan::new(0, vec![step4, step5]);
 
@@ -481,35 +480,35 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg1, &reg3),
             AltRuleHint::NoAlt {},
-            reg1.clone(),
+            1,
         );
 
         let step2 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg3, &reg7),
             AltRuleHint::NoAlt {},
-            reg3.clone(),
+            3,
         );
 
         let step3 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg7, &reg5),
             AltRuleHint::NoAlt {},
-            reg7.clone(),
+            7,
         );
 
         let step4 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg5, &reg1),
             AltRuleHint::NoAlt {},
-            reg5.clone(),
+            5,
         );
 
         let step5 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg1, &reg0),
             AltRuleHint::NoAlt {},
-            reg5.clone(),
+            5,
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
@@ -541,14 +540,14 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg1, &reg3),
             AltRuleHint::NoAlt {},
-            reg1.clone(),
+            1,
         );
 
         let step2 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg3, &reg7),
             AltRuleHint::NoAlt {},
-            reg3.clone(),
+            3,
         );
 
         let pln2 = SomePlan::new(0, vec![step1, step2]);

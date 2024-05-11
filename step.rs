@@ -34,23 +34,25 @@ impl fmt::Display for AltRuleHint {
 
 #[readonly::make]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A step that changes a state to another.
 pub struct SomeStep {
+    /// Action number.
     pub act_id: usize,
+    /// Initial region of rule.
     pub initial: SomeRegion,
+    /// Result region of rule.
     pub result: SomeRegion,
+    /// Rule used.
     pub rule: SomeRule,
+    /// Alternate rule hint.
     pub alt_rule: AltRuleHint,
-    pub group_reg: SomeRegion,
+    /// Group index in current group store.
+    pub group_inx: usize,
 }
 
 impl SomeStep {
     /// Return a new Step struct instance.
-    pub fn new(
-        act_id: usize,
-        rule: SomeRule,
-        alt_rule: AltRuleHint,
-        group_reg: SomeRegion,
-    ) -> Self {
+    pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint, group_inx: usize) -> Self {
         let initial = rule.initial_region();
 
         let result = rule.result_region();
@@ -61,7 +63,7 @@ impl SomeStep {
             result,
             rule,
             alt_rule,
-            group_reg,
+            group_inx,
         }
     }
 
@@ -77,7 +79,7 @@ impl SomeStep {
             result: rule_new.result_region(),
             rule: rule_new,
             alt_rule: self.alt_rule.clone(),
-            group_reg: self.group_reg.clone(),
+            group_inx: self.group_inx,
         }
     }
 
@@ -93,7 +95,7 @@ impl SomeStep {
             result: rule_new.result_region(),
             rule: rule_new,
             alt_rule: self.alt_rule.clone(),
-            group_reg: self.group_reg.clone(),
+            group_inx: self.group_inx,
         }
     }
 
@@ -113,7 +115,7 @@ impl SomeStep {
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         // Groups that change more than one bit may end up being compared.
-        if self.group_reg == other.group_reg {
+        if self.act_id == other.act_id && self.group_inx == other.group_inx {
             return false;
         }
         self.rule.mutually_exclusive(&other.rule, wanted)
@@ -121,7 +123,7 @@ impl SomeStep {
 
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
         // Groups that change more than one bit may end up being compared.
-        if self.group_reg == other.group_reg {
+        if self.act_id == other.act_id && self.group_inx == other.group_inx {
             return false;
         }
         self.rule.sequence_blocks_changes(&other.rule, wanted)
@@ -150,7 +152,6 @@ impl StrLen for SomeStep {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-    use crate::region::SomeRegion;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::state::SomeState;
@@ -162,8 +163,7 @@ mod tests {
         let tmp_sta = SomeState::new(ur_bits.clone());
         let tmp_sta2 = SomeState::new(SomeBits::new_from_string("0x2")?);
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta2.clone()));
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(ur_bits.clone())]);
-        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, tmp_reg.clone());
+        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, 0);
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -171,12 +171,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::new(
-            0,
-            tmp_rul.clone(),
-            AltRuleHint::AltNoChange {},
-            tmp_reg.clone(),
-        );
+        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::AltNoChange {}, 0);
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -185,7 +180,7 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_alt = SomeRule::new(&SomeSample::new(tmp_sta2.clone(), tmp_sta));
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt }, tmp_reg);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt }, 0);
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();

@@ -95,13 +95,15 @@ impl fmt::Display for ResultStore {
     }
 }
 
+type Resultint = usize;
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
     astore: Vec<SomeState>,
     /// Number results seen so far.
-    num_results: usize,
+    num_results: Resultint,
 }
 
 impl ResultStore {
@@ -129,12 +131,12 @@ impl ResultStore {
             self.astore[self.num_results % MAX_RESULTS] = st;
         }
 
-        // Wrap around, probably not needed.
-        // if self.num_results == usize::MAX {
-        //    self.num_results = 3;
-        // }
-
-        self.num_results += 1;
+        // Wrap around check.
+        if self.num_results == Resultint::MAX {
+            self.num_results = 4;
+        } else {
+            self.num_results += 1;
+        }
 
         self.calc_pn()
     }

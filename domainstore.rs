@@ -1620,43 +1620,41 @@ mod tests {
         let stab = SomeState::new(SomeBits::new_from_string("0xb")?);
         let staf = SomeState::new(SomeBits::new_from_string("0xf")?);
 
-        let grp_reg = SomeRegion::new(vec![sta2.clone()]);
-
         let stp27 = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(sta2.clone(), sta7.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
         let stp7f = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(sta7.clone(), staf.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
         let stp29 = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(sta2.clone(), sta9.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
         let stp2b = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(sta2.clone(), stab.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
         let stp9b = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(sta9.clone(), stab.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
         let stpbf = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new(stab.clone(), staf.clone())),
             AltRuleHint::NoAlt {},
-            grp_reg.clone(),
+            0,
         );
 
         // Init DomainStore. Domain.

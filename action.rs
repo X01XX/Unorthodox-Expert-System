@@ -1465,7 +1465,7 @@ impl SomeAction {
 
         let mut stps = StepStore::new(vec![]);
 
-        for grpx in self.groups.iter() {
+        for (inx, grpx) in self.groups.iter().enumerate() {
             if !grpx.causes_predictable_change() {
                 continue;
             }
@@ -1493,12 +1493,7 @@ impl SomeAction {
                 let rulsx =
                     grpx.rules.as_ref().expect("SNH")[0].restrict_for_changes(achange, within);
                 for rulx in rulsx.into_iter() {
-                    stps.push(SomeStep::new(
-                        self.id,
-                        rulx,
-                        AltRuleHint::NoAlt {},
-                        grpx.region.clone(),
-                    ));
+                    stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}, inx));
                 }
                 continue;
             }
@@ -1506,10 +1501,10 @@ impl SomeAction {
             if grpx.pn == Pn::Two {
                 // Get restricted regions for needed changes.
 
-                let stps2 = self.get_steps2(0, 1, grpx, achange, within);
+                let stps2 = self.get_steps2(0, 1, grpx, inx, achange, within);
                 stps.append(stps2);
 
-                let stps2 = self.get_steps2(1, 0, grpx, achange, within);
+                let stps2 = self.get_steps2(1, 0, grpx, inx, achange, within);
                 stps.append(stps2);
             } // end Pn::Two
         } // next grpx
@@ -1524,6 +1519,7 @@ impl SomeAction {
         inx: usize,
         iny: usize,
         grpx: &SomeGroup,
+        grpx_inx: usize,
         achange: &SomeChange,
         within: Option<&SomeRegion>,
     ) -> StepStore {
@@ -1542,7 +1538,7 @@ impl SomeAction {
                     self.id,
                     rulx,
                     AltRuleHint::AltNoChange {},
-                    grpx.region.clone(),
+                    grpx_inx,
                 ));
                 continue;
             }
@@ -1562,7 +1558,7 @@ impl SomeAction {
                         self.id,
                         rulx.restrict_initial_region(&SomeRegion::new(vec![sqrx.state.clone()])),
                         AltRuleHint::NoAlt {},
-                        grpx.region.clone(),
+                        grpx_inx,
                     );
                     stps.push(stpx);
                 } // end if
@@ -1572,7 +1568,7 @@ impl SomeAction {
                 self.id,
                 rulx,
                 AltRuleHint::AltRule { rule: ruly2 },
-                grpx.region.clone(),
+                grpx_inx,
             ));
         } // next rulx
 
