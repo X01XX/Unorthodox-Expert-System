@@ -250,18 +250,6 @@ impl SomeRegion {
     }
 
     /// Return the intersection of two regions.
-    ///
-    /// In most cases, you should check that the regions intersect before calling this.
-    ///
-    /// The region definition does not allow a null bit position, the logic
-    /// happens to turn 0/1 and 1/0 bit positions into X.
-    ///
-    ///     The intersection of two adjacent regions produces a region
-    ///     overlapping both, which may wholly encompass none, one, or both, regions.
-    ///
-    ///     The intersection of two regions different by more than one bit,
-    ///     forms a bridge between them, which may wholly encompass none, one, or both, regions.
-    ///
     pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
         if !self.intersects(other) {
             return None;
