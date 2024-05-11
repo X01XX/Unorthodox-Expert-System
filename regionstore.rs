@@ -233,8 +233,8 @@ impl RegionStore {
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
             for regy in other.iter() {
-                if regx.intersects(regy) {
-                    ret.push_nosubs(regx.intersection(regy));
+                if let Some(regz) = regx.intersection(regy) {
+                    ret.push_nosubs(regz);
                 }
             }
         }
@@ -253,8 +253,8 @@ impl RegionStore {
         // Check each possible pair.
         for inx in 0..(self.len() - 1) {
             for iny in (inx + 1)..self.len() {
-                if self[inx].intersects(&self[iny]) {
-                    tmp_ints.push_nosups(self[inx].intersection(&self[iny]));
+                if let Some(regz) = self[inx].intersection(&self[iny]) {
+                    tmp_ints.push_nosups(regz);
                 }
             }
         }
@@ -271,8 +271,8 @@ impl RegionStore {
             // Check each possible pair.
             for inx in 0..(tmp_ints.len() - 1) {
                 for iny in (inx + 1)..tmp_ints.len() {
-                    if tmp_ints[inx].intersects(&tmp_ints[iny]) {
-                        next_ints.push_nosups(tmp_ints[inx].intersection(&tmp_ints[iny]));
+                    if let Some(regz) = tmp_ints[inx].intersection(&tmp_ints[iny]) {
+                        next_ints.push_nosups(regz);
                     }
                 } // next iny
             } // next inx

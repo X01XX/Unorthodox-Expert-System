@@ -333,8 +333,8 @@ impl AccessStates for SomeSquare {
     fn low_state(&self) -> SomeState {
         self.state.clone()
     }
-    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
-        self.state.diff_mask(other)
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.state.diff_edge_mask(other)
     }
     fn intersects(&self, other: &impl AccessStates) -> bool {
         self.state.intersects(other)

@@ -16,7 +16,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::{not, StrLen};
+use crate::tools::StrLen;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -310,19 +310,18 @@ impl SomeRule {
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         let init_reg = self.initial_region();
 
-        if not(regx.intersects(&init_reg)) {
+        if let Some(reg_int) = regx.intersection(&init_reg) {
+            let zeros = reg_int.low_state().bitwise_not().to_mask();
+            let ones = reg_int.high_state().to_mask();
+
+            Self {
+                b00: self.b00.bitwise_and(&zeros),
+                b01: self.b01.bitwise_and(&zeros),
+                b11: self.b11.bitwise_and(&ones),
+                b10: self.b10.bitwise_and(&ones),
+            }
+        } else {
             panic!("{regx} does not intersect rule initial region {init_reg}");
-        };
-        let reg_int = regx.intersection(&init_reg);
-
-        let zeros = reg_int.low_state().bitwise_not().to_mask();
-        let ones = reg_int.high_state().to_mask();
-
-        Self {
-            b00: self.b00.bitwise_and(&zeros),
-            b01: self.b01.bitwise_and(&zeros),
-            b11: self.b11.bitwise_and(&ones),
-            b10: self.b10.bitwise_and(&ones),
         }
     }
 
@@ -334,19 +333,18 @@ impl SomeRule {
 
         let rslt_reg = self.result_region();
 
-        if not(regx.intersects(&rslt_reg)) {
+        if let Some(reg_int) = regx.intersection(&rslt_reg) {
+            let zeros = reg_int.low_state().bitwise_not().to_mask();
+            let ones = reg_int.high_state().to_mask();
+
+            Self {
+                b00: self.b00.bitwise_and(&zeros),
+                b01: self.b01.bitwise_and(&ones),
+                b11: self.b11.bitwise_and(&ones),
+                b10: self.b10.bitwise_and(&zeros),
+            }
+        } else {
             panic!("{regx} does not intersect rule result region {rslt_reg}");
-        };
-        let reg_int = regx.intersection(&rslt_reg);
-
-        let zeros = reg_int.low_state().bitwise_not().to_mask();
-        let ones = reg_int.high_state().to_mask();
-
-        Self {
-            b00: self.b00.bitwise_and(&zeros),
-            b01: self.b01.bitwise_and(&ones),
-            b11: self.b11.bitwise_and(&ones),
-            b10: self.b10.bitwise_and(&zeros),
         }
     }
 

@@ -298,7 +298,7 @@ impl GroupStore {
         // Remove the groups
         for inx in rmvec.iter().rev() {
             println!(
-                "\nDom {} Act {} Group {} deleted",
+                "\nDom {} Act {} Group {} deleted, subset of {reg}",
                 dom_id, act_id, self.avec[*inx].region
             );
             tools::remove_unordered(&mut self.avec, *inx);

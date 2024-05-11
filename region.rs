@@ -241,12 +241,12 @@ impl SomeRegion {
 
     /// Return true if a region and a region/state are adjacent.
     pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
-        self.diff_mask(other).just_one_bit()
+        self.diff_edge_mask(other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
-        self.diff_mask(other).is_low()
+        self.diff_edge_mask(other).is_low()
     }
 
     /// Return the intersection of two regions.
@@ -262,10 +262,19 @@ impl SomeRegion {
     ///     The intersection of two regions different by more than one bit,
     ///     forms a bridge between them, which may wholly encompass none, one, or both, regions.
     ///
-    pub fn intersection(&self, other: &impl AccessStates) -> Self {
-        let state1 = self.high_state().bitwise_and(&other.high_state());
-        let state2 = self.low_state().bitwise_or(&other.low_state());
-        Self::new(vec![state1, state2])
+    pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
+        if !self.intersects(other) {
+            return None;
+        }
+        if self.one_state() {
+            Some(Self::new(vec![self.first_state().clone()]))
+        } else if other.one_state() {
+            Some(Self::new(vec![other.first_state().clone()]))
+        } else {
+            let state1 = self.high_state().bitwise_and(&other.high_state());
+            let state2 = self.low_state().bitwise_or(&other.low_state());
+            Some(Self::new(vec![state1, state2]))
+        }
     }
 
     /// Return a Mask of zero positions.
@@ -388,6 +397,14 @@ impl SomeRegion {
         Self::new(vec![state1, state2])
     }
 
+    /// Return a region with masked bit positions set to X.
+    pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+        let state1 = self.state1().bitwise_or(msk);
+        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
+
+        Self::new(vec![state1, state2])
+    }
+
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
         let state1 = self.state1().bitwise_or(msk);
@@ -398,11 +415,11 @@ impl SomeRegion {
 
     /// Return the distance from a region to a region/state.
     pub fn distance(&self, other: &impl AccessStates) -> usize {
-        self.diff_mask(other).num_one_bits()
+        self.diff_edge_mask(other).num_one_bits()
     }
 
-    /// Return a mask of different, non-x, bits between a region and a region/state.
-    pub fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+    /// Return a mask of different edge bits between a region and a region/state.
+    pub fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
         match (self.one_state(), other.one_state()) {
             (true, true) => self
                 .first_state()
@@ -431,12 +448,12 @@ impl SomeRegion {
             return vec![self.clone()];
         }
 
-        let reg_int = self.intersection(other);
-
         // If other is a superset, return empty vector.
-        if reg_int == *self {
+        if other.is_superset_of(self) {
             return ret_vec;
         }
+
+        let reg_int = self.intersection(other).unwrap();
 
         // Split by X over 0 or 1.
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
@@ -500,21 +517,6 @@ impl SomeRegion {
         2usize.pow(self.x_mask().num_one_bits() as u32)
     }
 
-    /// Return the shared symmetric region between two regions, if any.
-    pub fn shared_symmetric_region(&self, other: &Self) -> Option<SomeRegion> {
-        // Regions must be adjacent.
-        if not(self.is_adjacent(other)) {
-            return None;
-        }
-        let regx = self.intersection(other);
-
-        if regx.is_superset_of(self) || regx.is_superset_of(other) {
-            return None;
-        }
-
-        Some(regx)
-    }
-
     /// Return the number of states defining the region.
     pub fn len(&self) -> usize {
         self.states.len()
@@ -542,6 +544,17 @@ impl SomeRegion {
     pub fn num_bits(&self) -> usize {
         self.states[0].num_bits()
     }
+
+    /// Return a bridge between two regions.
+    pub fn bridge(&self, other: &SomeRegion) -> Option<Self> {
+        if self.intersects(other) {
+            return None;
+        }
+
+        let to_x_mask = self.diff_edge_mask(other);
+        self.set_to_x(&to_x_mask)
+            .intersection(&other.set_to_x(&to_x_mask))
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -560,7 +573,7 @@ pub trait AccessStates {
     fn edge_mask(&self) -> SomeMask;
     fn high_state(&self) -> SomeState;
     fn low_state(&self) -> SomeState;
-    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask;
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask;
     fn intersects(&self, other: &impl AccessStates) -> bool;
     fn is_subset_of(&self, other: &impl AccessStates) -> bool;
     fn is_superset_of(&self, other: &impl AccessStates) -> bool;
@@ -586,8 +599,8 @@ impl AccessStates for SomeRegion {
     fn low_state(&self) -> SomeState {
         self.low_state()
     }
-    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
-        self.diff_mask(other)
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.diff_edge_mask(other)
     }
     fn intersects(&self, other: &impl AccessStates) -> bool {
         self.intersects(other)
@@ -611,7 +624,7 @@ mod tests {
     #[test]
     fn translate_to() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string("rXX0101X")?;
-        let reg2 = SomeRegion::new_from_string("r100110X")?;
+        let reg2 = SomeRegion::new_from_string("r10XX10X")?;
 
         let reg3 = reg1.translate_to(&reg2);
         println!("reg3 {reg3}");
@@ -622,29 +635,36 @@ mod tests {
     }
 
     #[test]
-    fn shared_symmetric_region() -> Result<(), String> {
+    fn bridge() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string("rX101")?;
         let reg2 = SomeRegion::new_from_string("rX111")?;
         let reg3 = SomeRegion::new_from_string("r0X10")?;
-        let reg4 = SomeRegion::new_from_string("r011X")?;
 
-        if let Some(result) = reg1.shared_symmetric_region(&reg2) {
-            println!("result {result}");
-            return Err(format!("bad result from {reg1} {reg2}"));
-        }
-
-        if let Some(result) = reg1.shared_symmetric_region(&reg3) {
-            println!("result {result}");
-            return Err(format!("bad result from {reg1} {reg3}"));
-        }
-
-        if let Some(result) = reg2.shared_symmetric_region(&reg3) {
-            println!("result {result}");
-            if result != reg4 {
-                return Err(format!("bad result from {reg2} {reg3}"));
+        if let Some(result) = reg1.bridge(&reg2) {
+            if result == SomeRegion::new_from_string("rX1X1")? {
+            } else {
+                return Err(format!("{reg1} bridge {reg2} == {result}"));
             }
         } else {
-            return Err(format!("bad result {reg2} {reg3} = None"));
+            return Err(format!("{reg1} bridge {reg2} == None?"));
+        }
+
+        if let Some(result) = reg1.bridge(&reg3) {
+            if result == SomeRegion::new_from_string("r01XX")? {
+            } else {
+                return Err(format!("{reg1} bridge {reg3} == {result}"));
+            }
+        } else {
+            return Err(format!("{reg1} bridge {reg3} == None?"));
+        }
+
+        if let Some(result) = reg2.bridge(&reg3) {
+            println!("result {result}");
+            if result != SomeRegion::new_from_string("r011X")? {
+                return Err(format!("{reg2} bridge {reg3} = {result}?"));
+            }
+        } else {
+            return Err(format!("{reg2} {reg3} = None?"));
         }
 
         Ok(())
@@ -904,25 +924,17 @@ mod tests {
         let reg0 = SomeRegion::new_from_string("rX10X")?;
         let reg1 = SomeRegion::new_from_string("r110X")?;
 
-        let reg_int = reg0.intersection(&reg1);
+        let reg_int = reg0.intersection(&reg1).ok_or("SNH")?;
         println!("Intersection of {reg0} and {reg1} is {reg_int}");
         assert!(reg_int == SomeRegion::new_from_string("r110X")?);
 
-        // Test adjacent "intersection"
-        let reg0 = SomeRegion::new_from_string("rX10X")?;
-        let reg1 = SomeRegion::new_from_string("r0X11")?;
-
-        let reg_int = reg0.intersection(&reg1);
-        println!("Intersection of {reg0} and {reg1} is {reg_int}");
-        assert!(reg_int == SomeRegion::new_from_string("r01x1")?);
-
-        // Test non-adjacent "intersection"
+        // Test non-intersection "intersection"
         let reg0 = SomeRegion::new_from_string("rX101")?;
         let reg1 = SomeRegion::new_from_string("r0X10")?;
 
-        let reg_int = reg0.intersection(&reg1);
-        println!("Intersection of {reg0} and {reg1} is {reg_int}");
-        assert!(reg_int == SomeRegion::new_from_string("r01xx")?);
+        if let Some(reg_int) = reg0.intersection(&reg1) {
+            return Err(format!("Intersection of {reg0} and {reg1} is {reg_int}?"));
+        }
 
         Ok(())
     }
@@ -1176,32 +1188,32 @@ mod tests {
         let sta0 = SomeState::new_from_string("s0b010101")?; // State, =1 state.
 
         // Region >1 state, Region >1 state.
-        let diff = reg2a.diff_mask(&reg2b);
+        let diff = reg2a.diff_edge_mask(&reg2b);
         println!("{reg2a} diff_mask {reg2b} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b000100")?);
 
         // Region >1 state, Region =1 state.
-        let diff = reg2a.diff_mask(&reg1a);
+        let diff = reg2a.diff_edge_mask(&reg1a);
         println!("{reg2a} diff_mask {reg1a} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b000110")?);
 
         // Region >1 state, state.
-        let diff = reg2a.diff_mask(&sta0);
+        let diff = reg2a.diff_edge_mask(&sta0);
         println!("{reg2a} diff_mask {sta0} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b000110")?);
 
         // Region =1 state, Region =1 state.
-        let diff = reg1a.diff_mask(&reg1b);
+        let diff = reg1a.diff_edge_mask(&reg1b);
         println!("{reg1a} diff_mask {reg1b} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b000110")?);
 
         // Region =1 state, Region >1 state.
-        let diff = reg1a.diff_mask(&reg2a);
+        let diff = reg1a.diff_edge_mask(&reg2a);
         println!("{reg1a} diff_mask {reg2a} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b000110")?);
 
         // Region =1 state, state.
-        let diff = reg1a.diff_mask(&sta0);
+        let diff = reg1a.diff_edge_mask(&sta0);
         println!("{reg1a} diff_mask {sta0} is {diff}");
         assert!(diff == SomeMask::new_from_string("m0b010000")?);
 

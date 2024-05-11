@@ -69,8 +69,8 @@ impl RegionStoreCorr {
     pub fn is_between(&self, other1: &Self, other2: &Self) -> bool {
         for (rcx, (rcy, rcz)) in self.iter().zip(other1.iter().zip(other2.iter())) {
             if rcx
-                .diff_mask(rcy)
-                .bitwise_and(&rcx.diff_mask(rcz))
+                .diff_edge_mask(rcy)
+                .bitwise_and(&rcx.diff_edge_mask(rcz))
                 .is_not_low()
             {
                 return false;
@@ -139,8 +139,8 @@ impl RegionStoreCorr {
         let mut ret = Self::with_capacity(self.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
-            if x.intersects(y) {
-                ret.push(x.intersection(y));
+            if let Some(regz) = x.intersection(y) {
+                ret.push(regz);
             } else {
                 return None;
             }
@@ -266,7 +266,7 @@ impl RegionStoreCorr {
     pub fn num_different_bits(&self, other: &Self) -> usize {
         let mut ret_num = 0;
         for (regx, regy) in self.iter().zip(other.iter()) {
-            ret_num += regx.diff_mask(regy).num_one_bits();
+            ret_num += regx.diff_edge_mask(regy).num_one_bits();
         }
         ret_num
     }

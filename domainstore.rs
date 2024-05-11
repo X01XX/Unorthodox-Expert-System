@@ -1528,7 +1528,7 @@ impl DomainStore {
 
             println!("\n  Domain: {}, Plan:", planx.dom_id);
             for stepx in planx.iter() {
-                let df = stepx.initial.diff_mask(&stepx.result);
+                let df = stepx.initial.diff_edge_mask(&stepx.result);
                 print!(
                     "    {} Action {:02} -> {}",
                     &stepx.initial, &stepx.act_id, stepx.result

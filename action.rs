@@ -573,7 +573,7 @@ impl SomeAction {
                 }
             }
 
-            // Identify shared symmetric groups.
+            // Identify bridge groups.
             let mut shared_regions = RegionStore::new(vec![]);
             for inx in 0..(self.groups.len() - 1) {
                 let grpx = &self.groups[inx];
@@ -584,8 +584,15 @@ impl SomeAction {
                     if grpy.pn != grpx.pn {
                         continue;
                     }
-                    if let Some(shared) = grpy.region.shared_symmetric_region(&grpx.region) {
-                        shared_regions.push(shared);
+                    if grpy.region.is_adjacent(&grpx.region) {
+                        if let Some(shared) = grpy.region.bridge(&grpx.region) {
+                            if shared.is_superset_of(&grpx.region)
+                                || shared.is_superset_of(&grpy.region)
+                            {
+                            } else {
+                                shared_regions.push(shared);
+                            }
+                        }
                     }
                 } // next iny
             } // next inx
@@ -855,7 +862,7 @@ impl SomeAction {
     /// The rate will be a tuple containing:
     ///     The number of adjacent states that are anchors of other groups,
     ///     The number adjacent states that are in only one group,
-    ///     The number of samples taken for the adjacent states.
+    ///     The number of samples taken for the anchor state and adjacent states.
     /// To set an anchor, a square with at least one sample is required, but ..
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
@@ -892,6 +899,9 @@ impl SomeAction {
             if let Some(sqrx) = self.squares.find(&sta_adj) {
                 sqr_samples += sqrx.rate();
             }
+            if let Some(sqrx) = self.squares.find(stax) {
+                sqr_samples += sqrx.rate();
+            }
         } // next edge_bit
 
         (anchors, in_1_group, sqr_samples)
@@ -907,8 +917,6 @@ impl SomeAction {
         group_num: usize,
         max_reg: &SomeRegion,
     ) -> NeedStore {
-        //let grpx = self.groups.find_mut(&regx).expect("SNH");
-
         let mut ret_nds = NeedStore::new(vec![]);
 
         let adj_squares = self.squares.stas_adj_reg(regx);
@@ -924,7 +932,7 @@ impl SomeAction {
 
         for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
-            let stay = ancx.bitwise_xor(&regx.diff_mask(ancx));
+            let stay = ancx.bitwise_xor(&regx.diff_edge_mask(ancx));
 
             // Check if the state has not been sampled already.
             if !stas_in.contains(&stay) {
@@ -943,7 +951,7 @@ impl SomeAction {
         let grpx_pn = self.groups.find(regx).as_ref().expect("SNH").pn;
         let grpx_rules = self.groups.find(regx).as_ref().expect("SNH").rules.clone();
 
-        // Calculate shared symmetric regions.
+        // Calculate bridge regions.
         let mut shared_regions = RegionStore::new(vec![]);
         for (inx, grpy) in self.groups.iter().enumerate() {
             if inx == group_num {
@@ -952,7 +960,7 @@ impl SomeAction {
             if grpy.pn != grpx_pn {
                 continue;
             }
-            if let Some(shared) = grpy.region.shared_symmetric_region(regx) {
+            if let Some(shared) = grpy.region.bridge(regx) {
                 if grpx_pn == Pn::Unpredictable {
                     shared_regions.push(shared);
                 } else if let Some(ruls) = &grpx_rules {
@@ -990,10 +998,9 @@ impl SomeAction {
                 continue;
             }
 
-            //println!("stax for anchor {stax} in group {}", grpx.region);
             let sta_rate = self.group_anchor_rate(regx, stax);
 
-            //println!("group {} possible anchor {} rating {} {} {}", grpx.region, stax, sta_rate.0, sta_rate.1, sta_rate.2);
+            //println!("group {} possible anchor {} rating {} {} {}", regx, stax, sta_rate.0, sta_rate.1, sta_rate.2);
 
             // Accumulate highest rated anchors
             if sta_rate > max_rate {
@@ -1322,7 +1329,7 @@ impl SomeAction {
         }
 
         // Get group intersection region.
-        let reg_int = grpx.region.intersection(&grpy.region);
+        let reg_int = grpx.region.intersection(&grpy.region).unwrap();
 
         // Check if the whole intersection region is a contradiction.
         if grpx.pn != grpy.pn {
@@ -2053,7 +2060,6 @@ impl SomeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     impl SomeAction {
         /// Set a group anchor, given a group region and anchor state.
@@ -2067,40 +2073,41 @@ mod tests {
     }
 
     #[test]
-    fn shared_symmetric_region() -> Result<(), String> {
+    fn bridge() -> Result<(), String> {
         // Init action
-        let tmp_bts = SomeBits::new(4);
         let mut act0 = SomeAction::new(0, 0, vec![]);
-        let tmp_sta = SomeState::new(tmp_bts.clone());
-        let tmp_reg = SomeRegion::new(vec![tmp_sta.new_low(), tmp_sta.new_high()]);
 
+        let s0 = SomeState::new_from_string("s0b0000")?;
+        let s1 = SomeState::new_from_string("s0b0001")?;
         let s3 = SomeState::new_from_string("s0b0011")?;
         let s4 = SomeState::new_from_string("s0b0100")?;
-        let s5 = SomeState::new_from_string("s0b0101")?;
         let s7 = SomeState::new_from_string("s0b0111")?;
         let s8 = SomeState::new_from_string("s0b1000")?;
-        let s9 = SomeState::new_from_string("s0b1001")?;
         let sa = SomeState::new_from_string("s0b1010")?;
         let sb = SomeState::new_from_string("s0b1011")?;
         let sc = SomeState::new_from_string("s0b1100")?;
+        let sd = SomeState::new_from_string("s0b1101")?;
         let se = SomeState::new_from_string("s0b1110")?;
         let sf = SomeState::new_from_string("s0b1111")?;
 
+        let tmp_reg = SomeRegion::new(vec![s0.clone(), sf.clone()]);
+
         // Set up XX01 group.
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s9.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
 
         // Set up divider squares.
         act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), se.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), s4.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(sc.clone(), s3.clone()));
 
         // Set up 111X group.
-        // The shared symetric group will be 11X1.
+        // The bridge will be 11X1.
         act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(se.clone(), se.clone()));
         act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
@@ -2113,6 +2120,38 @@ mod tests {
         println!("Groups {}", act0.groups);
         println!("needs {nds}");
 
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string("r1100").expect("SNH"))
+        {
+        } else {
+            return Err(format!("group 1100 not found"));
+        }
+
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string("r1011").expect("SNH"))
+        {
+        } else {
+            return Err(format!("group 1011 not found"));
+        }
+
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string("r0111").expect("SNH"))
+        {
+        } else {
+            return Err(format!("group 0111 not found"));
+        }
+
+        if let Some(_) = act0
+            .groups
+            .find(&SomeRegion::new_from_string("r0011").expect("SNH"))
+        {
+        } else {
+            return Err(format!("group 0011 not found"));
+        }
+
         if let Some(grpx) = act0
             .groups
             .find(&SomeRegion::new_from_string("r111x").expect("SNH"))
@@ -2120,13 +2159,29 @@ mod tests {
             if let Some(ancx) = &grpx.anchor {
                 if *ancx == se {
                 } else {
-                    return Err(format!("group 111X anchor not 1110"));
+                    return Err(format!("group 111X anchor not 1110?"));
                 }
             } else {
                 return Err(format!("group 111X expected anchor not found"));
             }
         } else {
             return Err(format!("group 111X not found"));
+        }
+
+        if let Some(grpx) = act0
+            .groups
+            .find(&SomeRegion::new_from_string("rxx01").expect("SNH"))
+        {
+            if let Some(ancx) = &grpx.anchor {
+                if *ancx == s1 {
+                } else {
+                    return Err(format!("group xx01 anchor not 0001?"));
+                }
+            } else {
+                return Err(format!("group xx01 expected anchor not found"));
+            }
+        } else {
+            return Err(format!("group xx01 not found"));
         }
 
         Ok(())

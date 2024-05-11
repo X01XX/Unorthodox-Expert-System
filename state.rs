@@ -162,7 +162,7 @@ impl SomeState {
     }
 
     /// Return a difference mask between a satate and another item.
-    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
         match other.one_state() {
             true => self.bitwise_xor(other.first_state()).to_mask(),
             false => other
@@ -237,16 +237,16 @@ impl AccessStates for SomeState {
     fn low_state(&self) -> SomeState {
         self.clone()
     }
-    fn diff_mask(&self, other: &impl AccessStates) -> SomeMask {
-        self.diff_mask(other)
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        self.diff_edge_mask(other)
     }
     fn intersects(&self, other: &impl AccessStates) -> bool {
-        self.diff_mask(other).is_low()
+        self.diff_edge_mask(other).is_low()
     }
     fn is_subset_of(&self, other: &impl AccessStates) -> bool {
         match other.one_state() {
             true => self == other.first_state(),
-            false => self.diff_mask(other).is_low(),
+            false => self.diff_edge_mask(other).is_low(),
         }
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
