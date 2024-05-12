@@ -75,10 +75,26 @@ impl SquareStore {
         self.ahash.get_mut(val)
     }
 
+    /// Find a square that is expected to exist.
+    pub fn find_mut_must(&mut self, val: &SomeState) -> &mut SomeSquare {
+        if let Some(sqrx) = self.ahash.get_mut(val) {
+            return sqrx;
+        }
+        panic!("Square expected to be found is not found");
+    }
+
     /// Return an Option immutable reference for a square given a state,
     /// or None if not found.
     pub fn find(&self, val: &SomeState) -> Option<&SomeSquare> {
         self.ahash.get(val)
+    }
+
+    /// Find a square that is expected to exist.
+    pub fn find_must(&self, val: &SomeState) -> &SomeSquare {
+        if let Some(sqrx) = self.ahash.get(val) {
+            return sqrx;
+        }
+        panic!("Square expected to be found is not found");
     }
 
     /// Add a square that is not currently in the store.

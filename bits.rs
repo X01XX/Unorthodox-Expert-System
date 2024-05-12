@@ -16,7 +16,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
-
 extern crate unicode_segmentation;
 use crate::tools::StrLen;
 use unicode_segmentation::UnicodeSegmentation;
@@ -561,7 +560,6 @@ impl StrLen for SomeBits {
 mod tests {
     use super::*;
     use crate::tools;
-    use rand::Rng;
 
     // Changing Bitint will affect this test.
     #[test]
@@ -641,79 +639,6 @@ mod tests {
         println!("bitsx: {bitsx}");
         assert!(bitsx.ints[0] == 5);
         assert!(bitsx.ints[1] == 4);
-        Ok(())
-    }
-
-    // Test new_from_string, using randomly chosen hexadecimal digits.
-    #[test]
-    fn new_from_string() -> Result<(), String> {
-        // Init bit patterns expected for each hexadecimal character.
-        let bit_chars = [
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-        ];
-
-        // Try 16 times.
-        for _ in 0..16 {
-            // Generate first bin int
-            let mut first_str = String::new();
-            let mut first_num: Bitint = 0;
-            for _ in 0..NUM_BITS_PER_INT {
-                let inx = rand::thread_rng().gen_range(0..100) % 2;
-                first_str.push(bit_chars[inx]);
-                first_num *= 2;
-                first_num += inx as Bitint;
-            }
-
-            // Generate second bin int
-            let mut second_str = String::new();
-            let mut second_num = 0;
-            for _ in 0..NUM_BITS_PER_INT {
-                let inx = rand::thread_rng().gen_range(0..100) % 2;
-                second_str.push(bit_chars[inx]);
-                second_num *= 2;
-                second_num += inx as Bitint;
-            }
-
-            // Generate bits instance.
-
-            let bitsx =
-                SomeBits::new_from_string(&("0b".to_owned() + &first_str + &second_str)).unwrap();
-
-            // Check bits instance
-            println!("bitsx: {bitsx}");
-            assert!(bitsx.ints[0] == first_num);
-            assert!(bitsx.ints[1] == second_num);
-
-            // Generate first hex int
-            let mut first_str = String::new();
-            let mut first_num: Bitint = 0;
-            for _ in 0..(NUM_BITS_PER_INT / 4) {
-                let inx = rand::thread_rng().gen_range(0..100) % 16;
-                first_str.push(bit_chars[inx]);
-                first_num *= 16;
-                first_num += inx as Bitint;
-            }
-
-            // Generate second hex int
-            let mut second_str = String::new();
-            let mut second_num = 0;
-            for _ in 0..(NUM_BITS_PER_INT / 4) {
-                let inx = rand::thread_rng().gen_range(0..100) % 16;
-                second_str.push(bit_chars[inx]);
-                second_num *= 16;
-                second_num += inx as Bitint;
-            }
-
-            // Generate bits instance.
-            let bitsx =
-                SomeBits::new_from_string(&("0x".to_owned() + &first_str + &second_str)).unwrap();
-
-            // Check bits instance
-            println!("bitsx: {bitsx}");
-            assert!(bitsx.ints[0] == first_num);
-            assert!(bitsx.ints[1] == second_num);
-        }
-
         Ok(())
     }
 

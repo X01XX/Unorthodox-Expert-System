@@ -56,7 +56,7 @@ impl SomeSquare {
     pub fn rate(&self) -> usize {
         if self.pnc {
             match self.pn {
-                Pn::One => 2,
+                Pn::One => 3,
                 Pn::Two => 4,
                 Pn::Unpredictable => 3,
             }

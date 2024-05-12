@@ -123,31 +123,29 @@ impl SomeAction {
         }
         let key = sqrx.state.clone();
         self.squares.insert(sqrx, self.dom_id, self.id);
-        self.squares.find(&key).expect("SNH")
+        self.squares.find_must(&key)
     }
 
     /// Evaluate a new or changed square.
     fn eval_changed_square(&mut self, key: &SomeState) {
         //println!("SomeAction:eval_changed_square {key}");
-        if let Some(sqrx) = self.squares.find_mut(key) {
-            // Check if it invalidates any groups.
-            let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
+        let sqrx = self.squares.find_mut_must(key);
 
-            let pnc = sqrx.pnc;
+        // Check if it invalidates any groups.
+        let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
 
-            if regs_invalid.is_not_empty() {
-                self.check_remainder = true;
-                self.process_invalid_regions(&regs_invalid);
-            }
+        let pnc = sqrx.pnc;
 
-            if !self.groups.any_superset_of(key) {
-                self.create_groups_from_squares(&[key.clone()]);
-            }
-            if not(pnc) {
-                return;
-            }
-        } else {
-            panic!("Square {key} not found?");
+        if regs_invalid.is_not_empty() {
+            self.check_remainder = true;
+            self.process_invalid_regions(&regs_invalid);
+        }
+
+        if !self.groups.any_superset_of(key) {
+            self.create_groups_from_squares(&[key.clone()]);
+        }
+        if not(pnc) {
+            return;
         }
 
         // Square is pnc, check if a group can be confirmed.
@@ -166,10 +164,9 @@ impl SomeAction {
                         }
                     }
                 } else if key == grpx.region.state2() {
-                    if let Some(sqr1) = self.squares.find(grpx.region.state1()) {
-                        if sqr1.pnc {
-                            grpx.set_pnc(self.dom_id, self.id);
-                        }
+                    let sqr1 = self.squares.find_must(grpx.region.state1());
+                    if sqr1.pnc {
+                        grpx.set_pnc(self.dom_id, self.id);
                     }
                 }
             }
@@ -882,27 +879,24 @@ impl SomeAction {
         // Rate adjacent external states
         for edge_bit in &edge_msks {
             let sta_adj = stax.bitwise_xor(edge_bit);
-            //println!(
-            //    "checking {} adjacent to {} external to {}",
-            //    sta_adj, stax, greg
-            //);
 
             let stats = self.groups.in_one_anchor(&sta_adj);
 
             if stats == Some(true) {
                 anchors += 1;
             } else if stats == Some(false) {
-                //println!("{} is in only one group", sta_adj);
                 in_1_group += 1;
             }
 
             if let Some(sqrx) = self.squares.find(&sta_adj) {
                 sqr_samples += sqrx.rate();
             }
-            if let Some(sqrx) = self.squares.find(stax) {
-                sqr_samples += sqrx.rate();
-            }
         } // next edge_bit
+
+        // Get anchor samples.
+        if let Some(sqrx) = self.squares.find(stax) {
+            sqr_samples += sqrx.rate();
+        }
 
         (anchors, in_1_group, sqr_samples)
     }
@@ -1783,7 +1777,7 @@ impl SomeAction {
                 // The sample could have invalidated the group.
                 if let Some(grpx) = self.groups.find_mut(grp_reg) {
                     if !grpx.pnc {
-                        let sqr1 = self.squares.find(grp_reg.state1()).expect("SNH");
+                        let sqr1 = self.squares.find_must(grp_reg.state1());
                         if grp_reg.len() == 1 {
                             if sqr1.pnc {
                                 grpx.set_pnc(self.dom_id, self.id);
@@ -1798,7 +1792,7 @@ impl SomeAction {
             }
             SomeNeed::StateInRemainder { dom_id, .. } => {
                 if not(self.groups.any_superset_of(cur_state)) {
-                    let sqr1 = self.squares.find(cur_state).expect("SNH");
+                    let sqr1 = self.squares.find_must(cur_state);
                     if sqr1.pnc {
                         self.check_remainder = true;
                         self.groups.push_nosubs(
@@ -1862,7 +1856,7 @@ impl SomeAction {
     /// If there is an existitg square, it has already been updated.
     pub fn eval_unexpected_result(&mut self, asample: &SomeSample) {
         // Check active squares.
-        if self.squares.find_mut(&asample.initial).is_some() {
+        if self.squares.find(&asample.initial).is_some() {
             self.eval_changed_square(&asample.initial);
             return;
         }
@@ -1932,9 +1926,7 @@ impl SomeAction {
             let stas_adj = self.squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {
                 if stax.is_adjacent(anchor) {
-                    let sqrx = self.squares.find(stax).expect(
-                        "Call to stas_adj_reg should return states that refer to existing squares",
-                    );
+                    let sqrx = self.squares.find_must(stax);
                     let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
