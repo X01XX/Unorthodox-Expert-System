@@ -199,7 +199,7 @@ impl SomeRegion {
 
         // Return region from states.
         Ok(Self::new(vec![sta_high, sta_low]))
-    } // end new_from_string2
+    } // end new_from_string
 
     /// Return a String representation of a Region.
     fn formatted_string(&self) -> String {

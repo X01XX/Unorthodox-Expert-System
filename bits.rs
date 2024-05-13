@@ -477,7 +477,7 @@ impl SomeBits {
 
         let adjust = self.num_bits as u32 % Bitint::BITS;
         if adjust > 0 {
-            assert!(ints[0] & (Bitint::MAX >> (Bitint::BITS - adjust)) == ints[0]);
+            ints[0] &= Bitint::MAX >> (Bitint::BITS - adjust);
         }
 
         Self {
@@ -491,7 +491,7 @@ impl SomeBits {
         self.ints.len()
     }
 
-    /// Create a formatted string for the instance.
+    /// Create a formatted string for an instance.
     fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
 
@@ -1022,15 +1022,10 @@ mod tests {
     // Test SomeBits::shift_left
     #[test]
     fn shift_left1() -> Result<(), String> {
-        let bitsx = SomeBits::new_from_string("0xd555")?;
+        let bitsx = SomeBits::new_from_string("10_1010_1010")?;
         let bitsy = bitsx.shift_left();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy == SomeBits::new_from_string("0xaaaa")?);
-
-        let bitsx = SomeBits::new_from_string("0x1555")?;
-        let bitsy = bitsx.shift_left();
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy == SomeBits::new_from_string("0x2aaa")?);
+        assert!(bitsy == SomeBits::new_from_string("01_0101_0100")?);
 
         Ok(())
     }
@@ -1038,11 +1033,12 @@ mod tests {
     // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
-        let bitsx = SomeBits::new_from_string("0xf505")?;
+        let bitsx = SomeBits::new_from_string("0x3f505")?;
         let bitsy = bitsx.shift_left4();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
 
-        assert!(bitsy == SomeBits::new_from_string("0x5050")?);
+        assert!(bitsy == SomeBits::new_from_string("0xf5050")?);
+
         Ok(())
     }
 
