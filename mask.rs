@@ -136,17 +136,24 @@ impl SomeMask {
         format!("m{}", self.bts)
     }
 
-    /// Create a formatted string to display under an instance,
-    /// to indicate specific bits positions.
-    pub fn str2(&self) -> String {
-        self.bts.str2()
-    }
+    /// A string to display under a state to indicate changes.
+    /// Zeros and underscores are printed as spaces.
+    /// Ones are printed as "v".
+    pub fn mark_ones(&self) -> String {
+        let mut astr = String::with_capacity(self.strlen());
 
-    /// Return the mask after shifting left one position, and adding one.
-    pub fn push_1(&self) -> Self {
-        Self {
-            bts: self.bts.push_1(),
+        for num_bit in (0..self.bts.num_bits as usize).rev() {
+            if self.bts.is_bit_set(num_bit) {
+                astr.push('v');
+            } else {
+                astr.push(' ');
+            }
+            // Add a space for the "_" separator.
+            if num_bit > 0 && (num_bit % 4) == 0 {
+                astr.push(' ');
+            }
         }
+        astr
     }
 
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
@@ -194,12 +201,6 @@ impl SomeMask {
     /// Return a SomeMask instance from a SomeState instance.
     pub fn to_state(&self) -> SomeState {
         SomeState::new(self.bts.clone())
-    }
-
-    /// Return a copy, shifted left by 1 bit
-    /// The Most Significant Bit value is lost.
-    pub fn shift_left(&self) -> Self {
-        Self::new(self.bts.shift_left())
     }
 } // end impl SomeMask
 

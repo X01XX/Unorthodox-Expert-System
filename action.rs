@@ -76,9 +76,7 @@ pub struct SomeAction {
 }
 
 impl SomeAction {
-    /// Return a new SomeAction struct, given the number integers used in the SomeBits struct.
-    /// The action number, an index into the ActionStore that will contain it, is set to zero and
-    /// changed later.
+    /// Return a new SomeAction struct.
     pub fn new(act_id: usize, dom_id: usize, rules: Vec<RuleStore>) -> Self {
         SomeAction {
             id: act_id,
@@ -307,7 +305,7 @@ impl SomeAction {
                         target_state: cur_state.clone(),
                         priority: 0,
                     };
-                    needx.set_priority();
+                    needx.add_priority_base();
                     nds.push(needx);
                     return nds;
                 }
@@ -318,7 +316,7 @@ impl SomeAction {
                     target_state: cur_state.clone(),
                     priority: 0,
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 nds.push(needx);
                 return nds;
             }
@@ -339,7 +337,7 @@ impl SomeAction {
                 target_state: stax.clone(),
                 priority: cur_state.distance(stax),
             };
-            needx.set_priority();
+            needx.add_priority_base();
             nds.push(needx);
         } // next stax
 
@@ -534,7 +532,7 @@ impl SomeAction {
                             target_region: regx.clone(),
                             priority: 0,
                         };
-                        needx.set_priority();
+                        needx.add_priority_base();
                         nds.push(needx);
                     }
                 }
@@ -679,7 +677,7 @@ impl SomeAction {
                     grp_reg: grpx.region.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ret_nds.push(needx);
                 //println!("ConfirmGroup: (1) sqr {sqrx}");
             }
@@ -703,7 +701,7 @@ impl SomeAction {
                 grp_reg: grpx.region.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
-            needx.set_priority();
+            needx.add_priority_base();
             ret_nds.push(needx);
         } // next grpx
 
@@ -1037,7 +1035,7 @@ impl SomeAction {
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ret_nds.push(needx);
 
                 return ret_nds;
@@ -1064,7 +1062,7 @@ impl SomeAction {
                 for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
-            needx.set_priority();
+            needx.add_priority_base();
             ret_nds.push(needx);
         }
         ret_nds
@@ -1144,7 +1142,7 @@ impl SomeAction {
                         for_group: regx.clone(),
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
-                    needx.set_priority();
+                    needx.add_priority_base();
                     nds_grp.push(needx);
                 }
             } else {
@@ -1157,7 +1155,7 @@ impl SomeAction {
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 nds_grp.push(needx);
             }
         } // next inx in cfm_max
@@ -1193,7 +1191,7 @@ impl SomeAction {
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ret_nds.push(needx);
             }
         } else {
@@ -1206,7 +1204,7 @@ impl SomeAction {
                 for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
-            needx.set_priority();
+            needx.add_priority_base();
             ret_nds.push(needx);
         }
 
@@ -1238,7 +1236,7 @@ impl SomeAction {
                         for_group: regx.clone(),
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
-                    needx.set_priority();
+                    needx.add_priority_base();
                     ret_nds.push(needx);
                 }
             } else {
@@ -1251,7 +1249,7 @@ impl SomeAction {
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ret_nds.push(needx);
             }
         }
@@ -1431,7 +1429,7 @@ impl SomeAction {
                     ruls2: rulsy,
                     priority: group_num,
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 needx
             }
             Err(PickError::NoSquares) => {
@@ -1445,7 +1443,7 @@ impl SomeAction {
                     ruls2: rulsy,
                     priority: group_num,
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 needx
             }
             Err(PickError::PncSquare) => {

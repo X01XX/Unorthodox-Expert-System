@@ -168,9 +168,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if any SelectRegion is a region superset of another..
-    fn any_supersets_of(&self, other: &SelectRegions) -> bool {
+    fn any_supersets_of(&self, slrx: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_superset_of(&other.regions) {
+            if regsx.regions.is_superset_of(&slrx.regions) {
                 return true;
             }
         }
@@ -178,9 +178,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if any SelectRegion is a region subset of another.
-    fn any_subsets_of(&self, other: &SelectRegions) -> bool {
+    fn any_subsets_of(&self, slrx: &SelectRegions) -> bool {
         for regsx in &self.regionstores {
-            if regsx.regions.is_subset_of(&other.regions) {
+            if regsx.regions.is_subset_of(&slrx.regions) {
                 return true;
             }
         }
@@ -202,9 +202,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if any item intersects a given SelectRegion.
-    pub fn any_intersection_of(&self, selx: &SelectRegions) -> bool {
+    pub fn any_intersection_of(&self, slrx: &SelectRegions) -> bool {
         for sely in self.regionstores.iter() {
-            if sely.intersects(selx) {
+            if sely.intersects(slrx) {
                 return true;
             }
         }
@@ -233,9 +233,9 @@ impl SelectRegionsStore {
     }
 
     /// Return true if an equal RegionStoreCorr is already in the SelectRegionsStore.
-    pub fn contains(&self, selx: &SelectRegions) -> bool {
+    pub fn contains(&self, slrx: &SelectRegions) -> bool {
         for regstrx in &self.regionstores {
-            if regstrx.regions == selx.regions {
+            if regstrx.regions == slrx.regions {
                 return true;
             }
         }

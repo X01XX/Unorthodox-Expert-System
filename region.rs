@@ -534,7 +534,7 @@ impl SomeRegion {
     }
 
     /// Return a bridge between two regions.
-    pub fn bridge(&self, other: &SomeRegion) -> Option<Self> {
+    pub fn bridge(&self, other: &Self) -> Option<Self> {
         if self.intersects(other) {
             return None;
         }

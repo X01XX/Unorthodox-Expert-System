@@ -130,7 +130,7 @@ impl SelectRegions {
 
     /// Subtract a SelectRegions from another.
     /// Fragments, it any, retain the same value.
-    pub fn subtract(&self, other: &SelectRegions) -> Vec<Self> {
+    pub fn subtract(&self, other: &Self) -> Vec<Self> {
         // println!("subtract {other} from {self}");
 
         let mut ret_vec = vec![];

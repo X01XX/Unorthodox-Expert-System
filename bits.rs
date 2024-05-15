@@ -9,9 +9,6 @@
 /// The unsigned integer type used in a vector of bits, for all domains.
 type Bitint = u8;
 
-/// The number of bits in an integer used by SomeBits.
-const NUM_BITS_PER_INT: usize = u8::BITS as usize;
-
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -57,7 +54,7 @@ impl SomeBits {
             };
 
         Self {
-            num_bits: num_bits as u8,
+            num_bits: num_bits as Bitint,
             ints: vec![0 as Bitint; num_ints as usize],
         }
     }
@@ -69,15 +66,16 @@ impl SomeBits {
 
     /// Create a SomeBits instance with integer(s) set to one.
     pub fn new_high(&self) -> Self {
-        let adjust = self.num_bits as u32 % Bitint::BITS;
-
         let mut ints = vec![Bitint::MAX; self.ints.len()];
+
+        // Shift out highest bits if needed.
+        let adjust = self.num_bits as u32 % Bitint::BITS;
 
         if adjust > 0 {
             ints[0] >>= Bitint::BITS - adjust;
         }
 
-        SomeBits {
+        Self {
             num_bits: self.num_bits,
             ints,
         }
@@ -85,17 +83,23 @@ impl SomeBits {
 
     /// Return a new bits instance, with a random value.
     pub fn new_random(&self) -> Self {
-        let adjust = self.num_bits as u32 % Bitint::BITS;
-
-        let num_ints = (self.num_bits as u32 / Bitint::BITS) + if adjust > 0 { 1 } else { 0 };
-
-        let mut ints = vec![Bitint::MAX; num_ints as usize];
+        let mut ints = vec![Bitint::MAX; self.ints.len()];
 
         for intx in ints.iter_mut() {
             *intx = rand::thread_rng().gen_range(0..Bitint::MAX)
         }
 
-        self.b_and(&self.new_high())
+        // Shift out highest bits, if needed.
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+
+        if adjust > 0 {
+            ints[0] >>= Bitint::BITS - adjust;
+        }
+
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
     }
 
     /// Return a bits instance from a string.
@@ -184,7 +188,7 @@ impl SomeBits {
         let mut bts = Self::new(num_bits);
 
         // Get index of the least significant (last) integer.
-        let lsb_inx = bts.num_ints() - 1;
+        let lsb_inx = bts.ints.len() - 1;
 
         // Translate digits into bits.
         // Check for invalid bits.
@@ -228,7 +232,7 @@ impl SomeBits {
 
         let mut rc_vec: Vec<Self> = Vec::with_capacity(num_bits);
 
-        let num_ints = self.num_ints();
+        let num_ints = self.ints.len();
 
         // For each integer in the bits vector
         for int_inx in 0..num_ints {
@@ -260,12 +264,12 @@ impl SomeBits {
     /// Match the intuition of a hexadecimal representation.
     /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
     /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
-    fn is_bit_set(&self, bit_num: usize) -> bool {
+    pub fn is_bit_set(&self, bit_num: usize) -> bool {
         assert!(bit_num < self.num_bits as usize);
 
-        let bit_pos = bit_num % NUM_BITS_PER_INT; // Calc bit index within one integer.
+        let bit_pos = bit_num % Bitint::BITS as usize; // Calc bit index within one integer.
 
-        let int_num = self.ints.len() - 1 - (bit_num / NUM_BITS_PER_INT); // Calc integer index in vector.
+        let int_num = self.ints.len() - 1 - (bit_num / Bitint::BITS as usize); // Calc integer index in vector.
 
         self.ints[int_num] & (1 << bit_pos) > 0
     }
@@ -366,7 +370,23 @@ impl SomeBits {
 
     /// Return true if the Bits struct value is high, that is all ones.
     pub fn is_high(&self) -> bool {
-        self == &self.new_high()
+        // Check non Most Significant Integers.
+        for inx in self.ints.iter().skip(1) {
+            if *inx != Bitint::MAX {
+                return false;
+            }
+        }
+
+        // Calc highest int, masking out bits if needed.
+        let mut int0 = Bitint::MAX;
+
+        let adjust = self.num_bits as u32 % Bitint::BITS;
+
+        if adjust > 0 {
+            int0 >>= Bitint::BITS - adjust;
+        }
+
+        self.ints[0] == int0
     }
 
     /// Return true if a Bits struct is a ones-subset of another.
@@ -425,25 +445,15 @@ impl SomeBits {
         cnt == 1
     }
 
-    /// Return a copy, shifted 1 to the left, and 1 added.
-    pub fn push_1(&self) -> Self {
-        let num_ints = self.num_ints();
-
-        let mut tmp = self.shift_left(); // Shift all bits left, LSB bit becomes zero.
-
-        tmp.ints[num_ints - 1] += 1;
-        tmp
-    }
-
     /// Return a copy, shifted left by 1 bit
-    /// The Most Significant Bit value is lost.
-    pub fn shift_left(&self) -> Self {
+    /// The Most Significant Bit value shifted out.
+    fn shift_left(&self) -> Self {
         let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
 
         for int_inx in (0..self.ints.len()).rev() {
-            let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 1);
+            let next_carry: Bitint = self.ints[int_inx] >> (Bitint::BITS - 1);
 
             ints[int_inx] = (self.ints[int_inx] << 1) + carry;
 
@@ -462,14 +472,14 @@ impl SomeBits {
     }
 
     /// Return a copy, shifted left by 4 bits.
-    /// The Most Significant 4 bit value is lost.
+    /// The Most Significant 4 bit value is shifted out.
     fn shift_left4(&self) -> Self {
         let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
 
         for int_inx in (0..self.ints.len()).rev() {
-            let next_carry: Bitint = self.ints[int_inx] >> (NUM_BITS_PER_INT - 4);
+            let next_carry: Bitint = self.ints[int_inx] >> (Bitint::BITS - 4);
 
             ints[int_inx] = (self.ints[int_inx] << 4) + carry;
             carry = next_carry;
@@ -486,11 +496,6 @@ impl SomeBits {
         }
     }
 
-    /// Return the number of integers used in the given SomeBits struct.
-    fn num_ints(&self) -> usize {
-        self.ints.len()
-    }
-
     /// Create a formatted string for an instance.
     fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
@@ -503,28 +508,6 @@ impl SomeBits {
             }
             if bit_num != 0 && bit_num % 4 == 0 {
                 astr.push('_');
-            }
-        }
-        astr
-    }
-
-    /// Create a formatted string to display under an instance,
-    /// to indicate specific bits positions.
-    pub fn str2(&self) -> String {
-        let mut astr = String::with_capacity(self.strlen());
-
-        // Add a space under r prefix to region.
-        astr.push(' ');
-
-        for num_bit in (0..self.num_bits as usize).rev() {
-            if self.is_bit_set(num_bit) {
-                astr.push('v');
-            } else {
-                astr.push(' ');
-            }
-            // Add a space under the "_" separator.
-            if num_bit > 0 && (num_bit % 4) == 0 {
-                astr.push(' ');
             }
         }
         astr
@@ -892,23 +875,12 @@ mod tests {
     // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
-        let mut bitsx = SomeBits::new_from_string("0x00")?;
+        let bitsx = SomeBits::new_from_string("0b0_1111_1111")?;
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        for _ in 0..bitsx.num_bits {
-            bitsx = bitsx.push_1();
-        }
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.is_high());
+        let bitsx = SomeBits::new_from_string("0b1_1111_1111")?;
 
-        let mut bitsx = SomeBits::new_from_string("0x00")?;
-        println!("bitsx2: {bitsx}");
-        assert!(!bitsx.is_high());
-
-        for _ in 0..bitsx.num_bits {
-            bitsx = bitsx.push_1();
-        }
         println!("bitsx2: {bitsx}");
         assert!(bitsx.is_high());
 
@@ -1004,17 +976,6 @@ mod tests {
         let bitsx = SomeBits::new_from_string("0xaaa1")?;
         println!("bitsx: {bitsx}");
         assert!(bitsx.num_one_bits() == 7);
-
-        Ok(())
-    }
-
-    // Test SomeBits::push_1
-    #[test]
-    fn push_1() -> Result<(), String> {
-        let bitsx = SomeBits::new_from_string("0x5555")?;
-        let bitsy = bitsx.push_1();
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy == SomeBits::new_from_string("0xaaab")?);
 
         Ok(())
     }

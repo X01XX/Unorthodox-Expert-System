@@ -180,16 +180,6 @@ impl SomeState {
         )
     }
 
-    /// Push a 1 into the state.
-    pub fn push_1(&mut self) {
-        self.bts = self.bts.push_1();
-    }
-
-    /// Shift state left one position.
-    pub fn shift_left(&mut self) {
-        self.bts = self.bts.shift_left();
-    }
-
     /// Return the number of bits used to describe a state.
     pub fn num_bits(&self) -> usize {
         self.bts.num_bits as usize

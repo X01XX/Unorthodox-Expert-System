@@ -134,7 +134,7 @@ impl SomeNeed {
 
     /// Set priority number for a need.  Lower is more important.
     /// Don't use number zero!
-    pub fn set_priority(&mut self) {
+    pub fn add_priority_base(&mut self) {
         match self {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,

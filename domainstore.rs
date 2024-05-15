@@ -333,7 +333,7 @@ impl DomainStore {
                 times_visited: 0,
                 value: 0,
             };
-            needx.set_priority();
+            needx.add_priority_base();
             needx.priority()
         } else {
             usize::MAX
@@ -795,7 +795,7 @@ impl DomainStore {
                     target_regions: near_nn_regs.clone(),
                     priority: 0,
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ndstr.push(needx);
                 return Some(ndstr);
             }
@@ -868,7 +868,7 @@ impl DomainStore {
                     times_visited: nsupx.times_visited,
                     value: nsupx.value as usize,
                 };
-                needx.set_priority();
+                needx.add_priority_base();
                 ret_str.push(needx);
             }
         }
@@ -1545,7 +1545,7 @@ impl DomainStore {
                     }
                 }
 
-                println!("\n    {}", df.str2());
+                println!("\n     {}", df.mark_ones());
             } // next stepsx
             println!("    {}", cur_states[planx.dom_id]);
         } // next planx
