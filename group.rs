@@ -28,8 +28,9 @@ impl fmt::Display for SomeGroup {
 pub struct SomeGroup {
     /// Region the group covers.  Formed by one, or more, Pn-equal squares.
     /// All squares sampled in between should be compatable.
+    /// The first square has been sampled.
     pub region: SomeRegion,
-    /// Pattern Number enum One, Two or Unpredictable, shared by the two defining squares.
+    /// Pattern Number enum One, Two or Unpredictable, shared by the defining squares.
     pub pn: Pn,
     /// Pnc indicator, the boolean And of the two squares pnc values.
     /// If true, each square forming the region has been sampled enough to
@@ -43,7 +44,7 @@ pub struct SomeGroup {
     /// The state, in only one (this) group, used to limit the group.
     pub anchor: Option<SomeState>,
     /// Maskof  adjacent squares used to limit a group.
-    /// This will be the region edge mask, limited by bit changes of available rules.
+    /// This will be the region edge mask, limited by the bit changes of available rules.
     pub anchor_mask: Option<SomeMask>,
 }
 
@@ -91,8 +92,8 @@ impl SomeGroup {
         self.pnc = true;
         if self.region.states.len() > 2 {
             self.region = SomeRegion::new(vec![
-                self.region.state1().clone(),
-                self.region.state2().clone(),
+                self.region.first_state().clone(),
+                self.region.far_state().clone(),
             ]);
         }
         println!(
@@ -226,7 +227,7 @@ impl SomeGroup {
         self.anchor_mask = Some(anchor_mask);
 
         if let Some(astate) = &self.anchor {
-            if self.region.state1() != astate && self.region.state2() != astate {
+            if self.region.first_state() != astate && self.region.far_state() != astate {
                 self.region =
                     SomeRegion::new(vec![astate.clone(), self.region.state_far_from(astate)]);
             }

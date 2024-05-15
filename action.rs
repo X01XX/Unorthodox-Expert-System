@@ -155,14 +155,14 @@ impl SomeAction {
             if grpx.region.len() == 1 {
                 grpx.set_pnc(self.dom_id, self.id);
             } else if grpx.region.len() == 2 {
-                if key == grpx.region.state1() {
-                    if let Some(sqr2) = self.squares.find(grpx.region.state2()) {
+                if key == grpx.region.first_state() {
+                    if let Some(sqr2) = self.squares.find(grpx.region.far_state()) {
                         if sqr2.pnc {
                             grpx.set_pnc(self.dom_id, self.id);
                         }
                     }
-                } else if key == grpx.region.state2() {
-                    let sqr1 = self.squares.find_must(grpx.region.state1());
+                } else if key == grpx.region.far_state() {
+                    let sqr1 = self.squares.find_must(grpx.region.first_state());
                     if sqr1.pnc {
                         grpx.set_pnc(self.dom_id, self.id);
                     }
@@ -279,7 +279,7 @@ impl SomeAction {
 
         //println!("Checking Square {} for new groups", &sqrx.str_terse());
 
-        // Get possible regions, sqrx.state will be <region>.state1
+        // Get possible regions, sqrx.state will be <region>.first_state
         // Duplicate group regions are possible.
         self.possible_groups_from_square(sqrx)
     } // end create_groups_from_squares2
@@ -464,11 +464,11 @@ impl SomeAction {
                     // Calc pnc
                     let sqrx = self
                         .squares
-                        .find(group_region.state1())
+                        .find(group_region.first_state())
                         .expect("Group region states should refer to existing squares");
-                    let pnc = if group_region.state2() == group_region.state1() {
+                    let pnc = if group_region.far_state() == group_region.first_state() {
                         sqrx.pnc
-                    } else if let Some(sqry) = self.squares.find(group_region.state2()) {
+                    } else if let Some(sqry) = self.squares.find(group_region.far_state()) {
                         sqrx.pnc && sqry.pnc
                     } else {
                         false
@@ -605,7 +605,7 @@ impl SomeAction {
                             continue 'next_sqr;
                         }
                     }
-                    if grpx.region.states.len() > 2 && grpx.region.state2() == keyx {
+                    if grpx.region.states.len() > 2 && grpx.region.far_state() == keyx {
                         continue 'next_sqr;
                     }
 
@@ -666,7 +666,7 @@ impl SomeAction {
 
             let sqrx = self
                 .squares
-                .find(grpx.region.state1())
+                .find(grpx.region.first_state())
                 .expect("Group region states should refer to existing squares");
 
             if !sqrx.pnc {
@@ -687,7 +687,7 @@ impl SomeAction {
                 continue;
             }
 
-            if let Some(sqry) = self.squares.find(grpx.region.state2()) {
+            if let Some(sqry) = self.squares.find(grpx.region.far_state()) {
                 if sqry.pnc {
                     continue;
                 }
@@ -697,7 +697,7 @@ impl SomeAction {
             let mut needx = SomeNeed::ConfirmGroup {
                 dom_id: self.dom_id,
                 act_id: self.id,
-                target_state: grpx.region.state2().clone(),
+                target_state: grpx.region.far_state().clone(),
                 grp_reg: grpx.region.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
@@ -1673,13 +1673,15 @@ impl SomeAction {
             // Maximum region minus state = complement of state.
             for ex_regx in excluded_regs.iter() {
                 if poss_regs.any_superset_of(ex_regx) {
-                    let not_state1 = RegionStore::new(
-                        max_poss_reg.subtract_state_to_supersets_of(ex_regx.state1(), &sqrx.state),
+                    let not_first_state = RegionStore::new(
+                        max_poss_reg
+                            .subtract_state_to_supersets_of(ex_regx.first_state(), &sqrx.state),
                     );
-                    let not_state2 = RegionStore::new(
-                        max_poss_reg.subtract_state_to_supersets_of(ex_regx.state2(), &sqrx.state),
+                    let not_far_state = RegionStore::new(
+                        max_poss_reg
+                            .subtract_state_to_supersets_of(ex_regx.far_state(), &sqrx.state),
                     );
-                    let not_states = not_state1.union(&not_state2);
+                    let not_states = not_first_state.union(&not_far_state);
                     poss_regs = poss_regs.intersection(&not_states);
                     // println!("sqrx {} bad reg {}", sqrx.state, ex_regx);
                 }
@@ -1751,7 +1753,7 @@ impl SomeAction {
         if grp_reg.len() == 1 {
             far_pnc = sqrx.pnc;
         } else if grp_reg.len() == 2 {
-            let far_state = grp_reg.state2();
+            let far_state = grp_reg.far_state();
             if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == far_state) {
                 far_pnc = sqry.pnc;
             }
@@ -1775,12 +1777,12 @@ impl SomeAction {
                 // The sample could have invalidated the group.
                 if let Some(grpx) = self.groups.find_mut(grp_reg) {
                     if !grpx.pnc {
-                        let sqr1 = self.squares.find_must(grp_reg.state1());
+                        let sqr1 = self.squares.find_must(grp_reg.first_state());
                         if grp_reg.len() == 1 {
                             if sqr1.pnc {
                                 grpx.set_pnc(self.dom_id, self.id);
                             }
-                        } else if let Some(sqr2) = self.squares.find(grp_reg.state2()) {
+                        } else if let Some(sqr2) = self.squares.find(grp_reg.far_state()) {
                             if sqr1.pnc && sqr2.pnc {
                                 grpx.set_pnc(self.dom_id, self.id);
                             }

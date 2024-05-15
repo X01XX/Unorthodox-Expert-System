@@ -136,7 +136,7 @@ impl SomeMask {
         format!("m{}", self.bts)
     }
 
-    /// A string to display under a state to indicate changes.
+    /// A string to display under a printed state to indicate changes.
     /// Zeros and underscores are printed as spaces.
     /// Ones are printed as "v".
     pub fn mark_ones(&self) -> String {

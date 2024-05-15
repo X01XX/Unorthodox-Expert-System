@@ -149,7 +149,7 @@ impl StepStore {
             return None;
         }
 
-        let tmp_mask = self[0].initial.state1().to_mask().new_low();
+        let tmp_mask = self[0].initial.first_state().to_mask().new_low();
         let mut schg = SomeChange::new(tmp_mask.clone(), tmp_mask);
         for stpx in &self.avec {
             schg = schg.union(&stpx.rule);

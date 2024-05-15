@@ -785,7 +785,7 @@ impl DomainStore {
 
             print!("all_states: [");
             for regx in all_regs.iter() {
-                print!(" {}", regx.state1());
+                print!(" {}", regx.first_state());
             }
             println!("], is subset of a negative region. ");
 
@@ -1815,15 +1815,15 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x1")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
         dmxs[0].get_needs(); // set aggregate changes
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sf.clone()])]);
 
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
@@ -1889,13 +1889,13 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x1")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
@@ -1903,7 +1903,7 @@ mod tests {
         if let Some(planx) = dmxs.avoid_negative_select_regions(&start_region, &goal_region) {
             let rate = dmxs.rate_plans2(
                 &planx,
-                &RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]),
+                &RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]),
             );
             println!("Plan found: {} rate: {}", planx, rate);
             assert!(dmxs.rate_plans2(&planx, &start_region) == 0);
@@ -1976,13 +1976,13 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x1")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
@@ -2047,13 +2047,13 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x1")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
@@ -2110,13 +2110,13 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x1")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x1")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
         println!("Select Regions: {}\n", dmxs.select);
 
-        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![state1.clone()])]);
+        let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![first_state.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
 
         dmxs[0].get_needs(); // set aggregate changes
@@ -2140,8 +2140,8 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(16)));
 
         // Set state for domain 0, using 1 integer for bits.
-        let init_state1 = SomeState::new_from_string("s0x12")?;
-        dmxs[0].set_cur_state(init_state1.clone());
+        let init_first_state = SomeState::new_from_string("s0x12")?;
+        dmxs[0].set_cur_state(init_first_state.clone());
 
         // Set state for domain 1, using 2 integers for bits.
         let init_state2 = SomeState::new_from_string("s0xabcd")?;
@@ -2151,7 +2151,7 @@ mod tests {
         println!("all states {}", all_states);
 
         assert!(all_states.len() == 2);
-        assert!(all_states[0] == init_state1);
+        assert!(all_states[0] == init_first_state);
         assert!(all_states[1] == init_state2);
 
         Ok(())
@@ -2598,8 +2598,8 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x12")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x12")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::new_from_string("s0xabcd")?;
@@ -2610,7 +2610,7 @@ mod tests {
 
         let num_sup = number_supersets_of_states(
             &dmxs.select,
-            &StateStoreCorr::new(vec![state1.clone(), state2.clone()]),
+            &StateStoreCorr::new(vec![first_state.clone(), state2.clone()]),
         );
         println!("\nNumber supersets: {num_sup}",);
         assert!(num_sup == 0);
@@ -2622,8 +2622,8 @@ mod tests {
         }
 
         // Set state for domain 0.
-        let state1 = SomeState::new_from_string("s0x05")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0x05")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::new_from_string("s0xa28d")?;
@@ -2674,8 +2674,8 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         // Set state for domain 0, using 1 integer for bits.
-        let state1 = SomeState::new_from_string("s0xd")?;
-        dmxs[0].set_cur_state(state1.clone());
+        let first_state = SomeState::new_from_string("s0xd")?;
+        dmxs[0].set_cur_state(first_state.clone());
 
         // Finish select regions setup.
         dmxs.calc_select();

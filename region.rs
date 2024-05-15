@@ -15,10 +15,10 @@ use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-/// SomeRegion struct
+/// SomeRegion struct.
+/// Vector for one, or more, states.
+/// If more than one state is used, the last state will be the farthest from the first state.
 pub struct SomeRegion {
-    /// Vector for one, or more, states.
-    /// If more than one state is used, the last state will be the farthest from the first state.
     pub states: Vec<SomeState>,
 }
 
@@ -115,25 +115,25 @@ impl SomeRegion {
 
         // Return region with more than two states.
         let far_state = states[0].bitwise_xor(&dif);
-        let mut states2 = states.clone();
-        states2.push(far_state);
-        Self { states: states2 }
+        states.push(far_state);
+
+        Self { states }
     }
 
     /// Return a reference to the first state.
-    pub fn state1(&self) -> &SomeState {
+    pub fn first_state(&self) -> &SomeState {
         &self.states[0]
     }
 
-    /// Return a reference to the last state.
-    pub fn state2(&self) -> &SomeState {
+    /// Return a reference to the far state.
+    pub fn far_state(&self) -> &SomeState {
         self.states.last().expect("SNH")
     }
 
-    /// Return a Region from a string and the number of integers to use.
+    /// Return a Region from a string.
     /// All bits must be specified.
     ///
-    /// if let Ok(regx) = SomeRegion::new_from_string("r01x1")) {
+    /// if let Ok(regx) = SomeRegion::new_from_string("r1_01x1")) {
     ///    println!("Region {}", regx);
     /// } else {
     ///    panic!("Invalid Region");
@@ -205,10 +205,13 @@ impl SomeRegion {
     fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.strlen());
 
-        let state1_str = format!("{}", self.state1());
-        let state2_str = format!("{}", self.state2());
+        let first_state_str = format!("{}", self.first_state());
+        let far_state_str = format!("{}", self.far_state());
 
-        for (chr1, chr2) in state1_str.graphemes(true).zip(state2_str.graphemes(true)) {
+        for (chr1, chr2) in first_state_str
+            .graphemes(true)
+            .zip(far_state_str.graphemes(true))
+        {
             if chr1 == "s" {
                 s1.push('r');
                 continue;
@@ -259,39 +262,41 @@ impl SomeRegion {
         } else if other.one_state() {
             Some(Self::new(vec![other.first_state().clone()]))
         } else {
-            let state1 = self.high_state().bitwise_and(&other.high_state());
-            let state2 = self.low_state().bitwise_or(&other.low_state());
-            Some(Self::new(vec![state1, state2]))
+            let first_state = self.high_state().bitwise_and(&other.high_state());
+            let far_state = self.low_state().bitwise_or(&other.low_state());
+            Some(Self::new(vec![first_state, far_state]))
         }
     }
 
     /// Return a Mask of zero positions.
     pub fn edge_zeros_mask(&self) -> SomeMask {
-        self.state1()
+        self.first_state()
             .bitwise_not()
-            .bitwise_and_not(self.state2())
+            .bitwise_and_not(self.far_state())
             .to_mask()
     }
 
     /// Return a Mask of one positions.
     pub fn edge_ones_mask(&self) -> SomeMask {
-        self.state1().bitwise_and(self.state2()).to_mask()
+        self.first_state().bitwise_and(self.far_state()).to_mask()
     }
 
     /// Return a mask of edge (non-X) bits.
     pub fn edge_mask(&self) -> SomeMask {
-        self.state1().bitwise_eqv(self.state2())
+        self.first_state().bitwise_eqv(self.far_state())
     }
 
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
-        self.state1().bitwise_xor(self.state2()).to_mask()
+        self.first_state().bitwise_xor(self.far_state()).to_mask()
     }
 
     /// Given a state in a region, return the far state in the region.
     pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
         assert!(self.is_superset_of(sta));
-        self.state1().bitwise_xor(self.state2()).bitwise_xor(sta)
+        self.first_state()
+            .bitwise_xor(self.far_state())
+            .bitwise_xor(sta)
     }
 
     /// Given a region, and a proper subset region, return the
@@ -303,12 +308,12 @@ impl SomeRegion {
         let cng_mask = self.x_mask().bitwise_xor(&other.x_mask());
 
         SomeRegion::new(vec![
-            other.state1().bitwise_xor(&cng_mask),
-            other.state2().bitwise_xor(&cng_mask),
+            other.first_state().bitwise_xor(&cng_mask),
+            other.far_state().bitwise_xor(&cng_mask),
         ])
     }
 
-    /// Return true if a region is a subset on another region.
+    /// Return true if a region is subset, or equal, on another region.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
         if self.intersects(other) {
             let x1 = self.x_mask();
@@ -318,7 +323,7 @@ impl SomeRegion {
         false
     }
 
-    /// Return true if a region is a superset on another region.
+    /// Return true if a region is superset, or equal, on another region.
     pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         if self.intersects(other) {
             let x1 = self.x_mask();
@@ -369,36 +374,36 @@ impl SomeRegion {
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        self.state1().bitwise_or(self.state2())
+        self.first_state().bitwise_or(self.far_state())
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        self.state1().bitwise_and(self.state2())
+        self.first_state().bitwise_and(self.far_state())
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
-        let state1 = self.state1().bitwise_and_not(msk);
-        let state2 = self.state2().bitwise_and_not(msk);
+        let first_state = self.first_state().bitwise_and_not(msk);
+        let far_state = self.far_state().bitwise_and_not(msk);
 
-        Self::new(vec![state1, state2])
+        Self::new(vec![first_state, far_state])
     }
 
     /// Return a region with masked bit positions set to X.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
-        let state1 = self.state1().bitwise_or(msk);
-        let state2 = self.state2().bitwise_and(&msk.bitwise_not());
+        let first_state = self.first_state().bitwise_or(msk);
+        let far_state = self.far_state().bitwise_and(&msk.bitwise_not());
 
-        Self::new(vec![state1, state2])
+        Self::new(vec![first_state, far_state])
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
-        let state1 = self.state1().bitwise_or(msk);
-        let state2 = self.state2().bitwise_or(msk);
+        let first_state = self.first_state().bitwise_or(msk);
+        let far_state = self.far_state().bitwise_or(msk);
 
-        Self::new(vec![state1, state2])
+        Self::new(vec![first_state, far_state])
     }
 
     /// Return the distance from a region to a region/state.
@@ -427,7 +432,7 @@ impl SomeRegion {
     }
 
     /// Given a region, and a second region, return the
-    /// first region minus the second
+    /// first region minus the second.
     pub fn subtract(&self, other: &impl AccessStates) -> Vec<Self> {
         let mut ret_vec = Vec::<Self>::new();
 
@@ -447,7 +452,7 @@ impl SomeRegion {
         let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
 
         for mskx in x_over_not_xs.iter() {
-            if mskx.bitwise_and(reg_int.state1()).is_low() {
+            if mskx.bitwise_and(reg_int.first_state()).is_low() {
                 // reg_int has a 0 bit in that position
                 ret_vec.push(self.set_to_ones(mskx));
             } else {
@@ -500,11 +505,6 @@ impl SomeRegion {
         self.edge_mask().num_one_bits()
     }
 
-    /// Return the number of squares encompassed by a region.
-    pub fn extent(&self) -> usize {
-        2usize.pow(self.x_mask().num_one_bits() as u32)
-    }
-
     /// Return the number of states defining the region.
     pub fn len(&self) -> usize {
         self.states.len()
@@ -548,7 +548,7 @@ impl SomeRegion {
 /// Implement the trait StrLen for SomeRegion.
 impl StrLen for SomeRegion {
     fn strlen(&self) -> usize {
-        self.state1().strlen()
+        self.first_state().strlen()
     }
 }
 
@@ -731,7 +731,7 @@ mod tests {
         let reg1 = SomeRegion::new(vec![sta1.clone(), sta1.clone()]);
         println!("reg1 is {}", reg1);
         assert!(reg1.states.len() == 1);
-        assert!(reg1.state2() == &sta1);
+        assert!(reg1.far_state() == &sta1);
 
         // Two state region.
         let sta7 = SomeState::new_from_string("s0b0111")?;
@@ -739,7 +739,7 @@ mod tests {
         let reg2 = SomeRegion::new(vec![sta1.clone(), sta7.clone()]);
         println!("reg2 is {}", reg2);
         assert!(reg2.states.len() == 2);
-        assert!(reg2.state2() == &sta7);
+        assert!(reg2.far_state() == &sta7);
 
         // Three state region.
         let sta2 = SomeState::new_from_string("s0b0010")?;
@@ -747,12 +747,12 @@ mod tests {
         println!("reg3 is {}", reg3);
         assert!(reg3.states.len() == 4);
 
-        println!("reg3 state1 = {}", reg3.state1());
-        assert!(reg3.state1() == &sta1);
+        println!("reg3 first_state = {}", reg3.first_state());
+        assert!(reg3.first_state() == &sta1);
 
         let sta6 = SomeState::new_from_string("s0b0110")?;
-        println!("reg3 state2 = {}", reg3.state2());
-        assert!(reg3.state2() == &sta6);
+        println!("reg3 far_state = {}", reg3.far_state());
+        assert!(reg3.far_state() == &sta6);
 
         // Three states, only two needed due to far state being in the list.
         let sta2 = SomeState::new_from_string("s0b0010")?;
@@ -760,11 +760,11 @@ mod tests {
         println!("reg4 is {}", reg4);
         assert!(reg4.states.len() == 2);
 
-        println!("reg4 state1 = {}", reg4.state1());
-        assert!(reg4.state1() == &sta1);
+        println!("reg4 first_state = {}", reg4.first_state());
+        assert!(reg4.first_state() == &sta1);
 
-        println!("reg4 state2 = {}", reg4.state2());
-        assert!(reg4.state2() == &sta6);
+        println!("reg4 far_state = {}", reg4.far_state());
+        assert!(reg4.far_state() == &sta6);
 
         // Three state region, five states given.
         // State 1, between 0 and 5, will be deleted.
@@ -782,8 +782,8 @@ mod tests {
         println!("reg5 is {}", reg5);
         assert!(reg5.states.len() == 4);
 
-        println!("reg5 state2 = {}", reg5.state2());
-        assert!(reg5.state2() == &sta7);
+        println!("reg5 far_state = {}", reg5.far_state());
+        assert!(reg5.far_state() == &sta7);
 
         // Three state region, with duplicates.
         let reg6 = SomeRegion::new(vec![
@@ -796,11 +796,11 @@ mod tests {
         println!("reg6 is {}", reg6);
         assert!(reg6.states.len() == 4);
 
-        println!("reg6 state1 = {}", reg6.state1());
-        assert!(reg6.state1() == &sta1);
+        println!("reg6 first_state = {}", reg6.first_state());
+        assert!(reg6.first_state() == &sta1);
 
-        println!("reg6 state2 = {}", reg6.state2());
-        assert!(reg6.state2() == &sta6);
+        println!("reg6 far_state = {}", reg6.far_state());
+        assert!(reg6.far_state() == &sta6);
 
         Ok(())
     }
@@ -837,14 +837,14 @@ mod tests {
             let reg_instance = SomeRegion::new_from_string(&reg_from_str)?;
 
             // Check for the expected states forming the region.
-            let state1_str =
+            let first_state_str =
                 "s0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
-            let state1 = SomeState::new_from_string(&state1_str)?;
-            let state2 = reg_instance.state_far_from(&state1);
-            println!("{} should equal {state1}", reg_instance.state1());
-            assert!(reg_instance.state1() == &state1);
-            println!("{} should equal {state1}", reg_instance.state2());
-            assert!(reg_instance.state2() == &state2);
+            let first_state = SomeState::new_from_string(&first_state_str)?;
+            let far_state = reg_instance.state_far_from(&first_state);
+            println!("{} should equal {first_state}", reg_instance.first_state());
+            assert!(reg_instance.first_state() == &first_state);
+            println!("{} should equal {first_state}", reg_instance.far_state());
+            assert!(reg_instance.far_state() == &far_state);
         }
 
         //let reg2 = ur_reg.new_from_string("rx0x1.1x0x");

@@ -148,11 +148,6 @@ impl SelectRegions {
 
         ret_vec
     }
-
-    /// Return the number of squares encompassed by a SelectRegions.
-    pub fn extent(&self) -> usize {
-        self.regions.extent()
-    }
 }
 
 /// Implement the trait StrLen for SomeRegion.
