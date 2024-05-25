@@ -15,7 +15,6 @@
 
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
-use crate::domaininterface::DomainInterface;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -116,8 +115,6 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
     /// Region with all bit positions set to X.
     pub max_poss_region: SomeRegion,
-    /// Interface
-    pub interface: DomainInterface,
 }
 
 impl SomeDomain {
@@ -125,13 +122,12 @@ impl SomeDomain {
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(dom_id: usize, cur_state: SomeState) -> Self {
         let max_poss_region = SomeRegion::new(vec![cur_state.new_high(), cur_state.new_low()]);
-        let num_bits = cur_state.num_bits();
+
         Self {
             id: dom_id,
             actions: ActionStore::new(vec![]),
             cur_state,
             max_poss_region,
-            interface: DomainInterface::new(num_bits),
         }
     }
 
