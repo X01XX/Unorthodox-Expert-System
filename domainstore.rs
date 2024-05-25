@@ -596,7 +596,7 @@ impl DomainStore {
         self.choose_a_plan2(&tools::ref_vec(plans), start_regs)
     }
 
-    /// Choose a plan from a vector of PlanStare references, for vector of PlanStore references.
+    /// Choose a plan from a vector of PlanStore references, for vector of PlanStore references.
     /// Return index of plan chosen.
     pub fn choose_a_plan2(&self, plans: &[&PlanStore], start_regs: &RegionStoreCorr) -> usize {
         assert!(!plans.is_empty());

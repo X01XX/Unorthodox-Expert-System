@@ -7,7 +7,6 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
-use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
@@ -203,15 +202,6 @@ impl ActionStore {
         }
 
         rc_str
-    }
-
-    /// Return a vector of rules for the "rx" command.
-    pub fn all_rules(&self) -> Vec<(usize, &SomeRule)> {
-        let mut ret = Vec::<(usize, &SomeRule)>::new();
-        for actx in self.avec.iter() {
-            ret.extend(actx.all_rules());
-        }
-        ret
     }
 
     /// Take an action for a need, evaluate the resulting sample.

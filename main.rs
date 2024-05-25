@@ -73,6 +73,7 @@ mod selectregionsstore;
 mod target;
 mod targetstore;
 use crate::regionstorecorr::RegionStoreCorr;
+mod domaininterface;
 
 use std::io;
 use std::io::{Read, Write};
