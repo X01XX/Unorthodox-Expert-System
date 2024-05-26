@@ -95,11 +95,16 @@ impl RegionStore {
     }
 
     /// Return vector of regions that are a superset of a given item.
-    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
-        self.avec
-            .iter()
-            .filter(|regx| regx.is_superset_of(itmx))
-            .collect()
+    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Self {
+        let mut ret_regs = Self::new(vec![]);
+
+        for regx in self.avec.iter() {
+            if regx.is_superset_of(itmx) {
+                ret_regs.push(regx.clone());
+            }
+        }
+
+        ret_regs
     }
 
     /// Return true if a RegionStore contains a region.
@@ -286,6 +291,49 @@ impl RegionStore {
             remainder.append(remain2);
             tmp_ints = next_ints;
         } // end loop
+    }
+
+    /// Using two-state regions, where each pair of states represent incompatible squares.
+    /// Superset regions are not fatal, but are inefficient.
+    /// See the addendum "Calculating possible regions using dissimilar pairs of squares", in theory.html.
+    pub fn possible_regions_by_negative_inference(&self) -> Self {
+        assert!(!self.is_empty());
+
+        // Calc the maximum possible region.
+        let max_poss_reg = SomeRegion::new(vec![
+            self[0].first_state().new_high(),
+            self[0].first_state().new_low(),
+        ]);
+
+        // Init list for holding possible regions.
+        let mut poss_regs = RegionStore::new(vec![max_poss_reg.clone()]);
+
+        for ex_regx in self.iter() {
+            assert!(ex_regx.len() == 2);
+            poss_regs = poss_regs.possible_regions_by_negative_inference2(
+                &max_poss_reg,
+                ex_regx.first_state(),
+                ex_regx.far_state(),
+            );
+        }
+
+        poss_regs
+    }
+
+    /// Return the possible regions implied by a maximum region and two dissimilar states.
+    fn possible_regions_by_negative_inference2(
+        &self,
+        max_poss_reg: &SomeRegion,
+        state1: &SomeState,
+        state2: &SomeState,
+    ) -> Self {
+        assert!(state1 != state2);
+
+        let not_first_state = Self::new(max_poss_reg.subtract(state1));
+
+        let not_second_state = Self::new(max_poss_reg.subtract(state2));
+
+        not_first_state.union(&not_second_state)
     }
 } // end impl RegionStore.
 

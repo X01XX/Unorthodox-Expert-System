@@ -308,21 +308,32 @@ impl SomeAction {
         if !self.groups.any_superset_of(cur_state) {
             if let Some(sqrx) = self.squares.find(cur_state) {
                 if sqrx.pn == Pn::One || sqrx.pnc {
-                    panic!(
-                        "problem?: Dom {} Act {} square {} not in group?",
+                    println!(
+                        "Problem: Dom {} Act {} square {} not in group?",
                         self.dom_id, self.id, sqrx
                     );
+                } else {
+                    let mut needx = SomeNeed::StateNotInGroup {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target_state: cur_state.clone(),
+                        priority: 0,
+                    };
+                    needx.add_priority_base();
+                    nds.push(needx);
+                    return nds;
                 }
+            } else {
+                let mut needx = SomeNeed::StateNotInGroup {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target_state: cur_state.clone(),
+                    priority: 0,
+                };
+                needx.add_priority_base();
+                nds.push(needx);
+                return nds;
             }
-            let mut needx = SomeNeed::StateNotInGroup {
-                dom_id: self.dom_id,
-                act_id: self.id,
-                target_state: cur_state.clone(),
-                priority: 0,
-            };
-            needx.add_priority_base();
-            nds.push(needx);
-            return nds;
         }
 
         // Look for a pn > 1, pnc == false, not in group squares.
@@ -1307,9 +1318,11 @@ impl SomeAction {
                 .as_ref()
                 .map(|rulsy| rulsy.restrict_initial_region(&reg_int));
 
-            return NeedStore::new(vec![
+            if let Some(needx) =
                 self.cont_int_region_need(&reg_int, grpx, grpy, group_num, rulsx, rulsy)
-            ]);
+            {
+                return NeedStore::new(vec![needx]);
+            }
         }
 
         // At this point, Pn values are both Pn::One, or both Pn::Two.
@@ -1349,24 +1362,18 @@ impl SomeAction {
 
             //println!("pn2 intersection is {} far reg is {}", rulsxy, regy);
 
-            nds.push(self.cont_int_region_need(
-                &far_reg,
-                grpx,
-                grpy,
-                group_num,
-                Some(rulsx),
-                Some(rulsy),
-            ));
+            if let Some(needx) =
+                self.cont_int_region_need(&far_reg, grpx, grpy, group_num, Some(rulsx), Some(rulsy))
+            {
+                nds.push(needx);
+            }
         } else {
             //println!("pn2 whole intersection is bad");
-            nds.push(self.cont_int_region_need(
-                &reg_int,
-                grpx,
-                grpy,
-                group_num,
-                Some(rulsx),
-                Some(rulsy),
-            ));
+            if let Some(needx) =
+                self.cont_int_region_need(&reg_int, grpx, grpy, group_num, Some(rulsx), Some(rulsy))
+            {
+                nds.push(needx);
+            }
         }
 
         nds
@@ -1384,7 +1391,7 @@ impl SomeAction {
         group_num: usize,
         rulsx: Option<RuleStore>,
         rulsy: Option<RuleStore>,
-    ) -> SomeNeed {
+    ) -> Option<SomeNeed> {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", regx, grpx.region, grpx.rules, grpy.region, grpy.rules);
         // Check for any squares in the region
         match self.squares.pick_a_square_in(regx) {
@@ -1400,7 +1407,7 @@ impl SomeAction {
                     priority: group_num,
                 };
                 needx.add_priority_base();
-                needx
+                Some(needx)
             }
             Err(PickError::NoSquares) => {
                 let mut needx = SomeNeed::ContradictoryIntersection {
@@ -1414,10 +1421,11 @@ impl SomeAction {
                     priority: group_num,
                 };
                 needx.add_priority_base();
-                needx
+                Some(needx)
             }
             Err(PickError::PncSquare) => {
-                panic!("Pnc square found in {regx} ?");
+                println!("Problem: Pnc square found in {regx} ?");
+                None
             }
         }
     } // end cont_int_region_need
@@ -1561,7 +1569,7 @@ impl SomeAction {
             return ret_grps;
         }
 
-        // Init a list containing the maximum possible region.
+        // Calc the maximum possible region.
         let max_poss_reg = SomeRegion::new(vec![sqrx.state.new_high(), sqrx.state.new_low()]);
 
         // Init list for holding possible regions.
@@ -1642,23 +1650,14 @@ impl SomeAction {
             // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
             // Within 010X, 5 is contradictory.
             //
-            // Maximum region minus state = complement of state.
-            for ex_regx in excluded_regs.iter() {
-                if poss_regs.any_superset_of(ex_regx) {
-                    let not_first_state = RegionStore::new(
-                        max_poss_reg
-                            .subtract_state_to_supersets_of(ex_regx.first_state(), &sqrx.state),
-                    );
-                    let not_far_state = RegionStore::new(
-                        max_poss_reg
-                            .subtract_state_to_supersets_of(ex_regx.far_state(), &sqrx.state),
-                    );
-                    let not_states = not_first_state.union(&not_far_state);
-                    poss_regs = poss_regs.intersection(&not_states);
-                    // println!("sqrx {} bad reg {}", sqrx.state, ex_regx);
-                }
+            if !excluded_regs.is_empty() {
+                poss_regs =
+                    poss_regs.intersection(&excluded_regs.possible_regions_by_negative_inference());
             }
         }
+
+        // Get supersets.
+        poss_regs = poss_regs.supersets_of(&sqrx.state);
 
         // Validate possible regions.
         ret_grps = poss_regs
