@@ -312,6 +312,7 @@ impl SomeAction {
                         "Problem: Dom {} Act {} square {} not in group?",
                         self.dom_id, self.id, sqrx
                     );
+                    return nds;
                 } else {
                     let mut needx = SomeNeed::StateNotInGroup {
                         dom_id: self.dom_id,
@@ -1356,11 +1357,14 @@ impl SomeAction {
             // To test all bits that may be a problem.
             let far_reg = reg_int.far_reg(&ok_reg);
 
+            println!(
+                "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
+                grpx.region, grpy.region, reg_int, rulsxy, ok_reg, far_reg
+            );
+
             // Calc rules for far region.
             let rulsx = rulsx.restrict_initial_region(&far_reg);
             let rulsy = rulsy.restrict_initial_region(&far_reg);
-
-            //println!("pn2 intersection is {} far reg is {}", rulsxy, regy);
 
             if let Some(needx) =
                 self.cont_int_region_need(&far_reg, grpx, grpy, group_num, Some(rulsx), Some(rulsy))
@@ -1424,8 +1428,11 @@ impl SomeAction {
                 Some(needx)
             }
             Err(PickError::PncSquare) => {
-                println!("Problem: Pnc square found in {regx} ?");
-                None
+                panic!(
+                    "Problem: Dom {} Act {} Pnc square found in {regx} ?",
+                    self.dom_id, self.id
+                );
+                //None
             }
         }
     } // end cont_int_region_need
@@ -1596,75 +1603,94 @@ impl SomeAction {
             }
         }
 
-        // Collect similar squares that are within the possible regions.
-        let mut sim_sqrs = Vec::<&SomeSquare>::new();
+        // Check each possible region for subregions.
+        for regx in poss_regs.iter() {
 
-        for sqry in self.squares.ahash.values() {
-            if sqry.state == sqrx.state {
+            let mut other_sqrs_in = Vec::<&SomeSquare>::new();
+
+            for sqry in self.squares.ahash.values() {
+                if sqry.state == sqrx.state {
+                    continue;
+                }
+
+                if regx.is_superset_of(&sqry.state) {
+                    other_sqrs_in.push(sqry);
+                }
+            }
+
+            // Check for similar squares from memory, that are within the possible regions.
+            for sqrm in self.memory.iter() {
+                if regx.is_superset_of(&sqrm.state) {
+                    other_sqrs_in.push(sqrm);
+                }
+            }
+
+            if sqrx.pn == Pn::Unpredictable {
+                for regz in poss_regs.iter() {
+                    if let Some(grpx) = self.validate_possible_group(sqrx, regz, &other_sqrs_in) {
+                        ret_grps.push(grpx);
+                    }
+                }
                 continue;
             }
 
-            if poss_regs.any_superset_of_state(&sqry.state) && sqrx.compatible(sqry) == Some(true) {
-                sim_sqrs.push(sqry);
-            }
-        }
+            let mut poss_regs2 = RegionStore::new(vec![regx.clone()]);
 
-        // Check for similar squares from memory, that are within the possible regions.
-        for sqrm in self.memory.iter() {
-            if poss_regs.any_superset_of_state(&sqrm.state) && sqrx.compatible(sqrm) == Some(true) {
-                sim_sqrs.push(sqrm);
-            }
-        }
+            // Calc excluded regions formed by pairs of similar squares
+            // that cannot be combined.
+            // If the target square has a 1->0 bit,
+            // it may combine with a square having a corresponding 0->1, forming X->x,
+            // and one with 0->0, forming X->0,
+            // but 0->0 and 0->1 cannot combine.
+            if other_sqrs_in.len() > 1 {
+                let mut excluded_regs = RegionStore::new(vec![]);
 
-        // Calc excluded regions formed by pairs of similar squares
-        // that cannot be combined.
-        // If the target square has a 1->0 bit,
-        // it may combine with a square having a corresponding 0->1, forming X->x,
-        // and one with 0->0, forming X->0,
-        // but 0->0 and 0->1 cannot combine.
-        if sim_sqrs.len() > 1 {
-            let mut excluded_regs = RegionStore::new(vec![]);
+                for iny in 0..(other_sqrs_in.len() - 1) {
+                    for inz in (iny + 1)..other_sqrs_in.len() {
+                        // Avoid pn::One vs Pn::One when sqrx is Pn::Two.
+                        if other_sqrs_in[iny].pn == sqrx.pn || other_sqrs_in[inz].pn == sqrx.pn {
 
-            for iny in 0..(sim_sqrs.len() - 1) {
-                for inz in (iny + 1)..sim_sqrs.len() {
-                    let rslt = if sim_sqrs[iny].pn > sim_sqrs[inz].pn {
-                        sim_sqrs[iny].rules_compatible(sim_sqrs[inz])
-                    } else {
-                        sim_sqrs[inz].rules_compatible(sim_sqrs[iny])
-                    };
+                            let rslt = if other_sqrs_in[iny].pn > other_sqrs_in[inz].pn {
+                                other_sqrs_in[iny].rules_compatible(other_sqrs_in[inz])
+                            } else {
+                                other_sqrs_in[inz].rules_compatible(other_sqrs_in[iny])
+                            };
 
-                    if not(rslt) {
-                        excluded_regs.push_nosups(SomeRegion::new(vec![
-                            sim_sqrs[iny].state.clone(),
-                            sim_sqrs[inz].state.clone(),
-                        ]));
+                            // println!("checking {} {} rslt {rslt}", other_sqrs_in[iny], other_sqrs_in[inz]);
+                            if !rslt {
+                                excluded_regs.push_nosups(SomeRegion::new(vec![
+                                    other_sqrs_in[iny].state.clone(),
+                                    other_sqrs_in[inz].state.clone(),
+                                ]));
+                            }
+                        }
                     }
                 }
+                //println!("excluded regions {excluded_regs}");
+
+                // Subtract excluded region state pairs.
+                // So regions can contain either state, but not both.
+                //
+                // There is a tendency to produce contradictory intersections.
+                // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
+                // Within 010X, 5 is contradictory.
+                //
+                if !excluded_regs.is_empty() {
+                    //println!("excluded regs {excluded_regs}");
+                    //println!("poss_regs2 before: {poss_regs2}");
+                    poss_regs2 = poss_regs2
+                        .intersection(&excluded_regs.possible_regions_by_negative_inference());
+
+                    poss_regs2 = poss_regs2.supersets_of(&sqrx.state);
+                    //println!("poss_regs2 after: {poss_regs2}");
+                }
             }
-            //println!("excluded regions {excluded_regs}");
-
-            // Subtract excluded region state pairs.
-            // So regions can contain either state, but not both.
-            //
-            // There is a tendency to produce contradictory intersections.
-            // e.g. Given 4->4, 1->0 and D->D, that results in 0X0X and X10X, intersecting at 010X.
-            // Within 010X, 5 is contradictory.
-            //
-            if !excluded_regs.is_empty() {
-                poss_regs =
-                    poss_regs.intersection(&excluded_regs.possible_regions_by_negative_inference());
+            for regz in poss_regs2.iter() {
+                if let Some(grpx) = self.validate_possible_group(sqrx, regz, &other_sqrs_in) {
+                    ret_grps.push(grpx);
+                }
             }
-        }
-
-        // Get supersets.
-        poss_regs = poss_regs.supersets_of(&sqrx.state);
-
-        // Validate possible regions.
-        ret_grps = poss_regs
-            .avec
-            .par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
-            .filter_map(|regx| self.validate_possible_group(sqrx, regx, &sim_sqrs))
-            .collect::<Vec<SomeGroup>>();
+        } // next regx
 
         ret_grps
     } // end possible_regions_from_square
@@ -1674,15 +1700,15 @@ impl SomeAction {
         &self,
         sqrx: &SomeSquare,
         regx: &SomeRegion,
-        sim_sqrs: &[&SomeSquare],
+        not_dissim_sqrs: &[&SomeSquare],
     ) -> Option<SomeGroup> {
-        // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, sim_sqrs.len(), regx);
+        // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, not_dissim_sqrs.len(), regx);
         debug_assert!(regx.is_superset_of(sqrx));
 
         // Find squares in the given region, and calc region built from similar squares.
         let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
         let mut sqrs_in = Vec::<&SomeSquare>::new();
-        for sqry in sim_sqrs.iter() {
+        for sqry in not_dissim_sqrs.iter() {
             if regx.is_superset_of(*sqry) {
                 sqrs_in.push(sqry);
                 if !regy.is_superset_of(*sqry) {
@@ -1732,6 +1758,36 @@ impl SomeAction {
 
         if self.groups.any_superset_of(&grp_reg) {
             return None;
+        }
+
+        // Check all squares in group.
+        if let Some(rulsx) = &rules {
+            for sqry in self.squares.ahash.values() {
+                if grp_reg.is_superset_of(&sqry.state) {
+                    if let Some(rulsy) = &sqry.rules {
+                        if rulsx.is_superset_of(rulsy) {
+                        } else {
+                            println!("not dis sqrs:");
+                            for sqrd in not_dissim_sqrs.iter() {
+                                println!("   {sqrd}");
+                            }
+
+                            panic!("1 In {grp_reg} {rulsx}, sqrx {sqrx} found {sqry}");
+                            //return None;
+                        }
+                    } else {
+                        panic!("2 In {grp_reg} {rulsx}, found {sqry}");
+                        //return None;
+                    }
+                }
+            }
+        } else {
+            for sqry in self.squares.ahash.values() {
+                if grp_reg.is_superset_of(&sqry.state) && sqry.pnc && sqry.pn != Pn::Unpredictable {
+                    panic!("3 In {grp_reg}, rules None, found {sqry}");
+                    //return None;
+                }
+            }
         }
 
         // Return a group, keeping sqrx.state as first state in the group region.

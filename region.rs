@@ -981,11 +981,11 @@ mod tests {
 
     #[test]
     fn far_reg() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string("rXXX01000000")?;
-        let reg1 = SomeRegion::new_from_string("r01X01000000")?;
+        let reg0 = SomeRegion::new_from_string("rXXX01")?;
+        let reg1 = SomeRegion::new_from_string("r01X01")?;
         let far_reg = reg0.far_reg(&reg1);
         println!("far_reg is {far_reg}");
-        assert!(far_reg == SomeRegion::new_from_string("r10X01000000")?);
+        assert!(far_reg == SomeRegion::new_from_string("r10X01")?);
         Ok(())
     }
 

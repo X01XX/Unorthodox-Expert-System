@@ -176,6 +176,7 @@ impl SquareStore {
         // Check for pnc square in target reg.
         for sqrx in sqrs.iter() {
             if sqrx.pnc {
+                println!("Problem: sqr {}", sqrx);
                 return Err(PickError::PncSquare);
             }
         }

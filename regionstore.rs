@@ -310,11 +310,11 @@ impl RegionStore {
 
         for ex_regx in self.iter() {
             assert!(ex_regx.len() == 2);
-            poss_regs = poss_regs.possible_regions_by_negative_inference2(
+            poss_regs = poss_regs.intersection(&poss_regs.possible_regions_by_negative_inference2(
                 &max_poss_reg,
                 ex_regx.first_state(),
                 ex_regx.far_state(),
-            );
+            ));
         }
 
         poss_regs
@@ -368,6 +368,24 @@ impl StrLen for RegionStore {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
+
+    #[test]
+    fn possible_regions_by_negative_inference() -> Result<(), String> {
+        let mut regstr1 = RegionStore::with_capacity(1);
+        regstr1.push(SomeRegion::new_from_string("r01x1")?); // (5, 7)
+
+        let poss_regs1 = regstr1.possible_regions_by_negative_inference();
+        println!("poss_regs1: {}", poss_regs1);
+
+        assert!(poss_regs1.len() == 5);
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXXX0")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXX1X")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rX0XX")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("r1XXX")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXX0X")?));
+
+        Ok(())
+    }
 
     #[test]
     fn split_by_intersections() -> Result<(), String> {
