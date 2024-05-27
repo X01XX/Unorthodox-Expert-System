@@ -308,11 +308,11 @@ impl SomeAction {
         if !self.groups.any_superset_of(cur_state) {
             if let Some(sqrx) = self.squares.find(cur_state) {
                 if sqrx.pn == Pn::One || sqrx.pnc {
-                    println!(
+                    panic!(
                         "Problem: Dom {} Act {} square {} not in group?",
                         self.dom_id, self.id, sqrx
                     );
-                    return nds;
+                    //return nds;
                 } else {
                     let mut needx = SomeNeed::StateNotInGroup {
                         dom_id: self.dom_id,
@@ -1357,10 +1357,10 @@ impl SomeAction {
             // To test all bits that may be a problem.
             let far_reg = reg_int.far_reg(&ok_reg);
 
-            println!(
-                "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
-                grpx.region, grpy.region, reg_int, rulsxy, ok_reg, far_reg
-            );
+            //println!(
+            //    "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
+            //    grpx.region, grpy.region, reg_int, rulsxy, ok_reg, far_reg
+            //);
 
             // Calc rules for far region.
             let rulsx = rulsx.restrict_initial_region(&far_reg);
@@ -1605,7 +1605,6 @@ impl SomeAction {
 
         // Check each possible region for subregions.
         for regx in poss_regs.iter() {
-
             let mut other_sqrs_in = Vec::<&SomeSquare>::new();
 
             for sqry in self.squares.ahash.values() {
@@ -1649,7 +1648,6 @@ impl SomeAction {
                     for inz in (iny + 1)..other_sqrs_in.len() {
                         // Avoid pn::One vs Pn::One when sqrx is Pn::Two.
                         if other_sqrs_in[iny].pn == sqrx.pn || other_sqrs_in[inz].pn == sqrx.pn {
-
                             let rslt = if other_sqrs_in[iny].pn > other_sqrs_in[inz].pn {
                                 other_sqrs_in[iny].rules_compatible(other_sqrs_in[inz])
                             } else {
@@ -1865,12 +1863,27 @@ impl SomeAction {
 
         // If a square exists, update it.
         if let Some(sqrx) = self.squares.find_mut(&asample.initial) {
-            if sqrx.add_sample(&asample) {
-                self.groups.check_square(sqrx, self.dom_id, self.id);
+            sqrx.add_sample(&asample);
+            let regs_invalid = self.groups.check_square(sqrx, self.dom_id, self.id);
+            if regs_invalid.is_not_empty() {
+                self.check_remainder = true;
+                self.process_invalid_regions(&regs_invalid);
+            }
+        } else if let Some(inx) = self.memory_index(&asample.initial) {
+            self.memory[inx].add_sample(&asample);
+            let regs_invalid = self
+                .groups
+                .check_square(&self.memory[inx], self.dom_id, self.id);
+            if regs_invalid.is_not_empty() {
+                let sqrx = self.memory.remove(inx).expect("SNH");
+                self.add_new_square(sqrx);
+                self.check_remainder = true;
+                self.process_invalid_regions(&regs_invalid);
             }
         } else {
-            self.update_memory(&asample);
+            self.eval_sample(&asample);
         }
+
         asample
     }
 
