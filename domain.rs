@@ -226,7 +226,7 @@ impl SomeDomain {
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
                 AltRuleHint::NoAlt {} => {
-                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                    //self.actions._eval_unexpected_result(stpx.act_id, &asample);
                     return Err("Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltNoChange {} => {
@@ -240,7 +240,7 @@ impl SomeDomain {
                     if stpx.result.is_superset_of(&self.cur_state) {
                         continue;
                     }
-                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                    //self.actions.eval_unexpected_result(stpx.act_id, &asample);
                     return Err("Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltRule { rule } => {
@@ -263,7 +263,7 @@ impl SomeDomain {
                                     if stpx.result.is_superset_of(&self.cur_state) {
                                         continue;
                                     }
-                                    self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                                    //self.actions.eval_unexpected_result(stpx.act_id, &asample);
                                     return Err("Action return/retry failed.".to_string());
                                 }
                                 Err(msg) => {
@@ -276,7 +276,7 @@ impl SomeDomain {
                             );
                         }
                     } else {
-                        self.actions.eval_unexpected_result(stpx.act_id, &asample);
+                        // self.actions.eval_unexpected_result(stpx.act_id, &asample);
                         return Err("Unexpected result, step failed".to_string());
                     }
                 }

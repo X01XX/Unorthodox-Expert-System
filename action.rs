@@ -101,7 +101,6 @@ impl SomeAction {
     }
 
     /// Add a new square from a sample.
-    /// Check the consequenses of adding the square.
     pub fn add_new_sample(&mut self, smpl: &SomeSample) -> &SomeSquare {
         if let Some(inx) = self.memory_index(&smpl.initial) {
             if let Some(sqrx) = self.memory.remove(inx) {
@@ -180,7 +179,7 @@ impl SomeAction {
     /// Do basic functions for any new sample.
     /// Return true if a matching square exists.
     pub fn eval_sample(&mut self, smpl: &SomeSample) -> bool {
-        // println!("eval_sample: {}", smpl);
+        //println!("Dom {} Act {} eval_sample: {}", self.dom_id, self.id, smpl);
 
         // If a square already exists, update it.
         if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
@@ -216,6 +215,7 @@ impl SomeAction {
 
     /// Evaluate an arbitrary sample, creating a square if needed.
     pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
+        //println!("Dom {} Act {} eval_sample_arbitrary {}", self.dom_id, self.id, smpl);
         if !self.eval_sample(smpl) {
             self.add_new_sample(smpl);
         }
@@ -250,6 +250,7 @@ impl SomeAction {
 
     /// Create possible groups from one, or more, states.
     fn create_groups_from_squares(&mut self, keys: &[SomeState]) {
+        //println!("create_groups_from_squares {}", tools::vec_string(keys));
         assert!(!keys.is_empty());
         // Set flag to later check for regions not covered by groups.
         self.check_remainder = true;
@@ -539,6 +540,40 @@ impl SomeAction {
 
     /// Cleanup unneeded squares.
     fn cleanup(&mut self, needs: &NeedStore, dom_id: usize) {
+        // Identify bridge regions.
+        let mut shared_regions = RegionStore::new(vec![]);
+        for inx in 0..(self.groups.len() - 1) {
+            let grpx = &self.groups[inx];
+            if grpx.anchor.is_none() {
+                continue;
+            }
+            for iny in (inx + 1)..self.groups.len() {
+                let grpy = &self.groups[iny];
+
+                if grpy.pn != grpx.pn {
+                    continue;
+                }
+                if grpy.anchor.is_none() {
+                    continue;
+                }
+                if grpy.region.is_adjacent(&grpx.region) {
+                    if let Some(shared) = grpy.region.bridge(&grpx.region) {
+                        if shared.is_superset_of(&grpx.region)
+                            || shared.is_superset_of(&grpy.region)
+                        {
+                        } else {
+                            //println!("grp1 {} adj grp2 {} bridge {}", grpy.region, grpx.region, shared);
+                            shared_regions.push(shared);
+                        }
+                    }
+                }
+            } // next iny
+        } // next inx
+          // Delete shared symmetric groups.
+        for regx in shared_regions.iter() {
+            self.groups.remove_subsets_of(regx, dom_id, self.id);
+        }
+
         // Store for keys of squares to delete.
         let mut to_del = StateStore::new(vec![]);
 
@@ -550,34 +585,6 @@ impl SomeAction {
                         continue 'next_sqr;
                     }
                 }
-            }
-
-            // Identify bridge groups.
-            let mut shared_regions = RegionStore::new(vec![]);
-            for inx in 0..(self.groups.len() - 1) {
-                let grpx = &self.groups[inx];
-
-                for iny in (inx + 1)..self.groups.len() {
-                    let grpy = &self.groups[iny];
-
-                    if grpy.pn != grpx.pn {
-                        continue;
-                    }
-                    if grpy.region.is_adjacent(&grpx.region) {
-                        if let Some(shared) = grpy.region.bridge(&grpx.region) {
-                            if shared.is_superset_of(&grpx.region)
-                                || shared.is_superset_of(&grpy.region)
-                            {
-                            } else {
-                                shared_regions.push(shared);
-                            }
-                        }
-                    }
-                } // next iny
-            } // next inx
-              // Delete shared symmetric groups.
-            for regx in shared_regions.iter() {
-                self.groups.remove_subsets_of(regx, dom_id, self.id);
             }
 
             // Don't delete squares in groups.
@@ -1589,7 +1596,8 @@ impl SomeAction {
             }
 
             // Previous subtractions may put some squares out of reach.
-            if poss_regs.any_superset_of_state(&sqry.state) && sqrx.compatible(sqry) == Some(false)
+            if poss_regs.any_superset_of_state(&sqry.state)
+                && (sqrx.pn < sqry.pn || sqrx.compatible(sqry) == Some(false))
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqry.state, &sqrx.state);
             }
@@ -1597,7 +1605,8 @@ impl SomeAction {
 
         // Check memory for additional dissimilar squares.
         for sqrm in self.memory.iter() {
-            if poss_regs.any_superset_of_state(&sqrm.state) && sqrx.compatible(sqrm) == Some(false)
+            if poss_regs.any_superset_of_state(&sqrm.state)
+                && (sqrx.pn < sqrm.pn || sqrx.compatible(sqrm) == Some(false))
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqrm.state, &sqrx.state);
             }
@@ -1648,14 +1657,10 @@ impl SomeAction {
                     for inz in (iny + 1)..other_sqrs_in.len() {
                         // Avoid pn::One vs Pn::One when sqrx is Pn::Two.
                         if other_sqrs_in[iny].pn == sqrx.pn || other_sqrs_in[inz].pn == sqrx.pn {
-                            let rslt = if other_sqrs_in[iny].pn > other_sqrs_in[inz].pn {
-                                other_sqrs_in[iny].rules_compatible(other_sqrs_in[inz])
-                            } else {
-                                other_sqrs_in[inz].rules_compatible(other_sqrs_in[iny])
-                            };
+                            let rslt = other_sqrs_in[iny].rules_compatible(other_sqrs_in[inz]);
 
                             // println!("checking {} {} rslt {rslt}", other_sqrs_in[iny], other_sqrs_in[inz]);
-                            if !rslt {
+                            if rslt == Some(false) {
                                 excluded_regs.push_nosups(SomeRegion::new(vec![
                                     other_sqrs_in[iny].state.clone(),
                                     other_sqrs_in[inz].state.clone(),
@@ -1794,6 +1799,8 @@ impl SomeAction {
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
+        //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
+
         let asample = self.take_action_arbitrary(cur_state);
 
         // Additional processing for selected kinds of need
@@ -1841,6 +1848,7 @@ impl SomeAction {
     /// Take an action with the current state, add the sample teo squarestore.
     /// Return a sample.
     pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
+        //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_id, self.id);
@@ -1855,34 +1863,14 @@ impl SomeAction {
     /// Assume the result is as expected.
     /// Return a sample.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
+        //println!("Dom {} Act {} take_action_step cur_state {cur_state}", self.dom_id, self.id);
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_id, self.id);
 
         let asample = SomeSample::new(cur_state.clone(), astate);
 
-        // If a square exists, update it.
-        if let Some(sqrx) = self.squares.find_mut(&asample.initial) {
-            sqrx.add_sample(&asample);
-            let regs_invalid = self.groups.check_square(sqrx, self.dom_id, self.id);
-            if regs_invalid.is_not_empty() {
-                self.check_remainder = true;
-                self.process_invalid_regions(&regs_invalid);
-            }
-        } else if let Some(inx) = self.memory_index(&asample.initial) {
-            self.memory[inx].add_sample(&asample);
-            let regs_invalid = self
-                .groups
-                .check_square(&self.memory[inx], self.dom_id, self.id);
-            if regs_invalid.is_not_empty() {
-                let sqrx = self.memory.remove(inx).expect("SNH");
-                self.add_new_square(sqrx);
-                self.check_remainder = true;
-                self.process_invalid_regions(&regs_invalid);
-            }
-        } else {
-            self.eval_sample(&asample);
-        }
+        self.eval_sample(&asample);
 
         asample
     }
@@ -1895,27 +1883,6 @@ impl SomeAction {
                 break;
             }
         }
-    }
-
-    /// Check an unexpected step result.
-    /// If there is an existitg square, it has already been updated.
-    pub fn eval_unexpected_result(&mut self, asample: &SomeSample) {
-        // Check active squares.
-        if self.squares.find(&asample.initial).is_some() {
-            self.eval_changed_square(&asample.initial);
-            return;
-        }
-        // Check memory.
-        if let Some(inx) = self.memory_index(&asample.initial) {
-            if let Some(sqrx) = self.memory.remove(inx) {
-                self.add_new_square(sqrx);
-                self.eval_changed_square(&asample.initial);
-            }
-            return;
-        }
-        // Add square.
-        self.add_new_square(SomeSquare::new(asample));
-        self.eval_changed_square(&asample.initial);
     }
 
     /// Return a change with all changes that can be made for the action.
@@ -2048,25 +2015,6 @@ impl SomeAction {
 
         rc_str.push(')');
         rc_str
-    }
-
-    /// Save a new sample to memory, oldest first.
-    pub fn add_sample_to_memory(&mut self, asample: SomeSample) {
-        if self.squares.find(&asample.initial).is_some() {
-            panic!(
-                "add_sample_to_memory: square for {} exists in hash",
-                asample.initial
-            );
-        }
-        // Add to an existing square, if possible.
-        for sqrx in self.memory.iter_mut() {
-            if sqrx.state == asample.initial {
-                sqrx.add_sample(&asample);
-                return;
-            }
-        }
-
-        self.add_square_to_memory(SomeSquare::new(&asample));
     }
 
     /// Add a square to memory, oldest first.
@@ -2210,58 +2158,6 @@ mod tests {
             }
         } else {
             return Err(format!("group xx01 not found"));
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn delete_shared_symmetric_region() -> Result<(), String> {
-        // Init action
-        let mut act0 = SomeAction::new(0, 0, vec![]);
-
-        let s4 = SomeState::new_from_string("s0b0100")?;
-        let s6 = SomeState::new_from_string("s0b0110")?;
-        let s7 = SomeState::new_from_string("s0b0111")?;
-        let s8 = SomeState::new_from_string("s0b1000")?;
-        let s9 = SomeState::new_from_string("s0b1001")?;
-        let sa = SomeState::new_from_string("s0b1010")?;
-        let sd = SomeState::new_from_string("s0b1101")?;
-        let sf = SomeState::new_from_string("s0b1111")?;
-
-        // Set up X10X group.
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s4.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sd.clone(), sd.clone()));
-
-        // Set up divider squares.
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s8.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s8.clone(), s7.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s9.clone(), s6.clone()));
-
-        // Set up 1X1X group.
-        // The shared symetric group will be 11X1.
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sa.clone(), sa.clone()));
-
-        println!("Groups {}", act0.groups);
-
-        if let Some(_) = act0
-            .groups
-            .find(&SomeRegion::new_from_string("r11x1").expect("SNH"))
-        {
-            act0.cleanup(&NeedStore::new(vec![]), 0);
-            if let Some(_) = act0
-                .groups
-                .find(&SomeRegion::new_from_string("r11x1").expect("SNH"))
-            {
-                return Err(format!("group 11X1 not deleted"));
-            }
-        } else {
-            return Err(format!("group 11X1 not found"));
         }
 
         Ok(())

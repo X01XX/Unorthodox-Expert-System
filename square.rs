@@ -8,7 +8,7 @@ use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::{not, StrLen};
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -153,104 +153,106 @@ impl SomeSquare {
         self.results.most_recent_result()
     }
 
-    /// Check if squares rules are, or could be, compatible.
-    pub fn rules_compatible(&self, other: &Self) -> bool {
-        if self.pn == Pn::Unpredictable {
-            return true;
+    /// Check if squares rules are, are not, or could be, compatible.
+    pub fn rules_compatible(&self, other: &Self) -> Option<bool> {
+        // Check for unpredictable results.
+        if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable {
+            return Some(true);
         }
 
-        if self.pn > other.pn {
-            if let Some(rules1) = &self.rules {
-                if let Some(rules2) = &other.rules {
-                    rules1.subcompatible(rules2)
-                } else {
-                    panic!("SNH");
-                }
-            } else {
-                panic!("SNH");
+        if self.pn == Pn::Unpredictable {
+            if other.pnc {
+                return Some(false);
             }
-        } else if let Some(rules1) = &self.rules {
-            if let Some(rules2) = &other.rules {
-                rules1.compatible(rules2)
+            return None;
+        }
+
+        if other.pn == Pn::Unpredictable {
+            if self.pnc {
+                return Some(false);
+            }
+            return None;
+        }
+
+        // Get rules refs.
+        let s_rules = self.rules.as_ref().expect("SNH");
+        let o_rules = other.rules.as_ref().expect("SNH");
+
+        if self.pn > other.pn {
+            if s_rules.subcompatible(o_rules) {
+                None
             } else {
-                panic!("SNH");
+                Some(false)
+            }
+        } else if other.pn > self.pn {
+            if o_rules.subcompatible(s_rules) {
+                None
+            } else {
+                Some(false)
             }
         } else {
-            panic!("SNH");
+            Some(s_rules.compatible(o_rules))
         }
     }
 
     /// Return indication of compatibility for two squares to
-    /// form a union, with the same number of rules as the first square.
+    /// form a union.
     /// Some(true) = true.
     /// Some(false) = false.
     /// None = More samples needed.
     pub fn compatible(&self, other: &Self) -> Option<bool> {
         assert!(self.state != other.state);
 
-        // Check the suitability of the first square.
-        if not(self.pn == Pn::One || self.pnc) {
-            return None;
+        // Handle any Unpredictable squares.
+        if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable {
+            return Some(true);
         }
 
-        // Check that the first square pn value is >= than the second.
-        if self.pn < other.pn {
-            return Some(false);
-        }
-
-        // Check for subcompatibility.
-        if self.pn > other.pn {
-            // Check if other pnc = true.
+        if self.pn == Pn::Unpredictable {
             if other.pnc {
                 return Some(false);
             }
-            // Check if the first square in Pn::Unpredictable.
-            if self.pn == Pn::Unpredictable {
+            return None;
+        }
+
+        if other.pn == Pn::Unpredictable {
+            if self.pnc {
+                return Some(false);
+            }
+            return None;
+        }
+
+        // Get rules refs.
+        let s_rules = &self.rules.as_ref().expect("SNH");
+        let o_rules = &other.rules.as_ref().expect("SNH");
+
+        // Check for self Pn::Two vs Pn::One.
+        if self.pn > other.pn {
+            if other.pnc {
+                return Some(false);
+            }
+            if s_rules.subcompatible(o_rules) {
                 return None;
             }
-            // Compare rules.
-            if let Some(rules1) = &self.rules {
-                if let Some(rules2) = &other.rules {
-                    if rules1.subcompatible(rules2) {
-                        return None;
-                    } else {
-                        return Some(false);
-                    }
-                } else {
-                    panic!("SNH");
-                }
-            } else {
-                panic!("SNH");
-            }
+            return Some(false);
         }
-        // Must have the same number of rules.
 
-        // Check for pn == Pn::Unpredicable.
-        if self.pn == Pn::Unpredictable {
+        // Check for other Pn::Two vs Pn::One.
+        if other.pn > self.pn {
+            if self.pnc {
+                return Some(false);
+            }
+            if o_rules.subcompatible(s_rules) {
+                return None;
+            }
+            return Some(false);
+        }
+
+        if s_rules.compatible(o_rules) {
             return Some(true);
         }
-        // Check if rules can form a union.
-        if let Some(rules1) = &self.rules {
-            if let Some(rules2) = &other.rules {
-                if rules1.compatible(rules2) {
-                    if other.pn == Pn::Two {
-                        if other.pnc {
-                            Some(true)
-                        } else {
-                            None
-                        }
-                    } else {
-                        Some(true)
-                    }
-                } else {
-                    Some(false)
-                }
-            } else {
-                panic!("SNH");
-            }
-        } else {
-            panic!("SNH");
-        }
+
+        Some(false)
     }
 
     /// Return the Pattern Number Confirmed (pnc) value.
@@ -691,8 +693,8 @@ mod tests {
         let rslt = sqr1.compatible(&sqr2);
         println!("rslt {:?}", rslt);
 
-        // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        assert!(rslt == None);
+        // Test sqr1 pn 2 pnc f, sqr2 pn 2 pnc f.
+        assert!(rslt == Some(true));
 
         // Create sqr3 pn 2 pnc f, not compatible with sqr1.
         let mut sqr3 = SomeSquare::new(&SomeSample::new(
@@ -723,9 +725,11 @@ mod tests {
         ));
 
         // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
-        if sqr1.compatible(&sqr2) == Some(true) {
-            return Err(String::from("Test 3 failed?"));
-        }
+        println!("sqr1 {sqr1}");
+        println!("sqr2 {sqr2}");
+        let rslt = sqr1.compatible(&sqr2);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(true));
 
         // Add to sqr2 to make it pnc.
         sqr2.add_sample(&SomeSample::new(
@@ -746,6 +750,8 @@ mod tests {
         assert!(rslt == Some(true));
 
         // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
+        println!("sqr1 {sqr1}");
+        println!("sqr3 {sqr3}");
         let rslt = sqr1.compatible(&sqr3);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(false));

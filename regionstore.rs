@@ -373,16 +373,15 @@ mod tests {
     fn possible_regions_by_negative_inference() -> Result<(), String> {
         let mut regstr1 = RegionStore::with_capacity(1);
         regstr1.push(SomeRegion::new_from_string("r01x1")?); // (5, 7)
+        regstr1.push(SomeRegion::new_from_string("rx101")?); // (5, F)
+        regstr1.push(SomeRegion::new_from_string("r0x11")?); // (3, 7)
 
         let poss_regs1 = regstr1.possible_regions_by_negative_inference();
         println!("poss_regs1: {}", poss_regs1);
 
         assert!(poss_regs1.len() == 5);
-        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXXX0")?));
-        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXX1X")?));
-        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rX0XX")?));
-        assert!(poss_regs1.contains(&SomeRegion::new_from_string("r1XXX")?));
-        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rXX0X")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("r0X0X")?));
+        assert!(poss_regs1.contains(&SomeRegion::new_from_string("rX11X")?));
 
         Ok(())
     }

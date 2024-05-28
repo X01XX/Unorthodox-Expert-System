@@ -57,19 +57,18 @@ impl ActionInterface {
                 if rsx.len() == 1 {
                     new_state = rsx[0].result_from_initial_state(cur_state);
                 } else {
-                    let rule_hint = if let Some(val) = self.ahash.get_mut(cur_state) {
-                        *val += 1;
-                        if *val == rsx.len() {
-                            *val = 0;
-                        }
-                        *val
+                    let rule_inx = if let Some(val) = self.ahash.get(cur_state) {
+                        // Calculate the next rule index from the last used rule index.
+                        (val + 1) % rsx.len()
                     } else {
                         // Start a new state counter at a random place in the cycle.
-                        let sample_hint = rand::thread_rng().gen_range(0..rsx.len());
-                        self.ahash.insert(cur_state.clone(), sample_hint);
-                        sample_hint
+                        rand::thread_rng().gen_range(0..rsx.len())
                     };
-                    new_state = rsx[rule_hint].result_from_initial_state(cur_state);
+                    // Get result of applying the chosen rule.
+                    new_state = rsx[rule_inx].result_from_initial_state(cur_state);
+
+                    // Save the rule index for the next use.
+                    self.ahash.insert(cur_state.clone(), rule_inx);
                 }
                 break 'next_rs;
             }

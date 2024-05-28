@@ -231,11 +231,6 @@ impl ActionStore {
     pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
         self.avec[act_id].take_action_arbitrary(cur_state)
     }
-
-    /// Eval an unexpected result from a step.
-    pub fn eval_unexpected_result(&mut self, act_id: usize, asample: &SomeSample) {
-        self.avec[act_id].eval_unexpected_result(asample)
-    }
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
