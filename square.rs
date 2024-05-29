@@ -179,13 +179,13 @@ impl SomeSquare {
         let o_rules = other.rules.as_ref().expect("SNH");
 
         if self.pn > other.pn {
-            if s_rules.subcompatible(o_rules) {
+            if !other.pnc && s_rules.subcompatible(o_rules) {
                 None
             } else {
                 Some(false)
             }
         } else if other.pn > self.pn {
-            if o_rules.subcompatible(s_rules) {
+            if !self.pnc && o_rules.subcompatible(s_rules) {
                 None
             } else {
                 Some(false)
