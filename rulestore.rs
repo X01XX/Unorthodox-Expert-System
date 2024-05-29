@@ -314,18 +314,29 @@ impl RuleStore {
         panic!("unexpected RuleStore length");
     }
 
-    /// Return true if a two-rule RuleStore could be compatible with
-    /// a one-rule RuleStore, although another sample/rule is needed to
-    /// fill out the one-rule RuleStore.
+    /// If a two-rule RuleStore could be compatible with
+    /// a one-rule RuleStore, return the index of the compatible rule.
     ///
     /// This is mostly useful in finding that a single rule is not compatible
-    /// to a two-rule store, so its not neccessary to get the second sample/rule.
-    pub fn subcompatible(&self, other: &RuleStore) -> bool {
+    /// to a two-rule store, so its not neccessary to get additional samples.
+    pub fn subcompatible(&self, other: &RuleStore) -> Option<usize> {
         //println!("starting subcompatible");
         assert!(self.len() == 2);
         assert!(other.len() == 1);
 
-        self[0].union(&other[0]).is_some() ^ self[1].union(&other[0]).is_some()
+        let zero = self[0].union(&other[0]).is_some();
+        let one = self[1].union(&other[0]).is_some();
+
+        if zero && one {
+            return None;
+        }
+        if zero {
+            return Some(0);
+        }
+        if one {
+            return Some(1);
+        }
+        None
     }
 
     /// Return true if two one-rule RuleStores,
@@ -671,6 +682,71 @@ mod tests {
         println!("rul_str2: {rul_str2}");
 
         assert!(rul_str1.union(&rul_str2).is_none());
+
+        Ok(())
+    }
+
+    // Most conditions are covered by other tests, except being TOO compatible.
+    #[test]
+    fn compatible() -> Result<(), String> {
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string("11/11/11/x0")?,
+            SomeRule::new_from_string("11/11/10/x1")?,
+        ]);
+        println!("rul_str1 {rul_str1}");
+
+        let rul_str2 = RuleStore::new(vec![
+            SomeRule::new_from_string("11/11/11/Xx")?,
+            SomeRule::new_from_string("11/11/10/xx")?,
+        ]);
+        println!("rul_str2 {rul_str2}");
+
+        let rslt = rul_str1.compatible(&rul_str2);
+        println!("rslt {rslt}");
+
+        assert!(rslt == false);
+
+        Ok(())
+    }
+
+    #[test]
+    fn subcompatible() -> Result<(), String> {
+        let rul_str1 = RuleStore::new(vec![
+            SomeRule::new_from_string("11/11/11/xx")?,
+            SomeRule::new_from_string("11/11/10/xx")?,
+        ]);
+
+        // Test match with first rule.
+        let rul_sub = RuleStore::new(vec![SomeRule::new_from_string("11/11/11/00")?]);
+        match rul_str1.subcompatible(&rul_sub) {
+            Some(0) => println!("{rul_str1} sub {rul_sub} Ok"),
+            Some(1) => println!("{rul_str1} sub {rul_sub} s/b Some(0), not Some(1)"),
+            _ => println!("{rul_str1} sub {rul_sub} s/b Some(0), not None"),
+        }
+
+        // Test match with second rule.
+        let rul_sub = RuleStore::new(vec![SomeRule::new_from_string("11/11/10/00")?]);
+        match rul_str1.subcompatible(&rul_sub) {
+            Some(0) => println!("{rul_str1} sub {rul_sub} s/b Some(1), not Some(0)"),
+            Some(1) => println!("{rul_str1} sub {rul_sub} Ok"),
+            _ => println!("{rul_str1} sub {rul_sub} s/b Some(0), not None"),
+        }
+
+        // Test match with no rules.
+        let rul_sub = RuleStore::new(vec![SomeRule::new_from_string("10/11/11/00")?]);
+        match rul_str1.subcompatible(&rul_sub) {
+            Some(0) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(0)"),
+            Some(1) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(1)"),
+            _ => println!("{rul_str1} sub {rul_sub} Ok"),
+        }
+
+        // Test match with both rules.
+        let rul_sub = RuleStore::new(vec![SomeRule::new_from_string("11/11/00/00")?]);
+        match rul_str1.subcompatible(&rul_sub) {
+            Some(0) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(0)"),
+            Some(1) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(1)"),
+            _ => println!("{rul_str1} sub {rul_sub} Ok"),
+        }
 
         Ok(())
     }

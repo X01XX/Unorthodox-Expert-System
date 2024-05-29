@@ -154,7 +154,9 @@ impl SomeSquare {
     }
 
     /// Check if squares rules are, are not, or could be, compatible.
-    pub fn rules_compatible(&self, other: &Self) -> Option<bool> {
+    pub fn compatible(&self, other: &Self) -> Option<bool> {
+        assert!(self.state != other.state);
+
         // Check for unpredictable results.
         if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable {
             return Some(true);
@@ -179,13 +181,13 @@ impl SomeSquare {
         let o_rules = other.rules.as_ref().expect("SNH");
 
         if self.pn > other.pn {
-            if !other.pnc && s_rules.subcompatible(o_rules) {
+            if !other.pnc && s_rules.subcompatible(o_rules).is_some() {
                 None
             } else {
                 Some(false)
             }
         } else if other.pn > self.pn {
-            if !self.pnc && o_rules.subcompatible(s_rules) {
+            if !self.pnc && o_rules.subcompatible(s_rules).is_some() {
                 None
             } else {
                 Some(false)
@@ -193,66 +195,6 @@ impl SomeSquare {
         } else {
             Some(s_rules.compatible(o_rules))
         }
-    }
-
-    /// Return indication of compatibility for two squares to
-    /// form a union.
-    /// Some(true) = true.
-    /// Some(false) = false.
-    /// None = More samples needed.
-    pub fn compatible(&self, other: &Self) -> Option<bool> {
-        assert!(self.state != other.state);
-
-        // Handle any Unpredictable squares.
-        if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable {
-            return Some(true);
-        }
-
-        if self.pn == Pn::Unpredictable {
-            if other.pnc {
-                return Some(false);
-            }
-            return None;
-        }
-
-        if other.pn == Pn::Unpredictable {
-            if self.pnc {
-                return Some(false);
-            }
-            return None;
-        }
-
-        // Get rules refs.
-        let s_rules = &self.rules.as_ref().expect("SNH");
-        let o_rules = &other.rules.as_ref().expect("SNH");
-
-        // Check for self Pn::Two vs Pn::One.
-        if self.pn > other.pn {
-            if other.pnc {
-                return Some(false);
-            }
-            if s_rules.subcompatible(o_rules) {
-                return None;
-            }
-            return Some(false);
-        }
-
-        // Check for other Pn::Two vs Pn::One.
-        if other.pn > self.pn {
-            if self.pnc {
-                return Some(false);
-            }
-            if o_rules.subcompatible(s_rules) {
-                return None;
-            }
-            return Some(false);
-        }
-
-        if s_rules.compatible(o_rules) {
-            return Some(true);
-        }
-
-        Some(false)
     }
 
     /// Return the Pattern Number Confirmed (pnc) value.
@@ -453,508 +395,255 @@ mod tests {
         Ok(())
     }
 
-    // Test can_combine, cannot compare the same square.
+    // Test compatible: Pn both One
     #[test]
-    #[should_panic(expected = "self.state != other.state")]
-    fn compatible_not_same() {
-        let sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101").unwrap(),
-            SomeState::new_from_string("s0b0101").unwrap(),
-        ));
-
-        sqr1.compatible(&sqr1);
-        ()
-    }
-
-    // Test compatible Pn == One
-    #[test]
-    fn compatible_pn_one_one() -> Result<(), String> {
+    fn compatible_pn_1_1() -> Result<(), String> {
         // Test two squares with only one sample each.
         // Allow a true result for bootstrapping.
-        let sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
 
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
-        println!("sqr1: {sqr1}");
-        println!("sqr2: {sqr2}");
+        // Create square 5.
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
 
-        // Try 1 vs 2 order.
-        let rslt = sqr1.compatible(&sqr2);
+        let sqr_5 = SomeSquare::new(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        println!("sqr_5: {sqr_5}");
+
+        // Create square d, compatible to square 5.
+        let sta_d = SomeState::new_from_string("s0b1101")?;
+
+        let sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_d.clone()));
+        println!("sqr_d: {sqr_d}");
+
+        // Test compatible.
+        let rslt = sqr_5.compatible(&sqr_d);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(true));
 
-        // Try reverse order.
-        let rslt = sqr2.compatible(&sqr1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
+        // Create square d, not compatible to square 5.
+        let sta_9 = SomeState::new_from_string("s0b1001")?;
+        let sta_d = SomeState::new_from_string("s0b1101")?;
 
-        // Add a sample to a square.
-        sqr2.add_sample(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
+        let sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_9.clone()));
+        println!("sqr_d: {sqr_d}");
 
-        // Try 1 vs 2 order.
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
-
-        // Try reverse order.
-        let rslt = sqr2.compatible(&sqr1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
-
-        // Create a square incompatible to sqr1 to produce M result.
-        let mut sqr3 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1100")?,
-        ));
-        println!("sqr3: {sqr3}");
-
-        let rslt = sqr1.compatible(&sqr3);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        // Add to sqr3 to make it pnc.
-        sqr3.add_sample(&SomeSample::new(
-            sqr3.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
-        println!("sqr3: {sqr3}");
-
-        let rslt = sqr1.compatible(&sqr3);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        let rslt = sqr3.compatible(&sqr1);
+        // Test compatible.
+        let rslt = sqr_5.compatible(&sqr_d);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test compatible Pn == One and Pn == two
+    // Test compatible both Pn == two
     #[test]
-    fn compatible_pn_one_two() -> Result<(), String> {
-        // Create sqr1 pn 1 pnc f.
-        let sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
+    fn compatible_pn_2_2() -> Result<(), String> {
+        // Create sqr_d pn 2.
+        let sta_c = SomeState::new_from_string("s0b1100")?;
+        let sta_d = SomeState::new_from_string("s0b1101")?;
 
-        // Create sqr2 pn 2 pnc f, one result compatible to sqr1.
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
+        let mut sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_d.clone()));
 
-        // Make sqr2 Pn::Two.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
+        sqr_d.add_sample(&SomeSample::new(sta_d.clone(), sta_c.clone()));
+        println!("sqr_d {sqr_d}");
 
-        // Make sqr2 pnc = true.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b1101")?,
-        ));
+        // Create sqr_5 pn 2.
+        let sta_4 = SomeState::new_from_string("s0b0100")?;
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
 
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
+        let mut sqr_5 = SomeSquare::new(&SomeSample::new(sta_5.clone(), sta_5.clone()));
 
-        // Create sqr3 pn 1 pnc f, incompatible to any result in sqr2.
-        let sqr3 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0100")?,
-        ));
+        sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_4.clone()));
+        println!("sqr_5 {sqr_5}");
 
-        println!("sqr1: {sqr1}");
-        println!("sqr2: {sqr2}");
-        println!("sqr3: {sqr3}");
-
-        // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc f.
-        let rslt = sqr2.compatible(&sqr1);
-        println!("result {:?}", rslt);
-        assert!(rslt == None);
-
-        // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc f.
-        let rslt = sqr2.compatible(&sqr3);
-        println!("result {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        // Create sqr4 pn 1 pnc t, compatible with one result in sqr2.
-        let mut sqr4 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        sqr4.add_sample(&SomeSample::new(
-            sqr4.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        sqr4.add_sample(&SomeSample::new(
-            sqr4.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        println!("sqr4: {sqr4}");
-        println!("sqr2: {sqr2}");
-
-        // Test sqr4 pn 1 pnc t, sqr2 pn 2 pnc f.
-        let rslt = sqr4.compatible(&sqr2);
+        let rslt = sqr_d.compatible(&sqr_5);
         println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        assert!(rslt == Some(true));
 
-        // Exersize other branch of code.
-        let rslt = sqr2.compatible(&sqr4);
+        // Create sqr_5 pn 2, reverse order of results.
+        let sta_4 = SomeState::new_from_string("s0b0100")?;
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
+
+        let mut sqr_5 = SomeSquare::new(&SomeSample::new(sta_5.clone(), sta_4.clone()));
+
+        sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        println!("sqr_5 {sqr_5}");
+
+        let rslt = sqr_d.compatible(&sqr_5);
         println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        assert!(rslt == Some(true));
 
-        // Add to sqr2 to make it pnc.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b1101")?,
-        ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
+        // Create sqr_5 pn 2, not compatible to sqr_d.
+        let sta_6 = SomeState::new_from_string("s0b0110")?;
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
 
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
+        let mut sqr_5 = SomeSquare::new(&SomeSample::new(sta_5.clone(), sta_6.clone()));
 
-        // Test sqr1 pn 1 pnc f, sqr2 pn 2 pnc t.
-        let rslt = sqr2.compatible(&sqr1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
+        sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        println!("sqr_5 {sqr_5}");
 
-        // Test sqr3 pn 1 pnc f, sqr2 pn 2 pnc t.
-        println!("sqr2 {sqr2}");
-        println!("sqr3 {sqr3}");
-
-        let rslt = sqr2.compatible(&sqr3);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        // Exersize other branch of code.
-        let rslt = sqr3.compatible(&sqr2);
+        let rslt = sqr_d.compatible(&sqr_5);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test compatible Pn == two
+    // Test compatible: if self.pn  == Pn::Unpredictable
+    // Test compatible: if other.pn == Pn::Unpredictable
     #[test]
-    fn compatible_pn_two_two() -> Result<(), String> {
-        // Create sqr1 pn 2 pnc t.
-        let mut sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
+    fn compatible_only_one_pn_u() -> Result<(), String> {
+        let sta_d = SomeState::new_from_string("s0b1101")?;
 
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
+        // Create sqr_d, pn U.
+        let mut sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_d.clone()));
+
+        sqr_d.add_sample(&SomeSample::new(
+            sta_d.clone(),
             SomeState::new_from_string("s0b1100")?,
         ));
 
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1101")?,
-        ));
-
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
-
-        // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
-
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-
-        // Test sqr1 pn 2 pnc f, sqr2 pn 2 pnc f.
-        assert!(rslt == Some(true));
-
-        // Create sqr3 pn 2 pnc f, not compatible with sqr1.
-        let mut sqr3 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        sqr3.add_sample(&SomeSample::new(
-            sqr3.state.clone(),
-            SomeState::new_from_string("s0b1101")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr3 {sqr3}");
-        let rslt = sqr1.compatible(&sqr3);
-        println!("rslt {:?}", rslt);
-
-        // Test sqr1 pn 1 pnc f, sqr3 pn 2 pnc f.
-        assert!(rslt == Some(false));
-
-        // Make sqr1 pnc.
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1101")?,
-        ));
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
-
-        // Test sqr1 pn 1 pnc t, sqr2 pn 2 pnc f.
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
-
-        // Add to sqr2 to make it pnc.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
-
-        // Test sqr1 pn 2 pnc t, sqr2 pn 2 pnc t.
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
-
-        // Test sqr1 pn 2 pnc t, sqr3 pn 2 pnc f.
-        println!("sqr1 {sqr1}");
-        println!("sqr3 {sqr3}");
-        let rslt = sqr1.compatible(&sqr3);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        // Create sqr4, cause X0/X1 or Xx/XX combination error with sqr1.
-        let mut sqr4 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0100")?,
-            SomeState::new_from_string("s0b0100")?,
-        ));
-
-        sqr4.add_sample(&SomeSample::new(
-            sqr4.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr4.add_sample(&SomeSample::new(
-            sqr4.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-        sqr4.add_sample(&SomeSample::new(
-            sqr4.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr4 {sqr4}");
-
-        // Test sqr1 pn 2 pnc t, sqr4 pn 2 pnc t.
-        let rslt = sqr1.compatible(&sqr4);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        // Create sqr5, combinable with sqr1, but results in reverse order.
-        let mut sqr5 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0100")?,
-        ));
-
-        sqr5.add_sample(&SomeSample::new(
-            sqr5.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr5.add_sample(&SomeSample::new(
-            sqr5.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-        sqr5.add_sample(&SomeSample::new(
-            sqr5.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr5 {sqr5}");
-
-        // Test sqr1 pn 2 pnc t, sqr5 pn 2 pnc t.
-        let rslt = sqr1.compatible(&sqr5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
-
-        Ok(())
-    }
-
-    // Test compatible Pn == Unpredictable, Pn == 1
-    #[test]
-    fn compatible_pn_u_one() -> Result<(), String> {
-        // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
-
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
+        sqr_d.add_sample(&SomeSample::new(
+            sta_d.clone(),
             SomeState::new_from_string("s0b1000")?,
         ));
 
-        // Create sqr2 pn 1 pnc f.
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
+        // Create sqr_5 pn 1 pnc f.
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
 
-        // Test sqr1 pn U pnc t, sqr2 pn 1 pnc f.
-        let rslt = sqr1.compatible(&sqr2);
+        let mut sqr_5 = SomeSquare::new(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        println!("sqr_d {sqr_d}");
+        println!("sqr_5 {sqr_5}");
+
+        // Test sqr_d pn U pnc t, sqr_5 pn 1 pnc f.
+        let rslt = sqr_d.compatible(&sqr_5);
         println!("rslt {:?}", rslt);
         assert!(rslt == None);
 
-        // Make sqr2 pnc == true.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        println!("sqr2 {sqr2}");
+        // Test sqr_5 pn 1 pnc f, sqr_d pn U pnc t.
+        let rslt = sqr_5.compatible(&sqr_d);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
 
-        // Test sqr1 pn U pnc t, sqr2 pn 1 pnc t.
-        let rslt = sqr1.compatible(&sqr2);
+        // Update sqr_5, to pn 1, pnc t.
+        sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_5.clone()));
+        println!("sqr_d {sqr_d}");
+        println!("sqr_5 {sqr_5}");
+
+        // Test sqr_d pn U pnc t, sqr_5 pn 1 pnc t.
+        let rslt = sqr_d.compatible(&sqr_5);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
+
+        // Test sqr_5 pn 1 pnc t, sqr_d pn U pnc t.
+        let rslt = sqr_5.compatible(&sqr_d);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(false));
 
         Ok(())
     }
 
-    // Test compatible Pn == Unpredictable, Pn == 2
-    #[test]
-    fn compatible_pn_u_two() -> Result<(), String> {
-        // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
-
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1100")?,
-        ));
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
-            SomeState::new_from_string("s0b1000")?,
-        ));
-
-        // Create sqr2 pn 2 pnc f.
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
-
-        // Test sqr1 pn U pnc t, sqr2 pn 2 pnc f.
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
-
-        // Make sqr2 pnc == true.
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
-        ));
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
-
-        // Test sqr1 pn U pnc t, sqr2 pn 2 pnc t.
-        let rslt = sqr1.compatible(&sqr2);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
-
-        Ok(())
-    }
-
-    // Test compatible Pn == Unpredictable, Pn == Unpredictable
+    // Test compatible: if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable
     #[test]
     fn compatible_pn_u_u() -> Result<(), String> {
-        // Create sqr1 pn U pnc T.
-        let mut sqr1 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1101")?,
-        ));
+        // Create sqr_d pn U pnc T.
+        let sta_d = SomeState::new_from_string("s0b1101")?;
 
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
+        let mut sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_d.clone()));
+
+        sqr_d.add_sample(&SomeSample::new(
+            sqr_d.state.clone(),
             SomeState::new_from_string("s0b1100")?,
         ));
-        sqr1.add_sample(&SomeSample::new(
-            sqr1.state.clone(),
+        sqr_d.add_sample(&SomeSample::new(
+            sqr_d.state.clone(),
             SomeState::new_from_string("s0b1000")?,
         ));
+        println!("sqr_d {sqr_d}");
 
-        // Create sqr2 pn U pnc T.
-        let mut sqr2 = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0001")?,
-            SomeState::new_from_string("s0b0001")?,
-        ));
+        // Create sqr_1 pn U pnc T.
+        let sta_1 = SomeState::new_from_string("s0b0001")?;
+        let mut sqr_1 = SomeSquare::new(&SomeSample::new(sta_1.clone(), sta_1.clone()));
 
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
+        sqr_1.add_sample(&SomeSample::new(
+            sqr_1.state.clone(),
             SomeState::new_from_string("s0b0010")?,
         ));
-        sqr2.add_sample(&SomeSample::new(
-            sqr2.state.clone(),
+        sqr_1.add_sample(&SomeSample::new(
+            sqr_1.state.clone(),
             SomeState::new_from_string("s0b0100")?,
         ));
-        println!("sqr1 {sqr1}");
-        println!("sqr2 {sqr2}");
+        println!("sqr_1 {sqr_1}");
 
-        // Test sqr1 pn U pnc t, sqr2 pn U pnc t.
-        let rslt = sqr1.compatible(&sqr2);
+        // Test sqr_d pn U pnc t, sqr_1 pn U pnc t.
+        let rslt = sqr_d.compatible(&sqr_1);
         println!("rslt {:?}", rslt);
         assert!(rslt == Some(true));
+
+        Ok(())
+    }
+
+    // Test if self.pn (Pn::Two) > other.pn (Pn::One)
+    // Test if other.pn (Pn::Two) > self.pn (Pn::One)
+    #[test]
+    fn compatible_pn_2_1() -> Result<(), String> {
+        // Create sqr_d pn 2 pnc f.
+        let sta_d = SomeState::new_from_string("s0b1101")?;
+
+        let mut sqr_d = SomeSquare::new(&SomeSample::new(sta_d.clone(), sta_d.clone()));
+
+        sqr_d.add_sample(&SomeSample::new(
+            sqr_d.state.clone(),
+            SomeState::new_from_string("s0b1100")?,
+        ));
+        println!("sqr_d {sqr_d}");
+
+        // Create sqr_1 pn 1, not compatible with sqr_d, pnc f.
+        let sta_1 = SomeState::new_from_string("s0b0001")?;
+        let sqr_1 = SomeSquare::new(&SomeSample::new(
+            sta_1.clone(),
+            SomeState::new_from_string("s0b0011")?,
+        ));
+        println!("sqr_1 {sqr_1}");
+
+        // Try Pn::Two, Pn::One.
+        let rslt = sqr_d.compatible(&sqr_1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
+
+        // Try Pn::One, Pn::Two.
+        let rslt = sqr_1.compatible(&sqr_d);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
+
+        // Create sqr_1 pn 1, compatible with sqr_d, pnc f.
+        let sta_1 = SomeState::new_from_string("s0b0001")?;
+        let mut sqr_1 = SomeSquare::new(&SomeSample::new(sta_1.clone(), sta_1.clone()));
+        println!("sqr_1 {sqr_1}");
+
+        // Try Pn::Two, Pn::One.
+        let rslt = sqr_d.compatible(&sqr_1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
+
+        // Try Pn::One, Pn::Two.
+        let rslt = sqr_1.compatible(&sqr_d);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == None);
+
+        // Update sqr_1 to pnc t.
+        sqr_1.add_sample(&SomeSample::new(sta_1.clone(), sta_1.clone()));
+        sqr_1.add_sample(&SomeSample::new(sta_1.clone(), sta_1.clone()));
+        println!("sqr_1 {sqr_1}");
+
+        // Try Pn::Two, Pn::One.
+        let rslt = sqr_d.compatible(&sqr_1);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
+
+        // Try Pn::One, Pn::Two.
+        let rslt = sqr_1.compatible(&sqr_d);
+        println!("rslt {:?}", rslt);
+        assert!(rslt == Some(false));
 
         Ok(())
     }

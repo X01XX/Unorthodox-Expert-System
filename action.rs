@@ -1655,9 +1655,30 @@ impl SomeAction {
 
                 for iny in 0..(other_sqrs_in.len() - 1) {
                     for inz in (iny + 1)..other_sqrs_in.len() {
-                        // Avoid pn::One vs Pn::One when sqrx is Pn::Two.
-                        if other_sqrs_in[iny].pn == sqrx.pn || other_sqrs_in[inz].pn == sqrx.pn {
-                            let rslt = other_sqrs_in[iny].rules_compatible(other_sqrs_in[inz]);
+                        // For pn::One vs Pn::One when sqrx is Pn::Two,
+                        // check compatibility if they are compatible with the same
+                        // part ([0] or [1]) of the Pn::Two RuleStore.
+                        let check =
+                            if sqrx.pn == Pn::Two
+                                && other_sqrs_in[iny].pn == Pn::One
+                                && other_sqrs_in[inz].pn == Pn::One
+                            {
+                                sqrx.rules
+                                    .as_ref()
+                                    .expect("SNH")
+                                    .subcompatible(other_sqrs_in[iny].rules.as_ref().expect("SNH"))
+                                    == sqrx.rules.as_ref().expect("SNH").subcompatible(
+                                        other_sqrs_in[inz].rules.as_ref().expect("SNH"),
+                                    )
+                            } else {
+                                false
+                            };
+
+                        if other_sqrs_in[iny].pn == sqrx.pn
+                            || other_sqrs_in[inz].pn == sqrx.pn
+                            || check
+                        {
+                            let rslt = other_sqrs_in[iny].compatible(other_sqrs_in[inz]);
 
                             // println!("checking {} {} rslt {rslt}", other_sqrs_in[iny], other_sqrs_in[inz]);
                             if rslt == Some(false) {
