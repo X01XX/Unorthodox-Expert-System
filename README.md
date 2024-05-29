@@ -3,7 +3,7 @@ An expert of its own state. Rules can be developed, revised, and used without hu
 
 The use of a rule, from a current state to a goal, can be analyzed for wanted, unwanted, and don't care, changes.  Some rule pairs can be known to need to be used in a given order, or even be mutually exclusive.  A single available rule that makes part of a desired change, means the problem must be split into going from the current state to a state where the rule can be applied, then from the result of the rule to the goal state.
 
-Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html. Also, squares that are only in one region have a special significance.
+Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html. Also, squares that are only in one region have a special significance, see "Limiting an Optimistic Union" in theory.html.
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory.
 
