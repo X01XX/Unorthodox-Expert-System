@@ -343,6 +343,12 @@ impl RuleStore {
     /// or two two-rule RuleStores are compatible.
     pub fn compatible(&self, other: &RuleStore) -> bool {
         assert!(self.len() == other.len());
+        assert!(!self
+            .initial_region()
+            .is_superset_of(&other.initial_region()));
+        assert!(!other
+            .initial_region()
+            .is_superset_of(&self.initial_region()));
 
         if self.len() == 1 {
             return self[0].union(&other[0]).is_some();
@@ -686,18 +692,32 @@ mod tests {
         Ok(())
     }
 
-    // Most conditions are covered by other tests, except being TOO compatible.
+    // Most conditions are covered by other tests, except one.
+    // If the two-result RuleStores can match in both orders.
+    //
+    // One bit position has all four possible changes represented.
+    // 00, 01, 11, 10.
+    //
+    // [11/01, 11/00] (Initial regions must match, here its 10)
+    // [00/11, 00/10] (Initial region 01)
+    // --------------
+    //  XX/X1, XX/X0
+    //
+    // [11/01, 11/00]
+    // [00/10, 00/11]
+    // --------------
+    //  XX/Xx, XX/XX
     #[test]
     fn compatible() -> Result<(), String> {
         let rul_str1 = RuleStore::new(vec![
-            SomeRule::new_from_string("11/11/11/x0")?,
-            SomeRule::new_from_string("11/11/10/x1")?,
+            SomeRule::new_from_string("11/01")?,
+            SomeRule::new_from_string("11/00")?,
         ]);
         println!("rul_str1 {rul_str1}");
 
         let rul_str2 = RuleStore::new(vec![
-            SomeRule::new_from_string("11/11/11/Xx")?,
-            SomeRule::new_from_string("11/11/10/xx")?,
+            SomeRule::new_from_string("00/10")?,
+            SomeRule::new_from_string("00/11")?,
         ]);
         println!("rul_str2 {rul_str2}");
 
