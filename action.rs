@@ -1633,11 +1633,10 @@ impl SomeAction {
                 }
             }
 
+            // Process an Unpredictable square.
             if sqrx.pn == Pn::Unpredictable {
-                for regz in poss_regs.iter() {
-                    if let Some(grpx) = self.validate_possible_group(sqrx, regz, &other_sqrs_in) {
-                        ret_grps.push(grpx);
-                    }
+                if let Some(grpx) = self.validate_possible_group(sqrx, regx, &other_sqrs_in) {
+                    ret_grps.push(grpx);
                 }
                 continue;
             }
