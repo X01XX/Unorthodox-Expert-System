@@ -29,6 +29,7 @@ If a plan does not work as expected, rules are updated, then an attempt is made 
 
 After a number of groups are formed, the user can change the state with a command like "to r010X", which will attempt to change the current state to 0101 or 0100.
 
+The goal is a better and better prediction of the result of sampling any state, over time, seeking specifc samples, and given more samples from rule use.
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
