@@ -35,13 +35,7 @@ A final, exact, understanding is NOT the goal, just as there is a lot that I do 
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
 
-Assume a device with a state made of a number of bits, actions that can change the bits, and a definition of a number of states that qualify as optimal.
-After some testing of actions, the device can develop rules which can then be used to put the device into an optimal state.
-If something happens to change the state of the device to a non-optimal state, the device can again run rules to put it into an optimal state.
-
-At a higher level, maybe something gets "bored", or "satiated", so the optimum state changes.  At some level are we following something like: food -> shelter -> rest -> food ?
-
-Regions that are considered negative, or positive, can be added.  When making plans, the program will try not to traverse negative regions.  If the current state is in a negatve region, the program will try to exit the region. After needs for improving rules are met, the program will visit positive regions.
+Regions that are considered negative, or positive, can be added.  When making plans, the program will try not to traverse negative regions.  If the current state is in a negatve region, the program will try to exit the region. After needs for improving rules are met, the program will visit positive regions, in a cycle. At some level are we following something like: food -> shelter -> rest -> food? If something happens to change the state to a non-positive region, the program will run rules to put it back into a positive region.
 
 A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
 
