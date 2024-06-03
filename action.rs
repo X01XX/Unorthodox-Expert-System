@@ -369,6 +369,14 @@ impl SomeAction {
         dom_id: usize,
         max_reg: &SomeRegion,
     ) -> NeedStore {
+        //for sqrx in self.squares.ahash.values() {
+        //    if !sqrx.pnc { continue;
+        //    }
+        //    if self.groups.num_groups_in(&sqrx.state) == 0 {
+        //        panic!("Dom {} Act {} sqr {} not in any group", self.dom_id, self.id, sqrx);
+        //    }
+        //}
+
         let mut ret = NeedStore::new(vec![]);
 
         let mut get_new_needs = true;
@@ -406,7 +414,7 @@ impl SomeAction {
             } // next ndx
         } // end while
           //if ret.is_empty() {
-          //self.consolidate_anchor_needs();
+          //    self.consolidate_anchor_needs();
           //}
         ret
     }
@@ -414,38 +422,30 @@ impl SomeAction {
     /// Check if anchors can be consolidated to use fewer squares.
     fn _consolidate_anchor_needs(&self) {
         // Find all groups that have an anchor.
-        let mut groups = Vec::<&SomeGroup>::new();
+        let mut groups = Vec::<(SomeRegion, RegionStore)>::new();
 
         for grpx in self.groups.iter() {
             if grpx.anchor.is_some() {
-                groups.push(grpx);
+                let mut one_regs = RegionStore::new(vec![grpx.region.clone()]);
+                for grpy in self.groups.iter() {
+                    if std::ptr::eq(grpx, grpy) {
+                        continue;
+                    }
+                    if one_regs.any_intersection(&grpy.region) {
+                        one_regs = one_regs.subtract_item(&grpy.region);
+                    }
+                }
+                groups.push((grpx.region.clone(), one_regs));
             }
         }
         // If less than 2 groups found, return.
         if groups.len() < 2 {
             return;
         }
-        // Look for groups with the maximum number of adjacent groups.
-        let mut bridges = Vec::<RegionStore>::new();
-
-        for grpx in groups.iter() {
-            let mut bridge_vec = RegionStore::new(vec![]);
-
-            for grpy in groups.iter() {
-                if std::ptr::eq(grpx, grpy) {
-                    continue;
-                }
-                if grpy.is_adjacent(grpx) {
-                    bridge_vec.push(grpx.region.bridge(&grpy.region).expect("SNH"));
-                }
-            }
-            bridges.push(bridge_vec);
-        } // next grpx
-
-        println!("\nDom {} Act {}: ", self.dom_id, self.id);
-        for (grpx, brgx) in groups.iter().zip(bridges.iter()) {
-            println!("    {} {}", grpx.region, brgx);
+        for (grpx_reg, one_regs) in groups.iter() {
+            println!("group {grpx_reg} one_regs {one_regs}");
         }
+        
     }
 
     /// Get needs, process any housekeeping needs.
@@ -598,9 +598,7 @@ impl SomeAction {
                 }
                 if grpy.region.is_adjacent(&grpx.region) {
                     if let Some(shared) = grpy.region.bridge(&grpx.region) {
-                        if shared.is_superset_of(&grpx.region)
-                            || shared.is_superset_of(&grpy.region)
-                        {
+                        if shared.is_superset_of(&grpy.region) || shared.is_superset_of(&grpx.region) {
                         } else {
                             //println!("grp1 {} adj grp2 {} bridge {}", grpy.region, grpx.region, shared);
                             shared_regions.push(shared);
@@ -985,6 +983,9 @@ impl SomeAction {
                 continue;
             }
             if let Some(shared) = grpy.region.bridge(regx) {
+                if shared.is_superset_of(regx) {
+                    continue;
+                }
                 if grpx_pn == Pn::Unpredictable {
                     shared_regions.push(shared);
                 } else if let Some(ruls) = &grpx_rules {
