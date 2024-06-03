@@ -405,7 +405,47 @@ impl SomeAction {
                 }
             } // next ndx
         } // end while
+          //if ret.is_empty() {
+          //self.consolidate_anchor_needs();
+          //}
         ret
+    }
+
+    /// Check if anchors can be consolidated to use fewer squares.
+    fn _consolidate_anchor_needs(&self) {
+        // Find all groups that have an anchor.
+        let mut groups = Vec::<&SomeGroup>::new();
+
+        for grpx in self.groups.iter() {
+            if grpx.anchor.is_some() {
+                groups.push(grpx);
+            }
+        }
+        // If less than 2 groups found, return.
+        if groups.len() < 2 {
+            return;
+        }
+        // Look for groups with the maximum number of adjacent groups.
+        let mut bridges = Vec::<RegionStore>::new();
+
+        for grpx in groups.iter() {
+            let mut bridge_vec = RegionStore::new(vec![]);
+
+            for grpy in groups.iter() {
+                if std::ptr::eq(grpx, grpy) {
+                    continue;
+                }
+                if grpy.is_adjacent(grpx) {
+                    bridge_vec.push(grpx.region.bridge(&grpy.region).expect("SNH"));
+                }
+            }
+            bridges.push(bridge_vec);
+        } // next grpx
+
+        println!("\nDom {} Act {}: ", self.dom_id, self.id);
+        for (grpx, brgx) in groups.iter().zip(bridges.iter()) {
+            println!("    {} {}", grpx.region, brgx);
+        }
     }
 
     /// Get needs, process any housekeeping needs.
@@ -938,6 +978,12 @@ impl SomeAction {
             if grpy.pn != grpx_pn {
                 continue;
             }
+            if !regx.is_adjacent(&grpy.region) {
+                continue;
+            }
+            if grpy.region.x_mask() == regx.x_mask() {
+                continue;
+            }
             if let Some(shared) = grpy.region.bridge(regx) {
                 if grpx_pn == Pn::Unpredictable {
                     shared_regions.push(shared);
@@ -947,14 +993,13 @@ impl SomeAction {
                         let rulsy = ruls.restrict_initial_region(&shared);
 
                         if let Some(rule_shr) = rulsx.parsed_union(&rulsy) {
-                            //println!("shared region : {} {} {shared}", grpx.region, grpy.region);
+                            //println!("shared region : {} {} {shared}", rulsx.initial_region(), rulsy.initial_region());
                             shared_regions.push(rule_shr.initial_region());
                         }
                     }
                 }
             }
         }
-
         // For each state, sta1, only in the group region, greg:
         //
         //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.

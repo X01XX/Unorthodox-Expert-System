@@ -297,6 +297,11 @@ impl SomeGroup {
             None => false,
         }
     }
+
+    /// Return true if two groups are adjacent.
+    pub fn is_adjacent(&self, other: &Self) -> bool {
+        self.region.is_adjacent(other)
+    }
 } // end impl SomeGroup
 
 /// Implement the trait AccessStates for SomeGroup.

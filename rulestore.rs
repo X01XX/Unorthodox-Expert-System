@@ -245,7 +245,7 @@ impl RuleStore {
     /// the initial region as needed to get rid of 0/X and 1/X bit
     /// positions.
     pub fn parsed_union(&self, other: &Self) -> Option<Self> {
-        //println!("\nrulestore union {} and {}", self, other);
+        //println!("\nrulestore parsed_union {} and {}", self, other);
         assert!(!self.is_empty() && !other.is_empty());
 
         if self.len() != other.len() {
