@@ -123,6 +123,7 @@ impl SomeAction {
     /// Evaluate a changed square.
     /// The square may be new, that is its first sample.
     /// The square may have become pnc == true, or changed pnc from true to false.
+    /// Return true if something changed.
     fn eval_changed_square(&mut self, key: &SomeState) {
         //println!("SomeAction:eval_changed_square {key}");
         let sqrx = self.squares.find_mut_must(key);
@@ -137,15 +138,19 @@ impl SomeAction {
             self.process_invalid_regions(&regs_invalid);
         }
 
-        if !self.groups.any_superset_of(key) {
-            self.create_groups_from_squares(&[key.clone()]);
-        }
-
         if not(pnc) {
             return;
         }
 
-        // Square is pnc, check if a group can be confirmed.
+        if !self.groups.any_superset_of(key) {
+            self.create_groups_from_squares(&[key.clone()]);
+            //if !self.groups.any_superset_of(key) {
+            //    panic!("No groups superset of {}", key);
+            //}
+            return;
+        }
+
+        // Check if a group can be confirmed.
         for grpx in self.groups.iter_mut() {
             if grpx.pnc || !grpx.region.is_superset_of(key) {
                 continue;
@@ -187,8 +192,18 @@ impl SomeAction {
                 self.eval_changed_square(&smpl.initial);
             }
             return true;
-        } else {
-            self.update_memory(smpl);
+        }
+
+        if let Some(inx) = self.memory_index(&smpl.initial) {
+            if self.memory[inx].add_sample(smpl) {
+                if let Some(sqrm) = self.memory.remove(inx) {
+                    println!("Reclaim changed memory square {sqrm}");
+                    self.add_new_square(sqrm);
+                    self.eval_changed_square(&smpl.initial);
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Check if the sample invalidates any groups.
@@ -210,6 +225,9 @@ impl SomeAction {
 
             return true;
         }
+
+        self.update_memory(smpl);
+
         false
     }
 
@@ -275,7 +293,7 @@ impl SomeAction {
 
     /// Check groups due to a new, or updated, square.
     fn create_groups_from_squares2(&self, key: &SomeState) -> Vec<SomeGroup> {
-        //println!("create_groups_from_squares2 {}", key);
+        // println!("create_groups_from_squares2: key {}", key);
         debug_assert!(!self.groups.any_superset_of(key));
 
         // Lookup square.
@@ -283,6 +301,8 @@ impl SomeAction {
             .squares
             .find(key)
             .expect("key should refer to an existing square");
+
+        //println!("create_groups_from_squares2: square {}", sqrx);
 
         // Check if square can be used to create groups.
         // Allowing a square to make a group with a single sample is needed
@@ -370,10 +390,11 @@ impl SomeAction {
         max_reg: &SomeRegion,
     ) -> NeedStore {
         //for sqrx in self.squares.ahash.values() {
-        //    if !sqrx.pnc { continue;
-        //    }
-        //    if self.groups.num_groups_in(&sqrx.state) == 0 {
-        //        panic!("Dom {} Act {} sqr {} not in any group", self.dom_id, self.id, sqrx);
+        //    if (sqrx.pn == Pn::One || sqrx.pnc) && self.groups.num_groups_in(&sqrx.state) == 0 {
+        //        panic!(
+        //            "Dom {} Act {} sqr {} not in any group",
+        //            self.dom_id, self.id, sqrx
+        //        );
         //    }
         //}
 
@@ -443,9 +464,11 @@ impl SomeAction {
             return;
         }
         for (grpx_reg, one_regs) in groups.iter() {
-            println!("group {grpx_reg} one_regs {one_regs}");
+            println!(
+                "Dom {} Act {} group {grpx_reg} one_regs {one_regs}",
+                self.dom_id, self.id
+            );
         }
-        
     }
 
     /// Get needs, process any housekeeping needs.
@@ -598,7 +621,9 @@ impl SomeAction {
                 }
                 if grpy.region.is_adjacent(&grpx.region) {
                     if let Some(shared) = grpy.region.bridge(&grpx.region) {
-                        if shared.is_superset_of(&grpy.region) || shared.is_superset_of(&grpx.region) {
+                        if shared.is_superset_of(&grpy.region)
+                            || shared.is_superset_of(&grpx.region)
+                        {
                         } else {
                             //println!("grp1 {} adj grp2 {} bridge {}", grpy.region, grpx.region, shared);
                             shared_regions.push(shared);
@@ -1620,7 +1645,7 @@ impl SomeAction {
     /// Compatible squares, can be mutually incompatible. 0->1 and 0->0 are incompatible with each other,
     /// but compatible with 1->1.
     fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> Vec<SomeGroup> {
-        //println!("possible_groups_from_square {}", sqrx.state);
+        //println!("possible_groups_from_square {}", sqrx);
 
         let mut ret_grps = Vec::<SomeGroup>::new();
 
@@ -1761,6 +1786,13 @@ impl SomeAction {
             }
         } // next regx
 
+        if ret_grps.is_empty() {
+            ret_grps.push(SomeGroup::new(
+                SomeRegion::new(vec![sqrx.state.clone()]),
+                sqrx.rules.clone(),
+                sqrx.pnc,
+            ));
+        }
         ret_grps
     } // end possible_regions_from_square
 
@@ -1922,6 +1954,7 @@ impl SomeAction {
         let asample = SomeSample::new(cur_state.clone(), astate);
 
         self.eval_sample_arbitrary(&asample);
+
         asample
     }
 
