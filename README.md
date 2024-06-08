@@ -3,7 +3,7 @@ An expert of its own state. Rules can be developed, revised, and used without hu
 
 The goal is a better and better prediction of the result of sampling (taking a particular action) of any state, by seeking specifc samples, and unexpected samples from the use of imperfect rules.
 
-Based on an improved interpretation of the Karnaugh Map.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html.
+Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html.
 
 Squares that are only in one region have a special significance, see "Limiting an Optimistic Union" in theory.html.
 
