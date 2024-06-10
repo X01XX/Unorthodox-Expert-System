@@ -1725,29 +1725,8 @@ impl SomeAction {
 
                 for iny in 0..(other_sqrs_in.len() - 1) {
                     for inz in (iny + 1)..other_sqrs_in.len() {
-                        // For pn::One vs Pn::One when sqrx is Pn::Two,
-                        // check compatibility if they are compatible with the same
-                        // part ([0] or [1]) of the Pn::Two RuleStore.
-                        let check =
-                            if sqrx.pn == Pn::Two
-                                && other_sqrs_in[iny].pn == Pn::One
-                                && other_sqrs_in[inz].pn == Pn::One
-                            {
-                                sqrx.rules
-                                    .as_ref()
-                                    .expect("SNH")
-                                    .subcompatible(other_sqrs_in[iny].rules.as_ref().expect("SNH"))
-                                    == sqrx.rules.as_ref().expect("SNH").subcompatible(
-                                        other_sqrs_in[inz].rules.as_ref().expect("SNH"),
-                                    )
-                            } else {
-                                false
-                            };
-
-                        if other_sqrs_in[iny].pn == sqrx.pn
-                            || other_sqrs_in[inz].pn == sqrx.pn
-                            || check
-                        {
+                        if sqrx.pn == Pn::One {
+                            // other two pn must == Pn::One
                             let rslt = other_sqrs_in[iny].compatible(other_sqrs_in[inz]);
 
                             // println!("checking {} {} rslt {rslt}", other_sqrs_in[iny], other_sqrs_in[inz]);
@@ -1757,9 +1736,102 @@ impl SomeAction {
                                     other_sqrs_in[inz].state.clone(),
                                 ]));
                             }
+                            continue;
                         }
-                    }
-                }
+
+                        // sqrx.pn == Pn::Two
+
+                        // Check compatibility if the pair is compatible with the same
+                        // part ([0] or [1]) of the Pn::Two RuleStore.
+                        if other_sqrs_in[iny].pn == Pn::One && other_sqrs_in[inz].pn == Pn::One {
+                            if sqrx
+                                .rules
+                                .as_ref()
+                                .expect("SNH")
+                                .subcompatible(other_sqrs_in[iny].rules.as_ref().expect("SNH"))
+                                != sqrx
+                                    .rules
+                                    .as_ref()
+                                    .expect("SNH")
+                                    .subcompatible(other_sqrs_in[inz].rules.as_ref().expect("SNH"))
+                            {
+                                continue;
+                            }
+                            if !other_sqrs_in[iny]
+                                .rules
+                                .as_ref()
+                                .unwrap()
+                                .compatible(other_sqrs_in[inz].rules.as_ref().unwrap())
+                            {
+                                excluded_regs.push_nosups(SomeRegion::new(vec![
+                                    other_sqrs_in[iny].state.clone(),
+                                    other_sqrs_in[inz].state.clone(),
+                                ]));
+                            }
+                            continue;
+                        }
+
+                        if other_sqrs_in[iny].pn == Pn::Two && other_sqrs_in[inz].pn == Pn::Two {
+                            if let Some(rulsyz) = other_sqrs_in[iny]
+                                .rules
+                                .as_ref()
+                                .unwrap()
+                                .union(other_sqrs_in[inz].rules.as_ref().unwrap())
+                            {
+                                if rulsyz.union(sqrx.rules.as_ref().unwrap()).is_some() {
+                                    continue;
+                                }
+                            }
+                            excluded_regs.push_nosups(SomeRegion::new(vec![
+                                other_sqrs_in[iny].state.clone(),
+                                other_sqrs_in[inz].state.clone(),
+                            ]));
+                            continue;
+                        }
+
+                        if other_sqrs_in[inz].pn == Pn::Two {
+                            // other_sqrs_in[iny].pn == Pn::One
+                            if let Some(rulsxz) = sqrx
+                                .rules
+                                .as_ref()
+                                .unwrap()
+                                .union(other_sqrs_in[inz].rules.as_ref().unwrap())
+                            {
+                                if rulsxz
+                                    .subcompatible(other_sqrs_in[iny].rules.as_ref().unwrap())
+                                    .is_some()
+                                {
+                                    continue;
+                                }
+                            }
+                            excluded_regs.push_nosups(SomeRegion::new(vec![
+                                other_sqrs_in[iny].state.clone(),
+                                other_sqrs_in[inz].state.clone(),
+                            ]));
+                            continue;
+                        }
+
+                        // other_sqrs_in[iny].pn == Pn::Two, other_sqrs_in[inz].pn == Pn::One
+                        if let Some(rulsxy) = sqrx
+                            .rules
+                            .as_ref()
+                            .unwrap()
+                            .union(other_sqrs_in[iny].rules.as_ref().unwrap())
+                        {
+                            if rulsxy
+                                .subcompatible(other_sqrs_in[inz].rules.as_ref().unwrap())
+                                .is_some()
+                            {
+                                continue;
+                            }
+                        }
+                        excluded_regs.push_nosups(SomeRegion::new(vec![
+                            other_sqrs_in[iny].state.clone(),
+                            other_sqrs_in[inz].state.clone(),
+                        ]));
+                    } // next inz
+                } // next iny
+
                 //println!("excluded regions {excluded_regs}");
 
                 // Subtract excluded region state pairs.
@@ -1778,7 +1850,8 @@ impl SomeAction {
                     poss_regs2 = poss_regs2.supersets_of(&sqrx.state);
                     //println!("poss_regs2 after: {poss_regs2}");
                 }
-            }
+            } // end if other_sqrs_in.len() > 1
+
             for regz in poss_regs2.iter() {
                 if let Some(grpx) = self.validate_possible_group(sqrx, regz, &other_sqrs_in) {
                     ret_grps.push(grpx);

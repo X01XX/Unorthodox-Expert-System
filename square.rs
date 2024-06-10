@@ -154,6 +154,8 @@ impl SomeSquare {
     }
 
     /// Check if squares rules are, are not, or could be, compatible.
+    /// Order does not matter.
+    /// If order matters to the caller, assume a false result if target.pn < other.pn.
     pub fn compatible(&self, other: &Self) -> Option<bool> {
         assert!(self.state != other.state);
 
