@@ -37,6 +37,6 @@ I can still muddle through life. It is also NOT the goal to take every possible 
 
 Regions that are considered negative, or positive, can be added.  When making plans, the program will try not to traverse negative regions.  If the current state is in a negatve region, the program will try to exit the region. After needs for improving rules are met, the program will visit positive regions, in a cycle. At some level are we following something like: food -> shelter -> rest -> food? If something happens to change the state to a non-positive region, the program will run rules to put it back into a positive region.
 
-A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. A goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
+A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. When a goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
 
 There is a command for storing the states, and rules, to a text file.  Running the program with the file path as an argument loads the file.
