@@ -13,6 +13,24 @@ use crate::tools::StrLen;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+#[derive(PartialEq)]
+pub enum Compatibility {
+    Compatible,
+    NotCompatible,
+    MoreSamplesNeeded,
+}
+
+impl fmt::Display for Compatibility {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Self::Compatible => String::from("Compatible"),
+            Self::NotCompatible => String::from("NotCompatible"),
+            Self::MoreSamplesNeeded => String::from("MoreSamplesNeeded"),
+        };
+        write!(f, "{}", str)
+    }
+}
+
 impl fmt::Display for SomeSquare {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -156,26 +174,26 @@ impl SomeSquare {
     /// Check if squares rules are, are not, or could be, compatible.
     /// Order does not matter.
     /// If order matters to the caller, assume a false result if target.pn < other.pn.
-    pub fn compatible(&self, other: &Self) -> Option<bool> {
+    pub fn compatible(&self, other: &Self) -> Compatibility {
         assert!(self.state != other.state);
 
         // Check for unpredictable results.
         if self.pn == Pn::Unpredictable && other.pn == Pn::Unpredictable {
-            return Some(true);
+            return Compatibility::Compatible;
         }
 
         if self.pn == Pn::Unpredictable {
             if other.pnc {
-                return Some(false);
+                return Compatibility::NotCompatible;
             }
-            return None;
+            return Compatibility::MoreSamplesNeeded;
         }
 
         if other.pn == Pn::Unpredictable {
             if self.pnc {
-                return Some(false);
+                return Compatibility::NotCompatible;
             }
-            return None;
+            return Compatibility::MoreSamplesNeeded;
         }
 
         // Get rules refs.
@@ -183,19 +201,21 @@ impl SomeSquare {
         let o_rules = other.rules.as_ref().expect("SNH");
 
         if self.pn > other.pn {
-            if !other.pnc && s_rules.subcompatible(o_rules).is_some() {
-                None
+            if !other.pnc && s_rules.subcompatible_index(o_rules).is_some() {
+                Compatibility::MoreSamplesNeeded
             } else {
-                Some(false)
+                Compatibility::NotCompatible
             }
         } else if other.pn > self.pn {
-            if !self.pnc && o_rules.subcompatible(s_rules).is_some() {
-                None
+            if !self.pnc && o_rules.subcompatible_index(s_rules).is_some() {
+                Compatibility::MoreSamplesNeeded
             } else {
-                Some(false)
+                Compatibility::NotCompatible
             }
+        } else if s_rules.compatible(o_rules) {
+            Compatibility::Compatible
         } else {
-            Some(s_rules.compatible(o_rules))
+            Compatibility::NotCompatible
         }
     }
 
@@ -417,8 +437,8 @@ mod tests {
 
         // Test compatible.
         let rslt = sqr_5.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::Compatible);
 
         // Create square d, not compatible to square 5.
         let sta_9 = SomeState::new_from_string("s0b1001")?;
@@ -429,8 +449,8 @@ mod tests {
 
         // Test compatible.
         let rslt = sqr_5.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         Ok(())
     }
@@ -457,8 +477,8 @@ mod tests {
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::Compatible);
 
         // Create sqr_5 pn 2, reverse order of results.
         let sta_4 = SomeState::new_from_string("s0b0100")?;
@@ -470,8 +490,8 @@ mod tests {
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::Compatible);
 
         // Create sqr_5 pn 2, not compatible to sqr_d.
         let sta_6 = SomeState::new_from_string("s0b0110")?;
@@ -483,8 +503,8 @@ mod tests {
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         Ok(())
     }
@@ -517,13 +537,13 @@ mod tests {
 
         // Test sqr_d pn U pnc t, sqr_5 pn 1 pnc f.
         let rslt = sqr_d.compatible(&sqr_5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Test sqr_5 pn 1 pnc f, sqr_d pn U pnc t.
         let rslt = sqr_5.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Update sqr_5, to pn 1, pnc t.
         sqr_5.add_sample(&SomeSample::new(sta_5.clone(), sta_5.clone()));
@@ -533,13 +553,13 @@ mod tests {
 
         // Test sqr_d pn U pnc t, sqr_5 pn 1 pnc t.
         let rslt = sqr_d.compatible(&sqr_5);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         // Test sqr_5 pn 1 pnc t, sqr_d pn U pnc t.
         let rslt = sqr_5.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         Ok(())
     }
@@ -578,8 +598,8 @@ mod tests {
 
         // Test sqr_d pn U pnc t, sqr_1 pn U pnc t.
         let rslt = sqr_d.compatible(&sqr_1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(true));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::Compatible);
 
         Ok(())
     }
@@ -609,13 +629,13 @@ mod tests {
 
         // Try Pn::Two, Pn::One.
         let rslt = sqr_d.compatible(&sqr_1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         // Try Pn::One, Pn::Two.
         let rslt = sqr_1.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         // Create sqr_1 pn 1, compatible with sqr_d, pnc f.
         let sta_1 = SomeState::new_from_string("s0b0001")?;
@@ -624,13 +644,13 @@ mod tests {
 
         // Try Pn::Two, Pn::One.
         let rslt = sqr_d.compatible(&sqr_1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Try Pn::One, Pn::Two.
         let rslt = sqr_1.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == None);
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Update sqr_1 to pnc t.
         sqr_1.add_sample(&SomeSample::new(sta_1.clone(), sta_1.clone()));
@@ -639,13 +659,13 @@ mod tests {
 
         // Try Pn::Two, Pn::One.
         let rslt = sqr_d.compatible(&sqr_1);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         // Try Pn::One, Pn::Two.
         let rslt = sqr_1.compatible(&sqr_d);
-        println!("rslt {:?}", rslt);
-        assert!(rslt == Some(false));
+        println!("rslt {}", rslt);
+        assert!(rslt == Compatibility::NotCompatible);
 
         Ok(())
     }

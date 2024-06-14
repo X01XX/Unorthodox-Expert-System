@@ -234,15 +234,17 @@ impl AccessStates for SomeState {
         self.diff_edge_mask(other).is_low()
     }
     fn is_subset_of(&self, other: &impl AccessStates) -> bool {
-        match other.one_state() {
-            true => self == other.first_state(),
-            false => self.diff_edge_mask(other).is_low(),
+        if other.one_state() {
+            self == other.first_state()
+        } else {
+            self.diff_edge_mask(other).is_low()
         }
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
-        match other.one_state() {
-            true => self == other.first_state(),
-            false => false,
+        if other.one_state() {
+            self == other.first_state()
+        } else {
+            false
         }
     }
 }

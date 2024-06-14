@@ -22,7 +22,7 @@ use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
-use crate::square::SomeSquare;
+use crate::square::{Compatibility, SomeSquare};
 use crate::squarestore::{PickError, SquareStore};
 use crate::state::SomeState;
 use crate::statestore::StateStore;
@@ -1174,7 +1174,7 @@ impl SomeAction {
                     // Create new group, if an adjacent square can combine with the anchor.
                     // Current anchor will then be in two regions,
                     // the next run of limit_group_anchor_needs will deal with it.
-                    if anchor_sqr.compatible(adj_sqr) == Some(true) {
+                    if anchor_sqr.compatible(adj_sqr) == Compatibility::Compatible {
                         let regz = SomeRegion::new(vec![anchor_sta.clone(), adj_sta]);
 
                         let ruls: Option<RuleStore> = if anchor_sqr.pn == Pn::Unpredictable {
@@ -1668,7 +1668,7 @@ impl SomeAction {
 
             // Previous subtractions may put some squares out of reach.
             if poss_regs.any_superset_of_state(&sqry.state)
-                && (sqrx.pn < sqry.pn || sqrx.compatible(sqry) == Some(false))
+                && (sqrx.pn < sqry.pn || sqrx.compatible(sqry) == Compatibility::NotCompatible)
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqry.state, &sqrx.state);
             }
@@ -1677,7 +1677,7 @@ impl SomeAction {
         // Check memory for additional dissimilar squares.
         for sqrm in self.memory.iter() {
             if poss_regs.any_superset_of_state(&sqrm.state)
-                && (sqrx.pn < sqrm.pn || sqrx.compatible(sqrm) == Some(false))
+                && (sqrx.pn < sqrm.pn || sqrx.compatible(sqrm) == Compatibility::NotCompatible)
             {
                 poss_regs = poss_regs.subtract_state_to_supersets_of(&sqrm.state, &sqrx.state);
             }
@@ -1730,7 +1730,7 @@ impl SomeAction {
                             let rslt = other_sqrs_in[iny].compatible(other_sqrs_in[inz]);
 
                             // println!("checking {} {} rslt {rslt}", other_sqrs_in[iny], other_sqrs_in[inz]);
-                            if rslt == Some(false) {
+                            if rslt == Compatibility::NotCompatible {
                                 excluded_regs.push_nosups(SomeRegion::new(vec![
                                     other_sqrs_in[iny].state.clone(),
                                     other_sqrs_in[inz].state.clone(),
@@ -1744,17 +1744,11 @@ impl SomeAction {
                         // Check compatibility if the pair is compatible with the same
                         // part ([0] or [1]) of the Pn::Two RuleStore.
                         if other_sqrs_in[iny].pn == Pn::One && other_sqrs_in[inz].pn == Pn::One {
-                            if sqrx
-                                .rules
-                                .as_ref()
-                                .expect("SNH")
-                                .subcompatible(other_sqrs_in[iny].rules.as_ref().expect("SNH"))
-                                != sqrx
-                                    .rules
-                                    .as_ref()
-                                    .expect("SNH")
-                                    .subcompatible(other_sqrs_in[inz].rules.as_ref().expect("SNH"))
-                            {
+                            if sqrx.rules.as_ref().expect("SNH").subcompatible_index(
+                                other_sqrs_in[iny].rules.as_ref().expect("SNH"),
+                            ) != sqrx.rules.as_ref().expect("SNH").subcompatible_index(
+                                other_sqrs_in[inz].rules.as_ref().expect("SNH"),
+                            ) {
                                 continue;
                             }
                             if !other_sqrs_in[iny]
@@ -1798,7 +1792,7 @@ impl SomeAction {
                                 .union(other_sqrs_in[inz].rules.as_ref().unwrap())
                             {
                                 if rulsxz
-                                    .subcompatible(other_sqrs_in[iny].rules.as_ref().unwrap())
+                                    .subcompatible_index(other_sqrs_in[iny].rules.as_ref().unwrap())
                                     .is_some()
                                 {
                                     continue;
@@ -1819,7 +1813,7 @@ impl SomeAction {
                             .union(other_sqrs_in[iny].rules.as_ref().unwrap())
                         {
                             if rulsxy
-                                .subcompatible(other_sqrs_in[inz].rules.as_ref().unwrap())
+                                .subcompatible_index(other_sqrs_in[inz].rules.as_ref().unwrap())
                                 .is_some()
                             {
                                 continue;

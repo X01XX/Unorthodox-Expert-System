@@ -1555,7 +1555,10 @@ impl DomainStore {
     pub fn maximum_regions(&self) -> RegionStoreCorr {
         let mut ret_regs = RegionStoreCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
         for domx in self.domains.iter() {
-            ret_regs.push(domx.max_poss_region.clone());
+            ret_regs.push(SomeRegion::new(vec![
+                domx.cur_state.new_high(),
+                domx.cur_state.new_low(),
+            ]));
         }
         ret_regs
     }

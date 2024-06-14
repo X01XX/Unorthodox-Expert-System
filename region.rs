@@ -202,6 +202,10 @@ impl SomeRegion {
     } // end new_from_string
 
     /// Return a String representation of a Region.
+    /// The case of an X bit position gives information about the first state, and far state, of the region.
+    /// X = (1, 0).
+    /// x = (0, 1).
+    /// XxXx = (1010, ... 0101).
     fn formatted_string(&self) -> String {
         let mut s1 = String::with_capacity(self.strlen());
 
@@ -336,40 +340,9 @@ impl SomeRegion {
     /// Return the union of a region and a region/state.
     pub fn union(&self, other: &impl AccessStates) -> Self {
         //println!("union {} and {}", self, other);
-        match (self.one_state(), other.one_state()) {
-            (true, true) => {
-                let st_low = self.first_state().bitwise_or(other.first_state());
-                let st_high = self.first_state().bitwise_and(other.first_state());
-                Self::new(vec![st_high, st_low])
-            }
-            (false, true) => {
-                let st_low = self.high_state().bitwise_or(other.first_state());
-                let st_high = self.low_state().bitwise_and(other.first_state());
-                Self::new(vec![st_high, st_low])
-            }
-            (true, false) => {
-                let other_high = other.high_state();
-                let other_low = other.low_state();
-                let st_low = self
-                    .first_state()
-                    .bitwise_or(&other_high.bitwise_or(&other_low));
-                let st_high = self
-                    .first_state()
-                    .bitwise_and(&other_high.bitwise_and(&other_low));
-                Self::new(vec![st_high, st_low])
-            }
-            (false, false) => {
-                let other_high = other.high_state();
-                let other_low = other.low_state();
-                let st_low = self
-                    .high_state()
-                    .bitwise_or(&other_high.bitwise_or(&other_low));
-                let st_high = self
-                    .low_state()
-                    .bitwise_and(&other_high.bitwise_and(&other_low));
-                Self::new(vec![st_high, st_low])
-            }
-        }
+        let st_low = self.low_state().bitwise_and(&other.low_state());
+        let st_high = self.high_state().bitwise_or(&other.high_state());
+        Self::new(vec![st_high, st_low])
     }
 
     /// Return the highest state in the region
@@ -413,22 +386,9 @@ impl SomeRegion {
 
     /// Return a mask of different edge bits between a region and a region/state.
     pub fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
-        match (self.one_state(), other.one_state()) {
-            (true, true) => self
-                .first_state()
-                .bitwise_xor(other.first_state())
-                .to_mask(),
-            (false, true) => self
-                .edge_mask()
-                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
-            (true, false) => other
-                .edge_mask()
-                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
-            (false, false) => self
-                .edge_mask()
-                .bitwise_and(&other.edge_mask())
-                .bitwise_and(&self.first_state().bitwise_xor(other.first_state())),
-        }
+        self.edge_mask()
+            .bitwise_and(&other.edge_mask())
+            .bitwise_and(&self.first_state().bitwise_xor(other.first_state()))
     }
 
     /// Given a region, and a second region, return the

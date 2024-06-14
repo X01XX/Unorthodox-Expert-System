@@ -113,21 +113,16 @@ pub struct SomeDomain {
     pub actions: ActionStore,
     /// The Current, internal, State.
     pub cur_state: SomeState,
-    /// Region with all bit positions set to X.
-    pub max_poss_region: SomeRegion,
 }
 
 impl SomeDomain {
     /// Return a new domain instance, given the number of integers, the
     /// initial state, the optimal state(s), the index into the higher-level DomainStore.
     pub fn new(dom_id: usize, cur_state: SomeState) -> Self {
-        let max_poss_region = SomeRegion::new(vec![cur_state.new_high(), cur_state.new_low()]);
-
         Self {
             id: dom_id,
             actions: ActionStore::new(vec![]),
             cur_state,
-            max_poss_region,
         }
     }
 
