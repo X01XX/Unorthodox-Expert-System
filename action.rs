@@ -434,41 +434,7 @@ impl SomeAction {
                 }
             } // next ndx
         } // end while
-          //if ret.is_empty() {
-          //    self.consolidate_anchor_needs();
-          //}
         ret
-    }
-
-    /// Check if anchors can be consolidated to use fewer squares.
-    fn _consolidate_anchor_needs(&self) {
-        // Find all groups that have an anchor.
-        let mut groups = Vec::<(SomeRegion, RegionStore)>::new();
-
-        for grpx in self.groups.iter() {
-            if grpx.anchor.is_some() {
-                let mut one_regs = RegionStore::new(vec![grpx.region.clone()]);
-                for grpy in self.groups.iter() {
-                    if std::ptr::eq(grpx, grpy) {
-                        continue;
-                    }
-                    if one_regs.any_intersection(&grpy.region) {
-                        one_regs = one_regs.subtract_item(&grpy.region);
-                    }
-                }
-                groups.push((grpx.region.clone(), one_regs));
-            }
-        }
-        // If less than 2 groups found, return.
-        if groups.len() < 2 {
-            return;
-        }
-        for (grpx_reg, one_regs) in groups.iter() {
-            println!(
-                "Dom {} Act {} group {grpx_reg} one_regs {one_regs}",
-                self.dom_id, self.id
-            );
-        }
     }
 
     /// Get needs, process any housekeeping needs.

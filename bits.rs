@@ -83,7 +83,7 @@ impl SomeBits {
 
     /// Return a new bits instance, with a random value.
     pub fn new_random(&self) -> Self {
-        let mut ints = vec![Bitint::MAX; self.ints.len()];
+        let mut ints = vec![0; self.ints.len()];
 
         for intx in ints.iter_mut() {
             *intx = rand::thread_rng().gen_range(0..Bitint::MAX)
@@ -389,20 +389,6 @@ impl SomeBits {
         self.ints[0] == int0
     }
 
-    /// Return true if a Bits struct is a ones-subset of another.
-    pub fn is_subset_ones_of(&self, other: &Self) -> bool {
-        assert_eq!(self.num_bits, other.num_bits);
-
-        *self == self.b_and(other)
-    }
-
-    /// Return true if a Bits struct is a ones-superset of another.
-    pub fn is_superset_ones_of(&self, other: &Self) -> bool {
-        assert_eq!(self.num_bits, other.num_bits);
-
-        *other == self.b_and(other)
-    }
-
     /// Return the number of bits set to one.
     pub fn num_one_bits(&self) -> usize {
         let mut cnt = 0;
@@ -544,7 +530,6 @@ mod tests {
     use super::*;
     use crate::tools;
 
-    // Changing Bitint will affect this test.
     #[test]
     fn new_high() -> Result<(), String> {
         let ur_bts = SomeBits::new(7);
@@ -557,17 +542,20 @@ mod tests {
         println!("high 8 {high}");
         assert!(high.ints[0] == 255);
 
-        let ur_bts = SomeBits::new(9);
-        let high = ur_bts.new_high();
-        println!("high 9 {high}");
-        assert!(high.ints[0] == 1);
-        assert!(high.ints[1] == 255);
+        let ur_bits = SomeBits {
+            num_bits: Bitint::BITS as Bitint + 2,
+            ints: vec![0, 0],
+        };
+        let high = ur_bits.new_high();
+        println!("high two ints {high}");
+        assert!(high.ints[0] == 3);
+        assert!(high.ints[1] == Bitint::MAX);
 
         Ok(())
     }
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_bts = SomeBits::new(8);
         let strrep = format!("{tmp_bts}");
         let len = strrep.len();
@@ -615,18 +603,25 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let bitsx = SomeBits {
-            num_bits: 16,
-            ints: vec![5 as Bitint, 4 as Bitint],
-        };
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.ints[0] == 5);
-        assert!(bitsx.ints[1] == 4);
+        let bitsx = SomeBits::new(7);
+        assert!(bitsx.num_bits == 7);
+        assert!(bitsx.ints.len() == 1);
+        assert!(bitsx.is_low());
+
+        let bitsx = SomeBits::new(Bitint::BITS as usize);
+        assert!(bitsx.ints.len() == 1);
+
+        let bitsx = SomeBits::new(Bitint::BITS as usize + 1);
+        assert!(bitsx.ints.len() == 2);
+
+        let bitsx = SomeBits::new((2 * Bitint::BITS) as usize + 1);
+        assert!(bitsx.ints.len() == 3);
+
         Ok(())
     }
 
     #[test]
-    fn test_new_from_string() -> Result<(), String> {
+    fn new_from_string() -> Result<(), String> {
         // Test 0b prefix, and underscore.
         let bits1 = SomeBits::new_from_string("0b10_10")?;
         assert!(bits1.num_bits == 4);
@@ -693,7 +688,6 @@ mod tests {
         Ok(())
     }
 
-    // Test b_eqv
     #[test]
     fn b_eqv() -> Result<(), String> {
         // let tmp_bts = SomeBits::new(16);
@@ -706,7 +700,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::b_and
     #[test]
     fn b_and() -> Result<(), String> {
         // 00
@@ -740,7 +733,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::b_not
     #[test]
     fn b_not() -> Result<(), String> {
         let tmp_bts = SomeBits::new(16);
@@ -757,7 +749,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::b_or
     #[test]
     fn b_or() -> Result<(), String> {
         // 00
@@ -792,7 +783,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::b_xor
     #[test]
     fn b_xor() -> Result<(), String> {
         let tmp_bts = SomeBits::new(16);
@@ -827,7 +817,40 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::distance
+    #[test]
+    fn b_and_not() -> Result<(), String> {
+        let tmp_bts = SomeBits::new(16);
+        // 00
+        let mut bitsx = tmp_bts.new_low();
+        let mut bitsy = tmp_bts.new_low();
+        let mut bitsz = bitsx.b_and_not(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
+
+        // 01
+        bitsx = tmp_bts.new_low();
+        bitsy = tmp_bts.new_high();
+        bitsz = bitsx.b_and_not(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_low());
+
+        // 11
+        bitsx = tmp_bts.new_high();
+        bitsy = tmp_bts.new_high();
+        bitsz = bitsx.b_and_not(&bitsy);
+        println!("bits: {bitsz}");
+        assert!(bitsz.is_low());
+
+        // 10
+        bitsx = tmp_bts.new_high();
+        bitsy = tmp_bts.new_low();
+        bitsz = bitsx.b_and_not(&bitsy);
+        println!("bitsz: {bitsz}");
+        assert!(bitsz.is_high());
+
+        Ok(())
+    }
+
     #[test]
     fn distance() -> Result<(), String> {
         let dist = SomeBits::new_from_string("0x0")?.distance(&SomeBits::new_from_string("0x0")?);
@@ -847,32 +870,27 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::is_bit_set
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let bitsx = SomeBits::new_from_string("0x5aa5")?;
+        let bitsx = SomeBits {
+            num_bits: Bitint::BITS as Bitint * 2,
+            ints: vec![10, 10],
+        };
+
         println!("bitsx: {bitsx}");
-        assert!(bitsx.is_bit_set(0));
-        assert!(!bitsx.is_bit_set(1));
-        assert!(bitsx.is_bit_set(2));
-        assert!(!bitsx.is_bit_set(3));
-        assert!(!bitsx.is_bit_set(4));
-        assert!(bitsx.is_bit_set(5));
-        assert!(!bitsx.is_bit_set(6));
-        assert!(bitsx.is_bit_set(7));
-        assert!(!bitsx.is_bit_set(8));
-        assert!(bitsx.is_bit_set(9));
-        assert!(!bitsx.is_bit_set(10));
-        assert!(bitsx.is_bit_set(11));
-        assert!(bitsx.is_bit_set(12));
-        assert!(!bitsx.is_bit_set(13));
-        assert!(bitsx.is_bit_set(14));
-        assert!(!bitsx.is_bit_set(15));
+        assert!(!bitsx.is_bit_set(0));
+        assert!(bitsx.is_bit_set(1));
+        assert!(!bitsx.is_bit_set(2));
+        assert!(bitsx.is_bit_set(3));
+
+        assert!(!bitsx.is_bit_set(Bitint::BITS as usize));
+        assert!(bitsx.is_bit_set(Bitint::BITS as usize + 1));
+        assert!(!bitsx.is_bit_set(Bitint::BITS as usize + 2));
+        assert!(bitsx.is_bit_set(Bitint::BITS as usize + 3));
 
         Ok(())
     }
 
-    // Test SomeBits::is_high
     #[test]
     fn is_high() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0b0_1111_1111")?;
@@ -887,7 +905,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::is_low
     #[test]
     fn is_low() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0xa500")?;
@@ -909,64 +926,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::is_subset_of
-    #[test]
-    fn is_subset_of() -> Result<(), String> {
-        let bitsx = SomeBits::new(16);
-        let bitsy = SomeBits::new_from_string("0x0000")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_ones_of(&bitsy));
-
-        let bitsy = SomeBits::new_from_string("0x0005")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_ones_of(&bitsy));
-        assert!(!bitsy.is_subset_ones_of(&bitsx));
-
-        let bitsx = SomeBits::new_from_string("0x5555")?;
-        let bitsy = SomeBits::new_from_string("0x7777")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_subset_ones_of(&bitsy));
-        assert!(!bitsy.is_subset_ones_of(&bitsx));
-
-        let bitsx = SomeBits::new_from_string("0x5")?;
-        let bitsy = SomeBits::new_from_string("0x1")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsy.is_subset_ones_of(&bitsx));
-        assert!(!bitsx.is_subset_ones_of(&bitsy));
-
-        Ok(())
-    }
-
-    // Test SomeBits::is_superset_of
-    #[test]
-    fn is_superset_of() -> Result<(), String> {
-        let bitsx = SomeBits::new(16);
-        let bitsy = SomeBits::new_from_string("0x0000")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_ones_of(&bitsy));
-
-        let bitsx = SomeBits::new_from_string("0x5")?;
-        let bitsy = SomeBits::new_from_string("0x0")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_ones_of(&bitsy));
-        assert!(!bitsy.is_superset_ones_of(&bitsx));
-
-        let bitsx = SomeBits::new_from_string("0x7777")?;
-        let bitsy = SomeBits::new_from_string("0x5555")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_ones_of(&bitsy));
-        assert!(!bitsy.is_superset_ones_of(&bitsx));
-
-        let bitsx = SomeBits::new_from_string("0x5")?;
-        let bitsy = SomeBits::new_from_string("0x1")?;
-        println!("bitsx: {bitsx} bitsy: {bitsy}");
-        assert!(bitsx.is_superset_ones_of(&bitsy));
-        assert!(!bitsy.is_superset_ones_of(&bitsx));
-
-        Ok(())
-    }
-
-    // Test SomeBits::num_one_bits
     #[test]
     fn num_one_bits() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0x5555")?;
@@ -980,9 +939,8 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::shift_left
     #[test]
-    fn shift_left1() -> Result<(), String> {
+    fn shift_left() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("10_1010_1010")?;
         let bitsy = bitsx.shift_left();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
@@ -991,7 +949,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::shift_left4
     #[test]
     fn shift_left4() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0x3f505")?;
@@ -1003,7 +960,6 @@ mod tests {
         Ok(())
     }
 
-    // Test SomeBits::split
     #[test]
     fn split() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0x5050")?;

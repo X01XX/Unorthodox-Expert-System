@@ -48,31 +48,34 @@ impl SomeState {
     /// Return a State from a string.
     /// Each bit must be specified.
     ///
-    /// if let Ok(sta) = SomeState::new_from_string("s0b0101")) {
+    /// if let Ok(sta) = SomeState::new_from_string("0b0101")) {
     ///    println!("State {sta}");
     /// } else {
     ///    panic!("Invalid State");
     /// }
-    /// A prefix of "s0x" can be used to specify hexadecimal characters.
+    /// A prefix of "0x" can be used to specify hexadecimal characters.
+    ///
+    /// A first character of "s" is supported for cut-and-paste from output on console.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
-        // Check the first character.
+        // Check for first character.
         if let Some(char0) = str.graphemes(true).nth(0) {
+            // Check the first character.
             if char0 == "s" || char0 == "S" {
+                // Create the result from the not-first characters.
+                match SomeBits::new_from_string(&str.to_string()[1..]) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(error),
+                }
             } else {
-                return Err(
-                    "SomeState::new_from_string: Initial character should be s or S".to_string(),
-                );
+                match SomeBits::new_from_string(str) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(error),
+                }
             }
         } else {
-            return Err(format!(
+            Err(format!(
                 "SomeState::new_from_string: String {str}, no valid character?"
-            ));
-        }
-
-        // Create the result from the not-first characters.
-        match SomeBits::new_from_string(&str.to_string()[1..]) {
-            Ok(bts) => Ok(Self { bts }),
-            Err(error) => Err(error),
+            ))
         }
     } // end new_from_string
 
@@ -163,11 +166,12 @@ impl SomeState {
 
     /// Return a difference mask between a satate and another item.
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
-        match other.one_state() {
-            true => self.bitwise_xor(other.first_state()).to_mask(),
-            false => other
+        if other.one_state() {
+            self.bitwise_xor(other.first_state()).to_mask()
+        } else {
+            other
                 .edge_mask()
-                .bitwise_and(&self.bitwise_xor(other.first_state())),
+                .bitwise_and(&self.bitwise_xor(other.first_state()))
         }
     }
 
@@ -295,9 +299,9 @@ mod tests {
 
     #[test]
     fn test_is_between() -> Result<(), String> {
-        let sta2 = SomeState::new_from_string("s0b0010")?;
-        let sta3 = SomeState::new_from_string("s0b0011")?;
-        let sta5 = SomeState::new_from_string("s0b0101")?;
+        let sta2 = SomeState::new_from_string("0b0010")?;
+        let sta3 = SomeState::new_from_string("0b0011")?;
+        let sta5 = SomeState::new_from_string("0b0101")?;
         assert!(sta3.is_between(&sta2, &sta5));
         assert!(!sta5.is_between(&sta2, &sta3));
         Ok(())

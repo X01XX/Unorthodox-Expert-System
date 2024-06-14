@@ -242,12 +242,13 @@ impl SomeSquare {
 
     /// Return true is a square state is a subset of another group/square/regian/state.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
-        match other.one_state() {
-            true => self.state == *other.first_state(),
-            false => other
+        if other.one_state() {
+            self.state == *other.first_state()
+        } else {
+            other
                 .edge_mask()
                 .bitwise_and(&self.state.bitwise_xor(other.first_state()))
-                .is_low(),
+                .is_low()
         }
     }
 

@@ -133,7 +133,7 @@ impl SomeRegion {
     /// Return a Region from a string.
     /// All bits must be specified.
     ///
-    /// if let Ok(regx) = SomeRegion::new_from_string("r1_01x1")) {
+    /// if let Ok(regx) = SomeRegion::new_from_string("1_01x1")) {
     ///    println!("Region {}", regx);
     /// } else {
     ///    panic!("Invalid Region");
@@ -146,20 +146,19 @@ impl SomeRegion {
     /// X = (1, 0).
     /// x = (0, 1).
     /// XxXx = (1010, 0101).
+    ///
+    /// A first character of "r", or "s", is supported for cut-and-paste from output on console.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
+        let mut skip = 0;
         // Check the first character.
         if let Some(char0) = str.graphemes(true).nth(0) {
             if char0 == "r" || char0 == "R" {
+                skip = 1;
             } else if char0 == "s" || char0 == "S" {
                 // Create a region from a single state.
                 // An advantage is that hexadecimal digits can be used if there are no X-bit positions.
                 let stax = SomeState::new_from_string(str)?;
                 return Ok(SomeRegion::new(vec![stax]));
-            } else {
-                return Err(
-                    "SomeRegion::new_from_string: Initial character should be r or R, s or S"
-                        .to_string(),
-                );
             }
         } else {
             return Err(format!(
@@ -168,10 +167,10 @@ impl SomeRegion {
         }
 
         // Translate the region string into two state strings.
-        let mut b_high = String::from("s0b");
-        let mut b_low = String::from("s0b");
+        let mut b_high = String::from("0b");
+        let mut b_low = String::from("0b");
 
-        for chr in str.graphemes(true).skip(1) {
+        for chr in str.graphemes(true).skip(skip) {
             if chr == "0" {
                 b_high.push('0');
                 b_low.push('0');
@@ -571,8 +570,8 @@ mod tests {
 
     #[test]
     fn translate_to() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("rXX0101X")?;
-        let reg2 = SomeRegion::new_from_string("r10XX10X")?;
+        let reg1 = SomeRegion::new_from_string("XX0101X")?;
+        let reg2 = SomeRegion::new_from_string("10XX10X")?;
 
         let reg3 = reg1.translate_to(&reg2);
         println!("reg3 {reg3}");

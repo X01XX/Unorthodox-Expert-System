@@ -557,19 +557,6 @@ impl SomeRule {
         SomeChange::new(self.b01.clone(), self.b10.clone())
     }
 
-    /// Return true if any bits are set
-    pub fn changes_not_low(&self) -> bool {
-        self.b01.is_not_low() || self.b10.is_not_low()
-    }
-
-    /// Return true if no bits are set
-    pub fn changes_are_low(&self) -> bool {
-        if !self.b01.is_low() {
-            return false;
-        }
-        self.b10.is_low()
-    }
-
     /// Return a rule for translating from a region to another region.
     /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
     /// 0->0 instead of 0->X), the second region.
@@ -778,7 +765,7 @@ mod tests {
         ));
 
         let rule_from_masks = SomeRule {
-            b00: SomeMask::new_from_string("m0x7")?.bitwise_not(),
+            b00: SomeMask::new_from_string("0x7")?.bitwise_not(),
             b01: SomeMask::new_from_string("m0b0010")?,
             b11: SomeMask::new_from_string("m0b0001")?,
             b10: SomeMask::new_from_string("m0b0100")?,
@@ -984,8 +971,8 @@ mod tests {
         // Leave one X->X unaffected.
         let rul1 = SomeRule::new_from_string("01/XX/XX/XX")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("m0b1000")?,
-            SomeMask::new_from_string("m0b0000")?,
+            SomeMask::new_from_string("0b1000")?,
+            SomeMask::new_from_string("0b0000")?,
         );
         let within = SomeRegion::new_from_string("rxx01")?;
 
@@ -1002,8 +989,8 @@ mod tests {
         // Leave one X->x unaffected.
         let rul1 = SomeRule::new_from_string("00/Xx/Xx/Xx")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("m0b0010")?,
-            SomeMask::new_from_string("m0b0100")?,
+            SomeMask::new_from_string("0b0010")?,
+            SomeMask::new_from_string("0b0100")?,
         );
 
         let rul4 = rul1.restrict_for_changes(&chg1, None);

@@ -57,31 +57,34 @@ impl SomeMask {
     /// Return a Mask from a string.
     /// All characters must be specified.
     ///
-    /// if let Ok(msk) = SomeMask::new_from_string("m0b0101")) {
+    /// if let Ok(msk) = SomeMask::new_from_string("0b0101")) {
     ///    println!("Mask {}", msk);
     /// } else {
     ///    panic!("Invalid Mask");
     /// }
-    /// A prefix of "m0x" can be used to specify hexadecimal characters.
+    /// A prefix of "0x" can be used to specify hexadecimal characters.
+    ///
+    /// A first character of "m" is supported for cut-and-paste from output on console.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
-        // Check the first character.
+        // Check for first character.
         if let Some(char0) = str.graphemes(true).nth(0) {
+            // Check the first character.
             if char0 == "m" || char0 == "M" {
+                // Create the result from the not-first characters.
+                match SomeBits::new_from_string(&str.to_string()[1..]) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(error),
+                }
             } else {
-                return Err(
-                    "SomeMask::new_from_string: Initial character should be m or M".to_string(),
-                );
+                match SomeBits::new_from_string(str) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(error),
+                }
             }
         } else {
-            return Err(format!(
+            Err(format!(
                 "SomeMask::new_from_string: String {str}, no valid character?"
-            ));
-        }
-
-        // Create the result from the not-first characters.
-        match SomeBits::new_from_string(&str.to_string()[1..]) {
-            Ok(bts) => Ok(Self { bts }),
-            Err(error) => Err(error),
+            ))
         }
     } // end new_from_string
 
@@ -102,12 +105,12 @@ impl SomeMask {
 
     /// Return true if a mask is a subset of a second mask.
     pub fn is_subset_ones_of(&self, other: &Self) -> bool {
-        self.bts.is_subset_ones_of(&other.bts)
+        self.bitwise_and(other) == *self
     }
 
     /// Return true if a mask is a superset of a second mask.
     pub fn is_superset_ones_of(&self, other: &Self) -> bool {
-        self.bts.is_superset_ones_of(&other.bts)
+        self.bitwise_and(other) == *other
     }
 
     /// Return the number of bits set to one.
@@ -184,13 +187,6 @@ impl SomeMask {
         }
     }
 
-    /// Return a mask of the bits values that are the same.
-    pub fn bitwise_eqv(&self, other: &impl BitsRef) -> Self {
-        Self {
-            bts: self.bts.b_eqv(other.bitsref()),
-        }
-    }
-
     /// Return the bitwise Not of a SomeMask instane.
     pub fn bitwise_not(&self) -> Self {
         Self {
@@ -223,7 +219,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_msk = SomeMask::new(SomeBits::new(8));
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
