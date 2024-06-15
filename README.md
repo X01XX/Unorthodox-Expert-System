@@ -7,7 +7,7 @@ Based on an improved interpretation of the Karnaugh Map, and introspection.  Kar
 
 Squares that are only in one region have a special significance, see "Limiting an Optimistic Union" in theory.html.
 
-A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file: Screenshot at 202023-08-11 16-21-30.png (command like cargo run 10, for continuous running until rules found, 10 times).
+A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file: Screenshot at 202023-08-11 16-21-30.png (command like cargo run 10, for continuous running until rules found, 10 times consecutive).
 
 There is extensive use of Boolean Operations.
 
