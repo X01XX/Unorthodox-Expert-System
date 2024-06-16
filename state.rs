@@ -164,15 +164,9 @@ impl SomeState {
             .is_low()
     }
 
-    /// Return a difference mask between a satate and another item.
+    /// Return a difference mask between a state and another item.
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
-        if other.one_state() {
-            self.bitwise_xor(other.first_state()).to_mask()
-        } else {
-            other
-                .edge_mask()
-                .bitwise_and(&self.bitwise_xor(other.first_state()))
-        }
+        other.edge_mask().bitwise_xor(self)
     }
 
     /// Return the result of applying a change to a state.
@@ -258,7 +252,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(8));
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
@@ -298,7 +292,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_between() -> Result<(), String> {
+    fn is_between() -> Result<(), String> {
         let sta2 = SomeState::new_from_string("0b0010")?;
         let sta3 = SomeState::new_from_string("0b0011")?;
         let sta5 = SomeState::new_from_string("0b0101")?;

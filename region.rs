@@ -255,7 +255,7 @@ impl SomeRegion {
         self.diff_edge_mask(other).is_low()
     }
 
-    /// Return the intersection of two regions.
+    /// Return the intersection a region and a region or state..
     pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
         if !self.intersects(other) {
             return None;
@@ -265,9 +265,9 @@ impl SomeRegion {
         } else if other.one_state() {
             Some(Self::new(vec![other.first_state().clone()]))
         } else {
-            let first_state = self.high_state().bitwise_and(&other.high_state());
-            let far_state = self.low_state().bitwise_or(&other.low_state());
-            Some(Self::new(vec![first_state, far_state]))
+            let lower_high_state = self.high_state().bitwise_and(&other.high_state());
+            let higher_low_state = self.low_state().bitwise_or(&other.low_state());
+            Some(Self::new(vec![lower_high_state, higher_low_state]))
         }
     }
 

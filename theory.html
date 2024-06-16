@@ -1904,7 +1904,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
     If a new rule is found, with the ability to change a bit that could not be changed before, regions with an edge that matches the new change will need additional adjacent samples.
     </p>
-    <h3>The difficulty with a limited, unpredictable, or no-change, region.</h3>
+    <h3>Comfirming an unused region.</h3>
     <p class="indent1">
     A limited region is guaranteed not to be larger, but could in reality consist of smaller subregions.
     </p>
@@ -1912,13 +1912,13 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     A region that is predictable, and causes change, will be tested by use.
     </p>
     <p class="indent1">
-    By not taking part in executing plans, an unpredictable, or no-change, region is unlikely to be sampled, after the samples needed to establish an anchor and far square.
+    An unpredictable, or predictable but no-change, region is unlikely to be sampled, after the samples needed to establish an anchor and far square.
     </p>
  <p class="indent1">
  If there is any subdivision of a limited region, it will make a square within the region, adjacent to the anchor square, dissimilar.
  </p>
  <p class="indent1">
- So all squares adjacent to the anchor square need to be sampled.
+ So all squares adjacent to the anchor square, within the region, need to be sampled.
  </p>
     <h3>Possible Regions for a square, part two</h3>
     <p>
@@ -2474,7 +2474,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 04/29/2024</p>
+   <p>Web page Started: 10/20/2010, last changed: 05/16/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>

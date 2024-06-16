@@ -236,20 +236,13 @@ impl SomeSquare {
     }
 
     /// Return true if a square is between two given squares, exclusive.
-    pub fn is_between(&self, sqr1: &Self, sqr2: &Self) -> bool {
+    pub fn _is_between(&self, sqr1: &Self, sqr2: &Self) -> bool {
         self.state.is_between(&sqr1.state, &sqr2.state)
     }
 
-    /// Return true is a square state is a subset of another group/square/regian/state.
+    /// Return true is a square state is a subset of another group/square/region/state.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
-        if other.one_state() {
-            self.state == *other.first_state()
-        } else {
-            other
-                .edge_mask()
-                .bitwise_and(&self.state.bitwise_xor(other.first_state()))
-                .is_low()
-        }
+        self.state.is_subset_of(other)
     }
 
     /// Return a String representation of a square.
