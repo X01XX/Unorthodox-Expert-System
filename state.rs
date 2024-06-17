@@ -306,9 +306,10 @@ mod tests {
         let sta1 = SomeState::new_from_string("s0xabc4")?;
         let sta2 = SomeState::new_from_string("s0x5430")?;
 
-        let dist = sta1.distance(&sta2);
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
+
+        let dist = sta1.distance(&sta2);
         assert!(13 == dist);
         Ok(())
     }

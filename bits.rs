@@ -119,13 +119,14 @@ impl SomeBits {
     /// Using multiple integers to represent a SomeBits struct could allow for
     /// a number that is too big for the standard methods of converting a string to an integer.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
-        // Set base value, if given.
-        let mut num_bits = 0;
-        let mut base = 2; // default base.
-
+        // println!("SomeBits::new_from_string: {str}");
+        // Calc base.
+        // Binary is assumed, but can be changed to hexadecimal by a prefix or the use of a hexadecimal
+        // digit greater than 1.
+        let mut base = 2;
         let mut base_specified = false;
 
-        // Check the first one, or two, characters.
+        // Check for a prefix.
         if let Some(char0) = str.graphemes(true).nth(0) {
             if char0 == "0" {
                 if let Some(char1) = str.graphemes(true).nth(1) {
@@ -146,7 +147,14 @@ impl SomeBits {
         // Check base-unspecified string for a base 16 digit.
         if !base_specified {
             for chr in str.graphemes(true) {
+                // Check for visual separator.
                 if chr == "_" {
+                    continue;
+                }
+
+                // Check for integer separator.
+                if chr == "+" {
+                    // Arbitrary fill end of integer.
                     continue;
                 }
                 let Ok(digit) = Bitint::from_str_radix(chr, 16) else {
@@ -161,69 +169,117 @@ impl SomeBits {
             }
         }
 
-        // Calc the number of bits given.
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if base_specified && inx < 2 {
-                continue;
+        // Count the number of bits and integers.
+        let mut num_ints = 0;
+        let mut cur_bits: usize = 0;
+        for (inx, chr) in str.graphemes(true).rev().enumerate() {
+            if base_specified && inx == (str.len() - 2) && chr == "b"
+                || chr == "B"
+                || chr == "x"
+                || chr == "X"
+            {
+                break;
             }
 
+            // Check for visual separator.
             if chr == "_" {
                 continue;
             }
 
-            if base == 2 {
-                num_bits += 1;
-            } else {
-                num_bits += 4;
+            // Check for integer separator.
+            if chr == "+" {
+                num_ints += 1;
+                cur_bits = 0;
+                continue;
             }
-        } // next inx, chr
 
-        if num_bits == 0 {
+            if base == 2 {
+                cur_bits += 1;
+            } else {
+                cur_bits += 4;
+            }
+
+            if cur_bits == Bitint::BITS as usize {
+                num_ints += 1;
+                cur_bits = 0;
+            }
+        }
+        if cur_bits > 0 {
+            num_ints += 1;
+        }
+
+        if num_ints == 0 {
             return Err(format!(
-                "SomeBits::new_from_string: String {str}, no valid character?"
+                "SomeBits::new_from_string: String {str}, no digits?"
             ));
         }
 
-        // Create new bits instance to fill.
-        let mut bts = Self::new(num_bits);
+        let mut ints = Vec::<Bitint>::with_capacity(num_ints);
 
-        // Get index of the least significant (last) integer.
-        let lsb_inx = bts.ints.len() - 1;
+        // Fill int vec.
+        let mut num_bits: usize = 0;
+        let mut cur_bits: usize = 0;
+        let mut cur_val = 0;
 
-        // Translate digits into bits.
-        // Check for invalid bits.
-        for (inx, chr) in str.graphemes(true).enumerate() {
-            if base_specified && inx < 2 {
-                continue;
+        for (inx, chr) in str.graphemes(true).rev().enumerate() {
+            if base_specified && inx == (str.len() - 2) && chr == "b"
+                || chr == "B"
+                || chr == "x"
+                || chr == "X"
+            {
+                break;
             }
 
+            // Check for visual separator.
             if chr == "_" {
                 continue;
             }
 
-            if base == 2 {
-                bts = bts.shift_left();
-                if chr == "0" {
-                } else if chr == "1" {
-                    bts.ints[lsb_inx] += 1;
-                } else {
-                    return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid character {chr}?"
-                    ));
+            // Check for integer separator.
+            if chr == "+" {
+                if cur_bits > 0 {
+                    ints.push(cur_val);
+                    cur_val = 0;
+                    cur_bits = 0;
+                    num_bits += Bitint::BITS as usize;
                 }
-            } else if let Ok(numx) = Bitint::from_str_radix(chr, 16) {
-                bts = bts.shift_left4();
+                continue;
+            }
 
-                bts.ints[lsb_inx] += numx;
+            // Get character value.
+            if let Ok(digit) = Bitint::from_str_radix(chr, base) {
+                if base == 2 {
+                    cur_val += digit << cur_bits;
+                    cur_bits += 1;
+                } else {
+                    cur_val += digit << cur_bits;
+                    cur_bits += 4;
+                }
+
+                if cur_bits == Bitint::BITS as usize {
+                    ints.push(cur_val);
+                    cur_val = 0;
+                    cur_bits = 0;
+                    num_bits += Bitint::BITS as usize;
+                }
             } else {
                 return Err(format!(
                     "SomeBits::new_from_string: String {str}, invalid character {chr}?"
                 ));
             }
-        } // next (inx, chr)
+        }
+        if cur_bits > 0 {
+            ints.push(cur_val);
+            num_bits += cur_bits;
+        }
 
-        Ok(bts)
-    } // end new_from_string
+        ints.reverse();
+
+        Ok(Self {
+            num_bits: num_bits as Bitint,
+            ints,
+        })
+    }
 
     /// Return a vector of bits where each has only
     /// one 1 bit isolated from the given Bits struct.
@@ -433,7 +489,7 @@ impl SomeBits {
 
     /// Return a copy, shifted left by 1 bit
     /// The Most Significant Bit value shifted out.
-    fn shift_left(&self) -> Self {
+    fn _shift_left(&self) -> Self {
         let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
@@ -459,7 +515,7 @@ impl SomeBits {
 
     /// Return a copy, shifted left by 4 bits.
     /// The Most Significant 4 bit value is shifted out.
-    fn shift_left4(&self) -> Self {
+    fn _shift_left4(&self) -> Self {
         let mut ints = vec![0 as Bitint; self.ints.len()];
 
         let mut carry: Bitint = 0;
@@ -542,10 +598,8 @@ mod tests {
         println!("high 8 {high}");
         assert!(high.ints[0] == 255);
 
-        let ur_bits = SomeBits {
-            num_bits: Bitint::BITS as Bitint + 2,
-            ints: vec![0, 0],
-        };
+        // Test new_high with multi-int bits, given that the definition of Bitint may change.
+        let ur_bits = SomeBits::new_from_string("00+0")?;
         let high = ur_bits.new_high();
         println!("high two ints {high}");
         assert!(high.ints[0] == 3);
@@ -598,6 +652,14 @@ mod tests {
         println!("str {strrep} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
+        // Test strlen with multi-int bits, given that the definition of Bitint may change.
+        let tmp_bts = SomeBits::new_from_string("00+0")?;
+        let strrep = format!("{tmp_bts}");
+        let len = strrep.len();
+        let calc_len = tmp_bts.strlen();
+        println!("str {strrep} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
         Ok(())
     }
 
@@ -611,6 +673,7 @@ mod tests {
         let bitsx = SomeBits::new(Bitint::BITS as usize);
         assert!(bitsx.ints.len() == 1);
 
+        // Test new with multi-int bits, given that the definition of Bitint may change.
         let bitsx = SomeBits::new(Bitint::BITS as usize + 1);
         assert!(bitsx.ints.len() == 2);
 
@@ -622,13 +685,16 @@ mod tests {
 
     #[test]
     fn new_from_string() -> Result<(), String> {
-        // Test 0b prefix, and underscore.
-        let bits1 = SomeBits::new_from_string("0b10_10")?;
-        assert!(bits1.num_bits == 4);
+        // Test 0b prefix, underscore, and multi-int bits.
+        let bits1 = SomeBits::new_from_string("0b10+1001_1000")?;
+        println!("bits1 {bits1}");
+        assert!(bits1.num_bits == Bitint::BITS as Bitint + 2 as Bitint);
+        assert!(bits1.ints.len() == 2);
 
-        // Test 0x prefix, and underscore.
-        let bits2 = SomeBits::new_from_string("0x5_3")?;
-        assert!(bits2.num_bits == 8);
+        // Test 0x prefix, underscore, and multi-int bits.
+        let bits2 = SomeBits::new_from_string("0x5+33")?;
+        assert!(bits2.num_bits == 12);
+        assert!(bits1.ints.len() == 2);
 
         // Test no base, hexadecimal digits.
         if let Ok(bits3) = SomeBits::new_from_string("1102") {
@@ -659,28 +725,28 @@ mod tests {
         // Test invalid binary character.
         if let Ok(_bits3) = SomeBits::new_from_string("0b10102") {
             return Err(format!(
-                "SomeBits::new_from_string2: bad binary character not detected?"
+                "SomeBits::new_from_string: bad binary character not detected?"
             ));
         }
 
         // Test invalid hexadecimal character.
         if let Ok(_bits3) = SomeBits::new_from_string("0x5g") {
             return Err(format!(
-                "SomeBits::new_from_string2: bad  hexadecimal character not detected?"
+                "SomeBits::new_from_string: bad  hexadecimal character not detected?"
             ));
         }
 
         // Test no binary characters.
-        if let Ok(_bits3) = SomeBits::new_from_string("0b") {
+        if let Ok(bits3) = SomeBits::new_from_string("0b") {
             return Err(format!(
-                "SomeBits::new_from_string2: no binary characters not detected?"
+                "SomeBits::new_from_string: binary characters detected? {bits3}"
             ));
         }
 
         // Test no characters.
-        if let Ok(_bits3) = SomeBits::new_from_string("") {
+        if let Ok(bits3) = SomeBits::new_from_string("") {
             return Err(format!(
-                "SomeBits::new_from_string2: no characters not detected?"
+                "SomeBits::new_from_string: characters detected? {bits3}"
             ));
         }
 
@@ -942,7 +1008,7 @@ mod tests {
     #[test]
     fn shift_left() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("10_1010_1010")?;
-        let bitsy = bitsx.shift_left();
+        let bitsy = bitsx._shift_left();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsy == SomeBits::new_from_string("01_0101_0100")?);
 
@@ -952,7 +1018,7 @@ mod tests {
     #[test]
     fn shift_left4() -> Result<(), String> {
         let bitsx = SomeBits::new_from_string("0x3f505")?;
-        let bitsy = bitsx.shift_left4();
+        let bitsy = bitsx._shift_left4();
         println!("bitsx: {bitsx} bitsy: {bitsy}");
 
         assert!(bitsy == SomeBits::new_from_string("0xf5050")?);
