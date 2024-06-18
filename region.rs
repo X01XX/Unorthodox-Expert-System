@@ -185,6 +185,9 @@ impl SomeRegion {
                 b_low.push('1');
             } else if chr == "_" {
                 continue;
+            } else if chr == "+" {
+                b_high.push('+');
+                b_low.push('+');
             } else {
                 return Err(format!(
                     "Did not understand the string {str}, invalid character?"
@@ -570,12 +573,14 @@ mod tests {
 
     #[test]
     fn translate_to() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("XX0101X")?;
-        let reg2 = SomeRegion::new_from_string("10XX10X")?;
+        let reg1 = SomeRegion::new_from_string("XX0+101X")?;
+        let reg2 = SomeRegion::new_from_string("10X+X10X")?;
+        println!("reg1 {reg1}");
+        println!("reg2 {reg2}");
 
         let reg3 = reg1.translate_to(&reg2);
         println!("reg3 {reg3}");
-        if reg3 != SomeRegion::new_from_string("r100110X")? {
+        if reg3 != SomeRegion::new_from_string("r100+110X")? {
             return Err(format!("{reg3} ??"));
         }
         Ok(())
@@ -805,8 +810,6 @@ mod tests {
             println!("{} should equal {first_state}", reg_instance.far_state());
             assert!(reg_instance.far_state() == &far_state);
         }
-
-        //let reg2 = ur_reg.new_from_string("rx0x1.1x0x");
 
         Ok(())
     }

@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new(8));
+        let tmp_msk = SomeMask::new(SomeBits::new_from_string("0+0")?);
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
@@ -260,12 +260,12 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let msk1 = SomeMask::new_from_string("m0b1010")?;
-        let msk2 = SomeMask::new_from_string("m0b1010")?;
+        let msk1 = SomeMask::new_from_string("m0b10+10")?;
+        let msk2 = SomeMask::new_from_string("m0b10+10")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = SomeMask::new_from_string("m0b1001")?;
+        let msk3 = SomeMask::new_from_string("m0b10+01")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 
