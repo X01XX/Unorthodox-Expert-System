@@ -127,7 +127,7 @@ impl ActionStore {
     /// and known possible bit position changes.
     pub fn reachable_region(&self, cur_state: &SomeState) -> SomeRegion {
         if let Some(chgs) = &self.aggregate_changes {
-            SomeRegion::new(vec![cur_state.clone(), cur_state.apply_changes(chgs)])
+            SomeRegion::new(vec![cur_state.clone(), chgs.apply_changes(cur_state)])
         } else {
             SomeRegion::new(vec![cur_state.clone()])
         }

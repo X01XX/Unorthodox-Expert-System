@@ -13,7 +13,6 @@
 
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
-use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::region::AccessStates;
 use crate::tools::StrLen;
@@ -169,15 +168,6 @@ impl SomeState {
         other.edge_mask().bitwise_xor(self)
     }
 
-    /// Return the result of applying a change to a state.
-    pub fn apply_changes(&self, changes: &SomeChange) -> SomeState {
-        self.bitwise_xor(
-            &self
-                .bitwise_and(&changes.b10)
-                .bitwise_or(&changes.b01.bitwise_and_not(self)),
-        )
-    }
-
     /// Return the number of bits used to describe a state.
     pub fn num_bits(&self) -> usize {
         self.bts.num_bits as usize
@@ -327,25 +317,6 @@ mod tests {
         let sta3 = SomeState::new_from_string("s0b10+01")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
-
-        Ok(())
-    }
-
-    #[test]
-    fn apply_changes() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-
-        let wanted_changes = SomeChange::new(
-            SomeMask::new_from_string("m0b11+00")?,
-            SomeMask::new_from_string("m0b00+11")?,
-        );
-        println!("wanted_changes    {wanted_changes}");
-
-        let sta1 = SomeState::new_from_string("s0b00+11")?;
-        let sta2 = sta1.apply_changes(&wanted_changes);
-
-        println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
-        assert!(sta2 == SomeState::new_from_string("s0b11+00")?);
 
         Ok(())
     }

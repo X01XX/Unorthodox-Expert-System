@@ -146,6 +146,15 @@ impl SomeChange {
             b10: self.b10.bitwise_and_not(&other.b10),
         }
     }
+
+    /// Return the result of applying a change to a state.
+    pub fn apply_changes(&self, stax: &SomeState) -> SomeState {
+        stax.bitwise_xor(
+            &stax
+                .bitwise_and(&self.b10)
+                .bitwise_or(&self.b01.bitwise_and_not(stax)),
+        )
+    }
 } // end impl SomeChange
 
 /// Allow different types, containing 0->1 and 1->0 masks, to interact.
@@ -213,6 +222,25 @@ mod tests {
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn apply_changes() -> Result<(), String> {
+        // Create a domain that uses one integer for bits.
+
+        let wanted_changes = SomeChange::new(
+            SomeMask::new_from_string("m0b11+00")?,
+            SomeMask::new_from_string("m0b00+11")?,
+        );
+        println!("wanted_changes    {wanted_changes}");
+
+        let sta1 = SomeState::new_from_string("s0b00+11")?;
+        let sta2 = wanted_changes.apply_changes(&sta1);
+
+        println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
+        assert!(sta2 == SomeState::new_from_string("s0b11+00")?);
 
         Ok(())
     }
