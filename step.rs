@@ -50,6 +50,23 @@ pub struct SomeStep {
     pub group_inx: usize,
 }
 
+impl PartialEq for SomeStep {
+    /// Return true if two steps ar equal.
+    fn eq(&self, other: &Self) -> bool {
+        if self.act_id != other.act_id {
+            return false;
+        }
+        if self.initial != other.initial {
+            return false;
+        }
+        if self.result != other.result {
+            return false;
+        }
+        true
+    }
+}
+impl Eq for SomeStep {}
+
 impl SomeStep {
     /// Return a new Step struct instance.
     pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint, group_inx: usize) -> Self {

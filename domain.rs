@@ -18,6 +18,7 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
+use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
@@ -116,8 +117,7 @@ pub struct SomeDomain {
 }
 
 impl SomeDomain {
-    /// Return a new domain instance, given the number of integers, the
-    /// initial state, the optimal state(s), the index into the higher-level DomainStore.
+    /// Return a new domain instance, given the ID number and initial state.
     pub fn new(dom_id: usize, cur_state: SomeState) -> Self {
         Self {
             id: dom_id,
@@ -127,11 +127,13 @@ impl SomeDomain {
     }
 
     /// Return a reference to the current, internal, state.
-    pub fn get_current_state(&self) -> &SomeState {
+    pub fn current_state(&self) -> &SomeState {
         &self.cur_state
     }
 
     /// Add a SomeAction instance to the store.
+    /// The rules will be used to generate responses to running the action
+    /// against various states.
     pub fn add_action(&mut self, rules: Vec<RuleStore>) {
         self.actions.add_action(self.id, rules);
     }
@@ -221,7 +223,6 @@ impl SomeDomain {
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
                 AltRuleHint::NoAlt {} => {
-                    //self.actions._eval_unexpected_result(stpx.act_id, &asample);
                     return Err("Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltNoChange {} => {
@@ -235,7 +236,6 @@ impl SomeDomain {
                     if stpx.result.is_superset_of(&self.cur_state) {
                         continue;
                     }
-                    //self.actions.eval_unexpected_result(stpx.act_id, &asample);
                     return Err("Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltRule { rule } => {
@@ -258,7 +258,6 @@ impl SomeDomain {
                                     if stpx.result.is_superset_of(&self.cur_state) {
                                         continue;
                                     }
-                                    //self.actions.eval_unexpected_result(stpx.act_id, &asample);
                                     return Err("Action return/retry failed.".to_string());
                                 }
                                 Err(msg) => {
@@ -271,7 +270,6 @@ impl SomeDomain {
                             );
                         }
                     } else {
-                        // self.actions.eval_unexpected_result(stpx.act_id, &asample);
                         return Err("Unexpected result, step failed".to_string());
                     }
                 }
@@ -285,7 +283,7 @@ impl SomeDomain {
         }
     } // end run_plan
 
-    /// Return the steps of a plan to go from a given state/region to a given region.
+    /// Return the steps of a plan to go from a given region to another region.
     pub fn depth_first_search(
         &self,
         from_reg: &SomeRegion,
@@ -460,7 +458,7 @@ impl SomeDomain {
 
         // Asymmetric chaining is not required.
 
-        // Calc unwanted - unwanted changes for each possible step.
+        // Calc unwanted and unwanted changes for each possible step.
         let mut ratios: Vec<(usize, usize, isize)> = vec![];
 
         for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
@@ -679,13 +677,13 @@ impl SomeDomain {
     /// Make a plan to change the current state to another region.
     /// Since there are some random choices, it may be useful to try
     /// running make_plan more than once.
-    pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<Vec<SomePlan>> {
+    pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<PlanStore> {
         //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
 
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of(&self.cur_state) {
             //println!("no plan needed from {} to {} ?", self.cur_state, goal_reg);
-            return Some(vec![SomePlan::new(self.id, vec![])]);
+            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
 
         let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
@@ -700,10 +698,10 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: Option<&SomeRegion>,
-    ) -> Option<Vec<SomePlan>> {
+    ) -> Option<PlanStore> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         if goal_reg.is_superset_of(from_reg) {
-            return Some(vec![SomePlan::new(self.id, vec![])]);
+            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
 
         // Figure the required change.
@@ -743,7 +741,7 @@ impl SomeDomain {
         }
 
         //println!("dom {} make_plans2 returns {}", self.num, tools::vec_string(&plans));
-        Some(plans)
+        Some(PlanStore::new(plans).delete_duplicates())
     } // end make_plans2
 
     /// Make a plan to change the current state to another region.
@@ -926,9 +924,67 @@ impl SomeDomain {
         rc_str
     }
 
-    /// Retucn the number of bits used in a domain.
+    /// Return the number of bits used in a domain.
     pub fn num_bits(&self) -> usize {
         self.cur_state.num_bits()
+    }
+
+    /// Return a plan after checking for one shortcut.
+    /// Return None if no shortcut found.
+    fn _shortcuts3(&self, planx: &SomePlan) -> Option<SomePlan> {
+        if planx.len() < 3 {
+            return None;
+        }
+
+        let goal = planx.result_region();
+
+        for inx in 0..(planx.len() - 1) {
+            let initx = &planx.steps[inx].initial;
+            let rsltx = &planx.steps[inx].result;
+            let dist_i = initx.distance(goal);
+            let dist_r = rsltx.distance(goal);
+            if dist_r > dist_i {
+                println!(
+                    "problem step {} init dist {dist_i} rslt dist {dist_r}",
+                    &planx.steps[inx]
+                );
+
+                // Find targets closer to goal than step result.
+                let mut targets = Vec::<(&SomeStep, usize)>::new(); // (Step, step initial region distance to goal)
+
+                for iny in (inx + 1)..planx.len() {
+                    let inity = &planx.steps[iny].initial;
+                    let dist_y = inity.distance(goal);
+                    if dist_y < dist_r {
+                        println!(
+                            "possible shortcut {} dist y {dist_y} < dist_r {dist_r}",
+                            &planx.steps[iny]
+                        );
+                        targets.push((&planx.steps[iny], dist_y));
+                    }
+                }
+
+                if targets.is_empty() {
+                    continue;
+                }
+                // Process targets.
+
+                // Order by ascending distance.
+                targets.sort_by(|(_, dist_a), (_, dist_b)| dist_a.partial_cmp(dist_b).unwrap());
+                println!("Targets after sort:");
+                for (stepx, dist_x) in targets.iter() {
+                    println!("  {dist_x} {stepx}");
+                    if let Some(plans) = self.make_plans2(initx, &stepx.initial, None) {
+                        // TODO handle within region?
+                        let plans2 = plans.delete_duplicates();
+                        for planx in plans2.iter() {
+                            println!("  sub plan {}", planx);
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 } // end impl SomeDomain
 
@@ -1205,7 +1261,7 @@ mod tests {
         let toreg = SomeRegion::new_from_string("r1100")?;
 
         if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
-            println!("plan: {}", tools::vec_string(&plans));
+            println!("plan: {}", plans);
         } else {
             return Err(String::from("No plan found s111 to r1100?"));
         }
@@ -1686,6 +1742,129 @@ mod tests {
             panic!("SNH");
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn shortcuts3() -> Result<(), String> {
+        // Create a domain that uses 4 bits.
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls0);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls2);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls3);
+
+        // Create states for setting up groups.
+        let sta_0 = SomeState::new_from_string("s0000")?;
+        let sta_f = SomeState::new_from_string("s1111")?;
+
+        // Set up groups for action 0.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(0);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(0);
+
+        // Set up groups for action 1.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(1);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(1);
+
+        // Set up groups for action 2.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(2);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(2);
+
+        // Set up groups for action 3.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(3);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(3);
+
+        println!("Acts: {}\n", dm0.actions);
+
+        let reg_0 = SomeRegion::new_from_string("r0000")?;
+        let reg_5 = SomeRegion::new_from_string("r0101")?;
+        let reg_6 = SomeRegion::new_from_string("r0110")?;
+        let reg_7 = SomeRegion::new_from_string("r0111")?;
+        let reg_b = SomeRegion::new_from_string("r1011")?;
+        let reg_e = SomeRegion::new_from_string("r1110")?;
+        let reg_f = SomeRegion::new_from_string("r1111")?;
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_0, &reg_5),
+            AltRuleHint::NoAlt {},
+            1,
+        );
+
+        let step2 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_5, &reg_7),
+            AltRuleHint::NoAlt {},
+            3,
+        );
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_7, &reg_6),
+            AltRuleHint::NoAlt {},
+            7,
+        );
+
+        let step4 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_6, &reg_e),
+            AltRuleHint::NoAlt {},
+            5,
+        );
+
+        let step5 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_e, &reg_f),
+            AltRuleHint::NoAlt {},
+            5,
+        );
+
+        let step6 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_f, &reg_b),
+            AltRuleHint::NoAlt {},
+            5,
+        );
+
+        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
+        println!("pln1: {}", pln1);
+
+        dm0._shortcuts3(&pln1);
+
+        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

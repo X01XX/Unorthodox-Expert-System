@@ -50,7 +50,7 @@ impl PartialEq for SomePlan {
             return false;
         }
         for (stpx, stpy) in self.iter().zip(other.iter()) {
-            if stpx.result != stpy.result {
+            if stpx != stpy {
                 return false;
             }
         }
@@ -186,6 +186,7 @@ impl SomePlan {
             // Check for one shortcut after another
             loop {
                 if let Some(plany) = planx.shortcuts2() {
+                    println!("Shortcut found {planx} -> {plany}");
                     planx = plany;
                 } else {
                     return Some(planx);
@@ -198,7 +199,7 @@ impl SomePlan {
     /// Return a plan after checking for one shortcut.
     /// Return None if no shortcut found.
     fn shortcuts2(&self) -> Option<Self> {
-        if self.len() == 1 {
+        if self.len() < 3 {
             return None;
         }
 

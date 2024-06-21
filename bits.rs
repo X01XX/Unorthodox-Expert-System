@@ -514,57 +514,6 @@ impl SomeBits {
         cnt == 1
     }
 
-    /// Return a copy, shifted left by 1 bit
-    /// The Most Significant Bit value shifted out.
-    fn _shift_left(&self) -> Self {
-        let mut ints = vec![0 as Bitint; self.ints.len()];
-
-        let mut carry: Bitint = 0;
-
-        for int_inx in (0..self.ints.len()).rev() {
-            let next_carry: Bitint = self.ints[int_inx] >> (Bitint::BITS - 1);
-
-            ints[int_inx] = (self.ints[int_inx] << 1) + carry;
-
-            carry = next_carry;
-        }
-
-        let adjust = self.num_bits % Bitint::BITS as Bitint;
-        if adjust > 0 {
-            ints[0] &= Bitint::MAX >> (Bitint::BITS as Bitint - adjust);
-        }
-
-        Self {
-            num_bits: self.num_bits,
-            ints,
-        }
-    }
-
-    /// Return a copy, shifted left by 4 bits.
-    /// The Most Significant 4 bit value is shifted out.
-    fn _shift_left4(&self) -> Self {
-        let mut ints = vec![0 as Bitint; self.ints.len()];
-
-        let mut carry: Bitint = 0;
-
-        for int_inx in (0..self.ints.len()).rev() {
-            let next_carry: Bitint = self.ints[int_inx] >> (Bitint::BITS - 4);
-
-            ints[int_inx] = (self.ints[int_inx] << 4) + carry;
-            carry = next_carry;
-        }
-
-        let adjust = self.num_bits % Bitint::BITS as Bitint;
-        if adjust > 0 {
-            ints[0] &= Bitint::MAX >> (Bitint::BITS as Bitint - adjust);
-        }
-
-        Self {
-            num_bits: self.num_bits,
-            ints,
-        }
-    }
-
     /// Create a formatted string for an instance.
     fn formatted_string(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());

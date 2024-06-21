@@ -655,7 +655,7 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                         dmxs.print_plan_detail(pln);
                     }
                     _ => {
-                        if ndx.satisfied_by(dmxs[ndx.dom_id()].get_current_state()) {
+                        if ndx.satisfied_by(dmxs[ndx.dom_id()].current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
                             //println!("\n{}", pln.str2());
@@ -825,7 +825,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
         ));
     }
 
-    let cur_state = dmx.get_current_state();
+    let cur_state = dmx.current_state();
 
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(

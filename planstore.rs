@@ -1,4 +1,9 @@
 //! The PlanStore struct, a vector of SomePlan struct instances.
+//!
+//! The plans in the PlanStore may be different plans to go from the same region to the same goal region.
+//!
+//! Or the plans are linked, in that the result region of a plan for a given Domain ID is the same
+//! as the initial region for a following plan with the same Domain ID.
 
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
@@ -8,7 +13,7 @@ use crate::tools::StrLen;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for PlanStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -72,9 +77,14 @@ impl PlanStore {
         ret
     }
 
-    /// Add a plan to the vector.
-    /// The plan should be linkable with a previously existing plan.
+    /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
+        self.avec.push(planx);
+    }
+
+    /// Add a plan to the PlanStore.
+    /// The plan should be linkable with a previously existing plan, of the same Domain ID, if any.
+    pub fn push_link(&mut self, planx: SomePlan) {
         if planx.is_empty() {
             return;
         }
@@ -171,7 +181,7 @@ impl PlanStore {
     /// Extend a StepStore by pushing another StepStore.
     pub fn append(&mut self, other: Self) {
         for planx in other.avec {
-            self.push(planx);
+            self.push_link(planx);
         }
     }
 
@@ -273,16 +283,51 @@ impl PlanStore {
             }
             if let Some(regx) = ret_plans.domain_result(planx.dom_id) {
                 if let Some(plany) = planx.restrict_initial_region(regx) {
-                    ret_plans.push(plany);
+                    ret_plans.push_link(plany);
                 } else {
                     return None;
                 }
             } else {
-                ret_plans.push(planx.clone());
+                ret_plans.push_link(planx.clone());
             }
         }
 
         Some(ret_plans)
+    }
+
+    /// Return a PlanStore with duplicates deleted.
+    pub fn delete_duplicates(&self) -> Self {
+        let mut ret_store = PlanStore::new(vec![]);
+        for planx in self.iter() {
+            if !ret_store.contains(planx) {
+                ret_store.push(planx.clone());
+            }
+        }
+        ret_store
+    }
+
+    /// Return true if a PlanStore contains a plan.
+    pub fn contains(&self, planx: &SomePlan) -> bool {
+        self.avec.contains(planx)
+    }
+
+    /// Return a mutable iterator
+    pub fn iter_mut(&mut self) -> IterMut<SomePlan> {
+        self.avec.iter_mut()
+    }
+
+    /// Remove a plan from a PlanStore
+    pub fn remove(&mut self, inx: usize) -> SomePlan {
+        assert!(inx < self.avec.len(), "Index out of bounds");
+
+        let last_inx = self.avec.len() - 1;
+
+        if inx == last_inx {
+            return self.avec.pop().unwrap();
+        }
+
+        self.avec.swap(inx, last_inx);
+        self.avec.pop().unwrap()
     }
 } // end impl PlanStore
 

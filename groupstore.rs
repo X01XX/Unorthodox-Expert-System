@@ -367,7 +367,7 @@ impl GroupStore {
         self.avec.iter()
     }
 
-    /// Return an iterator
+    /// Return a mutable iterator
     pub fn iter_mut(&mut self) -> IterMut<SomeGroup> {
         self.avec.iter_mut()
     }

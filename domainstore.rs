@@ -292,7 +292,7 @@ impl DomainStore {
 
     /// Return a reference to the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        self.domains[dmxi].get_current_state()
+        self.domains[dmxi].current_state()
     }
     /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
@@ -520,24 +520,34 @@ impl DomainStore {
             // Find a plan for each target.
             for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
                 if regy.is_superset_of(regx) {
-                    plans_per_target.push(SomePlan::new(dom_id, vec![]));
+                    plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
                 } else {
                     // Try making plans.
-                    let mut plans =
-                        self.get_plans(dom_id, regx, regy, Some(&within_regs[dom_id]))?; // return None if any target cannot be reached.
-                    plans_per_target
-                        .push(plans.swap_remove(rand::thread_rng().gen_range(0..plans.len())));
+                    if let Some(mut plans) =
+                        self.get_plans(dom_id, regx, regy, Some(&within_regs[dom_id]))
+                    {
+                        plans_per_target
+                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                    } else {
+                        // return None if any target cannot be reached.
+                        return None;
+                    }
                 }
             } // next optx
         } else {
             for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
                 if regy.is_superset_of(regx) {
-                    plans_per_target.push(SomePlan::new(dom_id, vec![]));
+                    plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
                 } else {
                     // Try making plans.
-                    let mut plans = self.get_plans(dom_id, regx, regy, None)?; // return None if any target cannot be reached.
-                    plans_per_target
-                        .push(plans.swap_remove(rand::thread_rng().gen_range(0..plans.len())));
+                    if let Some(mut plans) = self.get_plans(dom_id, regx, regy, None) {
+                        // return None if any target cannot be reached.
+                        plans_per_target
+                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                    } else {
+                        // return None if any target cannot be reached.
+                        return None;
+                    }
                 }
             } // next optx
         }
@@ -585,7 +595,7 @@ impl DomainStore {
         from_region: &SomeRegion,
         goal_region: &SomeRegion,
         within: Option<&SomeRegion>,
-    ) -> Option<Vec<SomePlan>> {
+    ) -> Option<PlanStore> {
         //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
         self.domains[dom_id].make_plans2(from_region, goal_region, within)
     }
@@ -707,7 +717,7 @@ impl DomainStore {
         let mut all_states = StateStoreCorr::with_capacity(self.len());
 
         for domx in self.domains.iter() {
-            all_states.push(domx.get_current_state().clone());
+            all_states.push(domx.current_state().clone());
         }
 
         all_states
@@ -718,7 +728,7 @@ impl DomainStore {
         let mut all_regions = RegionStoreCorr::with_capacity(self.len());
 
         for domx in self.domains.iter() {
-            all_regions.push(SomeRegion::new(vec![domx.get_current_state().clone()]));
+            all_regions.push(SomeRegion::new(vec![domx.current_state().clone()]));
         }
 
         all_regions
@@ -931,7 +941,7 @@ impl DomainStore {
 
         println!("\nActs: {}", self.domains[dom_id].actions);
 
-        let cur_state = &self.domains[dom_id].get_current_state();
+        let cur_state = &self.domains[dom_id].current_state();
 
         println!("\nDom: {dom_id} Current State: {cur_state}");
     }
