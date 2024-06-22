@@ -929,12 +929,15 @@ impl SomeDomain {
         self.cur_state.num_bits()
     }
 
-    /// Return a plan after checking for one shortcut.
+    /// Return a plan after checking for shortcuts.
     /// Return None if no shortcut found.
     fn _shortcuts3(&self, planx: &SomePlan) -> Option<SomePlan> {
         if planx.len() < 3 {
             return None;
         }
+
+        let num_bits_changed = planx.num_bits_changed();
+        println!("num_bits_changed {num_bits_changed}");
 
         let goal = planx.result_region();
 
@@ -945,22 +948,22 @@ impl SomeDomain {
             let dist_r = rsltx.distance(goal);
             if dist_r > dist_i {
                 println!(
-                    "problem step {} init dist {dist_i} rslt dist {dist_r}",
+                    "\nproblem step {} init dist {dist_i} rslt dist {dist_r}",
                     &planx.steps[inx]
                 );
 
                 // Find targets closer to goal than step result.
-                let mut targets = Vec::<(&SomeStep, usize)>::new(); // (Step, step initial region distance to goal)
+                let mut targets = Vec::<(usize, usize, usize)>::new(); // (Step index, step initial region distance to goal, next step distance to goal)
 
                 for iny in (inx + 1)..planx.len() {
                     let inity = &planx.steps[iny].initial;
-                    let dist_y = inity.distance(goal);
+                    let dist_y = inity.distance(goal) + initx.distance(inity);
                     if dist_y < dist_r {
                         println!(
-                            "possible shortcut {} dist y {dist_y} < dist_r {dist_r}",
+                            "\npossible shortcut {initx} -> {} dist y {dist_y} < dist_r {dist_r}",
                             &planx.steps[iny]
                         );
-                        targets.push((&planx.steps[iny], dist_y));
+                        targets.push((iny, dist_y, dist_r));
                     }
                 }
 
@@ -970,15 +973,28 @@ impl SomeDomain {
                 // Process targets.
 
                 // Order by ascending distance.
-                targets.sort_by(|(_, dist_a), (_, dist_b)| dist_a.partial_cmp(dist_b).unwrap());
-                println!("Targets after sort:");
-                for (stepx, dist_x) in targets.iter() {
-                    println!("  {dist_x} {stepx}");
-                    if let Some(plans) = self.make_plans2(initx, &stepx.initial, None) {
-                        // TODO handle within region?
-                        let plans2 = plans.delete_duplicates();
-                        for planx in plans2.iter() {
-                            println!("  sub plan {}", planx);
+                targets
+                    .sort_by(|(_, dist_a, _), (_, dist_b, _)| dist_a.partial_cmp(dist_b).unwrap());
+                //println!("\nTargets after sort:");
+                for (step_inx, dist_x, _) in targets.iter() {
+                    println!("\n  {dist_x} {}", planx[*step_inx]);
+                    if let Some(plans2) = self.make_plans2(initx, &planx[*step_inx].initial, None) {
+                        for plany in plans2.iter() {
+                            let mut new_plan = SomePlan::new(self.id, vec![]);
+                            if inx > 0 {
+                                for inz in 0..inx {
+                                    new_plan.push(planx[inz].clone());
+                                }
+                            }
+                            println!("\n  sub plan {}", plany);
+                            new_plan.append(plany.clone());
+                            for inz in *step_inx..planx.len() {
+                                new_plan.push(planx[inz].clone());
+                            }
+                            let num_bits_changed2 = new_plan.num_bits_changed();
+                            if num_bits_changed2 < num_bits_changed {
+                                println!("\nShortcut {num_bits_changed2} < {num_bits_changed}, {new_plan}");
+                            }
                         }
                     }
                 }
