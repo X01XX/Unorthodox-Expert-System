@@ -17,6 +17,7 @@
 //! sample the current state.
 
 use crate::region::SomeRegion;
+use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -360,6 +361,18 @@ impl SomePlan {
             ret_num += stepx.num_bits_changed();
         }
         ret_num
+    }
+
+    /// Return true if any step initial regions are the same.
+    pub fn any_initial_dups(&self) -> bool {
+        let mut regs = RegionStore::new(vec![]);
+        for stepx in self.iter() {
+            if regs.contains(&stepx.initial) {
+                return true;
+            }
+            regs.push(stepx.initial.clone());
+        }
+        false
     }
 } // end impl SomePlan
 
