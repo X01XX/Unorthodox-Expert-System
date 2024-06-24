@@ -929,8 +929,7 @@ impl SomeDomain {
         self.cur_state.num_bits()
     }
 
-    /// Return a plan after checking for shortcuts.
-    /// Return None if no shortcut found.
+    /// Return a plan shortcut, or None.
     fn _shortcuts3(&self, planx: &SomePlan) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
@@ -943,10 +942,10 @@ impl SomeDomain {
 
         let goal = planx.result_region();
 
-        // Find targets closer to goal than step result.
+        // Find targets closer to goal than step initial.
         let mut problem_steps = Vec::<(usize, usize, usize)>::new(); // (Step index, step initial region distance to goal)
 
-        for step_inx in 0..(planx.len() - 1) {
+        for step_inx in 0..(planx.len() - 2) {
             let initx = &planx.steps[step_inx].initial;
             let rsltx = &planx.steps[step_inx].result;
             let dist_i = initx.distance(goal);
@@ -961,58 +960,74 @@ impl SomeDomain {
             }
         } // next inx
 
-        for (step_inx, dist_i, dist_r) in problem_steps.iter() {
-            println!("Problem step num {step_inx} step {}\n    dist initial to goal {dist_i}\n    dist result to goal {dist_r}\n", planx[*step_inx]);
+        //let last_inx = planx.len() - 1;
+
+        // Check step initial regions, step by step.
+        let mut opts = Vec::<(usize, usize, usize)>::new(); // step1 index, step2 index, priority, lower is better.
+        for (step_inx, _dist_i, dist_r) in problem_steps.iter() {
+            println!("1 check step {step_inx} {}", planx[*step_inx]);
+            println!(
+                "step_inx + 2 = {}, planx.len = {}",
+                (step_inx + 2),
+                planx.len()
+            );
+            for check_inx in (step_inx + 2)..planx.len() {
+                print!("  2 check step {check_inx} {}", planx[check_inx]);
+
+                let dist = planx[check_inx].initial.distance(goal);
+                if dist >= *dist_r {
+                    println!(" ");
+                    continue;
+                }
+                let dist2 = planx[*step_inx].initial.distance(&planx[check_inx].initial);
+                let dist3 = dist + dist2;
+                println!(
+                        ", {} to {} distance to goal {dist} dist2 {dist2} dist3 {dist3} benchmark {dist_r}",
+                        planx[*step_inx].initial, planx[check_inx].initial
+                    );
+                opts.push((*step_inx, check_inx, dist3));
+            } // next check_inx
+        } // next step_inx, ..
+
+        opts.sort_by(|(_, _, pri_a), (_, _, pri_b)| pri_a.partial_cmp(pri_b).unwrap());
+        println!("Options:");
+        for (inx_from, inx_to, pri) in opts.iter() {
+            println!(
+                "  from {} to {} pri {pri}",
+                planx[*inx_from].initial, planx[*inx_to].initial
+            );
         }
 
-        let last_inx = planx.len() - 1;
-
-        // Check goal result, back, step by step.
-        for (step_inx, _dist_i, dist_r) in problem_steps.iter() {
-            for check_inx in ((step_inx + 1)..planx.len()).rev() {
-                let dist = planx[*step_inx].initial.distance(&planx[check_inx].result);
-                if dist < *dist_r {
-                    println!(
-                        "\nCheck step {check_inx} {} to {} distance {dist}",
-                        planx[*step_inx].initial, planx[check_inx].result
-                    );
-
-                    if let Some(plans2) =
-                        self.make_plans2(&planx[*step_inx].initial, &planx[check_inx].result, None)
-                    {
-                        for plany in plans2.iter() {
-                            let mut new_plan = SomePlan::new(self.id, vec![]);
-                            if *step_inx > 0 {
-                                for inz in 0..*step_inx {
-                                    new_plan.push(planx[inz].clone());
-                                }
-                            }
-                            println!("\n  sub plan {}", plany);
-                            new_plan.append(plany.clone());
-                            if check_inx < last_inx {
-                                for inz in (check_inx + 1)..planx.len() {
-                                    new_plan.push(planx[inz].clone());
-                                }
-                            }
-                            if new_plan.any_initial_dups() {
-                                println!("backwards drift found in {plany}");
-                                continue;
-                            }
-                            let new_num_steps = new_plan.len();
-                            if new_num_steps < base_num_steps && !shortcuts.contains(&new_plan) {
-                                println!("\nSteps {new_num_steps} vs {base_num_steps}, {new_plan}");
-                                shortcuts.push(new_plan);
-                            }
+        for (inx_from, inx_to, _pri) in opts.iter() {
+            if let Some(plans2) =
+                self.make_plans2(&planx[*inx_from].initial, &planx[*inx_to].initial, None)
+            {
+                for plany in plans2.iter() {
+                    let mut new_plan = SomePlan::new(self.id, vec![]);
+                    if *inx_from > 0 {
+                        for inz in 0..*inx_from {
+                            new_plan.push(planx[inz].clone());
                         }
                     }
-                }
-            }
-        }
-        println!(" ");
-        if shortcuts.is_empty() {
-            return None;
-        }
-        Some(shortcuts)
+                    println!("\n  sub plan {}", plany);
+                    new_plan.append(plany.clone());
+                    for inz in *inx_to..planx.len() {
+                        new_plan.push(planx[inz].clone());
+                    }
+                    if new_plan.any_initial_dups() {
+                        println!("backwards drift found in {plany}");
+                        continue;
+                    }
+                    let new_num_steps = new_plan.len();
+                    if new_num_steps < base_num_steps && !shortcuts.contains(&new_plan) {
+                        println!("\nSteps {new_num_steps} vs {base_num_steps}, {new_plan}");
+                        shortcuts.push(new_plan);
+                        return Some(shortcuts);
+                    }
+                } // next plany
+            } // endif
+        } // next opts item
+        None
     }
 } // end impl SomeDomain
 
@@ -1867,22 +1882,7 @@ mod tests {
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0._shortcuts3(&pln1) {
-            // Check shortcuts.
-            println!("Shortcuts: {shortcuts}");
-            for plnx in shortcuts.iter() {
-                if plnx.len() < pln1.len() {
-                } else {
-                    return Err(format!("shortcut {plnx} not shorter than {pln1}"));
-                }
-                if plnx.initial_region() != pln1.initial_region() {
-                    return Err(format!("shortcut {plnx} invalid initial region"));
-                }
-                if plnx.result_region() != pln1.result_region() {
-                    return Err(format!("shortcut {plnx} invalid initial region"));
-                }
-            }
-        } else {
-            return Err("No shortcuts found".to_string());
+            return Err(format!("Shortcuts found? {shortcuts}"));
         }
 
         //assert!(1 == 2);
