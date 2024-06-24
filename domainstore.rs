@@ -520,14 +520,17 @@ impl DomainStore {
             // Find a plan for each target.
             for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
                 if regy.is_superset_of(regx) {
-                    plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
+                    //plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
                 } else {
                     // Try making plans.
                     if let Some(mut plans) =
                         self.get_plans(dom_id, regx, regy, Some(&within_regs[dom_id]))
                     {
-                        plans_per_target
-                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                        if !plans_per_target
+                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
+                        {
+                            return None;
+                        }
                     } else {
                         // return None if any target cannot be reached.
                         return None;
@@ -537,13 +540,16 @@ impl DomainStore {
         } else {
             for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
                 if regy.is_superset_of(regx) {
-                    plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
+                    //plans_per_target.push_link(SomePlan::new(dom_id, vec![]));
                 } else {
                     // Try making plans.
                     if let Some(mut plans) = self.get_plans(dom_id, regx, regy, None) {
                         // return None if any target cannot be reached.
-                        plans_per_target
-                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                        if !plans_per_target
+                            .push_link(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
+                        {
+                            return None;
+                        }
                     } else {
                         // return None if any target cannot be reached.
                         return None;
@@ -1169,7 +1175,9 @@ impl DomainStore {
 
             // Check if done.
             if cur_start.intersects(goal_regs) {
-                ret_plan_store.append(plans);
+                if !ret_plan_store.append_link(plans) {
+                    return None;
+                }
                 assert!(ret_plan_store.validate(start_regs, goal_regs));
                 return Some(ret_plan_store);
             }
@@ -1202,7 +1210,9 @@ impl DomainStore {
             if selx.regions.is_superset_of(&cur_start) && selx.regions.is_superset_of(&cur_goal) {
                 let plans = self.make_plans2(&cur_start, &cur_goal, Some(&selx.regions))?;
 
-                ret_plan_store.append(plans);
+                if !ret_plan_store.append_link(plans) {
+                    return None;
+                }
 
                 let ret_plan_store_result_regions = ret_plan_store.result_regions(start_regs);
 
@@ -1248,7 +1258,9 @@ impl DomainStore {
             if let Some(intx) = pathx[inx].intersection(pathx[inx + 1]) {
                 if let Some(plans) = self.make_plans2(&cur_regs, &intx, Some(pathx[inx])) {
                     cur_regs = plans.result_regions(&cur_regs);
-                    mid_plans.append(plans);
+                    if !mid_plans.append_link(plans) {
+                        return None;
+                    }
                 } else {
                     return None;
                 }
@@ -1261,7 +1273,9 @@ impl DomainStore {
         }
 
         // Add mid_plans to existing start_plan_store, if any.
-        ret_plan_store.append(mid_plans);
+        if !ret_plan_store.append_link(mid_plans) {
+            return None;
+        }
 
         // Add last_plan_store, if needed.
         // Last_plan_store plans may begin with a region containing 0, 1, or more, X bit positions.

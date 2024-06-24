@@ -79,14 +79,16 @@ impl PlanStore {
 
     /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
-        self.avec.push(planx);
+        if !self.avec.contains(&planx) {
+            self.avec.push(planx);
+        }
     }
 
     /// Add a plan to the PlanStore.
     /// The plan should be linkable with a previously existing plan, of the same Domain ID, if any.
-    pub fn push_link(&mut self, planx: SomePlan) {
+    pub fn push_link(&mut self, planx: SomePlan) -> bool {
         if planx.is_empty() {
-            return;
+            return true;
         }
         //println!("planstore:push for {} push {}", self, planx);
 
@@ -96,9 +98,9 @@ impl PlanStore {
             if self.avec[inx].dom_id == planx.dom_id {
                 if let Some(plany) = self.avec[inx].link(&planx) {
                     self.avec[inx] = plany;
-                    return;
+                    return true;
                 } else {
-                    panic!("plan {} not linked to {}", self.avec[inx], planx);
+                    return false;
                 }
             }
         }
@@ -112,14 +114,17 @@ impl PlanStore {
                         .restrict_initial_region(self[inx].result_region())
                         .unwrap(),
                 );
-                return;
+                return true;
             }
             //println!("checking {} and {}", self[inx].result_region(), planx.initial_region());
-            assert!(self[inx].result_region() == planx.initial_region());
+            if self[inx].result_region() != planx.initial_region() {
+                return false;
+            }
         }
 
         self.avec.push(planx);
         //println!("new planstore {self}");
+        true
     }
 
     /// Return a vector iterator.
@@ -178,10 +183,20 @@ impl PlanStore {
         rc_str
     }
 
+    /// Extend a StepStore by push_link another StepStore.
+    pub fn append_link(&mut self, other: Self) -> bool {
+        for planx in other.avec {
+            if !self.push_link(planx) {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Extend a StepStore by pushing another StepStore.
     pub fn append(&mut self, other: Self) {
         for planx in other.avec {
-            self.push_link(planx);
+            self.push(planx);
         }
     }
 
@@ -283,12 +298,14 @@ impl PlanStore {
             }
             if let Some(regx) = ret_plans.domain_result(planx.dom_id) {
                 if let Some(plany) = planx.restrict_initial_region(regx) {
-                    ret_plans.push_link(plany);
+                    if !ret_plans.push_link(plany) {
+                        return None;
+                    }
                 } else {
                     return None;
                 }
-            } else {
-                ret_plans.push_link(planx.clone());
+            } else if !ret_plans.push_link(planx.clone()) {
+                return None;
             }
         }
 
@@ -299,9 +316,7 @@ impl PlanStore {
     pub fn delete_duplicates(&self) -> Self {
         let mut ret_store = PlanStore::new(vec![]);
         for planx in self.iter() {
-            if !ret_store.contains(planx) {
-                ret_store.push(planx.clone());
-            }
+            ret_store.push(planx.clone()); // only adds non-duplicates.
         }
         ret_store
     }
@@ -395,6 +410,55 @@ mod tests {
         if fstr.len() != sb {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn delete_duplicates() -> Result<(), String> {
+        let reg_b = SomeRegion::new_from_string("r1011")?;
+        let reg_e = SomeRegion::new_from_string("r0110")?;
+        let reg_f = SomeRegion::new_from_string("r1111")?;
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_b, &reg_f),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step2 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_f, &reg_e),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let pln1 = SomePlan::new(0, vec![step1, step2]);
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_b, &reg_f),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step4 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_f, &reg_e),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let pln2 = SomePlan::new(0, vec![step3, step4]);
+
+        let plnstr1 = PlanStore::new(vec![pln1, pln2]);
+        println!("plnstr1 {plnstr1}");
+
+        let plnstr2 = plnstr1.delete_duplicates();
+        println!("plnstr2 {plnstr2}");
+
+        assert!(plnstr2.len() == 1);
 
         Ok(())
     }

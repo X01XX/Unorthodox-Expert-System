@@ -17,7 +17,6 @@
 //! sample the current state.
 
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
@@ -68,15 +67,34 @@ pub struct SomePlan {
     pub dom_id: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
+    pub shortcut: bool,
 }
 
 impl SomePlan {
     /// Return a new, empty, plan.
     pub fn new(dom_id: usize, stepvec: Vec<SomeStep>) -> Self {
+        if stepvec.len() > 1 {
+            let last_inx = stepvec.len() - 1;
+            let mut initial_regs = vec![];
+            for (inx, stepx) in stepvec.iter().enumerate() {
+                assert!(!initial_regs.contains(&stepx.result));
+                if inx < last_inx {
+                    assert!(stepx.result == stepvec[inx + 1].initial);
+                }
+                initial_regs.push(stepx.initial.clone());
+            }
+        }
+
         Self {
             dom_id,
             steps: StepStore::new(stepvec),
+            shortcut: false,
         }
+    }
+
+    /// Set shortcut flag.
+    pub fn set_shortcut(&mut self) {
+        self.shortcut = true;
     }
 
     /// Return a plan after restricting the resilt region.
@@ -110,6 +128,7 @@ impl SomePlan {
         Some(Self {
             dom_id: self.dom_id,
             steps,
+            shortcut: false,
         })
     }
 
@@ -138,6 +157,7 @@ impl SomePlan {
         Some(Self {
             dom_id: self.dom_id,
             steps,
+            shortcut: false,
         })
     }
 
@@ -174,117 +194,18 @@ impl SomePlan {
 
         let steps2 = other.restrict_initial_region(&regx)?;
 
+        // Check for backtracking.
+        for stepx in other.iter() {
+            if self.contains_initial(&stepx.result) {
+                return None;
+            }
+        }
+
         steps1.append(steps2);
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
         Some(steps1)
     } // end link
-
-    /// Return a plan after checking for shortcuts.
-    /// Return None if no shortcuts found.
-    pub fn shortcuts(&self) -> Option<Self> {
-        if let Some(mut planx) = self.shortcuts2() {
-            // Check for one shortcut after another
-            loop {
-                if let Some(plany) = planx.shortcuts2() {
-                    println!("Shortcut found {planx} -> {plany}");
-                    planx = plany;
-                } else {
-                    return Some(planx);
-                }
-            }
-        }
-        None
-    }
-
-    /// Return a plan after checking for one shortcut.
-    /// Return None if no shortcut found.
-    fn shortcuts2(&self) -> Option<Self> {
-        if self.len() < 3 {
-            return None;
-        }
-
-        // Check for repeating Action needs initial region
-        let mut reg_inx = Vec::<(&SomeRegion, Vec<usize>)>::new();
-        for inx in 0..self.len() {
-            let initx = &self.steps[inx].initial;
-            let mut found = false;
-            for reg_inx_tup in reg_inx.iter_mut() {
-                if reg_inx_tup.0 == initx {
-                    reg_inx_tup.1.push(inx);
-                    found = true;
-                }
-            }
-            if !found {
-                reg_inx.push((initx, vec![inx]));
-            }
-        } // next inx
-
-        // Process one shortcut
-        if reg_inx.len() < self.len() {
-            //println!("shortcut initial found for {}", self);
-            for tupx in reg_inx.iter() {
-                if tupx.1.len() > 1 {
-                    //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = Self::new(self.dom_id, vec![]);
-
-                    for (inx, stepx) in self.iter().enumerate() {
-                        if inx < tupx.1[0] || inx >= tupx.1[1] {
-                            steps2.push(stepx.clone());
-                        }
-                    }
-                    // Remove shortcuts recursively, one by one.
-                    //println!("shortcut step2 {}", steps2);
-                    if let Some(steps3) = steps2.shortcuts() {
-                        return Some(steps3);
-                    }
-
-                    return Some(steps2);
-                }
-            }
-        }
-
-        // Check for repeating result
-        let mut reg_inx = Vec::<(&SomeRegion, Vec<usize>)>::new();
-        for inx in 0..self.len() {
-            let rsltx = &self[inx].result;
-            let mut found = false;
-            for reg_inx_tup in reg_inx.iter_mut() {
-                if reg_inx_tup.0 == rsltx {
-                    reg_inx_tup.1.push(inx);
-                    found = true;
-                }
-            }
-            if !found {
-                reg_inx.push((rsltx, vec![inx]));
-            }
-        } // next inx
-
-        // Process one shortcut
-        if reg_inx.len() < self.len() {
-            //println!("shortcut result found for {}", self);
-            for tupx in reg_inx.iter() {
-                if tupx.1.len() > 1 {
-                    //println!("{} at {:?}", tupx.0, tupx.1);
-                    let mut steps2 = Self::new(self.dom_id, vec![]);
-
-                    for (inx, stepx) in self.iter().enumerate() {
-                        if inx <= tupx.1[0] || inx > tupx.1[1] {
-                            steps2.push(stepx.clone());
-                        }
-                    }
-                    // Remove shortcuts recursively, one by one.
-                    //println!("shortcut step2 {}", steps2);
-                    if let Some(steps3) = steps2.shortcuts() {
-                        return Some(steps3);
-                    }
-                    return Some(steps2);
-                }
-            }
-        }
-
-        None
-    }
 
     /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
@@ -300,6 +221,9 @@ impl SomePlan {
             rs.push_str(&format!("{}", stpx.act_id));
         }
         rs.push(']');
+        if self.shortcut {
+            rs.push('s');
+        }
         rs
     }
 
@@ -351,7 +275,11 @@ impl SomePlan {
 
     /// Return a String representation of SomePlan.
     fn formatted_string(&self) -> String {
-        format!("{} P:{}", self.steps, self.dom_id)
+        if self.shortcut {
+            format!("{}s P:{}", self.steps, self.dom_id)
+        } else {
+            format!("{} P:{}", self.steps, self.dom_id)
+        }
     }
 
     /// Return the number of bits changed through each step of a plan.
@@ -363,14 +291,12 @@ impl SomePlan {
         ret_num
     }
 
-    /// Return true if any step initial regions are the same.
-    pub fn any_initial_dups(&self) -> bool {
-        let mut regs = RegionStore::new(vec![]);
+    /// Return true if a plan contians an initial region.
+    fn contains_initial(&self, regx: &SomeRegion) -> bool {
         for stepx in self.iter() {
-            if regs.contains(&stepx.initial) {
+            if stepx.initial == *regx {
                 return true;
             }
-            regs.push(stepx.initial.clone());
         }
         false
     }
@@ -393,7 +319,6 @@ impl StrLen for SomePlan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::state::SomeState;
@@ -401,11 +326,13 @@ mod tests {
 
     #[test]
     fn test_strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_sta = SomeState::new_from_string("0000")?;
+        let tmp_stb = SomeState::new_from_string("1111")?;
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_stb.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
+        println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
         let len = strrep.len();
@@ -413,7 +340,13 @@ mod tests {
         println!("str {tmp_pln} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp]);
+        let tmp_st3 = SomeState::new_from_string("0011")?;
+        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_stb.clone(), tmp_st3.clone()));
+        let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
+
+        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);
+        println!("tmp_pln {tmp_pln}");
+
         let strrep = format!("{tmp_pln}");
         let len = strrep.len();
         let calc_len = tmp_pln.strlen();
@@ -474,95 +407,6 @@ mod tests {
         assert!(*stp_str3.initial_region() == SomeRegion::new_from_string("r010x")?);
 
         assert!(*stp_str3.result_region() == reg6);
-
-        Ok(())
-    }
-
-    #[test]
-    fn shortcuts() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string("r0000")?;
-        let reg1 = SomeRegion::new_from_string("r0001")?;
-        let reg3 = SomeRegion::new_from_string("r0011")?;
-        let reg5 = SomeRegion::new_from_string("r0101")?;
-        let reg7 = SomeRegion::new_from_string("r0111")?;
-
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg1, &reg3),
-            AltRuleHint::NoAlt {},
-            1,
-        );
-
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg3, &reg7),
-            AltRuleHint::NoAlt {},
-            3,
-        );
-
-        let step3 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg7, &reg5),
-            AltRuleHint::NoAlt {},
-            7,
-        );
-
-        let step4 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg5, &reg1),
-            AltRuleHint::NoAlt {},
-            5,
-        );
-
-        let step5 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg1, &reg0),
-            AltRuleHint::NoAlt {},
-            5,
-        );
-
-        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5]);
-        println!("pln1: {}", pln1);
-
-        if let Some(pln1s) = pln1.shortcuts() {
-            println!("shortcut found: {}", pln1s);
-            assert_eq!(pln1s.len(), 1);
-            if pln1s.initial_region() != &reg1 {
-                return Err(format!(
-                    "Initial region {} NE {} ?",
-                    pln1s.initial_region(),
-                    reg1
-                ));
-            }
-            if pln1s.result_region() != &reg0 {
-                return Err(format!(
-                    "result region {} NE {} ?",
-                    pln1s.result_region(),
-                    reg0
-                ));
-            }
-            assert!(pln1s.len() == 1);
-        } else {
-            return Err(format!("No shortcut found for {}?", pln1).to_string());
-        }
-
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg1, &reg3),
-            AltRuleHint::NoAlt {},
-            1,
-        );
-
-        let step2 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg3, &reg7),
-            AltRuleHint::NoAlt {},
-            3,
-        );
-
-        let pln2 = SomePlan::new(0, vec![step1, step2]);
-        println!("pln2: {pln2}");
-        assert!(pln2.shortcuts().is_none());
 
         Ok(())
     }

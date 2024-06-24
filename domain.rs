@@ -283,32 +283,6 @@ impl SomeDomain {
         }
     } // end run_plan
 
-    /// Return the steps of a plan to go from a given region to another region.
-    pub fn depth_first_search(
-        &self,
-        from_reg: &SomeRegion,
-        goal_reg: &SomeRegion,
-        steps_str: &StepStore,
-        steps_by_change_vov: &[Vec<&SomeStep>],
-        depth: usize,
-        verbose: bool,
-    ) -> Option<SomePlan> {
-        if let Some(plan1) = self.depth_first_search2(
-            from_reg,
-            goal_reg,
-            steps_str,
-            steps_by_change_vov,
-            depth - 1,
-            verbose,
-        ) {
-            if let Some(plan2) = plan1.shortcuts() {
-                return Some(plan2);
-            }
-            return Some(plan1);
-        }
-        None
-    }
-
     /// Return the steps of a plan to go from a given state/region to a given region.
     ///
     /// This may be called from random_depth_first_search, or may be recursively called to make a sub-plan.
@@ -317,7 +291,7 @@ impl SomeDomain {
     ///
     /// Otherwise, randomly choose a forward or backward chaining step.
     ///
-    fn depth_first_search2(
+    fn depth_first_search(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
@@ -593,7 +567,7 @@ impl SomeDomain {
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&required_change)?;
 
-        self.depth_first_search2(
+        self.depth_first_search(
             from_reg,
             to_reg,
             &steps_str,
@@ -694,6 +668,33 @@ impl SomeDomain {
     /// Make a plan to change from a region to another region.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     pub fn make_plans2(
+        &self,
+        from_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
+        within: Option<&SomeRegion>,
+    ) -> Option<PlanStore> {
+        if let Some(mut plans) = self.make_plans3(from_reg, goal_reg, within) {
+            //println!("make_plans2 num found {}", plans.len());
+            let mut addplans = PlanStore::new(vec![]);
+            for planx in plans.iter() {
+                if let Some(shortcuts) = self.shortcuts(planx) {
+                    // Check shortcuts.
+                    //println!("Shortcuts for {planx} are {shortcuts}");
+                    addplans.append(shortcuts);
+                }
+            }
+            if addplans.is_not_empty() {
+                plans.append(addplans);
+            }
+
+            return Some(plans);
+        }
+        None
+    }
+
+    /// Make a plan to change from a region to another region.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    pub fn make_plans3(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
@@ -930,7 +931,7 @@ impl SomeDomain {
     }
 
     /// Return a plan shortcut, or None.
-    fn _shortcuts3(&self, planx: &SomePlan) -> Option<PlanStore> {
+    fn shortcuts(&self, planx: &SomePlan) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
@@ -938,7 +939,7 @@ impl SomeDomain {
         let mut shortcuts = PlanStore::new(vec![]); // (Step index, nextep index, distance target step initial to goal)
 
         let base_num_steps = planx.len();
-        println!("base plan steps {base_num_steps}");
+        //println!("base plan {planx} steps {base_num_steps}");
 
         let goal = planx.result_region();
 
@@ -951,57 +952,70 @@ impl SomeDomain {
             let dist_i = initx.distance(goal);
             let dist_r = rsltx.distance(goal);
             if dist_r > dist_i {
-                println!(
-                    "\nproblem step {} init dist to goal {dist_i} rslt dist to goal {dist_r}\n",
-                    &planx.steps[step_inx]
-                );
+                // println!(
+                //     "\nproblem step {} init dist to goal {dist_i} rslt dist to goal {dist_r}\n",
+                //     &planx.steps[step_inx]
+                // );
                 // Find targets closer to goal than step result.
                 problem_steps.push((step_inx, dist_i, dist_r));
             }
         } // next inx
 
-        //let last_inx = planx.len() - 1;
-
         // Check step initial regions, step by step.
-        let mut opts = Vec::<(usize, usize, usize)>::new(); // step1 index, step2 index, priority, lower is better.
+        let mut opts = Vec::<(usize, usize, usize, &SomeRegion)>::new(); // step1 index, step2 index, priority, target region ref, lower is better.
         for (step_inx, _dist_i, dist_r) in problem_steps.iter() {
-            println!("1 check step {step_inx} {}", planx[*step_inx]);
-            println!(
-                "step_inx + 2 = {}, planx.len = {}",
-                (step_inx + 2),
-                planx.len()
-            );
+            //println!("1 check step {step_inx} {}", planx[*step_inx]);
+            //println!(
+            //    "step_inx + 2 = {}, planx.len = {}",
+            //    (step_inx + 2),
+            //    planx.len()
+            //);
             for check_inx in (step_inx + 2)..planx.len() {
-                print!("  2 check step {check_inx} {}", planx[check_inx]);
+                //  print!("  2 check step {check_inx} {}", planx[check_inx]);
 
                 let dist = planx[check_inx].initial.distance(goal);
                 if dist >= *dist_r {
-                    println!(" ");
+                    //println!(" ");
                     continue;
                 }
                 let dist2 = planx[*step_inx].initial.distance(&planx[check_inx].initial);
                 let dist3 = dist + dist2;
-                println!(
-                        ", {} to {} distance to goal {dist} dist2 {dist2} dist3 {dist3} benchmark {dist_r}",
-                        planx[*step_inx].initial, planx[check_inx].initial
-                    );
-                opts.push((*step_inx, check_inx, dist3));
+                //println!(
+                //        ", {} to {} distance to goal {dist} dist2 {dist2} dist3 {dist3} benchmark {dist_r}",
+                //        planx[*step_inx].initial, planx[check_inx].initial
+                //    );
+                opts.push((*step_inx, check_inx, dist3, &planx[check_inx].initial));
             } // next check_inx
+
+            // Check goal region, except for first step.
+            if *step_inx == 0 {
+                continue;
+            }
+            let dist = planx[*step_inx].initial.distance(goal);
+            if dist < *dist_r {
+                // println!(
+                // ", {} to {} distance to goal {dist} benchmark {dist_r}",
+                //     planx[*step_inx].initial, goal
+                // );
+                opts.push((*step_inx, planx.len(), dist, goal));
+            }
         } // next step_inx, ..
 
-        opts.sort_by(|(_, _, pri_a), (_, _, pri_b)| pri_a.partial_cmp(pri_b).unwrap());
-        println!("Options:");
-        for (inx_from, inx_to, pri) in opts.iter() {
-            println!(
-                "  from {} to {} pri {pri}",
-                planx[*inx_from].initial, planx[*inx_to].initial
-            );
+        if opts.len() > 1 {
+            opts.sort_by(|(_, _, pri_a, _), (_, _, pri_b, _)| pri_a.partial_cmp(pri_b).unwrap());
         }
+        //println!("Options:");
+        //for (inx_from, _inx_to, pri, targ) in opts.iter() {
+        //    println!(
+        //       "  from {} to {} pri {pri}",
+        //       planx[*inx_from].initial, targ
+        //   );
+        //}
 
-        for (inx_from, inx_to, _pri) in opts.iter() {
-            if let Some(plans2) =
-                self.make_plans2(&planx[*inx_from].initial, &planx[*inx_to].initial, None)
-            {
+        for (inx_from, inx_to, _pri, targ) in opts.iter() {
+            if let Some(plans2) = self.make_plans3(&planx[*inx_from].initial, targ, None) {
+                //println!("{} plans found", plans2.len());
+                //println!("Plans found {plans2}");
                 for plany in plans2.iter() {
                     let mut new_plan = SomePlan::new(self.id, vec![]);
                     if *inx_from > 0 {
@@ -1009,18 +1023,21 @@ impl SomeDomain {
                             new_plan.push(planx[inz].clone());
                         }
                     }
-                    println!("\n  sub plan {}", plany);
+                    //println!("\n  sub plan {}", plany);
                     new_plan.append(plany.clone());
-                    for inz in *inx_to..planx.len() {
-                        new_plan.push(planx[inz].clone());
+                    if *inx_to < planx.len() {
+                        for inz in *inx_to..planx.len() {
+                            new_plan.push(planx[inz].clone());
+                        }
                     }
-                    if new_plan.any_initial_dups() {
-                        println!("backwards drift found in {plany}");
-                        continue;
-                    }
+                    //if new_plan.any_initial_dups() {
+                    //println!("backwards drift found in {plany}");
+                    //    continue;
+                    //}
                     let new_num_steps = new_plan.len();
                     if new_num_steps < base_num_steps && !shortcuts.contains(&new_plan) {
-                        println!("\nSteps {new_num_steps} vs {base_num_steps}, {new_plan}");
+                        //println!("\nSteps {new_num_steps} vs {base_num_steps}, {new_plan}");
+                        new_plan.set_shortcut();
                         shortcuts.push(new_plan);
                         return Some(shortcuts);
                     }
@@ -1881,7 +1898,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0._shortcuts3(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
             return Err(format!("Shortcuts found? {shortcuts}"));
         }
 
@@ -2014,7 +2031,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6, step7]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0._shortcuts3(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             let mut three_steps_found = false;
@@ -2035,6 +2052,284 @@ mod tests {
             }
             if !three_steps_found {
                 return Err("Three step shortcut not found".to_string());
+            }
+        } else {
+            return Err("No shortcuts found".to_string());
+        }
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn shortcuts5() -> Result<(), String> {
+        // Create a domain that uses 4 bits.
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls0);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls2);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls3);
+
+        // Create states for setting up groups.
+        let sta_0 = SomeState::new_from_string("s0000")?;
+        let sta_f = SomeState::new_from_string("s1111")?;
+
+        // Set up groups for action 0.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(0);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(0);
+
+        // Set up groups for action 1.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(1);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(1);
+
+        // Set up groups for action 2.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(2);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(2);
+
+        // Set up groups for action 3.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(3);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(3);
+
+        println!("Acts: {}\n", dm0.actions);
+
+        let reg_2 = SomeRegion::new_from_string("r0010")?;
+        let reg_3 = SomeRegion::new_from_string("r0011")?;
+        let reg_4 = SomeRegion::new_from_string("r0100")?;
+        let reg_5 = SomeRegion::new_from_string("r0101")?;
+        let reg_6 = SomeRegion::new_from_string("r0110")?;
+        let reg_7 = SomeRegion::new_from_string("r0111")?;
+        let reg_b = SomeRegion::new_from_string("r1011")?;
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_4, &reg_5),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step2 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_5, &reg_7),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_7, &reg_6),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step4 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_6, &reg_2),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step5 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_2, &reg_3),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step6 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_3, &reg_b),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
+        println!("pln1: {}", pln1);
+
+        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+            // Check shortcuts.
+            println!("Shortcuts: {shortcuts}");
+            let mut four_steps_found = false;
+            for plnx in shortcuts.iter() {
+                if plnx.len() < pln1.len() {
+                } else {
+                    return Err(format!("shortcut {plnx} not shorter than {pln1}"));
+                }
+                if plnx.initial_region() != pln1.initial_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.result_region() != pln1.result_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.len() == 4 {
+                    four_steps_found = true;
+                }
+            }
+            if !four_steps_found {
+                return Err("Four step shortcut not found".to_string());
+            }
+        } else {
+            return Err("No shortcuts found".to_string());
+        }
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn shortcuts6() -> Result<(), String> {
+        // Create a domain that uses 4 bits.
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls0);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls2);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls3);
+
+        // Create states for setting up groups.
+        let sta_0 = SomeState::new_from_string("s0000")?;
+        let sta_f = SomeState::new_from_string("s1111")?;
+
+        // Set up groups for action 0.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(0);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(0);
+
+        // Set up groups for action 1.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(1);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(1);
+
+        // Set up groups for action 2.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(2);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(2);
+
+        // Set up groups for action 3.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(3);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(3);
+
+        println!("Acts: {}\n", dm0.actions);
+
+        let reg_6 = SomeRegion::new_from_string("r0110")?;
+        let reg_7 = SomeRegion::new_from_string("r0111")?;
+        let reg_b = SomeRegion::new_from_string("r1011")?;
+        let reg_e = SomeRegion::new_from_string("r1110")?;
+        let reg_f = SomeRegion::new_from_string("r1111")?;
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_b, &reg_f),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step2 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_f, &reg_e),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_e, &reg_6),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step4 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_6, &reg_7),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4]);
+        println!("pln1: {}", pln1);
+
+        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+            // Check shortcuts.
+            println!("Shortcuts: {shortcuts}");
+            let mut two_steps_found = false;
+            for plnx in shortcuts.iter() {
+                if plnx.len() < pln1.len() {
+                } else {
+                    return Err(format!("shortcut {plnx} not shorter than {pln1}"));
+                }
+                if plnx.initial_region() != pln1.initial_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.result_region() != pln1.result_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.len() == 2 {
+                    two_steps_found = true;
+                }
+            }
+            if !two_steps_found {
+                return Err("Two step shortcut not found".to_string());
             }
         } else {
             return Err("No shortcuts found".to_string());
