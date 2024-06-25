@@ -932,6 +932,26 @@ impl SomeDomain {
 
     /// Return a plan shortcut, or None.
     fn shortcuts(&self, planx: &SomePlan) -> Option<PlanStore> {
+        self.shortcuts2(planx, 0)
+    }
+
+    /// Try to get multiple plan shortcuts.
+    /// Return a plan shortcut, or None.
+    fn shortcuts2(&self, planx: &SomePlan, depth: usize) -> Option<PlanStore> {
+        if let Some(plany) = self.shortcuts3(planx) {
+            let mut inx = 0;
+            if plany.len() > 1 {
+                inx = rand::thread_rng().gen_range(0..plany.len());
+            }
+            self.shortcuts2(&plany[inx], depth + 1)
+        } else if depth == 0 {
+            None
+        } else {
+            Some(PlanStore::new(vec![planx.clone()]))
+        }
+    }
+    /// Return one plan shortcut.
+    fn shortcuts3(&self, planx: &SomePlan) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
@@ -2333,6 +2353,172 @@ mod tests {
             }
         } else {
             return Err("No shortcuts found".to_string());
+        }
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn shortcuts7() -> Result<(), String> {
+        // Create a domain that uses 4 bits.
+        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls0);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls1);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls2);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )
+        .expect("SNH")])];
+        dm0.add_action(ruls3);
+
+        // Create states for setting up groups.
+        let sta_0 = SomeState::new_from_string("s0000")?;
+        let sta_f = SomeState::new_from_string("s1111")?;
+
+        // Set up groups for action 0.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(0);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(0);
+
+        // Set up groups for action 1.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(1);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(1);
+
+        // Set up groups for action 2.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(2);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(2);
+
+        // Set up groups for action 3.
+        dm0.set_cur_state(sta_0.clone());
+        dm0.take_action_arbitrary(3);
+        dm0.set_cur_state(sta_f.clone());
+        dm0.take_action_arbitrary(3);
+
+        println!("Acts: {}\n", dm0.actions);
+
+        let reg_0 = SomeRegion::new_from_string("r0000")?;
+        let reg_1 = SomeRegion::new_from_string("r0001")?;
+        let reg_2 = SomeRegion::new_from_string("r0010")?;
+        let reg_3 = SomeRegion::new_from_string("r0011")?;
+        let reg_5 = SomeRegion::new_from_string("r0101")?;
+        let reg_6 = SomeRegion::new_from_string("r0110")?;
+        let reg_7 = SomeRegion::new_from_string("r0111")?;
+        let reg_d = SomeRegion::new_from_string("r1101")?;
+        let reg_f = SomeRegion::new_from_string("r1111")?;
+
+        let step1 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_0, &reg_1),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step2 = SomeStep::new(
+            1,
+            SomeRule::new_region_to_region(&reg_1, &reg_3),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step3 = SomeStep::new(
+            0,
+            SomeRule::new_region_to_region(&reg_3, &reg_2),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step4 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_2, &reg_6),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step5 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_6, &reg_7),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step6 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_7, &reg_5),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step7 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_5, &reg_d),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let step8 = SomeStep::new(
+            2,
+            SomeRule::new_region_to_region(&reg_d, &reg_f),
+            AltRuleHint::NoAlt {},
+            0,
+        );
+
+        let pln1 = SomePlan::new(
+            0,
+            vec![step1, step2, step3, step4, step5, step6, step7, step8],
+        );
+        println!("pln1: {}", pln1);
+
+        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+            // Check shortcuts.
+            println!("Shortcuts: {shortcuts}");
+            let mut four_steps_found = false;
+            for plnx in shortcuts.iter() {
+                if plnx.len() < pln1.len() {
+                } else {
+                    return Err(format!("shortcut {plnx} not shorter than {pln1}"));
+                }
+                if plnx.initial_region() != pln1.initial_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.result_region() != pln1.result_region() {
+                    return Err(format!("shortcut {plnx} invalid initial region"));
+                }
+                if plnx.len() == 4 {
+                    four_steps_found = true;
+                }
+            }
+            if !four_steps_found {
+                return Err("Four step shortcut not found".to_string());
+            }
+        } else {
+            return Err("No shortcuts (1) found".to_string());
         }
 
         //assert!(1 == 2);
