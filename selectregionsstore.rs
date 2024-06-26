@@ -54,6 +54,8 @@ impl SelectRegionsStore {
     /// Add a SelectRegionsStore.
     pub fn push(&mut self, select: SelectRegions) {
         //print!("{} push {}", self, select);
+        debug_assert!(self.is_empty() || select.len() == self.regionstores[0].len());
+
         if !self.contains(&select) {
             self.regionstores.push(select);
         }
@@ -61,6 +63,8 @@ impl SelectRegionsStore {
 
     /// Add a SelectRegionsStore, deleting subsets.
     pub fn push_nosubs(&mut self, select: SelectRegions) {
+        debug_assert!(self.is_empty() || select.len() == self.regionstores[0].len());
+
         // Don't add a subset.
         if self.any_supersets_of(&select) {
             return;
@@ -82,6 +86,8 @@ impl SelectRegionsStore {
 
     /// Add a SelectRegionsStore, deleting supersets.
     pub fn push_nosups(&mut self, select: SelectRegions) {
+        debug_assert!(self.is_empty() || select.len() == self.regionstores[0].len());
+
         //print!("{} push {}", self, select);
         // Don't add a superset.
         if self.any_subsets_of(&select) {
@@ -129,6 +135,8 @@ impl SelectRegionsStore {
 
     /// Return a Vector of SelectRegions not supersets of a given RegionStoreCorr.
     pub fn not_supersets_of(&self, regs: &RegionStoreCorr) -> Vec<&SelectRegions> {
+        debug_assert!(self.is_empty() || regs.len() == self.regionstores[0].len());
+
         self.regionstores
             .iter()
             .filter(|regsx| !regsx.regions.is_superset_of(regs))
@@ -137,6 +145,8 @@ impl SelectRegionsStore {
 
     /// Return true if any SelectRegions is a superset of a StateStore.
     pub fn any_supersets_of_states(&self, stas: &StateStoreCorr) -> bool {
+        debug_assert!(self.is_empty() || stas.len() == self.regionstores[0].len());
+
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_states(stas) {
                 return true;
@@ -147,6 +157,8 @@ impl SelectRegionsStore {
 
     /// Return the sum of values of SelectRegions that are superset of a given RegionStoreCorr.
     pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
+        debug_assert!(self.is_empty() || regs.len() == self.regionstores[0].len());
+
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
             if regsx.regions.is_superset_of(regs) {
@@ -158,6 +170,8 @@ impl SelectRegionsStore {
 
     /// Return the sum of values of negative SelectRegions that are superset of a given RegionStoreCorr.
     pub fn rate_by_negative_regions(&self, regs: &RegionStoreCorr) -> isize {
+        debug_assert!(self.is_empty() || regs.len() == self.regionstores[0].len());
+
         let mut value: isize = 0;
         for regsx in self.regionstores.iter() {
             if regsx.value < 0 && regsx.regions.is_superset_of(regs) {
@@ -169,6 +183,8 @@ impl SelectRegionsStore {
 
     /// Return true if any SelectRegion is a region superset of another..
     fn any_supersets_of(&self, slrx: &SelectRegions) -> bool {
+        debug_assert!(self.is_empty() || slrx.len() == self.regionstores[0].len());
+
         for regsx in &self.regionstores {
             if regsx.regions.is_superset_of(&slrx.regions) {
                 return true;
@@ -179,6 +195,8 @@ impl SelectRegionsStore {
 
     /// Return true if any SelectRegion is a region subset of another.
     fn any_subsets_of(&self, slrx: &SelectRegions) -> bool {
+        debug_assert!(self.is_empty() || slrx.len() == self.regionstores[0].len());
+
         for regsx in &self.regionstores {
             if regsx.regions.is_subset_of(&slrx.regions) {
                 return true;
@@ -189,6 +207,8 @@ impl SelectRegionsStore {
 
     /// Return the intersection of a SelectRegionStore and a Selectregions instance.
     pub fn intersection(&self, slrx: &SelectRegions) -> Option<Self> {
+        debug_assert!(self.is_empty() || slrx.len() == self.regionstores[0].len());
+
         let mut ret = Self::new(vec![]);
         for inx in 0..self.len() {
             if let Some(regs) = self[inx].intersection(slrx) {
@@ -203,6 +223,8 @@ impl SelectRegionsStore {
 
     /// Return true if any item intersects a given SelectRegion.
     pub fn any_intersection_of(&self, slrx: &SelectRegions) -> bool {
+        debug_assert!(self.is_empty() || slrx.len() == self.regionstores[0].len());
+
         for sely in self.regionstores.iter() {
             if sely.intersects(slrx) {
                 return true;
@@ -213,6 +235,8 @@ impl SelectRegionsStore {
 
     /// Return list of select regions that are superset of a State vector.
     pub fn supersets_of_states(&self, stas: &StateStoreCorr) -> Vec<&SelectRegions> {
+        debug_assert!(self.is_empty() || stas.len() == self.regionstores[0].len());
+
         self.regionstores
             .iter()
             .filter(|regsx| regsx.regions.is_superset_states(stas))
@@ -234,6 +258,8 @@ impl SelectRegionsStore {
 
     /// Return true if an equal RegionStoreCorr is already in the SelectRegionsStore.
     pub fn contains(&self, slrx: &SelectRegions) -> bool {
+        debug_assert!(self.is_empty() || slrx.len() == self.regionstores[0].len());
+
         for regstrx in &self.regionstores {
             if regstrx.regions == slrx.regions {
                 return true;
@@ -243,8 +269,10 @@ impl SelectRegionsStore {
     }
 
     /// Append from another store.
-    pub fn append(&mut self, mut val: Self) {
-        self.regionstores.append(&mut val.regionstores);
+    pub fn append(&mut self, mut other: Self) {
+        debug_assert!(self.is_empty() || other.is_empty() || other.regionstores[0].len() == self.regionstores[0].len());
+
+        self.regionstores.append(&mut other.regionstores);
     }
 
     /// Pop the last item.
@@ -255,6 +283,7 @@ impl SelectRegionsStore {
     /// Subtract a SelectRegions.
     pub fn subtract_selectregions(&self, subtrahend: &SelectRegions) -> Self {
         // println!("subtract {subtrahend} from {self}");
+        debug_assert!(self.is_empty() || subtrahend.len() == self.regionstores[0].len());
 
         let mut ret_str = Self::new(vec![]);
 
@@ -276,6 +305,8 @@ impl SelectRegionsStore {
 
     /// Subtract a selectregionstore from another.
     pub fn subtract(&self, other: &Self) -> Self {
+        debug_assert!(self.is_empty() || other.is_empty() || other.regionstores[0].len() == self.regionstores[0].len());
+
         let mut ret = self.clone();
         for selx in other.regionstores.iter() {
             if ret.any_intersection_of(selx) {
@@ -545,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn test_subtract_selectregions1() -> Result<(), String> {
+    fn subtract_selectregions1() -> Result<(), String> {
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("rxx0x").expect("SNH")]),
@@ -623,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn test_subtract_selectregions2() -> Result<(), String> {
+    fn subtract_selectregions2() -> Result<(), String> {
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(
             RegionStoreCorr::new(vec![

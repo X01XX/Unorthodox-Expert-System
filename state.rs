@@ -11,7 +11,7 @@
 //!
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
-use crate::bits::BitsRef;
+use crate::bits::{BitsRef, NumBits};
 use crate::bits::SomeBits;
 use crate::mask::SomeMask;
 use crate::region::AccessStates;
@@ -112,6 +112,8 @@ impl SomeState {
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_and(other.bitsref()),
         }
@@ -119,6 +121,8 @@ impl SomeState {
 
     /// Return a SomeState instance, representing a bitwise Or of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_or(other.bitsref()),
         }
@@ -126,6 +130,8 @@ impl SomeState {
 
     /// Return a SomeState instance, representing a bitwise XOr of a state and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_xor(other.bitsref()),
         }
@@ -133,6 +139,8 @@ impl SomeState {
 
     /// Return a mask of the bits values that are the same.
     pub fn bitwise_eqv(&self, other: &impl BitsRef) -> SomeMask {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         SomeMask::new(self.bts.b_eqv(other.bitsref()))
     }
 
@@ -150,6 +158,9 @@ impl SomeState {
 
     /// Return true if a state is between two given states, exclusive.
     pub fn is_between(&self, sta1: &Self, sta2: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), sta1.num_bits());
+        debug_assert_eq!(self.num_bits(), sta2.num_bits());
+
         if self == sta1 {
             return false;
         }
@@ -165,6 +176,8 @@ impl SomeState {
 
     /// Return a difference mask between a state and another item.
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         other.edge_mask().bitwise_xor(self)
     }
 
@@ -175,6 +188,8 @@ impl SomeState {
 
     /// Return a SomeMask instance, representing a bitwise And-not of a mask and the invert of another instance that supports the BitsRef Trait.
     pub fn bitwise_and_not(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_and_not(other.bitsref()),
         }
@@ -192,6 +207,13 @@ impl BitsRef for SomeState {
 impl StrLen for SomeState {
     fn strlen(&self) -> usize {
         self.bts.strlen() + 1
+    }
+}
+
+/// Implement the NumBits trait for SomeState.
+impl NumBits for SomeState {
+    fn num_bits(&self) -> usize {
+        self.num_bits()
     }
 }
 
@@ -216,12 +238,18 @@ impl AccessStates for SomeState {
         self.clone()
     }
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        debug_assert!(self.num_bits() == other.num_bits());
+
         self.diff_edge_mask(other)
     }
     fn intersects(&self, other: &impl AccessStates) -> bool {
+        debug_assert!(self.num_bits() == other.num_bits());
+
         self.diff_edge_mask(other).is_low()
     }
     fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        debug_assert!(self.num_bits() == other.num_bits());
+
         if other.one_state() {
             self == other.first_state()
         } else {
@@ -229,11 +257,16 @@ impl AccessStates for SomeState {
         }
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        debug_assert!(self.num_bits() == other.num_bits());
+
         if other.one_state() {
             self == other.first_state()
         } else {
             false
         }
+    }
+    fn num_bits(&self) -> usize {
+        self.num_bits()
     }
 }
 

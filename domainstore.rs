@@ -15,7 +15,7 @@ use crate::state::SomeState;
 use crate::statestorecorr::StateStoreCorr;
 use crate::step::AltRuleHint::AltRule;
 use crate::targetstore::TargetStore;
-use crate::tools;
+use crate::tools::{self, corresponding_num_bits};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -512,7 +512,10 @@ impl DomainStore {
         goal: &RegionStoreCorr,
         within: Option<&RegionStoreCorr>,
     ) -> Option<PlanStore> {
-        //println!("domainstore: make_plans3: from {from} goal {goal}");
+         //println!("domainstore: make_plans3: from {from} goal {goal}");
+        debug_assert!(from.len() == goal.len());
+        debug_assert!(corresponding_num_bits(from, goal));
+        debug_assert!(if let Some(regs) = within { regs.len() == from.len() && corresponding_num_bits(from, regs) } else { true });
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(from.len()));
 
@@ -615,6 +618,7 @@ impl DomainStore {
     /// Choose a plan from a vector of PlanStore references, for vector of PlanStore references.
     /// Return index of plan chosen.
     pub fn choose_a_plan2(&self, plans: &[&PlanStore], start_regs: &RegionStoreCorr) -> usize {
+        debug_assert!(self.len() == start_regs.len());
         assert!(!plans.is_empty());
 
         // No choice to be made.
@@ -846,6 +850,8 @@ impl DomainStore {
     /// Return a need for moving to an select region.
     fn select_goal_needs(&self, goal_regs: &RegionStoreCorr) -> Option<NeedStore> {
         //println!("domainstore: select_goal_needs");
+        debug_assert!(self.len() == goal_regs.len());
+
         // Get regions the current state is not in.
         let mut notsups = self.select_positive.not_supersets_of(goal_regs);
 
@@ -994,6 +1000,8 @@ impl DomainStore {
 
     // Set the current state field, of the current domain.
     pub fn set_cur_state(&mut self, new_state: SomeState) {
+        debug_assert!(new_state.num_bits() == self[self.current_domain].num_bits());
+
         let dmx = self.current_domain;
         self[dmx].set_cur_state(new_state)
     }
@@ -1080,6 +1088,8 @@ impl DomainStore {
         from_regs: &RegionStoreCorr,
     ) -> Option<&RegionStoreCorr> {
         // Find closest non-negative SelectRegions, if any.
+        debug_assert!(from_regs.len() == self.len());
+
         let mut min_distance = usize::MAX;
         let mut targets = Vec::<&SelectRegions>::new();
         for regsx in self.select_non_negative.iter() {
@@ -1752,7 +1762,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conversion() -> Result<(), String> {
+    fn conversion() -> Result<(), String> {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::new();
         // Set up first domain.
@@ -2680,7 +2690,7 @@ mod tests {
     // Test exit_select_needs with two overlapping negative select regions.
     // from s0111 to s1000.
     #[test]
-    fn test_exit_select_needs() -> Result<(), String> {
+    fn exit_select_needs() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));

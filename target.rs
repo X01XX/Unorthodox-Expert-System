@@ -1,5 +1,6 @@
 //! Implement a struct to indicate a desired region for a given domain.
 
+use crate::bits::NumBits;
 use crate::region::AccessStates;
 use crate::region::SomeRegion;
 
@@ -30,6 +31,15 @@ impl SomeTarget {
     }
 
     pub fn is_superset_of(&self, stax: &impl AccessStates) -> bool {
+        debug_assert!(self.num_bits() == stax.num_bits());
+
         self.region.is_superset_of(stax)
+    }
+}
+
+/// Implement the NumBits trait for SomeState.
+impl NumBits for SomeTarget {
+    fn num_bits(&self) -> usize {
+        self.region.num_bits()
     }
 }

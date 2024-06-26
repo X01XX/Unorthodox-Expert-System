@@ -8,6 +8,7 @@
 //! no X positions, the different results must different by one, or more,
 //! 1->X or 0->X bit positions.
 
+use crate::bits::vec_same_num_bits;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::tools;
@@ -50,6 +51,8 @@ impl Eq for RuleStore {}
 impl RuleStore {
     /// Return a new, empty, RuleStore.
     pub fn new(avec: Vec<SomeRule>) -> Self {
+        debug_assert!(vec_same_num_bits(&avec));
+
         Self { avec }
     }
 
@@ -70,6 +73,8 @@ impl RuleStore {
 
     /// Return true if a RuleStore contains a rule.
     pub fn contains(&self, rul: &SomeRule) -> bool {
+        debug_assert!(self.is_empty() || self[0].num_bits() == rul.num_bits());
+
         self.avec.contains(rul)
     }
 
@@ -93,17 +98,28 @@ impl RuleStore {
     /// If there are two rules, they will have at least one incompatibility,
     /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
     pub fn push(&mut self, val: SomeRule) {
+        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == val.num_bits() } else { true });
+
         assert!(self.avec.len() < 2);
 
         self.avec.push(val);
         assert!(self.is_valid());
     }
 
+    /// Return the number of bits used in RuleStore items.
+    pub fn num_bits(&self) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self.avec[0].num_bits())
+    }
+
     /// Return true if one non-empty RuleStore is a subset of another non-empty.
     /// This checks if a pn=1 rulestore is a subset of a pn=2 rulestore, the caller
     /// should check that the number of samples for the pn=1 rulestore is only 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        assert!(!self.is_empty() && !other.is_empty());
+        assert!(self.is_not_empty() && other.is_not_empty());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if self.len() > other.len() {
             return false;
@@ -138,12 +154,16 @@ impl RuleStore {
 
     /// Return true if a RuleStore is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
+        assert!(self.is_not_empty() && other.is_not_empty());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         other.is_subset_of(self)
     }
 
     /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
         assert!(!self.is_empty());
+        debug_assert_eq!(self.num_bits().unwrap(), other.num_bits());
 
         if self.len() == 1 {
             return self[0].is_superset_of(other);
@@ -189,7 +209,8 @@ impl RuleStore {
     ///     (X->0, X->X), 1->?
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", self, other);
-        assert!(!self.is_empty() && !other.is_empty());
+        assert!(self.is_not_empty() && other.is_not_empty());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if self.len() != other.len() {
             //println!("\nrulestore union: returns None");
@@ -246,7 +267,8 @@ impl RuleStore {
     /// positions.
     pub fn parsed_union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore parsed_union {} and {}", self, other);
-        assert!(!self.is_empty() && !other.is_empty());
+        assert!(self.is_not_empty() && other.is_not_empty());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if self.len() != other.len() {
             //println!("\nrulestore union: returns None");
@@ -323,6 +345,7 @@ impl RuleStore {
         //println!("starting subcompatible_index");
         assert!(self.len() == 2);
         assert!(other.len() == 1);
+        debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let zero = self[0].union(&other[0]).is_some();
         let one = self[1].union(&other[0]).is_some();
@@ -343,6 +366,8 @@ impl RuleStore {
     /// or two two-rule RuleStores are compatible.
     pub fn compatible(&self, other: &RuleStore) -> bool {
         assert!(self.len() == other.len());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         assert!(!self
             .initial_region()
             .is_superset_of(&other.initial_region()));
@@ -366,6 +391,9 @@ impl RuleStore {
 
     /// Return the intersection of two RuleStores.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
+        assert!(self.is_not_empty() && other.is_not_empty());
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         if self.len() != other.len() {
             panic!("rulestore lengths not eq! {} vs {}", self, other);
         }
@@ -406,6 +434,7 @@ impl RuleStore {
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         assert!(self.is_not_empty());
+        debug_assert_eq!(self.num_bits().unwrap(), regx.num_bits());
         assert!(
             regx.intersects(&self.initial_region()),
             "{}",

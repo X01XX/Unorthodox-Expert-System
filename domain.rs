@@ -135,7 +135,9 @@ impl SomeDomain {
     /// The rules will be used to generate responses to running the action
     /// against various states.
     pub fn add_action(&mut self, rules: Vec<RuleStore>) {
-        self.actions.add_action(self.id, rules);
+        debug_assert!(rules.is_empty() || rules[0].num_bits().unwrap() == self.num_bits());
+
+        self.actions.add_action(self.id, &self.cur_state, rules);
     }
 
     /// Return needs gathered from all actions.
@@ -150,9 +152,9 @@ impl SomeDomain {
     /// Using the command: ss  action-number  initial-state  result-state
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
-        if act_id >= self.actions.len() {
-            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
-        }
+        debug_assert_eq!(smpl.num_bits(), self.num_bits());
+        debug_assert!(act_id < self.actions.len());
+
         self.actions.eval_sample_arbitrary(act_id, smpl);
         self.set_cur_state(smpl.result.clone());
     }
@@ -160,28 +162,31 @@ impl SomeDomain {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
+        debug_assert_eq!(ndx.dom_id(), self.id);
+
         let asample = self.actions.take_action_need(ndx, &self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
 
     /// Take an action with the current state, store the sample.
     pub fn take_action_arbitrary(&mut self, act_id: usize) {
-        if act_id >= self.actions.len() {
-            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
-        }
+        debug_assert!(act_id < self.actions.len());
+
         let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
         self.set_cur_state(asample.result.clone());
     }
 
     /// Set the current state field.
     pub fn set_cur_state(&mut self, stax: SomeState) {
-        assert!(self.cur_state.num_bits() == stax.num_bits());
+        debug_assert_eq!(stax.num_bits(), self.num_bits());
+
         self.cur_state = stax;
     }
 
     /// Run a plan, return true if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
-        assert_eq!(pln.dom_id, self.id);
+        debug_assert_eq!(pln.dom_id, self.id);
+        debug_assert!(pln.is_empty() || pln.num_bits().unwrap() == self.num_bits());
 
         let mut num_steps = 0;
 
@@ -303,6 +308,9 @@ impl SomeDomain {
         if verbose {
             println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
         }
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+        debug_assert!(steps_str.is_empty() || steps_str.num_bits().unwrap() == self.num_bits());
 
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
@@ -538,16 +546,19 @@ impl SomeDomain {
     fn plan_steps_between(
         &self,
         from_reg: &SomeRegion,
-        to_reg: &SomeRegion,
+        goal_reg: &SomeRegion,
         depth: usize,
         verbose: bool,
     ) -> Option<SomePlan> {
         if verbose {
             println!(
                 "\ndomain::plan_steps_between: from {} to {} depth {}",
-                from_reg, to_reg, depth
+                from_reg, goal_reg, depth
             );
         }
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+
         if depth == 0 {
             if verbose {
                 println!("\n    depth limit exceeded.");
@@ -555,7 +566,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = SomeChange::new_region_to_region(from_reg, to_reg);
+        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
 
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
@@ -569,7 +580,7 @@ impl SomeDomain {
 
         self.depth_first_search(
             from_reg,
-            to_reg,
+            goal_reg,
             &steps_str,
             &steps_by_change_vov,
             depth - 1,
@@ -609,6 +620,10 @@ impl SomeDomain {
             }
             return None;
         }
+
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(stepx.num_bits(), self.num_bits());
 
         debug_assert!(!stepx.initial.intersects(from_reg));
         debug_assert!(!stepx.result.intersects(goal_reg));
@@ -653,6 +668,7 @@ impl SomeDomain {
     /// running make_plan more than once.
     pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<PlanStore> {
         //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
 
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of(&self.cur_state) {
@@ -673,6 +689,10 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+
         if let Some(mut plans) = self.make_plans3(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {}", plans.len());
             let mut addplans = PlanStore::new(vec![]);
@@ -701,6 +721,10 @@ impl SomeDomain {
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+
         if goal_reg.is_superset_of(from_reg) {
             return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
@@ -750,6 +774,8 @@ impl SomeDomain {
     /// running make_plan more than once.
     pub fn make_one_plan(&self, from_reg: &SomeRegion, goal_reg: &SomeRegion) -> Option<SomePlan> {
         //println!("dom: {} make_one_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
 
         // Return no-op plan if the goal is already met.
         if goal_reg.is_superset_of(from_reg) {
@@ -769,6 +795,10 @@ impl SomeDomain {
         within: Option<&SomeRegion>,
     ) -> Option<SomePlan> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
+        debug_assert_eq!(from_reg.num_bits(), self.num_bits());
+        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+
         if goal_reg.is_superset_of(from_reg) {
             return Some(SomePlan::new(self.id, vec![]));
         }
@@ -815,6 +845,9 @@ impl SomeDomain {
         required_change: &SomeChange,
         within: Option<&SomeRegion>,
     ) -> StepStore {
+        debug_assert_eq!(required_change.num_bits(), self.num_bits());
+        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+
         // Check if changes are possible.
 
         // Get a vector of steps (from rules) that make part of the needed changes.
@@ -841,9 +874,7 @@ impl SomeDomain {
 
     /// Return regions not covered by existing groups.
     pub fn regions_not_covered(&self, act_id: usize) -> RegionStore {
-        if act_id >= self.actions.len() {
-            panic!("Domain: {}, invalid action ID {act_id}.", self.id);
-        }
+        debug_assert!(act_id < self.actions.len());
 
         let mut ncov = RegionStore::new(vec![]);
 
@@ -858,9 +889,7 @@ impl SomeDomain {
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_id: usize) -> Result<(), String> {
-        if act_id >= self.actions.len() {
-            return Err(format!("Domain: {}, invalid action ID {act_id}.", self.id));
-        }
+        debug_assert!(act_id < self.actions.len());
 
         let max_region = self.reachable_region();
         self.actions[act_id].display_anchor_info()?;
@@ -879,9 +908,8 @@ impl SomeDomain {
         act_id: usize,
         aregion: &SomeRegion,
     ) -> Result<(), String> {
-        if act_id >= self.actions.len() {
-            return Err(format!("Domain: {}, invalid action ID {act_id}.", self.id));
-        }
+        debug_assert!(act_id < self.actions.len());
+
         self.actions[act_id].display_group_anchor_info(aregion)
     }
 
@@ -950,6 +978,7 @@ impl SomeDomain {
             Some(PlanStore::new(vec![planx.clone()]))
         }
     }
+
     /// Return one plan shortcut.
     fn shortcuts3(&self, planx: &SomePlan) -> Option<PlanStore> {
         if planx.len() < 3 {

@@ -1,5 +1,6 @@
 //! The SomeStep struct.  Indicates an initial region, and action, and a result region..
 
+use crate::bits::NumBits;
 use crate::change::SomeChange;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
@@ -70,6 +71,12 @@ impl Eq for SomeStep {}
 impl SomeStep {
     /// Return a new Step struct instance.
     pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint, group_inx: usize) -> Self {
+        debug_assert!(match &alt_rule {
+            AltRuleHint::NoAlt {} => true,
+            AltRuleHint::AltNoChange {} => true,
+            AltRuleHint::AltRule { rule } => rule.num_bits() == rule.num_bits(),
+        });
+        
         let initial = rule.initial_region();
 
         let result = rule.result_region();
@@ -86,6 +93,7 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
+        debug_assert_eq!(self.num_bits(), reg.num_bits());
         assert!(self.initial.intersects(reg));
 
         let rule_new = self.rule.restrict_initial_region(reg);
@@ -102,6 +110,7 @@ impl SomeStep {
 
     /// Return a new step, by taking a given step and restricting the result region
     pub fn restrict_result_region(&self, reg: &SomeRegion) -> Self {
+        debug_assert_eq!(self.num_bits(), reg.num_bits());
         assert!(self.result.intersects(reg));
 
         let rule_new = self.rule.restrict_result_region(reg);
@@ -131,6 +140,8 @@ impl SomeStep {
     /// Return true if two steps are mutually exclusive.  That is the change of either
     /// must be reversed to use (intersect the initial region) of the other.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+        debug_assert_eq!(self.num_bits(), wanted.num_bits());
         // Groups that change more than one bit may end up being compared.
         if self.act_id == other.act_id && self.group_inx == other.group_inx {
             return false;
@@ -139,6 +150,8 @@ impl SomeStep {
     }
 
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+        debug_assert_eq!(self.num_bits(), wanted.num_bits());
         // Groups that change more than one bit may end up being compared.
         if self.act_id == other.act_id && self.group_inx == other.group_inx {
             return false;
@@ -148,6 +161,11 @@ impl SomeStep {
     /// Return the number of bits changed in a step.
     pub fn num_bits_changed(&self) -> usize {
         self.rule.num_bits_changed()
+    }
+
+    /// Return the number of bits used in the step parts.
+    pub fn num_bits(&self) -> usize {
+        self.initial.num_bits()
     }
 } // end impl SomeStep
 
@@ -165,6 +183,13 @@ impl StrLen for SomeStep {
     }
 }
 
+/// Implement the NumBits trait for SomeStep.
+impl NumBits for SomeStep {
+    fn num_bits(&self) -> usize {
+        self.num_bits()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,7 +200,7 @@ mod tests {
     use crate::step::SomeStep;
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let ur_bits = SomeBits::new(4);
         let tmp_sta = SomeState::new(ur_bits.clone());
         let tmp_sta2 = SomeState::new(SomeBits::new_from_string("0x2")?);

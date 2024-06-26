@@ -1,5 +1,6 @@
 //! The StepStore struct.  A vector of SomeStep structs.
 
+use crate::bits::vec_same_num_bits;
 use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::step::SomeStep;
@@ -26,6 +27,8 @@ pub struct StepStore {
 impl StepStore {
     /// Return a new, empty, StepStore.
     pub fn new(avec: Vec<SomeStep>) -> Self {
+        debug_assert!(vec_same_num_bits(&avec));
+
         Self { avec }
     }
 
@@ -53,11 +56,15 @@ impl StepStore {
 
     /// Add a step to a StepStore.
     pub fn push(&mut self, val: SomeStep) {
+        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == val.num_bits() } else { true });
+
         self.avec.push(val);
     }
 
-    /// Extend a StepStore by emtying another StepStore.
+    /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
+        debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
+
         self.avec.append(&mut other.avec);
     }
 
@@ -91,6 +98,8 @@ impl StepStore {
     /// Given a number of steps, and a required change, return a vector of vectors
     /// where the sub-vectors indicate a single bit change that is required.
     pub fn split_steps_by_bit_change(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
+        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == required_change.num_bits() } else { true });
+
         let mut b01 = Vec::<SomeMask>::new();
 
         if required_change.b01.is_not_low() {
@@ -173,6 +182,8 @@ impl StepStore {
         &self,
         required_change: &SomeChange,
     ) -> Option<Vec<Vec<&SomeStep>>> {
+        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == required_change.num_bits() } else { true });
+
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)
         let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
             self.split_steps_by_bit_change(required_change);
@@ -200,6 +211,15 @@ impl StepStore {
 
         Some(steps_by_change_vov)
     }
+    
+    /// Return the number of bits used be steps in the StepStore.
+    pub fn num_bits(&self) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self.avec[0].num_bits())
+    }
+
 } // end impl StepStore
 
 /// Return true if any single-bit change step vector pairs are all mutually exclusive
@@ -317,7 +337,7 @@ mod tests {
     use crate::step::{AltRuleHint, SomeStep};
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);

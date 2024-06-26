@@ -77,6 +77,7 @@
 //! End
 
 use crate::pn::Pn;
+use crate::bits::vec_same_num_bits;
 use crate::state::SomeState;
 
 const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.
@@ -109,6 +110,8 @@ pub struct ResultStore {
 impl ResultStore {
     /// Return a new ResultStore, with an initial result.
     pub fn new(mut st: Vec<SomeState>) -> Self {
+        debug_assert!(vec_same_num_bits(&st));
+
         let mut ret = Self {
             astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
             num_results: st.len(),
@@ -125,6 +128,8 @@ impl ResultStore {
     /// Add a result to a circular buffer.
     /// Return the pattern number enum.
     pub fn add_result(&mut self, st: SomeState) -> Pn {
+        debug_assert_eq!(st.num_bits(), self.num_bits());
+
         if self.astore.len() < MAX_RESULTS {
             self.astore.push(st);
         } else {
@@ -183,8 +188,14 @@ impl ResultStore {
         Pn::Two
     }
 
+    /// Return the number of results so far.
     pub fn num_results(&self) -> usize {
         self.num_results
+    }
+
+    /// Return the number of bits used by ResultStore items.
+    pub fn num_bits(&self) -> usize {
+        self.astore[0].num_bits()
     }
 } // end impl ResultStore
 

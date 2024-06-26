@@ -23,6 +23,8 @@ impl fmt::Display for SomeSample {
 
 impl SomeSample {
     pub fn new(initial: SomeState, result: SomeState) -> Self {
+        debug_assert_eq!(initial.num_bits(), result.num_bits());
+
         Self { initial, result }
     }
 
@@ -34,5 +36,10 @@ impl SomeSample {
     /// Return a string to represent a SomeSample instance.
     fn formatted_string(&self) -> String {
         format!("{} -> {}", self.initial, self.result)
+    }
+
+    /// Return the number bits used in sample elements.
+    pub fn num_bits(&self) -> usize {
+        self.initial.num_bits()
     }
 }

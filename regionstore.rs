@@ -1,5 +1,6 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
+use crate::bits::vec_same_num_bits;
 use crate::region::{AccessStates, SomeRegion};
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
@@ -39,6 +40,8 @@ impl Eq for RegionStore {}
 impl RegionStore {
     /// Return a new, RegionStore.
     pub fn new(avec: Vec<SomeRegion>) -> Self {
+        debug_assert!(vec_same_num_bits(&avec));
+
         Self { avec }
     }
 
@@ -66,6 +69,8 @@ impl RegionStore {
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
+        debug_assert!(self.is_empty() || val.num_bits() == self.num_bits().unwrap());
+
         self.avec.push(val);
     }
 
@@ -76,26 +81,36 @@ impl RegionStore {
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
+
         tools::vec_contains(&self.avec, SomeRegion::is_superset_of, reg)
     }
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
+
         tools::vec_contains(&self.avec, SomeRegion::is_subset_of, reg)
     }
 
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
+
         tools::vec_contains(&self.avec, SomeRegion::intersects, reg)
     }
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
+        debug_assert!(self.is_empty() || sta.num_bits() == self.num_bits().unwrap());
+
         tools::vec_contains(&self.avec, SomeRegion::is_superset_of, sta)
     }
 
     /// Return vector of regions that are a superset of a given item.
     pub fn supersets_of(&self, itmx: &impl AccessStates) -> Self {
+        debug_assert!(self.is_empty() || itmx.num_bits() == self.num_bits().unwrap());
+
         let mut ret_regs = Self::new(vec![]);
 
         for regx in self.avec.iter() {
@@ -111,11 +126,15 @@ impl RegionStore {
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, reg: &SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
+
         self.avec.contains(reg)
     }
 
     /// Add a region, removing subset regions.
     pub fn push_nosubs(&mut self, reg: SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
+
         // Check for supersets.
         if self.any_superset_of(&reg) {
             //println!("skipped adding region {}, a superset exists in {}", reg, self);
@@ -143,6 +162,8 @@ impl RegionStore {
 
     /// Add a region, removing superset (and equal) regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
+        debug_assert!(self.is_empty() || reg.num_bits() == self.avec[0].num_bits());
+
         // Check for subsets.
         if self.any_subset_of(&reg) {
             // println!("skipped adding region {}, a superset exists", reg.str());
@@ -170,6 +191,8 @@ impl RegionStore {
 
     /// Subtract a group/region/square/state from a RegionStore.
     pub fn subtract_item(&self, itmx: &impl AccessStates) -> Self {
+        debug_assert!(self.is_empty() || itmx.num_bits() == self.avec[0].num_bits());
+
         let mut ret_str = Self::new(vec![]);
 
         for regy in &self.avec {
@@ -187,6 +210,8 @@ impl RegionStore {
 
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, subtrahend: &Self) -> Self {
+        debug_assert!(self.is_empty() || subtrahend.num_bits() == self.num_bits());
+
         let mut ret_str = self.clone();
 
         for regx in subtrahend.iter() {
@@ -200,6 +225,9 @@ impl RegionStore {
     /// Subtract a state from a RegionStore, with results being supersets of a second state.
     /// Assumes all regions are supersets of the second state before doing the subtraction.
     pub fn subtract_state_to_supersets_of(&self, substa: &SomeState, supsta: &SomeState) -> Self {
+        debug_assert!(self.is_empty() || substa.num_bits() == self.avec[0].num_bits());
+        debug_assert!(self.is_empty() || supsta.num_bits() == self.avec[0].num_bits());
+
         assert!(self.any_superset_of_state(substa));
 
         let mut ret_str = Self::new(vec![]);
@@ -219,6 +247,8 @@ impl RegionStore {
 
     // Return the union of two RegionStores.
     pub fn union(&self, other: &Self) -> Self {
+        debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
+
         let mut ret = self.clone();
         for regx in other.avec.iter() {
             ret.push_nosubs(regx.clone());
@@ -228,6 +258,8 @@ impl RegionStore {
 
     /// Extend a NeedStore by emptying another NeedStore..
     pub fn append(&mut self, mut other: Self) {
+        debug_assert!(self.is_empty() || other.is_empty() || self.avec[0].num_bits() == other.avec[0].num_bits());
+
         self.avec.append(&mut other.avec);
     }
 
@@ -235,6 +267,8 @@ impl RegionStore {
     /// Regions overlapping adjacent regions, in the result, are not found.
     /// If that is wanted, it would be max-reg.subtract(&max-reg.subtract(ret))
     pub fn intersection(&self, other: &Self) -> Self {
+        debug_assert!(self.is_empty() || other.is_empty() || self.avec[0].num_bits() == other.avec[0].num_bits());
+
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {
             for regy in other.iter() {
@@ -327,6 +361,10 @@ impl RegionStore {
         state1: &SomeState,
         state2: &SomeState,
     ) -> Self {
+        debug_assert!(self.is_empty() || max_poss_reg.num_bits() == self.num_bits().unwrap());
+        debug_assert!(max_poss_reg.num_bits() == state1.num_bits());
+        debug_assert!(max_poss_reg.num_bits() == state2.num_bits());
+
         assert!(state1 != state2);
 
         let not_first_state = Self::new(max_poss_reg.subtract(state1));
@@ -334,6 +372,15 @@ impl RegionStore {
         let not_second_state = Self::new(max_poss_reg.subtract(state2));
 
         not_first_state.union(&not_second_state)
+    }
+
+    /// Return the number of bits used in a RegionStore.
+    pub fn num_bits(&self) -> Option<usize> {
+        if self.is_not_empty() {
+            Some(self.avec[0].num_bits())
+        } else {
+            None
+        }
     }
 } // end impl RegionStore.
 

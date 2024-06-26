@@ -364,7 +364,7 @@ impl SomeBits {
 
     /// Return the bitwise AND of two SomeBits structs.
     pub fn b_and(&self, other: &Self) -> Self {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -383,7 +383,7 @@ impl SomeBits {
     /// the other will not accidentally introduce one bits outside of
     /// the allowed number of bits.
     pub fn b_and_not(&self, other: &Self) -> Self {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -399,7 +399,7 @@ impl SomeBits {
 
     /// Return the bitwise OR of two SomeBits structs.
     pub fn b_or(&self, other: &Self) -> Self {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -415,7 +415,7 @@ impl SomeBits {
 
     /// Return the bitwise XOR of two SomeBits structs.
     pub fn b_xor(&self, other: &Self) -> Self {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
 
@@ -431,7 +431,7 @@ impl SomeBits {
 
     /// Return Bits that are the same
     pub fn b_eqv(&self, other: &Self) -> Self {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         self.b_xor(other).b_not()
     }
@@ -486,14 +486,14 @@ impl SomeBits {
     /// Return the number of bits that are different.
     /// This can be interpreted as how "far away" two bit patterns are.
     pub fn distance(&self, other: &Self) -> usize {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         self.b_xor(other).num_one_bits()
     }
 
     /// Return true if two bits instances are adjacent.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        assert_eq!(self.num_bits, other.num_bits);
+        debug_assert_eq!(self.num_bits, other.num_bits);
 
         self.b_xor(other).just_one_bit()
     }
@@ -546,6 +546,11 @@ impl BitsRef for SomeBits {
     }
 }
 
+/// Define the NumBits trait, so different structs can return the number bits used by their substructs.
+pub trait NumBits {
+    fn num_bits(&self) -> usize;
+}
+
 /// Implement the trait StrLen for string representations of SomeBits.
 impl StrLen for SomeBits {
     fn strlen(&self) -> usize {
@@ -557,10 +562,48 @@ impl StrLen for SomeBits {
     }
 }
 
+/// Return true if the items in a vector all use the same number bits.
+pub fn vec_same_num_bits<T: NumBits>(avec: &[T]) -> bool {
+    if avec.len() < 2 {
+        return true;
+    }
+    let first_bits = avec[0].num_bits();
+    for itmx in avec.iter().skip(1) {
+        if itmx.num_bits() != first_bits {
+            return false;
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tools;
+
+
+    #[test]
+    fn eq() -> Result<(), String> {
+         let bits1 = SomeBits::new_from_string("0x5")?;
+         println!("bits1 {bits1}");
+         let bits2 = SomeBits::new_from_string("0b0101")?;
+         println!("bits2 {bits2}");
+         assert!(bits1 == bits2);
+         
+         let bits1 = SomeBits::new_from_string("0x5+1")?;
+         println!("bits1 {bits1}");
+         let bits2 = SomeBits::new_from_string("0x5+1")?;
+         println!("bits2 {bits2}");
+         assert!(bits1 == bits2);
+
+         let bits1 = SomeBits::new_from_string("0x5+0")?;
+         println!("bits1 {bits1}");
+         let bits2 = SomeBits::new_from_string("0x5+1")?;
+         println!("bits2 {bits2}");
+         assert!(bits1 != bits2);
+    
+         Ok(())
+    }
 
     #[test]
     fn new_high() -> Result<(), String> {

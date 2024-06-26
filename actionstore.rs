@@ -55,9 +55,9 @@ impl ActionStore {
     }
 
     /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_id: usize, rules: Vec<RuleStore>) {
+    pub fn add_action(&mut self, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) {
         self.avec
-            .push(SomeAction::new(self.avec.len(), dom_id, rules));
+            .push(SomeAction::new(self.avec.len(), dom_id, cur_state, rules));
     }
 
     /// Check limited flag due to new changes.
@@ -69,7 +69,6 @@ impl ActionStore {
 
     /// Get needs for all actions in the store.
     pub fn get_needs(&mut self, cur_state: &SomeState, dom_id: usize) -> NeedStore {
-        // Run a get_needs thread for each action
         //println!("actionstore: get_needs");
 
         let max_reg_prev = self.reachable_region(cur_state);
@@ -82,6 +81,7 @@ impl ActionStore {
             self.check_limited(&max_reg);
         }
 
+        // Run a get_needs thread for each action
         let vecx: Vec<NeedStore> = self
             .avec
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages

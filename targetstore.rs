@@ -1,8 +1,10 @@
 //! The TargetStore struct, a vector of SomeTarget structs.
 
+use crate::bits::NumBits;
 use crate::region::SomeRegion;
 use crate::statestorecorr::StateStoreCorr;
 use crate::target::SomeTarget;
+use crate::tools::{AvecRef, corresponding_num_bits};
 
 use std::fmt;
 use std::ops::Index; // IndexMut
@@ -56,7 +58,8 @@ impl TargetStore {
 
     /// Return true if a TargetStore is a superset of a StateStore.
     pub fn is_superset_of_states(&self, states: &StateStoreCorr) -> bool {
-        assert_eq!(self.len(), states.len());
+        debug_assert_eq!(self.len(), states.len());
+        debug_assert!(corresponding_num_bits(self, states));
 
         for targx in self.avec.iter() {
             if targx.is_superset_of(&states[targx.dom_id]) {
@@ -107,5 +110,11 @@ impl Index<usize> for TargetStore {
     type Output = SomeTarget;
     fn index(&self, i: usize) -> &SomeTarget {
         &self.avec[i]
+    }
+}
+
+impl AvecRef for TargetStore {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        &self.avec
     }
 }

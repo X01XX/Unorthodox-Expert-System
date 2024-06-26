@@ -105,11 +105,15 @@ impl SomeMask {
 
     /// Return true if a mask is a subset of a second mask.
     pub fn is_subset_ones_of(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.bitwise_and(other) == *self
     }
 
     /// Return true if a mask is a superset of a second mask.
     pub fn is_superset_ones_of(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.bitwise_and(other) == *other
     }
 
@@ -161,6 +165,8 @@ impl SomeMask {
 
     /// Return a SomeMask instance, representing a bitwise And of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_and(other.bitsref()),
         }
@@ -168,6 +174,8 @@ impl SomeMask {
 
     /// Return a SomeMask instance, representing a bitwise And of a mask and the invert of another instance that supports the BitsRef Trait.
     pub fn bitwise_and_not(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_and_not(other.bitsref()),
         }
@@ -175,6 +183,8 @@ impl SomeMask {
 
     /// Return a SomeMask instance, representing a bitwise Or of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_or(other.bitsref()),
         }
@@ -182,6 +192,8 @@ impl SomeMask {
 
     /// Return a SomeMask instance, representing a bitwise XOr of a mask and another instance that supports the BitsRef Trait.
     pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
+        debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
+
         Self {
             bts: self.bts.b_xor(other.bitsref()),
         }
@@ -198,9 +210,14 @@ impl SomeMask {
     pub fn to_state(&self) -> SomeState {
         SomeState::new(self.bts.clone())
     }
+    
+    /// Return the number of bits used in a mask.
+    pub fn num_bits(&self) -> usize {
+        self.bts.num_bits as usize
+    }
 } // end impl SomeMask
 
-/// Implement the BitsRef trait for SomeMask.
+// Implement the BitsRef trait for SomeMask.
 impl BitsRef for SomeMask {
     fn bitsref(&self) -> &SomeBits {
         &self.bts

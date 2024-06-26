@@ -58,6 +58,8 @@ pub struct SomeAction {
     pub id: usize,
     /// Parent Domain number.
     pub dom_id: usize,
+    /// Number bits expected, for argument checking.
+    num_bits: usize,
     /// Store for groups of compatible-change squares.
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
@@ -76,10 +78,12 @@ pub struct SomeAction {
 
 impl SomeAction {
     /// Return a new SomeAction struct.
-    pub fn new(act_id: usize, dom_id: usize, rules: Vec<RuleStore>) -> Self {
+    pub fn new(act_id: usize, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) -> Self {
+
         SomeAction {
             id: act_id,
             dom_id,
+            num_bits: cur_state.num_bits(),
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new()),
             do_something: ActionInterface::new(rules),
@@ -92,6 +96,8 @@ impl SomeAction {
 
     /// Return the index in memory of a square, given a key.
     fn memory_index(&self, key: &SomeState) -> Option<usize> {
+        debug_assert_eq!(key.num_bits(), self.num_bits);
+
         for (inx, sqrx) in self.memory.iter().enumerate() {
             if sqrx.state == *key {
                 return Some(inx);
@@ -102,6 +108,8 @@ impl SomeAction {
 
     /// Add a new square from a sample.
     pub fn add_new_sample(&mut self, smpl: &SomeSample) -> &SomeSquare {
+        debug_assert_eq!(smpl.num_bits(), self.num_bits);
+
         if let Some(inx) = self.memory_index(&smpl.initial) {
             if let Some(sqrx) = self.memory.remove(inx) {
                 return self.add_new_square(sqrx);
@@ -113,6 +121,8 @@ impl SomeAction {
 
     /// Add a new square.
     fn add_new_square(&mut self, sqrx: SomeSquare) -> &SomeSquare {
+        debug_assert_eq!(sqrx.num_bits(), self.num_bits);
+
         self.cleanup_trigger += 1;
 
         let key = sqrx.state.clone();
@@ -126,6 +136,8 @@ impl SomeAction {
     /// Return true if something changed.
     fn eval_changed_square(&mut self, key: &SomeState) {
         //println!("SomeAction:eval_changed_square {key}");
+        debug_assert_eq!(key.num_bits(), self.num_bits);
+
         let sqrx = self.squares.find_mut_must(key);
 
         // Check if it invalidates any groups.
@@ -185,6 +197,7 @@ impl SomeAction {
     /// Return true if a matching square exists.
     pub fn eval_sample(&mut self, smpl: &SomeSample) -> bool {
         //println!("Dom {} Act {} eval_sample: {}", self.dom_id, self.id, smpl);
+        debug_assert_eq!(smpl.num_bits(), self.num_bits);
 
         // If a square already exists, update it.
         if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
@@ -234,6 +247,8 @@ impl SomeAction {
     /// Evaluate an arbitrary sample, creating a square if needed.
     pub fn eval_sample_arbitrary(&mut self, smpl: &SomeSample) {
         //println!("Dom {} Act {} eval_sample_arbitrary {}", self.dom_id, self.id, smpl);
+        debug_assert_eq!(smpl.num_bits(), self.num_bits);
+
         if !self.eval_sample(smpl) {
             self.add_new_sample(smpl);
         }
@@ -241,6 +256,8 @@ impl SomeAction {
 
     /// Check invalid regions for orphaned squares, create new regions.
     fn process_invalid_regions(&mut self, invalid_regs: &RegionStore) {
+        debug_assert!(invalid_regs.is_empty() || invalid_regs.num_bits().unwrap() == self.num_bits);
+
         // Load states from squares in the invalidated regions.
         let mut stas_in_regs = StateStore::new(vec![]);
         for regx in invalid_regs.iter() {
@@ -270,6 +287,8 @@ impl SomeAction {
     fn create_groups_from_squares(&mut self, keys: &[SomeState]) {
         //println!("create_groups_from_squares {}", tools::vec_string(keys));
         assert!(!keys.is_empty());
+        debug_assert_eq!(keys[0].num_bits(), self.num_bits);
+
         // Set flag to later check for regions not covered by groups.
         self.check_remainder = true;
 
@@ -294,6 +313,7 @@ impl SomeAction {
     /// Check groups due to a new, or updated, square.
     fn create_groups_from_squares2(&self, key: &SomeState) -> Vec<SomeGroup> {
         // println!("create_groups_from_squares2: key {}", key);
+        debug_assert_eq!(key.num_bits(), self.num_bits);
         debug_assert!(!self.groups.any_superset_of(key));
 
         // Lookup square.
@@ -323,6 +343,8 @@ impl SomeAction {
     /// The Domain current state for which there are no samples.
     /// A pn > 1 state that needs more samples.
     pub fn state_not_in_group_needs(&self, cur_state: &SomeState) -> NeedStore {
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+
         let mut nds = NeedStore::new(vec![]);
 
         // Check if current state is in any groups
@@ -389,14 +411,8 @@ impl SomeAction {
         dom_id: usize,
         max_reg: &SomeRegion,
     ) -> NeedStore {
-        //for sqrx in self.squares.ahash.values() {
-        //    if (sqrx.pn == Pn::One || sqrx.pnc) && self.groups.num_groups_in(&sqrx.state) == 0 {
-        //        panic!(
-        //            "Dom {} Act {} sqr {} not in any group",
-        //            self.dom_id, self.id, sqrx
-        //        );
-        //    }
-        //}
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
         let mut ret = NeedStore::new(vec![]);
 
@@ -445,6 +461,8 @@ impl SomeAction {
         max_reg: &SomeRegion,
     ) -> NeedStore {
         //println!("Running Action {}::get_needs2 {}", self.num, cur_state);
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
         let mut nds = NeedStore::new(vec![]);
 
@@ -558,6 +576,8 @@ impl SomeAction {
 
     /// Check for needs in a region not covered by current groups.
     fn remainder_check_region(&self, max_reg: &SomeRegion) -> RegionStore {
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
+
         let mut remainder_regs = RegionStore::new(vec![max_reg.clone()]);
 
         for grpx in self.groups.iter() {
@@ -740,6 +760,7 @@ impl SomeAction {
     /// in case the anchor should be changed.
     pub fn limit_groups_needs(&mut self, max_reg: &SomeRegion) -> Option<NeedStore> {
         //println!("limit_groups_needs chg {}", change_mask);
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
         //let mut ret_nds = NeedStore::new(vec![]);
 
@@ -847,6 +868,9 @@ impl SomeAction {
     /// the given group, set their limit flag off, to recalculate the best
     /// anchor.
     fn set_group_limited(&mut self, grp_reg: &SomeRegion, edges: SomeMask) {
+        debug_assert_eq!(grp_reg.num_bits(), self.num_bits);
+        debug_assert_eq!(edges.num_bits(), self.num_bits);
+
         let num_edges = edges.num_one_bits();
 
         let grpx = self.groups.find_mut(grp_reg).expect("SNH");
@@ -877,7 +901,9 @@ impl SomeAction {
     /// To rate a possible anchor state, no sample of the state is requried.
     /// When comparing tuples, Rust compares item pairs in order until there is a difference.
     pub fn group_anchor_rate(&self, regx: &SomeRegion, stax: &SomeState) -> (usize, usize, usize) {
-        //assert_eq!(self.groups.num_groups_state_in(stax), 1);
+        debug_assert_eq!(regx.num_bits(), self.num_bits);
+        debug_assert_eq!(stax.num_bits(), self.num_bits);
+
         if !self.groups.in_1_group(stax) {
             return (0, 0, 0);
         }
@@ -924,6 +950,9 @@ impl SomeAction {
         group_num: usize,
         max_reg: &SomeRegion,
     ) -> NeedStore {
+        debug_assert_eq!(regx.num_bits(), self.num_bits);
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
+
         let mut ret_nds = NeedStore::new(vec![]);
 
         let adj_squares = self.squares.stas_adj_reg(regx);
@@ -1101,7 +1130,10 @@ impl SomeAction {
         max_reg: &SomeRegion,
         group_num: usize,
     ) -> Option<NeedStore> {
-        // let grpx = self.groups.find_mut(&regx).expect("SNH");
+        debug_assert_eq!(regx.num_bits(), self.num_bits);
+        debug_assert_eq!(anchor_sta.num_bits(), self.num_bits);
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
+
         // If any external adjacent states have not been sampled, or not enough,
         // return needs for that.
         //
@@ -1337,6 +1369,9 @@ impl SomeAction {
         //  "groups_pair_intersection_needs {} {} and {} {}",
         //  &grpx.region, grpx.pn, grpy.region, grpy.pn
         //);
+        debug_assert_eq!(grpx.num_bits(), self.num_bits);
+        debug_assert_eq!(grpy.num_bits(), self.num_bits);
+        
         assert!(grpx.region.intersects(&grpy.region));
 
         let mut nds = NeedStore::new(vec![]);
@@ -1441,6 +1476,12 @@ impl SomeAction {
         rulsy: Option<RuleStore>,
     ) -> Option<SomeNeed> {
         //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", regx, grpx.region, grpx.rules, grpy.region, grpy.rules);
+        debug_assert_eq!(regx.num_bits(), self.num_bits);
+        debug_assert_eq!(grpx.num_bits(), self.num_bits);
+        debug_assert_eq!(grpy.num_bits(), self.num_bits);
+        debug_assert!(if let Some(ruls) = &rulsx { ruls.num_bits().unwrap() == self.num_bits } else { true });
+        debug_assert!(if let Some(ruls) = &rulsy { ruls.num_bits().unwrap() == self.num_bits } else { true });
+
         // Check for any squares in the region
         match self.squares.pick_a_square_in(regx) {
             Ok(sqrx) => {
@@ -1489,6 +1530,9 @@ impl SomeAction {
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
     pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
+        debug_assert_eq!(achange.num_bits(), self.num_bits);
+        debug_assert!(if let Some(reg) = &within { reg.num_bits() == self.num_bits } else { true });
+
         debug_assert!(achange.b01.bitwise_and(&achange.b10).is_low()); // No X->x change wanted.
 
         let mut stps = StepStore::new(vec![]);
@@ -1553,6 +1597,10 @@ impl SomeAction {
         achange: &SomeChange,
         within: Option<&SomeRegion>,
     ) -> StepStore {
+        debug_assert_eq!(grpx.num_bits(), self.num_bits);
+        debug_assert_eq!(achange.num_bits(), self.num_bits);
+        debug_assert!(if let Some(reg) = &within { reg.num_bits() == self.num_bits } else { true });
+
         let mut stps = StepStore::new(vec![]);
 
         // Get rules restricted for changes.  There will be a rule for each single-bit change needed.
@@ -1612,6 +1660,7 @@ impl SomeAction {
     /// but compatible with 1->1.
     fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> Vec<SomeGroup> {
         //println!("possible_groups_from_square {}", sqrx);
+        debug_assert_eq!(sqrx.num_bits(), self.num_bits);
 
         let mut ret_grps = Vec::<SomeGroup>::new();
 
@@ -1837,6 +1886,10 @@ impl SomeAction {
         not_dissim_sqrs: &[&SomeSquare],
     ) -> Option<SomeGroup> {
         // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, not_dissim_sqrs.len(), regx);
+        debug_assert_eq!(sqrx.num_bits(), self.num_bits);
+        debug_assert_eq!(regx.num_bits(), self.num_bits);
+        debug_assert!(not_dissim_sqrs.is_empty() || not_dissim_sqrs[0].num_bits() == self.num_bits);
+
         debug_assert!(regx.is_superset_of(sqrx));
 
         // Find squares in the given region, and calc region built from similar squares.
@@ -1931,6 +1984,8 @@ impl SomeAction {
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
         //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+        debug_assert_eq!(ndx.act_id(), self.id);
 
         let asample = self.take_action_arbitrary(cur_state);
 
@@ -1980,6 +2035,8 @@ impl SomeAction {
     /// Return a sample.
     pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
         //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_id, self.id);
@@ -1996,6 +2053,8 @@ impl SomeAction {
     /// Return a sample.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
         //println!("Dom {} Act {} take_action_step cur_state {cur_state}", self.dom_id, self.id);
+        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+
         let astate = self
             .do_something
             .take_action(cur_state, self.dom_id, self.id);
@@ -2009,6 +2068,8 @@ impl SomeAction {
 
     /// Update memory, if needed.
     pub fn update_memory(&mut self, asample: &SomeSample) {
+        debug_assert_eq!(asample.num_bits(), self.num_bits);
+
         for sqrx in self.memory.iter_mut() {
             if sqrx.state == asample.initial {
                 sqrx.add_sample(asample);
@@ -2050,6 +2111,8 @@ impl SomeAction {
 
     /// Display a groups' achor info, given the groups' region.
     pub fn display_group_anchor_info(&self, aregion: &SomeRegion) -> Result<(), String> {
+        debug_assert_eq!(aregion.num_bits(), self.num_bits);
+
         if let Some(grpx) = self.groups.find(aregion) {
             self.display_group_anchor_info2(grpx)
         } else {
@@ -2059,6 +2122,8 @@ impl SomeAction {
 
     /// Display a groups' achor info.
     pub fn display_group_anchor_info2(&self, grpx: &SomeGroup) -> Result<(), String> {
+        debug_assert_eq!(grpx.num_bits(), self.num_bits);
+
         if let Some(anchor) = &grpx.anchor {
             println!("\nGroup:   {}", grpx.region);
             let sqrx = self
@@ -2099,6 +2164,8 @@ impl SomeAction {
 
     /// Check group limited setting.
     pub fn check_limited(&mut self, max_reg: &SomeRegion) {
+        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
+
         self.groups.check_limited(max_reg);
     }
 
@@ -2151,6 +2218,8 @@ impl SomeAction {
 
     /// Add a square to memory, oldest first.
     fn add_square_to_memory(&mut self, sqrx: SomeSquare) {
+        debug_assert_eq!(sqrx.num_bits(), self.num_bits);
+
         if self.squares.find(&sqrx.state).is_some() {
             panic!(
                 "add_square_to_memory: square for {} exists in hash",
@@ -2183,7 +2252,8 @@ mod tests {
     #[test]
     fn bridge() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         let s0 = SomeState::new_from_string("s0b0000")?;
         let s1 = SomeState::new_from_string("s0b0001")?;
@@ -2298,7 +2368,8 @@ mod tests {
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
@@ -2336,7 +2407,8 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Eval sample that other samples will be incompatible with.
         let s7 = SomeState::new_from_string("s0b0111")?;
@@ -2383,7 +2455,9 @@ mod tests {
     // Test making a group from two Pn::Two squares.
     #[test]
     fn possible_region() -> Result<(), String> {
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        // Init Action.
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
 
@@ -2418,7 +2492,8 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
         let s0 = SomeState::new_from_string("s0b0000")?;
@@ -2447,7 +2522,8 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
         let s0 = SomeState::new_from_string("s0b0000")?;
@@ -2489,7 +2565,8 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::new(0, 0, vec![]);
+        let sx = SomeState::new_from_string("s0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
         let s2 = SomeState::new_from_string("s0b0010")?;

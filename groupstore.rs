@@ -1,5 +1,6 @@
 //! The GroupStore struct, a vector of SomeGroup structs.
 
+use crate::bits::vec_same_num_bits;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::pn::Pn;
@@ -37,6 +38,8 @@ pub struct GroupStore {
 impl GroupStore {
     /// Return a new, empty, GroupStore.
     pub fn new(avec: Vec<SomeGroup>) -> Self {
+        debug_assert!(vec_same_num_bits(&avec));
+
         Self {
             avec,
             aggregate_changes: None,

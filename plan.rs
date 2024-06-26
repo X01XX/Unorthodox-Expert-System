@@ -300,6 +300,14 @@ impl SomePlan {
         }
         false
     }
+
+    /// Return the number of bits used in plan steps, for argument checking.
+    pub fn num_bits(&self) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self[0].num_bits())
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {
@@ -312,7 +320,7 @@ impl Index<usize> for SomePlan {
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
-        4 + self.steps.strlen()
+        4 + self.steps.strlen() + if self.shortcut { 1 } else { 0 }
     }
 }
 
@@ -325,7 +333,7 @@ mod tests {
     use crate::step::AltRuleHint;
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new_from_string("0000")?;
         let tmp_stb = SomeState::new_from_string("1111")?;
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_stb.clone()));
@@ -344,7 +352,8 @@ mod tests {
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_stb.clone(), tmp_st3.clone()));
         let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
-        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);
+        let mut tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);
+        tmp_pln.set_shortcut();
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");

@@ -4,7 +4,9 @@
 //! which may be different from other states in the vector.
 use crate::state::SomeState;
 use crate::tools;
+use crate::bits::NumBits;
 
+use tools::AvecRef;
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
@@ -68,5 +70,11 @@ impl Index<usize> for StateStoreCorr {
 impl IndexMut<usize> for StateStoreCorr {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
         &mut self.avec[i]
+    }
+}
+
+impl AvecRef for StateStoreCorr {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        &self.avec
     }
 }

@@ -26,6 +26,8 @@ impl fmt::Display for SomeChange {
 impl SomeChange {
     /// Return a new change with the given masks
     pub fn new(b01: SomeMask, b10: SomeMask) -> Self {
+        debug_assert_eq!(b01.num_bits(), b10.num_bits());
+
         Self { b01, b10 }
     }
 
@@ -39,6 +41,8 @@ impl SomeChange {
 
     /// Return the logical bitwise and of two changes
     pub fn intersection(&self, other: &impl AccessChanges) -> Self {
+        debug_assert_eq!(other.num_bits(), self.num_bits());
+
         Self {
             b01: self.b01.bitwise_and(other.b01()),
             b10: self.b10.bitwise_and(other.b10()),
@@ -47,6 +51,8 @@ impl SomeChange {
 
     /// Return the logical bitwise or of two changes
     pub fn union(&self, other: &impl AccessChanges) -> Self {
+        debug_assert_eq!(other.num_bits(), self.num_bits());
+
         Self {
             b01: self.b01.bitwise_or(other.b01()),
             b10: self.b10.bitwise_or(other.b10()),
@@ -55,6 +61,8 @@ impl SomeChange {
 
     /// Return the difference of two changes
     pub fn difference(&self, other: &impl AccessChanges) -> Self {
+        debug_assert_eq!(other.num_bits(), self.num_bits());
+
         Self {
             b01: self.b01.bitwise_xor(other.b01()),
             b10: self.b10.bitwise_xor(other.b10()),
@@ -89,6 +97,8 @@ impl SomeChange {
 
     /// Return true if a SomeChange struct is a ones-subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        debug_assert_eq!(other.num_bits(), self.num_bits());
+
         if self.b01.is_subset_ones_of(&other.b01) && self.b10.is_subset_ones_of(&other.b10) {
             return true;
         }
@@ -115,6 +125,8 @@ impl SomeChange {
 
     /// Return a change for translating from a region to another region.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
+        debug_assert_eq!(from.num_bits(), to.num_bits());
+        
         let from_x = from.x_mask();
         let from_1 = from.edge_ones_mask();
         let from_0 = from.edge_zeros_mask();
@@ -133,6 +145,8 @@ impl SomeChange {
 
     /// Return a change for translating from a state to a region.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
+        debug_assert_eq!(from.num_bits(), to.num_bits());
+
         SomeChange {
             b01: to.edge_ones_mask().bitwise_and_not(from),
             b10: to.edge_zeros_mask().bitwise_and(from),
@@ -141,6 +155,8 @@ impl SomeChange {
 
     /// Return the intersection of the invert of the argument.
     pub fn bitwise_and_not(&self, other: &Self) -> Self {
+        debug_assert_eq!(other.num_bits(), self.num_bits());
+
         SomeChange {
             b01: self.b01.bitwise_and_not(&other.b01),
             b10: self.b10.bitwise_and_not(&other.b10),
@@ -149,11 +165,18 @@ impl SomeChange {
 
     /// Return the result of applying a change to a state.
     pub fn apply_changes(&self, stax: &SomeState) -> SomeState {
+        debug_assert_eq!(stax.num_bits(), self.num_bits());
+
         stax.bitwise_xor(
             &stax
                 .bitwise_and(&self.b10)
                 .bitwise_or(&self.b01.bitwise_and_not(stax)),
         )
+    }
+
+    /// Return the number of bits used by the change's masks.
+    pub fn num_bits(&self) -> usize {
+        self.b01.num_bits()
     }
 } // end impl SomeChange
 
@@ -163,6 +186,8 @@ pub trait AccessChanges {
     fn b01(&self) -> &SomeMask;
     /// Return a reference to the 1->0 mask.
     fn b10(&self) -> &SomeMask;
+    /// Return the number of bits used.
+    fn num_bits(&self) -> usize;
 }
 
 impl AccessChanges for SomeChange {
@@ -171,6 +196,9 @@ impl AccessChanges for SomeChange {
     }
     fn b10(&self) -> &SomeMask {
         &self.b10
+    }
+    fn num_bits(&self) -> usize {
+        self.num_bits()
     }
 }
 

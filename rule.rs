@@ -11,6 +11,7 @@
 //! The rule can be used in a way that is like "forward chaining" (result_from_initial) and
 //! "backward chaining" (intitial_from_result).
 
+use crate::bits::NumBits;
 use crate::change::{AccessChanges, SomeChange};
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
@@ -157,6 +158,8 @@ impl SomeRule {
 
     /// Return true if a rule is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let Some(tmprul) = self.intersection(other) else {
             return false;
         };
@@ -166,6 +169,8 @@ impl SomeRule {
 
     /// Return true if a rule is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let Some(tmprul) = self.intersection(other) else {
             return false;
         };
@@ -195,6 +200,8 @@ impl SomeRule {
     /// XX + 01 -> 11, XX + 10 -> 00.
     /// Xx + 00 -> 10, Xx + 11 -> 01.
     pub fn parsed_union(&self, other: &Self) -> Option<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let rule2 = Self {
             b00: self.b00.bitwise_or(&other.b00),
             b01: self.b01.bitwise_or(&other.b01),
@@ -224,6 +231,8 @@ impl SomeRule {
 
     /// Return a logical OR of two rules. The result may be invalid.
     pub fn union(&self, other: &Self) -> Option<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let ret_rule = Self {
             b00: self.b00.bitwise_or(&other.b00),
             b01: self.b01.bitwise_or(&other.b01),
@@ -238,6 +247,8 @@ impl SomeRule {
 
     /// Return a logical AND of two rules.  The result may be invalid.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let ret_rule = Self {
             b00: self.b00.bitwise_and(&other.b00),
             b01: self.b01.bitwise_and(&other.b01),
@@ -274,6 +285,8 @@ impl SomeRule {
 
     /// Return the result state of a rule.
     pub fn result_state(&self, astate: &SomeState) -> SomeState {
+        debug_assert_eq!(self.num_bits(), astate.num_bits());
+
         assert!(self.initial_region().is_superset_of(astate));
 
         let sta_cng1 = astate.bitwise_and(&self.b10);
@@ -284,6 +297,8 @@ impl SomeRule {
 
     /// Return result from an input region.
     pub fn result_from(&self, regx: &SomeRegion) -> SomeRegion {
+        debug_assert_eq!(self.num_bits(), regx.num_bits());
+
         assert!(self.initial_region().intersects(regx));
 
         self.restrict_initial_region(regx).result_region()
@@ -292,6 +307,8 @@ impl SomeRule {
     /// Return the result region after applying an initial state to a rule.
     /// This could be called "forward chaining".
     pub fn result_from_initial_state(&self, sta: &SomeState) -> SomeState {
+        debug_assert_eq!(self.num_bits(), sta.num_bits());
+
         if !self.initial_region().is_superset_of(sta) {
             panic!(
                 "result_from_initial_state: given state is not a subset of the ruls initial region"
@@ -308,6 +325,8 @@ impl SomeRule {
     /// given region.  Assuming the region given is not a superset
     /// this will also change the result region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
+        debug_assert_eq!(self.num_bits(), regx.num_bits());
+
         let init_reg = self.initial_region();
 
         if let Some(reg_int) = regx.intersection(&init_reg) {
@@ -329,6 +348,8 @@ impl SomeRule {
     /// given region.  Assuming the region given is not a superset
     /// this will also change the initial region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Self {
+        debug_assert_eq!(self.num_bits(), regx.num_bits());
+
         //println!("restricting result region of {} to {}", self, regx);
 
         let rslt_reg = self.result_region();
@@ -434,6 +455,9 @@ impl SomeRule {
         change_needed: &SomeChange,
         within: Option<&SomeRegion>,
     ) -> Vec<SomeRule> {
+        debug_assert_eq!(self.num_bits(), change_needed.num_bits());
+        debug_assert!(if let Some(regx) = within { self.num_bits() == regx.num_bits() } else { true });
+
         debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low());
 
         // Init return RuleStore.
@@ -515,6 +539,8 @@ impl SomeRule {
     ///    A wanted 1->0 change in first rule should correspond to a 0->0 in the second rule.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         // println!("starting, self {self} other {other} wanted {wanted}");
+        debug_assert!(self.num_bits() == other.num_bits());
+        debug_assert!(self.num_bits() == wanted.num_bits());
 
         self.sequence_blocks_changes(other, wanted) && other.sequence_blocks_changes(self, wanted)
     }
@@ -528,6 +554,8 @@ impl SomeRule {
     ///    A wanted 1->0 change in first rule should correspond to a 0->0 in the second rule.
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
         // println!("sequence_blocks_change: {} to {} change wanted {}", self.formatted_string(), other.formatted_string(), wanted.formatted_string());
+        debug_assert!(self.num_bits() == other.num_bits());
+        debug_assert!(self.num_bits() == wanted.num_bits());
 
         debug_assert!(wanted.is_not_low());
 
@@ -568,6 +596,8 @@ impl SomeRule {
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
+        debug_assert_eq!(from.num_bits(), to.num_bits());
+
         let from_x = from.x_mask();
         let from_1 = from.edge_ones_mask();
         let from_0 = from.edge_zeros_mask();
@@ -609,6 +639,8 @@ impl SomeRule {
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
+        debug_assert_eq!(from.num_bits(), to.num_bits());
+
         let from_0 = from.bitwise_not();
 
         let to_x = to.x_mask();
@@ -640,6 +672,8 @@ impl SomeRule {
     /// The result region of the first rule must intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
     pub fn combine_pair(&self, other: &Self) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
@@ -660,6 +694,11 @@ impl SomeRule {
                 .bitwise_and(&other.b00)
                 .bitwise_or(&self.b11.bitwise_and(&other.b10)),
         }
+    }
+
+    /// Return the number bits used in a rule's masks.
+    pub fn num_bits(&self) -> usize {
+        self.b00.num_bits()
     }
 } // end impl SomeRule
 
@@ -685,6 +724,16 @@ impl AccessChanges for SomeRule {
     fn b10(&self) -> &SomeMask {
         &self.b10
     }
+    fn num_bits(&self) -> usize {
+        self.num_bits()
+    }
+}
+
+/// Implement the NumBits trait for SomeRule.
+impl NumBits for SomeRule {
+    fn num_bits(&self) -> usize {
+        self.num_bits()
+    }
 }
 
 #[cfg(test)]
@@ -694,7 +743,7 @@ mod tests {
     use crate::tools;
 
     #[test]
-    fn test_parsed_union() -> Result<(), String> {
+    fn parsed_union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string("XX/XX/Xx/Xx/X0/X0")?;
         let rul2 = SomeRule::new_from_string("X0/X1/X0/X1/01/11")?;
         if let Some(rint) = rul1.parsed_union(&rul2) {
@@ -717,7 +766,7 @@ mod tests {
     }
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_sta = SomeState::new(SomeBits::new(8));
         let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
 

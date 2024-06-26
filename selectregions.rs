@@ -79,6 +79,8 @@ impl SelectRegions {
 
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
+        debug_assert!(self.len() == other.len());
+
         self.regions
             .intersection(&other.regions)
             .map(|regs| Self::new(regs, self.value + other.value))
@@ -103,16 +105,22 @@ impl SelectRegions {
 
     /// Return true if a SelectRegions is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
         self.regions.is_subset_of(&other.regions)
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of_states(&self, stas: &StateStoreCorr) -> bool {
+        debug_assert!(self.len() == stas.len());
+
         self.regions.is_superset_states(stas)
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
         self.regions.is_superset_of(&other.regions)
     }
 
@@ -132,6 +140,7 @@ impl SelectRegions {
     /// Fragments, it any, retain the same value.
     pub fn subtract(&self, other: &Self) -> Vec<Self> {
         // println!("subtract {other} from {self}");
+        debug_assert!(self.len() == other.len());
 
         let mut ret_vec = vec![];
 
@@ -170,7 +179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let srs = SelectRegions::new(
             RegionStoreCorr::new(vec![
                 SomeRegion::new_from_string("r0xx1").expect("SNH"),

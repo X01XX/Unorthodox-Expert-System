@@ -3,6 +3,7 @@
 //! Uses one, or more, states to represent a region.
 //!
 
+use crate::bits::{SomeBits, BitsRef, NumBits, vec_same_num_bits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::tools::{self, not, StrLen};
@@ -51,10 +52,17 @@ impl SomeRegion {
     /// If a region has more than two states, the far_state, from the first state, is calculated and added.
     pub fn new(mut states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
+        debug_assert!(vec_same_num_bits(&states));
 
         // Check for single-state region.
         if states.len() == 1 {
             return Self { states };
+        }
+
+        // Check state num_bits.
+        let first_bits = states[0].num_bits();
+        for stax in states.iter().skip(1) {
+            assert!(stax.num_bits() == first_bits);
         }
 
         // Remove duplicate states, if any.
@@ -250,16 +258,22 @@ impl SomeRegion {
 
     /// Return true if a region and a region/state are adjacent.
     pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.diff_edge_mask(other).just_one_bit()
     }
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.diff_edge_mask(other).is_low()
     }
 
     /// Return the intersection a region and a region or state..
     pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         if !self.intersects(other) {
             return None;
         }
@@ -299,6 +313,7 @@ impl SomeRegion {
 
     /// Given a state in a region, return the far state in the region.
     pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
+        debug_assert_eq!(self.num_bits(), sta.num_bits());
         assert!(self.is_superset_of(sta));
         self.first_state()
             .bitwise_xor(self.far_state())
@@ -308,6 +323,7 @@ impl SomeRegion {
     /// Given a region, and a proper subset region, return the
     /// far region within the superset region.
     pub fn far_reg(&self, other: &Self) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
         assert!(self.is_superset_of(other));
         assert!(self != other);
 
@@ -321,6 +337,8 @@ impl SomeRegion {
 
     /// Return true if a region is subset, or equal, on another region.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -331,6 +349,8 @@ impl SomeRegion {
 
     /// Return true if a region is superset, or equal, on another region.
     pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         if self.intersects(other) {
             let x1 = self.x_mask();
             let x2 = other.x_mask();
@@ -341,6 +361,8 @@ impl SomeRegion {
 
     /// Return the union of a region and a region/state.
     pub fn union(&self, other: &impl AccessStates) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         //println!("union {} and {}", self, other);
         let st_low = self.low_state().bitwise_and(&other.low_state());
         let st_high = self.high_state().bitwise_or(&other.high_state());
@@ -359,6 +381,8 @@ impl SomeRegion {
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
+        debug_assert_eq!(self.num_bits(), msk.num_bits());
+
         let first_state = self.first_state().bitwise_and_not(msk);
         let far_state = self.far_state().bitwise_and_not(msk);
 
@@ -367,6 +391,8 @@ impl SomeRegion {
 
     /// Return a region with masked bit positions set to X.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
+        debug_assert_eq!(self.num_bits(), msk.num_bits());
+
         let first_state = self.first_state().bitwise_or(msk);
         let far_state = self.far_state().bitwise_and(&msk.bitwise_not());
 
@@ -375,6 +401,8 @@ impl SomeRegion {
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
+        debug_assert_eq!(self.num_bits(), msk.num_bits());
+
         let first_state = self.first_state().bitwise_or(msk);
         let far_state = self.far_state().bitwise_or(msk);
 
@@ -383,11 +411,15 @@ impl SomeRegion {
 
     /// Return the distance from a region to a region/state.
     pub fn distance(&self, other: &impl AccessStates) -> usize {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.diff_edge_mask(other).num_one_bits()
     }
 
     /// Return a mask of different edge bits between a region and a region/state.
     pub fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.edge_mask()
             .bitwise_and(&other.edge_mask())
             .bitwise_and(&self.first_state().bitwise_xor(other.first_state()))
@@ -396,6 +428,8 @@ impl SomeRegion {
     /// Given a region, and a second region, return the
     /// first region minus the second.
     pub fn subtract(&self, other: &impl AccessStates) -> Vec<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         let mut ret_vec = Vec::<Self>::new();
 
         // If no intersection, return self.
@@ -431,6 +465,9 @@ impl SomeRegion {
         substa: &SomeState,
         supsta: &SomeState,
     ) -> Vec<Self> {
+        debug_assert_eq!(self.num_bits(), substa.num_bits());
+        debug_assert_eq!(self.num_bits(), supsta.num_bits());
+
         let mut ret_vec = Vec::<Self>::new();
 
         // If region is not a superset of the state, return self.
@@ -474,6 +511,8 @@ impl SomeRegion {
 
     /// Translate one region into another.
     pub fn translate_to(&self, other: &Self) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         // Calc self bit position masks.
         let self_x = self.x_mask();
         let self_1 = self.edge_ones_mask();
@@ -497,6 +536,8 @@ impl SomeRegion {
 
     /// Return a bridge between two regions.
     pub fn bridge(&self, other: &Self) -> Option<Self> {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         if self.intersects(other) {
             return None;
         }
@@ -514,7 +555,7 @@ impl StrLen for SomeRegion {
     }
 }
 
-/// Define the AccessStates trait, so operations on Regions and States are smoother.
+/// Define the AccessStates trait, so operations on Regions, States, Squares and Groups are smoother.
 /// A region defined by a single state, is similar to a single state.
 pub trait AccessStates {
     fn one_state(&self) -> bool;
@@ -527,6 +568,7 @@ pub trait AccessStates {
     fn intersects(&self, other: &impl AccessStates) -> bool;
     fn is_subset_of(&self, other: &impl AccessStates) -> bool;
     fn is_superset_of(&self, other: &impl AccessStates) -> bool;
+    fn num_bits(&self) -> usize;
 }
 
 /// Implement the trait AccessStates for SomeRegion.
@@ -560,6 +602,23 @@ impl AccessStates for SomeRegion {
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         self.is_superset_of(other)
+    }
+    fn num_bits(&self) -> usize {
+        self.num_bits()
+    }
+}
+
+/// Implement the trait BitsRef for SomeGroup.
+impl BitsRef for SomeRegion {
+    fn bitsref(&self) -> &SomeBits {
+        self.first_state().bitsref()
+    }
+}
+
+/// Implement the NumBits trait for SomeRegion.
+impl NumBits for SomeRegion {
+    fn num_bits(&self) -> usize {
+        self.first_state().num_bits()
     }
 }
 
@@ -622,7 +681,7 @@ mod tests {
     }
 
     #[test]
-    fn test_strlen() -> Result<(), String> {
+    fn strlen() -> Result<(), String> {
         let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
@@ -686,7 +745,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new() -> Result<(), String> {
+    fn new() -> Result<(), String> {
         // Single state region.
 
         let sta1 = SomeState::new_from_string("s0b0001")?;

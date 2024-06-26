@@ -3,6 +3,7 @@
 //! This represents a group of one, or more, squares, that are
 //! mutually compatible, as (presumably) are any squares between them.
 
+use crate::bits::{SomeBits, BitsRef, NumBits};
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::AccessStates;
@@ -56,6 +57,8 @@ impl SomeGroup {
         //  "creating group {}",
         //   regionx
         //);
+        debug_assert!(if let Some(rulstr) = &ruls { rulstr.is_empty() || rulstr.num_bits().unwrap() == regionx.num_bits() } else { true });
+
         let mut pnx = Pn::One;
         if ruls.is_none() {
             pnx = Pn::Unpredictable;
@@ -335,6 +338,23 @@ impl AccessStates for SomeGroup {
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         self.region.is_superset_of(other)
+    }
+    fn num_bits(&self) -> usize {
+        self.region.num_bits()
+    }
+}
+
+/// Implement the trait BitsRef for SomeGroup.
+impl BitsRef for SomeGroup {
+    fn bitsref(&self) -> &SomeBits {
+        self.region.first_state().bitsref()
+    }
+}
+
+/// Implement the NumBits trait for SomeRegion.
+impl NumBits for SomeGroup {
+    fn num_bits(&self) -> usize {
+        self.region.num_bits()
     }
 }
 

@@ -27,16 +27,19 @@ pub enum PickError {
 #[derive(Serialize, Deserialize, Default)]
 pub struct SquareStore {
     pub ahash: HashMap<SomeState, SomeSquare>,
+    num_bits: Option<usize>,
 }
 
 impl SquareStore {
     /// Return a new, empty, SquareStore.
     pub fn new(ahash: HashMap<SomeState, SomeSquare>) -> Self {
-        Self { ahash }
+        Self { ahash, num_bits: None }
     }
 
     /// Remove a square.
     pub fn remove(&mut self, key: &SomeState) -> Option<SomeSquare> {
+        debug_assert!(self.num_bits.is_none() || key.num_bits() == self.num_bits.unwrap());
+
         self.ahash.remove(key)
     }
 
@@ -47,6 +50,8 @@ impl SquareStore {
 
     /// Return a list of squares in a given region.
     pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
+        debug_assert!(self.num_bits.is_none() || areg.num_bits() == self.num_bits.unwrap());
+
         let mut ret_keys = StateStore::new(vec![]);
 
         let sel_keys: Vec<&SomeState> = self
@@ -63,6 +68,8 @@ impl SquareStore {
 
     /// Return a list of squares in a given region.
     pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
+        debug_assert!(self.num_bits.is_none() || areg.num_bits() == self.num_bits.unwrap());
+
         self.ahash
             .values()
             .filter(|sqrx| areg.is_superset_of(*sqrx))
@@ -72,11 +79,15 @@ impl SquareStore {
     /// Return an Option mutable reference for a square given a state,
     /// or None if not found.
     pub fn find_mut(&mut self, val: &SomeState) -> Option<&mut SomeSquare> {
+        debug_assert!(self.num_bits.is_none() || val.num_bits() == self.num_bits.unwrap());
+
         self.ahash.get_mut(val)
     }
 
     /// Find a square that is expected to exist.
     pub fn find_mut_must(&mut self, val: &SomeState) -> &mut SomeSquare {
+        debug_assert!(self.num_bits.is_none() || val.num_bits() == self.num_bits.unwrap());
+
         if let Some(sqrx) = self.ahash.get_mut(val) {
             return sqrx;
         }
@@ -86,11 +97,15 @@ impl SquareStore {
     /// Return an Option immutable reference for a square given a state,
     /// or None if not found.
     pub fn find(&self, val: &SomeState) -> Option<&SomeSquare> {
+        debug_assert!(self.num_bits.is_none() || val.num_bits() == self.num_bits.unwrap());
+
         self.ahash.get(val)
     }
 
     /// Find a square that is expected to exist.
     pub fn find_must(&self, val: &SomeState) -> &SomeSquare {
+        debug_assert!(self.num_bits.is_none() || val.num_bits() == self.num_bits.unwrap());
+
         if let Some(sqrx) = self.ahash.get(val) {
             return sqrx;
         }
@@ -99,6 +114,11 @@ impl SquareStore {
 
     /// Add a square that is not currently in the store.
     pub fn insert(&mut self, sqrx: SomeSquare, dom_id: usize, act_id: usize) {
+        if self.num_bits.is_none() {
+            self.num_bits = Some(sqrx.num_bits());
+        }
+        debug_assert!(sqrx.num_bits() == self.num_bits.unwrap());
+
         println!(
             "\nDom {} Adding square {} -{}-> {}",
             dom_id,
@@ -134,6 +154,8 @@ impl SquareStore {
 
     /// Return a StateStore of square states that are adjacent to a given region.
     pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
+        debug_assert!(self.num_bits.is_none() || regx.num_bits() == self.num_bits.unwrap());
+
         let mut ret_keys = StateStore::new(vec![]);
 
         let sel_keys: Vec<&SomeState> = self
@@ -167,6 +189,8 @@ impl SquareStore {
     /// Pick a square in a region, for seeking more samples.
     /// Return a square with the maximum number of samples.
     pub fn pick_a_square_in(&self, target_reg: &SomeRegion) -> Result<&SomeSquare, PickError> {
+        debug_assert!(self.num_bits.is_none() || target_reg.num_bits() == self.num_bits.unwrap());
+
         let sqrs = self.squares_in_reg(target_reg);
 
         if sqrs.is_empty() {

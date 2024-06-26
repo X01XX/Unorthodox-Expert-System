@@ -1,5 +1,6 @@
 //! The SomeSquare struct. This represents a state/square in a pseudo Karnaugh Map, and result states from excuting an action.
 
+use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::AccessStates;
@@ -163,6 +164,8 @@ impl SomeSquare {
 
     /// Return true if two squares are adjacent, that is they differ by exactly one bit.
     pub fn is_adjacent(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.state.is_adjacent(&other.state)
     }
 
@@ -175,6 +178,7 @@ impl SomeSquare {
     /// Order does not matter.
     /// If order matters to the caller, assume a false result if target.pn < other.pn.
     pub fn compatible(&self, other: &Self) -> Compatibility {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
         assert!(self.state != other.state);
 
         // Check for unpredictable results.
@@ -237,6 +241,8 @@ impl SomeSquare {
 
     /// Return true is a square state is a subset of another group/square/region/state.
     pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
         self.state.is_subset_of(other)
     }
 
@@ -258,6 +264,11 @@ impl SomeSquare {
 
         rc_str.push(']');
         rc_str
+    }
+
+    // Return the number of bits used in the square.
+    pub fn num_bits(&self) -> usize {
+        self.state.num_bits()
     }
 } // end impl SomeSquare
 
@@ -299,6 +310,16 @@ impl AccessStates for SomeSquare {
     }
     fn is_superset_of(&self, other: &impl AccessStates) -> bool {
         self.state.is_superset_of(other)
+    }
+    fn num_bits(&self) -> usize {
+        self.num_bits()
+    }
+}
+
+/// Implement the NumBits trait for SomeState.
+impl NumBits for SomeSquare {
+    fn num_bits(&self) -> usize {
+        self.num_bits()
     }
 }
 
