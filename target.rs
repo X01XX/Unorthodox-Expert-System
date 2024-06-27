@@ -1,45 +1,30 @@
-//! Implement a struct to indicate a desired region for a given domain.
+//! Implement an enum to indicate a desired target of state, region, or domain regions.
 
-use crate::bits::NumBits;
-use crate::region::AccessStates;
 use crate::region::SomeRegion;
+use crate::regionstorecorr::RegionStoreCorr;
+use crate::state::SomeState;
 
 use std::fmt;
 
-impl fmt::Display for SomeTarget {
+impl fmt::Display for ATarget<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "T:{}, {}", &self.dom_id, &self.region)
+        write!(f, "Target :{}", &self.formatted_string())
     }
 }
 
-#[readonly::make]
-#[derive(Debug, Clone)]
-pub struct SomeTarget {
-    /// Domain indicator
-    pub dom_id: usize,
-    /// A region to seek.
-    pub region: SomeRegion,
+pub enum ATarget<'a> {
+    State { state: &'a SomeState },
+    Region { region: &'a SomeRegion },
+    DomainRegions { regions: &'a RegionStoreCorr },
 }
 
-impl SomeTarget {
-    /// Return a new target.
-    pub fn new(dom_id: usize, regx: SomeRegion) -> Self {
-        Self {
-            dom_id,
-            region: regx,
+impl ATarget<'_> {
+    /// Return a String representation.
+    fn formatted_string(&self) -> String {
+        match self {
+            Self::State { state } => format!("{}", state),
+            Self::Region { region } => format!("{}", region),
+            Self::DomainRegions { regions } => format!("{}", regions),
         }
-    }
-
-    pub fn is_superset_of(&self, stax: &impl AccessStates) -> bool {
-        debug_assert!(self.num_bits() == stax.num_bits());
-
-        self.region.is_superset_of(stax)
-    }
-}
-
-/// Implement the NumBits trait for SomeState.
-impl NumBits for SomeTarget {
-    fn num_bits(&self) -> usize {
-        self.region.num_bits()
     }
 }

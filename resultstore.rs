@@ -76,8 +76,8 @@
 //!
 //! End
 
-use crate::pn::Pn;
 use crate::bits::vec_same_num_bits;
+use crate::pn::Pn;
 use crate::state::SomeState;
 
 const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.

@@ -3,7 +3,7 @@
 //! Uses one, or more, states to represent a region.
 //!
 
-use crate::bits::{SomeBits, BitsRef, NumBits, vec_same_num_bits};
+use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::tools::{self, not, StrLen};

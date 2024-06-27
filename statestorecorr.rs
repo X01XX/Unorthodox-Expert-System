@@ -2,14 +2,14 @@
 //! corresponding to the domainstore vector.
 //! States will use the same number of bits as the corresponding domain,
 //! which may be different from other states in the vector.
+use crate::bits::NumBits;
 use crate::state::SomeState;
 use crate::tools;
-use crate::bits::NumBits;
 
-use tools::AvecRef;
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+use tools::AvecRef;
 
 use std::fmt;
 

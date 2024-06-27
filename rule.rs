@@ -456,7 +456,11 @@ impl SomeRule {
         within: Option<&SomeRegion>,
     ) -> Vec<SomeRule> {
         debug_assert_eq!(self.num_bits(), change_needed.num_bits());
-        debug_assert!(if let Some(regx) = within { self.num_bits() == regx.num_bits() } else { true });
+        debug_assert!(if let Some(regx) = within {
+            self.num_bits() == regx.num_bits()
+        } else {
+            true
+        });
 
         debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low());
 

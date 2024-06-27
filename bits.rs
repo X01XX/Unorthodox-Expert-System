@@ -581,28 +581,27 @@ mod tests {
     use super::*;
     use crate::tools;
 
-
     #[test]
     fn eq() -> Result<(), String> {
-         let bits1 = SomeBits::new_from_string("0x5")?;
-         println!("bits1 {bits1}");
-         let bits2 = SomeBits::new_from_string("0b0101")?;
-         println!("bits2 {bits2}");
-         assert!(bits1 == bits2);
-         
-         let bits1 = SomeBits::new_from_string("0x5+1")?;
-         println!("bits1 {bits1}");
-         let bits2 = SomeBits::new_from_string("0x5+1")?;
-         println!("bits2 {bits2}");
-         assert!(bits1 == bits2);
+        let bits1 = SomeBits::new_from_string("0x5")?;
+        println!("bits1 {bits1}");
+        let bits2 = SomeBits::new_from_string("0b0101")?;
+        println!("bits2 {bits2}");
+        assert!(bits1 == bits2);
 
-         let bits1 = SomeBits::new_from_string("0x5+0")?;
-         println!("bits1 {bits1}");
-         let bits2 = SomeBits::new_from_string("0x5+1")?;
-         println!("bits2 {bits2}");
-         assert!(bits1 != bits2);
-    
-         Ok(())
+        let bits1 = SomeBits::new_from_string("0x5+1")?;
+        println!("bits1 {bits1}");
+        let bits2 = SomeBits::new_from_string("0x5+1")?;
+        println!("bits2 {bits2}");
+        assert!(bits1 == bits2);
+
+        let bits1 = SomeBits::new_from_string("0x5+0")?;
+        println!("bits1 {bits1}");
+        let bits2 = SomeBits::new_from_string("0x5+1")?;
+        println!("bits2 {bits2}");
+        assert!(bits1 != bits2);
+
+        Ok(())
     }
 
     #[test]

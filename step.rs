@@ -76,7 +76,7 @@ impl SomeStep {
             AltRuleHint::AltNoChange {} => true,
             AltRuleHint::AltRule { rule } => rule.num_bits() == rule.num_bits(),
         });
-        
+
         let initial = rule.initial_region();
 
         let result = rule.result_region();

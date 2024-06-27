@@ -258,7 +258,11 @@ impl RegionStore {
 
     /// Extend a NeedStore by emptying another NeedStore..
     pub fn append(&mut self, mut other: Self) {
-        debug_assert!(self.is_empty() || other.is_empty() || self.avec[0].num_bits() == other.avec[0].num_bits());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || self.avec[0].num_bits() == other.avec[0].num_bits()
+        );
 
         self.avec.append(&mut other.avec);
     }
@@ -267,7 +271,11 @@ impl RegionStore {
     /// Regions overlapping adjacent regions, in the result, are not found.
     /// If that is wanted, it would be max-reg.subtract(&max-reg.subtract(ret))
     pub fn intersection(&self, other: &Self) -> Self {
-        debug_assert!(self.is_empty() || other.is_empty() || self.avec[0].num_bits() == other.avec[0].num_bits());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || self.avec[0].num_bits() == other.avec[0].num_bits()
+        );
 
         let mut ret = Self::new(vec![]);
         for regx in self.avec.iter() {

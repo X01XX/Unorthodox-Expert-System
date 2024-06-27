@@ -71,7 +71,6 @@ mod selectregions;
 use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
-mod targetstore;
 use crate::regionstorecorr::RegionStoreCorr;
 
 use std::io;
@@ -655,7 +654,7 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                         dmxs.print_plan_detail(pln);
                     }
                     _ => {
-                        if ndx.satisfied_by(dmxs[ndx.dom_id()].current_state()) {
+                        if ndx.satisfied_by(dmxs[ndx.dom_id().unwrap()].current_state()) {
                             println!("\nPlan: current state satisfies need, just take the action");
                         } else {
                             //println!("\n{}", pln.str2());
@@ -686,7 +685,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
             //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
         }
         _ => {
-            let nd_dom = dmxs.needs[nd_inx].dom_id();
+            let nd_dom = dmxs.needs[nd_inx].dom_id().unwrap();
             if dom_id != nd_dom {
                 // Show "before" state before running need.
                 println!("\nAll domain states: {}", dmxs.all_current_states());
@@ -700,7 +699,10 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     // Run the plan, allow for one failure.
     if !dmxs.run_plan_store(&inx_pln.plans) {
         print!("Run plan failed, ");
-        if let Some(plans2) = dmxs.make_plans(&dmxs.needs[inx_pln.inx].target()) {
+        if let Some(plans2) = dmxs.make_plans(
+            dmxs.needs[inx_pln.inx].dom_id(),
+            &dmxs.needs[inx_pln.inx].target(),
+        ) {
             println!("try again with {}", plans2);
             if !dmxs.run_plan_store(&plans2) {
                 println!("Unexpected result, giving up.");
@@ -713,27 +715,22 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
     // Take action after the desired state is reached.
     match &dmxs.needs[nd_inx] {
-        SomeNeed::ToSelectRegion { .. } => {
-            if dmxs.needs[nd_inx]
-                .target()
-                .is_superset_of_states(&dmxs.all_current_states())
-            {
+        SomeNeed::ToSelectRegion { target_regions, .. } => {
+            if target_regions.is_superset_states(&dmxs.all_current_states()) {
                 if dmxs.set_boredom_limit() {
                     dmxs.update_times_visited();
                 }
                 return true;
             }
         }
-        SomeNeed::ExitSelectRegion { .. } => {
-            if dmxs.needs[nd_inx]
-                .target()
-                .is_superset_of_states(&dmxs.all_current_states())
-            {
+        SomeNeed::ExitSelectRegion { target_regions, .. } => {
+            if target_regions.is_superset_states(&dmxs.all_current_states()) {
                 return true;
             }
         }
         _ => {
-            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_id())) {
+            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_id().unwrap()))
+            {
                 dmxs.take_action_need(nd_inx);
                 return true;
             }
@@ -769,8 +766,8 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     SomeNeed::ToSelectRegion { .. } => (),
                     SomeNeed::ExitSelectRegion { .. } => (),
                     _ => {
-                        if dom_id != dmxs.needs[nd_inx].dom_id() {
-                            dmxs.change_domain(dmxs.needs[nd_inx].dom_id());
+                        if dom_id != dmxs.needs[nd_inx].dom_id().unwrap() {
+                            dmxs.change_domain(dmxs.needs[nd_inx].dom_id().unwrap());
                             dmxs.print_domain();
                         }
                     }

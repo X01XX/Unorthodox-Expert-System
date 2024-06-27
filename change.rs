@@ -126,7 +126,7 @@ impl SomeChange {
     /// Return a change for translating from a region to another region.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
         debug_assert_eq!(from.num_bits(), to.num_bits());
-        
+
         let from_x = from.x_mask();
         let from_1 = from.edge_ones_mask();
         let from_0 = from.edge_zeros_mask();

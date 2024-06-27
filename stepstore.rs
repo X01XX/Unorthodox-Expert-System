@@ -56,7 +56,11 @@ impl StepStore {
 
     /// Add a step to a StepStore.
     pub fn push(&mut self, val: SomeStep) {
-        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == val.num_bits() } else { true });
+        debug_assert!(if let Some(num_bits) = self.num_bits() {
+            num_bits == val.num_bits()
+        } else {
+            true
+        });
 
         self.avec.push(val);
     }
@@ -98,7 +102,11 @@ impl StepStore {
     /// Given a number of steps, and a required change, return a vector of vectors
     /// where the sub-vectors indicate a single bit change that is required.
     pub fn split_steps_by_bit_change(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
-        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == required_change.num_bits() } else { true });
+        debug_assert!(if let Some(num_bits) = self.num_bits() {
+            num_bits == required_change.num_bits()
+        } else {
+            true
+        });
 
         let mut b01 = Vec::<SomeMask>::new();
 
@@ -182,7 +190,11 @@ impl StepStore {
         &self,
         required_change: &SomeChange,
     ) -> Option<Vec<Vec<&SomeStep>>> {
-        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == required_change.num_bits() } else { true });
+        debug_assert!(if let Some(num_bits) = self.num_bits() {
+            num_bits == required_change.num_bits()
+        } else {
+            true
+        });
 
         // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)
         let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
@@ -211,7 +223,7 @@ impl StepStore {
 
         Some(steps_by_change_vov)
     }
-    
+
     /// Return the number of bits used be steps in the StepStore.
     pub fn num_bits(&self) -> Option<usize> {
         if self.is_empty() {
@@ -219,7 +231,6 @@ impl StepStore {
         }
         Some(self.avec[0].num_bits())
     }
-
 } // end impl StepStore
 
 /// Return true if any single-bit change step vector pairs are all mutually exclusive

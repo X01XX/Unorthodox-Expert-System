@@ -5,7 +5,7 @@
 use crate::bits::NumBits;
 use crate::region::SomeRegion;
 use crate::statestorecorr::StateStoreCorr;
-use crate::tools::{self, StrLen, AvecRef, corresponding_num_bits};
+use crate::tools::{self, corresponding_num_bits, AvecRef, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

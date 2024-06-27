@@ -14,7 +14,7 @@ use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::statestorecorr::StateStoreCorr;
 use crate::step::AltRuleHint::AltRule;
-use crate::targetstore::TargetStore;
+use crate::target::ATarget;
 use crate::tools::{self, corresponding_num_bits};
 
 use rand::Rng;
@@ -287,7 +287,7 @@ impl DomainStore {
 
     /// Take an action to satisfy a need,
     pub fn take_action_need(&mut self, nd_inx: usize) {
-        self.domains[self.needs[nd_inx].dom_id()].take_action_need(&self.needs[nd_inx]);
+        self.domains[self.needs[nd_inx].dom_id().unwrap()].take_action_need(&self.needs[nd_inx]);
     }
 
     /// Return a reference to the current state of a given Domain index
@@ -360,7 +360,12 @@ impl DomainStore {
             // Test all slice needs for plans.
             let inx_plan = (cur_pri_start..cur_pri_end)
                 .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                .map(|nd_inx| (nd_inx, self.make_plans(&self.needs[nd_inx].target())))
+                .map(|nd_inx| {
+                    (
+                        nd_inx,
+                        self.make_plans(self.needs[nd_inx].dom_id(), &self.needs[nd_inx].target()),
+                    )
+                })
                 .collect::<Vec<(usize, Option<PlanStore>)>>();
 
             // See if any plans have been found.
@@ -418,8 +423,16 @@ impl DomainStore {
                 }
 
                 // Form goal region corresponding
-                let goal_regs =
-                    self.targetstore_to_regionstorecorr(&self.needs[ndinx.inx].target());
+                let goal_regs = match self.needs[ndinx.inx].target() {
+                    ATarget::State { state } => self.current_regions_except(
+                        self.needs[ndinx.inx].dom_id().unwrap(),
+                        &SomeRegion::new(vec![state.clone().clone()]),
+                    ),
+                    ATarget::Region { region } => {
+                        self.current_regions_except(self.needs[ndinx.inx].dom_id().unwrap(), region)
+                    }
+                    ATarget::DomainRegions { regions } => regions.clone(),
+                };
 
                 if let Some(planx) = self.avoid_negative_select_regions(&start_regs, &goal_regs) {
                     let rate = self.rate_plans(&planx);
@@ -466,14 +479,35 @@ impl DomainStore {
 
     /// Return an Option PlanStore, to go from the current states to the region of each target.
     /// Return None if any one of the targets cannot be satisfied.
-    pub fn make_plans(&self, targets: &TargetStore) -> Option<PlanStore> {
+    pub fn make_plans(&self, dom_id: Option<usize>, target: &ATarget) -> Option<PlanStore> {
         //println!("domainstore: make_plans: {}", targets);
-        debug_assert!(targets.is_not_empty());
 
         let from = self.all_current_regions();
-        let goal = self.targetstore_to_regionstorecorr(targets);
 
-        self.make_plans2(&from, &goal, None)
+        let goal = match target {
+            ATarget::State { state } => &self
+                .current_regions_except(dom_id.unwrap(), &SomeRegion::new(vec![(*state).clone()])),
+            ATarget::Region { region } => &self.current_regions_except(dom_id.unwrap(), region),
+            ATarget::DomainRegions { regions } => regions,
+        };
+
+        self.make_plans2(&from, goal, None)
+    }
+
+    /// Create a RegionsStoreCorr of current regions, except a given region.
+    pub fn current_regions_except(&self, dom_id: usize, targ: &SomeRegion) -> RegionStoreCorr {
+        let mut regs = RegionStoreCorr::new(vec![]);
+
+        for dom_idx in 0..self.len() {
+            if dom_idx == dom_id {
+                regs.push(targ.clone());
+            } else {
+                regs.push(SomeRegion::new(vec![self.domains[dom_idx]
+                    .cur_state
+                    .clone()]));
+            }
+        }
+        regs
     }
 
     /// Use parallel processing to get plans.
@@ -512,10 +546,14 @@ impl DomainStore {
         goal: &RegionStoreCorr,
         within: Option<&RegionStoreCorr>,
     ) -> Option<PlanStore> {
-         //println!("domainstore: make_plans3: from {from} goal {goal}");
+        //println!("domainstore: make_plans3: from {from} goal {goal}");
         debug_assert!(from.len() == goal.len());
         debug_assert!(corresponding_num_bits(from, goal));
-        debug_assert!(if let Some(regs) = within { regs.len() == from.len() && corresponding_num_bits(from, regs) } else { true });
+        debug_assert!(if let Some(regs) = within {
+            regs.len() == from.len() && corresponding_num_bits(from, regs)
+        } else {
+            true
+        });
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(from.len()));
 
@@ -1596,26 +1634,6 @@ impl DomainStore {
         }
         ret_regs
     }
-
-    /// Convert a TargetStore to a RegionsStoreCorr.
-    pub fn targetstore_to_regionstorecorr(&self, targ: &TargetStore) -> RegionStoreCorr {
-        let mut regs = RegionStoreCorr::new(vec![]);
-        for dom_id in 0..self.len() {
-            let mut dom_targ: Option<&SomeRegion> = None;
-            for targx in targ.iter() {
-                if targx.dom_id == dom_id {
-                    dom_targ = Some(&targx.region);
-                    break;
-                }
-            }
-            if let Some(regx) = dom_targ {
-                regs.push(regx.clone());
-            } else {
-                regs.push(SomeRegion::new(vec![self[dom_id].cur_state.clone()]));
-            }
-        }
-        regs
-    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -1638,7 +1656,6 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::step::{AltRuleHint, SomeStep};
-    use crate::target::SomeTarget;
 
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StateStoreCorr) -> usize {
@@ -1757,47 +1774,6 @@ mod tests {
             }
         }
         assert!(zero && five);
-
-        Ok(())
-    }
-
-    #[test]
-    fn conversion() -> Result<(), String> {
-        // Init DomainStore. Domain.
-        let mut dmxs = DomainStore::new();
-        // Set up first domain.
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        dmxs[0].set_cur_state(s5.clone());
-
-        // Set up second domain.
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        let sf = SomeState::new_from_string("s0b1111")?;
-        dmxs[0].set_cur_state(sf.clone());
-
-        let mut targs = TargetStore::new(vec![]);
-        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
-        println!("rsc from empty Targetstore: {rsc}");
-        assert!(rsc.len() == 2);
-        assert!(format!("{rsc}") == "[r1111, r0000]");
-
-        targs.push(SomeTarget::new(
-            1,
-            SomeRegion::new(vec![s5.clone(), sf.clone()]),
-        ));
-        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
-        println!("rsc from Targetstore with region from domain 1: {rsc}");
-        assert!(rsc.len() == 2);
-        assert!(format!("{rsc}") == "[r1111, rx1x1]");
-
-        targs.push(SomeTarget::new(
-            0,
-            SomeRegion::new(vec![s5.clone(), SomeState::new_from_string("s0b0100")?]),
-        ));
-        let rsc = dmxs.targetstore_to_regionstorecorr(&targs);
-        println!("rsc from Targetstore with region from domain 1, 0: {rsc}");
-        assert!(rsc.len() == 2);
-        assert!(format!("{rsc}") == "[r010X, rx1x1]");
 
         Ok(())
     }
@@ -2701,14 +2677,14 @@ mod tests {
         regstr1.push(neg_reg1.clone());
 
         // Add select regionstores.
-        dmxs.add_select(SelectRegions::new(regstr1, -1));
+        dmxs.add_select(SelectRegions::new(regstr1.clone(), -1));
 
-        let mut regstr1 = RegionStoreCorr::with_capacity(1);
+        let mut regstr2 = RegionStoreCorr::with_capacity(1);
         let neg_reg2 = SomeRegion::new_from_string("r1XX1")?;
-        regstr1.push(neg_reg2.clone());
+        regstr2.push(neg_reg2.clone());
 
         // Add select regionstores.
-        dmxs.add_select(SelectRegions::new(regstr1, -1));
+        dmxs.add_select(SelectRegions::new(regstr2.clone(), -1));
 
         // Set state for domain 0, using 1 integer for bits.
         let first_state = SomeState::new_from_string("s0xd")?;
@@ -2724,8 +2700,15 @@ mod tests {
             assert!(nds.len() == 1);
             println!("needs: {}", nds);
             for ndsx in nds.iter() {
-                assert!(!neg_reg1.intersects(&ndsx.target()[0].region));
-                assert!(!neg_reg2.intersects(&ndsx.target()[0].region));
+                match ndsx.target() {
+                    ATarget::DomainRegions { regions } => {
+                        assert!(!regstr1.intersects(regions));
+                        assert!(!regstr2.intersects(regions));
+                    }
+                    _ => {
+                        panic!("SNH");
+                    }
+                }
             }
         } else {
             return Err(format!("Needs are None?"));

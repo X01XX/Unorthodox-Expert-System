@@ -10,8 +10,7 @@ use crate::region::SomeRegion;
 use crate::regionstorecorr::RegionStoreCorr;
 use crate::rulestore::RuleStore;
 use crate::state::SomeState;
-use crate::target::SomeTarget;
-use crate::targetstore::TargetStore;
+use crate::target::ATarget;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -247,95 +246,63 @@ impl SomeNeed {
     } // end act_id
 
     /// Return need domain number.
-    pub fn dom_id(&self) -> usize {
+    pub fn dom_id(&self) -> Option<usize> {
         match self {
-            Self::ConfirmGroup { dom_id, .. } => *dom_id,
-            Self::ContradictoryIntersection { dom_id, .. } => *dom_id,
-            Self::LimitGroup { dom_id, .. } => *dom_id,
-            Self::LimitGroupAdj { dom_id, .. } => *dom_id,
-            Self::ConfirmGroupAdj { dom_id, .. } => *dom_id,
-            Self::StateInRemainder { dom_id, .. } => *dom_id,
-            Self::StateNotInGroup { dom_id, .. } => *dom_id,
-            Self::SampleInRegion { dom_id, .. } => *dom_id,
-            _ => panic!(
-                "SomeNeed::dom_id should not be called for the {} need.",
-                self.name()
-            ),
+            Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
+            Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
+            Self::LimitGroup { dom_id, .. } => Some(*dom_id),
+            Self::LimitGroupAdj { dom_id, .. } => Some(*dom_id),
+            Self::ConfirmGroupAdj { dom_id, .. } => Some(*dom_id),
+            Self::StateInRemainder { dom_id, .. } => Some(*dom_id),
+            Self::StateNotInGroup { dom_id, .. } => Some(*dom_id),
+            Self::SampleInRegion { dom_id, .. } => Some(*dom_id),
+            _ => None,
         } //end match self
     } // end dom_id
 
     /// Return a region for a need target.
-    pub fn target(&self) -> TargetStore {
+    pub fn target(&self) -> ATarget {
         match self {
-            Self::ConfirmGroup {
-                dom_id,
-                target_state,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(
-                *dom_id,
-                SomeRegion::new(vec![target_state.clone()]),
-            )]),
-            Self::ContradictoryIntersection {
-                dom_id,
-                target_region,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(*dom_id, target_region.clone())]),
-            Self::LimitGroup {
-                dom_id,
-                target_state,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(
-                *dom_id,
-                SomeRegion::new(vec![target_state.clone()]),
-            )]),
-            Self::LimitGroupAdj {
-                dom_id,
-                target_state,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(
-                *dom_id,
-                SomeRegion::new(vec![target_state.clone()]),
-            )]),
-            Self::ConfirmGroupAdj {
-                dom_id,
-                target_state,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(
-                *dom_id,
-                SomeRegion::new(vec![target_state.clone()]),
-            )]),
-            Self::StateInRemainder {
-                dom_id,
-                target_region,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(*dom_id, target_region.clone())]),
-            Self::StateNotInGroup {
-                dom_id,
-                target_state,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(
-                *dom_id,
-                SomeRegion::new(vec![target_state.clone()]),
-            )]),
-            Self::SampleInRegion {
-                dom_id,
-                target_region,
-                ..
-            } => TargetStore::new(vec![SomeTarget::new(*dom_id, target_region.clone())]),
-            Self::ToSelectRegion { target_regions, .. } => {
-                let mut targ = TargetStore::with_capacity(target_regions.len());
-                for (dom_idx, targx) in target_regions.iter().enumerate() {
-                    targ.push(SomeTarget::new(dom_idx, targx.clone()));
-                }
-                targ
-            }
-            Self::ExitSelectRegion { target_regions, .. } => {
-                let mut targ = TargetStore::with_capacity(target_regions.len());
-                for (dom_idx, targx) in target_regions.iter().enumerate() {
-                    targ.push(SomeTarget::new(dom_idx, targx.clone()));
-                }
-                targ
-            }
+            Self::ConfirmGroup { target_state, .. } => ATarget::State {
+                state: target_state,
+            },
+
+            Self::ContradictoryIntersection { target_region, .. } => ATarget::Region {
+                region: target_region,
+            },
+
+            Self::LimitGroup { target_state, .. } => ATarget::State {
+                state: target_state,
+            },
+
+            Self::LimitGroupAdj { target_state, .. } => ATarget::State {
+                state: target_state,
+            },
+
+            Self::ConfirmGroupAdj { target_state, .. } => ATarget::State {
+                state: target_state,
+            },
+
+            Self::StateInRemainder { target_region, .. } => ATarget::Region {
+                region: target_region,
+            },
+
+            Self::StateNotInGroup { target_state, .. } => ATarget::State {
+                state: target_state,
+            },
+
+            Self::SampleInRegion { target_region, .. } => ATarget::Region {
+                region: target_region,
+            },
+
+            Self::ToSelectRegion { target_regions, .. } => ATarget::DomainRegions {
+                regions: target_regions,
+            },
+
+            Self::ExitSelectRegion { target_regions, .. } => ATarget::DomainRegions {
+                regions: target_regions,
+            },
+
             _ => panic!(
                 "SomeNeed::target should not be called for the {} need.",
                 self.name()

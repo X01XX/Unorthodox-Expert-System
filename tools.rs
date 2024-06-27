@@ -1,5 +1,5 @@
-use std::fmt;
 use crate::bits::NumBits;
+use std::fmt;
 
 /// Return true if a vector contains an item, that passes a test as the first argument of a given function, and a second given item.
 pub fn vec_contains<T, U>(avec: &[T], testfn: fn(&T, &U) -> bool, item: &U) -> bool {
@@ -155,7 +155,7 @@ pub trait StrLen {
     fn strlen(&self) -> usize;
 }
 
-/// Return ture if corresponding items in tow vectors have the sawe number of bits.
+/// Return true if corresponding items in two vectors have the same number of bits.
 pub fn corresponding_num_bits(one: &impl AvecRef, other: &impl AvecRef) -> bool {
     for (item1, item2) in one.avec_ref().iter().zip(other.avec_ref().iter()) {
         if item1.num_bits() != item2.num_bits() {

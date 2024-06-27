@@ -270,7 +270,11 @@ impl SelectRegionsStore {
 
     /// Append from another store.
     pub fn append(&mut self, mut other: Self) {
-        debug_assert!(self.is_empty() || other.is_empty() || other.regionstores[0].len() == self.regionstores[0].len());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || other.regionstores[0].len() == self.regionstores[0].len()
+        );
 
         self.regionstores.append(&mut other.regionstores);
     }
@@ -305,7 +309,11 @@ impl SelectRegionsStore {
 
     /// Subtract a selectregionstore from another.
     pub fn subtract(&self, other: &Self) -> Self {
-        debug_assert!(self.is_empty() || other.is_empty() || other.regionstores[0].len() == self.regionstores[0].len());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || other.regionstores[0].len() == self.regionstores[0].len()
+        );
 
         let mut ret = self.clone();
         for selx in other.regionstores.iter() {

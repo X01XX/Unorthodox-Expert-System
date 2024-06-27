@@ -33,7 +33,10 @@ pub struct SquareStore {
 impl SquareStore {
     /// Return a new, empty, SquareStore.
     pub fn new(ahash: HashMap<SomeState, SomeSquare>) -> Self {
-        Self { ahash, num_bits: None }
+        Self {
+            ahash,
+            num_bits: None,
+        }
     }
 
     /// Remove a square.

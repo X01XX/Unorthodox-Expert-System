@@ -98,7 +98,11 @@ impl RuleStore {
     /// If there are two rules, they will have at least one incompatibility,
     /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
     pub fn push(&mut self, val: SomeRule) {
-        debug_assert!(if let Some(num_bits) = self.num_bits() { num_bits == val.num_bits() } else { true });
+        debug_assert!(if let Some(num_bits) = self.num_bits() {
+            num_bits == val.num_bits()
+        } else {
+            true
+        });
 
         assert!(self.avec.len() < 2);
 

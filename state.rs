@@ -11,8 +11,8 @@
 //!
 //! let state2 = SomeState::new(diff_mask.bts.b_xor(&state1.bts))
 
-use crate::bits::{BitsRef, NumBits};
 use crate::bits::SomeBits;
+use crate::bits::{BitsRef, NumBits};
 use crate::mask::SomeMask;
 use crate::region::AccessStates;
 use crate::tools::StrLen;

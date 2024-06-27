@@ -210,7 +210,7 @@ impl SomeMask {
     pub fn to_state(&self) -> SomeState {
         SomeState::new(self.bts.clone())
     }
-    
+
     /// Return the number of bits used in a mask.
     pub fn num_bits(&self) -> usize {
         self.bts.num_bits as usize

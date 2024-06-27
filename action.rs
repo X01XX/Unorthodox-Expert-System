@@ -28,6 +28,7 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
+use crate::target::ATarget;
 use crate::tools::{self, not};
 
 use rand::Rng;
@@ -79,7 +80,6 @@ pub struct SomeAction {
 impl SomeAction {
     /// Return a new SomeAction struct.
     pub fn new(act_id: usize, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) -> Self {
-
         SomeAction {
             id: act_id,
             dom_id,
@@ -428,10 +428,14 @@ impl SomeAction {
                 let mut inx: Option<usize> = None;
 
                 // Get need target.
-                let targx = ndx.target();
+                let targx = match ndx.target() {
+                    ATarget::State { state } => SomeRegion::new(vec![state.clone()]),
+                    ATarget::Region { region } => region.clone(),
+                    _ => panic!("SNH"),
+                };
 
                 for (iny, sqrx) in self.memory.iter().enumerate() {
-                    if targx[0].is_superset_of(sqrx) {
+                    if targx.is_superset_of(sqrx) {
                         println!("Memory square {} found for need {}", sqrx, ndx);
                         inx = Some(iny);
                         break;
@@ -629,10 +633,12 @@ impl SomeAction {
         'next_sqr: for keyx in self.squares.ahash.keys() {
             // Check needs
             for ndx in needs.iter() {
-                for targx in ndx.target().iter() {
-                    if targx.is_superset_of(keyx) {
-                        continue 'next_sqr;
-                    }
+                if match ndx.target() {
+                    ATarget::State { state } => state == keyx,
+                    ATarget::Region { region } => region.is_superset_of(keyx),
+                    _ => panic!("SNH"),
+                } {
+                    continue 'next_sqr;
                 }
             }
 
@@ -1371,7 +1377,7 @@ impl SomeAction {
         //);
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(grpy.num_bits(), self.num_bits);
-        
+
         assert!(grpx.region.intersects(&grpy.region));
 
         let mut nds = NeedStore::new(vec![]);
@@ -1479,8 +1485,16 @@ impl SomeAction {
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(grpy.num_bits(), self.num_bits);
-        debug_assert!(if let Some(ruls) = &rulsx { ruls.num_bits().unwrap() == self.num_bits } else { true });
-        debug_assert!(if let Some(ruls) = &rulsy { ruls.num_bits().unwrap() == self.num_bits } else { true });
+        debug_assert!(if let Some(ruls) = &rulsx {
+            ruls.num_bits().unwrap() == self.num_bits
+        } else {
+            true
+        });
+        debug_assert!(if let Some(ruls) = &rulsy {
+            ruls.num_bits().unwrap() == self.num_bits
+        } else {
+            true
+        });
 
         // Check for any squares in the region
         match self.squares.pick_a_square_in(regx) {
@@ -1531,7 +1545,11 @@ impl SomeAction {
     /// produce the desired change.
     pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
         debug_assert_eq!(achange.num_bits(), self.num_bits);
-        debug_assert!(if let Some(reg) = &within { reg.num_bits() == self.num_bits } else { true });
+        debug_assert!(if let Some(reg) = &within {
+            reg.num_bits() == self.num_bits
+        } else {
+            true
+        });
 
         debug_assert!(achange.b01.bitwise_and(&achange.b10).is_low()); // No X->x change wanted.
 
@@ -1599,7 +1617,11 @@ impl SomeAction {
     ) -> StepStore {
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(achange.num_bits(), self.num_bits);
-        debug_assert!(if let Some(reg) = &within { reg.num_bits() == self.num_bits } else { true });
+        debug_assert!(if let Some(reg) = &within {
+            reg.num_bits() == self.num_bits
+        } else {
+            true
+        });
 
         let mut stps = StepStore::new(vec![]);
 

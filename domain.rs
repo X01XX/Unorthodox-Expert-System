@@ -162,7 +162,7 @@ impl SomeDomain {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed) {
-        debug_assert_eq!(ndx.dom_id(), self.id);
+        debug_assert_eq!(ndx.dom_id().unwrap(), self.id);
 
         let asample = self.actions.take_action_need(ndx, &self.cur_state);
         self.set_cur_state(asample.result.clone());
@@ -691,7 +691,11 @@ impl SomeDomain {
     ) -> Option<PlanStore> {
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+        debug_assert!(if let Some(reg) = within {
+            reg.num_bits() == self.num_bits()
+        } else {
+            true
+        });
 
         if let Some(mut plans) = self.make_plans3(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {}", plans.len());
@@ -723,7 +727,11 @@ impl SomeDomain {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+        debug_assert!(if let Some(reg) = within {
+            reg.num_bits() == self.num_bits()
+        } else {
+            true
+        });
 
         if goal_reg.is_superset_of(from_reg) {
             return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
@@ -797,7 +805,11 @@ impl SomeDomain {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+        debug_assert!(if let Some(reg) = within {
+            reg.num_bits() == self.num_bits()
+        } else {
+            true
+        });
 
         if goal_reg.is_superset_of(from_reg) {
             return Some(SomePlan::new(self.id, vec![]));
@@ -846,7 +858,11 @@ impl SomeDomain {
         within: Option<&SomeRegion>,
     ) -> StepStore {
         debug_assert_eq!(required_change.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within { reg.num_bits() == self.num_bits() } else { true });
+        debug_assert!(if let Some(reg) = within {
+            reg.num_bits() == self.num_bits()
+        } else {
+            true
+        });
 
         // Check if changes are possible.
 
@@ -1102,15 +1118,22 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::domainstore::DomainStore;
+    use crate::target::ATarget;
 
     /// Return true if a need with a given type and target is in a NeedStore.
-    fn contains_similar_need(nds: &NeedStore, name: &str, target: &SomeRegion) -> bool {
+    fn contains_similar_need(nds: &NeedStore, name: &str, target: &ATarget) -> bool {
         for nedx in nds.iter() {
             if nedx.name() == name {
-                for targx in nedx.target().iter() {
-                    if targx.region == *target {
-                        return true;
+                if match (nedx.target(), target) {
+                    (ATarget::State { state: state1 }, ATarget::State { state: state2 }) => {
+                        &state1 == state2
                     }
+                    (ATarget::Region { region: region1 }, ATarget::Region { region: region2 }) => {
+                        &region1 == region2
+                    }
+                    _ => false,
+                } {
+                    return true;
                 }
             }
         }
@@ -1394,7 +1417,9 @@ mod tests {
         assert!(contains_similar_need(
             &nds1,
             "StateNotInGroup",
-            &SomeRegion::new_from_string("r0001")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0001")?
+            }
         ));
 
         // Create group for one sample
@@ -1430,7 +1455,9 @@ mod tests {
         assert!(contains_similar_need(
             &nds1,
             "StateNotInGroup",
-            &SomeRegion::new_from_string("r0000")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0000")?
+            }
         ));
 
         Ok(())
@@ -1452,7 +1479,9 @@ mod tests {
         assert!(contains_similar_need(
             &nds1,
             "StateNotInGroup",
-            &SomeRegion::new_from_string("r0001")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0001")?
+            }
         ));
 
         // Create group for one sample
@@ -1482,12 +1511,16 @@ mod tests {
         assert!(contains_similar_need(
             &nds2,
             "ConfirmGroup",
-            &SomeRegion::new_from_string("r0001")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0001")?
+            }
         ));
         assert!(contains_similar_need(
             &nds2,
             "ConfirmGroup",
-            &SomeRegion::new_from_string("r0010")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0010")?
+            }
         ));
 
         // Satisfy one need.
@@ -1500,7 +1533,9 @@ mod tests {
         assert!(contains_similar_need(
             &nds3,
             "ConfirmGroup",
-            &SomeRegion::new_from_string("r0001")?
+            &ATarget::State {
+                state: &SomeState::new_from_string("s0001")?
+            }
         ));
 
         // Satisfy second need.
@@ -1552,7 +1587,9 @@ mod tests {
         assert!(contains_similar_need(
             &nds1,
             "ContradictoryIntersection",
-            &SomeRegion::new_from_string("rX100")?
+            &ATarget::Region {
+                region: &SomeRegion::new_from_string("rX100")?
+            }
         ));
 
         Ok(())
@@ -1825,12 +1862,16 @@ mod tests {
             assert!(contains_similar_need(
                 &needs,
                 "LimitGroupAdj",
-                &SomeRegion::new_from_string("r1110").expect("SNH")
+                &ATarget::State {
+                    state: &SomeState::new_from_string("s1110")?
+                }
             ));
             assert!(contains_similar_need(
                 &needs,
                 "LimitGroupAdj",
-                &SomeRegion::new_from_string("r0111").expect("SNH")
+                &ATarget::State {
+                    state: &SomeState::new_from_string("s0111")?
+                }
             ));
         } else {
             println!("needs []");

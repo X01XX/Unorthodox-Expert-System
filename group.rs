@@ -3,7 +3,7 @@
 //! This represents a group of one, or more, squares, that are
 //! mutually compatible, as (presumably) are any squares between them.
 
-use crate::bits::{SomeBits, BitsRef, NumBits};
+use crate::bits::{BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::pn::Pn;
 use crate::region::AccessStates;
@@ -57,7 +57,11 @@ impl SomeGroup {
         //  "creating group {}",
         //   regionx
         //);
-        debug_assert!(if let Some(rulstr) = &ruls { rulstr.is_empty() || rulstr.num_bits().unwrap() == regionx.num_bits() } else { true });
+        debug_assert!(if let Some(rulstr) = &ruls {
+            rulstr.is_empty() || rulstr.num_bits().unwrap() == regionx.num_bits()
+        } else {
+            true
+        });
 
         let mut pnx = Pn::One;
         if ruls.is_none() {
