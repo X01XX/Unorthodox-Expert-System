@@ -5,9 +5,9 @@ The goal is a better and better prediction of the result of sampling (taking a p
 
 Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html.
 
-Squares that are only in one region have a special significance, see "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
+K-Map squares that are only in one region have a special significance, see "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
 
-A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file: Screenshot at 202023-08-11 16-21-30.png (command like cargo run 10, for continuous running until rules found, 10 times consecutive).
+A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file: Screenshot at 202023-08-11 16-21-30.png (command like cargo run 10, for continuous running until rules found, 10 times consecutively).
 
 There is extensive use of Boolean Operations.
 
@@ -35,8 +35,8 @@ A final, exact, understanding is NOT the goal, just as there is a lot that I do 
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
 
-Regions that are considered negative, or positive, can be added.  When making plans, the program will try not to traverse negative regions.  If the current state is in a negative region, the program will try to exit the region. After needs for improving rules are met, the program will visit positive regions, in a cycle. At some level are we following something like: food -> shelter -> rest -> food? If something happens to change the state to a non-positive region, the program will run rules to put it back into a positive region.
-
 A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits. When a goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
+
+Sets of domain regions that are considered negative, or positive, can be added.  They can overlap, like a situation IRL that has positive and negative aspects. When making plans, the program will try to avoid traversing negative region sets.  If the current states are in a negative region set, the program will try to exit it. After needs for improving rules are met, the program will visit net-positive region sets, in a cycle. At some level are we following something like: food -> shelter -> rest -> food? If something happens to change the current states to a non-net-positive region set, the program will run rules to put them back into a net-positive region set.
 
 There is a command for storing the states, and rules, to a text file.  Running the program with the file path as an argument loads the file.
