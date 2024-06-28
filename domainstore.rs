@@ -484,6 +484,9 @@ impl DomainStore {
 
         let from = self.all_current_regions();
 
+        // Calculate the goal regions.  These are needed for ATarget::State and ATarget::Region as
+        // other domain regions may need to be changed to atain the target and avoid negative conditions,
+        // which are defined as superset of all domain current states.
         let goal = match target {
             ATarget::State { state } => &self
                 .current_regions_except(dom_id.unwrap(), &SomeRegion::new(vec![(*state).clone()])),

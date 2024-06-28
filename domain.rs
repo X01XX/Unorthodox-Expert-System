@@ -1071,13 +1071,23 @@ impl SomeDomain {
         }
         //println!("Options:");
         //for (inx_from, _inx_to, pri, targ) in opts.iter() {
-        //    println!(
+        //  println!(
         //       "  from {} to {} pri {pri}",
         //       planx[*inx_from].initial, targ
         //   );
         //}
 
-        for (inx_from, inx_to, _pri, targ) in opts.iter() {
+        // Set memory for detecting a change in priority.
+        let mut last_pri = 0;
+
+        for (inx_from, inx_to, pri, targ) in opts.iter() {
+            if *pri != last_pri {
+                if shortcuts.is_empty() {
+                    last_pri = *pri;
+                } else {
+                    return Some(shortcuts);
+                }
+            }
             if let Some(plans2) = self.make_plans3(&planx[*inx_from].initial, targ, None) {
                 //println!("{} plans found", plans2.len());
                 //println!("Plans found {plans2}");
@@ -1100,16 +1110,19 @@ impl SomeDomain {
                     //    continue;
                     //}
                     let new_num_steps = new_plan.len();
-                    if new_num_steps < base_num_steps && !shortcuts.contains(&new_plan) {
+                    if new_num_steps < base_num_steps {
                         //println!("\nSteps {new_num_steps} vs {base_num_steps}, {new_plan}");
                         new_plan.set_shortcut();
                         shortcuts.push(new_plan);
-                        return Some(shortcuts);
                     }
                 } // next plany
             } // endif
         } // next opts item
-        None
+        if shortcuts.is_empty() {
+            None
+        } else {
+            Some(shortcuts)
+        }
     }
 } // end impl SomeDomain
 
