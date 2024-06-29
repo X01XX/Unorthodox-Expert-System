@@ -76,7 +76,6 @@
 //!
 //! End
 
-use crate::bits::vec_same_num_bits;
 use crate::pn::Pn;
 use crate::state::SomeState;
 
@@ -110,7 +109,7 @@ pub struct ResultStore {
 impl ResultStore {
     /// Return a new ResultStore, with an initial result.
     pub fn new(mut st: Vec<SomeState>) -> Self {
-        debug_assert!(vec_same_num_bits(&st));
+        debug_assert!(st.len() == 1);
 
         let mut ret = Self {
             astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
@@ -204,7 +203,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_most_recent_result() -> Result<(), String> {
+    fn most_recent_result() -> Result<(), String> {
         let sta1 = SomeState::new_from_string("s0x1")?;
         let sta2 = SomeState::new_from_string("s0x2")?;
         let sta3 = SomeState::new_from_string("s0x3")?;

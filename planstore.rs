@@ -264,7 +264,7 @@ impl PlanStore {
             let dom_id = planx.dom_id;
             for stepx in planx.iter() {
                 if stepx.initial.intersects(&cur_regs[dom_id]) {
-                    cur_regs[dom_id] = stepx.rule.result_from(&cur_regs[dom_id]);
+                    cur_regs[dom_id] = stepx.rule.result_from_initial_region(&cur_regs[dom_id]);
                 } else {
                     println!("Validate (1)");
                     println!("Plans: {self}");

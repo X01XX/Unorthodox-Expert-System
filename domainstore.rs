@@ -125,6 +125,9 @@ impl DomainStore {
             return;
         }
 
+        // Check length.
+        debug_assert!(selx.len() == self.domains.len());
+
         // Do not allow dups.
         if self.select.contains(&selx) {
             println!("add_select: {} Equal select region found, skipped.", selx);
@@ -377,7 +380,7 @@ impl DomainStore {
                     let ratex = self.rate_plans(&plany);
                     let cur_regs = self.all_current_regions();
                     let desired_num_bits_changed =
-                        cur_regs.num_different_bits(&plany.result_regions(&cur_regs));
+                        cur_regs.distance(&plany.result_regions(&cur_regs));
                     let process_num_bits_changed = plany.num_bits_changed();
                     can.push(InxPlan {
                         inx,
@@ -455,7 +458,7 @@ impl DomainStore {
 
                         let cur_regs = self.all_current_regions();
                         let desired_num_bits_changed =
-                            cur_regs.num_different_bits(&planx.result_regions(&cur_regs));
+                            cur_regs.distance(&planx.result_regions(&cur_regs));
                         let process_num_bits_changed = planx.num_bits_changed();
                         self.can_do.push(InxPlan {
                             inx: ndinx.inx,
@@ -627,7 +630,9 @@ impl DomainStore {
                 continue;
             }
             for stepx in planx.iter() {
-                cur_regions[planx.dom_id] = stepx.rule.result_from(&cur_regions[planx.dom_id]);
+                cur_regions[planx.dom_id] = stepx
+                    .rule
+                    .result_from_initial_region(&cur_regions[planx.dom_id]);
                 rate += self.select.rate_by_negative_regions(&cur_regions);
                 if let AltRule { .. } = &stepx.alt_rule {
                     rate -= 1;
@@ -1608,7 +1613,9 @@ impl DomainStore {
                     "    {} Action {:02} -> {}",
                     &stepx.initial, &stepx.act_id, stepx.result
                 );
-                cur_states[planx.dom_id] = stepx.rule.result_state(&cur_states[planx.dom_id]);
+                cur_states[planx.dom_id] = stepx
+                    .rule
+                    .result_from_initial_state(&cur_states[planx.dom_id]);
 
                 if let AltRule { .. } = &stepx.alt_rule {
                     print!(" Alt_rule: -1");

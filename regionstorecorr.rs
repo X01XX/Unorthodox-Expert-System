@@ -19,7 +19,7 @@ impl fmt::Display for RegionStoreCorr {
 }
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-/// A vector of regions, corresponding to domains.
+/// A vector of regions, corresponding to domains in a vector.
 pub struct RegionStoreCorr {
     pub avec: Vec<SomeRegion>,
 }
@@ -39,7 +39,7 @@ impl PartialEq for RegionStoreCorr {
 impl Eq for RegionStoreCorr {}
 
 impl RegionStoreCorr {
-    /// Return a new, RegionStore.
+    /// Return a new, RegionStoreCorr.
     pub fn new(avec: Vec<SomeRegion>) -> Self {
         Self { avec }
     }
@@ -66,26 +66,7 @@ impl RegionStoreCorr {
         !self.avec.is_empty()
     }
 
-    /// Return true if a RegionStoreCorr is between two others.
-    pub fn is_between(&self, other1: &Self, other2: &Self) -> bool {
-        debug_assert_eq!(self.len(), other1.len());
-        debug_assert_eq!(self.len(), other2.len());
-        debug_assert!(corresponding_num_bits(self, other1));
-        debug_assert!(corresponding_num_bits(self, other2));
-
-        for (rcx, (rcy, rcz)) in self.iter().zip(other1.iter().zip(other2.iter())) {
-            if rcx
-                .diff_edge_mask(rcy)
-                .bitwise_and(&rcx.diff_edge_mask(rcz))
-                .is_not_low()
-            {
-                return false;
-            }
-        }
-        true
-    }
-
-    /// Add a region to the vector.
+    /// Add a region to the region vector.
     pub fn push(&mut self, val: SomeRegion) {
         self.avec.push(val);
     }
@@ -95,8 +76,7 @@ impl RegionStoreCorr {
         self.avec.iter()
     }
 
-    /// Return True if a RegionStore is a superset of all corresponding states in a SomeState vector.
-    /// Used in optimal regionstore calculations.
+    /// Return True if a RegionStoreCorr is a superset of all corresponding states in.
     pub fn is_superset_states(&self, stas: &StateStoreCorr) -> bool {
         debug_assert!(self.len() == stas.len());
         debug_assert!(corresponding_num_bits(self, stas));
@@ -111,8 +91,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return true if RegionStore is a subset of another RegionStore.
-    /// Used in optimal regionstore calculations.
+    /// Return true if RegionStoreCorr is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
         debug_assert!(corresponding_num_bits(self, other));
@@ -126,7 +105,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return True if a RegionStore is a superset of another RSC.
+    /// Return True if a RegionStoreCorr is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
         debug_assert!(corresponding_num_bits(self, other));
@@ -141,7 +120,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Return the intersection, if any, of two RegionStores.
+    /// Return the intersection, if any, of two RegionStoresCorrs.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
         debug_assert!(corresponding_num_bits(self, other));
@@ -159,7 +138,7 @@ impl RegionStoreCorr {
         Some(ret)
     }
 
-    /// Calculate the distance between a RegionStore and the current state.
+    /// Calculate the distance between a RegionStoreCorr and States in a StateStoreCorr.
     pub fn distance_states(&self, stas: &StateStoreCorr) -> usize {
         debug_assert!(self.len() == stas.len());
         debug_assert!(corresponding_num_bits(self, stas));
@@ -191,7 +170,7 @@ impl RegionStoreCorr {
         dist
     }
 
-    /// Return self minus a given RegionStoreCorr.
+    /// Return RegionStoreCorr minus another.
     pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
         debug_assert!(self.len() == subtrahend.len());
         debug_assert!(corresponding_num_bits(self, subtrahend));
@@ -244,7 +223,7 @@ impl RegionStoreCorr {
         ret
     }
 
-    /// Return true if there is an intersection of corresponding regions.
+    /// Return true if there is an intersection of two RegionStorCorrs.
     pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
         debug_assert!(corresponding_num_bits(self, other));
@@ -257,7 +236,7 @@ impl RegionStoreCorr {
         true
     }
 
-    /// Translate regions to within another.
+    /// Make minimum changes to a RegionStoreCorr so that it will be a subset of another.
     pub fn translate_to(&self, other: &Self) -> Self {
         debug_assert!(self.len() == other.len());
         debug_assert!(corresponding_num_bits(self, other));
@@ -268,18 +247,6 @@ impl RegionStoreCorr {
             ret_regs.push(regx.translate_to(regy));
         }
         ret_regs
-    }
-
-    /// Return the number of bits different between two RegionStoreCorr.
-    pub fn num_different_bits(&self, other: &Self) -> usize {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
-
-        let mut ret_num = 0;
-        for (regx, regy) in self.iter().zip(other.iter()) {
-            ret_num += regx.diff_edge_mask(regy).num_one_bits();
-        }
-        ret_num
     }
 } // End impl RegionStoreCorr.
 
@@ -323,10 +290,10 @@ mod tests {
     use crate::state::SomeState;
 
     #[test]
-    fn test_is_superset_states_corr() -> Result<(), String> {
+    fn is_superset_states() -> Result<(), String> {
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x00").expect("SNH"));
-        regstr1.push(SomeRegion::new_from_string("r1x1x").expect("SNH"));
+        regstr1.push(SomeRegion::new_from_string("r0x00")?);
+        regstr1.push(SomeRegion::new_from_string("r1x1x")?);
 
         let sta1 = SomeState::new(SomeBits::new_from_string("0x1")?);
         let sta8 = SomeState::new(SomeBits::new_from_string("0x8")?);
@@ -352,8 +319,8 @@ mod tests {
     #[test]
     fn distance_states() -> Result<(), String> {
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x00").expect("SNH"));
-        regstr1.push(SomeRegion::new_from_string("r1x1x").expect("SNH"));
+        regstr1.push(SomeRegion::new_from_string("r0x00")?);
+        regstr1.push(SomeRegion::new_from_string("r1x1x")?);
 
         let sta1 = SomeState::new(SomeBits::new_from_string("0x1")?);
         let sta8 = SomeState::new(SomeBits::new_from_string("0x8")?);
@@ -367,20 +334,17 @@ mod tests {
     }
 
     #[test]
-    fn is_superset_subset_of() -> Result<(), String> {
+    fn is_subset_of() -> Result<(), String> {
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x").expect("SNH"));
-        regstr1.push(SomeRegion::new_from_string("r1x0x").expect("SNH"));
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r0101").expect("SNH"));
-        regstr2.push(SomeRegion::new_from_string("r1x01").expect("SNH"));
+        regstr2.push(SomeRegion::new_from_string("r0101")?);
+        regstr2.push(SomeRegion::new_from_string("r1x01")?);
 
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
-
-        assert!(regstr1.is_superset_of(&regstr2));
-        assert!(!regstr2.is_superset_of(&regstr1));
 
         assert!(!regstr1.is_subset_of(&regstr2));
         assert!(regstr2.is_subset_of(&regstr1));
@@ -389,14 +353,33 @@ mod tests {
     }
 
     #[test]
-    fn intersection() -> Result<(), String> {
+    fn is_superset_of() -> Result<(), String> {
         let mut regstr1 = RegionStoreCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x").expect("SNH"));
-        regstr1.push(SomeRegion::new_from_string("r1x0x").expect("SNH"));
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
 
         let mut regstr2 = RegionStoreCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("rx1x1").expect("SNH"));
-        regstr2.push(SomeRegion::new_from_string("r1xx1").expect("SNH"));
+        regstr2.push(SomeRegion::new_from_string("r0101")?);
+        regstr2.push(SomeRegion::new_from_string("r1x01")?);
+
+        println!("regstr1 {}", regstr1);
+        println!("regstr2 {}", regstr2);
+
+        assert!(regstr1.is_superset_of(&regstr2));
+        assert!(!regstr2.is_superset_of(&regstr1));
+
+        Ok(())
+    }
+
+    #[test]
+    fn intersection() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string("rx1x1")?);
+        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
 
         let intreg = regstr1.intersection(&regstr2).expect("SNH");
         println!("int part {}", intreg);
@@ -404,10 +387,126 @@ mod tests {
         assert!(
             intreg
                 == RegionStoreCorr::new(vec![
-                    SomeRegion::new_from_string("r0101").expect("SNH"),
-                    SomeRegion::new_from_string("r1x01").expect("SNH")
+                    SomeRegion::new_from_string("r0101")?,
+                    SomeRegion::new_from_string("r1x01")?
                 ])
         );
+        Ok(())
+    }
+
+    #[test]
+    fn distance() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x00")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string("r11x1")?);
+        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+
+        let dist = regstr1.distance(&regstr2);
+        println!("dist {}", dist);
+
+        assert!(dist == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn intersects() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x00")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string("r11x1")?);
+        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+
+        let intb = regstr1.intersects(&regstr2);
+        println!("{regstr1} intersects {regstr2} is {intb}");
+
+        assert!(!intb);
+
+        let mut regstr3 = RegionStoreCorr::with_capacity(2);
+        regstr3.push(SomeRegion::new_from_string("r010x")?);
+        regstr3.push(SomeRegion::new_from_string("rx10x")?);
+
+        let intb = regstr1.intersects(&regstr3);
+        println!("{regstr1} intersects {regstr3} is {intb}");
+
+        assert!(intb);
+
+        Ok(())
+    }
+
+    #[test]
+    fn translate_to() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
+        regstr1.push(SomeRegion::new_from_string("r1x00").expect("SNH"));
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string("r11x1")?);
+        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+
+        let regstr3 = regstr1.translate_to(&regstr2);
+        println!("{regstr1} transate_to {regstr2} is {regstr3}");
+
+        let mut regstrtmp = RegionStoreCorr::with_capacity(2);
+        regstrtmp.push(SomeRegion::new_from_string("r1101")?);
+        regstrtmp.push(SomeRegion::new_from_string("r1x01")?);
+
+        assert!(regstr3 == regstrtmp);
+
+        let mut regstr4 = RegionStoreCorr::with_capacity(2);
+        regstr4.push(SomeRegion::new_from_string("r010x")?);
+        regstr4.push(SomeRegion::new_from_string("rx10x")?);
+
+        let regstr5 = regstr1.translate_to(&regstr4);
+        println!("{regstr1} transate_to {regstr4} is {regstr5}");
+
+        let mut regstrtmp = RegionStoreCorr::with_capacity(2);
+        regstrtmp.push(SomeRegion::new_from_string("r010x")?);
+        regstrtmp.push(SomeRegion::new_from_string("r1100")?);
+
+        assert!(regstr5 == regstrtmp);
+
+        Ok(())
+    }
+
+    #[test]
+    fn subtract() -> Result<(), String> {
+        let mut regstr1 = RegionStoreCorr::with_capacity(2);
+        regstr1.push(SomeRegion::new_from_string("rx_01xx")?);
+        regstr1.push(SomeRegion::new_from_string("rx_01xx")?);
+
+        let mut regstr2 = RegionStoreCorr::with_capacity(2);
+        regstr2.push(SomeRegion::new_from_string("rx_0101")?);
+        regstr2.push(SomeRegion::new_from_string("r1_xxx0")?);
+
+        let regstrvec = regstr1.subtract(&regstr2);
+        println!("{regstr1} subtract {regstr2} is: ");
+        for rscx in regstrvec.iter() {
+            println!("  {rscx}");
+        }
+
+        assert!(regstrvec.len() == 4);
+        assert!(regstrvec.contains(&RegionStoreCorr::new(vec![
+            SomeRegion::new_from_string("rx_01x0")?,
+            SomeRegion::new_from_string("rx_01xx")?
+        ])));
+        assert!(regstrvec.contains(&RegionStoreCorr::new(vec![
+            SomeRegion::new_from_string("rx_011x")?,
+            SomeRegion::new_from_string("rx_01xx")?
+        ])));
+        assert!(regstrvec.contains(&RegionStoreCorr::new(vec![
+            SomeRegion::new_from_string("rx_01xx")?,
+            SomeRegion::new_from_string("rx_01x1")?
+        ])));
+        assert!(regstrvec.contains(&RegionStoreCorr::new(vec![
+            SomeRegion::new_from_string("rx_01xx")?,
+            SomeRegion::new_from_string("r0_01xx")?
+        ])));
+
         Ok(())
     }
 }

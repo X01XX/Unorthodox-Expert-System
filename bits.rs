@@ -1079,4 +1079,25 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn just_one_bit() -> Result<(), String> {
+        let bitsx = SomeBits::new_from_string("0x00+0")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.just_one_bit());
+
+        let bitsx = SomeBits::new_from_string("0b0+01")?;
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.just_one_bit());
+
+        let bitsx = SomeBits::new_from_string("0x01+0")?;
+        println!("bitsx: {bitsx}");
+        assert!(bitsx.just_one_bit());
+
+        let bitsx = SomeBits::new_from_string("0b01+01")?;
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.just_one_bit());
+
+        Ok(())
+    }
 }

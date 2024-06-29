@@ -265,7 +265,7 @@ impl SomePlan {
         let mut ret_state = astate.clone();
         for stepx in self.iter() {
             if stepx.initial.is_superset_of(&ret_state) {
-                ret_state = stepx.rule.result_state(&ret_state);
+                ret_state = stepx.rule.result_from_initial_state(&ret_state);
             } else {
                 panic!("plan problem! plan {self} step {stepx} state {ret_state}");
             }

@@ -1,5 +1,5 @@
 //! The StateStoreCorr struct. A vector of SomeState structs,
-//! corresponding to the domainstore vector.
+//! corresponding to the DomainStore vector.
 //! States will use the same number of bits as the corresponding domain,
 //! which may be different from other states in the vector.
 use crate::bits::NumBits;
@@ -44,7 +44,7 @@ impl StateStoreCorr {
         self.avec.len()
     }
 
-    /// Add a state to a StateStoreCorr.
+    /// Add a state.
     pub fn push(&mut self, val: SomeState) {
         self.avec.push(val);
     }

@@ -1,5 +1,6 @@
 //! The SomeChange struct, which stores masks for 0->1 and 1->0 bit changes.
 
+use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
@@ -40,7 +41,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise and of two changes
-    pub fn intersection(&self, other: &impl AccessChanges) -> Self {
+    pub fn intersection(&self, other: &(impl AccessChanges + NumBits)) -> Self {
         debug_assert_eq!(other.num_bits(), self.num_bits());
 
         Self {
@@ -50,7 +51,7 @@ impl SomeChange {
     }
 
     /// Return the logical bitwise or of two changes
-    pub fn union(&self, other: &impl AccessChanges) -> Self {
+    pub fn union(&self, other: &(impl AccessChanges + NumBits)) -> Self {
         debug_assert_eq!(other.num_bits(), self.num_bits());
 
         Self {
@@ -60,7 +61,7 @@ impl SomeChange {
     }
 
     /// Return the difference of two changes
-    pub fn difference(&self, other: &impl AccessChanges) -> Self {
+    pub fn difference(&self, other: &(impl AccessChanges + NumBits)) -> Self {
         debug_assert_eq!(other.num_bits(), self.num_bits());
 
         Self {
@@ -178,6 +179,14 @@ impl SomeChange {
     pub fn num_bits(&self) -> usize {
         self.b01.num_bits()
     }
+
+    /// Restrict a change to a given region.
+    pub fn restrict_to(&self, regx: &SomeRegion) -> Self {
+        SomeChange {
+            b01: self.b01.bitwise_and_not(&regx.low_state()),
+            b10: self.b10.bitwise_and(&regx.high_state()),
+        }
+    }
 } // end impl SomeChange
 
 /// Allow different types, containing 0->1 and 1->0 masks, to interact.
@@ -186,8 +195,6 @@ pub trait AccessChanges {
     fn b01(&self) -> &SomeMask;
     /// Return a reference to the 1->0 mask.
     fn b10(&self) -> &SomeMask;
-    /// Return the number of bits used.
-    fn num_bits(&self) -> usize;
 }
 
 impl AccessChanges for SomeChange {
@@ -197,6 +204,9 @@ impl AccessChanges for SomeChange {
     fn b10(&self) -> &SomeMask {
         &self.b10
     }
+}
+
+impl NumBits for SomeChange {
     fn num_bits(&self) -> usize {
         self.num_bits()
     }

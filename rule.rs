@@ -1,8 +1,6 @@
-//! Rule struct for, representing a change of bits between aninitial and result state.
+//! Rule struct for, representing a change of bits between an initial and result state.
 //!
-//! Rules for two squares can be combined to create a rule for a SomeGroup struct.
-//!
-//! If the initial region of two groups intersect, and intersection of their rules can be taken,
+//! If the initial regions of two rules intersect, that intersection can be taken,
 //! which may be valid, invalid, or partially valid.
 //!
 //! In combining rules, the results 0->X and 1->X for a bit position are disallowed, since
@@ -27,6 +25,8 @@ use std::fmt;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+/// A struct of four masks with the same number of bits.
+/// They represent a sample, before/after.
 pub struct SomeRule {
     /// A mask for bit change 0->0
     pub b00: SomeMask,
@@ -283,20 +283,8 @@ impl SomeRule {
         ])
     }
 
-    /// Return the result state of a rule.
-    pub fn result_state(&self, astate: &SomeState) -> SomeState {
-        debug_assert_eq!(self.num_bits(), astate.num_bits());
-
-        assert!(self.initial_region().is_superset_of(astate));
-
-        let sta_cng1 = astate.bitwise_and(&self.b10);
-        let sta_cng0 = self.b01.bitwise_and_not(astate);
-
-        astate.bitwise_xor(&sta_cng1.bitwise_or(&sta_cng0))
-    }
-
     /// Return result from an input region.
-    pub fn result_from(&self, regx: &SomeRegion) -> SomeRegion {
+    pub fn result_from_initial_region(&self, regx: &SomeRegion) -> SomeRegion {
         debug_assert_eq!(self.num_bits(), regx.num_bits());
 
         assert!(self.initial_region().intersects(regx));
@@ -462,7 +450,14 @@ impl SomeRule {
             true
         });
 
-        debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low());
+        // Restrict change to what applies to the rule.
+        let net_change_needed = change_needed.restrict_to(&self.initial_region());
+
+        debug_assert!(net_change_needed.is_not_low()); // Some change is required.
+        debug_assert!(net_change_needed
+            .b01
+            .bitwise_and(&net_change_needed.b10)
+            .is_low()); // Changes should not cancel.
 
         // Init return RuleStore.
         let mut ret_rules = Vec::<SomeRule>::new();
@@ -484,9 +479,9 @@ impl SomeRule {
         let init_reg_ones = init_reg.edge_ones_mask();
         let init_reg_xs = init_reg.x_mask();
 
-        if change_needed.b01.is_not_low() {
+        if net_change_needed.b01.is_not_low() {
             // Process individual 0->1 changes needed.
-            let change_bits = change_needed.b01.split();
+            let change_bits = net_change_needed.b01.split();
 
             for m01x in change_bits.iter() {
                 // Check if the rule applies to the needed change.
@@ -508,9 +503,9 @@ impl SomeRule {
             }
         }
 
-        if change_needed.b10.is_not_low() {
+        if net_change_needed.b10.is_not_low() {
             // Process individual 1->0 changes needed.
-            let change_bits = change_needed.b10.split();
+            let change_bits = net_change_needed.b10.split();
 
             for m10x in change_bits.iter() {
                 // Check if the rule applies to the needed change.
@@ -642,7 +637,7 @@ impl SomeRule {
     /// For X->0, the change is optional, a 0 input will be no change.
     /// For X->1, the change is optional, a 1 input will be no change.
     /// Anything -> X, is a don't care.
-    pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
+    pub fn _new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
         let from_0 = from.bitwise_not();
@@ -675,7 +670,7 @@ impl SomeRule {
     /// Combine two rules.
     /// The result region of the first rule must intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
-    pub fn combine_pair(&self, other: &Self) -> Self {
+    pub fn combine_pair_sequence(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         assert!(self.result_region().intersects(&other.initial_region()));
@@ -727,9 +722,6 @@ impl AccessChanges for SomeRule {
     }
     fn b10(&self) -> &SomeMask {
         &self.b10
-    }
-    fn num_bits(&self) -> usize {
-        self.num_bits()
     }
 }
 
@@ -811,7 +803,7 @@ mod tests {
     }
 
     #[test]
-    fn new_all() -> Result<(), String> {
+    fn test_new() -> Result<(), String> {
         let rule_from_states = SomeRule::new(&SomeSample::new(
             SomeState::new_from_string("s0b0101")?,
             SomeState::new_from_string("s0b0011")?,
@@ -892,6 +884,19 @@ mod tests {
 
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul2.is_subset_of(&rul1));
+        assert!(!rul1.is_subset_of(&rul2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn is_superset_of() -> Result<(), String> {
+        let rul1 = SomeRule::new_from_string("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
+        let rul2 = SomeRule::new_from_string("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+
+        println!("rul1: {rul1} rul2: {rul2}");
+        assert!(rul1.is_superset_of(&rul2));
+        assert!(!rul2.is_superset_of(&rul1));
 
         Ok(())
     }
@@ -1114,6 +1119,19 @@ mod tests {
     }
 
     #[test]
+    fn result_from_initial_region() -> Result<(), String> {
+        let rul1 = SomeRule::new_from_string("XX/01/XX/10/x1/x1/x0/x0/Xx/Xx/Xx/XX/XX/XX")?;
+        let reg1 = SomeRegion::new_from_string("r00_11_01_01_x01_x01")?;
+
+        let reg2 = rul1.result_from_initial_region(&reg1);
+        println!("rul1: {rul1} reg1: {reg1} result: {reg2}");
+
+        assert!(reg2 == SomeRegion::new_from_string("r01_10_11_00_x10_x01")?);
+
+        Ok(())
+    }
+
+    #[test]
     fn union() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string("00/01/00/01/xx")?;
         let rul2 = SomeRule::new_from_string("00/01/10/10/11")?;
@@ -1128,11 +1146,11 @@ mod tests {
     }
 
     #[test]
-    fn combine_pair() -> Result<(), String> {
+    fn combine_pair_sequence() -> Result<(), String> {
         // Test 0->0
         let rul1 = SomeRule::new_from_string("00/00/00/00/00/00")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("00/01/00/01/00/01")?;
@@ -1141,7 +1159,7 @@ mod tests {
         // Test 0->1
         let rul1 = SomeRule::new_from_string("01/01/01/01/01/01")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("01/00/00/01/01/00")?;
@@ -1150,7 +1168,7 @@ mod tests {
         // Test 1->1
         let rul1 = SomeRule::new_from_string("11/11/11/11/11/11")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/10/11/11/10")?;
@@ -1159,7 +1177,7 @@ mod tests {
         // Test 1->0
         let rul1 = SomeRule::new_from_string("10/10/10/10/10/10")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("10/11/10/11/10/11")?;
@@ -1168,7 +1186,7 @@ mod tests {
         // Test X->0
         let rul1 = SomeRule::new_from_string("X0/X0/X0/X0/X0/X0")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("X0/X1/X0/X1/X0/X1")?;
@@ -1177,7 +1195,7 @@ mod tests {
         // Test X->1
         let rul1 = SomeRule::new_from_string("X1/X1/X1/X1/X1/X1")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("X1/X0/X0/X1/X1/X0")?;
@@ -1186,7 +1204,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1195,7 +1213,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1204,7 +1222,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1213,7 +1231,7 @@ mod tests {
         // Test X->x
         let rul1 = SomeRule::new_from_string("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair(&rul2);
+        let rul3 = rul1.combine_pair_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("01/00/10/11/X0/X1/Xx/XX")?;
@@ -1260,6 +1278,26 @@ mod tests {
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
         let rul2 = SomeRule::new_from_string("00/11/00/X1")?;
         assert!(rul1 == rul2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn mutually_exclusive() -> Result<(), String> {
+        let msk1 = SomeMask::new_from_string("0b10")?;
+        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+
+        let rul1 = SomeRule::new_from_string("01/01")?;
+        let rul2 = SomeRule::new_from_string("11/10")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(!rslt);
+
+        let rul1 = SomeRule::new_from_string("01/01")?;
+        let rul2 = SomeRule::new_from_string("10/11")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(rslt);
 
         Ok(())
     }
