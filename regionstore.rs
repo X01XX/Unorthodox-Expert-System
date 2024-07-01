@@ -355,7 +355,7 @@ impl RegionStore {
             poss_regs = poss_regs.intersection(&poss_regs.possible_regions_by_negative_inference2(
                 &max_poss_reg,
                 ex_regx.first_state(),
-                ex_regx.far_state(),
+                &ex_regx.far_state(),
             ));
         }
 

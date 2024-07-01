@@ -234,7 +234,7 @@ impl SomeGroup {
         self.anchor_mask = Some(anchor_mask);
 
         if let Some(astate) = &self.anchor {
-            if self.region.first_state() != astate && self.region.far_state() != astate {
+            if self.region.first_state() != astate && self.region.far_state() != *astate {
                 self.region =
                     SomeRegion::new(vec![astate.clone(), self.region.state_far_from(astate)]);
             }
