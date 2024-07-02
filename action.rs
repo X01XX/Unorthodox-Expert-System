@@ -528,17 +528,7 @@ impl SomeAction {
                     }
 
                     // Calc pnc
-                    let sqrx = self
-                        .squares
-                        .find(group_region.first_state())
-                        .expect("Group region states should refer to existing squares");
-                    let pnc = if group_region.far_state() == *group_region.first_state() {
-                        sqrx.pnc
-                    } else if let Some(sqry) = self.squares.find(&group_region.far_state()) {
-                        sqrx.pnc && sqry.pnc
-                    } else {
-                        false
-                    };
+                    let pnc = self.group_region_pnc(group_region);
 
                     self.groups.push_nosubs(
                         SomeGroup::new(group_region.clone(), rules.clone(), pnc),
@@ -2069,94 +2059,33 @@ impl SomeAction {
 
         debug_assert!(regx.is_superset_of(sqrx));
 
-        // Find squares in the given region, and calc region built from similar squares.
-        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
-        let mut sqrs_in = Vec::<&SomeSquare>::new();
-        for sqry in not_dissim_sqrs.iter() {
-            if regx.is_superset_of(*sqry) {
-                sqrs_in.push(sqry);
-                if !regy.is_superset_of(*sqry) {
-                    regy = regy.union(*sqry);
-                }
+        if let Some((regy, rules)) = self.check_region_for_group(regx) {
+            if regy.is_superset_of(&sqrx.state) {
+                // Calc pnc.
+                let pnc = self.group_region_pnc(&regy);
+
+                // Return a group
+                return Some(SomeGroup::new(regy, rules, pnc));
             }
         }
-        if self.groups.any_superset_of(&regy) {
-            return None;
-        }
+        None
+    }
 
-        let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
+    /// Return the pnc value of a group region.
+    fn group_region_pnc(&self, regx: &SomeRegion) -> bool {
+        let sqrx = self
+            .squares
+            .find(regx.first_state())
+            .expect("Group region states should refer to existing squares");
 
-        stas_in.push(sqrx.state.clone());
-
-        for sqry in sqrs_in.iter() {
-            stas_in.push(sqry.state.clone());
-        }
-
-        // Create region, cleanup squares between, etc.
-        let grp_reg = SomeRegion::new(stas_in);
-
-        // If sqrx is not Pn::Unpredictable, aggregate the rules.
-        let mut rules: Option<RuleStore> = None;
-        if let Some(rulesx) = &sqrx.rules {
-            let mut rulesz = rulesx.clone();
-
-            for stay in grp_reg.states.iter().skip(1) {
-                // Far state may not be found, for a GT two state region.
-                if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == stay) {
-                    rulesz = rulesz.union(sqry.rules.as_ref()?)?;
-                }
-            }
-            rules = Some(rulesz);
-        }
-
-        // Get far_state_pnc.
-        let mut far_pnc = false;
-        if grp_reg.len() == 1 {
-            far_pnc = sqrx.pnc;
-        } else if grp_reg.len() == 2 {
-            let far_state = grp_reg.far_state();
-            if let Some(sqry) = sqrs_in.iter().find(|&sqry| sqry.state == far_state) {
-                far_pnc = sqry.pnc;
-            }
-        }
-
-        if self.groups.any_superset_of(&grp_reg) {
-            return None;
-        }
-
-        // Check all squares in group.
-        if let Some(rulsx) = &rules {
-            for sqry in self.squares.ahash.values() {
-                if grp_reg.is_superset_of(&sqry.state) {
-                    if let Some(rulsy) = &sqry.rules {
-                        if rulsx.is_superset_of(rulsy) {
-                        } else {
-                            println!("not dis sqrs:");
-                            for sqrd in not_dissim_sqrs.iter() {
-                                println!("   {sqrd}");
-                            }
-
-                            panic!("1 In {grp_reg} {rulsx}, sqrx {sqrx} found {sqry}");
-                            //return None;
-                        }
-                    } else {
-                        panic!("2 In {grp_reg} {rulsx}, found {sqry}");
-                        //return None;
-                    }
-                }
-            }
+        if regx.far_state() == *regx.first_state() {
+            sqrx.pnc
+        } else if let Some(sqry) = self.squares.find(&regx.far_state()) {
+            sqrx.pnc && sqry.pnc
         } else {
-            for sqry in self.squares.ahash.values() {
-                if grp_reg.is_superset_of(&sqry.state) && sqry.pnc && sqry.pn != Pn::Unpredictable {
-                    panic!("3 In {grp_reg}, rules None, found {sqry}");
-                    //return None;
-                }
-            }
+            false
         }
-
-        // Return a group, keeping sqrx.state as first state in the group region.
-        Some(SomeGroup::new(grp_reg, rules, sqrx.pnc && far_pnc))
-    } // end validate_combination
+    }
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
