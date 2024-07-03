@@ -172,7 +172,7 @@ impl SomePlan {
     /// Add a step to a SomePlan.
     pub fn push(&mut self, stepx: SomeStep) {
         if self.is_not_empty() {
-            assert!(self.result_region() == &stepx.initial);
+            assert!(self.result_region() == &stepx.initial, "plan {self}");
         }
         self.steps.push(stepx);
     }

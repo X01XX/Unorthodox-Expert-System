@@ -60,15 +60,15 @@ impl SquareStore {
     }
 
     /// Return a list of squares in a given region.
-    pub fn stas_in_reg(&self, areg: &SomeRegion) -> StateStore {
-        debug_assert!(areg.num_bits() == self.num_bits);
+    pub fn stas_in_reg(&self, aregion: &SomeRegion) -> StateStore {
+        debug_assert!(aregion.num_bits() == self.num_bits);
 
         let mut ret_keys = StateStore::new(vec![]);
 
         let sel_keys: Vec<&SomeState> = self
             .ahash
             .keys()
-            .filter(|keyx| areg.is_superset_of(*keyx))
+            .filter(|keyx| aregion.is_superset_of(*keyx))
             .collect();
 
         for keyx in sel_keys.iter() {
@@ -78,23 +78,23 @@ impl SquareStore {
     }
 
     /// Return a list of squares in a given region.
-    pub fn squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
-        debug_assert!(areg.num_bits() == self.num_bits);
+    pub fn squares_in_reg(&self, aregion: &SomeRegion) -> Vec<&SomeSquare> {
+        debug_assert!(aregion.num_bits() == self.num_bits);
 
         self.ahash
             .values()
-            .filter(|sqrx| areg.is_superset_of(*sqrx))
+            .filter(|sqrx| aregion.is_superset_of(*sqrx))
             .collect()
     }
 
     /// Return a list of memory squares in a given region.
-    pub fn memory_squares_in_reg(&self, areg: &SomeRegion) -> Vec<&SomeSquare> {
-        debug_assert!(areg.num_bits() == self.num_bits);
+    pub fn memory_squares_in_reg(&self, aregion: &SomeRegion) -> Vec<&SomeSquare> {
+        debug_assert!(aregion.num_bits() == self.num_bits);
 
         let mut ret_sqrs = Vec::<&SomeSquare>::new();
 
         for sqrx in self.memory.iter() {
-            if areg.is_superset_of(&sqrx.state) {
+            if aregion.is_superset_of(&sqrx.state) {
                 ret_sqrs.push(sqrx);
             }
         }
@@ -117,26 +117,16 @@ impl SquareStore {
         self.memory.iter_mut().find(|sqrx| sqrx.state == *key)
     }
 
-    /// Find a square that is expected to exist.
-    pub fn find_mut_must(&mut self, val: &SomeState) -> &mut SomeSquare {
-        debug_assert!(val.num_bits() == self.num_bits);
-
-        if let Some(sqrx) = self.ahash.get_mut(val) {
-            return sqrx;
-        }
-        panic!("Square expected to be found is not found");
-    }
-
     /// Return an Option immutable reference for a square given a state,
     /// or None if not found.
-    pub fn find(&self, val: &SomeState) -> Option<&SomeSquare> {
-        debug_assert!(val.num_bits() == self.num_bits);
+    pub fn find(&self, key: &SomeState) -> Option<&SomeSquare> {
+        debug_assert!(key.num_bits() == self.num_bits);
 
-        self.ahash.get(val)
+        self.ahash.get(key)
     }
 
     /// Return true if there is a square with a given state in memory.
-    pub fn memory_is_in(&self, key: &SomeState) -> bool {
+    pub fn memory_contains(&self, key: &SomeState) -> bool {
         debug_assert_eq!(key.num_bits(), self.num_bits);
 
         for sqrx in self.memory.iter() {
@@ -147,29 +137,62 @@ impl SquareStore {
         false
     }
 
-    /// Return list of indicies of squares in memory that are in a given region.
-    /// Indicies are in decscending order.
-    pub fn memory_stas_in_reg(&self, regx: &SomeRegion) -> StateStore {
-        debug_assert_eq!(regx.num_bits(), self.num_bits);
+    /// Return the key of a square in memory that is in a given region.
+    /// Select squares for pnc == true, otherwise for maximum number results.
+    pub fn memory_key_in_reg(&self, aregion: &SomeRegion) -> Option<SomeState> {
+        debug_assert_eq!(aregion.num_bits(), self.num_bits);
 
-        let mut ret_stas = StateStore::new(vec![]);
+        // Collect squares in the given region.
+        let mut sqrs_in = Vec::<&SomeSquare>::new();
 
         for sqrx in self.memory.iter() {
-            if regx.is_superset_of(&sqrx.state) {
-                ret_stas.push(sqrx.state.clone());
+            if aregion.is_superset_of(&sqrx.state) {
+                sqrs_in.push(sqrx);
             }
         }
-        ret_stas
-    }
-
-    /// Find a square that is expected to exist.
-    pub fn find_must(&self, val: &SomeState) -> &SomeSquare {
-        debug_assert!(val.num_bits() == self.num_bits);
-
-        if let Some(sqrx) = self.ahash.get(val) {
-            return sqrx;
+        // Return if none found.
+        if sqrs_in.is_empty() {
+            return None;
         }
-        panic!("Square expected to be found is not found");
+
+        // Look for pnc squares.
+        let mut pnc_squares = Vec::<&SomeSquare>::new();
+        for sqrx in sqrs_in.iter() {
+            if sqrx.pnc {
+                pnc_squares.push(sqrx);
+            }
+        }
+
+        // Return a pnc square, if any.
+        if !pnc_squares.is_empty() {
+            return Some(
+                pnc_squares[rand::thread_rng().gen_range(0..pnc_squares.len())]
+                    .state
+                    .clone(),
+            );
+        }
+
+        // Find the maximum number of results for any square.
+        let mut max_num_results = 0;
+        for sqrx in sqrs_in.iter() {
+            if sqrx.num_results() > max_num_results {
+                max_num_results = sqrx.num_results();
+            }
+        }
+
+        // Collect high number results squares.
+        let mut max_squares = Vec::<&SomeSquare>::new();
+        for sqrx in sqrs_in.iter() {
+            if sqrx.num_results() == max_num_results {
+                max_squares.push(sqrx);
+            }
+        }
+
+        Some(
+            max_squares[rand::thread_rng().gen_range(0..max_squares.len())]
+                .state
+                .clone(),
+        )
     }
 
     /// Add a square that is not currently in the store.
@@ -203,15 +226,15 @@ impl SquareStore {
     }
 
     /// Return a StateStore of square states that are adjacent to a given region.
-    pub fn stas_adj_reg(&self, regx: &SomeRegion) -> StateStore {
-        debug_assert!(regx.num_bits() == self.num_bits);
+    pub fn stas_adj_reg(&self, aregion: &SomeRegion) -> StateStore {
+        debug_assert!(aregion.num_bits() == self.num_bits);
 
         let mut ret_keys = StateStore::new(vec![]);
 
         let sel_keys: Vec<&SomeState> = self
             .ahash
             .keys()
-            .filter(|keyx| regx.is_adjacent(*keyx))
+            .filter(|keyx| aregion.is_adjacent(*keyx))
             .collect();
 
         for keyx in sel_keys.iter() {

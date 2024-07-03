@@ -103,7 +103,7 @@ impl SomeAction {
 
         let key = sqrx.state.clone();
         self.squares_insert(sqrx);
-        self.squares.find_must(&key)
+        self.squares.find(&key).expect("SNH")
     }
 
     /// Add a square, print info.
@@ -126,19 +126,21 @@ impl SomeAction {
         //println!("Dom {} Act {} eval_changed_square: {key}", self.dom_id, self.id);
         debug_assert_eq!(key.num_bits(), self.num_bits);
 
-        let sqrx = self.squares.find_mut_must(key);
+        let sqrx = self.squares.find_mut(key).expect("SNH");
 
         // Check if it invalidates any groups.
         let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
 
         let pnc = sqrx.pnc;
+        let pn = sqrx.pn;
 
         if regs_invalid.is_not_empty() {
             self.check_remainder = true;
             self.process_invalid_regions(&regs_invalid);
         }
 
-        if not(pnc) {
+        if pn == Pn::One || pnc {
+        } else {
             return;
         }
 
@@ -173,7 +175,7 @@ impl SomeAction {
             }
 
             if *key == grpx.region.far_state() {
-                let sqr1 = self.squares.find_must(grpx.region.first_state());
+                let sqr1 = self.squares.find(grpx.region.first_state()).expect("SHN");
                 if sqr1.pnc {
                     grpx.set_pnc(self.dom_id, self.id);
                 }
@@ -415,7 +417,7 @@ impl SomeAction {
             for ndx in ret.iter() {
                 match ndx.target() {
                     ATarget::State { state } => {
-                        if self.squares.memory_is_in(state) {
+                        if self.squares.memory_contains(state) {
                             self.squares.remember(state);
                             self.eval_changed_square(state);
                             get_new_needs = true;
@@ -423,11 +425,9 @@ impl SomeAction {
                         }
                     }
                     ATarget::Region { region } => {
-                        let stas_in = self.squares.memory_stas_in_reg(region);
-                        if stas_in.is_not_empty() {
-                            let stax = &stas_in[rand::thread_rng().gen_range(0..stas_in.len())];
-                            self.squares.remember(stax);
-                            self.eval_changed_square(stax);
+                        if let Some(key) = self.squares.memory_key_in_reg(region) {
+                            self.squares.remember(&key);
+                            self.eval_changed_square(&key);
                             get_new_needs = true;
                             break;
                         }
@@ -1350,19 +1350,15 @@ impl SomeAction {
     /// Check if squares in a region can be used to make a single group.
     /// If so, return a region that meets the requirements for a group region, and rules.
     /// The returned region may be smaller than the given region.
-    fn check_region_for_group(&self, regx: &SomeRegion) -> Option<(SomeRegion, Option<RuleStore>)> {
+    fn check_region_for_group(
+        &self,
+        regx: &SomeRegion,
+        max_pn: Pn,
+    ) -> Option<(SomeRegion, Option<RuleStore>)> {
         let squares_in = self.squares.squares_in_reg(regx);
 
         if squares_in.is_empty() {
             return None;
-        }
-
-        // Find the maximun Pn in the square list.
-        let mut max_pn = Pn::One;
-        for sqrx in squares_in.iter() {
-            if sqrx.pn > max_pn {
-                max_pn = sqrx.pn;
-            }
         }
 
         // Find squares in region that are pnc, and pn eq.
@@ -1483,7 +1479,7 @@ impl SomeAction {
 
         let reg_combined = grpx.region.union(&grpy.region);
 
-        if let Some((regx, rules)) = self.check_region_for_group(&reg_combined) {
+        if let Some((regx, rules)) = self.check_region_for_group(&reg_combined, grpx.pn) {
             if regx == reg_combined {
                 //println!("group_combine_needs: returning (2) {regx} for combination of {} and {}", grpx.region, grpy.region);
                 nds.push(SomeNeed::AddGroup {
@@ -1875,7 +1871,7 @@ impl SomeAction {
 
             // Process an Unpredictable square.
             if sqrx.pn == Pn::Unpredictable {
-                if let Some(grpx) = self.validate_possible_group(sqrx, regx, &other_sqrs_in) {
+                if let Some(grpx) = self.validate_possible_group(sqrx, regx) {
                     ret_grps.push(grpx);
                 }
                 continue;
@@ -2016,12 +2012,13 @@ impl SomeAction {
             } // end if other_sqrs_in.len() > 1
 
             for regz in poss_regs2.iter() {
-                if let Some(grpx) = self.validate_possible_group(sqrx, regz, &other_sqrs_in) {
+                if let Some(grpx) = self.validate_possible_group(sqrx, regz) {
                     ret_grps.push(grpx);
                 }
             }
         } // next regx
 
+        // If no groups, create a one-state group.
         if ret_grps.is_empty() {
             ret_grps.push(SomeGroup::new(
                 SomeRegion::new(vec![sqrx.state.clone()]),
@@ -2033,107 +2030,36 @@ impl SomeAction {
     } // end possible_regions_from_square
 
     /// Validate a region that may be made from a given square, in combination with similar squares.
-    fn validate_possible_group(
-        &self,
-        sqrx: &SomeSquare,
-        regx: &SomeRegion,
-        not_dissim_sqrs: &[&SomeSquare],
-    ) -> Option<SomeGroup> {
+    fn validate_possible_group(&self, sqrx: &SomeSquare, regx: &SomeRegion) -> Option<SomeGroup> {
         // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, not_dissim_sqrs.len(), regx);
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
-        debug_assert!(not_dissim_sqrs.is_empty() || not_dissim_sqrs[0].num_bits() == self.num_bits);
-
         debug_assert!(regx.is_superset_of(sqrx));
 
-        // Find squares in the given region, and calc region built from similar squares.
-        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
-        let mut sqrs_in = Vec::<&SomeSquare>::new();
-        for sqry in not_dissim_sqrs.iter() {
-            if regx.is_superset_of(*sqry) {
-                sqrs_in.push(sqry);
-                if !regy.is_superset_of(*sqry) {
-                    regy = regy.union(*sqry);
-                }
-            }
-        }
-        if self.groups.any_superset_of(&regy) {
-            return None;
-        }
-
-        let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
-
-        stas_in.push(sqrx.state.clone());
-
-        for sqry in sqrs_in.iter() {
-            stas_in.push(sqry.state.clone());
-        }
-
-        // Create region, cleanup squares between, etc.
-        let grp_reg = SomeRegion::new(stas_in);
-
-        // If sqrx is not Pn::Unpredictable, aggregate the rules.
-        let mut rules: Option<RuleStore> = None;
-        if let Some(rulesx) = &sqrx.rules {
-            let mut rulesz = rulesx.clone();
-
-            for stay in grp_reg.states.iter().skip(1) {
-                // Far state may not be found, for a GT two state region.
-                if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == stay) {
-                    rulesz = rulesz.union(sqry.rules.as_ref()?)?;
-                }
-            }
-            rules = Some(rulesz);
-        }
-
-        // Get far_state_pnc.
-        let mut far_pnc = false;
-        if grp_reg.len() == 1 {
-            far_pnc = sqrx.pnc;
-        } else if grp_reg.len() == 2 {
-            let far_state = grp_reg.far_state();
-            if let Some(sqry) = sqrs_in.iter().find(|&sqry| sqry.state == far_state) {
-                far_pnc = sqry.pnc;
-            }
-        }
-
-        if self.groups.any_superset_of(&grp_reg) {
-            return None;
-        }
-
-        // Check all squares in group.
-        if let Some(rulsx) = &rules {
-            for sqry in self.squares.ahash.values() {
-                if grp_reg.is_superset_of(&sqry.state) {
-                    if let Some(rulsy) = &sqry.rules {
-                        if rulsx.is_superset_of(rulsy) {
-                        } else {
-                            println!("not dis sqrs:");
-                            for sqrd in not_dissim_sqrs.iter() {
-                                println!("   {sqrd}");
-                            }
-
-                            panic!("1 In {grp_reg} {rulsx}, sqrx {sqrx} found {sqry}");
-                            //return None;
-                        }
-                    } else {
-                        panic!("2 In {grp_reg} {rulsx}, found {sqry}");
-                        //return None;
-                    }
-                }
+        if let Some((regy, rules)) = self.check_region_for_group(regx, sqrx.pn) {
+            if regy.is_superset_of(&sqrx.state) {
+                let pnc = self.calc_region_pnc(&regy);
+                Some(SomeGroup::new(regy, rules, pnc))
+            } else {
+                None
             }
         } else {
-            for sqry in self.squares.ahash.values() {
-                if grp_reg.is_superset_of(&sqry.state) && sqry.pnc && sqry.pn != Pn::Unpredictable {
-                    panic!("3 In {grp_reg}, rules None, found {sqry}");
-                    //return None;
-                }
-            }
+            None
         }
-
-        // Return a group, keeping sqrx.state as first state in the group region.
-        Some(SomeGroup::new(grp_reg, rules, sqrx.pnc && far_pnc))
     } // end validate_combination
+
+    /// Calculate a group region pnc value.
+    pub fn calc_region_pnc(&self, aregion: &SomeRegion) -> bool {
+        let sqrx = self.squares.find(aregion.first_state()).expect("SNH");
+        if !sqrx.pnc {
+            return false;
+        }
+        let farx = aregion.far_state();
+        if let Some(sqrf) = self.squares.find(&farx) {
+            return sqrf.pnc;
+        }
+        false
+    }
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
@@ -2149,7 +2075,7 @@ impl SomeAction {
                 // The sample could have invalidated the group.
                 if let Some(grpx) = self.groups.find_mut(grp_reg) {
                     if !grpx.pnc {
-                        let sqr1 = self.squares.find_must(grp_reg.first_state());
+                        let sqr1 = self.squares.find(grp_reg.first_state()).expect("SNH");
                         if grp_reg.len() == 1 {
                             if sqr1.pnc {
                                 grpx.set_pnc(self.dom_id, self.id);
@@ -2164,7 +2090,7 @@ impl SomeAction {
             }
             SomeNeed::StateInRemainder { dom_id, .. } => {
                 if not(self.groups.any_superset_of(cur_state)) {
-                    let sqr1 = self.squares.find_must(cur_state);
+                    let sqr1 = self.squares.find(cur_state).expect("SNH");
                     if sqr1.pnc {
                         self.check_remainder = true;
                         self.groups.push_nosubs(
@@ -2277,7 +2203,7 @@ impl SomeAction {
             let stas_adj = self.squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {
                 if stax.is_adjacent(anchor) {
-                    let sqrx = self.squares.find_must(stax);
+                    let sqrx = self.squares.find(stax).expect("SNH");
                     let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
