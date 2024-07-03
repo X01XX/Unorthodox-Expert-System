@@ -44,6 +44,11 @@ impl StateStore {
         self.avec.is_empty()
     }
 
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.avec.is_empty()
+    }
+
     /// Return an immuable iterator.
     pub fn iter(&self) -> Iter<SomeState> {
         self.avec.iter()

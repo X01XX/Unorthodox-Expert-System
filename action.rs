@@ -35,7 +35,6 @@ use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::collections::VecDeque;
 use std::fmt;
 
 /// Number of new squares added before a cleanup check is run.
@@ -46,9 +45,6 @@ impl fmt::Display for SomeAction {
         write!(f, "{}", self.formatted_string())
     }
 }
-
-/// Maximum number of recent squares/samples to keep in a circular buffer.
-const MAX_MEMORY: usize = 20;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
@@ -73,8 +69,6 @@ pub struct SomeAction {
     check_remainder: bool,
     /// Regions currently not covered by groups, when tere are no more needs to sample squares.
     remainder_check_regions: RegionStore,
-    /// Memory for past samples that were not stored in a group, or squares removed from the cleanup function, oldest first.
-    pub memory: VecDeque<SomeSquare>,
 }
 
 impl SomeAction {
@@ -85,37 +79,18 @@ impl SomeAction {
             dom_id,
             num_bits: cur_state.num_bits(),
             groups: GroupStore::new(vec![]),
-            squares: SquareStore::new(HashMap::new()),
+            squares: SquareStore::new(HashMap::new(), cur_state.num_bits()),
             do_something: ActionInterface::new(rules),
             cleanup_trigger: 0,
             check_remainder: false,
             remainder_check_regions: RegionStore::new(vec![]),
-            memory: VecDeque::<SomeSquare>::with_capacity(MAX_MEMORY),
         }
-    }
-
-    /// Return the index in memory of a square, given a key.
-    fn memory_index(&self, key: &SomeState) -> Option<usize> {
-        debug_assert_eq!(key.num_bits(), self.num_bits);
-
-        for (inx, sqrx) in self.memory.iter().enumerate() {
-            if sqrx.state == *key {
-                return Some(inx);
-            }
-        }
-        None
     }
 
     /// Add a new square from a sample.
     pub fn add_new_sample(&mut self, smpl: &SomeSample) -> &SomeSquare {
         //println!("Dom {} Act {} add_new_sample: {}", self.dom_id, self.id, smpl);
         debug_assert_eq!(smpl.num_bits(), self.num_bits);
-
-        if let Some(inx) = self.memory_index(&smpl.initial) {
-            if let Some(sqrx) = self.memory.remove(inx) {
-                return self.add_new_square(sqrx);
-            }
-        }
 
         self.add_new_square(SomeSquare::new(smpl))
     }
@@ -127,8 +102,20 @@ impl SomeAction {
         self.cleanup_trigger += 1;
 
         let key = sqrx.state.clone();
-        self.squares.insert(sqrx, self.dom_id, self.id);
+        self.squares_insert(sqrx);
         self.squares.find_must(&key)
+    }
+
+    /// Add a square, print info.
+    pub fn squares_insert(&mut self, sqrx: SomeSquare) {
+        println!(
+            "\nDom {} Adding square {} -{}-> {}",
+            self.dom_id,
+            sqrx.state,
+            self.id,
+            sqrx.first_result()
+        );
+        self.squares.insert(sqrx);
     }
 
     /// Evaluate a changed square.
@@ -201,6 +188,7 @@ impl SomeAction {
         debug_assert_eq!(smpl.num_bits(), self.num_bits);
 
         // If a square already exists, update it.
+        // If the square changes, evaluate it.
         if let Some(sqrx) = self.squares.find_mut(&smpl.initial) {
             if sqrx.add_sample(smpl) {
                 self.eval_changed_square(&smpl.initial);
@@ -208,16 +196,14 @@ impl SomeAction {
             return true;
         }
 
-        if let Some(inx) = self.memory_index(&smpl.initial) {
-            if self.memory[inx].add_sample(smpl) {
-                if let Some(sqrm) = self.memory.remove(inx) {
-                    println!("Reclaim changed memory square {sqrm}");
-                    self.add_new_square(sqrm);
-                    self.eval_changed_square(&smpl.initial);
-                    return true;
-                }
+        // If a square in memory already exists, update it.
+        // If the square changes, remember and evaluate it.
+        if let Some(sqrx) = self.squares.memory_find_mut(&smpl.initial) {
+            if sqrx.add_sample(smpl) {
+                self.squares.remember(&smpl.initial);
+                self.eval_changed_square(&smpl.initial);
             }
-            return false;
+            return true;
         }
 
         // Check if the sample invalidates any groups.
@@ -240,7 +226,7 @@ impl SomeAction {
             return true;
         }
 
-        self.update_memory(smpl);
+        self.squares.update_memory(smpl);
 
         false
     }
@@ -427,33 +413,27 @@ impl SomeAction {
 
             // Check for first need satisfied by a square in memory.
             for ndx in ret.iter() {
-                let mut inx: Option<usize> = None;
-
-                // Get need target.
-                let targx = match ndx.target() {
-                    ATarget::State { state } => SomeRegion::new(vec![state.clone()]),
-                    ATarget::Region { region } => region.clone(),
+                match ndx.target() {
+                    ATarget::State { state } => {
+                        if self.squares.memory_is_in(state) {
+                            self.squares.remember(state);
+                            self.eval_changed_square(state);
+                            get_new_needs = true;
+                            break;
+                        }
+                    }
+                    ATarget::Region { region } => {
+                        let stas_in = self.squares.memory_stas_in_reg(region);
+                        if stas_in.is_not_empty() {
+                            let stax = &stas_in[rand::thread_rng().gen_range(0..stas_in.len())];
+                            self.squares.remember(stax);
+                            self.eval_changed_square(stax);
+                            get_new_needs = true;
+                            break;
+                        }
+                    }
                     _ => panic!("SNH"),
                 };
-
-                for (iny, sqrx) in self.memory.iter().enumerate() {
-                    if targx.is_superset_of(sqrx) {
-                        println!("Memory square {} found for need {}", sqrx, ndx);
-                        inx = Some(iny);
-                        break;
-                    }
-                } // next sqrx
-
-                // If a square is found, remove it, use it.
-                if let Some(iny) = inx {
-                    let sqrx = self.memory.remove(iny).expect("SNH");
-                    // Process square as a series of samples.
-                    let key = sqrx.state.clone();
-                    self.squares.insert(sqrx, self.dom_id, self.id);
-                    self.eval_changed_square(&key);
-                    get_new_needs = true;
-                    break;
-                }
             } // next ndx
         } // end while
         ret
@@ -528,7 +508,17 @@ impl SomeAction {
                     }
 
                     // Calc pnc
-                    let pnc = self.group_region_pnc(group_region);
+                    let sqrx = self
+                        .squares
+                        .find(group_region.first_state())
+                        .expect("Group region states should refer to existing squares");
+                    let pnc = if group_region.far_state() == *group_region.first_state() {
+                        sqrx.pnc
+                    } else if let Some(sqry) = self.squares.find(&group_region.far_state()) {
+                        sqrx.pnc && sqry.pnc
+                    } else {
+                        false
+                    };
 
                     self.groups.push_nosubs(
                         SomeGroup::new(group_region.clone(), rules.clone(), pnc),
@@ -684,7 +674,7 @@ impl SomeAction {
             );
             for keyx in to_del.iter() {
                 if let Some(sqrx) = self.squares.remove(keyx) {
-                    self.add_square_to_memory(sqrx);
+                    self.squares.add_square_to_memory(sqrx);
                 }
             }
         }
@@ -1842,7 +1832,30 @@ impl SomeAction {
         let mut poss_regs = RegionStore::new(vec![max_poss_reg.clone()]);
 
         // Subtract states of incompatible squares.
-        for sqry in self.squares.ahash.values() {
+
+        // Get squares that are in the region.
+        let mut sqrs_in = Vec::<&SomeSquare>::new();
+        for regx in poss_regs.iter() {
+            let tmp_sqrs_in = self.squares.squares_in_reg(regx);
+            for sqry in tmp_sqrs_in.iter() {
+                if !sqrs_in.contains(sqry) {
+                    sqrs_in.push(sqry);
+                }
+            }
+        }
+
+        // Check memory for additional squares.
+        for regx in poss_regs.iter() {
+            let tmp_sqrs_in = self.squares.memory_squares_in_reg(regx);
+            for sqry in tmp_sqrs_in.iter() {
+                if !sqrs_in.contains(sqry) {
+                    sqrs_in.push(sqry);
+                }
+            }
+        }
+
+        // Subtract dissimilar squares.
+        for sqry in sqrs_in.iter() {
             if sqry.state == sqrx.state {
                 continue;
             }
@@ -1856,35 +1869,9 @@ impl SomeAction {
             }
         }
 
-        // Check memory for additional dissimilar squares.
-        for sqrm in self.memory.iter() {
-            if poss_regs.any_superset_of_state(&sqrm.state)
-                && (sqrx.pn < sqrm.pn || sqrx.compatible(sqrm) == Compatibility::NotCompatible)
-            {
-                poss_regs = poss_regs.subtract_state_to_supersets_of(&sqrm.state, &sqrx.state);
-            }
-        }
-
         // Check each possible region for subregions.
         for regx in poss_regs.iter() {
-            let mut other_sqrs_in = Vec::<&SomeSquare>::new();
-
-            for sqry in self.squares.ahash.values() {
-                if sqry.state == sqrx.state {
-                    continue;
-                }
-
-                if regx.is_superset_of(&sqry.state) {
-                    other_sqrs_in.push(sqry);
-                }
-            }
-
-            // Check for similar squares from memory, that are within the possible regions.
-            for sqrm in self.memory.iter() {
-                if regx.is_superset_of(&sqrm.state) {
-                    other_sqrs_in.push(sqrm);
-                }
-            }
+            let other_sqrs_in = self.squares.squares_in_reg(regx);
 
             // Process an Unpredictable square.
             if sqrx.pn == Pn::Unpredictable {
@@ -2059,33 +2046,94 @@ impl SomeAction {
 
         debug_assert!(regx.is_superset_of(sqrx));
 
-        if let Some((regy, rules)) = self.check_region_for_group(regx) {
-            if regy.is_superset_of(&sqrx.state) {
-                // Calc pnc.
-                let pnc = self.group_region_pnc(&regy);
-
-                // Return a group
-                return Some(SomeGroup::new(regy, rules, pnc));
+        // Find squares in the given region, and calc region built from similar squares.
+        let mut regy = SomeRegion::new(vec![sqrx.state.clone()]); // sqrx.state probably will not still be the first state after unions.
+        let mut sqrs_in = Vec::<&SomeSquare>::new();
+        for sqry in not_dissim_sqrs.iter() {
+            if regx.is_superset_of(*sqry) {
+                sqrs_in.push(sqry);
+                if !regy.is_superset_of(*sqry) {
+                    regy = regy.union(*sqry);
+                }
             }
         }
-        None
-    }
-
-    /// Return the pnc value of a group region.
-    fn group_region_pnc(&self, regx: &SomeRegion) -> bool {
-        let sqrx = self
-            .squares
-            .find(regx.first_state())
-            .expect("Group region states should refer to existing squares");
-
-        if regx.far_state() == *regx.first_state() {
-            sqrx.pnc
-        } else if let Some(sqry) = self.squares.find(&regx.far_state()) {
-            sqrx.pnc && sqry.pnc
-        } else {
-            false
+        if self.groups.any_superset_of(&regy) {
+            return None;
         }
-    }
+
+        let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_in.len() + 1);
+
+        stas_in.push(sqrx.state.clone());
+
+        for sqry in sqrs_in.iter() {
+            stas_in.push(sqry.state.clone());
+        }
+
+        // Create region, cleanup squares between, etc.
+        let grp_reg = SomeRegion::new(stas_in);
+
+        // If sqrx is not Pn::Unpredictable, aggregate the rules.
+        let mut rules: Option<RuleStore> = None;
+        if let Some(rulesx) = &sqrx.rules {
+            let mut rulesz = rulesx.clone();
+
+            for stay in grp_reg.states.iter().skip(1) {
+                // Far state may not be found, for a GT two state region.
+                if let Some(sqry) = sqrs_in.iter().find(|&sqry| &sqry.state == stay) {
+                    rulesz = rulesz.union(sqry.rules.as_ref()?)?;
+                }
+            }
+            rules = Some(rulesz);
+        }
+
+        // Get far_state_pnc.
+        let mut far_pnc = false;
+        if grp_reg.len() == 1 {
+            far_pnc = sqrx.pnc;
+        } else if grp_reg.len() == 2 {
+            let far_state = grp_reg.far_state();
+            if let Some(sqry) = sqrs_in.iter().find(|&sqry| sqry.state == far_state) {
+                far_pnc = sqry.pnc;
+            }
+        }
+
+        if self.groups.any_superset_of(&grp_reg) {
+            return None;
+        }
+
+        // Check all squares in group.
+        if let Some(rulsx) = &rules {
+            for sqry in self.squares.ahash.values() {
+                if grp_reg.is_superset_of(&sqry.state) {
+                    if let Some(rulsy) = &sqry.rules {
+                        if rulsx.is_superset_of(rulsy) {
+                        } else {
+                            println!("not dis sqrs:");
+                            for sqrd in not_dissim_sqrs.iter() {
+                                println!("   {sqrd}");
+                            }
+
+                            panic!("1 In {grp_reg} {rulsx}, sqrx {sqrx} found {sqry}");
+                            //return None;
+                        }
+                    } else {
+                        panic!("2 In {grp_reg} {rulsx}, found {sqry}");
+                        //return None;
+                    }
+                }
+            }
+        } else {
+            for sqry in self.squares.ahash.values() {
+                if grp_reg.is_superset_of(&sqry.state) && sqry.pnc && sqry.pn != Pn::Unpredictable {
+                    panic!("3 In {grp_reg}, rules None, found {sqry}");
+                    //return None;
+                }
+            }
+        }
+
+        // Return a group, keeping sqrx.state as first state in the group region.
+        Some(SomeGroup::new(grp_reg, rules, sqrx.pnc && far_pnc))
+    } // end validate_combination
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
@@ -2170,18 +2218,6 @@ impl SomeAction {
         self.eval_sample(&asample);
 
         asample
-    }
-
-    /// Update memory, if needed.
-    pub fn update_memory(&mut self, asample: &SomeSample) {
-        debug_assert_eq!(asample.num_bits(), self.num_bits);
-
-        for sqrx in self.memory.iter_mut() {
-            if sqrx.state == asample.initial {
-                sqrx.add_sample(asample);
-                break;
-            }
-        }
     }
 
     /// Return a change with all changes that can be made for the action.
@@ -2320,22 +2356,6 @@ impl SomeAction {
 
         rc_str.push(')');
         rc_str
-    }
-
-    /// Add a square to memory, oldest first.
-    fn add_square_to_memory(&mut self, sqrx: SomeSquare) {
-        debug_assert_eq!(sqrx.num_bits(), self.num_bits);
-
-        if self.squares.find(&sqrx.state).is_some() {
-            panic!(
-                "add_square_to_memory: square for {} exists in hash",
-                sqrx.state
-            );
-        }
-        if self.memory.len() >= MAX_MEMORY {
-            self.memory.pop_front();
-        }
-        self.memory.push_back(sqrx);
     }
 } // end impl SomeAction
 
