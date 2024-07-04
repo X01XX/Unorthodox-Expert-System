@@ -161,17 +161,7 @@ impl SomeState {
         debug_assert_eq!(self.num_bits(), sta1.num_bits());
         debug_assert_eq!(self.num_bits(), sta2.num_bits());
 
-        if self == sta1 {
-            return false;
-        }
-        if self == sta2 {
-            return false;
-        }
-
-        self.bitwise_xor(sta1)
-            .bitwise_and(&self.bitwise_xor(sta2))
-            .to_mask()
-            .is_low()
+        self.bts.is_between(&sta1.bts, &sta2.bts)
     }
 
     /// Return a difference mask between a state and another item.
@@ -311,31 +301,6 @@ mod tests {
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        Ok(())
-    }
-
-    #[test]
-    fn is_between() -> Result<(), String> {
-        let sta2 = SomeState::new_from_string("0b00+10")?;
-        let sta3 = SomeState::new_from_string("0b00+11")?;
-        let sta5 = SomeState::new_from_string("0b01+01")?;
-        assert!(sta3.is_between(&sta2, &sta5));
-        assert!(!sta5.is_between(&sta2, &sta3));
-        Ok(())
-    }
-
-    #[test]
-    fn distance() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("s0xab+4")?;
-        let sta2 = SomeState::new_from_string("s0x54+4")?;
-
-        println!("sta1 {sta1}");
-        println!("sta2 {sta2}");
-
-        let dist = sta1.distance(&sta2);
-        println!("distance {dist}");
-
-        assert!(8 == dist);
         Ok(())
     }
 

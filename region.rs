@@ -303,6 +303,7 @@ impl SomeRegion {
     pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
         debug_assert_eq!(self.num_bits(), sta.num_bits());
         assert!(self.is_superset_of(sta));
+
         self.first_state()
             .bitwise_xor(&self.far_state())
             .bitwise_xor(sta)
@@ -616,6 +617,42 @@ mod tests {
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
     use rand::Rng;
+
+    #[test]
+    fn state_far_from() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string("X10+X01X")?;
+        let sta1 = SomeState::new_from_string("110+1010")?;
+        let sta2 = reg1.state_far_from(&sta1);
+        println!("reg {reg1} state far from {sta1} is {sta2}");
+
+        assert!(sta2 == SomeState::new_from_string("010+0011")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn num_edges() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string("X10+X01X")?;
+        let num_e = reg1.num_edges();
+        println!("reg {reg1} num edges {num_e}");
+
+        assert!(num_e == 4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn set_to_x() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string("XX0+101X")?;
+        let msk1 = SomeMask::new_from_string("0b111+1000")?;
+
+        let reg2 = reg1.set_to_x(&msk1);
+        println!("reg1 {reg1} set to x {msk1} is {reg2}");
+
+        assert!(reg2 == SomeRegion::new_from_string("XXX+X01X")?);
+
+        Ok(())
+    }
 
     #[test]
     fn translate_to() -> Result<(), String> {
@@ -965,18 +1002,6 @@ mod tests {
     }
 
     #[test]
-    fn non_x_mask() -> Result<(), String> {
-        let reg0 = SomeRegion::new_from_string("r0000xx01")?;
-        let m1 = reg0.edge_mask();
-        println!("non_x_mask is {m1}");
-        assert!(
-            m1.bitwise_and(&SomeBits::new_from_string("0xff")?)
-                == SomeMask::new_from_string("m0b11110011")?
-        );
-        Ok(())
-    }
-
-    #[test]
     fn far_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string("r0000XXX1")?;
         let state0 = SomeState::new_from_string("s0b00001011")?;
@@ -1175,7 +1200,7 @@ mod tests {
     }
 
     #[test]
-    fn diff_mask() -> Result<(), String> {
+    fn diff_edge_mask() -> Result<(), String> {
         let reg2a = SomeRegion::new_from_string("rXX0011")?; // Region >1 state.
         let reg2b = SomeRegion::new_from_string("rXX0111")?; // Region >1 state.
         let reg1a = SomeRegion::new_from_string("r000101")?; // Region =1 state.

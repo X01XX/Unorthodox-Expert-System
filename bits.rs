@@ -530,6 +530,21 @@ impl SomeBits {
         }
         astr
     }
+
+    /// Return true if a bits instance is between two others.
+    pub fn is_between(&self, bts1: &SomeBits, bts2: &SomeBits) -> bool {
+        debug_assert_eq!(self.num_bits, bts1.num_bits);
+        debug_assert_eq!(self.num_bits, bts2.num_bits);
+
+        if self == bts1 {
+            return false;
+        }
+        if self == bts2 {
+            return false;
+        }
+
+        self.b_xor(bts1).b_and(&self.b_xor(bts2)).is_low()
+    }
 } // end impl SomeBits
 
 /// Define the BitsRef trait, so SomeBits, SomeMask, and SomeState structs can interact at the SomeBits level.
@@ -768,7 +783,6 @@ mod tests {
             ));
         }
 
-        // assert!(1 == 2);
         Ok(())
     }
 
@@ -780,6 +794,7 @@ mod tests {
         let b3 = b1.b_eqv(&b2).b_and(&SomeBits::new_from_string("0x0f+f")?);
         let b4 = SomeBits::new_from_string("0x0c+f")?;
         println!("b3: {b3} b4: {b4}");
+
         assert_eq!(b3, b4);
         Ok(())
     }
@@ -1098,6 +1113,16 @@ mod tests {
         println!("bitsx: {bitsx}");
         assert!(!bitsx.just_one_bit());
 
+        Ok(())
+    }
+
+    #[test]
+    fn is_between() -> Result<(), String> {
+        let bts2 = SomeBits::new_from_string("0b00+10")?;
+        let bts3 = SomeBits::new_from_string("0b00+11")?;
+        let bts5 = SomeBits::new_from_string("0b01+01")?;
+        assert!(bts3.is_between(&bts2, &bts5));
+        assert!(!bts5.is_between(&bts2, &bts3));
         Ok(())
     }
 }
