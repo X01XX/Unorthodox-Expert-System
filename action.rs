@@ -2310,28 +2310,20 @@ mod tests {
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
         // 0->1 and 0->1, in the fourth bit.
-        //let s1 = SomeState::new(SomeBits::new(vec![0x1]));
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        let s9 = SomeState::new_from_string("s0b1001")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s9.clone()));
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b1001")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
 
         // Set up first two_result square.
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        let s8 = SomeState::new_from_string("s0b1000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s8.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b1000")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b1000")?);
 
         // Set up second two_result square.
-        let s7 = SomeState::new_from_string("s0b0111")?;
-        let sf = SomeState::new_from_string("s0b1111")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 1);
@@ -2347,24 +2339,14 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Eval sample that other samples will be incompatible with.
-        let s7 = SomeState::new_from_string("s0b0111")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s7.clone(), s7.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
 
         // Process three similar samples.
-        act0.eval_sample_arbitrary(&SomeSample::new(
-            SomeState::new_from_string("s0b1011")?,
-            SomeState::new_from_string("s0b1010")?,
-        ));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1011->0b1010")?);
 
-        act0.eval_sample_arbitrary(&SomeSample::new(
-            SomeState::new_from_string("s0b1101")?,
-            SomeState::new_from_string("s0b1100")?,
-        ));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1101->0b1100")?);
 
-        act0.eval_sample_arbitrary(&SomeSample::new(
-            SomeState::new_from_string("s0b0001")?,
-            SomeState::new_from_string("s0b0000")?,
-        ));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 4);
@@ -2398,21 +2380,17 @@ mod tests {
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
 
         // Set up 2-result square sf.
-        let sf = SomeState::new_from_string("s0b1111")?;
-        let se = SomeState::new_from_string("s0b1110")?;
-
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), sf.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(sf.clone(), se.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1110")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up 2-result square s1.
         let s1 = SomeState::new_from_string("s0b0001")?;
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s1.clone()));
-        act0.eval_sample_arbitrary(&SomeSample::new(s1.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
 
         let nds = act0.get_needs(&s1, 0, &max_reg);
         println!("Act: {}", act0);
@@ -2432,16 +2410,13 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
 
         // Set up square 3.
-        let s3 = SomeState::new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0011->0b0011")?);
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 
@@ -2462,20 +2437,16 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s0.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
 
         // Set up square 3.
-        let s3 = SomeState::new_from_string("s0b0011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s3.clone(), s3.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0011->0b0011")?);
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
-        let s4 = SomeState::new_from_string("s0b0100")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s4.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b0000")?);
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 
@@ -2505,17 +2476,13 @@ mod tests {
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
-        let s2 = SomeState::new_from_string("s0b0010")?;
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s2.clone(), s0.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
 
         // Set up square b.
-        let sb = SomeState::new_from_string("s0b1011")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(sb.clone(), sb.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1011->0b1011")?);
 
         // Set up square 5.
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        act0.eval_sample_arbitrary(&SomeSample::new(s5.clone(), s5.clone()));
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 

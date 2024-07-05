@@ -341,16 +341,13 @@ impl StrLen for StepStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
-    use crate::state::SomeState;
     use crate::step::{AltRuleHint, SomeStep};
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);

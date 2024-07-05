@@ -193,18 +193,13 @@ impl NumBits for SomeStep {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
-    use crate::state::SomeState;
     use crate::step::SomeStep;
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let ur_bits = SomeBits::new(4);
-        let tmp_sta = SomeState::new(ur_bits.clone());
-        let tmp_sta2 = SomeState::new(SomeBits::new_from_string("0x2")?);
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta2.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0010")?); //(tmp_sta.clone(), tmp_sta2.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, 0);
 
         let strrep = format!("{tmp_stp}");
@@ -221,7 +216,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_alt = SomeRule::new(&SomeSample::new(tmp_sta2.clone(), tmp_sta));
+        let tmp_alt = SomeRule::new(&SomeSample::new_from_string("0b0010->0b0000")?); //(tmp_sta2.clone(), tmp_sta));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt }, 0);
 
         let strrep = format!("{tmp_stp}");

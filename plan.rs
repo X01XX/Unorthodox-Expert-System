@@ -329,14 +329,11 @@ mod tests {
     use super::*;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
-    use crate::state::SomeState;
     use crate::step::AltRuleHint;
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new_from_string("0000")?;
-        let tmp_stb = SomeState::new_from_string("1111")?;
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_stb.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b1111")?); //(tmp_sta.clone(), tmp_stb.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
@@ -348,8 +345,7 @@ mod tests {
         println!("str {tmp_pln} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_st3 = SomeState::new_from_string("0011")?;
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_stb.clone(), tmp_st3.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b1111->0b0011")?); //(tmp_stb.clone(), tmp_st3.clone()));
         let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
 
         let mut tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);

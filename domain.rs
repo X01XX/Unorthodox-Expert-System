@@ -1312,32 +1312,21 @@ mod tests {
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
 
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        let s2 = SomeState::new_from_string("s0b0010")?;
-        let s4 = SomeState::new_from_string("s0b0100")?;
-        let s7 = SomeState::new_from_string("s0b0111")?;
-        let s8 = SomeState::new_from_string("s0b1000")?;
-        let sb = SomeState::new_from_string("s0b1011")?;
-        let sd = SomeState::new_from_string("s0b1101")?;
-        let se = SomeState::new_from_string("s0b1110")?;
-        let sf = SomeState::new_from_string("s0b1111")?;
-
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dm0.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4));
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf.clone(), sb));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dm0.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0.clone(), s8));
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(sf.clone(), s7)); // Last sample changes current state to s0111
+        dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
         let cur_state = SomeState::new_from_string("s0b0111")?;
@@ -1367,32 +1356,21 @@ mod tests {
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
 
-        let s0 = SomeState::new_from_string("s0b0000")?;
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        let s2 = SomeState::new_from_string("s0b0010")?;
-        let s3 = SomeState::new_from_string("s0b0011")?;
-        let s4 = SomeState::new_from_string("s0b0100")?;
-        let s8 = SomeState::new_from_string("s0b1000")?;
-        let sb = SomeState::new_from_string("s0b1011")?;
-        let sd = SomeState::new_from_string("s0b1101")?;
-        let se = SomeState::new_from_string("s0b1110")?;
-        let sf = SomeState::new_from_string("s0b1111")?;
-
         // Create group for region XXXX->XXXx, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0.clone(), s1));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Create group for region XXXX->XXxX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(s0.clone(), s2));
-        dm0.eval_sample_arbitrary(1, &SomeSample::new(sf.clone(), sd));
+        dm0.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dm0.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Create group for region XXXX-XxXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(s0.clone(), s4));
-        dm0.eval_sample_arbitrary(2, &SomeSample::new(sf, sb.clone()));
+        dm0.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dm0.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Create group for region X0XX->x0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(s0, s8));
-        dm0.eval_sample_arbitrary(3, &SomeSample::new(sb, s3));
+        dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1011->0b0011")?);
 
         println!("\nActs: {}", dm0.actions);
 
@@ -1436,8 +1414,7 @@ mod tests {
         ));
 
         // Create group for one sample
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0001->0b0001")?);
 
         println!("\nActs: {}", &dm0.actions[0]);
         assert!(dm0.actions[0]
@@ -1447,11 +1424,7 @@ mod tests {
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         // Current state changes to zero.
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        dm0.eval_sample_arbitrary(
-            0,
-            &SomeSample::new(s1.clone(), SomeState::new_from_string("s0b0000")?),
-        );
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0001->0b0000")?);
 
         println!("\nActs: {}", dm0.actions[0]);
 
@@ -1498,8 +1471,7 @@ mod tests {
         ));
 
         // Create group for one sample
-        let s1 = SomeState::new_from_string("s0b0001")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0001->0b0001")?);
 
         println!("\nActs: {}", dm0.actions[0]);
         assert!(dm0.actions[0]
@@ -1508,8 +1480,7 @@ mod tests {
             .is_some());
 
         // Expand group
-        let s2 = SomeState::new_from_string("s0b0010")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0010->0b0010")?);
 
         println!("\nActs: {}", dm0.actions[0]);
         assert!(dm0.actions[0]
@@ -1537,8 +1508,8 @@ mod tests {
         ));
 
         // Satisfy one need.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2.clone(), s2.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0010->0b0010")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0010->0b0010")?);
 
         let nds3 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds3);
@@ -1552,8 +1523,8 @@ mod tests {
         ));
 
         // Satisfy second need.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s1.clone(), s1.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0001->0b0001")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0001->0b0001")?);
 
         let nds4 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds4);
@@ -1577,21 +1548,16 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
-        let s00 = SomeState::new_from_string("s0b0000")?;
-        let s01 = SomeState::new_from_string("s0b0001")?;
-        let s06 = SomeState::new_from_string("s0b0110")?;
-        let s0d = SomeState::new_from_string("s0b1101")?;
-
         // Create group for region XX0X.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s00.clone(), s01.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s00.clone(), s01.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1101->0b1101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1101->0b1101")?);
 
         // Create group X1XX
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0110->0b0110")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0110->0b0110")?);
 
         // Get and check needs.
         let nds1 = dm0.actions.avec[0].group_pair_needs();
@@ -1618,16 +1584,13 @@ mod tests {
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        let s04 = SomeState::new_from_string("s0b0100")?;
-        let s02 = SomeState::new_from_string("s0b0010")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s04.clone(), s02.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0100->0b0010")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0100->0b0010")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0100->0b0010")?);
 
-        let sf9 = SomeState::new_from_string("s0b1001")?;
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf9.clone(), s02.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1001->0b0010")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1001->0b0010")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1001->0b0010")?);
 
         let Some(nds1) = dm0.actions[0].limit_groups_needs(&max_reg) else {
             return Err("No needs?".to_string());
@@ -1650,16 +1613,14 @@ mod tests {
 
         if *anchor_sta == SomeState::new_from_string("s0b1001")? {
             // limiting square for anchor 9 is B.
-            let s0b = SomeState::new_from_string("s0b1011")?;
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s0b.clone(), s0b.clone()));
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1011->0b1011")?);
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1011->0b1011")?);
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1011->0b1011")?);
         } else {
             // Limiting square for anchor 4 is 6.
-            let s06 = SomeState::new_from_string("s0b0110")?;
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
-            dm0.eval_sample_arbitrary(0, &SomeSample::new(s06.clone(), s06.clone()));
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0110->0b0110")?);
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0110->0b0110")?);
+            dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0110->0b0110")?);
         }
 
         println!("dm0 {}", dm0.actions[0]);
@@ -1694,27 +1655,17 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
-        let s5 = SomeState::new_from_string("s0b0101")?;
-
-        let s4 = SomeState::new_from_string("s0b0100")?;
-
-        let sf = SomeState::new_from_string("s0b1111")?;
-
-        let se = SomeState::new_from_string("s0b1110")?;
-
-        let s7 = SomeState::new_from_string("s0b0111")?;
-
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s5.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s5.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s4.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0100")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0100")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), sf.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), sf.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
 
         println!("\nActs: {}", dm0.actions[0]);
 
@@ -1724,19 +1675,19 @@ mod tests {
             return Err(String::from("Group rx1x1 was not formed by two squares?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?);
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
         } else {
             return Err(String::from("Group rx1x1 deleted too soon?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?);
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
         } else {
             return Err(String::from("Group rx1x1 deleted too soon?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?);
         if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
             return Err(String::from("Group rx1x1 not deleted?"));
         }
@@ -1757,36 +1708,30 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("s0b0001")?;
         dm0.add_action(vec![]);
 
-        let s5 = SomeState::new_from_string("s0b0101")?;
-        let s4 = SomeState::new_from_string("s0b0100")?;
-        let sf = SomeState::new_from_string("s0b1111")?;
-        let se = SomeState::new_from_string("s0b1110")?;
-        let s7 = SomeState::new_from_string("s0b0111")?;
-
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s5.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), s4.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s5.clone(), se.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b0100")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0101->0b1110")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), se.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), sf.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(sf.clone(), s4.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b0100")?);
 
         println!("\n1 Acts: {}", dm0.actions[0]);
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?);
         println!("\n2 Acts: {}", dm0.actions[0]);
 
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?);
         println!("\n2 Acts: {}", dm0.actions[0]);
 
         assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s7.clone(), s7.clone())); // cause pn-not-Two invalidation
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0111->0b0111")?); // cause pn-not-Two invalidation
         println!("\n3 Acts: {}", dm0.actions[0]);
 
         assert!(dm0.actions[0].groups.find(&rx1x1).is_none());
@@ -1804,16 +1749,15 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("s0b0000000000000001")?;
         dm0.add_action(vec![]);
 
-        let s0 = SomeState::new_from_string("s0b0001010010101000")?;
-        let s1 = SomeState::new_from_string("s0b0001010010111000")?;
-
-        let s2 = SomeState::new_from_string("s0b1111010110101011")?;
-        let s3 = SomeState::new_from_string("s0b1111010110111011")?;
-        // Region                          XXX1010X101010XX.
-
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0, s1));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s2, s3));
+        dm0.eval_sample_arbitrary(
+            0,
+            &SomeSample::new_from_string("0b0001010010101000->0b0001010010111000")?,
+        );
+        dm0.eval_sample_arbitrary(
+            0,
+            &SomeSample::new_from_string("0b1111010110101011->0b1111010110111011")?,
+        );
 
         println!("\nActs: {}", dm0.actions[0]);
         assert!(dm0.actions[0]
@@ -1841,18 +1785,15 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("s0b0011")?;
         dm0.add_action(vec![]); // Act 0
 
-        let s0d = SomeState::new_from_string("s0b1101")?;
-        let s0f = SomeState::new_from_string("s0b1111")?;
-
         // Start groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1101->0b1101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
 
         // Confirm groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0d.clone(), s0d.clone()));
-        dm0.eval_sample_arbitrary(0, &SomeSample::new(s0f.clone(), s0f.clone()));
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1101->0b1101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1101->0b1101")?);
+        dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1111")?);
 
         // get_needs checks the limited flag for each group.
         let nds = dm0.get_needs();
@@ -1897,9 +1838,21 @@ mod tests {
         println!("\n(2){}", dm0.actions[act0]);
         if let Some(needs) = nds {
             println!("needs {}", needs);
-            //assert!(needs.len() == 2);
-            //assert!(contains_similar_need(&needs, "LimitGroupAdj", &SomeRegion::new_from_string("r1110").expect("SNH")));
-            //assert!(contains_similar_need(&needs, "LimitGroupAdj", &SomeRegion::new_from_string("r0111").expect("SNH")));
+            assert!(needs.len() == 2);
+            assert!(contains_similar_need(
+                &needs,
+                "LimitGroupAdj",
+                &ATarget::State {
+                    state: &SomeState::new_from_string("0b1100").expect("SNH")
+                }
+            ));
+            assert!(contains_similar_need(
+                &needs,
+                "LimitGroupAdj",
+                &ATarget::State {
+                    state: &SomeState::new_from_string("0b0101").expect("SNH")
+                }
+            ));
         } else {
             println!("needs []");
             panic!("SNH");
@@ -2604,7 +2557,6 @@ mod tests {
             return Err("No shortcuts (1) found".to_string());
         }
 
-        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

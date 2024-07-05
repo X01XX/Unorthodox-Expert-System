@@ -735,7 +735,6 @@ impl NumBits for SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::tools;
 
     #[test]
@@ -763,8 +762,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -772,8 +770,9 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(16));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string(
+            "0b0000_0000_0000_0000->0b0000_0000_0000_0000",
+        )?); //tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -781,8 +780,7 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(5));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0_0000->0b0_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -790,8 +788,7 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(4));
-        let tmp_rul = SomeRule::new(&SomeSample::new(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -804,10 +801,7 @@ mod tests {
 
     #[test]
     fn test_new() -> Result<(), String> {
-        let rule_from_states = SomeRule::new(&SomeSample::new(
-            SomeState::new_from_string("s0b0101")?,
-            SomeState::new_from_string("s0b0011")?,
-        ));
+        let rule_from_sample = SomeRule::new(&SomeSample::new_from_string("0b0101->0b0011")?); //(
 
         let rule_from_masks = SomeRule {
             b00: SomeMask::new_from_string("0x7")?.bitwise_not(),
@@ -818,45 +812,34 @@ mod tests {
 
         let rule_from_string = SomeRule::new_from_string("00/10/01/11")?;
 
-        println!("rule_from_states: {rule_from_states} rule_from_masks: {rule_from_masks}");
-        assert!(rule_from_states == rule_from_masks);
+        println!("rule_from_sample: {rule_from_sample} rule_from_masks: {rule_from_masks}");
+        assert!(rule_from_sample == rule_from_masks);
 
-        println!("rule_from_states: {rule_from_states} rule_from_string: {rule_from_string}");
-        assert!(rule_from_states == rule_from_string);
+        println!("rule_from_sample: {rule_from_sample} rule_from_string: {rule_from_string}");
+        assert!(rule_from_sample == rule_from_string);
 
         Ok(())
     }
 
     #[test]
-    fn initial_region_result_region() -> Result<(), String> {
-        let sta = SomeState::new_from_string("s0b1010")?;
-        let st6 = SomeState::new_from_string("s0b0110")?;
-        let rulx = SomeRule::new(&SomeSample::new(
-            sta.clone(),
-            SomeState::new_from_string("s0b1001")?,
-        ));
-        let ruly = SomeRule::new(&SomeSample::new(
-            st6.clone(),
-            SomeState::new_from_string("s0b0101")?,
-        ));
-
-        println!("rulx: {rulx}");
-        assert!(rulx.initial_region() == SomeRegion::new(vec![sta.clone()]));
-
-        println!("ruly: {ruly}");
-        if let Some(rulz) = rulx.union(&ruly) {
-            println!("rulz: {rulz}");
-            assert!(rulz.initial_region() == SomeRegion::new_from_string("rXX10")?);
-        } else {
-            return Err("Regions should form a union".to_string());
-        }
-
+    fn initial_region() -> Result<(), String> {
         let rulx = SomeRule::new_from_string("XX/Xx/X0/X1_00/01/11/10")?;
+
         println!("initial region {}", rulx.initial_region());
-        assert!(rulx.initial_region() == SomeRegion::new_from_string("rXXXX0011")?);
+        assert!(rulx.initial_region() == SomeRegion::new_from_string("rXXXX_0011")?);
 
         println!("result region {}", rulx.result_region());
         // Check result formatted string, to differentiate between X->X and X->x.
+        assert!(format!("{}", rulx.result_region()) == "rXx01_0110");
+
+        Ok(())
+    }
+
+    #[test]
+    fn result_region() -> Result<(), String> {
+        let rulx = SomeRule::new_from_string("XX/Xx/X0/X1_00/01/11/10")?;
+        println!("result region {}", rulx.result_region());
+
         assert!(format!("{}", rulx.result_region()) == "rXx01_0110");
 
         Ok(())

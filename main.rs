@@ -72,6 +72,7 @@ use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
 use crate::regionstorecorr::RegionStoreCorr;
+extern crate unicode_segmentation;
 
 use std::io;
 use std::io::{Read, Write};
